@@ -209,6 +209,9 @@ extern "C" {
 
     #[link_name = "llvm.ceil.v4f32"]
     fn vceil(a: vector_float) -> vector_float;
+
+    #[link_name = "llvm.ppc.altivec.vcmpbfp"]
+    fn vcmpbfp(a: vector_float, b: vector_float) -> vector_signed_int;
 }
 
 macro_rules! s_t_l {
@@ -364,6 +367,8 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] ($fn, $fn, $fn, $fn, $fn, $fn) }
         }
     }
+
+    test_impl! { vec_vcmpbfp(a: vector_float, b: vector_float) -> vector_signed_int [vcmpbfp, vcmpbfp] }
 
     test_impl! { vec_vceil(a: vector_float) -> vector_float [vceil, vrfip / xvrspip ] }
 
@@ -1284,7 +1289,14 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
-/// Vector ceil.
+/// Vector cmpb.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_cmpb(a: vector_float, b: vector_float) -> vector_signed_int {
+    sealed::vec_vcmpbfp(a, b)
+}
+
+/// Vector cmpb.
 #[inline]
 #[target_feature(enable = "altivec")]
 pub unsafe fn vec_ceil(a: vector_float) -> vector_float {
@@ -1623,6 +1635,20 @@ mod tests {
                 assert_eq!(d, r);
             }
          }
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_cmpb() {
+        let a: vector_float = transmute(f32x4::new(0.1, 0.5, 0.6, 0.9));
+        let b: vector_float = transmute(f32x4::new(-0.1, 0.5, -0.6, 0.9));
+        let d = i32x4::new(
+            -0b10000000000000000000000000000000,
+            0,
+            -0b10000000000000000000000000000000,
+            0,
+        );
+
+        assert_eq!(d, transmute(vec_cmpb(a, b)));
     }
 
     #[simd_test(enable = "altivec")]
