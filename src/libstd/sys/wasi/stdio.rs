@@ -29,7 +29,7 @@ impl Stdout {
 
     // FIXME: implement?
     pub fn is_tty(&self) -> bool {
-        false
+        true
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {

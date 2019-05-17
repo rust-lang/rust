@@ -23,7 +23,7 @@ impl Stdout {
     }
 
     pub fn is_tty(&self) -> bool {
-        false
+        true
     }
 }
 

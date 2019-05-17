@@ -33,7 +33,7 @@ impl Stdout {
 
     // FIXME: implement
     pub fn is_tty(&self) -> bool {
-        false
+        true
     }
 }
 
