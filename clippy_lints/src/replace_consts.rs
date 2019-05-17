@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
     }
 }
 
-const REPLACEMENTS: [([&str; 3], &'static str); 25] = [
+const REPLACEMENTS: [([&str; 3], &str); 25] = [
     // Once
     (["core", "sync", "ONCE_INIT"], "Once::new()"),
     // Min

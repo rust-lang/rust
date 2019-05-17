@@ -1111,8 +1111,7 @@ fn lint_or_fun_call<'a, 'tcx: 'a>(
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tables.expr_ty(arg);
-                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT)
-                    {
+                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT) {
                         default_trait_id
                     } else {
                         return false;
@@ -2254,33 +2253,15 @@ fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
 
 /// Checks for the `CHARS_NEXT_CMP` lint with `unwrap()`.
 fn lint_chars_next_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    lint_chars_cmp_with_unwrap(
-        cx,
-        info,
-        &["chars", "next", "unwrap"],
-        CHARS_NEXT_CMP,
-        "starts_with",
-    )
+    lint_chars_cmp_with_unwrap(cx, info, &["chars", "next", "unwrap"], CHARS_NEXT_CMP, "starts_with")
 }
 
 /// Checks for the `CHARS_LAST_CMP` lint with `unwrap()`.
 fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    if lint_chars_cmp_with_unwrap(
-        cx,
-        info,
-        &["chars", "last", "unwrap"],
-        CHARS_LAST_CMP,
-        "ends_with",
-    ) {
+    if lint_chars_cmp_with_unwrap(cx, info, &["chars", "last", "unwrap"], CHARS_LAST_CMP, "ends_with") {
         true
     } else {
-        lint_chars_cmp_with_unwrap(
-            cx,
-            info,
-            &["chars", "next_back", "unwrap"],
-            CHARS_LAST_CMP,
-            "ends_with",
-        )
+        lint_chars_cmp_with_unwrap(cx, info, &["chars", "next_back", "unwrap"], CHARS_LAST_CMP, "ends_with")
     }
 }
 
@@ -2344,7 +2325,10 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
     }
 }
 
-fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: Ty<'_>) -> Option<(&'static Lint, &'static str, &'static str)> {
+fn ty_has_iter_method(
+    cx: &LateContext<'_, '_>,
+    self_ref_ty: Ty<'_>,
+) -> Option<(&'static Lint, &'static str, &'static str)> {
     if let Some(ty_name) = has_iter_method(cx, self_ref_ty) {
         let lint = if ty_name == "array" || ty_name == "PathBuf" {
             INTO_ITER_ON_ARRAY

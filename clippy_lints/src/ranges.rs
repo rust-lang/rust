@@ -212,8 +212,7 @@ fn has_step_by(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     // can't be called on a borrowed range.
     let ty = cx.tables.expr_ty_adjusted(expr);
 
-    get_trait_def_id(cx, &paths::ITERATOR)
-        .map_or(false, |iterator_trait| implements_trait(cx, ty, iterator_trait, &[]))
+    get_trait_def_id(cx, &paths::ITERATOR).map_or(false, |iterator_trait| implements_trait(cx, ty, iterator_trait, &[]))
 }
 
 fn y_plus_one(expr: &Expr) -> Option<&Expr> {

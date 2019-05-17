@@ -231,7 +231,9 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
 /// Gets the definition associated to a path.
 pub fn path_to_res(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<(def::Res)> {
     let crates = cx.tcx.crates();
-    let krate = crates.iter().find(|&&krate| cx.tcx.crate_name(krate).as_str() == path[0]);
+    let krate = crates
+        .iter()
+        .find(|&&krate| cx.tcx.crate_name(krate).as_str() == path[0]);
     if let Some(krate) = krate {
         let krate = DefId {
             krate: *krate,

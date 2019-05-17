@@ -50,10 +50,7 @@ declare_clippy_lint! {
 }
 
 // For each pairs, both orders are considered.
-const METHODS_WITH_NEGATION: [(&str, &str); 2] = [
-    ("is_some", "is_none"),
-    ("is_err", "is_ok"),
-];
+const METHODS_WITH_NEGATION: [(&str, &str); 2] = [("is_some", "is_none"), ("is_err", "is_ok")];
 
 declare_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, LOGIC_BUG]);
 

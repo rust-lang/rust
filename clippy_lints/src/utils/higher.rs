@@ -100,8 +100,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
         },
         hir::ExprKind::Call(ref path, ref args) => {
             if let hir::ExprKind::Path(ref path) = path.node {
-                if match_qpath(path, &paths::RANGE_INCLUSIVE_STD_NEW)
-                    || match_qpath(path, &paths::RANGE_INCLUSIVE_NEW)
+                if match_qpath(path, &paths::RANGE_INCLUSIVE_STD_NEW) || match_qpath(path, &paths::RANGE_INCLUSIVE_NEW)
                 {
                     Some(Range {
                         start: Some(&args[0]),
@@ -128,8 +127,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
                     end: Some(get_field("end", fields)?),
                     limits: ast::RangeLimits::HalfOpen,
                 })
-            } else if match_qpath(path, &paths::RANGE_TO_INCLUSIVE_STD)
-                || match_qpath(path, &paths::RANGE_TO_INCLUSIVE)
+            } else if match_qpath(path, &paths::RANGE_TO_INCLUSIVE_STD) || match_qpath(path, &paths::RANGE_TO_INCLUSIVE)
             {
                 Some(Range {
                     start: None,

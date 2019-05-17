@@ -193,12 +193,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
                     );
                 }
             } else if match_type(cx, ty, &paths::STRING) {
-                if let Some(spans) = get_spans(
-                    cx,
-                    opt_body_id,
-                    idx,
-                    &[("clone", ".to_string()"), ("as_str", "")],
-                ) {
+                if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                     span_lint_and_then(
                         cx,
                         PTR_ARG,
