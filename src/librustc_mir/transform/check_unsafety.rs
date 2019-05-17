@@ -19,7 +19,7 @@ use std::ops::Bound;
 use crate::util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     const_context: bool,
     min_const_fn: bool,
     source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
@@ -36,7 +36,7 @@ impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn new(
         const_context: bool,
         min_const_fn: bool,
-        mir: &'a Mir<'tcx>,
+        mir: &'a Body<'tcx>,
         source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -538,7 +538,7 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     let mut checker = UnsafetyChecker::new(
         const_context, min_const_fn,
         mir, source_scope_local_data, tcx, param_env);
-    checker.visit_mir(mir);
+    checker.visit_body(mir);
 
     check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);
     UnsafetyCheckResult {

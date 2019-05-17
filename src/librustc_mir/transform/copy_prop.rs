@@ -20,7 +20,7 @@
 //! future.
 
 use rustc::mir::{
-    Constant, Local, LocalKind, Location, Place, PlaceBase, Mir, Operand, Rvalue, StatementKind
+    Constant, Local, LocalKind, Location, Place, PlaceBase, Body, Operand, Rvalue, StatementKind
 };
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
@@ -33,7 +33,7 @@ impl MirPass for CopyPropagation {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
         if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
@@ -135,7 +135,7 @@ impl MirPass for CopyPropagation {
 }
 
 fn eliminate_self_assignments(
-    mir: &mut Mir<'_>,
+    mir: &mut Body<'_>,
     def_use_analysis: &DefUseAnalysis,
 ) -> bool {
     let mut changed = false;
@@ -177,7 +177,7 @@ enum Action<'tcx> {
 }
 
 impl<'tcx> Action<'tcx> {
-    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
+    fn local_copy(mir: &Body<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
         let src_local = if let Place::Base(PlaceBase::Local(local)) = *src_place {
@@ -232,7 +232,7 @@ impl<'tcx> Action<'tcx> {
     }
 
     fn perform(self,
-               mir: &mut Mir<'tcx>,
+               mir: &mut Body<'tcx>,
                def_use_analysis: &DefUseAnalysis,
                dest_local: Local,
                location: Location)

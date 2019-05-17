@@ -68,7 +68,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
     pass_name: &str,
     disambiguator: &dyn Display,
     source: MirSource<'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     extra_data: F,
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
@@ -124,7 +124,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
     node_path: &str,
     disambiguator: &dyn Display,
     source: MirSource<'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     mut extra_data: F,
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
@@ -282,7 +282,7 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
 pub fn write_mir_fn<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     src: MirSource<'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     extra_data: &mut F,
     w: &mut dyn Write,
 ) -> io::Result<()>
@@ -306,7 +306,7 @@ where
 pub fn write_basic_block<'cx, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     block: BasicBlock,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     extra_data: &mut F,
     w: &mut dyn Write,
 ) -> io::Result<()>
@@ -464,7 +464,7 @@ fn comment(tcx: TyCtxt<'_, '_, '_>, SourceInfo { span, scope }: SourceInfo) -> S
 /// Prints local variables in a scope tree.
 fn write_scope_tree(
     tcx: TyCtxt<'_, '_, '_>,
-    mir: &Mir<'_>,
+    mir: &Body<'_>,
     scope_tree: &FxHashMap<SourceScope, Vec<SourceScope>>,
     w: &mut dyn Write,
     parent: SourceScope,
@@ -541,7 +541,7 @@ fn write_scope_tree(
 pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     src: MirSource<'tcx>,
-    mir: &Mir<'_>,
+    mir: &Body<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
     write_mir_sig(tcx, src, mir, w)?;
@@ -572,7 +572,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
 fn write_mir_sig(
     tcx: TyCtxt<'_, '_, '_>,
     src: MirSource<'tcx>,
-    mir: &Mir<'_>,
+    mir: &Body<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
     use rustc::hir::def::DefKind;
@@ -629,7 +629,7 @@ fn write_mir_sig(
     Ok(())
 }
 
-fn write_user_type_annotations(mir: &Mir<'_>, w: &mut dyn Write) -> io::Result<()> {
+fn write_user_type_annotations(mir: &Body<'_>, w: &mut dyn Write) -> io::Result<()> {
     if !mir.user_type_annotations.is_empty() {
         writeln!(w, "| User Type Annotations")?;
     }

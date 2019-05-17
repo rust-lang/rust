@@ -24,7 +24,7 @@ impl MirPass for ElaborateDrops {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>)
+                          mir: &mut Body<'tcx>)
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
 
@@ -79,7 +79,7 @@ impl MirPass for ElaborateDrops {
 /// that can't drop anything.
 fn find_dead_unwinds<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     def_id: hir::def_id::DefId,
     env: &MoveDataParamEnv<'tcx, 'tcx>)
     -> BitSet<BasicBlock>
@@ -143,7 +143,7 @@ struct InitializationData {
 impl InitializationData {
     fn apply_location<'a,'tcx>(&mut self,
                                tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               mir: &Mir<'tcx>,
+                               mir: &Body<'tcx>,
                                env: &MoveDataParamEnv<'tcx, 'tcx>,
                                loc: Location)
     {
@@ -186,7 +186,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         &mut self.ctxt.patch
     }
 
-    fn mir(&self) -> &'a Mir<'tcx> {
+    fn mir(&self) -> &'a Body<'tcx> {
         self.ctxt.mir
     }
 
@@ -291,7 +291,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
 
 struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     env: &'a MoveDataParamEnv<'tcx, 'tcx>,
     flow_inits: DataflowResults<'tcx, MaybeInitializedPlaces<'a, 'tcx, 'tcx>>,
     flow_uninits:  DataflowResults<'tcx, MaybeUninitializedPlaces<'a, 'tcx, 'tcx>>,

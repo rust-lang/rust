@@ -6,7 +6,7 @@ use crate::borrow_check::nll::region_infer::{Cause, RegionName};
 use crate::borrow_check::nll::ConstraintDescription;
 use crate::borrow_check::{MirBorrowckCtxt, WriteKind};
 use rustc::mir::{
-    CastKind, ConstraintCategory, FakeReadCause, Local, Location, Mir, Operand, Place, PlaceBase,
+    CastKind, ConstraintCategory, FakeReadCause, Local, Location, Body, Operand, Place, PlaceBase,
     Projection, ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc::ty::{self, TyCtxt};
@@ -54,7 +54,7 @@ impl BorrowExplanation {
     pub(in crate::borrow_check) fn add_explanation_to_diagnostic<'cx, 'gcx, 'tcx>(
         &self,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         borrow_desc: &str,
         borrow_span: Option<Span>,

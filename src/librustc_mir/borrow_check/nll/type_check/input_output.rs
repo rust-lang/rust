@@ -20,7 +20,7 @@ use super::{Locations, TypeChecker};
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         universal_regions: &UniversalRegions<'tcx>,
         normalized_inputs_and_output: &[Ty<'tcx>],
     ) {

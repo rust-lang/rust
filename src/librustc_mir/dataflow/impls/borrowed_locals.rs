@@ -12,16 +12,16 @@ use crate::dataflow::BitDenotation;
 /// immovable generators.
 #[derive(Copy, Clone)]
 pub struct HaveBeenBorrowedLocals<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
-    pub fn new(mir: &'a Mir<'tcx>)
+    pub fn new(mir: &'a Body<'tcx>)
                -> Self {
         HaveBeenBorrowedLocals { mir }
     }
 
-    pub fn mir(&self) -> &Mir<'tcx> {
+    pub fn mir(&self) -> &Body<'tcx> {
         self.mir
     }
 }

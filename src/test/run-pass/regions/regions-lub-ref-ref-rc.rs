@@ -11,16 +11,16 @@
 use std::rc::Rc;
 
 #[derive(Clone)]
-enum CachedMir<'mir> {
+enum Cached<'mir> {
     Ref(&'mir String),
     Owned(Rc<String>),
 }
 
-impl<'mir> CachedMir<'mir> {
+impl<'mir> Cached<'mir> {
     fn get_ref<'a>(&'a self) -> &'a String {
         match *self {
-            CachedMir::Ref(r) => r,
-            CachedMir::Owned(ref rc) => &rc,
+            Cached::Ref(r) => r,
+            Cached::Owned(ref rc) => &rc,
         }
     }
 }

@@ -517,7 +517,7 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 struct MirNeighborCollector<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a mir::Mir<'tcx>,
+    mir: &'a mir::Body<'tcx>,
     output: &'a mut Vec<MonoItem<'tcx>>,
     param_substs: SubstsRef<'tcx>,
 }
@@ -1218,7 +1218,7 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         mir: &mir,
         output,
         param_substs: instance.substs,
-    }.visit_mir(&mir);
+    }.visit_body(&mir);
     let param_env = ty::ParamEnv::reveal_all();
     for i in 0..mir.promoted.len() {
         use rustc_data_structures::indexed_vec::Idx;
