@@ -2218,7 +2218,7 @@ impl<'a> LoweringContext<'a> {
                         bindings: hir_vec![
                             hir::TypeBinding {
                                 hir_id: this.next_id(),
-                                ident: Ident::from_str(FN_OUTPUT_NAME),
+                                ident: Ident::with_empty_ctxt(FN_OUTPUT_NAME),
                                 ty: output
                                     .as_ref()
                                     .map(|ty| this.lower_ty(&ty, ImplTraitContext::disallowed()))
@@ -2543,7 +2543,7 @@ impl<'a> LoweringContext<'a> {
         let future_params = P(hir::GenericArgs {
             args: hir_vec![],
             bindings: hir_vec![hir::TypeBinding {
-                ident: Ident::from_str(FN_OUTPUT_NAME),
+                ident: Ident::with_empty_ctxt(FN_OUTPUT_NAME),
                 ty: output_ty,
                 hir_id: self.next_id(),
                 span,

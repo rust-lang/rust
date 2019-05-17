@@ -385,6 +385,7 @@ symbols! {
         option,
         Option,
         opt_out_copy,
+        Output,
         overlapping_marker_traits,
         packed,
         panic_handler,
