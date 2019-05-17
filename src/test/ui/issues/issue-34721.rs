@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 pub trait Foo {
     fn zero(self) -> Self;
 }

@@ -1,0 +1,18 @@
+error: captured variable cannot escape `FnMut` closure body
+  --> $DIR/issue-49824.rs:10:9
+   |
+LL |       || {
+   |        - inferred to be a `FnMut` closure
+LL | /         || {
+LL | |
+LL | |
+LL | |
+LL | |             let _y = &mut x;
+LL | |         }
+   | |_________^ returns a closure that contains a reference to a captured variable, which then escapes the closure body
+   |
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
+
+error: aborting due to previous error
+

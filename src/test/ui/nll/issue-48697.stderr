@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local variable `z`
-  --> $DIR/issue-48697.rs:9:5
+  --> $DIR/issue-48697.rs:7:5
    |
 LL |     let k = f(&z);
    |               -- `z` is borrowed here

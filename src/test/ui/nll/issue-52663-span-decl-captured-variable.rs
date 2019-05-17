@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 fn expect_fn<F>(f: F) where F : Fn() {
     f();
 }

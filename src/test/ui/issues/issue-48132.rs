@@ -3,9 +3,6 @@
 
 // run-pass
 
-#![feature(nll)]
-#![allow(warnings)]
-
 struct Inner<I, V> {
     iterator: I,
     item: V,

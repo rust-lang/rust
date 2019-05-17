@@ -2,8 +2,6 @@
 // computing liveness that wound up accidentally causing the program
 // below to be accepted.
 
-#![feature(nll)]
-
 fn foo<'a>(x: &'a mut u32) -> u32 {
     let mut x = 22;
     let y = &x;

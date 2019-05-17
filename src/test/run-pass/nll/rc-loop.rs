@@ -6,8 +6,6 @@
 // `x`.  The lexical checker makes this very painful. The NLL checker
 // does not.
 
-#![feature(nll)]
-
 use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Eq)]

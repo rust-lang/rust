@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(nll)]
-
 pub struct DescriptorSet<'a> {
     pub slots: Vec<AttachInfo<'a, Resources>>
 }

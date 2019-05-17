@@ -2,8 +2,6 @@
 
 // ignore-wasm32-bare
 
-#![feature(nll)]
-
 fn match_guard(x: Option<&&i32>, c: bool) -> i32 {
     match x {
         Some(0) if c => 0,

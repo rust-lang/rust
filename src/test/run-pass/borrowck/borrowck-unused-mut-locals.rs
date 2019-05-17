@@ -1,5 +1,4 @@
 // run-pass
-#![feature(nll)]
 #![deny(unused_mut)]
 
 #[derive(Debug)]

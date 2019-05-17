@@ -1,7 +1,5 @@
 // compile-pass
 
-#![feature(nll)]
-
 fn main() {
     let x: &'static u8 = &u8::max_value();
     let x: &'static u16 = &u16::max_value();

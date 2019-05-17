@@ -1,8 +1,6 @@
 // Test that we still check constants are well-formed, even when we there's no
 // type annotation to check.
 
-#![feature(nll)]
-
 const FUN: fn(&'static ()) = |_| {};
 struct A;
 impl A {

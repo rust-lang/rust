@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // Check that inherent methods invoked with `<T>::new` style
 // carry their annotations through to NLL in connection with
 // method type parameters.

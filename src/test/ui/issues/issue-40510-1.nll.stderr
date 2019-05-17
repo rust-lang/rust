@@ -1,0 +1,13 @@
+error: captured variable cannot escape `FnMut` closure body
+  --> $DIR/issue-40510-1.rs:11:9
+   |
+LL |     || {
+   |      - inferred to be a `FnMut` closure
+LL |         &mut x
+   |         ^^^^^^ returns a reference to a captured variable which escapes the closure body
+   |
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
+
+error: aborting due to previous error
+

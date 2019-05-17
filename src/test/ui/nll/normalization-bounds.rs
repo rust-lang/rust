@@ -2,7 +2,6 @@
 
 //run-pass
 
-#![feature(nll)]
 trait Visitor<'d> {
     type Value;
 }

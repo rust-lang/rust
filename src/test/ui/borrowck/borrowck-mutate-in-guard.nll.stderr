@@ -1,0 +1,41 @@
+error[E0302]: cannot assign in a pattern guard
+  --> $DIR/borrowck-mutate-in-guard.rs:10:25
+   |
+LL |         Enum::A(_) if { x = Enum::B(false); false } => 1,
+   |                         ^^^^^^^^^^^^^^^^^^ assignment in pattern guard
+
+error[E0301]: cannot mutably borrow in a pattern guard
+  --> $DIR/borrowck-mutate-in-guard.rs:15:38
+   |
+LL |         Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
+   |                                      ^ borrowed mutably in pattern guard
+   |
+   = help: add #![feature(bind_by_move_pattern_guards)] to the crate attributes to enable
+
+error[E0302]: cannot assign in a pattern guard
+  --> $DIR/borrowck-mutate-in-guard.rs:15:41
+   |
+LL |         Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
+   |                                         ^^^^^^^^^^^^^^^^^^^ assignment in pattern guard
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/borrowck-mutate-in-guard.rs:10:25
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+LL |         Enum::A(_) if { x = Enum::B(false); false } => 1,
+   |                         ^^^^^^^^^^^^^^^^^^ cannot assign
+
+error[E0510]: cannot mutably borrow `x` in match guard
+  --> $DIR/borrowck-mutate-in-guard.rs:15:33
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
+   |                                 ^^^^^^ cannot mutably borrow
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0301, E0302, E0510.
+For more information about an error, try `rustc --explain E0301`.

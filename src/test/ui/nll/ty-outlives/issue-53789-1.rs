@@ -2,9 +2,6 @@
 //
 // compile-pass
 
-#![feature(nll)]
-#![allow(unused_variables)]
-
 use std::collections::BTreeMap;
 
 trait ValueTree {

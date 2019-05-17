@@ -1,0 +1,24 @@
+error: lifetime may not live long enough
+  --> $DIR/variance-use-invariant-struct-1.rs:12:5
+   |
+LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
+   |        ---- ---- lifetime `'max` defined here
+   |        |
+   |        lifetime `'min` defined here
+...
+LL |     v
+   |     ^ returning this value requires that `'min` must outlive `'max`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-use-invariant-struct-1.rs:19:5
+   |
+LL | fn bar<'min,'max>(v: SomeStruct<&'min ()>)
+   |        ---- ---- lifetime `'max` defined here
+   |        |
+   |        lifetime `'min` defined here
+...
+LL |     v
+   |     ^ returning this value requires that `'min` must outlive `'max`
+
+error: aborting due to 2 previous errors
+

@@ -2,8 +2,6 @@
 #![allow(path_statements)]
 #![allow(dead_code)]
 
-#![feature(nll)]
-
 struct WithDrop;
 
 impl Drop for WithDrop {

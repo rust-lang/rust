@@ -4,8 +4,6 @@
 //
 // compile-pass
 
-#![feature(nll)]
-
 fn main() {}
 
 fn fail<'a>() -> Struct<'a, Generic<()>> {

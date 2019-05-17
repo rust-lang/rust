@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // This test is a minimal version of an ICE in the dropck-eyepatch tests
 // found in the fix for #54943. In particular, this test is in unreachable
 // code as the initial fix for this ICE only worked if the code was reachable.

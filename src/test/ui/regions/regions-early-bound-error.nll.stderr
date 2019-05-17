@@ -1,0 +1,12 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-early-bound-error.rs:19:5
+   |
+LL | fn get<'a,'b,G:GetRef<'a, isize>>(g1: G, b: &'b isize) -> &'b isize {
+   |        -- -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+LL |     g1.get()
+   |     ^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+
+error: aborting due to previous error
+

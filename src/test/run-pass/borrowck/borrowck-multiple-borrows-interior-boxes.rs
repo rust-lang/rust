@@ -3,8 +3,6 @@
 #![allow(unused_variables)]
 // Test case from #39963.
 
-#![feature(nll)]
-
 #[derive(Clone)]
 struct Foo(Option<Box<Foo>>, Option<Box<Foo>>);
 

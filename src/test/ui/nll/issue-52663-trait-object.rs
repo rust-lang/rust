@@ -1,5 +1,4 @@
 #![feature(box_syntax)]
-#![feature(nll)]
 
 trait Foo { fn get(&self); }
 

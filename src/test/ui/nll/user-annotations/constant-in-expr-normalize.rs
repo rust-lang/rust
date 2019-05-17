@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 trait Mirror {
     type Me;
 }

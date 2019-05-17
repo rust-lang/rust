@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/ex1-return-one-existing-name-if-else-using-impl.rs:11:20
+   |
+LL |     fn foo<'a>(x: &i32, y: &'a i32) -> &'a i32 {
+   |            --     - let's call the lifetime of this reference `'1`
+   |            |
+   |            lifetime `'a` defined here
+LL | 
+LL |         if x > y { x } else { y }
+   |                    ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
+
+error: aborting due to previous error
+

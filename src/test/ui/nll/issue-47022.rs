@@ -1,8 +1,5 @@
 // compile-pass
 
-#![allow(warnings)]
-#![feature(nll)]
-
 struct LoadedObject {
     bodies: Vec<Body>,
     color: Color,

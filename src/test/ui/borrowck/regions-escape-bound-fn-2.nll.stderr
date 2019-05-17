@@ -1,0 +1,12 @@
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/regions-escape-bound-fn-2.rs:8:18
+   |
+LL |     let mut x = None;
+   |         ----- `x` is declared here, outside of the closure body
+LL |     with_int(|y| x = Some(y));
+   |               -  ^^^^^^^^^^^ `y` escapes the closure body here
+   |               |
+   |               `y` is a reference that is only valid in the closure body
+
+error: aborting due to previous error
+

@@ -5,8 +5,6 @@
 //
 // run-pass
 
-#![feature(nll)]
-
 pub struct Foo<T>(T);
 
 impl<T> Foo<T> {

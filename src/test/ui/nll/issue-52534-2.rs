@@ -1,6 +1,3 @@
-#![feature(nll)]
-#![allow(warnings)]
-
 fn foo(x: &u32) -> &u32 {
     let y;
 

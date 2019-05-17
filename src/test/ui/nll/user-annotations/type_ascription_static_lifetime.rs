@@ -1,5 +1,4 @@
 #![allow(warnings)]
-#![feature(nll)]
 #![feature(type_ascription)]
 
 fn main() {

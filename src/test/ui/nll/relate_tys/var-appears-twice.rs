@@ -2,9 +2,6 @@
 // function returning always its first argument can be upcast to one
 // that returns either first or second argument.
 
-#![feature(nll)]
-#![allow(warnings)]
-
 use std::cell::Cell;
 
 type DoubleCell<A> = Cell<(A, A)>;

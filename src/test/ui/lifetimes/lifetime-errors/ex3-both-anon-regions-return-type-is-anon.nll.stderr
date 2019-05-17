@@ -1,0 +1,12 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-return-type-is-anon.rs:7:5
+   |
+LL |   fn foo<'a>(&self, x: &i32) -> &i32 {
+   |              -         - let's call the lifetime of this reference `'1`
+   |              |
+   |              let's call the lifetime of this reference `'2`
+LL |     x
+   |     ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+
+error: aborting due to previous error
+

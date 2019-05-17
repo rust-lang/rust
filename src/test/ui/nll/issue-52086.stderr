@@ -1,11 +1,11 @@
 error[E0507]: cannot move out of an `Rc`
-  --> $DIR/issue-52086.rs:10:10
+  --> $DIR/issue-52086.rs:8:10
    |
 LL |     drop(x.field);
    |          ^^^^^^^ cannot move out of an `Rc`
 
 error[E0507]: cannot move out of an `Arc`
-  --> $DIR/issue-52086.rs:14:10
+  --> $DIR/issue-52086.rs:12:10
    |
 LL |     drop(y.field);
    |          ^^^^^^^ cannot move out of an `Arc`

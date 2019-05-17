@@ -1,6 +1,3 @@
-#![feature(nll)]
-#![allow(unused_variables)]
-
 // Regression test for #52078: we were failing to infer a relationship
 // between `'a` and `'b` below due to inference variables introduced
 // during the normalization process.

@@ -1,0 +1,12 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-creating-enums3.rs:7:5
+   |
+LL | fn mk_add_bad1<'a,'b>(x: &'a Ast<'a>, y: &'b Ast<'b>) -> Ast<'a> {
+   |                -- -- lifetime `'b` defined here
+   |                |
+   |                lifetime `'a` defined here
+LL |     Ast::Add(x, y)
+   |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+
+error: aborting due to previous error
+

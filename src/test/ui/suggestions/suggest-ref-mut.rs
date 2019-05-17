@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 struct X(usize);
 
 impl X {

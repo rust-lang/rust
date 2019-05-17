@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/promoted-annotation.rs:8:7
+  --> $DIR/promoted-annotation.rs:6:7
    |
 LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here

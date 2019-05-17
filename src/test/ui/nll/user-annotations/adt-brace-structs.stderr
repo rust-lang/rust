@@ -1,5 +1,5 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/adt-brace-structs.rs:25:37
+  --> $DIR/adt-brace-structs.rs:23:37
    |
 LL |     SomeStruct::<&'static u32> { t: &c };
    |                                     ^^
@@ -10,7 +10,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/adt-brace-structs.rs:30:32
+  --> $DIR/adt-brace-structs.rs:28:32
    |
 LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
    |                                   -- lifetime `'a` defined here
@@ -24,7 +24,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/adt-brace-structs.rs:40:36
+  --> $DIR/adt-brace-structs.rs:38:36
    |
 LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
    |                                              -- lifetime `'a` defined here

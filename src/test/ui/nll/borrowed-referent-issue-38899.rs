@@ -1,7 +1,6 @@
 // Regression test for issue #38899
 
 #![feature(nll)]
-#![allow(dead_code)]
 
 pub struct Block<'a> {
     current: &'a u8,

@@ -1,8 +1,6 @@
 // Test messages where a closure capture conflicts with itself because it's in
 // a loop.
 
-#![feature(nll)]
-
 fn repreated_move(x: String) {
     for i in 0..10 {
         || x; //~ ERROR

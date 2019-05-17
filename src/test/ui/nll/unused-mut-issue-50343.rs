@@ -1,4 +1,3 @@
-#![feature(nll)]
 #![deny(unused_mut)]
 
 fn main() {

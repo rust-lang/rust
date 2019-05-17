@@ -1,8 +1,6 @@
 // Test that we enforce a `&'static` requirement that is only visible
 // after normalization.
 
-#![feature(nll)]
-
 trait Foo { type Out; }
 impl Foo for () { type Out = &'static u32; }
 

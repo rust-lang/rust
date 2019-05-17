@@ -13,7 +13,6 @@
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "Error",{{.*}}extraData: i64 0{{[,)].*}}
 
 #![feature(never_type)]
-#![feature(nll)]
 
 #[derive(Copy, Clone)]
 pub struct Entity {

@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-58299.rs:17:9
+  --> $DIR/issue-58299.rs:16:9
    |
 LL | fn foo<'a>(x: i32) {
    |        -- lifetime `'a` defined here
@@ -8,7 +8,7 @@ LL |         A::<'a>::X..=A::<'static>::X => (),
    |         ^^^^^^^^^^ requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/issue-58299.rs:25:27
+  --> $DIR/issue-58299.rs:24:27
    |
 LL | fn bar<'a>(x: i32) {
    |        -- lifetime `'a` defined here

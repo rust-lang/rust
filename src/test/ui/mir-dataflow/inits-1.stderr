@@ -1,17 +1,17 @@
 error: rustc_peek: bit not set
-  --> $DIR/inits-1.rs:15:14
+  --> $DIR/inits-1.rs:14:14
    |
 LL |     unsafe { rustc_peek(&ret); }
    |              ^^^^^^^^^^^^^^^^
 
 error: rustc_peek: bit not set
-  --> $DIR/inits-1.rs:35:14
+  --> $DIR/inits-1.rs:34:14
    |
 LL |     unsafe { rustc_peek(&y); }
    |              ^^^^^^^^^^^^^^
 
 error: rustc_peek: bit not set
-  --> $DIR/inits-1.rs:43:14
+  --> $DIR/inits-1.rs:42:14
    |
 LL |     unsafe { rustc_peek(&x); }
    |              ^^^^^^^^^^^^^^
