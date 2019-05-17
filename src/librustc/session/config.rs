@@ -2745,7 +2745,7 @@ mod tests {
                 Err(f) => panic!("test_switch_implies_cfg_test: {}", f),
             };
             let registry = errors::registry::Registry::new(&[]);
-            let (sessopts, cfg) = build_session_options_and_crate_config(matches);
+            let (sessopts, cfg) = build_session_options_and_crate_config(&[], matches);
             let sess = build_session(sessopts, None, registry);
             let cfg = build_configuration(&sess, to_crate_config(cfg));
             assert!(cfg.contains(&(Symbol::intern("test"), None)));
@@ -2764,7 +2764,7 @@ mod tests {
                 Err(f) => panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f),
             };
             let registry = errors::registry::Registry::new(&[]);
-            let (sessopts, cfg) = build_session_options_and_crate_config(matches);
+            let (sessopts, cfg) = build_session_options_and_crate_config(&[], matches);
             let sess = build_session(sessopts, None, registry);
             let cfg = build_configuration(&sess, to_crate_config(cfg));
             let mut test_items = cfg.iter().filter(|&&(name, _)| name == sym::test);
@@ -2778,7 +2778,7 @@ mod tests {
         syntax::with_globals(&[], || {
             let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
-            let (sessopts, _) = build_session_options_and_crate_config(&matches);
+            let (sessopts, _) = build_session_options_and_crate_config(&[], &matches);
             let sess = build_session(sessopts, None, registry);
             assert!(!sess.diagnostic().flags.can_emit_warnings);
         });
@@ -2788,7 +2788,7 @@ mod tests {
                 .parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()])
                 .unwrap();
             let registry = errors::registry::Registry::new(&[]);
-            let (sessopts, _) = build_session_options_and_crate_config(&matches);
+            let (sessopts, _) = build_session_options_and_crate_config(&[], &matches);
             let sess = build_session(sessopts, None, registry);
             assert!(sess.diagnostic().flags.can_emit_warnings);
         });
@@ -2796,7 +2796,7 @@ mod tests {
         syntax::with_globals(&[], || {
             let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
-            let (sessopts, _) = build_session_options_and_crate_config(&matches);
+            let (sessopts, _) = build_session_options_and_crate_config(&[], &matches);
             let sess = build_session(sessopts, None, registry);
             assert!(sess.diagnostic().flags.can_emit_warnings);
         });
@@ -3394,7 +3394,7 @@ mod tests {
         let matches = optgroups()
             .parse(&["--edition=2018".to_string()])
             .unwrap();
-        let (sessopts, _) = build_session_options_and_crate_config(&matches);
+        let (sessopts, _) = build_session_options_and_crate_config(&[], &matches);
         assert!(sessopts.edition == Edition::Edition2018)
     }
 }

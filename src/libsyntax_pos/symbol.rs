@@ -1262,7 +1262,7 @@ mod tests {
 
     #[test]
     fn without_first_quote_test() {
-        GLOBALS.set(&Globals::new(), || {
+        GLOBALS.set(&Globals::new(&[]), || {
             let i = Ident::from_str("'break");
             assert_eq!(i.without_first_quote().name, keywords::Break.name());
         });
