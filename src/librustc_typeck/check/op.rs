@@ -305,8 +305,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             };
                             if let Some(missing_trait) = missing_trait {
                                 if op.node == hir::BinOpKind::Add &&
-                                    self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
-                                                            rhs_ty, &mut err, true, op) {
+                                    self.check_str_addition(
+                                        lhs_expr, rhs_expr, lhs_ty, rhs_ty, &mut err, true, op) {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " += "World!"). This means
                                     // we don't want the note in the else clause to be emitted
@@ -400,8 +400,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             };
                             if let Some(missing_trait) = missing_trait {
                                 if op.node == hir::BinOpKind::Add &&
-                                    self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
-                                                            rhs_ty, &mut err, false, op) {
+                                    self.check_str_addition(
+                                        lhs_expr, rhs_expr, lhs_ty, rhs_ty, &mut err, false, op) {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " + "World!"). This means
                                     // we don't want the note in the else clause to be emitted
@@ -509,7 +509,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// to print the normal "implementation of `std::ops::Add` might be missing" note
     fn check_str_addition(
         &self,
-        expr: &'gcx hir::Expr,
         lhs_expr: &'gcx hir::Expr,
         rhs_expr: &'gcx hir::Expr,
         lhs_ty: Ty<'tcx>,
@@ -537,7 +536,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     &format!("{:?}", rhs_ty) == "&&str"
                 ) =>
             {
-                if !is_assign {
+                if !is_assign { // Do not supply this message if `&str += &str`
                     err.span_label(
                         op.span,
                         "`+` can't be used to concatenate two `&str` strings",
@@ -570,8 +569,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if (l_ty.sty == Str || &format!("{:?}", l_ty) == "std::string::String") &&
                 &format!("{:?}", rhs_ty) == "std::string::String" =>
             {
-                err.span_label(expr.span,
-                    "`+` can't be used to concatenate a `&str` with a `String`");
+                err.span_label(
+                    op.span,
+                    "`+` can't be used to concatenate a `&str` with a `String`",
+                );
                 match (
                     source_map.span_to_snippet(lhs_expr.span),
                     source_map.span_to_snippet(rhs_expr.span),
