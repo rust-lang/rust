@@ -1,7 +1,7 @@
 //! Hook into libgraphviz for rendering dataflow graphs for MIR.
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::{BasicBlock, Mir};
+use rustc::mir::{BasicBlock, Body};
 
 use std::fs;
 use std::io;
@@ -17,7 +17,7 @@ use super::DebugFormatted;
 pub trait MirWithFlowState<'tcx> {
     type BD: BitDenotation<'tcx>;
     fn def_id(&self) -> DefId;
-    fn mir(&self) -> &Mir<'tcx>;
+    fn mir(&self) -> &Body<'tcx>;
     fn flow_state(&self) -> &DataflowState<'tcx, Self::BD>;
 }
 
@@ -26,7 +26,7 @@ impl<'a, 'tcx, BD> MirWithFlowState<'tcx> for DataflowBuilder<'a, 'tcx, BD>
 {
     type BD = BD;
     fn def_id(&self) -> DefId { self.def_id }
-    fn mir(&self) -> &Mir<'tcx> { self.flow_state.mir() }
+    fn mir(&self) -> &Body<'tcx> { self.flow_state.mir() }
     fn flow_state(&self) -> &DataflowState<'tcx, Self::BD> { &self.flow_state.flow_state }
 }
 
@@ -59,7 +59,7 @@ pub type Node = BasicBlock;
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Edge { source: BasicBlock, index: usize }
 
-fn outgoing(mir: &Mir<'_>, bb: BasicBlock) -> Vec<Edge> {
+fn outgoing(mir: &Body<'_>, bb: BasicBlock) -> Vec<Edge> {
     (0..mir[bb].terminator().successors().count())
         .map(|index| Edge { source: bb, index: index}).collect()
 }
@@ -124,7 +124,7 @@ where MWF: MirWithFlowState<'tcx>,
                                          n: &Node,
                                          w: &mut W,
                                          block: BasicBlock,
-                                         mir: &Mir<'_>) -> io::Result<()> {
+                                         mir: &Body<'_>) -> io::Result<()> {
         // Header rows
         const HDRS: [&str; 4] = ["ENTRY", "MIR", "BLOCK GENS", "BLOCK KILLS"];
         const HDR_FMT: &str = "bgcolor=\"grey\"";
@@ -149,7 +149,7 @@ where MWF: MirWithFlowState<'tcx>,
                                             n: &Node,
                                             w: &mut W,
                                             block: BasicBlock,
-                                            mir: &Mir<'_>)
+                                            mir: &Body<'_>)
                                             -> io::Result<()> {
         let i = n.index();
 
@@ -199,7 +199,7 @@ where MWF: MirWithFlowState<'tcx>,
                                           n: &Node,
                                           w: &mut W,
                                           block: BasicBlock,
-                                          mir: &Mir<'_>)
+                                          mir: &Body<'_>)
                                           -> io::Result<()> {
         let i = n.index();
 

@@ -23,7 +23,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{self, Mir, interpret, ProjectionKind};
+use crate::mir::{self, Body, interpret, ProjectionKind};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -103,8 +103,8 @@ pub struct GlobalArenas<'tcx> {
     generics: TypedArena<ty::Generics>,
     trait_def: TypedArena<ty::TraitDef>,
     adt_def: TypedArena<ty::AdtDef>,
-    steal_mir: TypedArena<Steal<Mir<'tcx>>>,
-    mir: TypedArena<Mir<'tcx>>,
+    steal_mir: TypedArena<Steal<Body<'tcx>>>,
+    mir: TypedArena<Body<'tcx>>,
     tables: TypedArena<ty::TypeckTables<'tcx>>,
     /// miri allocations
     const_allocs: TypedArena<interpret::Allocation>,
@@ -1154,11 +1154,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_arenas.generics.alloc(generics)
     }
 
-    pub fn alloc_steal_mir(self, mir: Mir<'gcx>) -> &'gcx Steal<Mir<'gcx>> {
+    pub fn alloc_steal_mir(self, mir: Body<'gcx>) -> &'gcx Steal<Body<'gcx>> {
         self.global_arenas.steal_mir.alloc(Steal::new(mir))
     }
 
-    pub fn alloc_mir(self, mir: Mir<'gcx>) -> &'gcx Mir<'gcx> {
+    pub fn alloc_mir(self, mir: Body<'gcx>) -> &'gcx Body<'gcx> {
         self.global_arenas.mir.alloc(mir)
     }
 

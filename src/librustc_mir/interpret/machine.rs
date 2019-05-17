@@ -117,7 +117,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>>;
+    ) -> EvalResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
     /// Directly process an intrinsic without pushing a stack frame.
     /// If this returns successfully, the engine will take care of jumping to the next block.
