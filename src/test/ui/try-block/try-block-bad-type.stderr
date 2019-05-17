@@ -4,6 +4,7 @@ error[E0277]: `?` couldn't convert the error to `i32`
 LL |         Err("")?;
    |                ^ the trait `std::convert::From<&str>` is not implemented for `i32`
    |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following implementations were found:
              <i32 as std::convert::From<bool>>
              <i32 as std::convert::From<i16>>
