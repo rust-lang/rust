@@ -38,13 +38,5 @@ help: you can escape reserved keywords to use them as identifiers
 LL | use self::outer_mod::await::r#await;
    |                             ^^^^^^^
 
-error: expected `!`, found `{`
-  --> $DIR/2018-edition-error.rs:13:17
-   |
-LL |     match await { await => () }
-   |     -----       ^ expected `!`
-   |     |
-   |     while parsing this match expression
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
