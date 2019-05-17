@@ -201,9 +201,17 @@ pub trait Error: Debug + Display {
     #[unstable(feature = "error_type_id",
                reason = "this is memory unsafe to override in user code",
                issue = "60784")]
-    fn type_id(&self) -> TypeId where Self: 'static {
+    fn type_id(&self, _: private::Internal) -> TypeId where Self: 'static {
         TypeId::of::<Self>()
     }
+}
+
+mod private {
+    // This is a hack to prevent `type_id` from being overridden by `Error`
+    // implementations, since that can enable unsound downcasting.
+    #[unstable(feature = "error_type_id", issue = "60784")]
+    #[derive(Debug)]
+    pub struct Internal;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -575,7 +583,7 @@ impl dyn Error + 'static {
         let t = TypeId::of::<T>();
 
         // Get TypeId of the type in the trait object
-        let boxed = self.type_id();
+        let boxed = self.type_id(private::Internal);
 
         // Compare both TypeIds on equality
         t == boxed
