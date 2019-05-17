@@ -1,11 +1,12 @@
-use std::fmt::{self, Display};
-use std::convert::TryFrom;
+use super::{AllocId, InterpResult};
 
 use crate::mir;
 use crate::ty::layout::{self, HasDataLayout, Size};
+
 use rustc_macros::HashStable;
 
-use super::{AllocId, InterpResult};
+use std::convert::TryFrom;
+use std::fmt::{self, Display};
 
 /// Used by `check_in_alloc` to indicate context of check
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
@@ -74,8 +75,8 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     fn overflowing_signed_offset(&self, val: u64, i: i128) -> (u64, bool) {
         // FIXME: is it possible to over/underflow here?
         if i < 0 {
-            // Trickery to ensure that i64::min_value() works fine: compute n = -i.
-            // This formula only works for true negative values, it overflows for zero!
+            // Trickery to ensure that `i64::min_value()` works fine: compute `n = -i`.
+            // This formula only works for true negative values; it overflows for zero!
             let n = u64::max_value() - (i as u64) + 1;
             let res = val.overflowing_sub(n);
             self.truncate_to_ptr(res)
@@ -105,7 +106,7 @@ impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 ///
 /// Defaults to the index based and loosely coupled `AllocId`.
 ///
-/// Pointer is also generic over the `Tag` associated with each pointer,
+/// `Pointer` is also generic over the `Tag` associated with each pointer,
 /// which is used to do provenance tracking during execution.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
@@ -129,7 +130,7 @@ impl<Id: fmt::Debug> fmt::Debug for Pointer<(), Id> {
     }
 }
 
-/// Produces a `Pointer` which points to the beginning of the `Allocation`.
+/// Produces a `Pointer` that points to the beginning of the `Allocation`.
 impl From<AllocId> for Pointer {
     #[inline(always)]
     fn from(alloc_id: AllocId) -> Self {

@@ -1,28 +1,28 @@
+use super::{FunctionCx, LocalRef};
+use super::operand::OperandValue;
+
+use crate::MemFlags;
+use crate::common::IntPredicate;
+use crate::glue;
+use crate::traits::*;
+
 use rustc::ty::{self, Instance, Ty};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
-use crate::MemFlags;
-use crate::common::IntPredicate;
-use crate::glue;
-
-use crate::traits::*;
-
-use super::{FunctionCx, LocalRef};
-use super::operand::OperandValue;
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx, V> {
-    /// Pointer to the contents of the place.
+    /// A pointer to the contents of the place.
     pub llval: V,
 
-    /// This place's extra data if it is unsized, or null.
+    /// This place's extra data if it is unsized, or `None` if null.
     pub llextra: Option<V>,
 
-    /// Monomorphized type of this place, including variant information.
+    /// The monomorphized type of this place, including variant information.
     pub layout: TyLayout<'tcx>,
 
-    /// What alignment we know for this place.
+    /// The alignment we know for this place.
     pub align: Align,
 }
 
@@ -107,7 +107,6 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             bug!("unexpected layout `{:#?}` in PlaceRef::len", self.layout)
         }
     }
-
 }
 
 impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {

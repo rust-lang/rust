@@ -306,7 +306,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
         match *r {
             ty::ReLateBound(index, ..) => {
                 if index >= self.binder_index {
-                    bug!("escaping late bound region during canonicalization")
+                    bug!("escaping late-bound region during canonicalization");
                 } else {
                     r
                 }
@@ -336,7 +336,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                 .canonicalize_free_region(self, r),
 
             ty::ReClosureBound(..) => {
-                bug!("closure bound region encountered during canonicalization")
+                bug!("closure bound region encountered during canonicalization");
             }
         }
     }
@@ -346,14 +346,14 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             ty::Infer(ty::TyVar(vid)) => {
                 debug!("canonical: type var found with vid {:?}", vid);
                 match self.infcx.unwrap().probe_ty_var(vid) {
-                    // `t` could be a float / int variable: canonicalize that instead
+                    // `t` could be a float / int variable; canonicalize that instead.
                     Ok(t) => {
                         debug!("(resolved to {:?})", t);
                         self.fold_ty(t)
                     }
 
                     // `TyVar(vid)` is unresolved, track its universe index in the canonicalized
-                    // result
+                    // result.
                     Err(mut ui) => {
                         if !self.infcx.unwrap().tcx.sess.opts.debugging_opts.chalk {
                             // FIXME: perf problem described in #55921.

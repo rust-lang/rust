@@ -41,9 +41,9 @@ pub use self::type_::{
     ArgAbiMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMethods,
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
-use rustc::ty::layout::{HasParamEnv, HasTyCtxt};
-use rustc_target::spec::{HasTargetSpec};
 
+use rustc::ty::layout::{HasParamEnv, HasTyCtxt};
+use rustc_target::spec::HasTargetSpec;
 
 use std::fmt;
 

@@ -1,5 +1,5 @@
 //! Mono Item Collection
-//! ===========================
+//! ====================
 //!
 //! This module is responsible for discovering all items that will contribute to
 //! to code generation of the crate. The important part here is that it not only
@@ -174,9 +174,10 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
+use crate::monomorphize;
+
 use rustc::hir::{self, CodegenFnAttrFlags};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
@@ -189,8 +190,6 @@ use rustc::mir::{self, Location, PlaceBase, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::{MonoItem, InstantiationMode};
 use rustc::mir::interpret::{Scalar, GlobalId, GlobalAlloc, ErrorHandled};
-
-use crate::monomorphize;
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use rustc::util::common::time;
 
@@ -530,7 +529,6 @@ struct MirNeighborCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
-
     fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
         debug!("visiting rvalue {:?}", *rvalue);
 
@@ -698,7 +696,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 }
             }
             PlaceBase::Local(_) => {
-                // Locals have no relevance for collector
+                // Locals have no relevance for collector.
             }
         }
     }
@@ -752,7 +750,7 @@ fn visit_instance_use<'tcx>(
         ty::InstanceDef::ReifyShim(..) |
         ty::InstanceDef::Virtual(..) |
         ty::InstanceDef::DropGlue(_, None) => {
-            // don't need to emit shim if we are calling directly.
+            // Don't need to emit shim if we are calling directly.
             if !is_direct_call {
                 output.push(create_fn_mono_item(instance));
             }
@@ -769,8 +767,8 @@ fn visit_instance_use<'tcx>(
     }
 }
 
-// Returns true if we should codegen an instance in the local crate.
-// Returns false if we can just link to the upstream crate and therefore don't
+// Returns `true` if we should codegen an instance in the local crate.
+// Returns `false` if we can just link to the upstream crate and therefore don't
 // need a mono item.
 fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) -> bool {
     let def_id = match instance.def {
@@ -786,24 +784,24 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
     };
 
     if tcx.is_foreign_item(def_id) {
-        // We can always link to foreign items
+        // We can always link to foreign items.
         return false;
     }
 
     if def_id.is_local() {
-        // local items cannot be referred to locally without monomorphizing them locally
+        // Local items cannot be referred to locally without monomorphizing them locally.
         return true;
     }
 
     if tcx.is_reachable_non_generic(def_id) ||
        is_available_upstream_generic(tcx, def_id, instance.substs) {
         // We can link to the item in question, no instance needed
-        // in this crate
+        // in this crate.
         return false;
     }
 
     if !tcx.is_mir_available(def_id) {
-        bug!("Cannot create local mono-item for {:?}", def_id)
+        bug!("cannot create local mono-item for {:?}", def_id)
     }
     return true;
 
@@ -823,7 +821,7 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
 
         // If this instance has non-erasable parameters, it cannot be a shared
         // monomorphization. Non-generic instances are already handled above
-        // by `is_reachable_non_generic()`
+        // by `is_reachable_non_generic()`.
         if substs.non_erasable_generics().next().is_none() {
             return false
         }
@@ -836,7 +834,7 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
     }
 }
 
-/// For given pair of source and target type that occur in an unsizing coercion,
+/// For a given pair of source and target type that occur in an unsizing coercion,
 /// this function finds the pair of types that determines the vtable linking
 /// them.
 ///
@@ -930,10 +928,9 @@ fn find_vtable_types_for_unsizing<'tcx>(
                     source_fields.len() == target_fields.len());
 
             find_vtable_types_for_unsizing(tcx,
-                                           source_fields[coerce_index].ty(tcx,
-                                                                          source_substs),
-                                           target_fields[coerce_index].ty(tcx,
-                                                                          target_substs))
+                source_fields[coerce_index].ty(tcx, source_substs),
+                target_fields[coerce_index].ty(tcx, target_substs)
+            )
         }
         _ => bug!("find_vtable_types_for_unsizing: invalid coercion {:?} -> {:?}",
                   source_ty,
@@ -975,7 +972,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
             output.extend(methods);
         }
 
-        // Also add the destructor
+        // Also add the destructor.
         visit_drop_use(tcx, impl_ty, false, output);
     }
 }
@@ -995,14 +992,14 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.kind {
             hir::ItemKind::ExternCrate(..) |
-            hir::ItemKind::Use(..)         |
-            hir::ItemKind::ForeignMod(..)  |
-            hir::ItemKind::TyAlias(..)          |
-            hir::ItemKind::Trait(..)       |
-            hir::ItemKind::TraitAlias(..)  |
+            hir::ItemKind::Use(..) |
+            hir::ItemKind::ForeignMod(..) |
+            hir::ItemKind::TyAlias(..) |
+            hir::ItemKind::Trait(..) |
+            hir::ItemKind::TraitAlias(..) |
             hir::ItemKind::OpaqueTy(..) |
-            hir::ItemKind::Mod(..)         => {
-                // Nothing to do, just keep recursing...
+            hir::ItemKind::Mod(..) => {
+                // Nothing to do, just keep recursing.
             }
 
             hir::ItemKind::Impl(..) => {
@@ -1075,7 +1072,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                 let def_id = self.tcx.hir().local_def_id(ii.hir_id);
                 self.push_if_root(def_id);
             }
-            _ => { /* Nothing to do here */ }
+            _ => { /* nothing to do here */ }
         }
     }
 }
@@ -1095,7 +1092,7 @@ impl RootCollector<'_, 'v> {
         }
     }
 
-    /// If `def_id` represents a root, then push it onto the list of
+    /// If `def_id` represents a root, pushes it onto the list of
     /// outputs. (Note that all roots must be monomorphic.)
     fn push_if_root(&mut self, def_id: DefId) {
         if self.is_root(def_id) {
@@ -1217,7 +1214,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     }
 }
 
-/// Scan the miri alloc in order to find function calls, closures, and drop-glue
+/// Scans the miri alloc in order to find function calls, closures, and drop-glue.
 fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut Vec<MonoItem<'tcx>>) {
     let alloc_kind = tcx.alloc_map.lock().get(alloc_id);
     match alloc_kind {
@@ -1244,7 +1241,7 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut Vec<Mon
     }
 }
 
-/// Scan the MIR in order to find function calls, closures, and drop-glue
+/// Scans the MIR in order to find function calls, closures, and drop-glue.
 fn collect_neighbours<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,

@@ -152,7 +152,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         match scalar.value {
                             Primitive::Int(..) => {
                                 if self.cx().size_of(ret_ty).bytes() < 4 {
-                                    // va_arg should not be called on a integer type
+                                    // `va_arg` should not be called on a integer type
                                     // less than 4 bytes in length. If it is, promote
                                     // the integer to a `i32` and truncate the result
                                     // back to the smaller type.

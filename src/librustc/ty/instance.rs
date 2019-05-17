@@ -36,10 +36,10 @@ pub enum InstanceDef<'tcx> {
     ReifyShim(DefId),
 
     /// `<fn() as FnTrait>::call_*`
-    /// `DefId` is `FnTrait::call_*`
+    /// `DefId` is `FnTrait::call_*`.
     FnPtrShim(DefId, Ty<'tcx>),
 
-    /// `<Trait as Trait>::fn`
+    /// `<dyn Trait as Trait>::fn`
     Virtual(DefId, usize),
 
     /// `<[mut closure] as FnOnce>::call_once`
@@ -115,7 +115,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn fn_sig(&self, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
         let mut fn_sig = self.fn_sig_noadjust(tcx);
         if let InstanceDef::VtableShim(..) = self.def {
-            // Modify fn(self, ...) to fn(self: *mut Self, ...)
+            // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
             fn_sig = fn_sig.map_bound(|mut fn_sig| {
                 let mut inputs_and_output = fn_sig.inputs_and_output.to_vec();
                 inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);

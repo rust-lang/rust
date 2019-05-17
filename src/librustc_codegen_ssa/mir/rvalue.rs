@@ -1,22 +1,22 @@
+use super::{FunctionCx, LocalRef};
+use super::operand::{OperandRef, OperandValue};
+use super::place::PlaceRef;
+
+use crate::base;
+use crate::MemFlags;
+use crate::common::{self, RealPredicate, IntPredicate};
+use crate::traits::*;
+
 use rustc::ty::{self, Ty, adjustment::{PointerCast}, Instance};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use rustc_apfloat::{ieee, Float, Status, Round};
-use std::{u128, i128};
 use syntax::symbol::sym;
 use syntax::source_map::{DUMMY_SP, Span};
 
-use crate::base;
-use crate::MemFlags;
-use crate::common::{self, RealPredicate, IntPredicate};
-
-use crate::traits::*;
-
-use super::{FunctionCx, LocalRef};
-use super::operand::{OperandRef, OperandValue};
-use super::place::PlaceRef;
+use std::{u128, i128};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_rvalue(
@@ -31,8 +31,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match *rvalue {
            mir::Rvalue::Use(ref operand) => {
                let cg_operand = self.codegen_operand(&mut bx, operand);
-               // FIXME: consider not copying constants through stack. (fixable by codegenning
-               // constants into OperandValue::Ref, why don’t we do that yet if we don’t?)
+               // FIXME: consider not copying constants through stack. (Fixable by codegen'ing
+               // constants into `OperandValue::Ref`; why don’t we do that yet if we don’t?)
                cg_operand.val.store(&mut bx, dest);
                bx
            }
@@ -41,7 +41,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // The destination necessarily contains a fat pointer, so if
                 // it's a scalar pair, it's a fat pointer or newtype thereof.
                 if bx.cx().is_backend_scalar_pair(dest.layout) {
-                    // into-coerce of a thin pointer to a fat pointer - just
+                    // Into-coerce of a thin pointer to a fat pointer -- just
                     // use the operand path.
                     let (mut bx, temp) = self.codegen_rvalue_operand(bx, rvalue);
                     temp.val.store(&mut bx, dest);
@@ -56,10 +56,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 match operand.val {
                     OperandValue::Pair(..) |
                     OperandValue::Immediate(_) => {
-                        // unsize from an immediate structure. We don't
+                        // Unsize from an immediate structure. We don't
                         // really need a temporary alloca here, but
                         // avoiding it would require us to have
-                        // `coerce_unsized_into` use extractvalue to
+                        // `coerce_unsized_into` use `extractvalue` to
                         // index into the struct, and this case isn't
                         // important enough for it.
                         debug!("codegen_rvalue: creating ugly alloca");
@@ -74,7 +74,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         base::coerce_unsized_into(&mut bx, source, dest);
                     }
                     OperandValue::Ref(_, Some(_), _) => {
-                        bug!("unsized coercion on an unsized rvalue")
+                        bug!("unsized coercion on an unsized rvalue");
                     }
                 }
                 bx
@@ -160,7 +160,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx
             }
 
-            _ => bug!("unsized assignment other than Rvalue::Use"),
+            _ => bug!("unsized assignment other than `Rvalue::Use`"),
         }
     }
 
@@ -220,17 +220,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                     mir::CastKind::Pointer(PointerCast::UnsafeFnPointer) => {
-                        // this is a no-op at the LLVM level
+                        // This is a no-op at the LLVM level.
                         operand.val
                     }
                     mir::CastKind::Pointer(PointerCast::Unsize) => {
                         assert!(bx.cx().is_backend_scalar_pair(cast));
                         match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
-                                // unsize from a fat pointer - this is a
+                                // unsize from a fat pointer -- this is a
                                 // "trait-object-to-supertrait" coercion, for
-                                // example,
-                                //   &'a fmt::Debug+Send => &'a fmt::Debug,
+                                // example, `&'a fmt::Debug + Send => &'a fmt::Debug`.
 
                                 // HACK(eddyb) have to bitcast pointers
                                 // until LLVM removes pointee types.
@@ -245,13 +244,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Ref(..) => {
-                                bug!("by-ref operand {:?} in codegen_rvalue_operand",
+                                bug!("by-ref operand {:?} in `codegen_rvalue_operand`",
                                      operand);
                             }
                         }
                     }
-                    mir::CastKind::Pointer(PointerCast::MutToConstPointer)
-                    | mir::CastKind::Misc if bx.cx().is_backend_scalar_pair(operand.layout) => {
+                    mir::CastKind::Pointer(PointerCast::MutToConstPointer) |
+                    mir::CastKind::Misc if bx.cx().is_backend_scalar_pair(operand.layout) => {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if bx.cx().is_backend_scalar_pair(cast) {
                                 let data_cast = bx.pointercast(data_ptr,
@@ -265,12 +264,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 OperandValue::Immediate(llval)
                             }
                         } else {
-                            bug!("Unexpected non-Pair operand")
+                            bug!("unexpected non-pair operand");
                         }
                     }
-                    mir::CastKind::Pointer(PointerCast::MutToConstPointer)
-                    | mir::CastKind::Pointer(PointerCast::ArrayToPointer)
-                    | mir::CastKind::Misc => {
+                    mir::CastKind::Pointer(PointerCast::MutToConstPointer) |
+                    mir::CastKind::Pointer(PointerCast::ArrayToPointer) |
+                    mir::CastKind::Misc => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {

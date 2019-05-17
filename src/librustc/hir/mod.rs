@@ -1919,8 +1919,9 @@ pub enum ImplItemKind {
 /// Bindings like `A: Debug` are represented as a special type `A =
 /// $::Debug` that is understood by the astconv code.
 ///
-/// FIXME(alexreg) -- why have a separate type for the binding case,
-/// wouldn't it be better to make the `ty` field an enum like:
+/// FIXME(alexreg): why have a separate type for the binding case,
+/// wouldn't it be better to make the `ty` field an enum like the
+/// following?
 ///
 /// ```
 /// enum TypeBindingKind {

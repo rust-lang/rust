@@ -1,18 +1,17 @@
+use super::{FunctionCx, LocalRef};
+use super::place::PlaceRef;
+
+use crate::MemFlags;
+use crate::base;
+use crate::glue;
+use crate::traits::*;
+
 use rustc::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
 use rustc::mir;
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, Size};
 
-use crate::base;
-use crate::MemFlags;
-use crate::glue;
-
-use crate::traits::*;
-
 use std::fmt;
-
-use super::{FunctionCx, LocalRef};
-use super::place::PlaceRef;
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -343,6 +342,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             }
         }
     }
+
     pub fn store_unsized<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,

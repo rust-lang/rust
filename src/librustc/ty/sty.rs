@@ -2,14 +2,14 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
+use self::InferTy::*;
+use self::TyKind::*;
+
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::canonical::Canonical;
 use crate::mir::interpret::ConstValue;
 use crate::middle::region;
-use polonius_engine::Atom;
-use rustc_index::vec::Idx;
-use rustc_macros::HashStable;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, GenericArg, GenericArgKind};
 use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
@@ -17,27 +17,30 @@ use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
 use crate::mir::interpret::{Scalar, GlobalId};
 
+use polonius_engine::Atom;
+use rustc_index::vec::Idx;
+use rustc_macros::HashStable;
+use rustc_target::spec::abi;
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
-use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
 use syntax::symbol::{kw, Symbol};
 
-use self::InferTy::*;
-use self::TyKind::*;
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable,
+    HashStable, TypeFoldable, Lift,
+)]
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: hir::Mutability,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable, Copy, HashStable)]
+#[derive(
+    Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable, RustcDecodable, Copy, HashStable,
+)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
@@ -45,8 +48,9 @@ pub struct FreeRegion {
     pub bound_region: BoundRegion,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable, Copy, HashStable)]
+#[derive(
+    Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable, RustcDecodable, Copy, HashStable,
+)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(u32),
@@ -471,18 +475,18 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 }
 
 impl<'tcx> GeneratorSubsts<'tcx> {
-    /// Generator have not been resumed yet
+    /// Generator has not been resumed yet.
     pub const UNRESUMED: usize = 0;
-    /// Generator has returned / is completed
+    /// Generator has returned or is completed.
     pub const RETURNED: usize = 1;
-    /// Generator has been poisoned
+    /// Generator has been poisoned.
     pub const POISONED: usize = 2;
 
     const UNRESUMED_NAME: &'static str = "Unresumed";
     const RETURNED_NAME: &'static str = "Returned";
     const POISONED_NAME: &'static str = "Panicked";
 
-    /// The valid variant indices of this Generator.
+    /// The valid variant indices of this generator.
     #[inline]
     pub fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
@@ -490,7 +494,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         (VariantIdx::new(0)..VariantIdx::new(num_variants))
     }
 
-    /// The discriminant for the given variant. Panics if the variant_index is
+    /// The discriminant for the given variant. Panics if the `variant_index` is
     /// out of range.
     #[inline]
     pub fn discriminant_for_variant(
@@ -505,7 +509,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         Discr { val: variant_index.as_usize() as u128, ty: self.discr_ty(tcx) }
     }
 
-    /// The set of all discriminants for the Generator, enumerated with their
+    /// The set of all discriminants for the generator, enumerated with their
     /// variant indices.
     #[inline]
     pub fn discriminants(
@@ -670,12 +674,12 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     pub fn principal(&self) -> Option<ExistentialTraitRef<'tcx>> {
         match self[0] {
             ExistentialPredicate::Trait(tr) => Some(tr),
-            _ => None
+            _ => None,
         }
     }
 
     pub fn principal_def_id(&self) -> Option<DefId> {
-        self.principal().map(|d| d.def_id)
+        self.principal().map(|trait_ref| trait_ref.def_id)
     }
 
     #[inline]
@@ -684,7 +688,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     {
         self.iter().filter_map(|predicate| {
             match *predicate {
-                ExistentialPredicate::Projection(p) => Some(p),
+                ExistentialPredicate::Projection(projection) => Some(projection),
                 _ => None,
             }
         })
@@ -694,8 +698,8 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
         self.iter().filter_map(|predicate| {
             match *predicate {
-                ExistentialPredicate::AutoTrait(d) => Some(d),
-                _ => None
+                ExistentialPredicate::AutoTrait(did) => Some(did),
+                _ => None,
             }
         })
     }
@@ -722,7 +726,8 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
     }
 
     pub fn iter<'a>(&'a self)
-        -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx {
+        -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx
+    {
         self.skip_binder().iter().cloned().map(Binder::bind)
     }
 }
@@ -751,7 +756,7 @@ pub struct TraitRef<'tcx> {
 
 impl<'tcx> TraitRef<'tcx> {
     pub fn new(def_id: DefId, substs: SubstsRef<'tcx>) -> TraitRef<'tcx> {
-        TraitRef { def_id: def_id, substs: substs }
+        TraitRef { def_id, substs }
     }
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
@@ -822,7 +827,7 @@ pub struct ExistentialTraitRef<'tcx> {
 }
 
 impl<'tcx> ExistentialTraitRef<'tcx> {
-    pub fn input_types<'b>(&'b self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'b {
+    pub fn input_types<'b>(&'b self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'b {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
@@ -1296,7 +1301,7 @@ pub enum RegionKind {
     /// A region variable. Should not exist after typeck.
     ReVar(RegionVid),
 
-    /// A placeholder region - basically the higher-ranked version of ReFree.
+    /// A placeholder region -- basically, the higher-ranked version of `ReFree`.
     /// Should not exist after typeck.
     RePlaceholder(ty::PlaceholderRegion),
 
@@ -1807,14 +1812,14 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             Array(ty, _) | Slice(ty) => ty,
             Str => tcx.mk_mach_uint(ast::UintTy::U8),
-            _ => bug!("sequence_element_type called on non-sequence value: {}", self),
+            _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
     }
 
     pub fn simd_type(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind {
             Adt(def, substs) => def.non_enum_variant().fields[0].ty(tcx, substs),
-            _ => bug!("simd_type called on invalid type")
+            _ => bug!("`simd_type` called on invalid type"),
         }
     }
 
@@ -1823,7 +1828,7 @@ impl<'tcx> TyS<'tcx> {
         // allow `#[repr(simd)] struct Simd<T, const N: usize>([T; N]);`.
         match self.kind {
             Adt(def, _) => def.non_enum_variant().fields.len() as u64,
-            _ => bug!("simd_size called on invalid type")
+            _ => bug!("`simd_size` called on invalid type"),
         }
     }
 
@@ -1833,7 +1838,7 @@ impl<'tcx> TyS<'tcx> {
                 let variant = def.non_enum_variant();
                 (variant.fields.len() as u64, variant.fields[0].ty(tcx, substs))
             }
-            _ => bug!("simd_size_and_type called on invalid type")
+            _ => bug!("`simd_size_and_type` called on invalid type"),
         }
     }
 
@@ -1894,7 +1899,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    /// panics if called on any type other than `Box<T>`
+    /// Panics if called on any type other than `Box<T>`.
     pub fn boxed_ty(&self) -> Ty<'tcx> {
         match self.kind {
             Adt(def, substs) if def.is_box() => substs.type_at(0),
@@ -2114,7 +2119,8 @@ impl<'tcx> TyS<'tcx> {
     }
 
     /// If the type contains variants, returns the valid range of variant indices.
-    /// FIXME This requires the optimized MIR in the case of generators.
+    //
+    // FIXME: This requires the optimized MIR in the case of generators.
     #[inline]
     pub fn variant_range(&self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind {
@@ -2127,7 +2133,8 @@ impl<'tcx> TyS<'tcx> {
 
     /// If the type contains variants, returns the variant for `variant_index`.
     /// Panics if `variant_index` is out of range.
-    /// FIXME This requires the optimized MIR in the case of generators.
+    //
+    // FIXME: This requires the optimized MIR in the case of generators.
     #[inline]
     pub fn discriminant_for_variant(
         &self,
@@ -2142,7 +2149,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    /// Push onto `out` the regions directly referenced from this type (but not
+    /// Pushes onto `out` the regions directly referenced from this type (but not
     /// types reachable from this type via `walk_tys`). This ignores late-bound
     /// regions binders.
     pub fn push_regions(&self, out: &mut SmallVec<[ty::Region<'tcx>; 4]>) {
@@ -2255,7 +2262,7 @@ impl<'tcx> TyS<'tcx> {
             ty::Infer(ty::FreshTy(_)) |
             ty::Infer(ty::FreshIntTy(_)) |
             ty::Infer(ty::FreshFloatTy(_)) =>
-                bug!("is_trivially_sized applied to unexpected type: {:?}", self),
+                bug!("`is_trivially_sized` applied to unexpected type: {:?}", self),
         }
     }
 }

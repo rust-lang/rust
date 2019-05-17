@@ -4,12 +4,13 @@
 
 use crate::hir::def::Namespace;
 use crate::mir::ProjectionKind;
+use crate::mir::interpret;
 use crate::ty::{self, Lift, Ty, TyCtxt, InferConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
+
 use rustc_index::vec::{IndexVec, Idx};
 use smallvec::SmallVec;
-use crate::mir::interpret;
 
 use std::fmt;
 use std::rc::Rc;

@@ -4,14 +4,17 @@ use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
 use super::type_::ArgAbiMethods;
 use super::{HasCodegen, StaticBuilderMethods};
+
 use crate::common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate,
     SynchronizationScope};
 use crate::mir::operand::OperandRef;
 use crate::mir::place::PlaceRef;
 use crate::MemFlags;
+
 use rustc::ty::Ty;
 use rustc::ty::layout::{Align, Size, HasParamEnv};
-use rustc_target::spec::{HasTargetSpec};
+use rustc_target::spec::HasTargetSpec;
+
 use std::ops::Range;
 use std::iter::TrustedLen;
 
