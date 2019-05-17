@@ -17,7 +17,7 @@ use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, Level};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
@@ -433,18 +433,18 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     result
 }
 
-fn downgrade_if_error(diag: &mut Diagnostic) {
-    if diag.is_error() {
-        diag.level = Level::Warning;
-        diag.warn(
-            "this error has been downgraded to a warning for backwards \
-            compatibility with previous releases",
-        );
-        diag.warn(
-            "this represents potential undefined behavior in your code and \
-            this warning will become a hard error in the future",
-        );
-    }
+fn downgrade_if_error(_diag: &mut Diagnostic) {
+    // if diag.is_error() {
+    //     diag.level = Level::Warning;
+    //     diag.warn(
+    //         "this error has been downgraded to a warning for backwards \
+    //         compatibility with previous releases",
+    //     );
+    //     diag.warn(
+    //         "this represents potential undefined behavior in your code and \
+    //         this warning will become a hard error in the future",
+    //     );
+    // }
 }
 
 pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
