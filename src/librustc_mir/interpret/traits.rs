@@ -1,10 +1,10 @@
-use std::convert::TryFrom;
+use super::{FnVal, InterpCx, Machine, Memory, MemoryKind};
 
 use rustc_middle::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size};
 
-use super::{FnVal, InterpCx, Machine, MemoryKind};
+use std::convert::TryFrom;
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -62,34 +62,35 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         );
         let tcx = &*self.tcx;
 
+        // Keep track of current position within vtable and write to there, offsetting position by
+        // one pointer size each time.
+        let mut cur_ptr = vtable;
+        let mut write_ptr = |memory: &mut Memory<'mir, 'tcx, M>, val| -> InterpResult<'_> {
+            let res = memory
+                .get_raw_mut(cur_ptr.alloc_id)?
+                .write_ptr_sized(tcx, cur_ptr, val)?;
+            cur_ptr = cur_ptr.offset(ptr_size, tcx)?;
+            Ok(res)
+        };
+
         let drop = Instance::resolve_drop_in_place(*tcx, ty);
         let drop = self.memory.create_fn_alloc(FnVal::Instance(drop));
 
         // No need to do any alignment checks on the memory accesses below, because we know the
-        // allocation is correctly aligned as we created it above. Also we're only offsetting by
-        // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
-        let vtable_alloc = self.memory.get_raw_mut(vtable.alloc_id)?;
-        vtable_alloc.write_ptr_sized(tcx, vtable, drop.into())?;
+        // allocation is correctly aligned, as we created it above. Also. we're only offsetting
+        // by multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
+        write_ptr(&mut self.memory, Scalar::Ptr(drop).into())?;
+        write_ptr(&mut self.memory, Scalar::from_uint(size, ptr_size).into())?;
+        write_ptr(&mut self.memory, Scalar::from_uint(align, ptr_size).into())?;
 
-        let size_ptr = vtable.offset(ptr_size, tcx)?;
-        vtable_alloc.write_ptr_sized(tcx, size_ptr, Scalar::from_uint(size, ptr_size).into())?;
-        let align_ptr = vtable.offset(ptr_size * 2, tcx)?;
-        vtable_alloc.write_ptr_sized(tcx, align_ptr, Scalar::from_uint(align, ptr_size).into())?;
-
-        for (i, method) in methods.iter().enumerate() {
+        for method in methods.iter() {
             if let Some((def_id, substs)) = *method {
-                // resolve for vtable: insert shims where needed
+                // Resolve for vtable; insert shims where needed.
                 let instance =
                     ty::Instance::resolve_for_vtable(*tcx, self.param_env, def_id, substs)
                         .ok_or_else(|| err_inval!(TooGeneric))?;
                 let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
-                // We cannot use `vtable_allic` as we are creating fn ptrs in this loop.
-                let method_ptr = vtable.offset(ptr_size * (3 + i as u64), tcx)?;
-                self.memory.get_raw_mut(vtable.alloc_id)?.write_ptr_sized(
-                    tcx,
-                    method_ptr,
-                    fn_ptr.into(),
-                )?;
+                write_ptr(&mut self.memory, Scalar::Ptr(fn_ptr).into())?;
             }
         }
 
@@ -179,7 +180,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if size >= self.tcx.data_layout().obj_size_bound() {
             throw_ub_format!(
                 "invalid vtable: \
-                size is bigger than largest supported object"
+                 size is bigger than largest supported object"
             );
         }
         Ok((Size::from_bytes(size), Align::from_bytes(align).unwrap()))
