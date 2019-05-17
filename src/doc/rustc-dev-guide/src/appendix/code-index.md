@@ -38,7 +38,7 @@ Item            |  Kind    | Short description           | Chapter            | 
 [Type checking]: ../type-checking.html
 [The `ty` modules]: ../ty.html
 [Rustdoc]: ../rustdoc.html
-[Emitting Diagnostics]: ../diag.html
+[Emitting Diagnostics]: ../diagnostics.html
 [Macro expansion]: ../macro-expansion.html
 [Name resolution]: ../name-resolution.html
 [Parameter Environment]: ../param_env.html

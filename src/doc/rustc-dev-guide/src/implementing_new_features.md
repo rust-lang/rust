@@ -49,7 +49,7 @@ In some cases, a feature or bugfix might break some existing programs
 in some edge cases. In that case, you might want to do a crater run
 to assess the impact and possibly add a future-compatibility lint,
 similar to those used for
-[edition-gated lints](./diag.md#edition-gated-lints).
+[edition-gated lints](diagnostics.md#edition-gated-lints).
 
 ### Stability
 

@@ -21,6 +21,8 @@
     - [with the linux perf tool](./profiling/with_perf.md)
 - [Coding conventions](./conventions.md)
 - [crates.io Dependencies](./crates-io.md)
+- [Emitting Errors and other Diagnostics](diagnostics.md)
+  - [JSON diagnostic format](diagnostics/json-format.md)
 
 ---
 
@@ -83,8 +85,6 @@
 - [Code Generation](./codegen.md)
   - [Updating LLVM](./codegen/updating-llvm.md)
   - [Debugging LLVM](./codegen/debugging.md)
-- [Emitting Diagnostics](./diag.md)
-  - [JSON diagnostic format](./diag/json-format.md)
 - [Profile-guided Optimization](./profile-guided-optimization.md)
 
 ---

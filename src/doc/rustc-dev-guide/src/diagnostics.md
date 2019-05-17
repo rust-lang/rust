@@ -1,4 +1,4 @@
-# Emitting Diagnostics
+# Emitting Errors and other Diagnostics
 
 A lot of effort has been put into making `rustc` have great error messages.
 This chapter is about how to emit compile errors and lints from the compiler.
