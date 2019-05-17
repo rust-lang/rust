@@ -319,29 +319,34 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
                         String::new(), |ty| {
                             format!(" for type `{}`", ty)
                         }),
-                    if used_to_be_allowed.is_some() { " (E0119)" } else { "" }
+                    match used_to_be_allowed {
+                        Some(FutureCompatOverlapErrorKind::Issue33140) => " (E0119)",
+                        _ => "",
+                    }
                 );
                 let impl_span = tcx.sess.source_map().def_span(
                     tcx.span_of_impl(impl_def_id).unwrap()
                 );
-                let mut err = if let Some(kind) = used_to_be_allowed {
-                    let lint = match kind {
-                        FutureCompatOverlapErrorKind::Issue43355 =>
-                            lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
-                        FutureCompatOverlapErrorKind::Issue33140 =>
-                            lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS,
-                    };
-                    tcx.struct_span_lint_hir(
-                        lint,
-                        tcx.hir().as_local_hir_id(impl_def_id).unwrap(),
-                        impl_span,
-                        &msg)
-                } else {
-                    struct_span_err!(tcx.sess,
-                                     impl_span,
-                                     E0119,
-                                     "{}",
-                                     msg)
+                let mut err = match used_to_be_allowed {
+                    Some(FutureCompatOverlapErrorKind::Issue43355) | None =>
+                        struct_span_err!(tcx.sess,
+                                         impl_span,
+                                         E0119,
+                                         "{}",
+                                         msg),
+                    Some(kind) => {
+                        let lint = match kind {
+                            FutureCompatOverlapErrorKind::Issue43355 =>
+                                unreachable!("converted to hard error above"),
+                            FutureCompatOverlapErrorKind::Issue33140 =>
+                                lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS,
+                        };
+                        tcx.struct_span_lint_hir(
+                            lint,
+                            tcx.hir().as_local_hir_id(impl_def_id).unwrap(),
+                            impl_span,
+                            &msg)
+                    }
                 };
 
                 match tcx.span_of_impl(overlap.with_impl) {
