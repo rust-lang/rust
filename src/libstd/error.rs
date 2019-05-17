@@ -207,7 +207,7 @@ pub trait Error: Debug + Display {
 }
 
 mod private {
-    // this is a hack to prevent type_id from being overridden by Error
+    // This is a hack to prevent `type_id` from being overridden by `Error`
     // implementations, since that can enable unsound downcasting.
     #[unstable(feature = "error_type_id", issue = "60784")]
     #[derive(Debug)]
