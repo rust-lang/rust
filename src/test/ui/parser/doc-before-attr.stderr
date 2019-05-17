@@ -1,8 +1,0 @@
-error: expected item after attributes
-  --> $DIR/doc-before-attr.rs:4:16
-   |
-LL | #[derive(Debug)]
-   |                ^
-
-error: aborting due to previous error
-

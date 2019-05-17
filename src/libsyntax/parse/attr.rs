@@ -38,17 +38,17 @@ impl<'a> Parser<'a> {
                     attrs.push(self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?);
                     just_parsed_doc_comment = false;
                 }
-                token::DocComment(s) => {
-                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.span);
-                    if attr.style != ast::AttrStyle::Outer {
-                        let mut err = self.fatal("expected outer doc comment");
-                        err.note("inner doc comments like this (starting with \
-                                  `//!` or `/*!`) can only appear before items");
-                        return Err(err);
-                    }
-                    attrs.push(attr);
+                token::DocComment(_s) => {
+                    // let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.span);
+                    // if attr.style != ast::AttrStyle::Outer {
+                    //     let mut err = self.fatal("expected outer doc comment");
+                    //     err.note("inner doc comments like this (starting with \
+                    //               `//!` or `/*!`) can only appear before items");
+                    //     return Err(err);
+                    // }
+                    // attrs.push(attr);
                     self.bump();
-                    just_parsed_doc_comment = true;
+                    // just_parsed_doc_comment = true;
                 }
                 _ => break,
             }
@@ -199,15 +199,16 @@ impl<'a> Parser<'a> {
                     assert_eq!(attr.style, ast::AttrStyle::Inner);
                     attrs.push(attr);
                 }
-                token::DocComment(s) => {
+                token::DocComment(_s) => {
+                    self.bump();
                     // we need to get the position of this token before we bump.
-                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.span);
-                    if attr.style == ast::AttrStyle::Inner {
-                        attrs.push(attr);
-                        self.bump();
-                    } else {
-                        break;
-                    }
+                    // let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.span);
+                    // if attr.style == ast::AttrStyle::Inner {
+                    //     attrs.push(attr);
+                    //     self.bump();
+                    // } else {
+                    //     break;
+                    // }
                 }
                 _ => break,
             }

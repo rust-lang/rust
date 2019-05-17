@@ -316,6 +316,7 @@ impl MissingDoc {
         *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
     }
 
+    #[allow(unused)]
     fn check_missing_docs_attrs(&self,
                                 cx: &LateContext<'_, '_>,
                                 id: Option<hir::HirId>,
@@ -344,9 +345,9 @@ impl MissingDoc {
 
         let has_doc = attrs.iter().any(|a| has_doc(a));
         if !has_doc {
-            cx.span_lint(MISSING_DOCS,
-                         cx.tcx.sess.source_map().def_span(sp),
-                         &format!("missing documentation for {}", desc));
+            // cx.span_lint(MISSING_DOCS,
+            //              cx.tcx.sess.source_map().def_span(sp),
+            //              &format!("missing documentation for {}", desc));
         }
     }
 }
@@ -374,9 +375,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         for macro_def in &krate.exported_macros {
             let has_doc = macro_def.attrs.iter().any(|a| has_doc(a));
             if !has_doc {
-                cx.span_lint(MISSING_DOCS,
-                             cx.tcx.sess.source_map().def_span(macro_def.span),
-                             "missing documentation for macro");
+                // cx.span_lint(MISSING_DOCS,
+                //              cx.tcx.sess.source_map().def_span(macro_def.span),
+                //              "missing documentation for macro");
             }
         }
     }

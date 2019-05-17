@@ -25,33 +25,3 @@ warning: unused import: `std::string::ToString`
 LL | mod d { baz2!(use std::string::ToString;); }
    |                   ^^^^^^^^^^^^^^^^^^^^^
 
-warning: missing documentation for crate
-  --> $DIR/lints-in-foreign-macros.rs:4:1
-   |
-LL | / #![warn(unused_imports)]
-LL | | #![warn(missing_docs)]
-LL | |
-LL | | #[macro_use]
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
-   |
-note: lint level defined here
-  --> $DIR/lints-in-foreign-macros.rs:5:9
-   |
-LL | #![warn(missing_docs)]
-   |         ^^^^^^^^^^^^
-
-warning: missing documentation for a function
-  --> $DIR/lints-in-foreign-macros.rs:18:6
-   |
-LL | baz!(pub fn undocumented() {});
-   |      ^^^^^^^^^^^^^^^^^^^^^
-
-warning: missing documentation for a function
-  --> $DIR/lints-in-foreign-macros.rs:19:7
-   |
-LL | baz2!(pub fn undocumented2() {});
-   |       ^^^^^^^^^^^^^^^^^^^^^^
-
