@@ -74,7 +74,9 @@ status_check() {
     check_dispatch $1 beta nomicon src/doc/nomicon
     check_dispatch $1 beta reference src/doc/reference
     check_dispatch $1 beta rust-by-example src/doc/rust-by-example
-    check_dispatch $1 beta edition-guide src/doc/edition-guide
+    # Temporarily disabled until
+    # https://github.com/rust-lang/rust/issues/60459 is fixed.
+    # check_dispatch $1 beta edition-guide src/doc/edition-guide
     check_dispatch $1 beta rls src/tools/rls
     check_dispatch $1 beta rustfmt src/tools/rustfmt
     check_dispatch $1 beta clippy-driver src/tools/clippy

@@ -3,10 +3,13 @@ error[E0369]: binary operation `+` cannot be applied to type `&std::string::Stri
    |
 LL |     let c = a + b;
    |             - ^ - &str
-   |             |
+   |             | |
+   |             | `+` cannot be used to concatenate two `&str` strings
    |             &std::string::String
+help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
-   = note: an implementation of `std::ops::Add` might be missing for `&std::string::String`
+LL |     let c = a.to_owned() + b;
+   |             ^^^^^^^^^^^^
 
 error: aborting due to previous error
 
