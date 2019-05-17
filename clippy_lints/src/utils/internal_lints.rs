@@ -7,8 +7,9 @@ use rustc::hir::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use syntax::ast::{Crate as AstCrate, Name};
+use syntax::ast::{Crate as AstCrate, ItemKind, Name};
 use syntax::source_map::Span;
+use syntax_pos::symbol::LocalInternedString;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for various things we like to keep tidy in clippy.
@@ -74,12 +75,15 @@ declare_clippy_lint! {
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
 
 impl EarlyLintPass for ClippyLintsInternal {
-    fn check_crate(&mut self, _cx: &EarlyContext<'_>, _krate: &AstCrate) {
-        /*
-        FIXME: turn back on when we get rid of all the lazy_statics
-        if let Some(utils) = krate.module.items.iter().find(|item| item.ident.name == *sym::utils) {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &AstCrate) {
+        if let Some(utils) = krate
+            .module
+            .items
+            .iter()
+            .find(|item| item.ident.name.as_str() == "utils")
+        {
             if let ItemKind::Mod(ref utils_mod) = utils.node {
-                if let Some(paths) = utils_mod.items.iter().find(|item| item.ident.name == *sym::paths) {
+                if let Some(paths) = utils_mod.items.iter().find(|item| item.ident.name.as_str() == "paths") {
                     if let ItemKind::Mod(ref paths_mod) = paths.node {
                         let mut last_name: Option<LocalInternedString> = None;
                         for item in &*paths_mod.items {
@@ -101,7 +105,6 @@ impl EarlyLintPass for ClippyLintsInternal {
                 }
             }
         }
-        */
     }
 }
 
@@ -123,7 +126,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
             if_chain! {
                 if let hir::TraitRef{path, ..} = trait_ref;
                 if let Res::Def(DefKind::Trait, def_id) = path.res;
-                if match_def_path(cx, def_id, &*paths::LINT_PASS);
+                if match_def_path(cx, def_id, &paths::LINT_PASS);
                 then {
                     let mut collector = LintCollector {
                         output: &mut self.registered_lints,
@@ -181,7 +184,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty) -> bool {
     {
         if let TyKind::Path(ref path) = inner.node {
             if let Res::Def(DefKind::Struct, def_id) = cx.tables.qpath_res(path, inner.hir_id) {
-                return match_def_path(cx, def_id, &*paths::LINT);
+                return match_def_path(cx, def_id, &paths::LINT);
             }
         }
     }
@@ -235,8 +238,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
             let fn_name = path.ident.as_str().to_string();
             if let Some(sugg) = self.map.get(&fn_name);
             let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
-            if match_type(cx, ty, &*paths::EARLY_CONTEXT)
-                || match_type(cx, ty, &*paths::LATE_CONTEXT);
+            if match_type(cx, ty, &paths::EARLY_CONTEXT)
+                || match_type(cx, ty, &paths::LATE_CONTEXT);
             then {
                 span_help_and_lint(
                     cx,

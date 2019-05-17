@@ -1,12 +1,12 @@
-use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg, sym};
+use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::borrow::Cow;
 use syntax::ast::*;
 use syntax::parse::{parser, token};
-use syntax::symbol::Symbol;
 use syntax::tokenstream::{TokenStream, TokenTree};
+use syntax_pos::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `println!("")` to
@@ -182,7 +182,7 @@ declare_lint_pass!(Write => [
 
 impl EarlyLintPass for Write {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &Mac) {
-        if mac.node.path == *sym::println {
+        if mac.node.path == sym!(println) {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `println!`");
             if let Some(fmtstr) = check_tts(cx, &mac.node.tts, false).0 {
                 if fmtstr == "" {
@@ -197,7 +197,7 @@ impl EarlyLintPass for Write {
                     );
                 }
             }
-        } else if mac.node.path == *sym::print {
+        } else if mac.node.path == sym!(print) {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
             if let (Some(fmtstr), _, is_raw) = check_tts(cx, &mac.node.tts, false) {
                 if check_newlines(&fmtstr, is_raw) {
@@ -210,7 +210,7 @@ impl EarlyLintPass for Write {
                     );
                 }
             }
-        } else if mac.node.path == *sym::write {
+        } else if mac.node.path == sym!(write) {
             if let (Some(fmtstr), _, is_raw) = check_tts(cx, &mac.node.tts, true) {
                 if check_newlines(&fmtstr, is_raw) {
                     span_lint(
@@ -222,7 +222,7 @@ impl EarlyLintPass for Write {
                     );
                 }
             }
-        } else if mac.node.path == *sym::writeln {
+        } else if mac.node.path == sym!(writeln) {
             let check_tts = check_tts(cx, &mac.node.tts, true);
             if let Some(fmtstr) = check_tts.0 {
                 if fmtstr == "" {
@@ -365,8 +365,6 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
                             match arg.position {
                                 ArgumentImplicitlyIs(_) | ArgumentIs(_) => {},
                                 ArgumentNamed(name) => {
-                                    // FIXME: remove this interning if possible
-                                    // https://github.com/rust-lang/rust/issues/60795
                                     if *p == Symbol::intern(name) {
                                         seen = true;
                                         all_simple &= arg.format == SIMPLE;

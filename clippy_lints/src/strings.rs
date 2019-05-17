@@ -4,7 +4,6 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::source_map::Spanned;
 
-use crate::utils::sym;
 use crate::utils::SpanlessEq;
 use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 
@@ -120,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
 }
 
 fn is_string(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
-    match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(e)), &*paths::STRING)
+    match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(e)), &paths::STRING)
 }
 
 fn is_add(cx: &LateContext<'_, '_>, src: &Expr, target: &Expr) -> bool {
@@ -147,7 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
         use syntax::ast::{LitKind, StrStyle};
 
         if let ExprKind::MethodCall(ref path, _, ref args) = e.node {
-            if path.ident.name == *sym::as_bytes {
+            if path.ident.name == sym!(as_bytes) {
                 if let ExprKind::Lit(ref lit) = args[0].node {
                     if let LitKind::Str(ref lit_content, style) = lit.node {
                         let callsite = snippet(cx, args[0].span.source_callsite(), r#""foo""#);

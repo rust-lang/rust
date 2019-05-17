@@ -53,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
             if args.len() == 2;
             if method.ident.as_str() == "map";
             let ty = cx.tables.expr_ty(&args[0]);
-            if match_type(cx, ty, &*paths::OPTION) || match_trait_method(cx, e, &*paths::ITERATOR);
+            if match_type(cx, ty, &paths::OPTION) || match_trait_method(cx, e, &paths::ITERATOR);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].node;
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
@@ -75,7 +75,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
                             },
                             hir::ExprKind::MethodCall(ref method, _, ref obj) => {
                                 if ident_eq(name, &obj[0]) && method.ident.as_str() == "clone"
-                                    && match_trait_method(cx, closure_expr, &*paths::CLONE_TRAIT) {
+                                    && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
 
                                     let obj_ty = cx.tables.expr_ty(&obj[0]);
                                     if let ty::Ref(_, ty, _) = obj_ty.sty {

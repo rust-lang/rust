@@ -37,12 +37,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidRef {
             if let ty::Ref(..) = cx.tables.expr_ty(expr).sty;
             if let Some(def_id) = cx.tables.qpath_res(qpath, path.hir_id).opt_def_id();
             then {
-                let msg = if match_def_path(cx, def_id, &*paths::MEM_ZEROED) |
-                             match_def_path(cx, def_id, &*paths::INIT)
+                let msg = if match_def_path(cx, def_id, &paths::MEM_ZEROED) |
+                             match_def_path(cx, def_id, &paths::INIT)
                 {
                     ZERO_REF_SUMMARY
-                } else if match_def_path(cx, def_id, &*paths::MEM_UNINIT) |
-                          match_def_path(cx, def_id, &*paths::UNINIT)
+                } else if match_def_path(cx, def_id, &paths::MEM_UNINIT) |
+                          match_def_path(cx, def_id, &paths::UNINIT)
                 {
                     UNINIT_REF_SUMMARY
                 } else {

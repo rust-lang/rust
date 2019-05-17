@@ -1,6 +1,5 @@
 use crate::utils::paths;
 use crate::utils::sugg::DiagnosticBuilderExt;
-use crate::utils::sym;
 use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_hir_and_then};
 use if_chain::if_chain;
 use rustc::hir;
@@ -121,12 +120,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                             // impl of `Default`
                             return;
                         }
-                        if sig.decl.inputs.is_empty() && name == *sym::new && cx.access_levels.is_reachable(id) {
+                        if sig.decl.inputs.is_empty() && name == sym!(new) && cx.access_levels.is_reachable(id) {
                             let self_did = cx.tcx.hir().local_def_id_from_hir_id(cx.tcx.hir().get_parent_item(id));
                             let self_ty = cx.tcx.type_of(self_did);
                             if_chain! {
                                 if same_tys(cx, self_ty, return_ty(cx, id));
-                                if let Some(default_trait_id) = get_trait_def_id(cx, &*paths::DEFAULT_TRAIT);
+                                if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
                                 then {
                                     if self.impling_types.is_none() {
                                         let mut impls = NodeSet::default();

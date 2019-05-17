@@ -1,9 +1,7 @@
-use crate::utils::sym;
 use crate::utils::{
     get_trait_def_id, implements_trait, in_macro, in_macro_or_desugar, match_type, paths, snippet_opt,
     span_lint_and_then, SpanlessEq,
 };
-use lazy_static::lazy_static;
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -12,7 +10,6 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
-use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for boolean expressions that can be written more
@@ -52,13 +49,8 @@ declare_clippy_lint! {
     "boolean expressions that contain terminals which can be eliminated"
 }
 
-lazy_static! {
 // For each pairs, both orders are considered.
-static ref METHODS_WITH_NEGATION: [(Symbol, Symbol); 2] = [
-    (*sym::is_some, *sym::is_none),
-    (*sym::is_err, *sym::is_ok),
-];
-}
+const METHODS_WITH_NEGATION: [(&str, &str); 2] = [("is_some", "is_none"), ("is_err", "is_ok")];
 
 declare_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, LOGIC_BUG]);
 
@@ -195,8 +187,8 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
             },
             ExprKind::MethodCall(path, _, args) if args.len() == 1 => {
                 let type_of_receiver = self.cx.tables.expr_ty(&args[0]);
-                if !match_type(self.cx, type_of_receiver, &*paths::OPTION)
-                    && !match_type(self.cx, type_of_receiver, &*paths::RESULT)
+                if !match_type(self.cx, type_of_receiver, &paths::OPTION)
+                    && !match_type(self.cx, type_of_receiver, &paths::RESULT)
                 {
                     return None;
                 }
@@ -204,7 +196,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                     .iter()
                     .cloned()
                     .flat_map(|(a, b)| vec![(a, b), (b, a)])
-                    .find(|&(a, _)| a == path.ident.name)
+                    .find(|&(a, _)| a == path.ident.name.as_str())
                     .and_then(|(_, neg_method)| Some(format!("{}.{}()", self.snip(&args[0])?, neg_method)))
             },
             _ => None,
@@ -474,5 +466,5 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
 
 fn implements_ord<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, expr: &Expr) -> bool {
     let ty = cx.tables.expr_ty(expr);
-    get_trait_def_id(cx, &*paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]))
+    get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]))
 }

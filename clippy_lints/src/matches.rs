@@ -1,7 +1,6 @@
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
-use crate::utils::sym;
 use crate::utils::{
     expr_block, in_macro_or_desugar, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg, remove_blocks,
     snippet, snippet_with_applicability, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty,
@@ -320,13 +319,13 @@ fn check_single_match_opt_like(
 ) {
     // list of candidate `Enum`s we know will never get any more members
     let candidates = &[
-        (&*paths::COW, "Borrowed"),
-        (&*paths::COW, "Cow::Borrowed"),
-        (&*paths::COW, "Cow::Owned"),
-        (&*paths::COW, "Owned"),
-        (&*paths::OPTION, "None"),
-        (&*paths::RESULT, "Err"),
-        (&*paths::RESULT, "Ok"),
+        (&paths::COW, "Borrowed"),
+        (&paths::COW, "Cow::Borrowed"),
+        (&paths::COW, "Cow::Owned"),
+        (&paths::COW, "Owned"),
+        (&paths::OPTION, "None"),
+        (&paths::RESULT, "Err"),
+        (&paths::RESULT, "Ok"),
     ];
 
     let path = match arms[1].pats[0].node {
@@ -437,7 +436,7 @@ fn is_wild(pat: &impl std::ops::Deref<Target = Pat>) -> bool {
 
 fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
     let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
-    if match_type(cx, ex_ty, &*paths::RESULT) {
+    if match_type(cx, ex_ty, &paths::RESULT) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pats[0].node {
                 let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
@@ -553,10 +552,10 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
 fn is_panic_block(block: &Block) -> bool {
     match (&block.expr, block.stmts.len(), block.stmts.first()) {
         (&Some(ref exp), 0, _) => {
-            is_expn_of(exp.span, *sym::panic).is_some() && is_expn_of(exp.span, *sym::unreachable).is_none()
+            is_expn_of(exp.span, "panic").is_some() && is_expn_of(exp.span, "unreachable").is_none()
         },
         (&None, 1, Some(stmt)) => {
-            is_expn_of(stmt.span, *sym::panic).is_some() && is_expn_of(stmt.span, *sym::unreachable).is_none()
+            is_expn_of(stmt.span, "panic").is_some() && is_expn_of(stmt.span, "unreachable").is_none()
         },
         _ => false,
     }
@@ -718,7 +717,7 @@ fn is_unit_expr(expr: &Expr) -> bool {
 // Checks if arm has the form `None => None`
 fn is_none_arm(arm: &Arm) -> bool {
     match arm.pats[0].node {
-        PatKind::Path(ref path) if match_qpath(path, &*paths::OPTION_NONE) => true,
+        PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => true,
         _ => false,
     }
 }
@@ -727,12 +726,12 @@ fn is_none_arm(arm: &Arm) -> bool {
 fn is_ref_some_arm(arm: &Arm) -> Option<BindingAnnotation> {
     if_chain! {
         if let PatKind::TupleStruct(ref path, ref pats, _) = arm.pats[0].node;
-        if pats.len() == 1 && match_qpath(path, &*paths::OPTION_SOME);
+        if pats.len() == 1 && match_qpath(path, &paths::OPTION_SOME);
         if let PatKind::Binding(rb, .., ident, _) = pats[0].node;
         if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
         if let ExprKind::Call(ref e, ref args) = remove_blocks(&arm.body).node;
         if let ExprKind::Path(ref some_path) = e.node;
-        if match_qpath(some_path, &*paths::OPTION_SOME) && args.len() == 1;
+        if match_qpath(some_path, &paths::OPTION_SOME) && args.len() == 1;
         if let ExprKind::Path(ref qpath) = args[0].node;
         if let &QPath::Resolved(_, ref path2) = qpath;
         if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;

@@ -5,7 +5,6 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Lint for redundant pattern matching over `Result` or
@@ -62,11 +61,11 @@ fn find_sugg_for_if_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, 
         let good_method = match arms[0].pats[0].node {
             PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
                 if let PatKind::Wild = patterns[0].node {
-                    if match_qpath(path, &*paths::RESULT_OK) {
+                    if match_qpath(path, &paths::RESULT_OK) {
                         "is_ok()"
-                    } else if match_qpath(path, &*paths::RESULT_ERR) {
+                    } else if match_qpath(path, &paths::RESULT_ERR) {
                         "is_err()"
-                    } else if match_qpath(path, &*paths::OPTION_SOME) {
+                    } else if match_qpath(path, &paths::OPTION_SOME) {
                         "is_some()"
                     } else {
                         return;
@@ -76,7 +75,7 @@ fn find_sugg_for_if_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, 
                 }
             },
 
-            PatKind::Path(ref path) if match_qpath(path, &*paths::OPTION_NONE) => "is_none()",
+            PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => "is_none()",
 
             _ => return,
         };
@@ -115,8 +114,8 @@ fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, o
                         arms,
                         path_left,
                         path_right,
-                        &*paths::RESULT_OK,
-                        &*paths::RESULT_ERR,
+                        &paths::RESULT_OK,
+                        &paths::RESULT_ERR,
                         "is_ok()",
                         "is_err()",
                     )
@@ -133,8 +132,8 @@ fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, o
                         arms,
                         path_left,
                         path_right,
-                        &*paths::OPTION_SOME,
-                        &*paths::OPTION_NONE,
+                        &paths::OPTION_SOME,
+                        &paths::OPTION_NONE,
                         "is_some()",
                         "is_none()",
                     )
@@ -171,8 +170,8 @@ fn find_good_method_for_match<'a>(
     arms: &HirVec<Arm>,
     path_left: &QPath,
     path_right: &QPath,
-    expected_left: &[Symbol],
-    expected_right: &[Symbol],
+    expected_left: &[&str],
+    expected_right: &[&str],
     should_be_left: &'a str,
     should_be_right: &'a str,
 ) -> Option<&'a str> {

@@ -1,4 +1,3 @@
-use crate::utils::sym;
 use crate::utils::{is_automatically_derived, span_lint_hir};
 use if_chain::if_chain;
 use rustc::hir::*;
@@ -40,7 +39,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PartialEqNeImpl {
             if trait_ref.path.res.def_id() == eq_trait;
             then {
                 for impl_item in impl_items {
-                    if impl_item.ident.name == *sym::ne {
+                    if impl_item.ident.name == sym!(ne) {
                         span_lint_hir(
                             cx,
                             PARTIALEQ_NE_IMPL,

@@ -1,7 +1,6 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
 use crate::utils::ptr::get_spans;
-use crate::utils::sym;
 use crate::utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then, walk_ptrs_hir_ty};
 use if_chain::if_chain;
 use rustc::hir::QPath;
@@ -149,7 +148,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
 
     for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
         if let ty::Ref(_, ty, MutImmutable) = ty.sty {
-            if match_type(cx, ty, &*paths::VEC) {
+            if match_type(cx, ty, &paths::VEC) {
                 let mut ty_snippet = None;
                 if_chain! {
                     if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node;
@@ -164,7 +163,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
                         }
                     }
                 };
-                if let Some(spans) = get_spans(cx, opt_body_id, idx, &[(*sym::clone, ".to_owned()")]) {
+                if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_owned()")]) {
                     span_lint_and_then(
                         cx,
                         PTR_ARG,
@@ -193,13 +192,8 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if match_type(cx, ty, &*paths::STRING) {
-                if let Some(spans) = get_spans(
-                    cx,
-                    opt_body_id,
-                    idx,
-                    &[(*sym::clone, ".to_string()"), (*sym::as_str, "")],
-                ) {
+            } else if match_type(cx, ty, &paths::STRING) {
+                if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                     span_lint_and_then(
                         cx,
                         PTR_ARG,
@@ -220,7 +214,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if match_type(cx, ty, &*paths::COW) {
+            } else if match_type(cx, ty, &paths::COW) {
                 if_chain! {
                     if let TyKind::Rptr(_, MutTy { ref ty, ..} ) = arg.node;
                     if let TyKind::Path(ref path) = ty.node;
@@ -299,7 +293,7 @@ fn is_null_path(expr: &Expr) -> bool {
     if let ExprKind::Call(ref pathexp, ref args) = expr.node {
         if args.is_empty() {
             if let ExprKind::Path(ref path) = pathexp.node {
-                return match_qpath(path, &*paths::PTR_NULL) || match_qpath(path, &*paths::PTR_NULL_MUT);
+                return match_qpath(path, &paths::PTR_NULL) || match_qpath(path, &paths::PTR_NULL_MUT);
             }
         }
     }

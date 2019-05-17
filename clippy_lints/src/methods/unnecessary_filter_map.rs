@@ -11,7 +11,7 @@ use if_chain::if_chain;
 use super::UNNECESSARY_FILTER_MAP;
 
 pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
-    if !match_trait_method(cx, expr, &*paths::ITERATOR) {
+    if !match_trait_method(cx, expr, &paths::ITERATOR) {
         return;
     }
 
@@ -63,7 +63,7 @@ fn check_expression<'a, 'tcx: 'a>(
             if_chain! {
                 if let hir::ExprKind::Path(ref path) = func.node;
                 then {
-                    if match_qpath(path, &*paths::OPTION_SOME) {
+                    if match_qpath(path, &paths::OPTION_SOME) {
                         if_chain! {
                             if let hir::ExprKind::Path(path) = &args[0].node;
                             if let Res::Local(ref local) = cx.tables.qpath_res(path, args[0].hir_id);
@@ -99,7 +99,7 @@ fn check_expression<'a, 'tcx: 'a>(
             }
             (found_mapping, found_filtering)
         },
-        hir::ExprKind::Path(path) if match_qpath(path, &*paths::OPTION_NONE) => (false, true),
+        hir::ExprKind::Path(path) if match_qpath(path, &paths::OPTION_NONE) => (false, true),
         _ => (true, true),
     }
 }

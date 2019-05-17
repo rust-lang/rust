@@ -11,7 +11,6 @@ use syntax::source_map::{ExpnFormat, Span};
 
 use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
-use crate::utils::sym;
 use crate::utils::{
     get_item_name, get_parent_expr, implements_trait, in_constant, in_macro_or_desugar, is_integer_literal,
     iter_input_pats, last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint, span_lint_and_then,
@@ -462,7 +461,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
 fn check_nan(cx: &LateContext<'_, '_>, path: &Path, expr: &Expr) {
     if !in_constant(cx, expr.hir_id) {
         if let Some(seg) = path.segments.last() {
-            if seg.ident.name == *sym::NAN {
+            if seg.ident.name == sym!(NAN) {
                 span_lint(
                     cx,
                     CMP_NAN,
@@ -497,7 +496,7 @@ fn is_float(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
     let (arg_ty, snip) = match expr.node {
         ExprKind::MethodCall(.., ref args) if args.len() == 1 => {
-            if match_trait_method(cx, expr, &*paths::TO_STRING) || match_trait_method(cx, expr, &*paths::TO_OWNED) {
+            if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
                 (cx.tables.expr_ty_adjusted(&args[0]), snippet(cx, args[0].span, ".."))
             } else {
                 return;
@@ -505,8 +504,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
         },
         ExprKind::Call(ref path, ref v) if v.len() == 1 => {
             if let ExprKind::Path(ref path) = path.node {
-                if match_qpath(path, &[*sym::String, *sym::from_str]) || match_qpath(path, &[*sym::String, *sym::from])
-                {
+                if match_qpath(path, &["String", "from_str"]) || match_qpath(path, &["String", "from"]) {
                     (cx.tables.expr_ty_adjusted(&v[0]), snippet(cx, v[0].span, ".."))
                 } else {
                     return;

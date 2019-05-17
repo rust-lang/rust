@@ -5,7 +5,6 @@
 // [`missing_doc`]: https://github.com/rust-lang/rust/blob/d6d05904697d89099b55da3331155392f1db9c00/src/librustc_lint/builtin.rs#L246
 //
 
-use crate::utils::sym;
 use crate::utils::{in_macro_or_desugar, span_lint};
 use if_chain::if_chain;
 use rustc::hir;
@@ -92,7 +91,7 @@ impl MissingDoc {
 
         let has_doc = attrs
             .iter()
-            .any(|a| a.check_name(*sym::doc) && (a.is_value_str() || Self::has_include(a.meta())));
+            .any(|a| a.check_name(sym!(doc)) && (a.is_value_str() || Self::has_include(a.meta())));
         if !has_doc {
             span_lint(
                 cx,
@@ -110,10 +109,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     fn enter_lint_attrs(&mut self, _: &LateContext<'a, 'tcx>, attrs: &'tcx [ast::Attribute]) {
         let doc_hidden = self.doc_hidden()
             || attrs.iter().any(|attr| {
-                attr.check_name(*sym::doc)
+                attr.check_name(sym!(doc))
                     && match attr.meta_item_list() {
                         None => false,
-                        Some(l) => attr::list_contains_name(&l[..], *sym::hidden),
+                        Some(l) => attr::list_contains_name(&l[..], sym!(hidden)),
                     }
             });
         self.doc_hidden_stack.push(doc_hidden);
@@ -133,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Enum(..) => "an enum",
             hir::ItemKind::Fn(..) => {
                 // ignore main()
-                if it.ident.name == *sym::main {
+                if it.ident.name == sym!(main) {
                     let def_id = cx.tcx.hir().local_def_id_from_hir_id(it.hir_id);
                     let def_key = cx.tcx.hir().def_key(def_id);
                     if def_key.parent == Some(hir::def_id::CRATE_DEF_INDEX) {

@@ -3,13 +3,11 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::utils::sym;
 use crate::utils::{is_expn_of, match_def_path, match_qpath, paths, resolve_node};
 use if_chain::if_chain;
 use rustc::lint::LateContext;
 use rustc::{hir, ty};
 use syntax::ast;
-use syntax::symbol::Symbol;
 
 /// Converts a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOpKind) -> ast::BinOpKind {
@@ -50,8 +48,8 @@ pub struct Range<'a> {
 pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> Option<Range<'b>> {
     /// Finds the field named `name` in the field. Always return `Some` for
     /// convenience.
-    fn get_field(name: Symbol, fields: &[hir::Field]) -> Option<&hir::Expr> {
-        let expr = &fields.iter().find(|field| field.ident.name == name)?.expr;
+    fn get_field<'c>(name: &str, fields: &'c [hir::Field]) -> Option<&'c hir::Expr> {
+        let expr = &fields.iter().find(|field| field.ident.name.as_str() == name)?.expr;
 
         Some(expr)
     }
@@ -90,7 +88,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
 
     match expr.node {
         hir::ExprKind::Path(ref path) => {
-            if match_qpath(path, &*paths::RANGE_FULL_STD) || match_qpath(path, &*paths::RANGE_FULL) {
+            if match_qpath(path, &paths::RANGE_FULL_STD) || match_qpath(path, &paths::RANGE_FULL) {
                 Some(Range {
                     start: None,
                     end: None,
@@ -102,8 +100,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
         },
         hir::ExprKind::Call(ref path, ref args) => {
             if let hir::ExprKind::Path(ref path) = path.node {
-                if match_qpath(path, &*paths::RANGE_INCLUSIVE_STD_NEW)
-                    || match_qpath(path, &*paths::RANGE_INCLUSIVE_NEW)
+                if match_qpath(path, &paths::RANGE_INCLUSIVE_STD_NEW) || match_qpath(path, &paths::RANGE_INCLUSIVE_NEW)
                 {
                     Some(Range {
                         start: Some(&args[0]),
@@ -118,30 +115,29 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
             }
         },
         hir::ExprKind::Struct(ref path, ref fields, None) => {
-            if match_qpath(path, &*paths::RANGE_FROM_STD) || match_qpath(path, &*paths::RANGE_FROM) {
+            if match_qpath(path, &paths::RANGE_FROM_STD) || match_qpath(path, &paths::RANGE_FROM) {
                 Some(Range {
-                    start: Some(get_field(*sym::start, fields)?),
+                    start: Some(get_field("start", fields)?),
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
                 })
-            } else if match_qpath(path, &*paths::RANGE_STD) || match_qpath(path, &*paths::RANGE) {
+            } else if match_qpath(path, &paths::RANGE_STD) || match_qpath(path, &paths::RANGE) {
                 Some(Range {
-                    start: Some(get_field(*sym::start, fields)?),
-                    end: Some(get_field(*sym::end, fields)?),
+                    start: Some(get_field("start", fields)?),
+                    end: Some(get_field("end", fields)?),
                     limits: ast::RangeLimits::HalfOpen,
                 })
-            } else if match_qpath(path, &*paths::RANGE_TO_INCLUSIVE_STD)
-                || match_qpath(path, &*paths::RANGE_TO_INCLUSIVE)
+            } else if match_qpath(path, &paths::RANGE_TO_INCLUSIVE_STD) || match_qpath(path, &paths::RANGE_TO_INCLUSIVE)
             {
                 Some(Range {
                     start: None,
-                    end: Some(get_field(*sym::end, fields)?),
+                    end: Some(get_field("end", fields)?),
                     limits: ast::RangeLimits::Closed,
                 })
-            } else if match_qpath(path, &*paths::RANGE_TO_STD) || match_qpath(path, &*paths::RANGE_TO) {
+            } else if match_qpath(path, &paths::RANGE_TO_STD) || match_qpath(path, &paths::RANGE_TO) {
                 Some(Range {
                     start: None,
-                    end: Some(get_field(*sym::end, fields)?),
+                    end: Some(get_field("end", fields)?),
                     limits: ast::RangeLimits::HalfOpen,
                 })
             } else {
@@ -238,14 +234,14 @@ pub fn vec_macro<'e>(cx: &LateContext<'_, '_>, expr: &'e hir::Expr) -> Option<Ve
     if_chain! {
         if let hir::ExprKind::Call(ref fun, ref args) = expr.node;
         if let hir::ExprKind::Path(ref path) = fun.node;
-        if is_expn_of(fun.span, *sym::vec).is_some();
+        if is_expn_of(fun.span, "vec").is_some();
         if let Some(fun_def_id) = resolve_node(cx, path, fun.hir_id).opt_def_id();
         then {
-            return if match_def_path(cx, fun_def_id, &*paths::VEC_FROM_ELEM) && args.len() == 2 {
+            return if match_def_path(cx, fun_def_id, &paths::VEC_FROM_ELEM) && args.len() == 2 {
                 // `vec![elem; size]` case
                 Some(VecArgs::Repeat(&args[0], &args[1]))
             }
-            else if match_def_path(cx, fun_def_id, &*paths::SLICE_INTO_VEC) && args.len() == 1 {
+            else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                 // `vec![a, b, c]` case
                 if_chain! {
                     if let hir::ExprKind::Box(ref boxed) = args[0].node;

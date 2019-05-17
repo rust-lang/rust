@@ -1,4 +1,3 @@
-use crate::utils::sym;
 use crate::utils::{span_lint, span_lint_and_then};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, impl_lint_pass};
@@ -356,7 +355,7 @@ impl EarlyLintPass for NonExpressiveNames {
 }
 
 fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
-    if !attr::contains_name(attrs, *sym::test) {
+    if !attr::contains_name(attrs, sym!(test)) {
         let mut visitor = SimilarNamesLocalVisitor {
             names: Vec::new(),
             cx,

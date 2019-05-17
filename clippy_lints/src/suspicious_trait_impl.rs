@@ -1,11 +1,9 @@
-use crate::utils::sym;
 use crate::utils::{get_trait_def_id, span_lint, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
-use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Lints for suspicious operations in impls of arithmetic operators, e.g.
@@ -91,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                 cx,
                 expr,
                 binop.node,
-                &[*sym::Add, *sym::Sub, *sym::Mul, *sym::Div],
+                &["Add", "Sub", "Mul", "Div"],
                 &[
                     hir::BinOpKind::Add,
                     hir::BinOpKind::Sub,
@@ -112,16 +110,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                 expr,
                 binop.node,
                 &[
-                    *sym::AddAssign,
-                    *sym::SubAssign,
-                    *sym::MulAssign,
-                    *sym::DivAssign,
-                    *sym::BitAndAssign,
-                    *sym::BitOrAssign,
-                    *sym::BitXorAssign,
-                    *sym::RemAssign,
-                    *sym::ShlAssign,
-                    *sym::ShrAssign,
+                    "AddAssign",
+                    "SubAssign",
+                    "MulAssign",
+                    "DivAssign",
+                    "BitAndAssign",
+                    "BitOrAssign",
+                    "BitXorAssign",
+                    "RemAssign",
+                    "ShlAssign",
+                    "ShrAssign",
                 ],
                 &[
                     hir::BinOpKind::Add,
@@ -151,11 +149,11 @@ fn check_binop(
     cx: &LateContext<'_, '_>,
     expr: &hir::Expr,
     binop: hir::BinOpKind,
-    traits: &[Symbol],
+    traits: &[&'static str],
     expected_ops: &[hir::BinOpKind],
-) -> Option<Symbol> {
+) -> Option<&'static str> {
     let mut trait_ids = vec![];
-    let [krate, module] = *crate::utils::paths::OPS_MODULE;
+    let [krate, module] = crate::utils::paths::OPS_MODULE;
 
     for &t in traits {
         let path = [krate, module, t];

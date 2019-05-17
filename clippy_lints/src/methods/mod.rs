@@ -6,7 +6,6 @@ use std::fmt;
 use std::iter;
 
 use if_chain::if_chain;
-use lazy_static::lazy_static;
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
@@ -17,11 +16,10 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast;
 use syntax::source_map::{BytePos, Span};
-use syntax::symbol::{LocalInternedString, Symbol};
+use syntax::symbol::LocalInternedString;
 
 use crate::utils::paths;
 use crate::utils::sugg;
-use crate::utils::sym;
 use crate::utils::{
     get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
     is_ctor_function, is_expn_of, is_self, is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path,
@@ -908,20 +906,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 lint_expect_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
 
                 let self_ty = cx.tables.expr_ty_adjusted(&args[0]);
-                if args.len() == 1 && method_call.ident.name == *sym::clone {
+                if args.len() == 1 && method_call.ident.name == sym!(clone) {
                     lint_clone_on_copy(cx, expr, &args[0], self_ty);
                     lint_clone_on_ref_ptr(cx, expr, &args[0]);
                 }
 
                 match self_ty.sty {
                     ty::Ref(_, ty, _) if ty.sty == ty::Str => {
-                        for &(method, pos) in PATTERN_METHODS.iter() {
-                            if method_call.ident.name == method && args.len() > pos {
+                        for &(method, pos) in &PATTERN_METHODS {
+                            if method_call.ident.name.as_str() == method && args.len() > pos {
                                 lint_single_char_pattern(cx, expr, &args[pos]);
                             }
                         }
                     },
-                    ty::Ref(..) if method_call.ident.name == *sym::into_iter => {
+                    ty::Ref(..) if method_call.ident.name == sym!(into_iter) => {
                         lint_into_iter(cx, expr, self_ty, *method_span);
                     },
                     _ => (),
@@ -946,7 +944,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         if in_external_macro(cx.sess(), implitem.span) {
             return;
         }
-        let name = implitem.ident.name;
+        let name = implitem.ident.name.as_str();
         let parent = cx.tcx.hir().get_parent_item(implitem.hir_id);
         let item = cx.tcx.hir().expect_item_by_hir_id(parent);
         let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
@@ -959,7 +957,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             then {
                 if cx.access_levels.is_exported(implitem.hir_id) {
                 // check missing trait implementations
-                    for &(method_name, n_args, self_kind, out_type, trait_name) in TRAIT_METHODS.iter() {
+                    for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if name == method_name &&
                         sig.decl.inputs.len() == n_args &&
                         out_type.matches(cx, &sig.decl.output) &&
@@ -974,7 +972,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 // check conventions w.r.t. conversion method names and predicates
                 let is_copy = is_copy(cx, ty);
                 for &(ref conv, self_kinds) in &CONVENTIONS {
-                    if conv.check(&name.as_str()) {
+                    if conv.check(&name) {
                         if !self_kinds
                                 .iter()
                                 .any(|k| k.matches(cx, first_arg_ty, first_arg, self_ty, is_copy, &implitem.generics)) {
@@ -1033,7 +1031,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 }
             }
 
-            if name == *sym::new && !same_tys(cx, ret_ty, ty) {
+            if name == "new" && !same_tys(cx, ret_ty, ty) {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
@@ -1112,8 +1110,7 @@ fn lint_or_fun_call<'a, 'tcx: 'a>(
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tables.expr_ty(arg);
-                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &*paths::DEFAULT_TRAIT)
-                    {
+                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT) {
                         default_trait_id
                     } else {
                         return false;
@@ -1156,10 +1153,10 @@ fn lint_or_fun_call<'a, 'tcx: 'a>(
     ) {
         // (path, fn_has_argument, methods, suffix)
         let know_types: &[(&[_], _, &[_], _)] = &[
-            (&*paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
-            (&*paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
-            (&*paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
-            (&*paths::RESULT, true, &["or", "unwrap_or"], "else"),
+            (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
+            (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
+            (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
+            (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
         ];
 
         // early check if the name is one we care about
@@ -1248,11 +1245,11 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
                 hir::ExprKind::AddrOf(_, expr) => expr,
                 hir::ExprKind::MethodCall(method_name, _, call_args) => {
                     if call_args.len() == 1
-                        && (method_name.ident.name == *sym::as_str || method_name.ident.name == *sym::as_ref)
+                        && (method_name.ident.name == sym!(as_str) || method_name.ident.name == sym!(as_ref))
                         && {
                             let arg_type = cx.tables.expr_ty(&call_args[0]);
                             let base_type = walk_ptrs_ty(arg_type);
-                            base_type.sty == ty::Str || match_type(cx, base_type, &*paths::STRING)
+                            base_type.sty == ty::Str || match_type(cx, base_type, &paths::STRING)
                         }
                     {
                         &call_args[0]
@@ -1270,7 +1267,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
     // converted to string.
     fn requires_to_string(cx: &LateContext<'_, '_>, arg: &hir::Expr) -> bool {
         let arg_ty = cx.tables.expr_ty(arg);
-        if match_type(cx, arg_ty, &*paths::STRING) {
+        if match_type(cx, arg_ty, &paths::STRING) {
             return false;
         }
         if let ty::Ref(ty::ReStatic, ty, ..) = arg_ty.sty {
@@ -1319,9 +1316,9 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
     }
 
     let receiver_type = cx.tables.expr_ty(&args[0]);
-    let closure_args = if match_type(cx, receiver_type, &*paths::OPTION) {
+    let closure_args = if match_type(cx, receiver_type, &paths::OPTION) {
         "||"
-    } else if match_type(cx, receiver_type, &*paths::RESULT) {
+    } else if match_type(cx, receiver_type, &paths::RESULT) {
         "|_|"
     } else {
         return;
@@ -1335,7 +1332,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
 
     //Special handling for `format!` as arg_root
     if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = arg_root.node {
-        if is_expn_of(inner_fun.span, *sym::format).is_some() && inner_args.len() == 1 {
+        if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1 {
             if let hir::ExprKind::Call(_, format_args) = &inner_args[0].node {
                 let fmt_spec = &format_args[0];
                 let fmt_args = &format_args[1];
@@ -1475,11 +1472,11 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(arg));
 
     if let ty::Adt(_, subst) = obj_ty.sty {
-        let caller_type = if match_type(cx, obj_ty, &*paths::RC) {
+        let caller_type = if match_type(cx, obj_ty, &paths::RC) {
             "Rc"
-        } else if match_type(cx, obj_ty, &*paths::ARC) {
+        } else if match_type(cx, obj_ty, &paths::ARC) {
             "Arc"
-        } else if match_type(cx, obj_ty, &*paths::WEAK_RC) || match_type(cx, obj_ty, &*paths::WEAK_ARC) {
+        } else if match_type(cx, obj_ty, &paths::WEAK_RC) || match_type(cx, obj_ty, &paths::WEAK_ARC) {
             "Weak"
         } else {
             return;
@@ -1504,12 +1501,12 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::
 
 fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
     let arg = &args[1];
-    if let Some(arglists) = method_chain_args(arg, &[*sym::chars]) {
+    if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
         let self_ty = walk_ptrs_ty(cx.tables.expr_ty(target));
         let ref_str = if self_ty.sty == ty::Str {
             ""
-        } else if match_type(cx, self_ty, &*paths::STRING) {
+        } else if match_type(cx, self_ty, &paths::STRING) {
             "&"
         } else {
             return;
@@ -1535,7 +1532,7 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::E
 
 fn lint_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
-    if match_type(cx, obj_ty, &*paths::STRING) {
+    if match_type(cx, obj_ty, &paths::STRING) {
         lint_string_extend(cx, expr, args);
     }
 }
@@ -1546,7 +1543,7 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, new: &hir::Ex
         if args.len() == 1;
         if let hir::ExprKind::Path(ref path) = fun.node;
         if let Res::Def(DefKind::Method, did) = cx.tables.qpath_res(path, fun.hir_id);
-        if match_def_path(cx, did, &*paths::CSTRING_NEW);
+        if match_def_path(cx, did, &paths::CSTRING_NEW);
         then {
             span_lint_and_then(
                 cx,
@@ -1562,7 +1559,7 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, new: &hir::Ex
 }
 
 fn lint_iter_cloned_collect<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, iter_args: &'tcx [hir::Expr]) {
-    if match_type(cx, cx.tables.expr_ty(expr), &*paths::VEC) {
+    if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC) {
         if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])) {
             if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite()) {
                 span_lint_and_sugg(
@@ -1640,7 +1637,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
     }
 
     // Check that this is a call to Iterator::fold rather than just some function called fold
-    if !match_trait_method(cx, expr, &*paths::ITERATOR) {
+    if !match_trait_method(cx, expr, &paths::ITERATOR) {
         return;
     }
 
@@ -1666,9 +1663,9 @@ fn lint_iter_nth<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, iter_ar
     let mut_str = if is_mut { "_mut" } else { "" };
     let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
         "slice"
-    } else if match_type(cx, cx.tables.expr_ty(&iter_args[0]), &*paths::VEC) {
+    } else if match_type(cx, cx.tables.expr_ty(&iter_args[0]), &paths::VEC) {
         "Vec"
-    } else if match_type(cx, cx.tables.expr_ty(&iter_args[0]), &*paths::VEC_DEQUE) {
+    } else if match_type(cx, cx.tables.expr_ty(&iter_args[0]), &paths::VEC_DEQUE) {
         "VecDeque"
     } else {
         return; // caller is not a type that we want to lint
@@ -1699,16 +1696,16 @@ fn lint_get_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, get_a
     let caller_type = if derefs_to_slice(cx, &get_args[0], expr_ty).is_some() {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "slice"
-    } else if match_type(cx, expr_ty, &*paths::VEC) {
+    } else if match_type(cx, expr_ty, &paths::VEC) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "Vec"
-    } else if match_type(cx, expr_ty, &*paths::VEC_DEQUE) {
+    } else if match_type(cx, expr_ty, &paths::VEC_DEQUE) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "VecDeque"
-    } else if !is_mut && match_type(cx, expr_ty, &*paths::HASHMAP) {
+    } else if !is_mut && match_type(cx, expr_ty, &paths::HASHMAP) {
         needs_ref = true;
         "HashMap"
-    } else if !is_mut && match_type(cx, expr_ty, &*paths::BTREEMAP) {
+    } else if !is_mut && match_type(cx, expr_ty, &paths::BTREEMAP) {
         needs_ref = true;
         "BTreeMap"
     } else {
@@ -1760,7 +1757,7 @@ fn lint_get_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, get_a
 
 fn lint_iter_skip_next(cx: &LateContext<'_, '_>, expr: &hir::Expr) {
     // lint if caller of skip is an Iterator
-    if match_trait_method(cx, expr, &*paths::ITERATOR) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         span_lint(
             cx,
             ITER_SKIP_NEXT,
@@ -1779,7 +1776,7 @@ fn derefs_to_slice<'a, 'tcx>(
         match ty.sty {
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
-            ty::Adt(..) => match_type(cx, ty, &*paths::VEC),
+            ty::Adt(..) => match_type(cx, ty, &paths::VEC),
             ty::Array(_, size) => size.assert_usize(cx.tcx).expect("array length") < 32,
             ty::Ref(_, inner, _) => may_slice(cx, inner),
             _ => false,
@@ -1787,7 +1784,7 @@ fn derefs_to_slice<'a, 'tcx>(
     }
 
     if let hir::ExprKind::MethodCall(ref path, _, ref args) = expr.node {
-        if path.ident.name == *sym::iter && may_slice(cx, cx.tables.expr_ty(&args[0])) {
+        if path.ident.name == sym!(iter) && may_slice(cx, cx.tables.expr_ty(&args[0])) {
             Some(&args[0])
         } else {
             None
@@ -1812,9 +1809,9 @@ fn derefs_to_slice<'a, 'tcx>(
 fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, unwrap_args: &[hir::Expr]) {
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&unwrap_args[0]));
 
-    let mess = if match_type(cx, obj_ty, &*paths::OPTION) {
+    let mess = if match_type(cx, obj_ty, &paths::OPTION) {
         Some((OPTION_UNWRAP_USED, "an Option", "None"))
-    } else if match_type(cx, obj_ty, &*paths::RESULT) {
+    } else if match_type(cx, obj_ty, &paths::RESULT) {
         Some((RESULT_UNWRAP_USED, "a Result", "Err"))
     } else {
         None
@@ -1838,7 +1835,7 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, unwrap_args: &[hir::E
 /// lint use of `ok().expect()` for `Result`s
 fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr, ok_args: &[hir::Expr]) {
     // lint if the caller of `ok()` is a `Result`
-    if match_type(cx, cx.tables.expr_ty(&ok_args[0]), &*paths::RESULT) {
+    if match_type(cx, cx.tables.expr_ty(&ok_args[0]), &paths::RESULT) {
         let result_type = cx.tables.expr_ty(&ok_args[0]);
         if let Some(error_type) = get_error_type(cx, result_type) {
             if has_debug_impl(error_type, cx) {
@@ -1856,7 +1853,7 @@ fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr, ok_args: &[hir::Ex
 /// lint use of `map().flatten()` for `Iterators`
 fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, map_args: &'tcx [hir::Expr]) {
     // lint if caller of `.map().flatten()` is an Iterator
-    if match_trait_method(cx, expr, &*paths::ITERATOR) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `map(..).flatten()` on an `Iterator`. \
                    This is more succinctly expressed by calling `.flat_map(..)`";
         let self_snippet = snippet(cx, map_args[0].span, "..");
@@ -1881,8 +1878,8 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
     unwrap_args: &'tcx [hir::Expr],
 ) {
     // lint if the caller of `map()` is an `Option`
-    let is_option = match_type(cx, cx.tables.expr_ty(&map_args[0]), &*paths::OPTION);
-    let is_result = match_type(cx, cx.tables.expr_ty(&map_args[0]), &*paths::RESULT);
+    let is_option = match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION);
+    let is_result = match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::RESULT);
     if is_option || is_result {
         // lint message
         let msg = if is_option {
@@ -1934,10 +1931,10 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
 
 /// lint use of `_.map_or(None, _)` for `Option`s
 fn lint_map_or_none<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, map_or_args: &'tcx [hir::Expr]) {
-    if match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &*paths::OPTION) {
+    if match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::OPTION) {
         // check if the first non-self argument to map_or() is None
         let map_or_arg_is_none = if let hir::ExprKind::Path(ref qpath) = map_or_args[1].node {
-            match_qpath(qpath, &*paths::OPTION_NONE)
+            match_qpath(qpath, &paths::OPTION_NONE)
         } else {
             false
         };
@@ -1964,7 +1961,7 @@ fn lint_map_or_none<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr,
 /// lint use of `filter().next()` for `Iterators`
 fn lint_filter_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, filter_args: &'tcx [hir::Expr]) {
     // lint if caller of `.filter().next()` is an Iterator
-    if match_trait_method(cx, expr, &*paths::ITERATOR) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling \
                    `.find(p)` instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
@@ -1992,7 +1989,7 @@ fn lint_filter_map<'a, 'tcx>(
     _map_args: &'tcx [hir::Expr],
 ) {
     // lint if caller of `.filter().map()` is an Iterator
-    if match_trait_method(cx, expr, &*paths::ITERATOR) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).map(q)` on an `Iterator`. \
                    This is more succinctly expressed by calling `.filter_map(..)` instead.";
         span_lint(cx, FILTER_MAP, expr.span, msg);
@@ -2001,7 +1998,7 @@ fn lint_filter_map<'a, 'tcx>(
 
 /// lint use of `filter_map().next()` for `Iterators`
 fn lint_filter_map_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, filter_args: &'tcx [hir::Expr]) {
-    if match_trait_method(cx, expr, &*paths::ITERATOR) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).next()` on an `Iterator`. This is more succinctly expressed by calling \
                    `.find_map(p)` instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
@@ -2028,7 +2025,7 @@ fn lint_find_map<'a, 'tcx>(
     map_args: &'tcx [hir::Expr],
 ) {
     // lint if caller of `.filter().map()` is an Iterator
-    if match_trait_method(cx, &map_args[0], &*paths::ITERATOR) {
+    if match_trait_method(cx, &map_args[0], &paths::ITERATOR) {
         let msg = "called `find(p).map(q)` on an `Iterator`. \
                    This is more succinctly expressed by calling `.find_map(..)` instead.";
         span_lint(cx, FIND_MAP, expr.span, msg);
@@ -2043,7 +2040,7 @@ fn lint_filter_map_map<'a, 'tcx>(
     _map_args: &'tcx [hir::Expr],
 ) {
     // lint if caller of `.filter().map()` is an Iterator
-    if match_trait_method(cx, expr, &*paths::ITERATOR) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).map(q)` on an `Iterator`. \
                    This is more succinctly expressed by only calling `.filter_map(..)` instead.";
         span_lint(cx, FILTER_MAP, expr.span, msg);
@@ -2058,7 +2055,7 @@ fn lint_filter_flat_map<'a, 'tcx>(
     _map_args: &'tcx [hir::Expr],
 ) {
     // lint if caller of `.filter().flat_map()` is an Iterator
-    if match_trait_method(cx, expr, &*paths::ITERATOR) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).flat_map(q)` on an `Iterator`. \
                    This is more succinctly expressed by calling `.flat_map(..)` \
                    and filtering by returning an empty Iterator.";
@@ -2074,7 +2071,7 @@ fn lint_filter_map_flat_map<'a, 'tcx>(
     _map_args: &'tcx [hir::Expr],
 ) {
     // lint if caller of `.filter_map().flat_map()` is an Iterator
-    if match_trait_method(cx, expr, &*paths::ITERATOR) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).flat_map(q)` on an `Iterator`. \
                    This is more succinctly expressed by calling `.flat_map(..)` \
                    and filtering by returning an empty Iterator.";
@@ -2091,7 +2088,7 @@ fn lint_search_is_some<'a, 'tcx>(
     is_some_args: &'tcx [hir::Expr],
 ) {
     // lint if caller of search is an Iterator
-    if match_trait_method(cx, &is_some_args[0], &*paths::ITERATOR) {
+    if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
         let msg = format!(
             "called `is_some()` after searching an `Iterator` with {}. This is more succinctly \
              expressed by calling `any()`.",
@@ -2164,7 +2161,7 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_, '_>, info: &mut Binary
 fn lint_chars_cmp(
     cx: &LateContext<'_, '_>,
     info: &BinaryExprInfo<'_>,
-    chain_methods: &[Symbol],
+    chain_methods: &[&str],
     lint: &'static Lint,
     suggest: &str,
 ) -> bool {
@@ -2174,7 +2171,7 @@ fn lint_chars_cmp(
         if arg_char.len() == 1;
         if let hir::ExprKind::Path(ref qpath) = fun.node;
         if let Some(segment) = single_segment_path(qpath);
-        if segment.ident.name == *sym::Some;
+        if segment.ident.name == sym!(Some);
         then {
             let mut applicability = Applicability::MachineApplicable;
             let self_ty = walk_ptrs_ty(cx.tables.expr_ty_adjusted(&args[0][0]));
@@ -2206,15 +2203,15 @@ fn lint_chars_cmp(
 
 /// Checks for the `CHARS_NEXT_CMP` lint.
 fn lint_chars_next_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    lint_chars_cmp(cx, info, &[*sym::chars, *sym::next], CHARS_NEXT_CMP, "starts_with")
+    lint_chars_cmp(cx, info, &["chars", "next"], CHARS_NEXT_CMP, "starts_with")
 }
 
 /// Checks for the `CHARS_LAST_CMP` lint.
 fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    if lint_chars_cmp(cx, info, &[*sym::chars, *sym::last], CHARS_LAST_CMP, "ends_with") {
+    if lint_chars_cmp(cx, info, &["chars", "last"], CHARS_LAST_CMP, "ends_with") {
         true
     } else {
-        lint_chars_cmp(cx, info, &[*sym::chars, *sym::next_back], CHARS_LAST_CMP, "ends_with")
+        lint_chars_cmp(cx, info, &["chars", "next_back"], CHARS_LAST_CMP, "ends_with")
     }
 }
 
@@ -2222,7 +2219,7 @@ fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprIn
 fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     info: &BinaryExprInfo<'_>,
-    chain_methods: &[Symbol],
+    chain_methods: &[&str],
     lint: &'static Lint,
     suggest: &str,
 ) -> bool {
@@ -2255,33 +2252,15 @@ fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
 
 /// Checks for the `CHARS_NEXT_CMP` lint with `unwrap()`.
 fn lint_chars_next_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    lint_chars_cmp_with_unwrap(
-        cx,
-        info,
-        &[*sym::chars, *sym::next, *sym::unwrap],
-        CHARS_NEXT_CMP,
-        "starts_with",
-    )
+    lint_chars_cmp_with_unwrap(cx, info, &["chars", "next", "unwrap"], CHARS_NEXT_CMP, "starts_with")
 }
 
 /// Checks for the `CHARS_LAST_CMP` lint with `unwrap()`.
 fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    if lint_chars_cmp_with_unwrap(
-        cx,
-        info,
-        &[*sym::chars, *sym::last, *sym::unwrap],
-        CHARS_LAST_CMP,
-        "ends_with",
-    ) {
+    if lint_chars_cmp_with_unwrap(cx, info, &["chars", "last", "unwrap"], CHARS_LAST_CMP, "ends_with") {
         true
     } else {
-        lint_chars_cmp_with_unwrap(
-            cx,
-            info,
-            &[*sym::chars, *sym::next_back, *sym::unwrap],
-            CHARS_LAST_CMP,
-            "ends_with",
-        )
+        lint_chars_cmp_with_unwrap(cx, info, &["chars", "next_back", "unwrap"], CHARS_LAST_CMP, "ends_with")
     }
 }
 
@@ -2313,7 +2292,7 @@ fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, _expr: &'tcx h
 fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_ref_args: &[hir::Expr]) {
     // when we get here, we've already checked that the call name is "as_ref" or "as_mut"
     // check if the call is to the actual `AsRef` or `AsMut` trait
-    if match_trait_method(cx, expr, &*paths::ASREF_TRAIT) || match_trait_method(cx, expr, &*paths::ASMUT_TRAIT) {
+    if match_trait_method(cx, expr, &paths::ASREF_TRAIT) || match_trait_method(cx, expr, &paths::ASMUT_TRAIT) {
         // check if the type after `as_ref` or `as_mut` is the same as before
         let recvr = &as_ref_args[0];
         let rcv_ty = cx.tables.expr_ty(recvr);
@@ -2345,9 +2324,12 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
     }
 }
 
-fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: Ty<'_>) -> Option<(&'static Lint, Symbol, &'static str)> {
+fn ty_has_iter_method(
+    cx: &LateContext<'_, '_>,
+    self_ref_ty: Ty<'_>,
+) -> Option<(&'static Lint, &'static str, &'static str)> {
     if let Some(ty_name) = has_iter_method(cx, self_ref_ty) {
-        let lint = if ty_name == *sym::array || ty_name == *sym::PathBuf {
+        let lint = if ty_name == "array" || ty_name == "PathBuf" {
             INTO_ITER_ON_ARRAY
         } else {
             INTO_ITER_ON_REF
@@ -2367,7 +2349,7 @@ fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: Ty<'_>) -> Option<(
 }
 
 fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: Ty<'_>, method_span: Span) {
-    if !match_trait_method(cx, expr, &*paths::INTO_ITERATOR) {
+    if !match_trait_method(cx, expr, &paths::INTO_ITERATOR) {
         return;
     }
     if let Some((lint, kind, method_name)) = ty_has_iter_method(cx, self_ref_ty) {
@@ -2389,7 +2371,7 @@ fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: Ty<'_
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     if let ty::Adt(_, substs) = ty.sty {
-        if match_type(cx, ty, &*paths::RESULT) {
+        if match_type(cx, ty, &paths::RESULT) {
             substs.types().nth(1)
         } else {
             None
@@ -2424,63 +2406,59 @@ const CONVENTIONS: [(Convention, &[SelfKind]); 7] = [
 ];
 
 #[rustfmt::skip]
-lazy_static! {
-static ref TRAIT_METHODS: [(Symbol, usize, SelfKind, OutType, &'static str); 30] = [
-    (*sym::add, 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
-    (*sym::as_mut, 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
-    (*sym::as_ref, 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
-    (*sym::bitand, 2, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
-    (*sym::bitor, 2, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
-    (*sym::bitxor, 2, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
-    (*sym::borrow, 1, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
-    (*sym::borrow_mut, 1, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
-    (*sym::clone, 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
-    (*sym::cmp, 2, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
-    (*sym::default, 0, SelfKind::No, OutType::Any, "std::default::Default"),
-    (*sym::deref, 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
-    (*sym::deref_mut, 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
-    (*sym::div, 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
-    (*sym::drop, 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
-    (*sym::eq, 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
-    (*sym::from_iter, 1, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
-    (*sym::from_str, 1, SelfKind::No, OutType::Any, "std::str::FromStr"),
-    (*sym::hash, 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
-    (*sym::index, 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
-    (*sym::index_mut, 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
-    (*sym::into_iter, 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
-    (*sym::mul, 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
-    (*sym::neg, 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
-    (*sym::next, 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
-    (*sym::not, 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
-    (*sym::rem, 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
-    (*sym::shl, 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
-    (*sym::shr, 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
-    (*sym::sub, 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
+const TRAIT_METHODS: [(&str, usize, SelfKind, OutType, &str); 30] = [
+    ("add", 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
+    ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
+    ("as_ref", 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
+    ("bitand", 2, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
+    ("bitor", 2, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
+    ("bitxor", 2, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
+    ("borrow", 1, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
+    ("borrow_mut", 1, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
+    ("clone", 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
+    ("cmp", 2, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
+    ("default", 0, SelfKind::No, OutType::Any, "std::default::Default"),
+    ("deref", 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
+    ("deref_mut", 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
+    ("div", 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
+    ("drop", 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
+    ("eq", 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
+    ("from_iter", 1, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
+    ("from_str", 1, SelfKind::No, OutType::Any, "std::str::FromStr"),
+    ("hash", 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
+    ("index", 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
+    ("index_mut", 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
+    ("into_iter", 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
+    ("mul", 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
+    ("neg", 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
+    ("next", 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
+    ("not", 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
+    ("rem", 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
+    ("shl", 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
+    ("shr", 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
+    ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
 ];
-}
 
 #[rustfmt::skip]
-lazy_static! {
-static ref PATTERN_METHODS: [(Symbol, usize); 17] = [
-    (*sym::contains, 1),
-    (*sym::starts_with, 1),
-    (*sym::ends_with, 1),
-    (*sym::find, 1),
-    (*sym::rfind, 1),
-    (*sym::split, 1),
-    (*sym::rsplit, 1),
-    (*sym::split_terminator, 1),
-    (*sym::rsplit_terminator, 1),
-    (*sym::splitn, 2),
-    (*sym::rsplitn, 2),
-    (*sym::matches, 1),
-    (*sym::rmatches, 1),
-    (*sym::match_indices, 1),
-    (*sym::rmatch_indices, 1),
-    (*sym::trim_start_matches, 1),
-    (*sym::trim_end_matches, 1),
+const PATTERN_METHODS: [(&str, usize); 17] = [
+    ("contains", 1),
+    ("starts_with", 1),
+    ("ends_with", 1),
+    ("find", 1),
+    ("rfind", 1),
+    ("split", 1),
+    ("rsplit", 1),
+    ("split_terminator", 1),
+    ("rsplit_terminator", 1),
+    ("splitn", 2),
+    ("rsplitn", 2),
+    ("matches", 1),
+    ("rmatches", 1),
+    ("match_indices", 1),
+    ("rmatch_indices", 1),
+    ("trim_start_matches", 1),
+    ("trim_end_matches", 1),
 ];
-}
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum SelfKind {
@@ -2536,8 +2514,8 @@ impl SelfKind {
         } else {
             match self {
                 SelfKind::Value => false,
-                SelfKind::Ref => is_as_ref_or_mut_trait(ty, self_ty, generics, &*paths::ASREF_TRAIT),
-                SelfKind::RefMut => is_as_ref_or_mut_trait(ty, self_ty, generics, &*paths::ASMUT_TRAIT),
+                SelfKind::Ref => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASREF_TRAIT),
+                SelfKind::RefMut => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASMUT_TRAIT),
                 SelfKind::No => true,
             }
         }
@@ -2553,7 +2531,7 @@ impl SelfKind {
     }
 }
 
-fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Generics, name: &[Symbol]) -> bool {
+fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Generics, name: &[&str]) -> bool {
     single_segment_ty(ty).map_or(false, |seg| {
         generics.params.iter().any(|param| match param.kind {
             hir::GenericParamKind::Type { .. } => {
@@ -2657,7 +2635,7 @@ impl OutType {
 
 fn is_bool(ty: &hir::Ty) -> bool {
     if let hir::TyKind::Path(ref p) = ty.node {
-        match_qpath(p, &[*sym::bool])
+        match_qpath(p, &["bool"])
     } else {
         false
     }

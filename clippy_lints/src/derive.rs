@@ -88,7 +88,7 @@ fn check_hash_peq<'a, 'tcx>(
     hash_is_automatically_derived: bool,
 ) {
     if_chain! {
-        if match_path(&trait_ref.path, &*paths::HASH);
+        if match_path(&trait_ref.path, &paths::HASH);
         if let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait();
         then {
             // Look for the PartialEq implementations for `ty`
@@ -129,7 +129,7 @@ fn check_hash_peq<'a, 'tcx>(
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
 fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref: &TraitRef, ty: Ty<'tcx>) {
-    if match_path(&trait_ref.path, &*paths::CLONE_TRAIT) {
+    if match_path(&trait_ref.path, &paths::CLONE_TRAIT) {
         if !is_copy(cx, ty) {
             return;
         }

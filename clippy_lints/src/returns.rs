@@ -7,7 +7,6 @@ use syntax::source_map::Span;
 use syntax::visit::FnKind;
 use syntax_pos::BytePos;
 
-use crate::utils::sym;
 use crate::utils::{in_macro_or_desugar, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
 
 declare_clippy_lint! {
@@ -162,7 +161,7 @@ impl Return {
             if let Some(ref initexpr) = local.init;
             if let ast::PatKind::Ident(_, ident, _) = local.pat.node;
             if let ast::ExprKind::Path(_, ref path) = retexpr.node;
-            if match_path_ast(path, &[ident.name]);
+            if match_path_ast(path, &[&*ident.name.as_str()]);
             if !in_external_macro(cx.sess(), initexpr.span);
             then {
                     span_note_and_lint(cx,
@@ -253,7 +252,7 @@ impl EarlyLintPass for Return {
 }
 
 fn attr_is_cfg(attr: &ast::Attribute) -> bool {
-    attr.meta_item_list().is_some() && attr.check_name(*sym::cfg)
+    attr.meta_item_list().is_some() && attr.check_name(sym!(cfg))
 }
 
 // get the def site

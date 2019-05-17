@@ -1,5 +1,4 @@
 use crate::utils::sugg::Sugg;
-use crate::utils::sym;
 use crate::utils::{get_enclosing_block, match_qpath, span_lint_and_then, SpanlessEq};
 use if_chain::if_chain;
 use rustc::hir::intravisit::{walk_block, walk_expr, walk_stmt, NestedVisitorMap, Visitor};
@@ -110,7 +109,7 @@ impl SlowVectorInit {
         if_chain! {
             if let ExprKind::Call(ref func, ref args) = expr.node;
             if let ExprKind::Path(ref path) = func.node;
-            if match_qpath(path, &[*sym::Vec, *sym::with_capacity]);
+            if match_qpath(path, &["Vec", "with_capacity"]);
             if args.len() == 1;
 
             then {
@@ -201,8 +200,8 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
             if self.initialization_found;
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
             if let ExprKind::Path(ref qpath_subj) = args[0].node;
-            if match_qpath(&qpath_subj, &[self.vec_alloc.variable_name]);
-            if path.ident.name == *sym::extend;
+            if match_qpath(&qpath_subj, &[&*self.vec_alloc.variable_name.as_str()]);
+            if path.ident.name == sym!(extend);
             if let Some(ref extend_arg) = args.get(1);
             if self.is_repeat_take(extend_arg);
 
@@ -218,8 +217,8 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
             if self.initialization_found;
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
             if let ExprKind::Path(ref qpath_subj) = args[0].node;
-            if match_qpath(&qpath_subj, &[self.vec_alloc.variable_name]);
-            if path.ident.name == *sym::resize;
+            if match_qpath(&qpath_subj, &[&*self.vec_alloc.variable_name.as_str()]);
+            if path.ident.name == sym!(resize);
             if let (Some(ref len_arg), Some(fill_arg)) = (args.get(1), args.get(2));
 
             // Check that is filled with 0
@@ -239,7 +238,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn is_repeat_take(&self, expr: &Expr) -> bool {
         if_chain! {
             if let ExprKind::MethodCall(ref take_path, _, ref take_args) = expr.node;
-            if take_path.ident.name == *sym::take;
+            if take_path.ident.name == sym!(take);
 
             // Check that take is applied to `repeat(0)`
             if let Some(ref repeat_expr) = take_args.get(0);
@@ -262,7 +261,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
         if_chain! {
             if let ExprKind::Call(ref fn_expr, ref repeat_args) = expr.node;
             if let ExprKind::Path(ref qpath_repeat) = fn_expr.node;
-            if match_qpath(&qpath_repeat, &[*sym::repeat]);
+            if match_qpath(&qpath_repeat, &["repeat"]);
             if let Some(ref repeat_arg) = repeat_args.get(0);
             if let ExprKind::Lit(ref lit) = repeat_arg.node;
             if let LitKind::Int(0, _) = lit.node;

@@ -9,7 +9,6 @@ use crate::utils::{
     get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, trait_ref_of_method, SpanlessEq,
 };
 use crate::utils::{higher, sugg};
-use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
@@ -89,11 +88,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                              $($trait_name:ident),+) => {
                                 match $op {
                                     $(hir::BinOpKind::$trait_name => {
-                                        let [krate, module] = *crate::utils::paths::OPS_MODULE;
-                                        let ident = {
-                                            *crate::utils::sym::assign::$trait_name
-                                        };
-                                        let path: [Symbol; 3] = [krate, module, ident];
+                                        let [krate, module] = crate::utils::paths::OPS_MODULE;
+                                        let path: [&str; 3] = [krate, module, concat!(stringify!($trait_name), "Assign")];
                                         let trait_id = if let Some(trait_id) = get_trait_def_id($cx, &path) {
                                             trait_id
                                         } else {

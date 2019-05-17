@@ -96,8 +96,8 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
 
                                 if matches!(ty.sty, ty::Slice(_)) ||
                                     matches!(ty.sty, ty::Array(_, _)) ||
-                                    match_type(cx, ty, &*paths::VEC) ||
-                                    match_type(cx, ty, &*paths::VEC_DEQUE) {
+                                    match_type(cx, ty, &paths::VEC) ||
+                                    match_type(cx, ty, &paths::VEC_DEQUE) {
                                         return Some((lhs1, idx1, idx2));
                                 }
                             }

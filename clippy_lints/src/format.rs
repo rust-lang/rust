@@ -1,5 +1,4 @@
 use crate::utils::paths;
-use crate::utils::sym;
 use crate::utils::{
     in_macro_or_desugar, is_expn_of, last_path_segment, match_def_path, match_type, resolve_node, snippet,
     span_lint_and_then, walk_ptrs_ty,
@@ -39,7 +38,7 @@ declare_lint_pass!(UselessFormat => [USELESS_FORMAT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessFormat {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let Some(span) = is_expn_of(expr.span, *sym::format) {
+        if let Some(span) = is_expn_of(expr.span, "format") {
             if in_macro_or_desugar(span) {
                 return;
             }
@@ -49,10 +48,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessFormat {
                     if_chain! {
                         if let ExprKind::Path(ref qpath) = fun.node;
                         if let Some(fun_def_id) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
-                        let new_v1 = match_def_path(cx, fun_def_id, &*paths::FMT_ARGUMENTS_NEWV1);
+                        let new_v1 = match_def_path(cx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1);
                         let new_v1_fmt = match_def_path(cx,
                             fun_def_id,
-                            &*paths::FMT_ARGUMENTS_NEWV1FORMATTED
+                            &paths::FMT_ARGUMENTS_NEWV1FORMATTED
                         );
                         if new_v1 || new_v1_fmt;
                         if check_single_piece(&args[0]);
@@ -151,10 +150,10 @@ fn get_single_string_arg<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option
         if args.len() == 2;
         if let ExprKind::Path(ref qpath) = args[1].node;
         if let Some(fun_def_id) = resolve_node(cx, qpath, args[1].hir_id).opt_def_id();
-        if match_def_path(cx, fun_def_id, &*paths::DISPLAY_FMT_METHOD);
+        if match_def_path(cx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
         then {
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
-            if ty.sty == ty::Str || match_type(cx, ty, &*paths::STRING) {
+            if ty.sty == ty::Str || match_type(cx, ty, &paths::STRING) {
                 if let ExprKind::Tup(ref values) = match_expr.node {
                     return Some(&values[0]);
                 }
@@ -181,14 +180,14 @@ fn check_unformatted(expr: &Expr) -> bool {
         if let ExprKind::Array(ref exprs) = expr.node;
         if exprs.len() == 1;
         if let ExprKind::Struct(_, ref fields, _) = exprs[0].node;
-        if let Some(format_field) = fields.iter().find(|f| f.ident.name == *sym::format);
+        if let Some(format_field) = fields.iter().find(|f| f.ident.name == sym!(format));
         if let ExprKind::Struct(_, ref fields, _) = format_field.expr.node;
-        if let Some(width_field) = fields.iter().find(|f| f.ident.name == *sym::width);
+        if let Some(width_field) = fields.iter().find(|f| f.ident.name == sym!(width));
         if let ExprKind::Path(ref width_qpath) = width_field.expr.node;
-        if last_path_segment(width_qpath).ident.name == *sym::Implied;
-        if let Some(precision_field) = fields.iter().find(|f| f.ident.name == *sym::precision);
+        if last_path_segment(width_qpath).ident.name == sym!(Implied);
+        if let Some(precision_field) = fields.iter().find(|f| f.ident.name == sym!(precision));
         if let ExprKind::Path(ref precision_path) = precision_field.expr.node;
-        if last_path_segment(precision_path).ident.name == *sym::Implied;
+        if last_path_segment(precision_path).ident.name == sym!(Implied);
         then {
             return true;
         }

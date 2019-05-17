@@ -4,7 +4,7 @@ use rustc::hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
 use rustc::hir::{self, *};
 use rustc::lint::LateContext;
 use rustc_data_structures::fx::FxHashSet;
-use syntax::symbol::Symbol;
+use syntax_pos::symbol::Symbol;
 
 use super::OPTION_MAP_UNWRAP_OR;
 
@@ -16,7 +16,7 @@ pub(super) fn lint<'a, 'tcx>(
     unwrap_args: &'tcx [hir::Expr],
 ) {
     // lint if the caller of `map()` is an `Option`
-    if match_type(cx, cx.tables.expr_ty(&map_args[0]), &*paths::OPTION) {
+    if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
         if !is_copy(cx, cx.tables.expr_ty(&unwrap_args[1])) {
             // Do not lint if the `map` argument uses identifiers in the `map`
             // argument that are also used in the `unwrap_or` argument

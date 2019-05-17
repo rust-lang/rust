@@ -1,5 +1,4 @@
 use crate::consts::{constant, Constant};
-use crate::utils::sym;
 use crate::utils::{is_expn_of, match_def_path, match_type, paths, span_help_and_lint, span_lint};
 use if_chain::if_chain;
 use regex_syntax;
@@ -84,8 +83,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
         if_chain! {
             if self.last.is_none();
             if let Some(ref expr) = block.expr;
-            if match_type(cx, cx.tables.expr_ty(expr), &*paths::REGEX);
-            if let Some(span) = is_expn_of(expr.span, *sym::regex);
+            if match_type(cx, cx.tables.expr_ty(expr), &paths::REGEX);
+            if let Some(span) = is_expn_of(expr.span, "regex");
             then {
                 if !self.spans.contains(&span) {
                     span_lint(cx,
@@ -113,15 +112,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
             if args.len() == 1;
             if let Some(def_id) = cx.tables.qpath_res(qpath, fun.hir_id).opt_def_id();
             then {
-                if match_def_path(cx, def_id, &*paths::REGEX_NEW) ||
-                   match_def_path(cx, def_id, &*paths::REGEX_BUILDER_NEW) {
+                if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
+                   match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
                     check_regex(cx, &args[0], true);
-                } else if match_def_path(cx, def_id, &*paths::REGEX_BYTES_NEW) ||
-                   match_def_path(cx, def_id, &*paths::REGEX_BYTES_BUILDER_NEW) {
+                } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_NEW) ||
+                   match_def_path(cx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
                     check_regex(cx, &args[0], false);
-                } else if match_def_path(cx, def_id, &*paths::REGEX_SET_NEW) {
+                } else if match_def_path(cx, def_id, &paths::REGEX_SET_NEW) {
                     check_set(cx, &args[0], true);
-                } else if match_def_path(cx, def_id, &*paths::REGEX_BYTES_SET_NEW) {
+                } else if match_def_path(cx, def_id, &paths::REGEX_BYTES_SET_NEW) {
                     check_set(cx, &args[0], false);
                 }
             }

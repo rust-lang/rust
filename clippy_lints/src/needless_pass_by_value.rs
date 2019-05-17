@@ -1,5 +1,4 @@
 use crate::utils::ptr::get_spans;
-use crate::utils::sym;
 use crate::utils::{
     get_trait_def_id, implements_trait, in_macro_or_desugar, is_copy, is_self, match_type, multispan_sugg, paths,
     snippet, snippet_opt, span_lint_and_then,
@@ -102,12 +101,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         }
 
         // Allow `Borrow` or functions to be taken by value
-        let borrow_trait = need!(get_trait_def_id(cx, &*paths::BORROW_TRAIT));
+        let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
         let whitelisted_traits = [
             need!(cx.tcx.lang_items().fn_trait()),
             need!(cx.tcx.lang_items().fn_once_trait()),
             need!(cx.tcx.lang_items().fn_mut_trait()),
-            need!(get_trait_def_id(cx, &*paths::RANGE_ARGUMENT_TRAIT)),
+            need!(get_trait_def_id(cx, &paths::RANGE_ARGUMENT_TRAIT)),
         ];
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
@@ -215,12 +214,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
                         let deref_span = spans_need_deref.get(&canonical_id);
                         if_chain! {
-                            if match_type(cx, ty, &*paths::VEC);
+                            if match_type(cx, ty, &paths::VEC);
                             if let Some(clone_spans) =
-                                get_spans(cx, Some(body.id()), idx, &[(*sym::clone, ".to_owned()")]);
+                                get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
                             if let TyKind::Path(QPath::Resolved(_, ref path)) = input.node;
                             if let Some(elem_ty) = path.segments.iter()
-                                .find(|seg| seg.ident.name == *sym::Vec)
+                                .find(|seg| seg.ident.name == sym!(Vec))
                                 .and_then(|ps| ps.args.as_ref())
                                 .map(|params| params.args.iter().find_map(|arg| match arg {
                                     GenericArg::Type(ty) => Some(ty),
@@ -254,9 +253,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             }
                         }
 
-                        if match_type(cx, ty, &*paths::STRING) {
+                        if match_type(cx, ty, &paths::STRING) {
                             if let Some(clone_spans) =
-                                get_spans(cx, Some(body.id()), idx, &[(*sym::clone, ".to_string()"), (*sym::as_str, "")]) {
+                                get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                                 db.span_suggestion(
                                     input.span,
                                     "consider changing the type to",
@@ -313,7 +312,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 /// Functions marked with these attributes must have the exact signature.
 fn requires_exact_signature(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| {
-        [*sym::proc_macro, *sym::proc_macro_attribute, *sym::proc_macro_derive]
+        [sym!(proc_macro), sym!(proc_macro_attribute), sym!(proc_macro_derive)]
             .iter()
             .any(|&allow| attr.check_name(allow))
     })

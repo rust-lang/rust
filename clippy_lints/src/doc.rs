@@ -1,5 +1,4 @@
 use crate::utils::span_lint;
-use crate::utils::sym;
 use itertools::Itertools;
 use pulldown_cmark;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
@@ -128,7 +127,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext<'_>, valid_idents: &FxHashSet<String>, 
                 spans.extend_from_slice(&current_spans);
                 doc.push_str(&current);
             }
-        } else if attr.check_name(*sym::doc) {
+        } else if attr.check_name(sym!(doc)) {
             // ignore mix of sugared and non-sugared doc
             return;
         }

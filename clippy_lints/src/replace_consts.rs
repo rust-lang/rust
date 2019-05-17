@@ -1,13 +1,10 @@
-use crate::utils::sym;
 use crate::utils::{match_def_path, span_lint_and_sugg};
 use if_chain::if_chain;
-use lazy_static::lazy_static;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
-use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `ATOMIC_X_INIT`, `ONCE_INIT`, and
@@ -40,7 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
             if let hir::ExprKind::Path(ref qp) = expr.node;
             if let Res::Def(DefKind::Const, def_id) = cx.tables.qpath_res(qp, expr.hir_id);
             then {
-                for (const_path, repl_snip) in REPLACEMENTS.iter() {
+                for (const_path, repl_snip) in &REPLACEMENTS {
                     if match_def_path(cx, def_id, const_path) {
                         span_lint_and_sugg(
                             cx,
@@ -59,35 +56,33 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
     }
 }
 
-lazy_static! {
-static ref REPLACEMENTS: [([Symbol; 3], &'static str); 25] = [
+const REPLACEMENTS: [([&str; 3], &str); 25] = [
     // Once
-    ([*sym::core, *sym::sync, *sym::ONCE_INIT], "Once::new()"),
+    (["core", "sync", "ONCE_INIT"], "Once::new()"),
     // Min
-    ([*sym::core, *sym::isize, *sym::MIN], "isize::min_value()"),
-    ([*sym::core, *sym::i8, *sym::MIN], "i8::min_value()"),
-    ([*sym::core, *sym::i16, *sym::MIN], "i16::min_value()"),
-    ([*sym::core, *sym::i32, *sym::MIN], "i32::min_value()"),
-    ([*sym::core, *sym::i64, *sym::MIN], "i64::min_value()"),
-    ([*sym::core, *sym::i128, *sym::MIN], "i128::min_value()"),
-    ([*sym::core, *sym::usize, *sym::MIN], "usize::min_value()"),
-    ([*sym::core, *sym::u8, *sym::MIN], "u8::min_value()"),
-    ([*sym::core, *sym::u16, *sym::MIN], "u16::min_value()"),
-    ([*sym::core, *sym::u32, *sym::MIN], "u32::min_value()"),
-    ([*sym::core, *sym::u64, *sym::MIN], "u64::min_value()"),
-    ([*sym::core, *sym::u128, *sym::MIN], "u128::min_value()"),
+    (["core", "isize", "MIN"], "isize::min_value()"),
+    (["core", "i8", "MIN"], "i8::min_value()"),
+    (["core", "i16", "MIN"], "i16::min_value()"),
+    (["core", "i32", "MIN"], "i32::min_value()"),
+    (["core", "i64", "MIN"], "i64::min_value()"),
+    (["core", "i128", "MIN"], "i128::min_value()"),
+    (["core", "usize", "MIN"], "usize::min_value()"),
+    (["core", "u8", "MIN"], "u8::min_value()"),
+    (["core", "u16", "MIN"], "u16::min_value()"),
+    (["core", "u32", "MIN"], "u32::min_value()"),
+    (["core", "u64", "MIN"], "u64::min_value()"),
+    (["core", "u128", "MIN"], "u128::min_value()"),
     // Max
-    ([*sym::core, *sym::isize, *sym::MAX], "isize::max_value()"),
-    ([*sym::core, *sym::i8, *sym::MAX], "i8::max_value()"),
-    ([*sym::core, *sym::i16, *sym::MAX], "i16::max_value()"),
-    ([*sym::core, *sym::i32, *sym::MAX], "i32::max_value()"),
-    ([*sym::core, *sym::i64, *sym::MAX], "i64::max_value()"),
-    ([*sym::core, *sym::i128, *sym::MAX], "i128::max_value()"),
-    ([*sym::core, *sym::usize, *sym::MAX], "usize::max_value()"),
-    ([*sym::core, *sym::u8, *sym::MAX], "u8::max_value()"),
-    ([*sym::core, *sym::u16, *sym::MAX], "u16::max_value()"),
-    ([*sym::core, *sym::u32, *sym::MAX], "u32::max_value()"),
-    ([*sym::core, *sym::u64, *sym::MAX], "u64::max_value()"),
-    ([*sym::core, *sym::u128, *sym::MAX], "u128::max_value()"),
+    (["core", "isize", "MAX"], "isize::max_value()"),
+    (["core", "i8", "MAX"], "i8::max_value()"),
+    (["core", "i16", "MAX"], "i16::max_value()"),
+    (["core", "i32", "MAX"], "i32::max_value()"),
+    (["core", "i64", "MAX"], "i64::max_value()"),
+    (["core", "i128", "MAX"], "i128::max_value()"),
+    (["core", "usize", "MAX"], "usize::max_value()"),
+    (["core", "u8", "MAX"], "u8::max_value()"),
+    (["core", "u16", "MAX"], "u16::max_value()"),
+    (["core", "u32", "MAX"], "u32::max_value()"),
+    (["core", "u64", "MAX"], "u64::max_value()"),
+    (["core", "u128", "MAX"], "u128::max_value()"),
 ];
-}

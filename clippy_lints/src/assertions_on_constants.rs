@@ -5,7 +5,6 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax_pos::Span;
 
 use crate::consts::{constant, Constant};
-use crate::utils::sym;
 use crate::utils::{in_macro_or_desugar, is_direct_expn_of, span_help_and_lint};
 
 declare_clippy_lint! {
@@ -41,9 +40,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
             !in_macro_or_desugar(span)
         };
         if_chain! {
-            if let Some(assert_span) = is_direct_expn_of(e.span, *sym::assert);
+            if let Some(assert_span) = is_direct_expn_of(e.span, "assert");
             if !in_macro_or_desugar(assert_span)
-                || is_direct_expn_of(assert_span, *sym::debug_assert)
+                || is_direct_expn_of(assert_span, "debug_assert")
                     .map_or(false, debug_assert_not_in_macro_or_desugar);
             if let ExprKind::Unary(_, ref lit) = e.node;
             if let Some(bool_const) = constant(cx, cx.tables, lit);
