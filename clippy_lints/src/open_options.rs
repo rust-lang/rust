@@ -1,4 +1,3 @@
-use crate::utils::sym;
 use crate::utils::{match_type, paths, span_lint, walk_ptrs_ty};
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -32,7 +31,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OpenOptions {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprKind::MethodCall(ref path, _, ref arguments) = e.node {
             let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
-            if path.ident.name == *sym::open && match_type(cx, obj_ty, &*paths::OPEN_OPTIONS) {
+            if path.ident.name == sym!(open) && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
                 get_open_options(cx, &arguments[0], &mut options);
                 check_open_options(cx, &options, e.span);
@@ -62,7 +61,7 @@ fn get_open_options(cx: &LateContext<'_, '_>, argument: &Expr, options: &mut Vec
         let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
-        if match_type(cx, obj_ty, &*paths::OPEN_OPTIONS) && arguments.len() >= 2 {
+        if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && arguments.len() >= 2 {
             let argument_option = match arguments[1].node {
                 ExprKind::Lit(ref span) => {
                     if let Spanned {

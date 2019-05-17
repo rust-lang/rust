@@ -1,4 +1,3 @@
-use crate::utils::sym;
 use crate::utils::{get_pat_name, match_var, snippet};
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
@@ -6,13 +5,12 @@ use rustc::lint::LateContext;
 use std::borrow::Cow;
 use syntax::ast::Name;
 use syntax::source_map::Span;
-use syntax::symbol::Symbol;
 
 pub fn get_spans(
     cx: &LateContext<'_, '_>,
     opt_body_id: Option<BodyId>,
     idx: usize,
-    replacements: &[(Symbol, &'static str)],
+    replacements: &[(&'static str, &'static str)],
 ) -> Option<Vec<(Span, Cow<'static, str>)>> {
     if let Some(body) = opt_body_id.map(|id| cx.tcx.hir().body(id)) {
         get_binding_name(&body.arguments[idx]).map_or_else(
@@ -27,7 +25,7 @@ pub fn get_spans(
 fn extract_clone_suggestions<'a, 'tcx: 'a>(
     cx: &LateContext<'a, 'tcx>,
     name: Name,
-    replace: &[(Symbol, &'static str)],
+    replace: &[(&'static str, &'static str)],
     body: &'tcx Body,
 ) -> Option<Vec<(Span, Cow<'static, str>)>> {
     let mut visitor = PtrCloneVisitor {
@@ -48,7 +46,7 @@ fn extract_clone_suggestions<'a, 'tcx: 'a>(
 struct PtrCloneVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     name: Name,
-    replace: &'a [(Symbol, &'static str)],
+    replace: &'a [(&'static str, &'static str)],
     spans: Vec<(Span, Cow<'static, str>)>,
     abort: bool,
 }
@@ -60,12 +58,12 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
         }
         if let ExprKind::MethodCall(ref seg, _, ref args) = expr.node {
             if args.len() == 1 && match_var(&args[0], self.name) {
-                if seg.ident.name == *sym::capacity {
+                if seg.ident.name.as_str() == "capacity" {
                     self.abort = true;
                     return;
                 }
                 for &(fn_name, suffix) in self.replace {
-                    if seg.ident.name == fn_name {
+                    if seg.ident.name.as_str() == fn_name {
                         self.spans
                             .push((expr.span, snippet(self.cx, args[0].span, "_") + suffix));
                         return;

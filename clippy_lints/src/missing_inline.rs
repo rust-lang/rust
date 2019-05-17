@@ -1,5 +1,4 @@
 use crate::utils::span_lint;
-use crate::utils::sym;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -58,7 +57,7 @@ declare_clippy_lint! {
 }
 
 fn check_missing_inline_attrs(cx: &LateContext<'_, '_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
-    let has_inline = attrs.iter().any(|a| a.check_name(*sym::inline));
+    let has_inline = attrs.iter().any(|a| a.check_name(sym!(inline)));
     if !has_inline {
         span_lint(
             cx,

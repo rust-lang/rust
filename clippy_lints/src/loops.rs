@@ -10,7 +10,6 @@ use rustc::middle::region;
 use rustc::{declare_lint_pass, declare_tool_lint};
 // use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
-use crate::utils::sym;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{in_macro_or_desugar, sext, sugg};
 use rustc::middle::expr_use_visitor::*;
@@ -555,9 +554,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
             {
                 let iter_expr = &method_args[0];
                 let lhs_constructor = last_path_segment(qpath);
-                if method_path.ident.name == *sym::next
-                    && match_trait_method(cx, match_expr, &*paths::ITERATOR)
-                    && lhs_constructor.ident.name == *sym::Some
+                if method_path.ident.name == sym!(next)
+                    && match_trait_method(cx, match_expr, &paths::ITERATOR)
+                    && lhs_constructor.ident.name == sym!(Some)
                     && (pat_args.is_empty()
                         || !is_refutable(cx, &pat_args[0])
                             && !is_used_inside(cx, iter_expr, &arms[0].body)
@@ -595,8 +594,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
         if let StmtKind::Semi(ref expr) = stmt.node {
             if let ExprKind::MethodCall(ref method, _, ref args) = expr.node {
                 if args.len() == 1
-                    && method.ident.name == *sym::collect
-                    && match_trait_method(cx, expr, &*paths::ITERATOR)
+                    && method.ident.name == sym!(collect)
+                    && match_trait_method(cx, expr, &paths::ITERATOR)
                 {
                     span_lint(
                         cx,
@@ -815,7 +814,7 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
         _ => false,
     };
 
-    is_slice || match_type(cx, ty, &*paths::VEC) || match_type(cx, ty, &*paths::VEC_DEQUE)
+    is_slice || match_type(cx, ty, &paths::VEC) || match_type(cx, ty, &paths::VEC_DEQUE)
 }
 
 fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: HirId) -> Option<FixedOffsetVar> {
@@ -878,7 +877,7 @@ fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
 ) -> Option<FixedOffsetVar> {
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args) = expr.node;
-        if method.ident.name == *sym::clone;
+        if method.ident.name == sym!(clone);
         if args.len() == 1;
         if let Some(arg) = args.get(0);
         then {
@@ -984,7 +983,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
                 if let Some(end) = *end {
                     if_chain! {
                         if let ExprKind::MethodCall(ref method, _, ref len_args) = end.node;
-                        if method.ident.name == *sym::len;
+                        if method.ident.name == sym!(len);
                         if len_args.len() == 1;
                         if let Some(arg) = len_args.get(0);
                         if snippet(cx, arg.span, "??") == var_name;
@@ -1226,7 +1225,7 @@ fn is_len_call(expr: &Expr, var: Name) -> bool {
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref len_args) = expr.node;
         if len_args.len() == 1;
-        if method.ident.name == *sym::len;
+        if method.ident.name == sym!(len);
         if let ExprKind::Path(QPath::Resolved(_, ref path)) = len_args[0].node;
         if path.segments.len() == 1;
         if path.segments[0].ident.name == var;
@@ -1354,7 +1353,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                 if is_ref_iterable_type(cx, &args[0]) {
                     lint_iter_method(cx, args, arg, method_name);
                 }
-            } else if method_name == "into_iter" && match_trait_method(cx, arg, &*paths::INTO_ITERATOR) {
+            } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
                 let def_id = cx.tables.type_dependent_def_id(arg.hir_id).unwrap();
                 let substs = cx.tables.node_substs(arg.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
@@ -1382,7 +1381,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                         applicability,
                     );
                 }
-            } else if method_name == "next" && match_trait_method(cx, arg, &*paths::ITERATOR) {
+            } else if method_name == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
                 span_lint(
                     cx,
                     ITER_NEXT_LOOP,
@@ -1402,7 +1401,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
 /// Checks for `for` loops over `Option`s and `Result`s.
 fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr) {
     let ty = cx.tables.expr_ty(arg);
-    if match_type(cx, ty, &*paths::OPTION) {
+    if match_type(cx, ty, &paths::OPTION) {
         span_help_and_lint(
             cx,
             FOR_LOOP_OVER_OPTION,
@@ -1418,7 +1417,7 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr) {
                 snippet(cx, arg.span, "_")
             ),
         );
-    } else if match_type(cx, ty, &*paths::RESULT) {
+    } else if match_type(cx, ty, &paths::RESULT) {
         span_help_and_lint(
             cx,
             FOR_LOOP_OVER_RESULT,
@@ -1531,7 +1530,7 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
                 _ => arg,
             };
 
-            if match_type(cx, ty, &*paths::HASHMAP) || match_type(cx, ty, &*paths::BTREEMAP) {
+            if match_type(cx, ty, &paths::HASHMAP) || match_type(cx, ty, &paths::BTREEMAP) {
                 span_lint_and_then(
                     cx,
                     FOR_KV_MAP,
@@ -1811,8 +1810,8 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         if_chain! {
             // a range index op
             if let ExprKind::MethodCall(ref meth, _, ref args) = expr.node;
-            if (meth.ident.name == *sym::index && match_trait_method(self.cx, expr, &*paths::INDEX))
-                || (meth.ident.name == *sym::index_mut && match_trait_method(self.cx, expr, &*paths::INDEX_MUT));
+            if (meth.ident.name == sym!(index) && match_trait_method(self.cx, expr, &paths::INDEX))
+                || (meth.ident.name == sym!(index_mut) && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
             if !self.check(&args[1], &args[0], expr);
             then { return }
         }
@@ -1967,14 +1966,14 @@ fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
     // will allow further borrows afterwards
     let ty = cx.tables.expr_ty(e);
     is_iterable_array(ty, cx) ||
-    match_type(cx, ty, &*paths::VEC) ||
-    match_type(cx, ty, &*paths::LINKED_LIST) ||
-    match_type(cx, ty, &*paths::HASHMAP) ||
-    match_type(cx, ty, &*paths::HASHSET) ||
-    match_type(cx, ty, &*paths::VEC_DEQUE) ||
-    match_type(cx, ty, &*paths::BINARY_HEAP) ||
-    match_type(cx, ty, &*paths::BTREEMAP) ||
-    match_type(cx, ty, &*paths::BTREESET)
+    match_type(cx, ty, &paths::VEC) ||
+    match_type(cx, ty, &paths::LINKED_LIST) ||
+    match_type(cx, ty, &paths::HASHMAP) ||
+    match_type(cx, ty, &paths::HASHSET) ||
+    match_type(cx, ty, &paths::VEC_DEQUE) ||
+    match_type(cx, ty, &paths::BINARY_HEAP) ||
+    match_type(cx, ty, &paths::BTREEMAP) ||
+    match_type(cx, ty, &paths::BTREESET)
 }
 
 fn is_iterable_array(ty: Ty<'_>, cx: &LateContext<'_, '_>) -> bool {
@@ -2415,16 +2414,16 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args) = expr.node;
         if let ExprKind::MethodCall(ref chain_method, _, _) = args[0].node;
-        if chain_method.ident.name == *sym::collect && match_trait_method(cx, &args[0], &*paths::ITERATOR);
+        if chain_method.ident.name == sym!(collect) && match_trait_method(cx, &args[0], &paths::ITERATOR);
         if let Some(ref generic_args) = chain_method.args;
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
         then {
             let ty = cx.tables.node_type(ty.hir_id);
-            if match_type(cx, ty, &*paths::VEC) ||
-                match_type(cx, ty, &*paths::VEC_DEQUE) ||
-                match_type(cx, ty, &*paths::BTREEMAP) ||
-                match_type(cx, ty, &*paths::HASHMAP) {
-                if method.ident.name == *sym::len {
+            if match_type(cx, ty, &paths::VEC) ||
+                match_type(cx, ty, &paths::VEC_DEQUE) ||
+                match_type(cx, ty, &paths::BTREEMAP) ||
+                match_type(cx, ty, &paths::HASHMAP) {
+                if method.ident.name == sym!(len) {
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
                         db.span_suggestion(
@@ -2435,7 +2434,7 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
                         );
                     });
                 }
-                if method.ident.name == *sym::is_empty {
+                if method.ident.name == sym!(is_empty) {
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
                         db.span_suggestion(
@@ -2446,7 +2445,7 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
                         );
                     });
                 }
-                if method.ident.name == *sym::contains {
+                if method.ident.name == sym!(contains) {
                     let contains_arg = snippet(cx, args[1].span, "??");
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {

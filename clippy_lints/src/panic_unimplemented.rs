@@ -1,4 +1,3 @@
-use crate::utils::sym;
 use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, paths, resolve_node, span_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
@@ -53,10 +52,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
             if let ExprKind::Call(ref fun, ref params) = ex.node;
             if let ExprKind::Path(ref qpath) = fun.node;
             if let Some(fun_def_id) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
-            if match_def_path(cx, fun_def_id, &*paths::BEGIN_PANIC);
+            if match_def_path(cx, fun_def_id, &paths::BEGIN_PANIC);
             if params.len() == 2;
             then {
-                if is_expn_of(expr.span, *sym::unimplemented).is_some() {
+                if is_expn_of(expr.span, "unimplemented").is_some() {
                     let span = get_outer_span(expr);
                     span_lint(cx, UNIMPLEMENTED, span,
                               "`unimplemented` should not be present in production code");
@@ -83,7 +82,7 @@ fn get_outer_span(expr: &Expr) -> Span {
 fn match_panic(params: &P<[Expr]>, expr: &Expr, cx: &LateContext<'_, '_>) {
     if_chain! {
         if let ExprKind::Lit(ref lit) = params[0].node;
-        if is_direct_expn_of(expr.span, *sym::panic).is_some();
+        if is_direct_expn_of(expr.span, "panic").is_some();
         if let LitKind::Str(ref string, _) = lit.node;
         let string = string.as_str().replace("{{", "").replace("}}", "");
         if let Some(par) = string.find('{');

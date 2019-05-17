@@ -1,5 +1,4 @@
 use crate::utils::paths;
-use crate::utils::sym;
 use crate::utils::{in_macro_or_desugar, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::hir;
@@ -186,9 +185,9 @@ fn suggestion_msg(function_type: &str, map_type: &str) -> String {
 fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr, map_args: &[hir::Expr]) {
     let var_arg = &map_args[0];
 
-    let (map_type, variant, lint) = if match_type(cx, cx.tables.expr_ty(var_arg), &*paths::OPTION) {
+    let (map_type, variant, lint) = if match_type(cx, cx.tables.expr_ty(var_arg), &paths::OPTION) {
         ("Option", "Some", OPTION_MAP_UNIT_FN)
-    } else if match_type(cx, cx.tables.expr_ty(var_arg), &*paths::RESULT) {
+    } else if match_type(cx, cx.tables.expr_ty(var_arg), &paths::RESULT) {
         ("Result", "Ok", RESULT_MAP_UNIT_FN)
     } else {
         return;
@@ -246,7 +245,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapUnit {
         }
 
         if let hir::StmtKind::Semi(ref expr) = stmt.node {
-            if let Some(arglists) = method_chain_args(expr, &[*sym::map]) {
+            if let Some(arglists) = method_chain_args(expr, &["map"]) {
                 lint_map_unit_fn(cx, stmt, expr, arglists[0]);
             }
         }

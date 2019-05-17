@@ -37,7 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
         if_chain! {
             if let ExprKind::Call(ref func, ref args) = expr.node;
             if let ExprKind::Path(ref path) = func.node;
-            if match_qpath(path, &*paths::STD_MEM_TRANSMUTE);
+            if match_qpath(path, &paths::STD_MEM_TRANSMUTE);
             if args.len() == 1;
 
             then {
@@ -79,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
                 if_chain! {
                     if let ExprKind::Call(ref func1, ref args1) = args[0].node;
                     if let ExprKind::Path(ref path1) = func1.node;
-                    if match_qpath(path1, &*paths::STD_PTR_NULL);
+                    if match_qpath(path1, &paths::STD_PTR_NULL);
                     if args1.len() == 0;
                     then {
                         span_lint(
