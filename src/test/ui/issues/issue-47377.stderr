@@ -4,7 +4,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&str`
 LL |      let _a = b + ", World!";
    |               - ^ ---------- &str
    |               | |
-   |               | `+` can't be used to concatenate two `&str` strings
+   |               | `+` cannot be used to concatenate two `&str` strings
    |               &str
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |

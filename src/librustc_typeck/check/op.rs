@@ -527,19 +527,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                    appends the string on the right to the string \
                    on the left and may require reallocation. This \
                    requires ownership of the string on the left";
-        debug!("check_str_addition: {:?} + {:?}", lhs_ty, rhs_ty);
+
+        let is_std_string = |ty| &format!("{:?}", ty) == "std::string::String";
+
         match (&lhs_ty.sty, &rhs_ty.sty) {
             (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
-            if (l_ty.sty == Str || &format!("{:?}", l_ty) == "std::string::String") && (
-                    r_ty.sty == Str ||
-                    &format!("{:?}", r_ty) == "std::string::String" ||
-                    &format!("{:?}", rhs_ty) == "&&str"
-                ) =>
+                if (l_ty.sty == Str || is_std_string(l_ty)) && (
+                        r_ty.sty == Str || is_std_string(r_ty) ||
+                        &format!("{:?}", rhs_ty) == "&&str"
+                    ) =>
             {
                 if !is_assign { // Do not supply this message if `&str += &str`
                     err.span_label(
                         op.span,
-                        "`+` can't be used to concatenate two `&str` strings",
+                        "`+` cannot be used to concatenate two `&str` strings",
                     );
                     match source_map.span_to_snippet(lhs_expr.span) {
                         Ok(lstring) => {
@@ -566,12 +567,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 true
             }
             (&Ref(_, l_ty, _), &Adt(..)) // Handle `&str` & `&String` + `String`
-            if (l_ty.sty == Str || &format!("{:?}", l_ty) == "std::string::String") &&
-                &format!("{:?}", rhs_ty) == "std::string::String" =>
+                if (l_ty.sty == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
             {
                 err.span_label(
                     op.span,
-                    "`+` can't be used to concatenate a `&str` with a `String`",
+                    "`+` cannot be used to concatenate a `&str` with a `String`",
                 );
                 match (
                     source_map.span_to_snippet(lhs_expr.span),

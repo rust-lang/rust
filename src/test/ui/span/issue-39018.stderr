@@ -4,7 +4,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&str`
 LL |     let x = "Hello " + "World!";
    |             -------- ^ -------- &str
    |             |        |
-   |             |        `+` can't be used to concatenate two `&str` strings
+   |             |        `+` cannot be used to concatenate two `&str` strings
    |             &str
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
@@ -27,7 +27,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&str`
 LL |     let x = "Hello " + "World!".to_owned();
    |             -------- ^ ------------------- std::string::String
    |             |        |
-   |             |        `+` can't be used to concatenate a `&str` with a `String`
+   |             |        `+` cannot be used to concatenate a `&str` with a `String`
    |             &str
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
@@ -40,7 +40,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&std::string::Stri
 LL |     let _ = &a + &b;
    |             -- ^ -- &std::string::String
    |             |  |
-   |             |  `+` can't be used to concatenate two `&str` strings
+   |             |  `+` cannot be used to concatenate two `&str` strings
    |             &std::string::String
 help: String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
@@ -53,7 +53,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&std::string::Stri
 LL |     let _ = &a + b;
    |             -- ^ - std::string::String
    |             |  |
-   |             |  `+` can't be used to concatenate a `&str` with a `String`
+   |             |  `+` cannot be used to concatenate a `&str` with a `String`
    |             &std::string::String
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
@@ -78,7 +78,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&std::string::Stri
 LL |     let _ = e + b;
    |             - ^ - std::string::String
    |             | |
-   |             | `+` can't be used to concatenate a `&str` with a `String`
+   |             | `+` cannot be used to concatenate a `&str` with a `String`
    |             &std::string::String
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
@@ -91,7 +91,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&std::string::Stri
 LL |     let _ = e + &b;
    |             - ^ -- &std::string::String
    |             | |
-   |             | `+` can't be used to concatenate two `&str` strings
+   |             | `+` cannot be used to concatenate two `&str` strings
    |             &std::string::String
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
@@ -104,7 +104,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&std::string::Stri
 LL |     let _ = e + d;
    |             - ^ - &str
    |             | |
-   |             | `+` can't be used to concatenate two `&str` strings
+   |             | `+` cannot be used to concatenate two `&str` strings
    |             &std::string::String
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
@@ -117,7 +117,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&std::string::Stri
 LL |     let _ = e + &d;
    |             - ^ -- &&str
    |             | |
-   |             | `+` can't be used to concatenate two `&str` strings
+   |             | `+` cannot be used to concatenate two `&str` strings
    |             &std::string::String
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
@@ -150,7 +150,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&str`
 LL |     let _ = c + &d;
    |             - ^ -- &&str
    |             | |
-   |             | `+` can't be used to concatenate two `&str` strings
+   |             | `+` cannot be used to concatenate two `&str` strings
    |             &str
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
@@ -163,7 +163,7 @@ error[E0369]: binary operation `+` cannot be applied to type `&str`
 LL |     let _ = c + d;
    |             - ^ - &str
    |             | |
-   |             | `+` can't be used to concatenate two `&str` strings
+   |             | `+` cannot be used to concatenate two `&str` strings
    |             &str
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
