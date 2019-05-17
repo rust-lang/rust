@@ -140,6 +140,30 @@ impl<W> Hasher for StableHasher<W> {
 
 /// Something that implements `HashStable<CTX>` can be hashed in a way that is
 /// stable across multiple compilation sessions.
+///
+/// Note that `HashStable` imposes rather more strict requirements than usual
+/// hash functions:
+///
+/// - Stable hashes are sometimes used as identifiers. Therefore they must
+///   conform to the corresponding `PartialEq` implementations:
+///
+///     - `x == y` implies `hash_stable(x) == hash_stable(y)`, and
+///     - `x != y` implies `hash_stable(x) != hash_stable(y)`.
+///
+///   That second condition is usually not required for hash functions
+///   (e.g. `Hash`). In practice this means that `hash_stable` must feed any
+///   information into the hasher that a `PartialEq` comparision takes into
+///   account. See [#49300](https://github.com/rust-lang/rust/issues/49300)
+///   for an example where violating this invariant has caused trouble in the
+///   past.
+///
+/// - `hash_stable()` must be independent of the current
+///    compilation session. E.g. they must not hash memory addresses or other
+///    things that are "randomly" assigned per compilation session.
+///
+/// - `hash_stable()` must be independent of the host architecture. The
+///   `StableHasher` takes care of endianness and `isize`/`usize` platform
+///   differences.
 pub trait HashStable<CTX> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut CTX,
