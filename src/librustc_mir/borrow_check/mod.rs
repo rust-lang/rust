@@ -10,7 +10,9 @@ use rustc::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT};
 use rustc::middle::borrowck::SignalledError;
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{
-    ClearCrossCrate, Local, Location, Mir, Mutability, Operand, Place, PlaceBase, Static, StaticKind
+    ClearCrossCrate, Local, Location, Body, Mutability, Operand, Place, PlaceBase, Static,
+
+    StaticKind
 };
 use rustc::mir::{Field, Projection, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
@@ -118,7 +120,7 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> BorrowC
     }
 
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
-        let input_mir: &Mir<'_> = &input_mir.borrow();
+        let input_mir: &Body<'_> = &input_mir.borrow();
         do_mir_borrowck(&infcx, input_mir, def_id)
     });
     debug!("mir_borrowck done");
@@ -128,7 +130,7 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> BorrowC
 
 fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    input_mir: &Mir<'gcx>,
+    input_mir: &Body<'gcx>,
     def_id: DefId,
 ) -> BorrowCheckResult<'gcx> {
     debug!("do_mir_borrowck(def_id = {:?})", def_id);
@@ -175,7 +177,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     // requires first making our own copy of the MIR. This copy will
     // be modified (in place) to contain non-lexical lifetimes. It
     // will have a lifetime tied to the inference context.
-    let mut mir: Mir<'tcx> = input_mir.clone();
+    let mut mir: Body<'tcx> = input_mir.clone();
     let free_regions = nll::replace_regions_in_mir(infcx, def_id, param_env, &mut mir);
     let mir = &mir; // no further changes
     let location_table = &LocationTable::new(mir);
@@ -451,7 +453,7 @@ fn downgrade_if_error(diag: &mut Diagnostic) {
 
 pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
-    mir: &'cx Mir<'tcx>,
+    mir: &'cx Body<'tcx>,
     mir_def_id: DefId,
     move_data: &'cx MoveData<'tcx>,
 
@@ -537,7 +539,7 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     type FlowState = Flows<'cx, 'gcx, 'tcx>;
 
-    fn mir(&self) -> &'cx Mir<'tcx> {
+    fn mir(&self) -> &'cx Body<'tcx> {
         self.mir
     }
 

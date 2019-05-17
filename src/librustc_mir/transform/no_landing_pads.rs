@@ -12,14 +12,14 @@ impl MirPass for NoLandingPads {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         no_landing_pads(tcx, mir)
     }
 }
 
-pub fn no_landing_pads<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
+pub fn no_landing_pads<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Body<'tcx>) {
     if tcx.sess.no_landing_pads() {
-        NoLandingPads.visit_mir(mir);
+        NoLandingPads.visit_body(mir);
     }
 }
 

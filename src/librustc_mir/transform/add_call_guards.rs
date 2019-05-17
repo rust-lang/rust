@@ -34,13 +34,13 @@ impl MirPass for AddCallGuards {
     fn run_pass<'a, 'tcx>(&self,
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         self.add_call_guards(mir);
     }
 }
 
 impl AddCallGuards {
-    pub fn add_call_guards(&self, mir: &mut Mir<'_>) {
+    pub fn add_call_guards(&self, mir: &mut Body<'_>) {
         let pred_count: IndexVec<_, _> =
             mir.predecessors().iter().map(|ps| ps.len()).collect();
 
