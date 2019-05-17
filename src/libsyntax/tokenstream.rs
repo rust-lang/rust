@@ -572,7 +572,7 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        with_globals(|| {
+        with_globals(&[], || {
             let test_res = string_to_ts("foo::bar::baz");
             let test_fst = string_to_ts("foo::bar");
             let test_snd = string_to_ts("::baz");
@@ -585,7 +585,7 @@ mod tests {
 
     #[test]
     fn test_to_from_bijection() {
-        with_globals(|| {
+        with_globals(&[], || {
             let test_start = string_to_ts("foo::bar(baz)");
             let test_end = test_start.trees().collect();
             assert_eq!(test_start, test_end)
@@ -594,7 +594,7 @@ mod tests {
 
     #[test]
     fn test_eq_0() {
-        with_globals(|| {
+        with_globals(&[], || {
             let test_res = string_to_ts("foo");
             let test_eqs = string_to_ts("foo");
             assert_eq!(test_res, test_eqs)
@@ -603,7 +603,7 @@ mod tests {
 
     #[test]
     fn test_eq_1() {
-        with_globals(|| {
+        with_globals(&[], || {
             let test_res = string_to_ts("::bar::baz");
             let test_eqs = string_to_ts("::bar::baz");
             assert_eq!(test_res, test_eqs)
@@ -612,7 +612,7 @@ mod tests {
 
     #[test]
     fn test_eq_3() {
-        with_globals(|| {
+        with_globals(&[], || {
             let test_res = string_to_ts("");
             let test_eqs = string_to_ts("");
             assert_eq!(test_res, test_eqs)
@@ -621,7 +621,7 @@ mod tests {
 
     #[test]
     fn test_diseq_0() {
-        with_globals(|| {
+        with_globals(&[], || {
             let test_res = string_to_ts("::bar::baz");
             let test_eqs = string_to_ts("bar::baz");
             assert_eq!(test_res == test_eqs, false)
@@ -630,7 +630,7 @@ mod tests {
 
     #[test]
     fn test_diseq_1() {
-        with_globals(|| {
+        with_globals(&[], || {
             let test_res = string_to_ts("(bar,baz)");
             let test_eqs = string_to_ts("bar,baz");
             assert_eq!(test_res == test_eqs, false)
@@ -639,7 +639,7 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        with_globals(|| {
+        with_globals(&[], || {
             let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
             let test1: TokenStream =
                 TokenTree::Token(sp(0, 1), Token::Ident(Ident::from_str("a"), false)).into();

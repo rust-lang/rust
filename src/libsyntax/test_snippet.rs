@@ -39,7 +39,7 @@ impl<T: Write> Write for Shared<T> {
 }
 
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
-    with_globals(|| {
+    with_globals(&[], || {
         let output = Arc::new(Mutex::new(Vec::new()));
 
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));

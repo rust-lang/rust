@@ -189,7 +189,7 @@ impl MutVisitor for AddParens {
 }
 
 fn main() {
-    syntax::with_globals(|| run());
+    syntax::with_globals(&[], || run());
 }
 
 fn run() {

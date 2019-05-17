@@ -1343,7 +1343,7 @@ mod tests {
 
     // make sure idents get transformed everywhere
     #[test] fn ident_transformation () {
-        with_globals(|| {
+        with_globals(&[], || {
             let mut zz_visitor = ToZzIdentMutVisitor;
             let mut krate = string_to_crate(
                 "#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_string());
@@ -1358,7 +1358,7 @@ mod tests {
 
     // even inside macro defs....
     #[test] fn ident_transformation_in_defs () {
-        with_globals(|| {
+        with_globals(&[], || {
             let mut zz_visitor = ToZzIdentMutVisitor;
             let mut krate = string_to_crate(
                 "macro_rules! a {(b $c:expr $(d $e:token)f+ => \

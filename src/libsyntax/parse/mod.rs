@@ -382,7 +382,7 @@ mod tests {
 
     #[should_panic]
     #[test] fn bad_path_expr_1() {
-        with_globals(|| {
+        with_globals(&[], || {
             string_to_expr("::abc::def::return".to_string());
         })
     }
@@ -390,7 +390,7 @@ mod tests {
     // check the token-tree-ization of macros
     #[test]
     fn string_to_tts_macro () {
-        with_globals(|| {
+        with_globals(&[], || {
             use crate::symbol::sym;
 
             let tts: Vec<_> =
@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn string_to_tts_1() {
-        with_globals(|| {
+        with_globals(&[], || {
             let tts = string_to_stream("fn a (b : i32) { b; }".to_string());
 
             let expected = TokenStream::new(vec![
@@ -480,7 +480,7 @@ mod tests {
     }
 
     #[test] fn parse_use() {
-        with_globals(|| {
+        with_globals(&[], || {
             let use_s = "use foo::bar::baz;";
             let vitem = string_to_item(use_s.to_string()).unwrap();
             let vitem_s = item_to_string(&vitem);
@@ -494,7 +494,7 @@ mod tests {
     }
 
     #[test] fn parse_extern_crate() {
-        with_globals(|| {
+        with_globals(&[], || {
             let ex_s = "extern crate foo;";
             let vitem = string_to_item(ex_s.to_string()).unwrap();
             let vitem_s = item_to_string(&vitem);
@@ -531,7 +531,7 @@ mod tests {
     }
 
     #[test] fn span_of_self_arg_pat_idents_are_correct() {
-        with_globals(|| {
+        with_globals(&[], || {
 
             let srcs = ["impl z { fn a (&self, &myarg: i32) {} }",
                         "impl z { fn a (&mut self, &myarg: i32) {} }",
@@ -551,7 +551,7 @@ mod tests {
     }
 
     #[test] fn parse_exprs () {
-        with_globals(|| {
+        with_globals(&[], || {
             // just make sure that they parse....
             string_to_expr("3 + 4".to_string());
             string_to_expr("a::z.froob(b,&(987+3))".to_string());
@@ -559,7 +559,7 @@ mod tests {
     }
 
     #[test] fn attrs_fix_bug () {
-        with_globals(|| {
+        with_globals(&[], || {
             string_to_item("pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
                    -> Result<Box<Writer>, String> {
     #[cfg(windows)]
@@ -576,7 +576,7 @@ mod tests {
     }
 
     #[test] fn crlf_doc_comments() {
-        with_globals(|| {
+        with_globals(&[], || {
             use crate::symbol::sym;
 
             let sess = ParseSess::new(FilePathMapping::empty());
@@ -613,7 +613,7 @@ mod tests {
             new_parser_from_source_str(sess, name, source).parse_expr()
         }
 
-        with_globals(|| {
+        with_globals(&[], || {
             let sess = ParseSess::new(FilePathMapping::empty());
             let expr = parse_expr_from_source_str(PathBuf::from("foo").into(),
                 "foo!( fn main() { body } )".to_string(), &sess).unwrap();
@@ -637,7 +637,7 @@ mod tests {
     // See `recurse_into_file_modules` in the parser.
     #[test]
     fn out_of_line_mod() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sess = ParseSess::new(FilePathMapping::empty());
             let item = parse_item_from_source_str(
                 PathBuf::from("foo").into(),

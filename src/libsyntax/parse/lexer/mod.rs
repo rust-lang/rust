@@ -1601,7 +1601,7 @@ mod tests {
 
     #[test]
     fn t1() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             let mut string_reader = setup(&sm,
@@ -1649,7 +1649,7 @@ mod tests {
 
     #[test]
     fn doublecolonparsing() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             check_tokenization(setup(&sm, &sh, "a b".to_string()),
@@ -1659,7 +1659,7 @@ mod tests {
 
     #[test]
     fn dcparsing_2() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             check_tokenization(setup(&sm, &sh, "a::b".to_string()),
@@ -1669,7 +1669,7 @@ mod tests {
 
     #[test]
     fn dcparsing_3() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             check_tokenization(setup(&sm, &sh, "a ::b".to_string()),
@@ -1679,7 +1679,7 @@ mod tests {
 
     #[test]
     fn dcparsing_4() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             check_tokenization(setup(&sm, &sh, "a:: b".to_string()),
@@ -1689,7 +1689,7 @@ mod tests {
 
     #[test]
     fn character_a() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token().tok,
@@ -1699,7 +1699,7 @@ mod tests {
 
     #[test]
     fn character_space() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token().tok,
@@ -1709,7 +1709,7 @@ mod tests {
 
     #[test]
     fn character_escaped() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token().tok,
@@ -1719,7 +1719,7 @@ mod tests {
 
     #[test]
     fn lifetime_name() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token().tok,
@@ -1729,7 +1729,7 @@ mod tests {
 
     #[test]
     fn raw_string() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
@@ -1741,7 +1741,7 @@ mod tests {
 
     #[test]
     fn literal_suffixes() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             macro_rules! test {
@@ -1787,7 +1787,7 @@ mod tests {
 
     #[test]
     fn nested_block_comments() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             let mut lexer = setup(&sm, &sh, "/* /* */ */'a'".to_string());
@@ -1802,7 +1802,7 @@ mod tests {
 
     #[test]
     fn crlf_comments() {
-        with_globals(|| {
+        with_globals(&[], || {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             let mut lexer = setup(&sm, &sh, "// test\r\n/// test\r\n".to_string());
