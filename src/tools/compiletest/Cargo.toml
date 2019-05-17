@@ -7,7 +7,6 @@ edition = "2018"
 [dependencies]
 diff = "0.1.10"
 env_logger = { version = "0.5", default-features = false }
-filetime = "0.2"
 getopts = "0.2"
 log = "0.4"
 regex = "1.0"
