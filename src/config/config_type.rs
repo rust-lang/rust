@@ -60,6 +60,7 @@ impl ConfigType for IgnoreList {
 /// If we're being built by cargo (e.g., `cargo +nightly install rustfmt-nightly`),
 /// `CFG_RELEASE_CHANNEL` is not set. As we only support being built against the
 /// nightly compiler when installed from crates.io, default to nightly mode.
+#[macro_export]
 macro_rules! is_nightly_channel {
     () => {
         option_env!("CFG_RELEASE_CHANNEL").map_or(true, |c| c == "nightly" || c == "dev")
