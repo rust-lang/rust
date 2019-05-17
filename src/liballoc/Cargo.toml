@@ -33,3 +33,4 @@ harness = false
 
 [features]
 compiler-builtins-mem = ['compiler_builtins/mem']
+compiler-builtins-c = ["compiler_builtins/c"]
