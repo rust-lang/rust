@@ -613,7 +613,7 @@ impl Default for Options {
             incremental: None,
             debugging_opts: basic_debugging_options(),
             prints: Vec::new(),
-            borrowck_mode: BorrowckMode::Migrate,
+            borrowck_mode: BorrowckMode::Mir,
             cg: basic_codegen_options(),
             error_format: ErrorOutputType::default(),
             externs: Externs(BTreeMap::new()),
@@ -2328,8 +2328,8 @@ pub fn build_session_options_and_crate_config(
     }));
 
     let borrowck_mode = match debugging_opts.borrowck.as_ref().map(|s| &s[..]) {
-        None | Some("migrate") => BorrowckMode::Migrate,
-        Some("mir") => BorrowckMode::Mir,
+        Some("migrate") => BorrowckMode::Migrate,
+        None | Some("mir") => BorrowckMode::Mir,
         Some(m) => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
     };
 
