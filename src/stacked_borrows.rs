@@ -237,10 +237,10 @@ impl<'tcx> Stack {
                 bug!("Cannot use Disabled for anything"),
             Permission::Unique =>
                 // On a write, everything above us is incompatible.
-                granting+1,
+                granting + 1,
             Permission::SharedReadWrite => {
                 // The SharedReadWrite *just* above us are compatible, to skip those.
-                let mut idx = granting+1;
+                let mut idx = granting + 1;
                 while let Some(item) = self.borrows.get(idx) {
                     if item.perm == Permission::SharedReadWrite {
                         // Go on.
