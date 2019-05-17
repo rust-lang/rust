@@ -21,6 +21,10 @@ impl Stdout {
     pub fn new() -> io::Result<Stdout> {
         Ok(Stdout(()))
     }
+
+    pub fn is_tty(&self) -> bool {
+        false
+    }
 }
 
 impl io::Write for Stdout {
@@ -60,6 +64,7 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 }
 
 pub const STDIN_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
+pub const STDOUT_BUF_SIZE: usize = 0;
 
 pub fn panic_output() -> Option<impl io::Write> {
     Stderr::new().ok()

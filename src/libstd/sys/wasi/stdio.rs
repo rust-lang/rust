@@ -27,6 +27,11 @@ impl Stdout {
         Ok(Stdout)
     }
 
+    // FIXME: implement?
+    pub fn is_tty(&self) -> bool {
+        false
+    }
+
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
         self.write_vectored(&[IoSlice::new(data)])
     }
@@ -71,6 +76,7 @@ impl io::Write for Stderr {
 }
 
 pub const STDIN_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
+pub const STDOUT_BUF_SIZE: usize = 0;
 
 pub fn is_ebadf(err: &io::Error) -> bool {
     err.raw_os_error() == Some(libc::__WASI_EBADF as i32)

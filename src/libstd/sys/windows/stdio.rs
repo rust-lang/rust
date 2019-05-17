@@ -246,6 +246,30 @@ impl Stdout {
     pub fn new() -> io::Result<Stdout> {
         Ok(Stdout)
     }
+
+    pub fn is_tty(&self) -> bool {
+        // Because these functions do not detect if the program is being run under a Cygwin/MSYS2
+        // TTY, we just try our best to see if we are being piped on Windows Console.  If we can't
+        // tell, we fallback to assuming we are on a TTY
+        if let Ok(handle) = get_handle(c::STD_OUTPUT_HANDLE) {
+            if is_console(handle) {
+                true
+            } else {
+                // We need to check if at least one of the other stdio handles is connected to the
+                // console
+                let stdin = get_handle(c::STD_INPUT_HANDLE)
+                    .map(is_console)
+                    .unwrap_or(false);
+                let stderr = get_handle(c::STD_ERROR_HANDLE)
+                    .map(is_console)
+                    .unwrap_or(false);
+
+                !(stdin || stderr)
+            }
+        } else {
+            false
+        }
+    }
 }
 
 impl io::Write for Stdout {

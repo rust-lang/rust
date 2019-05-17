@@ -5,7 +5,7 @@ use crate::io::prelude::*;
 use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
-use crate::io::{self, Initializer, BufReader, LineWriter, IoSlice, IoSliceMut};
+use crate::io::{self, Initializer, BufReader, BufWriter, LineWriter, IoSlice, IoSliceMut};
 use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -398,10 +398,7 @@ impl fmt::Debug for StdinLock<'_> {
 /// [`io::stdout`]: fn.stdout.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
-    // FIXME: this should be LineWriter or BufWriter depending on the state of
-    //        stdout (tty or not). Note that if this is not line buffered it
-    //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>,
+    inner: Arc<ReentrantMutex<RefCell<StdoutStream>>>,
 }
 
 /// A locked reference to the `Stdout` handle.
@@ -418,7 +415,7 @@ pub struct Stdout {
 /// [`Stdout::lock`]: struct.Stdout.html#method.lock
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
-    inner: ReentrantMutexGuard<'a, RefCell<LineWriter<Maybe<StdoutRaw>>>>,
+    inner: ReentrantMutexGuard<'a, RefCell<StdoutStream>>,
 }
 
 /// Constructs a new handle to the standard output of the current process.
@@ -464,20 +461,80 @@ pub struct StdoutLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> = Lazy::new();
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<StdoutStream>>> = Lazy::new();
     return Stdout {
         inner: unsafe {
             INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown")
         },
     };
 
-    fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> {
+    fn stdout_init() -> Arc<ReentrantMutex<RefCell<StdoutStream>>> {
         // This must not reentrantly access `INSTANCE`
         let stdout = match stdout_raw() {
-            Ok(stdout) => Maybe::Real(stdout),
-            _ => Maybe::Fake,
+            Ok(stdout) => {
+                let tty = stdout.0.is_tty();
+                let stdout = Maybe::Real(stdout);
+                if tty {
+                    let inner = LineWriter::new(stdout);
+                    StdoutStream::LineBuffered(inner)
+                } else {
+                    let inner = BufWriter::with_capacity(stdio::STDOUT_BUF_SIZE, stdout);
+                    StdoutStream::BlockBuffered(inner)
+                }
+            }
+            _ => StdoutStream::LineBuffered(LineWriter::new(Maybe::Fake)),
         };
-        Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))))
+        Arc::new(ReentrantMutex::new(RefCell::new(stdout)))
+    }
+}
+
+/// Container to allow switching between block buffering and line buffering for the process's
+/// standard output.
+enum StdoutStream {
+    BlockBuffered(BufWriter<Maybe<StdoutRaw>>),
+    LineBuffered(LineWriter<Maybe<StdoutRaw>>),
+}
+
+impl Write for StdoutStream {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        use self::StdoutStream::*;
+
+        match self {
+            BlockBuffered(w) => w.write(buf),
+            LineBuffered(w) => w.write(buf),
+        }
+    }
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        use self::StdoutStream::*;
+
+        match self {
+            BlockBuffered(w) => w.write_vectored(bufs),
+            LineBuffered(w) => w.write_vectored(bufs),
+        }
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        use self::StdoutStream::*;
+
+        match self {
+            BlockBuffered(w) => w.flush(),
+            LineBuffered(w) => w.flush(),
+        }
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        use self::StdoutStream::*;
+
+        match self {
+            BlockBuffered(w) => w.write_all(buf),
+            LineBuffered(w) => w.write_all(buf)
+        }
+    }
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        use self::StdoutStream::*;
+
+        match self {
+            BlockBuffered(w) => w.write_fmt(args),
+            LineBuffered(w) => w.write_fmt(args),
+        }
     }
 }
 

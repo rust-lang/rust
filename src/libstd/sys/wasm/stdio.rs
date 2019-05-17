@@ -21,6 +21,10 @@ impl Stdout {
     pub fn new() -> io::Result<Stdout> {
         Ok(Stdout)
     }
+
+    pub fn is_tty(&self) -> bool {
+        false
+    }
 }
 
 impl io::Write for Stdout {
@@ -52,6 +56,7 @@ impl io::Write for Stderr {
 }
 
 pub const STDIN_BUF_SIZE: usize = 0;
+pub const STDOUT_BUF_SIZE: usize = 0;
 
 pub fn is_ebadf(_err: &io::Error) -> bool {
     true

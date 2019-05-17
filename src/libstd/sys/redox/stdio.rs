@@ -21,6 +21,15 @@ impl io::Read for Stdin {
 
 impl Stdout {
     pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
+
+    pub fn is_tty(&self) -> bool {
+        if let Ok(fd) = syscall::dup(1, b"termios") {
+            let _ = syscall::close(fd);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl io::Write for Stdout {
@@ -58,6 +67,7 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 }
 
 pub const STDIN_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
+pub const STDOUT_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
 
 pub fn panic_output() -> Option<impl io::Write> {
     Stderr::new().ok()

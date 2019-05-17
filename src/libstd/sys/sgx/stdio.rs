@@ -30,6 +30,11 @@ impl io::Read for Stdin {
 
 impl Stdout {
     pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
+
+    // FIXME: implement
+    pub fn is_tty(&self) -> bool {
+        false
+    }
 }
 
 impl io::Write for Stdout {
@@ -57,6 +62,7 @@ impl io::Write for Stderr {
 }
 
 pub const STDIN_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
+pub const STDOUT_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
 
 pub fn is_ebadf(err: &io::Error) -> bool {
     // FIXME: Rust normally maps Unix EBADF to `Other`
