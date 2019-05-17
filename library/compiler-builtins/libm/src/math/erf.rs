@@ -214,6 +214,11 @@ fn erfc2(ix: u32, mut x: f64) -> f64 {
     exp(-z * z - 0.5625) * exp((z - x) * (z + x) + r / big_s) / x
 }
 
+/// Error function (f64)
+///
+/// Calculates an approximation to the “error function”, which estimates
+/// the probability that an observation will fall within x standard
+/// deviations of the mean (assuming a normal distribution).
 pub fn erf(x: f64) -> f64 {
     let r: f64;
     let s: f64;
@@ -257,6 +262,12 @@ pub fn erf(x: f64) -> f64 {
     }
 }
 
+/// Error function (f64)
+///
+/// Calculates the complementary probability.
+/// Is `1 - erf(x)`. Is computed directly, so that you can use it to avoid
+/// the loss of precision that would result from subtracting
+/// large probabilities (on large `x`) from 1.
 pub fn erfc(x: f64) -> f64 {
     let r: f64;
     let s: f64;

@@ -2,6 +2,9 @@ use core::f64;
 
 const TOINT: f64 = 1. / f64::EPSILON;
 
+/// Floor (f64)
+///
+/// Finds the nearest integer less than or equal to `x`.
 #[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn floor(x: f64) -> f64 {

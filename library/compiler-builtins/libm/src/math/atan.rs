@@ -60,6 +60,10 @@ const AT: [f64; 11] = [
     1.62858201153657823623e-02,  /* 0x3F90AD3A, 0xE322DA11 */
 ];
 
+/// Arctangent (f64)
+///
+/// Computes the inverse tangent (arc tangent) of the input value.
+/// Returns a value in radians, in the range of -pi/2 to pi/2.
 #[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn atan(x: f64) -> f64 {

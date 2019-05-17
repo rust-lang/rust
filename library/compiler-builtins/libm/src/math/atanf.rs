@@ -37,6 +37,10 @@ const A_T: [f32; 5] = [
     6.1687607318e-02,
 ];
 
+/// Arctangent (f32)
+///
+/// Computes the inverse tangent (arc tangent) of the input value.
+/// Returns a value in radians, in the range of -pi/2 to pi/2.
 #[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn atanf(mut x: f32) -> f32 {

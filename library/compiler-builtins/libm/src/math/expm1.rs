@@ -23,6 +23,13 @@ const Q3: f64 = -7.93650757867487942473e-05; /* BF14CE19 9EAADBB7 */
 const Q4: f64 = 4.00821782732936239552e-06; /* 3ED0CFCA 86E65239 */
 const Q5: f64 = -2.01099218183624371326e-07; /* BE8AFDB7 6E09C32D */
 
+/// Exponential, base *e*, of x-1 (f64)
+///
+/// Calculates the exponential of `x` and subtract 1, that is, *e* raised
+/// to the power `x` minus 1 (where *e* is the base of the natural
+/// system of logarithms, approximately 2.71828).
+/// The result is accurate even for small values of `x`,
+/// where using `exp(x)-1` would lose many significant digits.
 #[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn expm1(mut x: f64) -> f64 {

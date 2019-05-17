@@ -29,6 +29,11 @@ fn r(z: f32) -> f32 {
     p / q
 }
 
+/// Arccosine (f32)
+///
+/// Computes the inverse cosine (arc cosine) of the input value.
+/// Arguments must be in the range -1 to 1.
+/// Returns values in radians, in the range of 0 to pi.
 #[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn acosf(x: f32) -> f32 {

@@ -1,5 +1,8 @@
 use core::f32;
 
+/// Floor (f64)
+///
+/// Finds the nearest integer less than or equal to `x`.
 #[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn floorf(x: f32) -> f32 {

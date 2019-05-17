@@ -77,6 +77,10 @@ const P3: f64 = 6.61375632143793436117e-05; /* 0x3F11566A, 0xAF25DE2C */
 const P4: f64 = -1.65339022054652515390e-06; /* 0xBEBBBD41, 0xC5D26BF1 */
 const P5: f64 = 4.13813679705723846039e-08; /* 0x3E663769, 0x72BEA4D0 */
 
+/// Exponential, base *e* (f64)
+///
+/// Calculate the exponential of `x`, that is, *e* raised to the power `x`
+/// (where *e* is the base of the natural system of logarithms, approximately 2.71828).
 #[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn exp(mut x: f64) -> f64 {
