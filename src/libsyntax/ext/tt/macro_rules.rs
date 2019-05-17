@@ -252,8 +252,8 @@ pub fn compile(
     def: &ast::Item,
     edition: Edition
 ) -> SyntaxExtension {
-    let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
-    let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
+    let lhs_nm = ast::Ident::from_str("lhs").gensym();
+    let rhs_nm = ast::Ident::from_str("rhs").gensym();
 
     // Parse the macro_rules! invocation
     let body = match def.node {

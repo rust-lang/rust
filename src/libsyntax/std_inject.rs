@@ -2,7 +2,7 @@ use crate::ast;
 use crate::attr;
 use crate::edition::Edition;
 use crate::ext::hygiene::{Mark, SyntaxContext};
-use crate::symbol::{Symbol, keywords, sym};
+use crate::symbol::{Ident, Symbol, keywords, sym};
 use crate::source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
 use crate::ptr::P;
 use crate::tokenstream::TokenStream;
@@ -66,10 +66,12 @@ pub fn maybe_inject_crates_ref(
     for orig_name_str in names.iter().rev() {
         // HACK(eddyb) gensym the injected crates on the Rust 2018 edition,
         // so they don't accidentally interfere with the new import paths.
+        let orig_name_sym = Symbol::intern(orig_name_str);
+        let orig_name_ident = Ident::with_empty_ctxt(orig_name_sym);
         let (rename, orig_name) = if rust_2018 {
-            (Symbol::gensym(orig_name_str), Some(Symbol::intern(orig_name_str)))
+            (orig_name_ident.gensym(), Some(orig_name_sym))
         } else {
-            (Symbol::intern(orig_name_str), None)
+            (orig_name_ident, None)
         };
         krate.module.items.insert(0, P(ast::Item {
             attrs: vec![attr::mk_attr_outer(
@@ -79,7 +81,7 @@ pub fn maybe_inject_crates_ref(
             )],
             vis: dummy_spanned(ast::VisibilityKind::Inherited),
             node: ast::ItemKind::ExternCrate(alt_std_name.or(orig_name)),
-            ident: ast::Ident::with_empty_ctxt(rename),
+            ident: rename,
             id: ast::DUMMY_NODE_ID,
             span: DUMMY_SP,
             tokens: None,
