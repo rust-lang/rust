@@ -579,10 +579,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     is_assign,
                 ) {
                     (Ok(l), Ok(r), false) => {
+                        let to_string = if l.starts_with("&") {
+                            // let a = String::new(); let b = String::new();
+                            // let _ = &a + b;
+                            format!("{}", &l[1..])
+                        } else {
+                            format!("{}.to_owned()", l)
+                        };
                         err.multipart_suggestion(
                             msg,
                             vec![
-                                (lhs_expr.span, format!("{}.to_owned()", l)),
+                                (lhs_expr.span, to_string),
                                 (rhs_expr.span, format!("&{}", r)),
                             ],
                             Applicability::MachineApplicable,
