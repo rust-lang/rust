@@ -1,3 +1,6 @@
+// FIXME(#4108)
+
+/*
 #![warn(clippy::serde_api_misuse)]
 #![allow(dead_code)]
 
@@ -43,5 +46,5 @@ impl<'de> serde::de::Visitor<'de> for B {
         unimplemented!()
     }
 }
-
+*/
 fn main() {}
