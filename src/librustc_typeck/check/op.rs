@@ -502,6 +502,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         false
     }
 
+    /// Provide actionable suggestions when trying to add two strings with incorrect types,
+    /// like `&str + &str`, `String + String` and `&str + &String`.
+    ///
+    /// If this function returns `true` it means a note was printed, so we don't need
+    /// to print the normal "implementation of `std::ops::Add` might be missing" note
     fn check_str_addition(
         &self,
         expr: &'gcx hir::Expr,
@@ -514,33 +519,57 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         op: hir::BinOp,
     ) -> bool {
         let source_map = self.tcx.sess.source_map();
+        let remove_borrow_msg = "String concatenation appends the string on the right to the \
+                                 string on the left and may require reallocation. This \
+                                 requires ownership of the string on the left";
+
         let msg = "`to_owned()` can be used to create an owned `String` \
                    from a string reference. String concatenation \
                    appends the string on the right to the string \
                    on the left and may require reallocation. This \
                    requires ownership of the string on the left";
-        // If this function returns true it means a note was printed, so we don't need
-        // to print the normal "implementation of `std::ops::Add` might be missing" note
+        debug!("check_str_addition: {:?} + {:?}", lhs_ty, rhs_ty);
         match (&lhs_ty.sty, &rhs_ty.sty) {
-            (&Ref(_, l_ty, _), &Ref(_, r_ty, _))
-            if l_ty.sty == Str && r_ty.sty == Str => {
+            (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
+            if (l_ty.sty == Str || &format!("{:?}", l_ty) == "std::string::String") && (
+                    r_ty.sty == Str ||
+                    &format!("{:?}", r_ty) == "std::string::String" ||
+                    &format!("{:?}", rhs_ty) == "&&str"
+                ) =>
+            {
                 if !is_assign {
-                    err.span_label(op.span,
-                                   "`+` can't be used to concatenate two `&str` strings");
+                    err.span_label(
+                        op.span,
+                        "`+` can't be used to concatenate two `&str` strings",
+                    );
                     match source_map.span_to_snippet(lhs_expr.span) {
-                        Ok(lstring) => err.span_suggestion(
-                            lhs_expr.span,
-                            msg,
-                            format!("{}.to_owned()", lstring),
-                            Applicability::MachineApplicable,
-                        ),
+                        Ok(lstring) => {
+                            err.span_suggestion(
+                                lhs_expr.span,
+                                if lstring.starts_with("&") {
+                                    remove_borrow_msg
+                                } else {
+                                    msg
+                                },
+                                if lstring.starts_with("&") {
+                                    // let a = String::new();
+                                    // let _ = &a + "bar";
+                                    format!("{}", &lstring[1..])
+                                } else {
+                                    format!("{}.to_owned()", lstring)
+                                },
+                                Applicability::MachineApplicable,
+                            )
+                        }
                         _ => err.help(msg),
                     };
                 }
                 true
             }
-            (&Ref(_, l_ty, _), &Adt(..))
-            if l_ty.sty == Str && &format!("{:?}", rhs_ty) == "std::string::String" => {
+            (&Ref(_, l_ty, _), &Adt(..)) // Handle `&str` & `&String` + `String`
+            if (l_ty.sty == Str || &format!("{:?}", l_ty) == "std::string::String") &&
+                &format!("{:?}", rhs_ty) == "std::string::String" =>
+            {
                 err.span_label(expr.span,
                     "`+` can't be used to concatenate a `&str` with a `String`");
                 match (
