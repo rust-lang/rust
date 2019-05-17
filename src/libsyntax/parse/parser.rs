@@ -3154,7 +3154,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses an `if` or `if let` expression (`if` token already eaten).
+    /// Parses an `if` expression (`if` token already eaten).
     fn parse_if_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
