@@ -343,7 +343,7 @@ impl UnusedParens {
             ast::ExprKind::Let(_, ref expr) => {
                 // FIXME(#60336): Properly handle `let true = (false && true)`
                 // actually needing the parenthesis.
-                self.check_unused_parens_expr(cx, expr, "`let` scrutinee", followed_by_block);
+                self.check_unused_parens_expr(cx, expr, "`let` head expression", followed_by_block);
             }
             _ => {}
         }

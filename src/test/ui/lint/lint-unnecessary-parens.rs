@@ -22,8 +22,8 @@ fn main() {
     match (true) { //~ ERROR unnecessary parentheses around `match` head expression
         _ => {}
     }
-    if let 1 = (1) {} //~ ERROR unnecessary parentheses around `let` scrutinee
-    while let 1 = (2) {} //~ ERROR unnecessary parentheses around `let` scrutinee
+    if let 1 = (1) {} //~ ERROR unnecessary parentheses around `let` head expression
+    while let 1 = (2) {} //~ ERROR unnecessary parentheses around `let` head expression
     let v = X { y: false };
     // struct lits needs parens, so these shouldn't warn.
     if (v == X { y: true }) {}
