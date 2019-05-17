@@ -1225,11 +1225,13 @@ pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
 ///
 /// This is a lower-level version of [`Entry`].
 ///
-/// This `enum` is constructed from the [`raw_entry`] method on [`HashMap`].
+/// This `enum` is constructed through the [`raw_entry_mut`] method on [`HashMap`],
+/// then calling one of the methods of that [`RawEntryBuilderMut`].
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`Entry`]: enum.Entry.html
-/// [`raw_entry`]: struct.HashMap.html#method.raw_entry
+/// [`raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
+/// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
     /// An occupied entry.
