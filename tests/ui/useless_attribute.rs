@@ -1,6 +1,7 @@
 // aux-build:proc_macro_derive.rs
 
 #![warn(clippy::useless_attribute)]
+#![warn(unreachable_pub)]
 
 #[allow(dead_code)]
 #[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
@@ -31,5 +32,17 @@ pub use foo::Bar;
 // that would trigger the useless_attribute lint.
 #[derive(DeriveSomething)]
 struct Baz;
+
+// don't lint on unreachable_pub for `use` items
+mod a {
+    mod b {
+        #[allow(dead_code)]
+        #[allow(unreachable_pub)]
+        pub struct C {}
+    }
+
+    #[allow(unreachable_pub)]
+    pub use self::b::C;
+}
 
 fn main() {}

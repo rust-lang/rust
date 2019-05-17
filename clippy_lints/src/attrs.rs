@@ -49,9 +49,9 @@ declare_clippy_lint! {
     /// **What it does:** Checks for `extern crate` and `use` items annotated with
     /// lint attributes.
     ///
-    /// This lint whitelists `#[allow(unused_imports)]` and `#[allow(deprecated)]` on
-    /// `use` items and `#[allow(unused_imports)]` on `extern crate` items with a
-    /// `#[macro_use]` attribute.
+    /// This lint whitelists `#[allow(unused_imports)]`, `#[allow(deprecated)]` and
+    /// `#[allow(unreachable_pub)]` on `use` items and `#[allow(unused_imports)]` on
+    /// `extern crate` items with a `#[macro_use]` attribute.
     ///
     /// **Why is this bad?** Lint attributes have no effect on crate imports. Most
     /// likely a `!` was forgotten.
@@ -239,13 +239,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                         if let Some(ident) = attr.ident() {
                             match &*ident.as_str() {
                                 "allow" | "warn" | "deny" | "forbid" => {
-                                    // whitelist `unused_imports` and `deprecated` for `use` items
+                                    // whitelist `unused_imports`, `deprecated` and `unreachable_pub` for `use` items
                                     // and `unused_imports` for `extern crate` items with `macro_use`
                                     for lint in lint_list {
                                         match item.node {
                                             ItemKind::Use(..) => {
                                                 if is_word(lint, sym!(unused_imports))
                                                     || is_word(lint, sym!(deprecated))
+                                                    || is_word(lint, sym!(unreachable_pub))
                                                 {
                                                     return;
                                                 }
