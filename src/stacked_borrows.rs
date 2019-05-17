@@ -42,6 +42,9 @@ pub enum Permission {
     SharedReadWrite,
     /// Greants shared read-only access.
     SharedReadOnly,
+    /// Grants no access, but separates two groups of SharedReadWrite so they are not
+    /// all considered mutually compatible.
+    Disabled,
 }
 
 /// An item in the per-location borrow stack.
@@ -199,8 +202,8 @@ impl Default for Tag {
 impl Permission {
     /// This defines for a given permission, whether it permits the given kind of access.
     fn grants(self, access: AccessKind) -> bool {
-        // All items grant read access, and except for SharedReadOnly they grant write access.
-        access == AccessKind::Read || self != Permission::SharedReadOnly
+        // Disabled grants nother. Otherwise, all items grant read access, and except for SharedReadOnly they grant write access.
+        self != Permission::Disabled && (access == AccessKind::Read || self != Permission::SharedReadOnly)
     }
 }
 
@@ -224,12 +227,14 @@ impl<'tcx> Stack {
     }
 
     /// Find the first write-incompatible item above the given one -- 
-    /// i.e, find the heigh to which the stack will be truncated when writing to `granting`.
+    /// i.e, find the height to which the stack will be truncated when writing to `granting`.
     fn find_first_write_incompaible(&self, granting: usize) -> usize {
         let perm = self.borrows[granting].perm;
         match perm {
             Permission::SharedReadOnly =>
                 bug!("Cannot use SharedReadOnly for writing"),
+            Permission::Disabled =>
+                bug!("Cannot use Disabled for anything"),
             Permission::Unique =>
                 // On a write, everything above us is incompatible.
                 granting+1,
@@ -250,10 +255,8 @@ impl<'tcx> Stack {
         }
     }
 
-    /// Remove the given item, enforcing barriers.
-    /// `tag` is just used for the error message.
-    fn remove(&mut self, idx: usize, tag: Option<Tag>, global: &GlobalState) -> EvalResult<'tcx> {
-        let item = self.borrows.remove(idx);
+    /// Check if the given item is protected.
+    fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> EvalResult<'tcx> {
         if let Some(call) = item.protector {
             if global.is_active(call) {
                 if let Some(tag) = tag {
@@ -268,7 +271,6 @@ impl<'tcx> Stack {
                 }
             }
         }
-        trace!("access: removing item {}", item);
         Ok(())
     }
 
@@ -295,20 +297,26 @@ impl<'tcx> Stack {
             // Remove everything above the write-compatible items, like a proper stack. This makes sure read-only and unique
             // pointers become invalid on write accesses (ensures F2a, and ensures U2 for write accesses).
             let first_incompatible_idx = self.find_first_write_incompaible(granting_idx);
-            for idx in (first_incompatible_idx..self.borrows.len()).rev() {
-                self.remove(idx, Some(tag), global)?;
+            while self.borrows.len() > first_incompatible_idx {
+                let item = self.borrows.pop().unwrap();
+                trace!("access: popping item {}", item);
+                Stack::check_protector(&item, Some(tag), global)?;
             }
         } else {
-            // On a read, remove all `Unique` above the granting item.  This ensures U2 for read accesses.
-            // The reason this is not following the stack discipline is that in
-            // `let raw = &mut *x as *mut _; let _val = *x;`, the second statement
+            // On a read, *disable* all `Unique` above the granting item.  This ensures U2 for read accesses.
+            // The reason this is not following the stack discipline (by removing the first Unique and
+            // everything on top of it) is that in `let raw = &mut *x as *mut _; let _val = *x;`, the second statement
             // would pop the `Unique` from the reborrow of the first statement, and subsequently also pop the
             // `SharedReadWrite` for `raw`.
             // This pattern occurs a lot in the standard library: create a raw pointer, then also create a shared
             // reference and use that.
+            // We *disable* instead of removing `Unique` to avoid "connecting" two neighbouring blocks of SRWs.
             for idx in (granting_idx+1 .. self.borrows.len()).rev() {
-                if self.borrows[idx].perm == Permission::Unique {
-                    self.remove(idx, Some(tag), global)?;
+                let item = &mut self.borrows[idx];
+                if item.perm == Permission::Unique {
+                    trace!("access: disabling item {}", item);
+                    Stack::check_protector(item, Some(tag), global)?;
+                    item.perm = Permission::Disabled;
                 }
             }
         }
@@ -332,8 +340,9 @@ impl<'tcx> Stack {
             )))?;
 
         // Step 2: Remove all items.  Also checks for protectors.
-        for idx in (0..self.borrows.len()).rev() {
-            self.remove(idx, None, global)?;
+        while self.borrows.len() > 0 {
+            let item = self.borrows.pop().unwrap();
+            Stack::check_protector(&item, None, global)?;
         }
 
         Ok(())
