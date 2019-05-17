@@ -677,7 +677,8 @@ impl Ident {
     }
 
     pub fn gensym(self) -> Ident {
-        Ident::new(self.name.gensymed(), self.span)
+        let name = with_interner(|interner| interner.gensymed(self.name));
+        Ident::new(name, self.span)
     }
 
     pub fn gensym_if_underscore(self) -> Ident {
@@ -785,10 +786,6 @@ impl Symbol {
     /// Gensyms a new `usize`, using the current interner.
     pub fn gensym(string: &str) -> Self {
         with_interner(|interner| interner.gensym(string))
-    }
-
-    pub fn gensymed(self) -> Self {
-        with_interner(|interner| interner.gensymed(self))
     }
 
     pub fn as_str(self) -> LocalInternedString {

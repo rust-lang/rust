@@ -63,18 +63,13 @@ pub fn maybe_inject_crates_ref(
 
     // .rev() to preserve ordering above in combination with insert(0, ...)
     let alt_std_name = alt_std_name.map(Symbol::intern);
-    for orig_name in names.iter().rev() {
-        let orig_name = Symbol::intern(orig_name);
-        let mut rename = orig_name;
+    for orig_name_str in names.iter().rev() {
         // HACK(eddyb) gensym the injected crates on the Rust 2018 edition,
         // so they don't accidentally interfere with the new import paths.
-        if rust_2018 {
-            rename = orig_name.gensymed();
-        }
-        let orig_name = if rename != orig_name {
-            Some(orig_name)
+        let (rename, orig_name) = if rust_2018 {
+            (Symbol::gensym(orig_name_str), Some(Symbol::intern(orig_name_str)))
         } else {
-            None
+            (Symbol::intern(orig_name_str), None)
         };
         krate.module.items.insert(0, P(ast::Item {
             attrs: vec![attr::mk_attr_outer(
