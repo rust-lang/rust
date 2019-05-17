@@ -139,7 +139,7 @@ const HEURISTICS: [(&str, usize, Heuristic, Finiteness); 19] = [
 fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
     match expr.node {
         ExprKind::MethodCall(ref method, _, ref args) => {
-            for &(name, len, heuristic, cap) in HEURISTICS.iter() {
+            for &(name, len, heuristic, cap) in &HEURISTICS {
                 if method.ident.name.as_str() == name && args.len() == len {
                     return (match heuristic {
                         Always => Infinite,
@@ -215,12 +215,12 @@ const INFINITE_COLLECTORS: [&[&str]; 8] = [
 fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
     match expr.node {
         ExprKind::MethodCall(ref method, _, ref args) => {
-            for &(name, len) in COMPLETING_METHODS.iter() {
+            for &(name, len) in &COMPLETING_METHODS {
                 if method.ident.name.as_str() == name && args.len() == len {
                     return is_infinite(cx, &args[0]);
                 }
             }
-            for &(name, len) in POSSIBLY_COMPLETING_METHODS.iter() {
+            for &(name, len) in &POSSIBLY_COMPLETING_METHODS {
                 if method.ident.name.as_str() == name && args.len() == len {
                     return MaybeInfinite.and(is_infinite(cx, &args[0]));
                 }

@@ -6,7 +6,6 @@ use std::fmt;
 use std::iter;
 
 use if_chain::if_chain;
-use lazy_static::lazy_static;
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
@@ -17,7 +16,7 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast;
 use syntax::source_map::{BytePos, Span};
-use syntax::symbol::{LocalInternedString, Symbol};
+use syntax::symbol::LocalInternedString;
 
 use crate::utils::paths;
 use crate::utils::sugg;
@@ -914,8 +913,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
 
                 match self_ty.sty {
                     ty::Ref(_, ty, _) if ty.sty == ty::Str => {
-                        for &(method, pos) in PATTERN_METHODS.iter() {
-                            if method_call.ident.name == method && args.len() > pos {
+                        for &(method, pos) in &PATTERN_METHODS {
+                            if method_call.ident.name.as_str() == method && args.len() > pos {
                                 lint_single_char_pattern(cx, expr, &args[pos]);
                             }
                         }
@@ -945,7 +944,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         if in_external_macro(cx.sess(), implitem.span) {
             return;
         }
-        let name = implitem.ident.name;
+        let name = implitem.ident.name.as_str();
         let parent = cx.tcx.hir().get_parent_item(implitem.hir_id);
         let item = cx.tcx.hir().expect_item_by_hir_id(parent);
         let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
@@ -958,7 +957,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             then {
                 if cx.access_levels.is_exported(implitem.hir_id) {
                 // check missing trait implementations
-                    for &(method_name, n_args, self_kind, out_type, trait_name) in TRAIT_METHODS.iter() {
+                    for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if name == method_name &&
                         sig.decl.inputs.len() == n_args &&
                         out_type.matches(cx, &sig.decl.output) &&
@@ -973,7 +972,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 // check conventions w.r.t. conversion method names and predicates
                 let is_copy = is_copy(cx, ty);
                 for &(ref conv, self_kinds) in &CONVENTIONS {
-                    if conv.check(&name.as_str()) {
+                    if conv.check(&name) {
                         if !self_kinds
                                 .iter()
                                 .any(|k| k.matches(cx, first_arg_ty, first_arg, self_ty, is_copy, &implitem.generics)) {
@@ -1032,7 +1031,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 }
             }
 
-            if name == sym!(new) && !same_tys(cx, ret_ty, ty) {
+            if name == "new" && !same_tys(cx, ret_ty, ty) {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
@@ -2407,63 +2406,59 @@ const CONVENTIONS: [(Convention, &[SelfKind]); 7] = [
 ];
 
 #[rustfmt::skip]
-lazy_static! {
-static ref TRAIT_METHODS: [(Symbol, usize, SelfKind, OutType, &'static str); 30] = [
-    (sym!(add), 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
-    (sym!(as_mut), 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
-    (sym!(as_ref), 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
-    (sym!(bitand), 2, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
-    (sym!(bitor), 2, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
-    (sym!(bitxor), 2, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
-    (sym!(borrow), 1, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
-    (sym!(borrow_mut), 1, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
-    (sym!(clone), 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
-    (sym!(cmp), 2, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
-    (sym!(default), 0, SelfKind::No, OutType::Any, "std::default::Default"),
-    (sym!(deref), 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
-    (sym!(deref_mut), 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
-    (sym!(div), 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
-    (sym!(drop), 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
-    (sym!(eq), 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
-    (sym!(from_iter), 1, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
-    (sym!(from_str), 1, SelfKind::No, OutType::Any, "std::str::FromStr"),
-    (sym!(hash), 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
-    (sym!(index), 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
-    (sym!(index_mut), 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
-    (sym!(into_iter), 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
-    (sym!(mul), 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
-    (sym!(neg), 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
-    (sym!(next), 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
-    (sym!(not), 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
-    (sym!(rem), 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
-    (sym!(shl), 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
-    (sym!(shr), 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
-    (sym!(sub), 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
+const TRAIT_METHODS: [(&str, usize, SelfKind, OutType, &str); 30] = [
+    ("add", 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
+    ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
+    ("as_ref", 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
+    ("bitand", 2, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
+    ("bitor", 2, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
+    ("bitxor", 2, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
+    ("borrow", 1, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
+    ("borrow_mut", 1, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
+    ("clone", 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
+    ("cmp", 2, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
+    ("default", 0, SelfKind::No, OutType::Any, "std::default::Default"),
+    ("deref", 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
+    ("deref_mut", 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
+    ("div", 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
+    ("drop", 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
+    ("eq", 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
+    ("from_iter", 1, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
+    ("from_str", 1, SelfKind::No, OutType::Any, "std::str::FromStr"),
+    ("hash", 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
+    ("index", 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
+    ("index_mut", 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
+    ("into_iter", 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
+    ("mul", 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
+    ("neg", 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
+    ("next", 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
+    ("not", 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
+    ("rem", 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
+    ("shl", 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
+    ("shr", 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
+    ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
 ];
-}
 
 #[rustfmt::skip]
-lazy_static! {
-static ref PATTERN_METHODS: [(Symbol, usize); 17] = [
-    (sym!(contains), 1),
-    (sym!(starts_with), 1),
-    (sym!(ends_with), 1),
-    (sym!(find), 1),
-    (sym!(rfind), 1),
-    (sym!(split), 1),
-    (sym!(rsplit), 1),
-    (sym!(split_terminator), 1),
-    (sym!(rsplit_terminator), 1),
-    (sym!(splitn), 2),
-    (sym!(rsplitn), 2),
-    (sym!(matches), 1),
-    (sym!(rmatches), 1),
-    (sym!(match_indices), 1),
-    (sym!(rmatch_indices), 1),
-    (sym!(trim_start_matches), 1),
-    (sym!(trim_end_matches), 1),
+const PATTERN_METHODS: [(&str, usize); 17] = [
+    ("contains", 1),
+    ("starts_with", 1),
+    ("ends_with", 1),
+    ("find", 1),
+    ("rfind", 1),
+    ("split", 1),
+    ("rsplit", 1),
+    ("split_terminator", 1),
+    ("rsplit_terminator", 1),
+    ("splitn", 2),
+    ("rsplitn", 2),
+    ("matches", 1),
+    ("rmatches", 1),
+    ("match_indices", 1),
+    ("rmatch_indices", 1),
+    ("trim_start_matches", 1),
+    ("trim_end_matches", 1),
 ];
-}
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum SelfKind {

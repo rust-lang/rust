@@ -37,7 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
             if let hir::ExprKind::Path(ref qp) = expr.node;
             if let Res::Def(DefKind::Const, def_id) = cx.tables.qpath_res(qp, expr.hir_id);
             then {
-                for (const_path, repl_snip) in REPLACEMENTS.iter() {
+                for (const_path, repl_snip) in &REPLACEMENTS {
                     if match_def_path(cx, def_id, const_path) {
                         span_lint_and_sugg(
                             cx,
