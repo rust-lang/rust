@@ -2298,6 +2298,7 @@ impl<'tcx> Const<'tcx> {
         ty: Ty<'tcx>,
     ) -> Option<u128> {
         assert_eq!(self.ty, ty);
+        // if `ty` does not depend on generic parameters, use an empty param_env
         let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
         match self.val {
             // FIXME(const_generics): this doesn't work right now,
@@ -2315,8 +2316,7 @@ impl<'tcx> Const<'tcx> {
                 let evaluated = tcx.const_eval(param_env.and(gid)).ok()?;
                 evaluated.val.try_to_bits(size)
             },
-            // FIXME(const_generics): try to evaluate generic consts with a given param env?
-            // E.g. when you have an associated constant whose value depends on a generic const
+            // otherwise just extract a `ConstValue`'s bits if possible
             _ => self.val.try_to_bits(size),
         }
     }

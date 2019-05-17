@@ -1,6 +1,6 @@
 // compile-pass
 
-fn testfn(_arr: &mut [();0]) {}
+fn testfn(_arr: &mut [(); 0]) {}
 
 trait TestTrait {
     fn method();
