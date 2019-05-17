@@ -9,7 +9,6 @@ use crate::common::{Config, TestPaths};
 use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
 use diff;
 use crate::errors::{self, Error, ErrorKind};
-use filetime::FileTime;
 use crate::header::TestProps;
 use crate::json;
 use regex::{Captures, Regex};
@@ -3029,7 +3028,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_mir_test_timestamp(&self, test_name: &str, output_file: &Path) {
-        let t = |file| FileTime::from_last_modification_time(&fs::metadata(file).unwrap());
+        let t = |file| fs::metadata(file).unwrap().modified().unwrap();
         let source_file = &self.testpaths.file;
         let output_time = t(output_file);
         let source_time = t(source_file);

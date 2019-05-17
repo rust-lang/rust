@@ -9,6 +9,4 @@ mod outer_mod {
 use self::outer_mod::await::await; //~ ERROR expected identifier
     //~^ ERROR expected identifier, found reserved keyword `await`
 
-fn main() {
-    match await { await => () } //~ ERROR expected `!`, found `{`
-}
+fn main() {}

@@ -9,7 +9,6 @@ use crate::common::CompareMode;
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{Config, TestPaths};
 use crate::common::{DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
-use filetime::FileTime;
 use getopts::Options;
 use std::env;
 use std::ffi::OsString;
@@ -17,6 +16,7 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::SystemTime;
 use test::ColorConfig;
 use crate::util::logv;
 use walkdir::WalkDir;
@@ -752,31 +752,36 @@ fn up_to_date(
 
 #[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
 struct Stamp {
-    time: FileTime,
+    time: SystemTime,
     file: PathBuf,
 }
 
 impl Stamp {
     fn from_path(p: &Path) -> Self {
+        let time = fs::metadata(p)
+            .and_then(|metadata| metadata.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+
         Stamp {
-            time: mtime(&p),
+            time,
             file: p.into(),
         }
     }
 
-    fn from_dir(path: &Path) -> impl Iterator<Item=Stamp> {
+    fn from_dir(path: &Path) -> impl Iterator<Item = Stamp> {
         WalkDir::new(path)
             .into_iter()
             .map(|entry| entry.unwrap())
             .filter(|entry| entry.file_type().is_file())
-            .map(|entry| Stamp::from_path(entry.path()))
-    }
-}
+            .map(|entry| {
+                let time = (|| -> io::Result<_> { entry.metadata()?.modified() })();
 
-fn mtime(path: &Path) -> FileTime {
-    fs::metadata(path)
-        .map(|f| FileTime::from_last_modification_time(&f))
-        .unwrap_or_else(|_| FileTime::zero())
+                Stamp {
+                    time: time.unwrap_or(SystemTime::UNIX_EPOCH),
+                    file: entry.path().into(),
+                }
+            })
+    }
 }
 
 fn make_test_name(

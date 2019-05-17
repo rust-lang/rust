@@ -243,9 +243,8 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             }
 
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
-                let ty = mir::Place::Base(mir::PlaceBase::Local(local)).ty(self.fx.mir,
-                                                                           self.fx.cx.tcx());
-                let ty = self.fx.monomorphize(&ty.ty);
+                let ty = self.fx.mir.local_decls[local].ty;
+                let ty = self.fx.monomorphize(&ty);
 
                 // Only need the place if we're actually dropping it.
                 if self.fx.cx.type_needs_drop(ty) {

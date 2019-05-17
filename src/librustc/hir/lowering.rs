@@ -97,6 +97,10 @@ pub struct LoweringContext<'a> {
     is_generator: bool,
     is_async_body: bool,
 
+    /// Used to get the current `fn`'s def span to point to when using `await`
+    /// outside of an `async fn`.
+    current_item: Option<Span>,
+
     catch_scopes: Vec<NodeId>,
     loop_scopes: Vec<NodeId>,
     is_in_loop_condition: bool,
@@ -250,6 +254,7 @@ pub fn lower_crate(
         node_id_to_hir_id: IndexVec::new(),
         is_generator: false,
         is_async_body: false,
+        current_item: None,
         is_in_trait_impl: false,
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
@@ -3116,6 +3121,7 @@ impl<'a> LoweringContext<'a> {
             ItemKind::Fn(ref decl, ref header, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
+                    this.current_item = Some(ident.span);
                     let mut lower_fn = |decl: &FnDecl| {
                         // Note: we don't need to change the return type from `T` to
                         // `impl Future<Output = T>` here because lower_body
@@ -3654,6 +3660,7 @@ impl<'a> LoweringContext<'a> {
                 } else {
                     lower_method(sig)
                 };
+                self.current_item = Some(i.span);
 
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
@@ -4270,6 +4277,7 @@ impl<'a> LoweringContext<'a> {
                     let fn_decl = self.lower_fn_decl(decl, None, false, None);
 
                     self.with_new_scopes(|this| {
+                        this.current_item = Some(fn_decl_span);
                         let mut is_generator = false;
                         let body_id = this.lower_body(Some(decl), |this| {
                             let e = this.lower_expr(body);
@@ -5551,13 +5559,18 @@ impl<'a> LoweringContext<'a> {
         //     }
         // }
         if !self.is_async_body {
-            span_err!(
+            let mut err = struct_span_err!(
                 self.sess,
                 await_span,
                 E0728,
                 "`await` is only allowed inside `async` functions and blocks"
             );
-            self.sess.abort_if_errors();
+            err.span_label(await_span, "only allowed inside `async` functions and blocks");
+            if let Some(item_sp) = self.current_item {
+                err.span_label(item_sp, "this is not `async`");
+            }
+            err.emit();
+            return hir::ExprKind::Err;
         }
         let span = self.sess.source_map().mark_span_with_reason(
             CompilerDesugaringKind::Await,
