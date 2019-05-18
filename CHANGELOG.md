@@ -6,6 +6,21 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.5.0] 2018-04-20
+
+### Added
+
+- Add `verbose-diff` CLI option 5194984
+
+### Changed
+
+- Update rustc-ap-syntax to 103.0.0 dd807e2
+- Refactor to make a sensible public API ca610d3
+
+### Fixed
+
+- Add spaces between consecutive `..` `..=` 61d29eb
+
 ## [0.4.2] 2018-04-12
 
 ### Added
