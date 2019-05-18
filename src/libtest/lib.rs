@@ -42,7 +42,7 @@ use term;
 //                libtest won't be fully functional on these platforms.
 //
 // See also: https://github.com/rust-lang/rust/issues/54190#issuecomment-422904437
-#[cfg(not(any(all(windows, target_arch = "aarch64"), all(windows, target_arch = "arm"))))]
+#[cfg(not(all(windows, any(target_arch = "aarch64", target_arch = "arm"))))]
 extern crate panic_unwind;
 
 pub use self::ColorConfig::*;
