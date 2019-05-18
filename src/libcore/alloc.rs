@@ -480,7 +480,7 @@ pub unsafe trait GlobalAlloc {
     ///   this allocator,
     ///
     /// * `layout` must be the same layout that was used
-    ///   to allocated that block of memory,
+    ///   to allocate that block of memory,
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
@@ -535,7 +535,7 @@ pub unsafe trait GlobalAlloc {
     /// * `ptr` must be currently allocated via this allocator,
     ///
     /// * `layout` must be the same layout that was used
-    ///   to allocated that block of memory,
+    ///   to allocate that block of memory,
     ///
     /// * `new_size` must be greater than zero.
     ///
