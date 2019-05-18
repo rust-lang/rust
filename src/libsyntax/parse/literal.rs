@@ -3,7 +3,7 @@
 use crate::ast::{self, Ident, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
-use crate::parse::token::{self, Token};
+use crate::parse::token;
 use crate::parse::unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
 use crate::print::pprust;
 use crate::symbol::{kw, Symbol};
@@ -117,9 +117,9 @@ impl LitKind {
 
             token::Str_(mut sym) => {
                 // If there are no characters requiring special treatment we can
-                // reuse the symbol from the Token. Otherwise, we must generate a
+                // reuse the symbol from the token. Otherwise, we must generate a
                 // new symbol because the string in the LitKind is different to the
-                // string in the Token.
+                // string in the token.
                 let mut error = None;
                 let s = &sym.as_str();
                 if s.as_bytes().iter().any(|&c| c == b'\\' || c == b'\r') {
@@ -262,8 +262,8 @@ impl Lit {
     /// Losslessly convert an AST literal into a token stream.
     crate fn tokens(&self) -> TokenStream {
         let token = match self.token {
-            token::Bool(symbol) => Token::Ident(Ident::with_empty_ctxt(symbol), false),
-            token => Token::Literal(token, self.suffix),
+            token::Bool(symbol) => token::Ident(Ident::new(symbol, self.span), false),
+            token => token::Literal(token, self.suffix),
         };
         TokenTree::Token(self.span, token).into()
     }
