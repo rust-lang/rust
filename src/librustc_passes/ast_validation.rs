@@ -114,8 +114,10 @@ impl<'a> AstValidator<'a> {
         with(self, outer, |this| &mut this.outer_impl_trait, f)
     }
 
-    fn with_let_allowed(&mut self, v: bool, f: impl FnOnce(&mut Self)) {
-        with(self, v, |this| &mut this.is_let_allowed, f)
+    fn with_let_allowed(&mut self, v: bool, f: impl FnOnce(&mut Self, bool)) {
+        let old = mem::replace(&mut self.is_let_allowed, v);
+        f(self, old);
+        self.is_let_allowed = old;
     }
 
     fn visit_assoc_ty_constraint_from_generic_args(&mut self, constraint: &'a AssocTyConstraint) {
@@ -336,33 +338,44 @@ impl<'a> AstValidator<'a> {
     /// Visits the `expr` and adjusts whether `let $pat = $expr` is allowed in decendants.
     /// Returns whether we walked into `expr` or not.
     /// If we did, walking should not happen again.
-    fn visit_expr_with_let_maybe_allowed(&mut self, expr: &'a Expr) -> bool {
+    fn visit_expr_with_let_maybe_allowed(&mut self, expr: &'a Expr, let_allowed: bool) -> bool {
         match &expr.node {
             // Assuming the context permits, `($expr)` does not impose additional constraints.
-            ExprKind::Paren(_) => visit::walk_expr(self, expr),
+            ExprKind::Paren(_) => {
+                self.with_let_allowed(let_allowed, |this, _| visit::walk_expr(this, expr));
+            }
             // Assuming the context permits,
             // l && r` allows decendants in `l` and `r` to be `let` expressions.
-            ExprKind::Binary(op, ..) if op.node == BinOpKind::And => visit::walk_expr(self, expr),
+            ExprKind::Binary(op, ..) if op.node == BinOpKind::And => {
+                self.with_let_allowed(let_allowed, |this, _| visit::walk_expr(this, expr));
+            }
             // However, we do allow it in the condition of the `if` expression.
             // We do not allow `let` in `then` and `opt_else` directly.
-            ExprKind::If(ref cond, ref then, ref opt_else) => {
-                self.with_let_allowed(false, |this| {
-                    this.visit_block(then);
-                    walk_list!(this, visit_expr, opt_else);
-                });
-                self.with_let_allowed(true, |this| this.visit_expr(cond));
+            ExprKind::If(cond, then, opt_else) => {
+                self.visit_block(then);
+                walk_list!(self, visit_expr, opt_else);
+                self.with_let_allowed(true, |this, _| this.visit_expr(cond));
             }
             // The same logic applies to `While`.
-            ExprKind::While(ref cond, ref then, ref opt_label) => {
+            ExprKind::While(cond, then, opt_label) => {
                 walk_list!(self, visit_label, opt_label);
-                self.with_let_allowed(false, |this| this.visit_block(then));
-                self.with_let_allowed(true, |this| this.visit_expr(cond));
+                self.visit_block(then);
+                self.with_let_allowed(true, |this, _| this.visit_expr(cond));
             }
             // Don't walk into `expr` and defer further checks to the caller.
             _ => return false,
         }
 
         true
+    }
+
+    /// Emits an error banning the `let` expression provided.
+    fn ban_let_expr(&self, expr: &'a Expr) {
+        self.err_handler()
+            .struct_span_err(expr.span, "`let` expressions are not supported here")
+            .note("only supported directly in conditions of `if`- and `while`-expressions")
+            .note("as well as when nested within `&&` and parenthesis in those conditions")
+            .emit();
     }
 
     fn check_fn_decl(&self, fn_decl: &FnDecl) {
@@ -491,28 +504,26 @@ fn validate_generics_order<'a>(
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
-        match expr.node {
-            ExprKind::Let(_, _) if !self.is_let_allowed => {
-                self.err_handler()
-                    .struct_span_err(expr.span, "`let` expressions are not supported here")
-                    .note("only supported directly in conditions of `if`- and `while`-expressions")
-                    .note("as well as when nested within `&&` and parenthesis in those conditions")
-                    .emit();
+        self.with_let_allowed(false, |this, let_allowed| {
+            match &expr.node {
+                ExprKind::Let(_, _) if !let_allowed => {
+                    this.ban_let_expr(expr);
+                }
+                _ if this.visit_expr_with_let_maybe_allowed(&expr, let_allowed) => {
+                    // Prevent `walk_expr` to happen since we've already done that.
+                    return;
+                }
+                ExprKind::Closure(_, _, _, fn_decl, _, _) => {
+                    this.check_fn_decl(fn_decl);
+                }
+                ExprKind::InlineAsm(..) if !this.session.target.target.options.allow_asm => {
+                    span_err!(this.session, expr.span, E0472, "asm! is unsupported on this target");
+                }
+                _ => {}
             }
-            _ if self.visit_expr_with_let_maybe_allowed(&expr) => {
-                // Prevent `walk_expr` to happen since we've already done that.
-                return;
-            }
-            ExprKind::Closure(_, _, _, ref fn_decl, _, _) => {
-                self.check_fn_decl(fn_decl);
-            }
-            ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
-                span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
-            }
-            _ => {}
-        }
 
-        self.with_let_allowed(false, |this| visit::walk_expr(this, expr));
+            visit::walk_expr(this, expr);
+        });
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
