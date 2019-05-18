@@ -17,6 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
+  libssl-dev \
+  pkg-config \
   xz-utils \
   lld \
   clang
