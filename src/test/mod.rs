@@ -11,6 +11,7 @@ use std::thread;
 
 use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle, ReportTactic};
 use crate::formatting::{ReportedErrors, SourceFile};
+use crate::is_nightly_channel;
 use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChunk, OutputWriter};
 use crate::source_file;
 use crate::{FormatReport, FormatReportFormatterBuilder, Input, Session};
@@ -259,9 +260,9 @@ fn assert_output(source: &Path, expected_filename: &Path) {
 #[test]
 fn idempotence_tests() {
     run_test_with(&TestSetting::default(), || {
-        match option_env!("CFG_RELEASE_CHANNEL") {
-            None | Some("nightly") => {}
-            _ => return, // these tests require nightly
+        // these tests require nightly
+        if !is_nightly_channel!() {
+            return;
         }
         // Get all files in the tests/target directory.
         let files = get_test_files(Path::new("tests/target"), true);
@@ -277,9 +278,9 @@ fn idempotence_tests() {
 // no warnings are emitted.
 #[test]
 fn self_tests() {
-    match option_env!("CFG_RELEASE_CHANNEL") {
-        None | Some("nightly") => {}
-        _ => return, // Issue-3443: these tests require nightly
+    // Issue-3443: these tests require nightly
+    if !is_nightly_channel!() {
+        return;
     }
     let mut files = get_test_files(Path::new("tests"), false);
     let bin_directories = vec!["cargo-fmt", "git-rustfmt", "bin", "format-diff"];
@@ -426,6 +427,16 @@ fn check_files(files: Vec<PathBuf>, opt_config: &Option<PathBuf>) -> (Vec<Format
     let mut reports = vec![];
 
     for file_name in files {
+        let sig_comments = read_significant_comments(&file_name);
+        if sig_comments.contains_key("unstable") && !is_nightly_channel!() {
+            debug!(
+                "Skipping '{}' because it requires unstable \
+                 features which are only available on nightly...",
+                file_name.display()
+            );
+            continue;
+        }
+
         debug!("Testing '{}'...", file_name.display());
 
         match idempotent_check(&file_name, &opt_config) {
@@ -485,7 +496,7 @@ fn read_config(filename: &Path) -> Config {
     };
 
     for (key, val) in &sig_comments {
-        if key != "target" && key != "config" {
+        if key != "target" && key != "config" && key != "unstable" {
             config.override_value(key, val);
             if config.is_default(key) {
                 warn!("Default value {} used explicitly for {}", val, key);
