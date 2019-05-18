@@ -1,15 +1,13 @@
 //! lint on manually implemented checked conversions that could be transformed into `try_from`
 
 use if_chain::if_chain;
-use lazy_static::lazy_static;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
-use syntax::symbol::Symbol;
 
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg, sym, SpanlessEq};
+use crate::utils::{snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for explicit bounds checking when casting.
@@ -104,7 +102,7 @@ fn double_check<'a>(cx: &LateContext<'_, '_>, left: &'a Expr, right: &'a Expr) -
 struct Conversion<'a> {
     cvt: ConversionType,
     expr_to_cast: &'a Expr,
-    to_type: Option<Symbol>,
+    to_type: Option<&'a str>,
 }
 
 /// The kind of conversion that is checked
@@ -140,7 +138,7 @@ impl<'a> Conversion<'a> {
     }
 
     /// Try to construct a new conversion if the conversion type is valid
-    fn try_new(expr_to_cast: &'a Expr, from_type: Symbol, to_type: Symbol) -> Option<Conversion<'a>> {
+    fn try_new(expr_to_cast: &'a Expr, from_type: &str, to_type: &'a str) -> Option<Conversion<'a>> {
         ConversionType::try_new(from_type, to_type).map(|cvt| Conversion {
             cvt,
             expr_to_cast,
@@ -160,7 +158,7 @@ impl<'a> Conversion<'a> {
 
 impl ConversionType {
     /// Creates a conversion type if the type is allowed & conversion is valid
-    fn try_new(from: Symbol, to: Symbol) -> Option<Self> {
+    fn try_new(from: &str, to: &str) -> Option<Self> {
         if UINTS.contains(&from) {
             Some(ConversionType::FromUnsigned)
         } else if SINTS.contains(&from) {
@@ -182,7 +180,7 @@ fn check_upper_bound(expr: &Expr) -> Option<Conversion<'_>> {
     if_chain! {
          if let ExprKind::Binary(ref op, ref left, ref right) = &expr.node;
          if let Some((candidate, check)) = normalize_le_ge(op, left, right);
-         if let Some((from, to)) = get_types_from_cast(check, *sym::max_value, &*INTS);
+         if let Some((from, to)) = get_types_from_cast(check, MAX_VALUE, INTS);
 
          then {
              Conversion::try_new(candidate, from, to)
@@ -222,7 +220,7 @@ fn check_lower_bound_zero<'a>(candidate: &'a Expr, check: &'a Expr) -> Option<Co
 
 /// Check for `expr >= (to_type::min_value() as from_type)`
 fn check_lower_bound_min<'a>(candidate: &'a Expr, check: &'a Expr) -> Option<Conversion<'a>> {
-    if let Some((from, to)) = get_types_from_cast(check, *sym::min_value, &*SINTS) {
+    if let Some((from, to)) = get_types_from_cast(check, MIN_VALUE, SINTS) {
         Conversion::try_new(candidate, from, to)
     } else {
         None
@@ -230,9 +228,9 @@ fn check_lower_bound_min<'a>(candidate: &'a Expr, check: &'a Expr) -> Option<Con
 }
 
 /// Tries to extract the from- and to-type from a cast expression
-fn get_types_from_cast(expr: &Expr, func: Symbol, types: &[Symbol]) -> Option<(Symbol, Symbol)> {
+fn get_types_from_cast<'a>(expr: &'a Expr, func: &'a str, types: &'a [&str]) -> Option<(&'a str, &'a str)> {
     // `to_type::maxmin_value() as from_type`
-    let call_from_cast: Option<(&Expr, Symbol)> = if_chain! {
+    let call_from_cast: Option<(&Expr, &str)> = if_chain! {
         // to_type::maxmin_value(), from_type
         if let ExprKind::Cast(ref limit, ref from_type) = &expr.node;
         if let TyKind::Path(ref from_type_path) = &from_type.node;
@@ -246,7 +244,7 @@ fn get_types_from_cast(expr: &Expr, func: Symbol, types: &[Symbol]) -> Option<(S
     };
 
     // `from_type::from(to_type::maxmin_value())`
-    let limit_from: Option<(&Expr, Symbol)> = call_from_cast.or_else(|| {
+    let limit_from: Option<(&Expr, &str)> = call_from_cast.or_else(|| {
         if_chain! {
             // `from_type::from, to_type::maxmin_value()`
             if let ExprKind::Call(ref from_func, ref args) = &expr.node;
@@ -255,7 +253,7 @@ fn get_types_from_cast(expr: &Expr, func: Symbol, types: &[Symbol]) -> Option<(S
             if let limit = &args[0];
             // `from_type::from`
             if let ExprKind::Path(ref path) = &from_func.node;
-            if let Some(from_sym) = get_implementing_type(path, &*INTS, *sym::from);
+            if let Some(from_sym) = get_implementing_type(path, INTS, FROM);
 
             then {
                 Some((limit, from_sym))
@@ -285,17 +283,16 @@ fn get_types_from_cast(expr: &Expr, func: Symbol, types: &[Symbol]) -> Option<(S
 }
 
 /// Gets the type which implements the called function
-fn get_implementing_type(path: &QPath, candidates: &[Symbol], function: Symbol) -> Option<Symbol> {
+fn get_implementing_type<'a>(path: &QPath, candidates: &'a [&str], function: &str) -> Option<&'a str> {
     if_chain! {
         if let QPath::TypeRelative(ref ty, ref path) = &path;
-        if path.ident.name == function;
+        if path.ident.name.as_str() == function;
         if let TyKind::Path(QPath::Resolved(None, ref tp)) = &ty.node;
         if let [int] = &*tp.segments;
-        let name = int.ident.name;
-        if candidates.contains(&name);
+        let name = &int.ident.name.as_str();
 
         then {
-            Some(name)
+            candidates.iter().find(|c| name == *c).cloned()
         } else {
             None
         }
@@ -303,16 +300,14 @@ fn get_implementing_type(path: &QPath, candidates: &[Symbol], function: Symbol) 
 }
 
 /// Gets the type as a string, if it is a supported integer
-fn int_ty_to_sym(path: &QPath) -> Option<Symbol> {
+fn int_ty_to_sym(path: &QPath) -> Option<&str> {
     if_chain! {
         if let QPath::Resolved(_, ref path) = *path;
         if let [ty] = &*path.segments;
+        let name = &ty.ident.name.as_str();
 
         then {
-            INTS
-                .iter()
-                .find(|c| ty.ident.name == **c)
-                .cloned()
+            INTS.iter().find(|c| name == *c).cloned()
         } else {
             None
         }
@@ -328,7 +323,7 @@ fn transpose<T, U>(lhs: Option<T>, rhs: Option<U>) -> Option<(T, U)> {
 }
 
 /// Will return the expressions as if they were expr1 <= expr2
-fn normalize_le_ge<'a>(op: &'a BinOp, left: &'a Expr, right: &'a Expr) -> Option<(&'a Expr, &'a Expr)> {
+fn normalize_le_ge<'a>(op: &BinOp, left: &'a Expr, right: &'a Expr) -> Option<(&'a Expr, &'a Expr)> {
     match op.node {
         BinOpKind::Le => Some((left, right)),
         BinOpKind::Ge => Some((right, left)),
@@ -336,19 +331,11 @@ fn normalize_le_ge<'a>(op: &'a BinOp, left: &'a Expr, right: &'a Expr) -> Option
     }
 }
 
-lazy_static! {
-    static ref UINTS: [Symbol; 5] = [*sym::u8, *sym::u16, *sym::u32, *sym::u64, *sym::usize];
-    static ref SINTS: [Symbol; 5] = [*sym::i8, *sym::i16, *sym::i32, *sym::i64, *sym::isize];
-    static ref INTS: [Symbol; 10] = [
-        *sym::u8,
-        *sym::u16,
-        *sym::u32,
-        *sym::u64,
-        *sym::usize,
-        *sym::i8,
-        *sym::i16,
-        *sym::i32,
-        *sym::i64,
-        *sym::isize
-    ];
-}
+// Constants
+const FROM: &str = "from";
+const MAX_VALUE: &str = "max_value";
+const MIN_VALUE: &str = "min_value";
+
+const UINTS: &[&str] = &["u8", "u16", "u32", "u64", "usize"];
+const SINTS: &[&str] = &["i8", "i16", "i32", "i64", "isize"];
+const INTS: &[&str] = &["u8", "u16", "u32", "u64", "usize", "i8", "i16", "i32", "i64", "isize"];
