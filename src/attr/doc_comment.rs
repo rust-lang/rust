@@ -16,14 +16,12 @@ impl<'a> DocCommentFormatter<'a> {
 impl Display for DocCommentFormatter<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         let opener = self.style.opener().trim_end();
-
         let literal_as_str = self.literal.as_str().get();
-        let line_count = literal_as_str.lines().count();
-        let last_line_index = line_count - 1;
-        let lines = literal_as_str.lines().enumerate();
 
-        for (index, line) in lines {
-            if index == last_line_index {
+        let mut lines = literal_as_str.lines().peekable();
+        while let Some(line) = lines.next() {
+            let is_last_line = lines.peek().is_none();
+            if is_last_line {
                 write!(formatter, "{}{}", opener, line)?;
             } else {
                 writeln!(formatter, "{}{}", opener, line)?;
