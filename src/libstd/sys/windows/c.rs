@@ -124,7 +124,7 @@ pub struct WIN32_FIND_DATAW {
     pub nFileSizeLow: DWORD,
     pub dwReserved0: DWORD,
     pub dwReserved1: DWORD,
-    pub cFileName: [wchar_t; 260], // #define MAX_PATH 260
+    pub cFileName: [wchar_t; MAX_PATH],
     pub cAlternateFileName: [wchar_t; 14],
 }
 impl Clone for WIN32_FIND_DATAW {
@@ -167,6 +167,8 @@ pub const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE: DWORD = 0x2;
 pub const STD_INPUT_HANDLE: DWORD = -10i32 as DWORD;
 pub const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
 pub const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
+
+pub const MAX_PATH: usize = 260;
 
 pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
@@ -422,6 +424,12 @@ pub struct FILE_BASIC_INFO {
 #[repr(C)]
 pub struct FILE_END_OF_FILE_INFO {
     pub EndOfFile: LARGE_INTEGER,
+}
+
+#[repr(C)]
+pub struct FILE_NAME_INFO {
+    pub FileNameLength: DWORD,
+    pub FileName: [WCHAR; 1],
 }
 
 #[repr(C)]
@@ -1047,6 +1055,11 @@ extern "system" {
                               dwFileAttributes: DWORD) -> BOOL;
     pub fn GetFileInformationByHandle(hFile: HANDLE,
                             lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
+                            -> BOOL;
+    pub fn GetFileInformationByHandleEx(hFile: HANDLE,
+                            FileInformationClass: FILE_INFO_BY_HANDLE_CLASS,
+                            lpFileInformation: LPVOID,
+                            dwBufferSize: DWORD)
                             -> BOOL;
 
     pub fn SetLastError(dwErrCode: DWORD);

@@ -248,27 +248,7 @@ impl Stdout {
     }
 
     pub fn is_tty(&self) -> bool {
-        // Because these functions do not detect if the program is being run under a Cygwin/MSYS2
-        // TTY, we just try our best to see if we are being piped on Windows Console.  If we can't
-        // tell, we fallback to assuming we are on a TTY
-        if let Ok(handle) = get_handle(c::STD_OUTPUT_HANDLE) {
-            if is_console(handle) {
-                true
-            } else {
-                // We need to check if at least one of the other stdio handles is connected to the
-                // console
-                let stdin = get_handle(c::STD_INPUT_HANDLE)
-                    .map(is_console)
-                    .unwrap_or(false);
-                let stderr = get_handle(c::STD_ERROR_HANDLE)
-                    .map(is_console)
-                    .unwrap_or(false);
-
-                !(stdin || stderr)
-            }
-        } else {
-            false
-        }
+        is_tty(Stream::Stdout)
     }
 }
 
@@ -304,4 +284,81 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 
 pub fn panic_output() -> Option<impl io::Write> {
     Stderr::new().ok()
+}
+
+// NOTE: the following has been taken from the atty crate and modified to work with libstd
+
+enum Stream {
+    Stdout,
+    Stderr,
+    Stdin,
+}
+
+fn is_tty(stream: Stream) -> bool {
+    let (fd, others) = match stream {
+        Stream::Stdin => (c::STD_INPUT_HANDLE, [c::STD_ERROR_HANDLE, c::STD_OUTPUT_HANDLE]),
+        Stream::Stderr => (c::STD_ERROR_HANDLE, [c::STD_INPUT_HANDLE, c::STD_OUTPUT_HANDLE]),
+        Stream::Stdout => (c::STD_OUTPUT_HANDLE, [c::STD_INPUT_HANDLE, c::STD_ERROR_HANDLE]),
+    };
+    if unsafe { console_on_any(&[fd]) } {
+        // False positives aren't possible. If we got a console then
+        // we definitely have a tty on stdin.
+        return true;
+    }
+
+    // At this point, we *could* have a false negative. We can determine that
+    // this is true negative if we can detect the presence of a console on
+    // any of the other streams. If another stream has a console, then we know
+    // we're in a Windows console and can therefore trust the negative.
+    if unsafe { console_on_any(&others) } {
+        return false;
+    }
+
+    // Otherwise, we fall back to a very strange msys hack to see if we can
+    // sneakily detect the presence of a tty.
+    unsafe { msys_tty_on(fd) }
+}
+
+/// Returns true if any of the given fds are on a console.
+unsafe fn console_on_any(fds: &[c::DWORD]) -> bool {
+    for &fd in fds {
+        let mut out = 0;
+        let handle = c::GetStdHandle(fd);
+        if c::GetConsoleMode(handle, &mut out) != 0 {
+            return true;
+        }
+    }
+    false
+}
+
+/// Returns true if there is an MSYS tty on the given handle.
+unsafe fn msys_tty_on(fd: c::DWORD) -> bool {
+    use std::mem;
+    use std::slice;
+    use libc::c_void;
+
+    let size = mem::size_of::<c::FILE_NAME_INFO>();
+    let mut name_info_bytes = vec![0u8; size + c::MAX_PATH * mem::size_of::<c::WCHAR>()];
+    let res = c::GetFileInformationByHandleEx(
+        c::GetStdHandle(fd),
+        c::FileNameInfo,
+        &mut *name_info_bytes as *mut _ as *mut c_void,
+        name_info_bytes.len() as u32,
+    );
+    if res == 0 {
+        return false;
+    }
+    let name_info: &c::FILE_NAME_INFO = &*(name_info_bytes.as_ptr() as *const c::FILE_NAME_INFO);
+    let s = slice::from_raw_parts(
+        name_info.FileName.as_ptr(),
+        name_info.FileNameLength as usize / 2,
+    );
+    let name = String::from_utf16_lossy(s);
+    // This checks whether 'pty' exists in the file name, which indicates that
+    // a pseudo-terminal is attached. To mitigate against false positives
+    // (e.g., an actual file name that contains 'pty'), we also require that
+    // either the strings 'msys-' or 'cygwin-' are in the file name as well.)
+    let is_msys = name.contains("msys-") || name.contains("cygwin-");
+    let is_pty = name.contains("-pty");
+    is_msys && is_pty
 }
