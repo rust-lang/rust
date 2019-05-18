@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 [1fac380..37f5c1e](https://github.com/rust-lang/rust-clippy/compare/1fac380...37f5c1e)
 
  * New lint: [`drop_bounds`] to detect `T: Drop` bounds
+ * Split [`redundant_closure`] into [`redundant_closure`] and [`redundant_closure_for_method_calls`] [#4110](https://github.com/rust-lang/rust-clippy/pull/4110)
  * Rename `cyclomatic_complexity` to [`cognitive_complexity`], start work on making lint more practical for Rust code
  * Move [`get_unwrap`] to the restriction category
  * Improve suggestions for [`iter_cloned_collect`]
