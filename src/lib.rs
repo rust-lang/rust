@@ -40,6 +40,9 @@ pub use crate::rustfmt_diff::{ModifiedChunk, ModifiedLines};
 #[macro_use]
 mod utils;
 
+#[macro_use]
+mod release_channel;
+
 mod attr;
 mod chains;
 pub(crate) mod checkstyle;

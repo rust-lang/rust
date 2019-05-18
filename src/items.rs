@@ -664,7 +664,6 @@ pub(crate) fn format_impl(
     context: &RewriteContext<'_>,
     item: &ast::Item,
     offset: Indent,
-    where_span_end: Option<BytePos>,
 ) -> Option<String> {
     if let ast::ItemKind::Impl(_, _, _, ref generics, _, ref self_ty, ref items) = item.node {
         let mut result = String::with_capacity(128);
@@ -691,6 +690,8 @@ pub(crate) fn format_impl(
             option.compress_where();
         }
 
+        let misssing_span = mk_sp(self_ty.span.hi(), item.span.hi());
+        let where_span_end = context.snippet_provider.opt_span_before(misssing_span, "{");
         let where_clause_str = rewrite_where_clause(
             context,
             &generics.where_clause,

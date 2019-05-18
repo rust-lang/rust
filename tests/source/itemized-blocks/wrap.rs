@@ -1,4 +1,5 @@
 // rustfmt-wrap_comments: true
+// rustfmt-format_code_in_doc_comments: true
 // rustfmt-max_width: 50
 
 //! This is a list:

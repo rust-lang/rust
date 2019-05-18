@@ -353,7 +353,7 @@ fn identify_comment(
             trim_left_preserve_layout(first_group, shape.indent, config)?
         } else if !config.normalize_comments()
             && !config.wrap_comments()
-            && !config.format_doc_comments()
+            && !config.format_code_in_doc_comments()
         {
             light_rewrite_comment(first_group, shape.indent, config, is_doc_comment)
         } else {
@@ -656,9 +656,16 @@ impl<'a> CommentRewrite<'a> {
                     _ => {
                         let mut config = self.fmt.config.clone();
                         config.set().wrap_comments(false);
-                        match crate::format_code_block(&self.code_block_buffer, &config) {
-                            Some(ref s) => trim_custom_comment_prefix(&s.snippet),
-                            None => trim_custom_comment_prefix(&self.code_block_buffer),
+                        if config.format_code_in_doc_comments() {
+                            if let Some(s) =
+                                crate::format_code_block(&self.code_block_buffer, &config)
+                            {
+                                trim_custom_comment_prefix(&s.snippet)
+                            } else {
+                                trim_custom_comment_prefix(&self.code_block_buffer)
+                            }
+                        } else {
+                            trim_custom_comment_prefix(&self.code_block_buffer)
                         }
                     }
                 };

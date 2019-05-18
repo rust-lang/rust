@@ -26,12 +26,13 @@ matrix:
     - env: INTEGRATION=log
     - env: INTEGRATION=mdbook
     - env: INTEGRATION=packed_simd
-    - env: INTEGRATION=rand
     - env: INTEGRATION=rust-semverver
     - env: INTEGRATION=stdsimd TARGET=x86_64-unknown-linux-gnu
     - env: INTEGRATION=tempdir
     - env: INTEGRATION=futures-rs
   allow_failures:
+    # Using old configuration option
+    - env: INTEGRATION=rand
     # Doesn't build - keep this in allow_failures as it's fragile to breaking changes of rustc.
     - env: INTEGRATION=rust-clippy
     # Doesn't build - seems to be because of an option

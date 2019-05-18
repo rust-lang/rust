@@ -5,7 +5,7 @@ use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
 use syntax::{ast, visit};
 
 use crate::attr::*;
-use crate::comment::{CodeCharKind, CommentCodeSlices, FindUncommented};
+use crate::comment::{CodeCharKind, CommentCodeSlices};
 use crate::config::file_lines::FileName;
 use crate::config::{BraceStyle, Config, Version};
 use crate::expr::{format_expr, ExprType};
@@ -359,13 +359,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             match item.node {
                 ast::ItemKind::Use(ref tree) => self.format_import(item, tree),
                 ast::ItemKind::Impl(..) => {
-                    let snippet = self.snippet(item.span);
-                    let where_span_end = snippet
-                        .find_uncommented("{")
-                        .map(|x| BytePos(x as u32) + source!(self, item.span).lo());
                     let block_indent = self.block_indent;
-                    let rw = self
-                        .with_context(|ctx| format_impl(&ctx, item, block_indent, where_span_end));
+                    let rw = self.with_context(|ctx| format_impl(&ctx, item, block_indent));
                     self.push_rewrite(item.span, rw);
                 }
                 ast::ItemKind::Trait(..) => {
