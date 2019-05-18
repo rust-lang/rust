@@ -143,8 +143,8 @@ fn test_union() {
 #[test]
 // Only tests the simple function definition with respect to intersection
 fn test_is_disjoint() {
-    let one = [1].into_iter().collect::<BTreeSet<_>>();
-    let two = [2].into_iter().collect::<BTreeSet<_>>();
+    let one = [1].iter().collect::<BTreeSet<_>>();
+    let two = [2].iter().collect::<BTreeSet<_>>();
     assert!(one.is_disjoint(&two));
 }
 
