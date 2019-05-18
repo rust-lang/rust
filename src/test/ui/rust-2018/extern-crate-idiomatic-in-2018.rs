@@ -12,8 +12,11 @@
 extern crate edition_lint_paths;
 //~^ ERROR unused extern crate
 
+// Shouldn't suggest changing to `use`, as `bar`
+// would no longer be added to the prelude which could cause
+// compilation errors for imports that use `bar` in other
+// modules. See #57672.
 extern crate edition_lint_paths as bar;
-//~^ ERROR `extern crate` is not idiomatic in the new edition
 
 fn main() {
     // This is not considered to *use* the `extern crate` in Rust 2018:
