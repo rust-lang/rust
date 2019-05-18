@@ -226,7 +226,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>) {
         debug!("hir_map: {:?} => {:?}", id, entry);
-        let local_map = &mut self.map[id.owner.as_array_index()];
+        let local_map = &mut self.map[id.owner.index()];
         let i = id.local_id.as_u32() as usize;
         if local_map.is_none() {
             *local_map = Some(IndexVec::with_capacity(i + 1));
