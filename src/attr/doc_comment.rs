@@ -1,6 +1,7 @@
 use crate::comment::CommentStyle;
 use std::fmt::{self, Display};
 
+/// Formats a string as a doc comment using the given [`CommentStyle`].
 #[derive(new)]
 pub(super) struct DocCommentFormatter<'a> {
     literal: &'a str,
