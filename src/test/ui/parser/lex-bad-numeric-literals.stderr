@@ -112,13 +112,13 @@ error: octal float literal is not supported
 LL |     0o2f32;
    |     ^^^^^^ not supported
 
-error: int literal is too large
+error: integer literal is too large
   --> $DIR/lex-bad-numeric-literals.rs:16:5
    |
 LL |     9900000000000000000000000000999999999999999999999999999999;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: int literal is too large
+error: integer literal is too large
   --> $DIR/lex-bad-numeric-literals.rs:17:5
    |
 LL |     9900000000000000000000000000999999999999999999999999999999;

@@ -4,5 +4,5 @@ fn main() {
     0b101.010;
     //~^ ERROR binary float literal is not supported
     0b101p4f64;
-    //~^ ERROR invalid suffix `p4f64` for numeric literal
+    //~^ ERROR invalid suffix `p4f64` for integer literal
 }

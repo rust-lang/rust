@@ -1,4 +1,4 @@
-error: invalid suffix `is` for numeric literal
+error: invalid suffix `is` for integer literal
   --> $DIR/old-suffixes-are-really-forbidden.rs:2:13
    |
 LL |     let a = 1_is;
@@ -6,7 +6,7 @@ LL |     let a = 1_is;
    |
    = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
 
-error: invalid suffix `us` for numeric literal
+error: invalid suffix `us` for integer literal
   --> $DIR/old-suffixes-are-really-forbidden.rs:3:13
    |
 LL |     let b = 2_us;

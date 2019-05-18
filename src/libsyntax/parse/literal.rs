@@ -42,7 +42,7 @@ impl LitError {
                         .help("valid widths are 8, 16, 32, 64 and 128")
                         .emit();
                 } else {
-                    let msg = format!("invalid suffix `{}` for numeric literal", suf);
+                    let msg = format!("invalid suffix `{}` for integer literal", suf);
                     diag.struct_span_err(span, &msg)
                         .span_label(span, format!("invalid suffix `{}`", suf))
                         .help("the suffix must be one of the integral types (`u32`, `isize`, etc)")
@@ -71,7 +71,7 @@ impl LitError {
                     .emit();
             }
             LitError::IntTooLarge => {
-                diag.struct_span_err(span, "int literal is too large")
+                diag.struct_span_err(span, "integer literal is too large")
                     .emit();
             }
         }
