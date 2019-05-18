@@ -17,6 +17,7 @@ use crate::symbol::{sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::visit::{self, Visitor};
 use crate::util::map_in_place::MapInPlace;
+use crate::util::path;
 
 use errors::{Applicability, FatalError};
 use smallvec::{smallvec, SmallVec};
@@ -1253,7 +1254,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         return noop_visit_attribute(at, self);
                     }
 
-                    let filename = self.cx.root_path.join(file.to_string());
+                    let filename = path::resolve(&*file.as_str(), it.span(), self.cx.source_map());
                     match fs::read_to_string(&filename) {
                         Ok(src) => {
                             let src_interned = Symbol::intern(&src);
@@ -1301,10 +1302,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                     &format!("couldn't read {}: {}", filename.display(), e),
                                 );
                                 err.span_label(lit.span, "couldn't read file");
-
-                                if e.kind() == ErrorKind::NotFound {
-                                    err.help("external doc paths are relative to the crate root");
-                                }
 
                                 err.emit();
                             }
