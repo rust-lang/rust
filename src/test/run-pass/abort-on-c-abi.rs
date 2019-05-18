@@ -4,6 +4,7 @@
 
 // ignore-cloudabi no env and process
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 use std::{env, panic};
 use std::io::prelude::*;

@@ -5,6 +5,7 @@
 // ignore-cloudabi no dylib support
 // ignore-emscripten no dylib support
 // ignore-musl
+// ignore-sgx no dylib support
 
 // pretty-expanded FIXME #23616
 

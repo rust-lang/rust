@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 use std::env;
 use std::process::{self, Command, Stdio};

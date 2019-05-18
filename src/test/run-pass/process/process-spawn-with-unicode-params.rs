@@ -9,6 +9,7 @@
 
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 use std::io::prelude::*;
 use std::io;

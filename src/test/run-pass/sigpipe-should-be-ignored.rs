@@ -4,6 +4,7 @@
 
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 use std::env;
 use std::io::prelude::*;

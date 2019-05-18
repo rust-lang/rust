@@ -4,6 +4,7 @@
 // ignore-musl
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 #![feature(asm)]
 #![feature(rustc_private)]

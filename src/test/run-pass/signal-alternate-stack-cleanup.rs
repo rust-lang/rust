@@ -5,6 +5,7 @@
 // ignore-cloudabi no signal handling support
 // ignore-wasm32-bare no libc
 // ignore-windows
+// ignore-sgx no libc
 
 #![feature(rustc_private)]
 extern crate libc;

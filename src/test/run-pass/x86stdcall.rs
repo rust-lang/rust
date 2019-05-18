@@ -1,5 +1,5 @@
 // ignore-wasm32-bare no libc to test ffi with
-
+// ignore-sgx no libc
 // GetLastError doesn't seem to work with stack switching
 
 #[cfg(windows)]

@@ -1,5 +1,6 @@
 // ignore-emscripten
 // ignore-wasm32
+// ignore-sgx no processes
 
 use std::env;
 use std::process::Command;
