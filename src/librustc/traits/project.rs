@@ -1454,13 +1454,18 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
             }
         }
         Err(e) => {
-            span_bug!(
-                obligation.cause.span,
-                "Failed to unify obligation `{:?}` \
-                 with poly_projection `{:?}`: {:?}",
+            let msg = format!(
+                "Failed to unify obligation `{:?}` with poly_projection `{:?}`: {:?}",
                 obligation,
                 poly_cache_entry,
-                e);
+                e,
+            );
+            debug!("confirm_param_env_candidate: {}", msg);
+            infcx.tcx.sess.delay_span_bug(obligation.cause.span, &msg);
+            Progress {
+                ty: infcx.tcx.types.err,
+                obligations: vec![],
+            }
         }
     }
 }
