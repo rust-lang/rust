@@ -6,6 +6,12 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.6.0] 2018-04-20
+
+### Changed
+
+- Improve public API 8669004
+
 ## [0.5.0] 2018-04-20
 
 ### Added
