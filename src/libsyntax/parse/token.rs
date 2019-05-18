@@ -110,12 +110,6 @@ impl Lit {
             _ => false,
         }
     }
-
-    // See comments in `Nonterminal::to_tokenstream` for why we care about
-    // *probably* equal here rather than actual equality
-    fn probably_equal_for_proc_macro(&self, other: &Lit) -> bool {
-        mem::discriminant(self) == mem::discriminant(other)
-    }
 }
 
 pub(crate) fn ident_can_begin_expr(ident: ast::Ident, is_raw: bool) -> bool {
@@ -590,9 +584,7 @@ impl Token {
                                                        a.name == kw::DollarCrate ||
                                                        c.name == kw::DollarCrate),
 
-            (&Literal(ref a, b), &Literal(ref c, d)) => {
-                b == d && a.probably_equal_for_proc_macro(c)
-            }
+            (&Literal(a, b), &Literal(c, d)) => b == d && a == c,
 
             (&Interpolated(_), &Interpolated(_)) => false,
 
