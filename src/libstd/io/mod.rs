@@ -1579,18 +1579,13 @@ pub trait BufRead: Read {
     /// let stdin = io::stdin();
     /// let mut stdin = stdin.lock();
     ///
-    /// // we can't have two `&mut` references to `stdin`, so use a block
-    /// // to end the borrow early.
-    /// let length = {
-    ///     let buffer = stdin.fill_buf().unwrap();
+    /// let buffer = stdin.fill_buf().unwrap();
     ///
-    ///     // work with buffer
-    ///     println!("{:?}", buffer);
-    ///
-    ///     buffer.len()
-    /// };
+    /// // work with buffer
+    /// println!("{:?}", buffer);
     ///
     /// // ensure the bytes we worked with aren't returned again later
+    /// let length = buffer.len();
     /// stdin.consume(length);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
