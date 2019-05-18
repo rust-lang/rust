@@ -1,5 +1,6 @@
 use crate::ast::{self, Ident};
-use crate::parse::{token, ParseSess};
+use crate::parse::ParseSess;
+use crate::parse::token::{self, Token};
 use crate::symbol::Symbol;
 use crate::parse::unescape;
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
@@ -21,7 +22,7 @@ mod unicode_chars;
 
 #[derive(Clone, Debug)]
 pub struct TokenAndSpan {
-    pub tok: token::Token,
+    pub tok: Token,
     pub sp: Span,
 }
 
@@ -55,7 +56,7 @@ pub struct StringReader<'a> {
     /// Stop reading src at this index.
     crate end_src_index: usize,
     // cached:
-    peek_tok: token::Token,
+    peek_tok: Token,
     peek_span: Span,
     peek_span_src_raw: Span,
     fatal_errs: Vec<DiagnosticBuilder<'a>>,
@@ -726,7 +727,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Lex a LIT_INTEGER or a LIT_FLOAT
-    fn scan_number(&mut self, c: char) -> token::Lit {
+    fn scan_number(&mut self, c: char) -> (token::LitKind, Symbol) {
         let mut base = 10;
         let start_bpos = self.pos;
         self.bump();
@@ -753,7 +754,7 @@ impl<'a> StringReader<'a> {
                 }
                 _ => {
                     // just a 0
-                    return token::Integer(self.name_from(start_bpos));
+                    return (token::Integer, self.name_from(start_bpos));
                 }
             }
         } else if c.is_digit(10) {
@@ -765,7 +766,7 @@ impl<'a> StringReader<'a> {
         if num_digits == 0 {
             self.err_span_(start_bpos, self.pos, "no valid digits found for number");
 
-            return token::Integer(Symbol::intern("0"));
+            return (token::Integer, Symbol::intern("0"));
         }
 
         // might be a float, but don't be greedy if this is actually an
@@ -783,17 +784,17 @@ impl<'a> StringReader<'a> {
             let pos = self.pos;
             self.check_float_base(start_bpos, pos, base);
 
-            token::Float(self.name_from(start_bpos))
+            (token::Float, self.name_from(start_bpos))
         } else {
             // it might be a float if it has an exponent
             if self.ch_is('e') || self.ch_is('E') {
                 self.scan_float_exponent();
                 let pos = self.pos;
                 self.check_float_base(start_bpos, pos, base);
-                return token::Float(self.name_from(start_bpos));
+                return (token::Float, self.name_from(start_bpos));
             }
             // but we certainly have an integer!
-            token::Integer(self.name_from(start_bpos))
+            (token::Integer, self.name_from(start_bpos))
         }
     }
 
@@ -846,7 +847,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn binop(&mut self, op: token::BinOpToken) -> token::Token {
+    fn binop(&mut self, op: token::BinOpToken) -> Token {
         self.bump();
         if self.ch_is('=') {
             self.bump();
@@ -858,7 +859,7 @@ impl<'a> StringReader<'a> {
 
     /// Returns the next token from the string, advances the input past that
     /// token, and updates the interner
-    fn next_token_inner(&mut self) -> Result<token::Token, ()> {
+    fn next_token_inner(&mut self) -> Result<Token, ()> {
         let c = self.ch;
 
         if ident_start(c) {
@@ -912,10 +913,10 @@ impl<'a> StringReader<'a> {
         }
 
         if is_dec_digit(c) {
-            let num = self.scan_number(c.unwrap());
+            let (kind, symbol) = self.scan_number(c.unwrap());
             let suffix = self.scan_optional_raw_name();
-            debug!("next_token_inner: scanned number {:?}, {:?}", num, suffix);
-            return Ok(token::Literal(num, suffix));
+            debug!("next_token_inner: scanned number {:?}, {:?}, {:?}", kind, symbol, suffix);
+            return Ok(Token::lit(kind, symbol, suffix));
         }
 
         match c.expect("next_token_inner called at EOF") {
@@ -1073,10 +1074,10 @@ impl<'a> StringReader<'a> {
                     // lifetimes shouldn't end with a single quote
                     // if we find one, then this is an invalid character literal
                     if self.ch_is('\'') {
-                        let id = self.name_from(start);
+                        let symbol = self.name_from(start);
                         self.bump();
                         self.validate_char_escape(start_with_quote);
-                        return Ok(token::Literal(token::Char(id), None))
+                        return Ok(Token::lit(token::Char, symbol, None));
                     }
 
                     // Include the leading `'` in the real identifier, for macro
@@ -1098,43 +1099,43 @@ impl<'a> StringReader<'a> {
                     return Ok(token::Lifetime(ident));
                 }
                 let msg = "unterminated character literal";
-                let id = self.scan_single_quoted_string(start_with_quote, msg);
+                let symbol = self.scan_single_quoted_string(start_with_quote, msg);
                 self.validate_char_escape(start_with_quote);
                 let suffix = self.scan_optional_raw_name();
-                Ok(token::Literal(token::Char(id), suffix))
+                Ok(Token::lit(token::Char, symbol, suffix))
             }
             'b' => {
                 self.bump();
-                let lit = match self.ch {
+                let (kind, symbol) = match self.ch {
                     Some('\'') => {
                         let start_with_quote = self.pos;
                         self.bump();
                         let msg = "unterminated byte constant";
-                        let id = self.scan_single_quoted_string(start_with_quote, msg);
+                        let symbol = self.scan_single_quoted_string(start_with_quote, msg);
                         self.validate_byte_escape(start_with_quote);
-                        token::Byte(id)
+                        (token::Byte, symbol)
                     },
                     Some('"') => {
                         let start_with_quote = self.pos;
                         let msg = "unterminated double quote byte string";
-                        let id = self.scan_double_quoted_string(msg);
+                        let symbol = self.scan_double_quoted_string(msg);
                         self.validate_byte_str_escape(start_with_quote);
-                        token::ByteStr(id)
+                        (token::ByteStr, symbol)
                     },
                     Some('r') => self.scan_raw_byte_string(),
                     _ => unreachable!(),  // Should have been a token::Ident above.
                 };
                 let suffix = self.scan_optional_raw_name();
 
-                Ok(token::Literal(lit, suffix))
+                Ok(Token::lit(kind, symbol, suffix))
             }
             '"' => {
                 let start_with_quote = self.pos;
                 let msg = "unterminated double quote string";
-                let id = self.scan_double_quoted_string(msg);
+                let symbol = self.scan_double_quoted_string(msg);
                 self.validate_str_escape(start_with_quote);
                 let suffix = self.scan_optional_raw_name();
-                Ok(token::Literal(token::Str_(id), suffix))
+                Ok(Token::lit(token::Str, symbol, suffix))
             }
             'r' => {
                 let start_bpos = self.pos;
@@ -1205,14 +1206,14 @@ impl<'a> StringReader<'a> {
                 }
 
                 self.bump();
-                let id = if valid {
+                let symbol = if valid {
                     self.name_from_to(content_start_bpos, content_end_bpos)
                 } else {
                     Symbol::intern("??")
                 };
                 let suffix = self.scan_optional_raw_name();
 
-                Ok(token::Literal(token::StrRaw(id, hash_count), suffix))
+                Ok(Token::lit(token::StrRaw(hash_count), symbol, suffix))
             }
             '-' => {
                 if self.nextch_is('>') {
@@ -1366,7 +1367,7 @@ impl<'a> StringReader<'a> {
         id
     }
 
-    fn scan_raw_byte_string(&mut self) -> token::Lit {
+    fn scan_raw_byte_string(&mut self) -> (token::LitKind, Symbol) {
         let start_bpos = self.pos;
         self.bump();
         let mut hash_count = 0;
@@ -1423,7 +1424,7 @@ impl<'a> StringReader<'a> {
 
         self.bump();
 
-        token::ByteStrRaw(self.name_from_to(content_start_bpos, content_end_bpos), hash_count)
+        (token::ByteStrRaw(hash_count), self.name_from_to(content_start_bpos, content_end_bpos))
     }
 
     fn validate_char_escape(&self, start_with_quote: BytePos) {
@@ -1637,15 +1638,19 @@ mod tests {
 
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
-    fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<token::Token>) {
+    fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<Token>) {
         for expected_tok in &expected {
             assert_eq!(&string_reader.next_token().tok, expected_tok);
         }
     }
 
     // make the identifier by looking up the string in the interner
-    fn mk_ident(id: &str) -> token::Token {
-        token::Token::from_ast_ident(Ident::from_str(id))
+    fn mk_ident(id: &str) -> Token {
+        Token::from_ast_ident(Ident::from_str(id))
+    }
+
+    fn mk_lit(kind: token::LitKind, symbol: &str, suffix: Option<&str>) -> Token {
+        Token::lit(kind, Symbol::intern(symbol), suffix.map(Symbol::intern))
     }
 
     #[test]
@@ -1694,7 +1699,7 @@ mod tests {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token().tok,
-                    token::Literal(token::Char(Symbol::intern("a")), None));
+                       mk_lit(token::Char, "a", None));
         })
     }
 
@@ -1704,7 +1709,7 @@ mod tests {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token().tok,
-                    token::Literal(token::Char(Symbol::intern(" ")), None));
+                       mk_lit(token::Char, " ", None));
         })
     }
 
@@ -1714,7 +1719,7 @@ mod tests {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token().tok,
-                    token::Literal(token::Char(Symbol::intern("\\n")), None));
+                       mk_lit(token::Char, "\\n", None));
         })
     }
 
@@ -1724,7 +1729,7 @@ mod tests {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token().tok,
-                    token::Lifetime(Ident::from_str("'abc")));
+                       token::Lifetime(Ident::from_str("'abc")));
         })
     }
 
@@ -1733,10 +1738,8 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
-                        .next_token()
-                        .tok,
-                    token::Literal(token::StrRaw(Symbol::intern("\"#a\\b\x00c\""), 3), None));
+            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token().tok,
+                       mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None));
         })
     }
 
@@ -1748,18 +1751,16 @@ mod tests {
             macro_rules! test {
                 ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
                     assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token().tok,
-                            token::Literal(token::$tok_type(Symbol::intern($tok_contents)),
-                                            Some(Symbol::intern("suffix"))));
+                               mk_lit(token::$tok_type, $tok_contents, Some("suffix")));
                     // with a whitespace separator:
                     assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token().tok,
-                            token::Literal(token::$tok_type(Symbol::intern($tok_contents)),
-                                            None));
+                               mk_lit(token::$tok_type, $tok_contents, None));
                 }}
             }
 
             test!("'a'", Char, "a");
             test!("b'a'", Byte, "a");
-            test!("\"a\"", Str_, "a");
+            test!("\"a\"", Str, "a");
             test!("b\"a\"", ByteStr, "a");
             test!("1234", Integer, "1234");
             test!("0b101", Integer, "0b101");
@@ -1768,14 +1769,11 @@ mod tests {
             test!("1.0e10", Float, "1.0e10");
 
             assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token().tok,
-                    token::Literal(token::Integer(Symbol::intern("2")),
-                                    Some(Symbol::intern("us"))));
+                       mk_lit(token::Integer, "2", Some("us")));
             assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token().tok,
-                    token::Literal(token::StrRaw(Symbol::intern("raw"), 3),
-                                    Some(Symbol::intern("suffix"))));
+                       mk_lit(token::StrRaw(3), "raw", Some("suffix")));
             assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token().tok,
-                    token::Literal(token::ByteStrRaw(Symbol::intern("raw"), 3),
-                                    Some(Symbol::intern("suffix"))));
+                       mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")));
         })
     }
 
@@ -1796,8 +1794,7 @@ mod tests {
                 token::Comment => {}
                 _ => panic!("expected a comment!"),
             }
-            assert_eq!(lexer.next_token().tok,
-                    token::Literal(token::Char(Symbol::intern("a")), None));
+            assert_eq!(lexer.next_token().tok, mk_lit(token::Char, "a", None));
         })
     }
 

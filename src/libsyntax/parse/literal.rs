@@ -3,7 +3,7 @@
 use crate::ast::{self, Ident, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
-use crate::parse::token;
+use crate::parse::token::{self, Token};
 use crate::parse::unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
 use crate::print::pprust;
 use crate::symbol::{kw, Symbol};
@@ -27,14 +27,21 @@ crate enum LitError {
 }
 
 impl LitError {
-    crate fn report(&self, diag: &Handler, lit: token::Lit, suf: Option<Symbol>, span: Span) {
+    crate fn report(
+        &self,
+        diag: &Handler,
+        token::Lit { kind, suffix, .. }: token::Lit,
+        span: Span,
+    ) {
         match *self {
             LitError::NotLiteral | LitError::LexerError => {}
             LitError::InvalidSuffix => {
-                expect_no_suffix(diag, span, &format!("{} {}", lit.article(), lit.descr()), suf);
+                expect_no_suffix(
+                    diag, span, &format!("{} {}", kind.article(), kind.descr()), suffix
+                );
             }
             LitError::InvalidIntSuffix => {
-                let suf = suf.expect("suffix error with no suffix").as_str();
+                let suf = suffix.expect("suffix error with no suffix").as_str();
                 if looks_like_width_suffix(&['i', 'u'], &suf) {
                     // If it looks like a width, try to be helpful.
                     let msg = format!("invalid width `{}` for integer literal", &suf[1..]);
@@ -50,7 +57,7 @@ impl LitError {
                 }
             }
             LitError::InvalidFloatSuffix => {
-                let suf = suf.expect("suffix error with no suffix").as_str();
+                let suf = suffix.expect("suffix error with no suffix").as_str();
                 if looks_like_width_suffix(&['f'], &suf) {
                     // If it looks like a width, try to be helpful.
                     let msg = format!("invalid width `{}` for float literal", &suf[1..]);
@@ -84,43 +91,42 @@ impl LitKind {
     /// If diagnostic handler is passed, always returns `Some`,
     /// possibly after reporting non-fatal errors and recovery.
     fn from_lit_token(
-        lit: token::Lit,
-        suf: Option<Symbol>,
+        token::Lit { kind, symbol, suffix }: token::Lit,
     ) -> Result<LitKind, LitError> {
-        if suf.is_some() && !lit.may_have_suffix() {
+        if suffix.is_some() && !kind.may_have_suffix() {
             return Err(LitError::InvalidSuffix);
         }
 
-        Ok(match lit {
-            token::Bool(i) => {
-                assert!(i == kw::True || i == kw::False);
-                LitKind::Bool(i == kw::True)
+        Ok(match kind {
+            token::Bool => {
+                assert!(symbol == kw::True || symbol == kw::False);
+                LitKind::Bool(symbol == kw::True)
             }
-            token::Byte(i) => {
-                match unescape_byte(&i.as_str()) {
+            token::Byte => {
+                match unescape_byte(&symbol.as_str()) {
                     Ok(c) => LitKind::Byte(c),
-                    Err(_) => LitKind::Err(i),
+                    Err(_) => return Err(LitError::LexerError),
                 }
             },
-            token::Char(i) => {
-                match unescape_char(&i.as_str()) {
+            token::Char => {
+                match unescape_char(&symbol.as_str()) {
                     Ok(c) => LitKind::Char(c),
                     Err(_) => return Err(LitError::LexerError),
                 }
             },
-            token::Err(i) => LitKind::Err(i),
 
             // There are some valid suffixes for integer and float literals,
             // so all the handling is done internally.
-            token::Integer(s) => return integer_lit(s, suf),
-            token::Float(s) => return float_lit(s, suf),
+            token::Integer => return integer_lit(symbol, suffix),
+            token::Float => return float_lit(symbol, suffix),
 
-            token::Str_(mut sym) => {
+            token::Str => {
                 // If there are no characters requiring special treatment we can
                 // reuse the symbol from the token. Otherwise, we must generate a
                 // new symbol because the string in the LitKind is different to the
                 // string in the token.
                 let mut error = None;
+                let mut sym = symbol;
                 let s = &sym.as_str();
                 if s.as_bytes().iter().any(|&c| c == b'\\' || c == b'\r') {
                     let mut buf = String::with_capacity(s.len());
@@ -138,16 +144,17 @@ impl LitKind {
 
                 LitKind::Str(sym, ast::StrStyle::Cooked)
             }
-            token::StrRaw(mut sym, n) => {
+            token::StrRaw(n) => {
                 // Ditto.
+                let mut sym = symbol;
                 let s = &sym.as_str();
                 if s.contains('\r') {
                     sym = Symbol::intern(&raw_str_lit(s));
                 }
                 LitKind::Str(sym, ast::StrStyle::Raw(n))
             }
-            token::ByteStr(i) => {
-                let s = &i.as_str();
+            token::ByteStr => {
+                let s = &symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
                 let mut error = None;
                 unescape_byte_str(s, &mut |_, unescaped_byte| {
@@ -162,36 +169,37 @@ impl LitKind {
                 buf.shrink_to_fit();
                 LitKind::ByteStr(Lrc::new(buf))
             }
-            token::ByteStrRaw(i, _) => {
-                LitKind::ByteStr(Lrc::new(i.to_string().into_bytes()))
+            token::ByteStrRaw(_) => {
+                LitKind::ByteStr(Lrc::new(symbol.to_string().into_bytes()))
             }
+            token::Err => LitKind::Err(symbol),
         })
     }
 
     /// Attempts to recover a token from semantic literal.
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn to_lit_token(&self) -> (token::Lit, Option<Symbol>) {
-        match *self {
+    pub fn to_lit_token(&self) -> token::Lit {
+        let (kind, symbol, suffix) = match *self {
             LitKind::Str(string, ast::StrStyle::Cooked) => {
                 let escaped = string.as_str().escape_default().to_string();
-                (token::Lit::Str_(Symbol::intern(&escaped)), None)
+                (token::Str, Symbol::intern(&escaped), None)
             }
             LitKind::Str(string, ast::StrStyle::Raw(n)) => {
-                (token::Lit::StrRaw(string, n), None)
+                (token::StrRaw(n), string, None)
             }
             LitKind::ByteStr(ref bytes) => {
                 let string = bytes.iter().cloned().flat_map(ascii::escape_default)
                     .map(Into::<char>::into).collect::<String>();
-                (token::Lit::ByteStr(Symbol::intern(&string)), None)
+                (token::ByteStr, Symbol::intern(&string), None)
             }
             LitKind::Byte(byte) => {
                 let string: String = ascii::escape_default(byte).map(Into::<char>::into).collect();
-                (token::Lit::Byte(Symbol::intern(&string)), None)
+                (token::Byte, Symbol::intern(&string), None)
             }
             LitKind::Char(ch) => {
                 let string: String = ch.escape_default().map(Into::<char>::into).collect();
-                (token::Lit::Char(Symbol::intern(&string)), None)
+                (token::Char, Symbol::intern(&string), None)
             }
             LitKind::Int(n, ty) => {
                 let suffix = match ty {
@@ -199,29 +207,33 @@ impl LitKind {
                     ast::LitIntType::Signed(ty) => Some(Symbol::intern(ty.ty_to_string())),
                     ast::LitIntType::Unsuffixed => None,
                 };
-                (token::Lit::Integer(Symbol::intern(&n.to_string())), suffix)
+                (token::Integer, Symbol::intern(&n.to_string()), suffix)
             }
             LitKind::Float(symbol, ty) => {
-                (token::Lit::Float(symbol), Some(Symbol::intern(ty.ty_to_string())))
+                (token::Float, symbol, Some(Symbol::intern(ty.ty_to_string())))
             }
-            LitKind::FloatUnsuffixed(symbol) => (token::Lit::Float(symbol), None),
+            LitKind::FloatUnsuffixed(symbol) => {
+                (token::Float, symbol, None)
+            }
             LitKind::Bool(value) => {
-                let kw = if value { kw::True } else { kw::False };
-                (token::Lit::Bool(kw), None)
+                let symbol = if value { kw::True } else { kw::False };
+                (token::Bool, symbol, None)
             }
-            LitKind::Err(val) => (token::Lit::Err(val), None),
-        }
+            LitKind::Err(symbol) => {
+                (token::Err, symbol, None)
+            }
+        };
+
+        token::Lit::new(kind, symbol, suffix)
     }
 }
 
 impl Lit {
     fn from_lit_token(
         token: token::Lit,
-        suffix: Option<Symbol>,
         span: Span,
     ) -> Result<Lit, LitError> {
-        let node = LitKind::from_lit_token(token, suffix)?;
-        Ok(Lit { node, token, suffix, span })
+        Ok(Lit { token, node: LitKind::from_lit_token(token)?, span })
     }
 
     /// Converts literal token with a suffix into an AST literal.
@@ -232,11 +244,11 @@ impl Lit {
         token: &token::Token,
         span: Span,
     ) -> Result<Lit, LitError> {
-        let (lit, suf) = match *token {
+        let lit = match *token {
             token::Ident(ident, false) if ident.name == kw::True || ident.name == kw::False =>
-                (token::Bool(ident.name), None),
-            token::Literal(token, suffix) =>
-                (token, suffix),
+                token::Lit::new(token::Bool, ident.name, None),
+            token::Literal(lit) =>
+                lit,
             token::Interpolated(ref nt) => {
                 if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt {
                     if let ast::ExprKind::Lit(lit) = &expr.node {
@@ -248,22 +260,21 @@ impl Lit {
             _ => return Err(LitError::NotLiteral)
         };
 
-        Lit::from_lit_token(lit, suf, span)
+        Lit::from_lit_token(lit, span)
     }
 
     /// Attempts to recover an AST literal from semantic literal.
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
     pub fn from_lit_kind(node: LitKind, span: Span) -> Lit {
-        let (token, suffix) = node.to_lit_token();
-        Lit { node, token, suffix, span }
+        Lit { token: node.to_lit_token(), node, span }
     }
 
     /// Losslessly convert an AST literal into a token stream.
     crate fn tokens(&self) -> TokenStream {
-        let token = match self.token {
-            token::Bool(symbol) => token::Ident(Ident::new(symbol, self.span), false),
-            token => token::Literal(token, self.suffix),
+        let token = match self.token.kind {
+            token::Bool => token::Ident(Ident::new(self.token.symbol, self.span), false),
+            _ => token::Literal(self.token),
         };
         TokenTree::Token(self.span, token).into()
     }
@@ -276,11 +287,11 @@ impl<'a> Parser<'a> {
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`.
             recovered = self.look_ahead(1, |t| {
-                if let token::Literal(token::Integer(val), suf) = *t {
+                if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = *t {
                     let next_span = self.look_ahead_span(1);
                     if self.span.hi() == next_span.lo() {
-                        let sym = String::from("0.") + &val.as_str();
-                        let token = token::Literal(token::Float(Symbol::intern(&sym)), suf);
+                        let s = String::from("0.") + &symbol.as_str();
+                        let token = Token::lit(token::Float, Symbol::intern(&s), suffix);
                         return Some((token, self.span.to(next_span)));
                     }
                 }
@@ -313,10 +324,11 @@ impl<'a> Parser<'a> {
                 return Err(self.span_fatal(span, &msg));
             }
             Err(err) => {
-                let (lit, suf) = token.expect_lit();
+                let lit = token.expect_lit();
                 self.bump();
-                err.report(&self.sess.span_diagnostic, lit, suf, span);
-                return Ok(Lit::from_lit_token(token::Err(lit.symbol()), suf, span).ok().unwrap());
+                err.report(&self.sess.span_diagnostic, lit, span);
+                let lit = token::Lit::new(token::Err, lit.symbol, lit.suffix);
+                return Ok(Lit::from_lit_token(lit, span).ok().unwrap());
             }
         }
     }
