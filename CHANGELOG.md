@@ -6,6 +6,37 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.4.2] 2018-04-12
+
+### Added
+
+- Handle binary operators and lifetimes 0fd174d
+- Add reorder_impl_items config option 94f5a05
+- Add `--unstable-features` CLI option to list unstable options from the `--help` output 8208f8a
+- Add merge_imports config option 5dd203e
+
+### Changed
+
+- Format macro arguments with vertical layout ec71459
+- Reorder imports by default 164cf7d
+- Do not collapse block around expr with condition on match arm 5b9b7d5
+- Use vertical layout for complex attributes c77708f
+- Format array using heuristics for function calls 98c6f7b
+- Implement stable ordering for impl items with the the following item priority: type, const, macro, then method fa80ddf
+- Reorder imports by default 164cf7d
+- Group `extern crate` by default 3a138a2
+- Make `error_on_line_overflow` false by default f146711
+- Merge imports with the same prefix into a single nested import 1954513
+- Squash the various 'reorder imports' option into one 911395a
+
+### Fixed
+
+- Print version is missing the channel ca6fc67
+- Do not add the beginning vert to the match arm 1e1d9d4
+- Follow indent style config when formatting attributes efd295a
+- Do not insert newline when item is empty a8022f3
+- Do not indent or unindent inside string literal ec1907b
+
 ## [0.4.1] 2018-03-16
 
 ### Added
