@@ -2992,7 +2992,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 fn item_constant(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                  c: &clean::Constant) -> fmt::Result {
     write!(w, "<pre class='rust const'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "{vis}const \
                {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
@@ -3004,7 +3004,7 @@ fn item_constant(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 fn item_static(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                s: &clean::Static) -> fmt::Result {
     write!(w, "<pre class='rust static'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "{vis}static {mutability}\
                {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
@@ -3027,7 +3027,7 @@ fn item_function(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
         f.generics
     ).len();
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w,
            "{vis}{constness}{unsafety}{asyncness}{abi}fn \
            {name}{generics}{decl}{where_clause}</pre>",
@@ -3116,7 +3116,7 @@ fn item_trait(
     // Output the trait definition
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust trait'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         write!(w, "{}{}{}trait {}{}{}",
                VisSpace(&it.visibility),
                UnsafetySpace(t.unsafety),
@@ -3379,8 +3379,10 @@ fn assoc_const(w: &mut fmt::Formatter<'_>,
                it: &clean::Item,
                ty: &clean::Type,
                _default: Option<&String>,
-               link: AssocItemLink<'_>) -> fmt::Result {
-    write!(w, "{}const <a href='{}' class=\"constant\"><b>{}</b></a>: {}",
+               link: AssocItemLink<'_>,
+               extra: &str) -> fmt::Result {
+    write!(w, "{}{}const <a href='{}' class=\"constant\"><b>{}</b></a>: {}",
+           extra,
            VisSpace(&it.visibility),
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap(),
@@ -3391,8 +3393,10 @@ fn assoc_const(w: &mut fmt::Formatter<'_>,
 fn assoc_type<W: fmt::Write>(w: &mut W, it: &clean::Item,
                              bounds: &[clean::GenericBound],
                              default: Option<&clean::Type>,
-                             link: AssocItemLink<'_>) -> fmt::Result {
-    write!(w, "type <a href='{}' class=\"type\">{}</a>",
+                             link: AssocItemLink<'_>,
+                             extra: &str) -> fmt::Result {
+    write!(w, "{}type <a href='{}' class=\"type\">{}</a>",
+           extra,
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap())?;
     if !bounds.is_empty() {
@@ -3469,7 +3473,7 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
         } else {
             (0, true)
         };
-        render_attributes(w, meth)?;
+        render_attributes(w, meth, false)?;
         write!(w, "{}{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                if parent == ItemType::Trait { "    " } else { "" },
@@ -3503,10 +3507,12 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
             method(w, item, m.header, &m.generics, &m.decl, link, parent)
         }
         clean::AssociatedConstItem(ref ty, ref default) => {
-            assoc_const(w, item, ty, default.as_ref(), link)
+            assoc_const(w, item, ty, default.as_ref(), link,
+                        if parent == ItemType::Trait { "    " } else { "" })
         }
         clean::AssociatedTypeItem(ref bounds, ref default) => {
-            assoc_type(w, item, bounds, default.as_ref(), link)
+            assoc_type(w, item, bounds, default.as_ref(), link,
+                       if parent == ItemType::Trait { "    " } else { "" })
         }
         _ => panic!("render_assoc_item called on non-associated-item")
     }
@@ -3516,7 +3522,7 @@ fn item_struct(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                s: &clean::Struct) -> fmt::Result {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust struct'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         render_struct(w,
                       it,
                       Some(&s.generics),
@@ -3567,7 +3573,7 @@ fn item_union(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                s: &clean::Union) -> fmt::Result {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust union'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         render_union(w,
                      it,
                      Some(&s.generics),
@@ -3612,7 +3618,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust enum'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         write!(w, "{}enum {}{}{}",
                VisSpace(&it.visibility),
                it.name.as_ref().unwrap(),
@@ -3773,7 +3779,15 @@ const ATTRIBUTE_WHITELIST: &'static [Symbol] = &[
     sym::non_exhaustive
 ];
 
-fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item) -> fmt::Result {
+// The `top` parameter is used when generating the item declaration to ensure it doesn't have a
+// left padding. For example:
+//
+// #[foo] <----- "top" attribute
+// struct Foo {
+//     #[bar] <---- not "top" attribute
+//     bar: usize,
+// }
+fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item, top: bool) -> fmt::Result {
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
@@ -3785,7 +3799,8 @@ fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item) -> fmt::Result {
         }
     }
     if attrs.len() > 0 {
-        write!(w, "<div class=\"docblock attributes\">{}</div>", &attrs)?;
+        write!(w, "<div class=\"docblock attributes{}\">{}</div>",
+               if top { " top-attr" } else { "" }, &attrs)?;
     }
     Ok(())
 }
@@ -4118,7 +4133,8 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                             out.push_str("<span class=\"where fmt-newline\">    ");
                             assoc_type(&mut out, it, &[],
                                        Some(&tydef.type_),
-                                       AssocItemLink::GotoSource(t_did, &FxHashSet::default()))?;
+                                       AssocItemLink::GotoSource(t_did, &FxHashSet::default()),
+                                       "")?;
                             out.push_str(";</span>");
                         }
                     }
@@ -4158,7 +4174,8 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                     if let clean::TypedefItem(ref tydef, _) = it.inner {
                         write!(w, "<span class=\"where fmt-newline\">  ")?;
                         assoc_type(w, it, &vec![], Some(&tydef.type_),
-                                   AssocItemLink::Anchor(None))?;
+                                   AssocItemLink::Anchor(None),
+                                   "")?;
                         write!(w, ";</span>")?;
                     }
                 }
@@ -4228,7 +4245,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<code id='{}'>", ns_id)?;
-                assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id))?;
+                assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id), "")?;
                 write!(w, "</code></h4>")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
@@ -4236,7 +4253,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<code id='{}'>", ns_id)?;
-                assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
+                assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "")?;
                 write!(w, "</code>")?;
                 render_stability_since_raw(w, item.stable_since(), outer_version)?;
                 if let Some(l) = (Item { cx, item }).src_href() {
@@ -4250,7 +4267,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<code id='{}'>", ns_id)?;
-                assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id))?;
+                assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id), "")?;
                 write!(w, "</code></h4>")?;
             }
             clean::StrippedItem(..) => return Ok(()),
@@ -4338,7 +4355,7 @@ fn item_existential(
     t: &clean::Existential,
 ) -> fmt::Result {
     write!(w, "<pre class='rust existential'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "existential type {}{}{where_clause}: {bounds};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
@@ -4357,7 +4374,7 @@ fn item_existential(
 fn item_trait_alias(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                     t: &clean::TraitAlias) -> fmt::Result {
     write!(w, "<pre class='rust trait-alias'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "trait {}{}{} = {};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
@@ -4376,7 +4393,7 @@ fn item_trait_alias(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 fn item_typedef(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
     write!(w, "<pre class='rust typedef'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "type {}{}{where_clause} = {type_};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
@@ -4394,7 +4411,7 @@ fn item_typedef(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 
 fn item_foreign_type(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item) -> fmt::Result {
     writeln!(w, "<pre class='rust foreigntype'>extern {{")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(
         w,
         "    {}type {};\n}}</pre>",

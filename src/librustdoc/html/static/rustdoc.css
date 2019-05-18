@@ -1587,10 +1587,10 @@ div.name.expand::before {
 }
 
 /* This part is to fix the "Expand attributes" part in the type declaration. */
-.type-decl > pre > :first-child {
+.type-decl > pre > .toggle-wrapper.toggle-attributes.top-attr {
 	margin-left: 0 !important;
 }
-.type-decl > pre > :nth-child(2) {
+.type-decl > pre > .docblock.attributes.top-attr {
 	margin-left: 1.8em !important;
 }
 .type-decl > pre > .toggle-attributes {
