@@ -77,7 +77,21 @@ pub enum Lit {
 static_assert_size!(Lit, 8);
 
 impl Lit {
-    crate fn literal_name(&self) -> &'static str {
+    crate fn symbol(&self) -> Symbol {
+        match *self {
+            Bool(s) | Byte(s) | Char(s) | Integer(s) | Float(s) | Err(s) |
+            Str_(s) | StrRaw(s, _) | ByteStr(s) | ByteStrRaw(s, _) => s
+        }
+    }
+
+    crate fn article(&self) -> &'static str {
+        match *self {
+            Integer(_) | Err(_) => "an",
+            _ => "a",
+        }
+    }
+
+    crate fn descr(&self) -> &'static str {
         match *self {
             Bool(_) => panic!("literal token contains `Lit::Bool`"),
             Byte(_) => "byte literal",
@@ -92,7 +106,7 @@ impl Lit {
 
     crate fn may_have_suffix(&self) -> bool {
         match *self {
-            Integer(..) | Float(..) => true,
+            Integer(..) | Float(..) | Err(..) => true,
             _ => false,
         }
     }
@@ -315,6 +329,13 @@ impl Token {
         match *self {
             Literal(..) => true,
             _           => false,
+        }
+    }
+
+    crate fn expect_lit(&self) -> (Lit, Option<Symbol>) {
+        match *self {
+            Literal(lit, suf) => (lit, suf),
+            _=> panic!("`expect_lit` called on non-literal"),
         }
     }
 

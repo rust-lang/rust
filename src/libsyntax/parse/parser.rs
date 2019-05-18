@@ -1054,7 +1054,7 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
-        literal::expect_no_suffix(sp, &self.sess.span_diagnostic, kind, suffix)
+        literal::expect_no_suffix(&self.sess.span_diagnostic, sp, kind, suffix)
     }
 
     /// Attempts to consume a `<`. If `<<` is seen, replaces it with a single
