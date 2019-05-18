@@ -17,7 +17,7 @@ use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
 use syntax::ext::hygiene::Mark;
-use syntax::symbol::{Symbol, InternedString};
+use syntax::symbol::{Symbol, sym, InternedString};
 use syntax_pos::{Span, DUMMY_SP};
 use crate::util::nodemap::NodeMap;
 
@@ -584,16 +584,16 @@ impl DefPathData {
                 return name
             }
             // note that this does not show up in user printouts
-            CrateRoot => "{{crate}}",
-            Impl => "{{impl}}",
-            Misc => "{{misc}}",
-            ClosureExpr => "{{closure}}",
-            Ctor => "{{constructor}}",
-            AnonConst => "{{constant}}",
-            ImplTrait => "{{opaque}}",
+            CrateRoot => sym::double_braced_crate,
+            Impl => sym::double_braced_impl,
+            Misc => sym::double_braced_misc,
+            ClosureExpr => sym::double_braced_closure,
+            Ctor => sym::double_braced_constructor,
+            AnonConst => sym::double_braced_constant,
+            ImplTrait => sym::double_braced_opaque,
         };
 
-        Symbol::intern(s).as_interned_str()
+        s.as_interned_str()
     }
 
     pub fn to_string(&self) -> String {

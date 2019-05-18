@@ -1979,11 +1979,11 @@ impl<'a> Resolver<'a> {
                                        .collect();
 
         if !attr::contains_name(&krate.attrs, sym::no_core) {
-            extern_prelude.insert(Ident::from_str("core"), Default::default());
+            extern_prelude.insert(Ident::with_empty_ctxt(sym::core), Default::default());
             if !attr::contains_name(&krate.attrs, sym::no_std) {
-                extern_prelude.insert(Ident::from_str("std"), Default::default());
+                extern_prelude.insert(Ident::with_empty_ctxt(sym::std), Default::default());
                 if session.rust_2018() {
-                    extern_prelude.insert(Ident::from_str("meta"), Default::default());
+                    extern_prelude.insert(Ident::with_empty_ctxt(sym::meta), Default::default());
                 }
             }
         }
@@ -3374,7 +3374,7 @@ impl<'a> Resolver<'a> {
                     self.trait_map.insert(id, traits);
                 }
 
-                let mut std_path = vec![Segment::from_ident(Ident::from_str("std"))];
+                let mut std_path = vec![Segment::from_ident(Ident::with_empty_ctxt(sym::std))];
                 std_path.extend(path);
                 if self.primitive_type_table.primitive_types.contains_key(&path[0].ident.name) {
                     let cl = CrateLint::No;

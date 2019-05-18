@@ -19,7 +19,7 @@ use syntax::{
     mut_visit::{self, MutVisitor},
     parse::ParseSess,
     ptr::P,
-    symbol::{Symbol, sym}
+    symbol::{keywords, Symbol, sym}
 };
 use syntax_pos::Span;
 
@@ -110,13 +110,14 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
             span,
             kind: AllocatorKind::Global,
             global: item.ident,
-            core: Ident::from_str("core"),
+            core: Ident::with_empty_ctxt(sym::core),
             cx: ExtCtxt::new(self.sess, ecfg, self.resolver),
         };
 
         // We will generate a new submodule. To `use` the static from that module, we need to get
         // the `super::...` path.
-        let super_path = f.cx.path(f.span, vec![Ident::from_str("super"), f.global]);
+        let super_path =
+            f.cx.path(f.span, vec![Ident::with_empty_ctxt(keywords::Super.name()), f.global]);
 
         // Generate the items in the submodule
         let mut items = vec![
@@ -236,7 +237,7 @@ impl AllocFnFactory<'_> {
     ) -> P<Expr> {
         match *ty {
             AllocatorTy::Layout => {
-                let usize = self.cx.path_ident(self.span, Ident::from_str("usize"));
+                let usize = self.cx.path_ident(self.span, Ident::with_empty_ctxt(sym::usize));
                 let ty_usize = self.cx.ty_path(usize);
                 let size = ident();
                 let align = ident();
@@ -298,12 +299,12 @@ impl AllocFnFactory<'_> {
     }
 
     fn usize(&self) -> P<Ty> {
-        let usize = self.cx.path_ident(self.span, Ident::from_str("usize"));
+        let usize = self.cx.path_ident(self.span, Ident::with_empty_ctxt(sym::usize));
         self.cx.ty_path(usize)
     }
 
     fn ptr_u8(&self) -> P<Ty> {
-        let u8 = self.cx.path_ident(self.span, Ident::from_str("u8"));
+        let u8 = self.cx.path_ident(self.span, Ident::with_empty_ctxt(sym::u8));
         let ty_u8 = self.cx.ty_path(u8);
         self.cx.ty_ptr(self.span, ty_u8, Mutability::Mutable)
     }

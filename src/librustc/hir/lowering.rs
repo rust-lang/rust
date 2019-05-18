@@ -2218,7 +2218,7 @@ impl<'a> LoweringContext<'a> {
                         bindings: hir_vec![
                             hir::TypeBinding {
                                 hir_id: this.next_id(),
-                                ident: Ident::from_str(FN_OUTPUT_NAME),
+                                ident: Ident::with_empty_ctxt(FN_OUTPUT_NAME),
                                 ty: output
                                     .as_ref()
                                     .map(|ty| this.lower_ty(&ty, ImplTraitContext::disallowed()))
@@ -2543,7 +2543,7 @@ impl<'a> LoweringContext<'a> {
         let future_params = P(hir::GenericArgs {
             args: hir_vec![],
             bindings: hir_vec![hir::TypeBinding {
-                ident: Ident::from_str(FN_OUTPUT_NAME),
+                ident: Ident::with_empty_ctxt(FN_OUTPUT_NAME),
                 ty: output_ty,
                 hir_id: self.next_id(),
                 span,
@@ -4801,7 +4801,7 @@ impl<'a> LoweringContext<'a> {
                 let attr = {
                     // `allow(unreachable_code)`
                     let allow = {
-                        let allow_ident = Ident::from_str("allow").with_span_pos(e.span);
+                        let allow_ident = Ident::with_empty_ctxt(sym::allow).with_span_pos(e.span);
                         let uc_ident = Ident::from_str("unreachable_code").with_span_pos(e.span);
                         let uc_nested = attr::mk_nested_word_item(uc_ident);
                         attr::mk_list_item(e.span, allow_ident, vec![uc_nested])

@@ -171,7 +171,7 @@ impl MutVisitor for EntryPointCleaner {
             EntryPointType::MainAttr |
             EntryPointType::Start =>
                 item.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
-                    let allow_ident = Ident::from_str("allow");
+                    let allow_ident = Ident::with_empty_ctxt(sym::allow);
                     let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
                     let allow_dead_code_item = attr::mk_list_item(DUMMY_SP, allow_ident,
                                                                   vec![dc_nested]);
@@ -215,7 +215,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
                    tests: Vec<Ident>,
                    tested_submods: Vec<(Ident, Ident)>)
                    -> (P<ast::Item>, Ident) {
-    let super_ = Ident::from_str("super");
+    let super_ = Ident::with_empty_ctxt(keywords::Super.name());
 
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public),

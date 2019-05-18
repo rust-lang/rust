@@ -6,7 +6,7 @@
 use syntax::ast::{self, Ident, GenericArg};
 use syntax::ext::base::{self, *};
 use syntax::ext::build::AstBuilder;
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::{keywords, Symbol, sym};
 use syntax_pos::Span;
 use syntax::tokenstream;
 
@@ -29,7 +29,8 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
                                      true,
                                      cx.std_path(&["option", "Option", "None"]),
                                      vec![GenericArg::Type(cx.ty_rptr(sp,
-                                                     cx.ty_ident(sp, Ident::from_str("str")),
+                                                     cx.ty_ident(sp,
+                                                                 Ident::with_empty_ctxt(sym::str)),
                                                      Some(lt),
                                                      ast::Mutability::Immutable))],
                                      vec![]))
