@@ -334,7 +334,7 @@ impl Rewrite for ast::Attribute {
                         };
 
                         let doc_comment_formatter =
-                            DocCommentFormatter::new(literal, comment_style);
+                            DocCommentFormatter::new(literal.as_str().get(), comment_style);
                         let doc_comment = format!("{}", doc_comment_formatter);
                         return rewrite_doc_comment(
                             &doc_comment,

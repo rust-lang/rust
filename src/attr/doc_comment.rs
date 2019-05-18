@@ -1,24 +1,16 @@
 use crate::comment::CommentStyle;
 use std::fmt::{self, Display};
-use syntax_pos::symbol::Symbol;
 
+#[derive(new)]
 pub(super) struct DocCommentFormatter<'a> {
-    literal: &'a Symbol,
+    literal: &'a str,
     style: CommentStyle<'a>,
-}
-
-impl<'a> DocCommentFormatter<'a> {
-    pub(super) fn new(literal: &'a Symbol, style: CommentStyle<'a>) -> Self {
-        Self { literal, style }
-    }
 }
 
 impl Display for DocCommentFormatter<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         let opener = self.style.opener().trim_end();
-        let literal_as_str = self.literal.as_str().get();
-
-        let mut lines = literal_as_str.lines().peekable();
+        let mut lines = self.literal.lines().peekable();
         while let Some(line) = lines.next() {
             let is_last_line = lines.peek().is_none();
             if is_last_line {
@@ -27,7 +19,6 @@ impl Display for DocCommentFormatter<'_> {
                 writeln!(formatter, "{}{}", opener, line)?;
             }
         }
-
         Ok(())
     }
 }
@@ -35,7 +26,6 @@ impl Display for DocCommentFormatter<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use syntax_pos::{Globals, GLOBALS};
 
     #[test]
     fn literal_controls_leading_spaces() {
@@ -78,13 +68,9 @@ mod tests {
         expected_comment: &str,
         style: CommentStyle<'_>,
     ) {
-        GLOBALS.set(&Globals::new(), || {
-            let literal = Symbol::gensym(literal);
-
-            assert_eq!(
-                expected_comment,
-                format!("{}", DocCommentFormatter::new(&literal, style))
-            );
-        });
+        assert_eq!(
+            expected_comment,
+            format!("{}", DocCommentFormatter::new(&literal, style))
+        );
     }
 }
