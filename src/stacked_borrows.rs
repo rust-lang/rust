@@ -40,7 +40,7 @@ pub enum Permission {
     Unique,
     /// Grants shared mutable access.
     SharedReadWrite,
-    /// Greants shared read-only access.
+    /// Grants shared read-only access.
     SharedReadOnly,
     /// Grants no access, but separates two groups of SharedReadWrite so they are not
     /// all considered mutually compatible.
@@ -202,7 +202,7 @@ impl Default for Tag {
 impl Permission {
     /// This defines for a given permission, whether it permits the given kind of access.
     fn grants(self, access: AccessKind) -> bool {
-        // Disabled grants nother. Otherwise, all items grant read access, and except for SharedReadOnly they grant write access.
+        // Disabled grants nothing. Otherwise, all items grant read access, and except for SharedReadOnly they grant write access.
         self != Permission::Disabled && (access == AccessKind::Read || self != Permission::SharedReadOnly)
     }
 }
