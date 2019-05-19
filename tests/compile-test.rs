@@ -52,7 +52,7 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
     // as we'll get a duplicate matching versions. Instead, disambiguate with
     // `--extern dep=path`.
     // See https://github.com/rust-lang/rust-clippy/issues/4015.
-    let needs_disambiguation = ["serde"];
+    let needs_disambiguation = ["serde", "regex", "clippy_lints"];
     // This assumes that deps are compiled (they are for Cargo integration tests).
     let deps = std::fs::read_dir(host_libs().join("deps")).unwrap();
     let disambiguated = deps
@@ -62,7 +62,7 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
             // NOTE: This only handles a single dep
             // https://github.com/laumann/compiletest-rs/issues/101
             needs_disambiguation.iter().find_map(|dep| {
-                if name.starts_with(&format!("lib{}-", dep)) {
+                if name.starts_with(&format!("lib{}-", dep)) && name.ends_with(".rlib") {
                     Some(format!("--extern {}={}", dep, path.display()))
                 } else {
                     None
@@ -95,8 +95,6 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
 
 fn run_mode(mode: &str, dir: PathBuf) {
     let cfg = config(mode, dir);
-    // clean rmeta data, otherwise "cargo check; cargo test" fails (#2896)
-    cfg.clean_rmeta();
     compiletest::run_tests(&cfg);
 }
 
