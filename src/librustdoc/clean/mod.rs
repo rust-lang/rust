@@ -3408,6 +3408,7 @@ pub struct Span {
     pub locol: usize,
     pub hiline: usize,
     pub hicol: usize,
+    pub original: syntax_pos::Span,
 }
 
 impl Span {
@@ -3416,7 +3417,12 @@ impl Span {
             filename: FileName::Anon(0),
             loline: 0, locol: 0,
             hiline: 0, hicol: 0,
+            original: syntax_pos::DUMMY_SP,
         }
+    }
+
+    pub fn span(&self) -> syntax_pos::Span {
+        self.original
     }
 }
 
@@ -3436,6 +3442,7 @@ impl Clean<Span> for syntax_pos::Span {
             locol: lo.col.to_usize(),
             hiline: hi.line,
             hicol: hi.col.to_usize(),
+            original: *self,
         }
     }
 }
