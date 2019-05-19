@@ -6,6 +6,12 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.99.1] 2018-08-04
+
+### Fixed
+
+- fix use statements ordering when a number is present 1928ae7
+
 ## [0.99.0] 2018-08-03
 
 - 1.0 RC release
