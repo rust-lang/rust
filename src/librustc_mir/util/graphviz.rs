@@ -27,7 +27,7 @@ pub fn graphviz_safe_def_name(def_id: DefId) -> String {
     format!(
         "{}_{}",
         def_id.krate.index(),
-        def_id.index.as_array_index(),
+        def_id.index.index(),
     )
 }
 

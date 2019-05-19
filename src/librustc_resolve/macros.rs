@@ -172,7 +172,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>) {
         let def_id = DefId {
             krate: CrateNum::BuiltinMacros,
-            index: DefIndex::from_array_index(self.macro_map.len()),
+            index: DefIndex::from(self.macro_map.len()),
         };
         let kind = ext.kind();
         self.macro_map.insert(def_id, ext);

@@ -1170,7 +1170,7 @@ fn generated_code(span: Span) -> bool {
 fn id_from_def_id(id: DefId) -> rls_data::Id {
     rls_data::Id {
         krate: id.krate.as_u32(),
-        index: id.index.as_raw_u32(),
+        index: id.index.as_u32(),
     }
 }
 

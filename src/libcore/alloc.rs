@@ -99,7 +99,7 @@ impl Layout {
     /// [`Layout::from_size_align`](#method.from_size_align).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
-    pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
+    pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         Layout { size_: size, align_: NonZeroUsize::new_unchecked(align) }
     }
 
@@ -480,7 +480,7 @@ pub unsafe trait GlobalAlloc {
     ///   this allocator,
     ///
     /// * `layout` must be the same layout that was used
-    ///   to allocated that block of memory,
+    ///   to allocate that block of memory,
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
@@ -535,7 +535,7 @@ pub unsafe trait GlobalAlloc {
     /// * `ptr` must be currently allocated via this allocator,
     ///
     /// * `layout` must be the same layout that was used
-    ///   to allocated that block of memory,
+    ///   to allocate that block of memory,
     ///
     /// * `new_size` must be greater than zero.
     ///

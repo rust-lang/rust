@@ -143,7 +143,7 @@ impl<'tcx> DocContext<'tcx> {
             crate_num,
             DefId {
                 krate: crate_num,
-                index: DefIndex::from_array_index(def_id.index.as_array_index() + 1),
+                index: DefIndex::from(def_id.index.index() + 1),
             },
         );
 

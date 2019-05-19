@@ -298,7 +298,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
     // negated `CrateNum` (so remote definitions are visited first) and then
     // by a flattened version of the `DefIndex`.
     trait_impls.sort_unstable_by_key(|def_id| {
-        (-(def_id.krate.as_u32() as i64), def_id.index.as_array_index())
+        (-(def_id.krate.as_u32() as i64), def_id.index.index())
     });
 
     for impl_def_id in trait_impls {

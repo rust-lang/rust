@@ -38,7 +38,7 @@ impl DefPathTable {
                 def_path_hash: DefPathHash)
                 -> DefIndex {
         let index = {
-            let index = DefIndex::from_array_index(self.index_to_key.len());
+            let index = DefIndex::from(self.index_to_key.len());
             debug!("DefPathTable::insert() - {:?} <-> {:?}", key, index);
             self.index_to_key.push(key);
             index
@@ -49,17 +49,17 @@ impl DefPathTable {
     }
 
     pub fn next_id(&self) -> DefIndex {
-        DefIndex::from_array_index(self.index_to_key.len())
+        DefIndex::from(self.index_to_key.len())
     }
 
     #[inline(always)]
     pub fn def_key(&self, index: DefIndex) -> DefKey {
-        self.index_to_key[index.as_array_index()].clone()
+        self.index_to_key[index.index()].clone()
     }
 
     #[inline(always)]
     pub fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
-        let ret = self.def_path_hashes[index.as_array_index()];
+        let ret = self.def_path_hashes[index.index()];
         debug!("def_path_hash({:?}) = {:?}", index, ret);
         return ret
     }
@@ -74,7 +74,7 @@ impl DefPathTable {
                 .map(|(index, &hash)| {
                     let def_id = DefId {
                         krate: cnum,
-                        index: DefIndex::from_array_index(index),
+                        index: DefIndex::from(index),
                     };
                     (hash, def_id)
                 })
@@ -387,7 +387,7 @@ impl Definitions {
     #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
         if def_id.krate == LOCAL_CRATE {
-            let node_id = self.def_index_to_node[def_id.index.as_array_index()];
+            let node_id = self.def_index_to_node[def_id.index.index()];
             if node_id != ast::DUMMY_NODE_ID {
                 return Some(node_id);
             }
@@ -417,7 +417,7 @@ impl Definitions {
 
     #[inline]
     pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> hir::HirId {
-        let node_id = self.def_index_to_node[def_index.as_array_index()];
+        let node_id = self.def_index_to_node[def_index.index()];
         self.node_to_hir_id[node_id]
     }
 
@@ -508,7 +508,7 @@ impl Definitions {
 
         // Create the definition.
         let index = self.table.allocate(key, def_path_hash);
-        assert_eq!(index.as_array_index(), self.def_index_to_node.len());
+        assert_eq!(index.index(), self.def_index_to_node.len());
         self.def_index_to_node.push(node_id);
 
         // Some things for which we allocate DefIndices don't correspond to
@@ -653,7 +653,7 @@ macro_rules! define_global_metadata_kind {
                                           .position(|k| *k == def_key)
                                           .unwrap();
 
-                DefIndex::from_array_index(index)
+                DefIndex::from(index)
             }
 
             fn name(&self) -> Symbol {
