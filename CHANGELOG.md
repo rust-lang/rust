@@ -6,7 +6,42 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
-## [0.8.2] 2018-05-28
+## [0.9.0] 2018-08-01
+
+### Added
+
+- Handle raw identifiers 3027c21
+- Format async closure 60ce411
+- Add max_width option for all heuristics c2ae39e
+- Add config option `format_macro_matchers` to format the metavariable matching patterns in macros 79c5ee8
+- Add config option `format_macro_bodies` to format the bodies of macros 79c5ee8
+- Format exitential type fc307ff
+- Support raw identifiers in struct expressions f121b1a
+- Format Async block and async function 0b25f60
+
+### Changed
+
+- Update rustc-ap-rustc_target to 211.0.0, rustc-ap-syntax to 211.0.0, and rustc-ap-syntax_pos to 211.0.0
+- Put each nested import on its own line while putting non-nested imports on the same line as much as possible 42ab258
+- Respect `empty_item_single_line` config option when formatting empty impls. Put the `where` on its own line to improve readability #2771
+- Strip leading `|` in match arm patterns 1d4b988
+- Apply short function call heuristic to attributes 3abebf9
+- Indent a match guard if the pattern is multiline be4d37d
+- Change default newline style to `Native` 9d8f381
+- Improve formatting of series of binop expressions a4cdb68
+- Trigger an internal error if we skip formatting due to a lost comment b085113
+- Refactor chain formatting #2838
+
+### Fixed
+
+- Do not insert spaces around braces with empty body or multiple lines 2f65852
+- Allow using mixed layout with comments #2766
+- Handle break labels #2726
+- fix rewrite_string when a line feed is present 472a2ed
+- Fix an anomaly with comments and array literals b28a0cd
+- Check for comments after the `=>` in a match arm 6899471
+
+## [0.8.0,0.8.1,0.8.2] 2018-05-28
 
 ### Added
 
