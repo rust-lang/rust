@@ -506,7 +506,7 @@ pub fn initial_ids() -> Vec<String> {
      "methods",
      "deref-methods",
      "implementations",
-    ].into_iter().map(|id| (String::from(*id))).collect()
+    ].iter().map(|id| (String::from(*id))).collect()
 }
 
 /// Generates the documentation for `crate` into the directory `dst`
