@@ -130,9 +130,9 @@ impl<T: ?Sized> Box<T> {
     /// the destructor of `T` and free the allocated memory. For this
     /// to be safe, the memory must have been allocated in the precise
     /// way that `Box` expects, namely, using the global allocator
-    /// with the correct [`Layout`] for holding a value of type `T`. In 
+    /// with the correct [`Layout`] for holding a value of type `T`. In
     /// particular, this will be satisfied for a pointer obtained
-    /// from a previously existing `Box` using [`Box::into_raw`]. 
+    /// from a previously existing `Box` using [`Box::into_raw`].
     ///
     /// # Safety
     ///
@@ -172,7 +172,7 @@ impl<T: ?Sized> Box<T> {
     /// After calling this function, the caller is responsible for the
     /// memory previously managed by the `Box`. In particular, the
     /// caller should properly destroy `T` and release the memory. The
-    /// easiest way to do so is to convert the raw pointer back into a `Box` 
+    /// easiest way to do so is to convert the raw pointer back into a `Box`
     /// with the [`Box::from_raw`] function.
     ///
     /// Note: this is an associated function, which means that you have
@@ -180,7 +180,7 @@ impl<T: ?Sized> Box<T> {
     /// is so that there is no conflict with a method on the inner type.
     ///
     /// # Examples
-    /// Converting the raw pointer back into a `Box` with [`Box::from_raw`] 
+    /// Converting the raw pointer back into a `Box` with [`Box::from_raw`]
     /// for automatic cleanup:
     /// ```
     /// let x = Box::new(String::from("Hello"));
@@ -191,7 +191,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// use std::alloc::{Layout, dealloc};
     /// use std::ptr;
-    /// 
+    ///
     /// let x = Box::new(String::from("Hello"));
     /// let p = Box::into_raw(x);
     /// unsafe{ ptr::drop_in_place(p); }
