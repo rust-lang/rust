@@ -667,7 +667,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                 // note that validation may still cause a hard error on this very same constant,
                 // because any code that existed before validation could not have failed validation
                 // thus preventing such a hard error from being a backwards compatibility hazard
-                Some(DefKind::Const) | Some(DefKind::AssociatedConst) => {
+                Some(DefKind::Const) | Some(DefKind::AssocConst) => {
                     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
                     err.report_as_lint(
                         tcx.at(tcx.def_span(def_id)),

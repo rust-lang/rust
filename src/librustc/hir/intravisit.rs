@@ -370,7 +370,7 @@ pub trait Visitor<'v> : Sized {
     fn visit_vis(&mut self, vis: &'v Visibility) {
         walk_vis(self, vis)
     }
-    fn visit_associated_item_kind(&mut self, kind: &'v AssociatedItemKind) {
+    fn visit_associated_item_kind(&mut self, kind: &'v AssocItemKind) {
         walk_associated_item_kind(self, kind);
     }
     fn visit_defaultness(&mut self, defaultness: &'v Defaultness) {
@@ -1120,7 +1120,7 @@ pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {
     }
 }
 
-pub fn walk_associated_item_kind<'v, V: Visitor<'v>>(_: &mut V, _: &'v AssociatedItemKind) {
+pub fn walk_associated_item_kind<'v, V: Visitor<'v>>(_: &mut V, _: &'v AssocItemKind) {
     // No visitable content here: this fn exists so you can call it if
     // the right thing to do, should content be added in the future,
     // would be to walk it.

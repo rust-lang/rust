@@ -588,7 +588,7 @@ fn write_mir_sig(
     match (kind, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
         (Some(DefKind::Const), _)
-        | (Some(DefKind::AssociatedConst), _) => write!(w, "const ")?,
+        | (Some(DefKind::AssocConst), _) => write!(w, "const ")?,
         (Some(DefKind::Static), _) =>
             write!(w, "static {}", if tcx.is_mutable_static(src.def_id()) { "mut " } else { "" })?,
         (_, _) if is_function => write!(w, "fn ")?,

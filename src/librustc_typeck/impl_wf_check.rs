@@ -111,7 +111,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .map(|item_ref| tcx.hir().local_def_id_from_hir_id(item_ref.id.hir_id))
         .filter(|&def_id| {
             let item = tcx.associated_item(def_id);
-            item.kind == ty::AssociatedKind::Type && item.defaultness.has_value()
+            item.kind == ty::AssocKind::Type && item.defaultness.has_value()
         })
         .flat_map(|def_id| {
             cgp::parameters_for(&tcx.type_of(def_id), true)

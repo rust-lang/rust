@@ -1554,12 +1554,12 @@ impl DocFolder for Cache {
         if let Some(ref s) = item.name {
             let (parent, is_inherent_impl_item) = match item.inner {
                 clean::StrippedItem(..) => ((None, None), false),
-                clean::AssociatedConstItem(..) |
+                clean::AssocConstItem(..) |
                 clean::TypedefItem(_, true) if self.parent_is_trait_impl => {
                     // skip associated items in trait impls
                     ((None, None), false)
                 }
-                clean::AssociatedTypeItem(..) |
+                clean::AssocTypeItem(..) |
                 clean::TyMethodItem(..) |
                 clean::StructFieldItem(..) |
                 clean::VariantItem(..) => {
@@ -1567,7 +1567,7 @@ impl DocFolder for Cache {
                       Some(&self.stack[..self.stack.len() - 1])),
                      false)
                 }
-                clean::MethodItem(..) | clean::AssociatedConstItem(..) => {
+                clean::MethodItem(..) | clean::AssocConstItem(..) => {
                     if self.parent_stack.is_empty() {
                         ((None, None), false)
                     } else {
@@ -3366,7 +3366,7 @@ fn naive_assoc_href(it: &clean::Item, link: AssocItemLink<'_>) -> String {
 
     let name = it.name.as_ref().unwrap();
     let ty = match it.type_() {
-        Typedef | AssociatedType => AssociatedType,
+        Typedef | AssocType => AssocType,
         s@_ => s,
     };
 
@@ -3511,11 +3511,11 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
         clean::MethodItem(ref m) => {
             method(w, item, m.header, &m.generics, &m.decl, link, parent)
         }
-        clean::AssociatedConstItem(ref ty, ref default) => {
+        clean::AssocConstItem(ref ty, ref default) => {
             assoc_const(w, item, ty, default.as_ref(), link,
                         if parent == ItemType::Trait { "    " } else { "" })
         }
-        clean::AssociatedTypeItem(ref bounds, ref default) => {
+        clean::AssocTypeItem(ref bounds, ref default) => {
             assoc_type(w, item, bounds, default.as_ref(), link,
                        if parent == ItemType::Trait { "    " } else { "" })
         }
@@ -4247,14 +4247,14 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
-                let id = cx.derive_id(format!("{}.{}", ItemType::AssociatedType, name));
+                let id = cx.derive_id(format!("{}.{}", ItemType::AssocType, name));
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<code id='{}'>", ns_id)?;
                 assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id), "")?;
                 write!(w, "</code></h4>")?;
             }
-            clean::AssociatedConstItem(ref ty, ref default) => {
+            clean::AssocConstItem(ref ty, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
@@ -4268,7 +4268,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 }
                 write!(w, "</h4>")?;
             }
-            clean::AssociatedTypeItem(ref bounds, ref default) => {
+            clean::AssocTypeItem(ref bounds, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
@@ -4946,8 +4946,8 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
         ItemType::Variant         => ("variants", "Variants"),
         ItemType::Macro           => ("macros", "Macros"),
         ItemType::Primitive       => ("primitives", "Primitive Types"),
-        ItemType::AssociatedType  => ("associated-types", "Associated Types"),
-        ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
+        ItemType::AssocType       => ("associated-types", "Associated Types"),
+        ItemType::AssocConst      => ("associated-consts", "Associated Constants"),
         ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
         ItemType::Keyword         => ("keywords", "Keywords"),
         ItemType::Existential     => ("existentials", "Existentials"),
@@ -4974,7 +4974,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter<'_>, _it: &clean::Item,
                    ItemType::Enum, ItemType::Constant, ItemType::Static, ItemType::Trait,
                    ItemType::Function, ItemType::Typedef, ItemType::Union, ItemType::Impl,
                    ItemType::TyMethod, ItemType::Method, ItemType::StructField, ItemType::Variant,
-                   ItemType::AssociatedType, ItemType::AssociatedConst, ItemType::ForeignType] {
+                   ItemType::AssocType, ItemType::AssocConst, ItemType::ForeignType] {
         if items.iter().any(|it| !it.is_stripped() && it.type_() == myty) {
             let (short, name) = item_ty_to_strs(&myty);
             sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",

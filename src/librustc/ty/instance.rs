@@ -341,7 +341,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
 
 fn resolve_associated_item<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    trait_item: &ty::AssociatedItem,
+    trait_item: &ty::AssocItem,
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,
     rcvr_substs: SubstsRef<'tcx>,
@@ -450,7 +450,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
            substs);
     let fn_once = tcx.lang_items().fn_once_trait().unwrap();
     let call_once = tcx.associated_items(fn_once)
-        .find(|it| it.kind == ty::AssociatedKind::Method)
+        .find(|it| it.kind == ty::AssocKind::Method)
         .unwrap().def_id;
     let def = ty::InstanceDef::ClosureOnceShim { call_once };
 

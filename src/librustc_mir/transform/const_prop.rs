@@ -45,7 +45,7 @@ impl MirPass for ConstProp {
 
         let is_fn_like = FnLikeNode::from_node(tcx.hir().get_by_hir_id(hir_id)).is_some();
         let is_assoc_const = match tcx.def_kind(source.def_id()) {
-            Some(DefKind::AssociatedConst) => true,
+            Some(DefKind::AssocConst) => true,
             _ => false,
         };
 

@@ -65,7 +65,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
            substs);
     let fn_once = tcx.lang_items().fn_once_trait().unwrap();
     let call_once = tcx.associated_items(fn_once)
-        .find(|it| it.kind == ty::AssociatedKind::Method)
+        .find(|it| it.kind == ty::AssocKind::Method)
         .unwrap().def_id;
     let def = ty::InstanceDef::ClosureOnceShim { call_once };
 

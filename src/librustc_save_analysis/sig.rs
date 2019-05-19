@@ -586,7 +586,7 @@ impl Sig for ast::Path {
                     refs: vec![],
                 })
             }
-            Res::Def(DefKind::AssociatedConst, _)
+            Res::Def(DefKind::AssocConst, _)
             | Res::Def(DefKind::Variant, _)
             | Res::Def(DefKind::Ctor(..), _) => {
                 let len = self.segments.len();
