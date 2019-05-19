@@ -19,7 +19,7 @@ use log::info;
 use std::fmt;
 use std::mem;
 #[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert;
+use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -74,7 +74,7 @@ pub enum Lit {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_LIT: mem::size_of::<Lit>() == 8);
+static_assert_size!(Lit, 8);
 
 impl Lit {
     crate fn literal_name(&self) -> &'static str {
@@ -220,7 +220,7 @@ pub enum Token {
 
 // `Token` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_STATEMENT: mem::size_of::<Token>() == 16);
+static_assert_size!(Token, 16);
 
 impl Token {
     /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.

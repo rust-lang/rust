@@ -17,9 +17,9 @@ pub struct PlaceTy<'tcx> {
     pub variant_index: Option<VariantIdx>,
 }
 
-static_assert!(PLACE_TY_IS_3_PTRS_LARGE:
-    mem::size_of::<PlaceTy<'_>>() <= 24
-);
+// At least on 64 bit systems, `PlaceTy` should not be larger than two or three pointers.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(PlaceTy<'_>, 16);
 
 impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {

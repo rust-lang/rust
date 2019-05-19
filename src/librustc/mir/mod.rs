@@ -1738,7 +1738,7 @@ pub struct Statement<'tcx> {
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_STATEMENT: mem::size_of::<Statement<'_>>() == 56);
+static_assert_size!(Statement<'_>, 56);
 
 impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
@@ -1997,10 +1997,9 @@ pub type PlaceProjection<'tcx> = Projection<Place<'tcx>, Local, Ty<'tcx>>;
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
-// at least on 64 bit systems, `PlaceElem` should not be larger than two pointers
-static_assert!(PROJECTION_ELEM_IS_2_PTRS_LARGE:
-    mem::size_of::<PlaceElem<'_>>() <= 16
-);
+// At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(PlaceElem<'_>, 16);
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
