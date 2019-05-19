@@ -6,6 +6,17 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.6.1] 2018-05-01
+
+### Changed
+
+- Change the default value of imports_indent to IndentStyle::Block https://github.com/rust-lang/rustfmt/pull/2662
+
+### Fixed
+
+- Handle formatting of auto traits 5b5a72c
+- Use consistent formatting for empty enum and struct https://github.com/rust-lang/rustfmt/pull/2656
+
 ## [0.6.0] 2018-04-20
 
 ### Changed
