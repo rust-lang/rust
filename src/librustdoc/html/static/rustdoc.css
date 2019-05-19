@@ -182,10 +182,23 @@ nav.sub {
 	display: none !important;
 }
 
-.sidebar img {
+.logo-container {
+	height: 100px;
+	width: 100px;
+	position: relative;
 	margin: 20px auto;
 	display: block;
 	margin-top: 10px;
+}
+
+.logo-container > img {
+	max-width: 100px;
+	max-height: 100px;
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	display: block;
 }
 
 .sidebar .location {
@@ -1030,12 +1043,18 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 		padding: 0;
 	}
 
-	.sidebar img {
+	.sidebar .logo-container {
 		width: 35px;
+		height: 35px;
 		margin-top: 5px;
 		margin-bottom: 5px;
 		float: left;
 		margin-left: 50px;
+	}
+
+	.sidebar .logo-container > img {
+		max-width: 35px;
+		max-height: 35px;
 	}
 
 	.sidebar-menu {
