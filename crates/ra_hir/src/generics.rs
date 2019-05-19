@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use ra_syntax::ast::{self, NameOwner, TypeParamsOwner, TypeBoundsOwner};
+use ra_syntax::ast::{self, NameOwner, TypeParamsOwner, TypeBoundsOwner, DefaultTypeParamOwner};
 
 use crate::{
     db::{ HirDatabase, DefDatabase},
@@ -18,6 +18,7 @@ pub struct GenericParam {
     // FIXME: give generic params proper IDs
     pub(crate) idx: u32,
     pub(crate) name: Name,
+    pub(crate) default: Option<Path>,
 }
 
 /// Data about the generic parameters of a function, struct, impl, etc.
@@ -68,7 +69,11 @@ impl GenericParams {
             GenericDef::Enum(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Trait(it) => {
                 // traits get the Self type as an implicit first type parameter
-                generics.params.push(GenericParam { idx: start, name: Name::self_type() });
+                generics.params.push(GenericParam {
+                    idx: start,
+                    name: Name::self_type(),
+                    default: None,
+                });
                 generics.fill(&*it.source(db).1, start + 1);
             }
             GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).1, start),
@@ -90,7 +95,9 @@ impl GenericParams {
     fn fill_params(&mut self, params: &ast::TypeParamList, start: u32) {
         for (idx, type_param) in params.type_params().enumerate() {
             let name = type_param.name().map(AsName::as_name).unwrap_or_else(Name::missing);
-            let param = GenericParam { idx: idx as u32 + start, name: name.clone() };
+            let default = type_param.default_type().and_then(|t| t.path()).and_then(Path::from_ast);
+
+            let param = GenericParam { idx: idx as u32 + start, name: name.clone(), default };
             self.params.push(param);
 
             let type_ref = TypeRef::Path(name.into());
