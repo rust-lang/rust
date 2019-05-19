@@ -6,7 +6,6 @@
 #![feature(repeat_generic_slice)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(vecdeque_rotate)]
 #![deny(rust_2018_idioms)]
 
 use std::hash::{Hash, Hasher};
