@@ -6,6 +6,30 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.7.0] 2018-05-14
+
+### Added
+
+- Add integration tests against crates in the rust-lang-nursery c79f39a
+
+### Changed
+
+- Update rustc-ap-syntax to 128.0.0 and ustc-ap-rustc_target to 128.0.0 195395f
+- Put operands on its own line when each fits in a single line f8439ce
+- Improve CLI options 55ac062 1869888 798bffb 4d9de48 eca7796 8396da1 5d9f5aa
+
+### Fixed
+
+- Use correct line width for list attribute 61a401a
+- Avoid flip-flopping impl items when reordering them 37c216c
+- Formatting breaks short lines when max_width is less than 100 9b36156
+- Fix variant "Mixed" of imports_layout option 8c8676c
+- Improve handling of long lines f885039
+- Fix up lines exceeding max width 51c07f4
+- Fix handling of modules in non_modrs_mods style cf573e8
+- Do not duplicate attributes on use items e59ceaf
+- Do not insert an extra brace in macros with native newlines 4c9ef93
+
 ## [0.6.1] 2018-05-01
 
 ### Changed
