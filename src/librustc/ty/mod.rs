@@ -581,6 +581,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::TyS<'tcx> {
     }
 }
 
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "Ty")]
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl<'tcx> rustc_serialize::UseSpecializedEncodable for Ty<'tcx> {}

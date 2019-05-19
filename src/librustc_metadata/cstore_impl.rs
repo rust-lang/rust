@@ -226,6 +226,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
+    diagnostic_items => { cdata.get_diagnostic_items(tcx) }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {

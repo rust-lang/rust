@@ -33,7 +33,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::source_map::Spanned;
-use syntax::symbol::{kw, sym, Ident};
+use syntax::symbol::{kw, sym, Ident, Symbol};
 use syntax_pos::{self, FileName, SourceFile, Span};
 use log::{debug, trace};
 
@@ -404,6 +404,11 @@ impl<'tcx> EncodeContext<'tcx> {
         let lang_items_missing = self.encode_lang_items_missing();
         let lang_item_bytes = self.position() - i;
 
+        // Encode the diagnostic items.
+        i = self.position();
+        let diagnostic_items = self.encode_diagnostic_items();
+        let diagnostic_item_bytes = self.position() - i;
+
         // Encode the native libraries used
         i = self.position();
         let native_libraries = self.encode_native_libraries();
@@ -520,6 +525,7 @@ impl<'tcx> EncodeContext<'tcx> {
             dylib_dependency_formats,
             lib_features,
             lang_items,
+            diagnostic_items,
             lang_items_missing,
             native_libraries,
             foreign_modules,
@@ -545,6 +551,7 @@ impl<'tcx> EncodeContext<'tcx> {
             println!("             dep bytes: {}", dep_bytes);
             println!("     lib feature bytes: {}", lib_feature_bytes);
             println!("       lang item bytes: {}", lang_item_bytes);
+            println!(" diagnostic item bytes: {}", diagnostic_item_bytes);
             println!("          native bytes: {}", native_lib_bytes);
             println!("         source_map bytes: {}", source_map_bytes);
             println!("            impl bytes: {}", impl_bytes);
@@ -1553,6 +1560,12 @@ impl EncodeContext<'tcx> {
         let tcx = self.tcx;
         let lib_features = tcx.lib_features();
         self.lazy(lib_features.to_vec())
+    }
+
+    fn encode_diagnostic_items(&mut self) -> Lazy<[(Symbol, DefIndex)]> {
+        let tcx = self.tcx;
+        let diagnostic_items = tcx.diagnostic_items(LOCAL_CRATE);
+        self.lazy(diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.index)))
     }
 
     fn encode_lang_items(&mut self) -> Lazy<[(DefIndex, usize)]> {

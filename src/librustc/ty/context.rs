@@ -978,6 +978,7 @@ pub struct FreeRegionInfo {
 ///
 /// [rustc guide]: https://rust-lang.github.io/rustc-guide/ty.html
 #[derive(Copy, Clone)]
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "TyCtxt")]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
@@ -1308,8 +1309,20 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_lib_features(LOCAL_CRATE)
     }
 
+    /// Obtain all lang items of this crate and all dependencies (recursively)
     pub fn lang_items(self) -> &'tcx middle::lang_items::LanguageItems {
         self.get_lang_items(LOCAL_CRATE)
+    }
+
+    /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
+    /// compare against another `DefId`, since `is_diagnostic_item` is cheaper.
+    pub fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {
+        self.all_diagnostic_items(LOCAL_CRATE).get(&name).copied()
+    }
+
+    /// Check whether the diagnostic item with the given `name` has the given `DefId`.
+    pub fn is_diagnostic_item(self, name: Symbol, did: DefId) -> bool {
+        self.diagnostic_items(did.krate).get(&name) == Some(&did)
     }
 
     pub fn stability(self) -> &'tcx stability::Index<'tcx> {
@@ -2895,6 +2908,14 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.arena.alloc(middle::lang_items::collect(tcx))
+    };
+    providers.diagnostic_items = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        middle::diagnostic_items::collect(tcx)
+    };
+    providers.all_diagnostic_items = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        middle::diagnostic_items::collect_all(tcx)
     };
     providers.maybe_unused_trait_import = |tcx, id| {
         tcx.maybe_unused_trait_imports.contains(&id)

@@ -12,6 +12,7 @@ use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::hir::def::{self, Res, DefKind, CtorOf, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
 use rustc::middle::lang_items;
 use rustc::mir::{self, interpret};
 use rustc::mir::interpret::AllocDecodingSession;
@@ -755,6 +756,23 @@ impl<'a, 'tcx> CrateMetadata {
                 .decode(self)
                 .map(|(def_index, index)| (self.local_def_id(def_index), index)))
         }
+    }
+
+    /// Iterates over the diagnostic items in the given crate.
+    pub fn get_diagnostic_items(
+        &self,
+        tcx: TyCtxt<'tcx>,
+    ) -> &'tcx FxHashMap<Symbol, DefId> {
+        tcx.arena.alloc(if self.is_proc_macro_crate() {
+            // Proc macro crates do not export any diagnostic-items to the target.
+            Default::default()
+        } else {
+            self.root
+                .diagnostic_items
+                .decode(self)
+                .map(|(name, def_index)| (name, self.local_def_id(def_index)))
+                .collect()
+        })
     }
 
     /// Iterates over each child of the given item.
