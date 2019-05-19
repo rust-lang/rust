@@ -855,10 +855,6 @@ impl<'a> LoweringContext<'a> {
         self.sess.diagnostic()
     }
 
-    fn str_to_ident(&self, s: &'static str) -> Ident {
-        Ident::with_empty_ctxt(Symbol::gensym(s))
-    }
-
     fn with_anonymous_lifetime_mode<R>(
         &mut self,
         anonymous_lifetime_mode: AnonymousLifetimeMode,
@@ -4621,18 +4617,18 @@ impl<'a> LoweringContext<'a> {
                 );
                 head.span = desugared_span;
 
-                let iter = self.str_to_ident("iter");
+                let iter = Ident::with_empty_ctxt(sym::iter);
 
-                let next_ident = self.str_to_ident("__next");
+                let next_ident = Ident::with_empty_ctxt(sym::__next);
                 let (next_pat, next_pat_hid) = self.pat_ident_binding_mode(
                     desugared_span,
                     next_ident,
                     hir::BindingAnnotation::Mutable,
                 );
 
-                // `::std::option::Option::Some(val) => next = val`
+                // `::std::option::Option::Some(val) => __next = val`
                 let pat_arm = {
-                    let val_ident = self.str_to_ident("val");
+                    let val_ident = Ident::with_empty_ctxt(sym::val);
                     let (val_pat, val_pat_hid) = self.pat_ident(pat.span, val_ident);
                     let val_expr = P(self.expr_ident(pat.span, val_ident, val_pat_hid));
                     let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat_hid));
@@ -4771,17 +4767,13 @@ impl<'a> LoweringContext<'a> {
                 let unstable_span = self.sess.source_map().mark_span_with_reason(
                     CompilerDesugaringKind::QuestionMark,
                     e.span,
-                    Some(vec![
-                        Symbol::intern("try_trait")
-                    ].into()),
+                    Some(vec![sym::try_trait].into()),
                 );
                 let try_span = self.sess.source_map().end_point(e.span);
                 let try_span = self.sess.source_map().mark_span_with_reason(
                     CompilerDesugaringKind::QuestionMark,
                     try_span,
-                    Some(vec![
-                        Symbol::intern("try_trait")
-                    ].into()),
+                    Some(vec![sym::try_trait].into()),
                 );
 
                 // `Try::into_result(<expr>)`
@@ -4802,7 +4794,8 @@ impl<'a> LoweringContext<'a> {
                     // `allow(unreachable_code)`
                     let allow = {
                         let allow_ident = Ident::with_empty_ctxt(sym::allow).with_span_pos(e.span);
-                        let uc_ident = Ident::from_str("unreachable_code").with_span_pos(e.span);
+                        let uc_ident = Ident::with_empty_ctxt(sym::unreachable_code)
+                            .with_span_pos(e.span);
                         let uc_nested = attr::mk_nested_word_item(uc_ident);
                         attr::mk_list_item(e.span, allow_ident, vec![uc_nested])
                     };
@@ -4812,7 +4805,7 @@ impl<'a> LoweringContext<'a> {
 
                 // `Ok(val) => #[allow(unreachable_code)] val,`
                 let ok_arm = {
-                    let val_ident = self.str_to_ident("val");
+                    let val_ident = Ident::with_empty_ctxt(sym::val);
                     let (val_pat, val_pat_nid) = self.pat_ident(e.span, val_ident);
                     let val_expr = P(self.expr_ident_with_attrs(
                         e.span,
@@ -4828,7 +4821,7 @@ impl<'a> LoweringContext<'a> {
                 // `Err(err) => #[allow(unreachable_code)]
                 //              return Try::from_error(From::from(err)),`
                 let err_arm = {
-                    let err_ident = self.str_to_ident("err");
+                    let err_ident = Ident::with_empty_ctxt(sym::err);
                     let (err_local, err_local_nid) = self.pat_ident(try_span, err_ident);
                     let from_expr = {
                         let from_path = &[sym::convert, sym::From, sym::from];
@@ -5552,7 +5545,7 @@ impl<'a> LoweringContext<'a> {
         //         match ::std::future::poll_with_tls_context(unsafe {
         //             ::std::pin::Pin::new_unchecked(&mut pinned)
         //         }) {
-        //             ::std::task::Poll::Ready(x) => break x,
+        //             ::std::task::Poll::Ready(result) => break result,
         //             ::std::task::Poll::Pending => {},
         //         }
         //         yield ();
@@ -5580,12 +5573,12 @@ impl<'a> LoweringContext<'a> {
         let gen_future_span = self.sess.source_map().mark_span_with_reason(
             CompilerDesugaringKind::Await,
             await_span,
-            Some(vec![Symbol::intern("gen_future")].into()),
+            Some(vec![sym::gen_future].into()),
         );
 
         // let mut pinned = <expr>;
         let expr = P(self.lower_expr(expr));
-        let pinned_ident = self.str_to_ident("pinned");
+        let pinned_ident = Ident::with_empty_ctxt(sym::pinned);
         let (pinned_pat, pinned_pat_hid) = self.pat_ident_binding_mode(
             span,
             pinned_ident,
@@ -5621,11 +5614,11 @@ impl<'a> LoweringContext<'a> {
             ))
         };
 
-        // `::std::task::Poll::Ready(x) => break x`
+        // `::std::task::Poll::Ready(result) => break result`
         let loop_node_id = self.sess.next_node_id();
         let loop_hir_id = self.lower_node_id(loop_node_id);
         let ready_arm = {
-            let x_ident = self.str_to_ident("x");
+            let x_ident = Ident::with_empty_ctxt(sym::result);
             let (x_pat, x_pat_hid) = self.pat_ident(span, x_ident);
             let x_expr = P(self.expr_ident(span, x_ident, x_pat_hid));
             let ready_pat = self.pat_std_enum(
