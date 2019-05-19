@@ -643,13 +643,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             .map(|s| &s == "?")
                             .unwrap_or(false);
                         let is_from = format!("{}", trait_ref).starts_with("std::convert::From<");
-                        let message = if is_try && is_from {
-                            Some(format!(
+                        let (message, note) = if is_try && is_from {
+                            (Some(format!(
                                 "`?` couldn't convert the error to `{}`",
                                 trait_ref.self_ty(),
+                            )), Some(
+                                "the question mark operation (`?`) implicitly performs a \
+                                 conversion on the error value using the `From` trait".to_owned()
                             ))
                         } else {
-                            message
+                            (message, note)
                         };
 
                         let mut err = struct_span_err!(
