@@ -231,6 +231,20 @@ use super::SpecExtend;
 /// assert_eq!(heap.pop(), Some(Reverse(5)));
 /// assert_eq!(heap.pop(), None);
 /// ```
+///
+/// # Time complexity
+///
+/// | [push] | [pop]    | [peek]/[peek\_mut] |
+/// |--------|----------|--------------------|
+/// | O(1)~  | O(log n) | O(1)               |
+///
+/// The value for `push` is an expected cost; the method documentation gives a
+/// more detailed analysis.
+///
+/// [push]: #method.push
+/// [pop]: #method.pop
+/// [peek]: #method.peek
+/// [peek\_mut]: #method.peek_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BinaryHeap<T> {
     data: Vec<T>,
@@ -384,6 +398,10 @@ impl<T: Ord> BinaryHeap<T> {
     /// }
     /// assert_eq!(heap.peek(), Some(&2));
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Cost is O(1) in the worst case.
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
         if self.is_empty() {
@@ -411,6 +429,11 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.pop(), Some(1));
     /// assert_eq!(heap.pop(), None);
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// The worst case cost of `pop` on a heap containing *n* elements is O(log
+    /// n).
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<T> {
         self.data.pop().map(|mut item| {
@@ -438,6 +461,22 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.len(), 3);
     /// assert_eq!(heap.peek(), Some(&5));
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// The expected cost of `push`, averaged over every possible ordering of
+    /// the elements being pushed, and over a sufficiently large number of
+    /// pushes, is O(1). This is the most meaningful cost metric when pushing
+    /// elements that are *not* already in any sorted pattern.
+    ///
+    /// The time complexity degrades if elements are pushed in predominantly
+    /// ascending order. In the worst case, elements are pushed in ascending
+    /// sorted order and the amortized cost per push is O(log n) against a heap
+    /// containing *n* elements.
+    ///
+    /// The worst case cost of a *single* call to `push` is O(n). The worst case
+    /// occurs when capacity is exhausted and needs a resize. The resize cost
+    /// has been amortized in the previous figures.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, item: T) {
         let old_len = self.len();
@@ -650,6 +689,10 @@ impl<T> BinaryHeap<T> {
     /// assert_eq!(heap.peek(), Some(&5));
     ///
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Cost is O(1) in the worst case.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peek(&self) -> Option<&T> {
         self.data.get(0)
