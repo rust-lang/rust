@@ -4,7 +4,7 @@
 use crate::utils::{get_attr, higher};
 use rustc::hir;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc::hir::{BindingAnnotation, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
+use rustc::hir::{BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::session::Session;
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -508,6 +508,17 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = expr_pat;
                 self.visit_expr(expr);
             },
+        }
+    }
+
+    fn visit_block(&mut self, block: &Block) {
+        let trailing_pat = self.next("trailing_expr");
+        println!("    if let Some({}) = &{}.expr;", trailing_pat, self.current);
+        println!("    if {}.stmts.len() == {};", self.current, block.stmts.len());
+        let current = self.current.clone();
+        for (i, stmt) in block.stmts.iter().enumerate() {
+            self.current = format!("{}.stmts[{}]", current, i);
+            self.visit_stmt(stmt);
         }
     }
 
