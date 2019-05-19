@@ -57,6 +57,15 @@ pub enum Enum4<A, B, C, D> {
     Four(D)
 }
 
+pub union Union1<A: Copy> {
+    a: A,
+}
+
+pub union Union2<A: Copy, B: Copy> {
+    a: A,
+    b: B,
+}
+
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
     let _x: MyOption<NonZeroU32> = Default::default();
@@ -69,5 +78,13 @@ fn start(_: isize, _: *const *const u8) -> isize {
     let _e: Enum4<(), char, (), ()> = Enum4::One(());
     let _f: Enum4<(), (), bool, ()> = Enum4::One(());
     let _g: Enum4<(), (), (), MyOption<u8>> = Enum4::One(());
+
+    // Unions do not currently participate in niche filling.
+    let _h: MyOption<Union2<NonZeroU32, u32>> = Default::default();
+
+    // ...even when theoretically possible.
+    let _i: MyOption<Union1<NonZeroU32>> = Default::default();
+    let _j: MyOption<Union2<NonZeroU32, NonZeroU32>> = Default::default();
+
     0
 }
