@@ -1431,7 +1431,6 @@ impl<'a> LoweringContext<'a> {
                         parent_def_index,
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
-                        DefIndexAddressSpace::High,
                         Mark::root(),
                         DUMMY_SP
                     );
