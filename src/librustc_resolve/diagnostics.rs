@@ -432,7 +432,7 @@ impl<'a> Resolver<'a> {
                 err.note("can't use `Self` as a constructor, you must use the implemented struct");
             }
             (Res::Def(DefKind::TyAlias, _), _)
-            | (Res::Def(DefKind::AssociatedTy, _), _) if ns == ValueNS => {
+            | (Res::Def(DefKind::AssocTy, _), _) if ns == ValueNS => {
                 err.note("can't use a type alias as a constructor");
             }
             _ => return false,

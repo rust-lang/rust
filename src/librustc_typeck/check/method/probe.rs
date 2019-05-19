@@ -89,7 +89,7 @@ impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
 #[derive(Debug)]
 struct Candidate<'tcx> {
     // Candidates are (I'm not quite sure, but they are mostly) basically
-    // some metadata on top of a `ty::AssociatedItem` (without substs).
+    // some metadata on top of a `ty::AssocItem` (without substs).
     //
     // However, method probing wants to be able to evaluate the predicates
     // for a function with the substs applied - for example, if a function
@@ -121,7 +121,7 @@ struct Candidate<'tcx> {
     // if `T: Sized`.
     xform_self_ty: Ty<'tcx>,
     xform_ret_ty: Option<Ty<'tcx>>,
-    item: ty::AssociatedItem,
+    item: ty::AssocItem,
     kind: CandidateKind<'tcx>,
     import_ids: SmallVec<[hir::HirId; 1]>,
 }
@@ -146,7 +146,7 @@ enum ProbeResult {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Pick<'tcx> {
-    pub item: ty::AssociatedItem,
+    pub item: ty::AssocItem,
     pub kind: PickKind<'tcx>,
     pub import_ids: SmallVec<[hir::HirId; 1]>,
 
@@ -213,7 +213,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                  return_type: Ty<'tcx>,
                                  self_ty: Ty<'tcx>,
                                  scope_expr_id: hir::HirId)
-                                 -> Vec<ty::AssociatedItem> {
+                                 -> Vec<ty::AssocItem> {
         debug!("probe(self_ty={:?}, return_type={}, scope_expr_id={})",
                self_ty,
                return_type,
@@ -812,7 +812,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                            mut mk_cand: F)
         where F: for<'b> FnMut(&mut ProbeContext<'b, 'gcx, 'tcx>,
                                ty::PolyTraitRef<'tcx>,
-                               ty::AssociatedItem)
+                               ty::AssocItem)
     {
         let tcx = self.tcx;
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
@@ -861,11 +861,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     pub fn matches_return_type(&self,
-                               method: &ty::AssociatedItem,
+                               method: &ty::AssocItem,
                                self_ty: Option<Ty<'tcx>>,
                                expected: Ty<'tcx>) -> bool {
         match method.kind {
-            ty::AssociatedKind::Method => {
+            ty::AssocKind::Method => {
                 let fty = self.tcx.fn_sig(method.def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
@@ -1425,7 +1425,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     /// Similarly to `probe_for_return_type`, this method attempts to find the best matching
     /// candidate method where the method name may have been misspelt. Similarly to other
     /// Levenshtein based suggestions, we provide at most one such suggestion.
-    fn probe_for_lev_candidate(&mut self) -> Result<Option<ty::AssociatedItem>, MethodError<'tcx>> {
+    fn probe_for_lev_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("Probing for method names similar to {:?}",
                self.method_name);
 
@@ -1441,7 +1441,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
             let method_names = pcx.candidate_method_names();
             pcx.allow_similar_names = false;
-            let applicable_close_candidates: Vec<ty::AssociatedItem> = method_names
+            let applicable_close_candidates: Vec<ty::AssocItem> = method_names
                 .iter()
                 .filter_map(|&method_name| {
                     pcx.reset();
@@ -1474,7 +1474,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
-    fn has_applicable_self(&self, item: &ty::AssociatedItem) -> bool {
+    fn has_applicable_self(&self, item: &ty::AssocItem) -> bool {
         // "Fast track" -- check for usage of sugar when in method call
         // mode.
         //
@@ -1483,9 +1483,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         match self.mode {
             Mode::MethodCall => item.method_has_self_argument,
             Mode::Path => match item.kind {
-                ty::AssociatedKind::Existential |
-                ty::AssociatedKind::Type => false,
-                ty::AssociatedKind::Method | ty::AssociatedKind::Const => true
+                ty::AssocKind::Existential |
+                ty::AssocKind::Type => false,
+                ty::AssocKind::Method | ty::AssocKind::Const => true
             },
         }
         // FIXME -- check for types that deref to `Self`,
@@ -1501,11 +1501,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn xform_self_ty(&self,
-                     item: &ty::AssociatedItem,
+                     item: &ty::AssocItem,
                      impl_ty: Ty<'tcx>,
                      substs: SubstsRef<'tcx>)
                      -> (Ty<'tcx>, Option<Ty<'tcx>>) {
-        if item.kind == ty::AssociatedKind::Method && self.mode == Mode::MethodCall {
+        if item.kind == ty::AssocKind::Method && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, substs);
             (sig.inputs()[0], Some(sig.output()))
         } else {
@@ -1610,7 +1610,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     /// Finds the method with the appropriate name (or return type, as the case may be). If
     /// `allow_similar_names` is set, find methods with close-matching names.
-    fn impl_or_trait_item(&self, def_id: DefId) -> Vec<ty::AssociatedItem> {
+    fn impl_or_trait_item(&self, def_id: DefId) -> Vec<ty::AssocItem> {
         if let Some(name) = self.method_name {
             if self.allow_similar_names {
                 let max_dist = max(name.as_str().len(), 3) / 3;

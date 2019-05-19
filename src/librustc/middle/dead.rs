@@ -72,7 +72,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn handle_res(&mut self, res: Res) {
         match res {
             Res::Def(DefKind::Const, _)
-            | Res::Def(DefKind::AssociatedConst, _)
+            | Res::Def(DefKind::AssocConst, _)
             | Res::Def(DefKind::TyAlias, _) => {
                 self.check_def_id(res.def_id());
             }

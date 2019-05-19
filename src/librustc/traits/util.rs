@@ -594,7 +594,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Count number of methods and add them to the total offset.
         // Skip over associated types and constants.
         for trait_item in self.associated_items(trait_ref.def_id()) {
-            if trait_item.kind == ty::AssociatedKind::Method {
+            if trait_item.kind == ty::AssocKind::Method {
                 entries += 1;
             }
         }
@@ -614,10 +614,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         for trait_item in self.associated_items(object.upcast_trait_ref.def_id()) {
             if trait_item.def_id == method_def_id {
                 // The item with the ID we were given really ought to be a method.
-                assert_eq!(trait_item.kind, ty::AssociatedKind::Method);
+                assert_eq!(trait_item.kind, ty::AssocKind::Method);
                 return entries;
             }
-            if trait_item.kind == ty::AssociatedKind::Method {
+            if trait_item.kind == ty::AssocKind::Method {
                 entries += 1;
             }
         }

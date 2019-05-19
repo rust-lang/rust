@@ -3,7 +3,7 @@
 #![allow(usage_of_ty_tykind)]
 
 pub use self::Variance::*;
-pub use self::AssociatedItemContainer::*;
+pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::fold::TypeFoldable;
@@ -134,12 +134,12 @@ pub struct Resolutions {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
-pub enum AssociatedItemContainer {
+pub enum AssocItemContainer {
     TraitContainer(DefId),
     ImplContainer(DefId),
 }
 
-impl AssociatedItemContainer {
+impl AssocItemContainer {
     /// Asserts that this is the `DefId` of an associated item declared
     /// in a trait, and returns the trait `DefId`.
     pub fn assert_trait(&self) -> DefId {
@@ -169,14 +169,14 @@ pub struct ImplHeader<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, HashStable)]
-pub struct AssociatedItem {
+pub struct AssocItem {
     pub def_id: DefId,
     #[stable_hasher(project(name))]
     pub ident: Ident,
-    pub kind: AssociatedKind,
+    pub kind: AssocKind,
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
-    pub container: AssociatedItemContainer,
+    pub container: AssocItemContainer,
 
     /// Whether this is a method with an explicit self
     /// as its first argument, allowing method calls.
@@ -184,20 +184,20 @@ pub struct AssociatedItem {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, RustcEncodable, RustcDecodable, HashStable)]
-pub enum AssociatedKind {
+pub enum AssocKind {
     Const,
     Method,
     Existential,
     Type
 }
 
-impl AssociatedItem {
+impl AssocItem {
     pub fn def_kind(&self) -> DefKind {
         match self.kind {
-            AssociatedKind::Const => DefKind::AssociatedConst,
-            AssociatedKind::Method => DefKind::Method,
-            AssociatedKind::Type => DefKind::AssociatedTy,
-            AssociatedKind::Existential => DefKind::AssociatedExistential,
+            AssocKind::Const => DefKind::AssocConst,
+            AssocKind::Method => DefKind::Method,
+            AssocKind::Type => DefKind::AssocTy,
+            AssocKind::Existential => DefKind::AssocExistential,
         }
     }
 
@@ -205,26 +205,26 @@ impl AssociatedItem {
     /// for !
     pub fn relevant_for_never<'tcx>(&self) -> bool {
         match self.kind {
-            AssociatedKind::Existential |
-            AssociatedKind::Const |
-            AssociatedKind::Type => true,
+            AssocKind::Existential |
+            AssocKind::Const |
+            AssocKind::Type => true,
             // FIXME(canndrew): Be more thorough here, check if any argument is uninhabited.
-            AssociatedKind::Method => !self.method_has_self_argument,
+            AssocKind::Method => !self.method_has_self_argument,
         }
     }
 
     pub fn signature<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         match self.kind {
-            ty::AssociatedKind::Method => {
+            ty::AssocKind::Method => {
                 // We skip the binder here because the binder would deanonymize all
                 // late-bound regions, and we don't want method signatures to show up
                 // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
                 tcx.fn_sig(self.def_id).skip_binder().to_string()
             }
-            ty::AssociatedKind::Type => format!("type {};", self.ident),
-            ty::AssociatedKind::Existential => format!("existential type {};", self.ident),
-            ty::AssociatedKind::Const => {
+            ty::AssocKind::Type => format!("type {};", self.ident),
+            ty::AssocKind::Existential => format!("existential type {};", self.ident),
+            ty::AssocKind::Const => {
                 format!("const {}: {:?};", self.ident, tcx.type_of(self.def_id))
             }
         }
@@ -2343,7 +2343,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             Res::Def(DefKind::Variant, vid) => self.variant_with_id(vid),
             Res::Def(DefKind::Ctor(..), cid) => self.variant_with_ctor_id(cid),
             Res::Def(DefKind::Struct, _) | Res::Def(DefKind::Union, _) |
-            Res::Def(DefKind::TyAlias, _) | Res::Def(DefKind::AssociatedTy, _) | Res::SelfTy(..) |
+            Res::Def(DefKind::TyAlias, _) | Res::Def(DefKind::AssocTy, _) | Res::SelfTy(..) |
             Res::SelfCtor(..) => self.non_enum_variant(),
             _ => bug!("unexpected res {:?} in variant_of_res", res)
         }
@@ -2793,9 +2793,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn provided_trait_methods(self, id: DefId) -> Vec<AssociatedItem> {
+    pub fn provided_trait_methods(self, id: DefId) -> Vec<AssocItem> {
         self.associated_items(id)
-            .filter(|item| item.kind == AssociatedKind::Method && item.defaultness.has_value())
+            .filter(|item| item.kind == AssocKind::Method && item.defaultness.has_value())
             .collect()
     }
 
@@ -2805,7 +2805,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn opt_associated_item(self, def_id: DefId) -> Option<AssociatedItem> {
+    pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
         let is_associated_item = if let Some(hir_id) = self.hir().as_local_hir_id(def_id) {
             match self.hir().get_by_hir_id(hir_id) {
                 Node::TraitItem(_) | Node::ImplItem(_) => true,
@@ -2813,9 +2813,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         } else {
             match self.def_kind(def_id).expect("no def for def-id") {
-                DefKind::AssociatedConst
+                DefKind::AssocConst
                 | DefKind::Method
-                | DefKind::AssociatedTy => true,
+                | DefKind::AssocTy => true,
                 _ => false,
             }
         };
@@ -2831,18 +2831,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                            parent_def_id: DefId,
                                            parent_vis: &hir::Visibility,
                                            trait_item_ref: &hir::TraitItemRef)
-                                           -> AssociatedItem {
+                                           -> AssocItem {
         let def_id = self.hir().local_def_id_from_hir_id(trait_item_ref.id.hir_id);
         let (kind, has_self) = match trait_item_ref.kind {
-            hir::AssociatedItemKind::Const => (ty::AssociatedKind::Const, false),
-            hir::AssociatedItemKind::Method { has_self } => {
-                (ty::AssociatedKind::Method, has_self)
+            hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
+            hir::AssocItemKind::Method { has_self } => {
+                (ty::AssocKind::Method, has_self)
             }
-            hir::AssociatedItemKind::Type => (ty::AssociatedKind::Type, false),
-            hir::AssociatedItemKind::Existential => bug!("only impls can have existentials"),
+            hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
+            hir::AssocItemKind::Existential => bug!("only impls can have existentials"),
         };
 
-        AssociatedItem {
+        AssocItem {
             ident: trait_item_ref.ident,
             kind,
             // Visibility of trait items is inherited from their traits.
@@ -2857,18 +2857,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     fn associated_item_from_impl_item_ref(self,
                                           parent_def_id: DefId,
                                           impl_item_ref: &hir::ImplItemRef)
-                                          -> AssociatedItem {
+                                          -> AssocItem {
         let def_id = self.hir().local_def_id_from_hir_id(impl_item_ref.id.hir_id);
         let (kind, has_self) = match impl_item_ref.kind {
-            hir::AssociatedItemKind::Const => (ty::AssociatedKind::Const, false),
-            hir::AssociatedItemKind::Method { has_self } => {
-                (ty::AssociatedKind::Method, has_self)
+            hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
+            hir::AssocItemKind::Method { has_self } => {
+                (ty::AssocKind::Method, has_self)
             }
-            hir::AssociatedItemKind::Type => (ty::AssociatedKind::Type, false),
-            hir::AssociatedItemKind::Existential => (ty::AssociatedKind::Existential, false),
+            hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
+            hir::AssocItemKind::Existential => (ty::AssocKind::Existential, false),
         };
 
-        AssociatedItem {
+        AssocItem {
             ident: impl_item_ref.ident,
             kind,
             // Visibility of trait impl items doesn't matter.
@@ -2893,13 +2893,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn associated_items(
         self,
         def_id: DefId,
-    ) -> AssociatedItemsIterator<'a, 'gcx, 'tcx> {
+    ) -> AssocItemsIterator<'a, 'gcx, 'tcx> {
         // Ideally, we would use `-> impl Iterator` here, but it falls
         // afoul of the conservative "capture [restrictions]" we put
         // in place, so we use a hand-written iterator.
         //
         // [restrictions]: https://github.com/rust-lang/rust/issues/34511#issuecomment-373423999
-        AssociatedItemsIterator {
+        AssocItemsIterator {
             tcx: self,
             def_ids: self.associated_item_def_ids(def_id),
             next_index: 0,
@@ -3104,23 +3104,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub struct AssociatedItemsIterator<'a, 'gcx: 'tcx, 'tcx: 'a> {
+pub struct AssocItemsIterator<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     def_ids: &'gcx [DefId],
     next_index: usize,
 }
 
-impl Iterator for AssociatedItemsIterator<'_, '_, '_> {
-    type Item = AssociatedItem;
+impl Iterator for AssocItemsIterator<'_, '_, '_> {
+    type Item = AssocItem;
 
-    fn next(&mut self) -> Option<AssociatedItem> {
+    fn next(&mut self) -> Option<AssocItem> {
         let def_id = self.def_ids.get(self.next_index)?;
         self.next_index += 1;
         Some(self.tcx.associated_item(*def_id))
     }
 }
 
-fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> AssociatedItem {
+fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> AssocItem {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let parent_id = tcx.hir().get_parent_item(id);
     let parent_def_id = tcx.hir().local_def_id_from_hir_id(parent_id);

@@ -351,7 +351,7 @@ fn check_expr_kind<'a, 'tcx>(
                 }
 
                 Res::Def(DefKind::Const, did) |
-                Res::Def(DefKind::AssociatedConst, did) => {
+                Res::Def(DefKind::AssocConst, did) => {
                     let promotable = if v.tcx.trait_of_item(did).is_some() {
                         // Don't peek inside trait associated constants.
                         NotPromotable

@@ -8,13 +8,13 @@ pub enum Namespace {
     Value,
 }
 
-impl From<ty::AssociatedKind> for Namespace {
-    fn from(a_kind: ty::AssociatedKind) -> Self {
+impl From<ty::AssocKind> for Namespace {
+    fn from(a_kind: ty::AssocKind) -> Self {
         match a_kind {
-            ty::AssociatedKind::Existential |
-            ty::AssociatedKind::Type => Namespace::Type,
-            ty::AssociatedKind::Const |
-            ty::AssociatedKind::Method => Namespace::Value,
+            ty::AssocKind::Existential |
+            ty::AssocKind::Type => Namespace::Type,
+            ty::AssocKind::Const |
+            ty::AssocKind::Method => Namespace::Value,
         }
     }
 }

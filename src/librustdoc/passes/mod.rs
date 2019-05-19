@@ -172,7 +172,7 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::ForeignStaticItem(..)
             | clean::ConstantItem(..)
             | clean::UnionItem(..)
-            | clean::AssociatedConstItem(..)
+            | clean::AssocConstItem(..)
             | clean::TraitAliasItem(..)
             | clean::ForeignTypeItem => {
                 if i.def_id.is_local() {
@@ -214,7 +214,7 @@ impl<'a> DocFolder for Stripper<'a> {
             clean::PrimitiveItem(..) => {}
 
             // Associated types are never stripped
-            clean::AssociatedTypeItem(..) => {}
+            clean::AssocTypeItem(..) => {}
 
             // Keywords are never stripped
             clean::KeywordItem(..) => {}

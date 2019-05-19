@@ -265,7 +265,7 @@ rustc_queries! {
         query associated_item_def_ids(_: DefId) -> &'tcx [DefId] {}
 
         /// Maps from a trait item to the trait item "descriptor".
-        query associated_item(_: DefId) -> ty::AssociatedItem {}
+        query associated_item(_: DefId) -> ty::AssocItem {}
 
         query impl_trait_ref(_: DefId) -> Option<ty::TraitRef<'tcx>> {}
         query impl_polarity(_: DefId) -> hir::ImplPolarity {}

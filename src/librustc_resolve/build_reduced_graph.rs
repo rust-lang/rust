@@ -705,7 +705,7 @@ impl<'a> Resolver<'a> {
 
                 for child in self.cstore.item_children_untracked(def_id, self.session) {
                     let res = child.res.map_id(|_| panic!("unexpected id"));
-                    let ns = if let Res::Def(DefKind::AssociatedTy, _) = res {
+                    let ns = if let Res::Def(DefKind::AssocTy, _) = res {
                         TypeNS
                     } else { ValueNS };
                     self.define(module, child.ident, ns,
@@ -1033,14 +1033,14 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         // Add the item to the trait info.
         let item_def_id = self.resolver.definitions.local_def_id(item.id);
         let (res, ns) = match item.node {
-            TraitItemKind::Const(..) => (Res::Def(DefKind::AssociatedConst, item_def_id), ValueNS),
+            TraitItemKind::Const(..) => (Res::Def(DefKind::AssocConst, item_def_id), ValueNS),
             TraitItemKind::Method(ref sig, _) => {
                 if sig.decl.has_self() {
                     self.resolver.has_self.insert(item_def_id);
                 }
                 (Res::Def(DefKind::Method, item_def_id), ValueNS)
             }
-            TraitItemKind::Type(..) => (Res::Def(DefKind::AssociatedTy, item_def_id), TypeNS),
+            TraitItemKind::Type(..) => (Res::Def(DefKind::AssocTy, item_def_id), TypeNS),
             TraitItemKind::Macro(_) => bug!(),  // handled above
         };
 

@@ -84,7 +84,7 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let fn_mut = tcx.lang_items().fn_mut_trait().unwrap();
             let call_mut = tcx.global_tcx()
                 .associated_items(fn_mut)
-                .find(|it| it.kind == ty::AssociatedKind::Method)
+                .find(|it| it.kind == ty::AssocKind::Method)
                 .unwrap().def_id;
 
             build_call_shim(

@@ -722,7 +722,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                                    "<a class=\"type\" href=\"{url}#{shortty}.{name}\" \
                                    title=\"type {path}::{name}\">{name}</a>",
                                    url = url,
-                                   shortty = ItemType::AssociatedType,
+                                   shortty = ItemType::AssocType,
                                    name = name,
                                    path = path.join("::"))?;
                         }

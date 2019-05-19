@@ -253,13 +253,13 @@ pub enum EntryKind<'tcx> {
     Trait(Lazy<TraitData<'tcx>>),
     Impl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
-    AssociatedType(AssociatedContainer),
-    AssociatedExistential(AssociatedContainer),
-    AssociatedConst(AssociatedContainer, ConstQualif, Lazy<RenderedConst>),
+    AssocType(AssocContainer),
+    AssocExistential(AssocContainer),
+    AssocConst(AssocContainer, ConstQualif, Lazy<RenderedConst>),
     TraitAlias(Lazy<TraitAliasData<'tcx>>),
 }
 
-/// Additional data for EntryKind::Const and EntryKind::AssociatedConst
+/// Additional data for EntryKind::Const and EntryKind::AssocConst
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable)]
 pub struct ConstQualif {
     pub mir: u8,
@@ -330,36 +330,36 @@ pub struct ImplData<'tcx> {
 /// is a trait or an impl and whether, in a trait, it has
 /// a default, or an in impl, whether it's marked "default".
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-pub enum AssociatedContainer {
+pub enum AssocContainer {
     TraitRequired,
     TraitWithDefault,
     ImplDefault,
     ImplFinal,
 }
 
-impl AssociatedContainer {
-    pub fn with_def_id(&self, def_id: DefId) -> ty::AssociatedItemContainer {
+impl AssocContainer {
+    pub fn with_def_id(&self, def_id: DefId) -> ty::AssocItemContainer {
         match *self {
-            AssociatedContainer::TraitRequired |
-            AssociatedContainer::TraitWithDefault => ty::TraitContainer(def_id),
+            AssocContainer::TraitRequired |
+            AssocContainer::TraitWithDefault => ty::TraitContainer(def_id),
 
-            AssociatedContainer::ImplDefault |
-            AssociatedContainer::ImplFinal => ty::ImplContainer(def_id),
+            AssocContainer::ImplDefault |
+            AssocContainer::ImplFinal => ty::ImplContainer(def_id),
         }
     }
 
     pub fn defaultness(&self) -> hir::Defaultness {
         match *self {
-            AssociatedContainer::TraitRequired => hir::Defaultness::Default {
+            AssocContainer::TraitRequired => hir::Defaultness::Default {
                 has_value: false,
             },
 
-            AssociatedContainer::TraitWithDefault |
-            AssociatedContainer::ImplDefault => hir::Defaultness::Default {
+            AssocContainer::TraitWithDefault |
+            AssocContainer::ImplDefault => hir::Defaultness::Default {
                 has_value: true,
             },
 
-            AssociatedContainer::ImplFinal => hir::Defaultness::Final,
+            AssocContainer::ImplFinal => hir::Defaultness::Final,
         }
     }
 }
@@ -367,7 +367,7 @@ impl AssociatedContainer {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct MethodData<'tcx> {
     pub fn_data: FnData<'tcx>,
-    pub container: AssociatedContainer,
+    pub container: AssocContainer,
     pub has_self: bool,
 }
 

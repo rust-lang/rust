@@ -190,12 +190,12 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         match item.kind {
-            ty::AssociatedKind::Const => {
+            ty::AssocKind::Const => {
                 let ty = fcx.tcx.type_of(item.def_id);
                 let ty = fcx.normalize_associated_types_in(span, &ty);
                 fcx.register_wf_obligation(ty, span, code.clone());
             }
-            ty::AssociatedKind::Method => {
+            ty::AssocKind::Method => {
                 reject_shadowing_parameters(fcx.tcx, item.def_id);
                 let sig = fcx.tcx.fn_sig(item.def_id);
                 let sig = fcx.normalize_associated_types_in(span, &sig);
@@ -204,14 +204,14 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 let sig_if_method = sig_if_method.expect("bad signature for method");
                 check_method_receiver(fcx, sig_if_method, &item, self_ty);
             }
-            ty::AssociatedKind::Type => {
+            ty::AssocKind::Type => {
                 if item.defaultness.has_value() {
                     let ty = fcx.tcx.type_of(item.def_id);
                     let ty = fcx.normalize_associated_types_in(span, &ty);
                     fcx.register_wf_obligation(ty, span, code.clone());
                 }
             }
-            ty::AssociatedKind::Existential => {
+            ty::AssocKind::Existential => {
                 // do nothing, existential types check themselves
             }
         }
@@ -748,7 +748,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
 
 fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                                            method_sig: &hir::MethodSig,
-                                           method: &ty::AssociatedItem,
+                                           method: &ty::AssocItem,
                                            self_ty: Ty<'tcx>)
 {
     // check that the method has a valid receiver type, given the type `Self`

@@ -166,10 +166,10 @@ crate fn program_clauses_for<'a, 'tcx>(
             | Some(DefKind::TraitAlias) => program_clauses_for_trait(tcx, def_id),
             // FIXME(eddyb) deduplicate this `associated_item` call with
             // `program_clauses_for_associated_type_{value,def}`.
-            Some(DefKind::AssociatedTy) => match tcx.associated_item(def_id).container {
-                ty::AssociatedItemContainer::ImplContainer(_) =>
+            Some(DefKind::AssocTy) => match tcx.associated_item(def_id).container {
+                ty::AssocItemContainer::ImplContainer(_) =>
                     program_clauses_for_associated_type_value(tcx, def_id),
-                ty::AssociatedItemContainer::TraitContainer(_) =>
+                ty::AssocItemContainer::TraitContainer(_) =>
                     program_clauses_for_associated_type_def(tcx, def_id)
             },
             Some(DefKind::Struct)
@@ -444,9 +444,9 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     // ```
 
     let item = tcx.associated_item(item_id);
-    debug_assert_eq!(item.kind, ty::AssociatedKind::Type);
+    debug_assert_eq!(item.kind, ty::AssocKind::Type);
     let trait_id = match item.container {
-        ty::AssociatedItemContainer::TraitContainer(trait_id) => trait_id,
+        ty::AssocItemContainer::TraitContainer(trait_id) => trait_id,
         _ => bug!("not an trait container"),
     };
 
@@ -582,9 +582,9 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     // ```
 
     let item = tcx.associated_item(item_id);
-    debug_assert_eq!(item.kind, ty::AssociatedKind::Type);
+    debug_assert_eq!(item.kind, ty::AssocKind::Type);
     let impl_id = match item.container {
-        ty::AssociatedItemContainer::ImplContainer(impl_id) => impl_id,
+        ty::AssocItemContainer::ImplContainer(impl_id) => impl_id,
         _ => bug!("not an impl container"),
     };
 
