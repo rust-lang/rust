@@ -139,7 +139,7 @@ pub trait ArenaAllocatable {}
 
 impl<T: Copy> ArenaAllocatable for T {}
 
-pub unsafe trait ArenaField<'tcx>: Sized {
+unsafe trait ArenaField<'tcx>: Sized {
     /// Returns a specific arena to allocate from.
     /// If None is returned, the DropArena will be used.
     fn arena<'a>(arena: &'a Arena<'tcx>) -> Option<&'a TypedArena<Self>>;
