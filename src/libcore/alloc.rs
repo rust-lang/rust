@@ -99,7 +99,7 @@ impl Layout {
     /// [`Layout::from_size_align`](#method.from_size_align).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
-    pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
+    pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         Layout { size_: size, align_: NonZeroUsize::new_unchecked(align) }
     }
 
