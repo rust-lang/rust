@@ -127,24 +127,38 @@ impl<T: ?Sized> Box<T> {
     ///
     /// After calling this function, the raw pointer is owned by the
     /// resulting `Box`. Specifically, the `Box` destructor will call
-    /// the destructor of `T` and free the allocated memory. Since the
-    /// way `Box` allocates and releases memory is unspecified, the
-    /// only valid pointer to pass to this function is the one taken
-    /// from another `Box` via the [`Box::into_raw`] function.
+    /// the destructor of `T` and free the allocated memory. For this
+    /// to be safe, the memory must have been allocated in the precise
+    /// way that `Box` expects, namely, using the global allocator
+    /// with the correct [`Layout`] for holding a value of type `T`. In 
+    /// particular, this will be satisfied for a pointer obtained
+    /// from a previously existing `Box` using [`Box::into_raw`]. 
+    ///
+    /// # Safety
     ///
     /// This function is unsafe because improper use may lead to
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
-    /// [`Box::into_raw`]: struct.Box.html#method.into_raw
-    ///
     /// # Examples
-    ///
+    /// Recreate a `Box` which was previously converted to a raw pointer using [`Box::into_raw`]:
     /// ```
     /// let x = Box::new(5);
     /// let ptr = Box::into_raw(x);
     /// let x = unsafe { Box::from_raw(ptr) };
     /// ```
+    /// Manually create a `Box` from scratch by using the global allocator:
+    /// ```
+    /// use std::alloc::{Layout, alloc};
+    ///
+    /// let ptr = unsafe{ alloc(Layout::new::<i32>()) } as *mut i32;
+    /// unsafe{ *ptr = 5; }
+    /// let x = unsafe{ Box::from_raw(ptr) };
+    /// ```
+    ///
+    /// [`Layout`]: ../alloc/struct.Layout.html
+    /// [`Box::into_raw`]: struct.Box.html#method.into_raw
+    ///
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
@@ -158,21 +172,34 @@ impl<T: ?Sized> Box<T> {
     /// After calling this function, the caller is responsible for the
     /// memory previously managed by the `Box`. In particular, the
     /// caller should properly destroy `T` and release the memory. The
-    /// proper way to do so is to convert the raw pointer back into a
-    /// `Box` with the [`Box::from_raw`] function.
+    /// easiest way to do so is to convert the raw pointer back into a `Box` 
+    /// with the [`Box::from_raw`] function.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::into_raw(b)` instead of `b.into_raw()`. This
     /// is so that there is no conflict with a method on the inner type.
     ///
+    /// # Examples
+    /// Converting the raw pointer back into a `Box` with [`Box::from_raw`] 
+    /// for automatic cleanup:
+    /// ```
+    /// let x = Box::new(String::from("Hello"));
+    /// let ptr = Box::into_raw(x);
+    /// let x = unsafe{ Box::from_raw(ptr) };
+    /// ```
+    /// Manual cleanup by running the destructor and deallocating the memory:
+    /// ```
+    /// use std::alloc::{Layout, dealloc};
+    /// use std::ptr;
+    /// 
+    /// let x = Box::new(String::from("Hello"));
+    /// let p = Box::into_raw(x);
+    /// unsafe{ ptr::drop_in_place(p); }
+    /// unsafe{ dealloc(p as *mut u8, Layout::new::<String>()); }
+    /// ```
+    ///
     /// [`Box::from_raw`]: struct.Box.html#method.from_raw
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x = Box::new(5);
-    /// let ptr = Box::into_raw(x);
-    /// ```
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
@@ -184,7 +211,7 @@ impl<T: ?Sized> Box<T> {
     /// After calling this function, the caller is responsible for the
     /// memory previously managed by the `Box`. In particular, the
     /// caller should properly destroy `T` and release the memory. The
-    /// proper way to do so is to convert the `NonNull<T>` pointer
+    /// easiest way to do so is to convert the `NonNull<T>` pointer
     /// into a raw pointer and back into a `Box` with the [`Box::from_raw`]
     /// function.
     ///
@@ -203,6 +230,10 @@ impl<T: ?Sized> Box<T> {
     /// fn main() {
     ///     let x = Box::new(5);
     ///     let ptr = Box::into_raw_non_null(x);
+    ///
+    ///     // Clean up the memory by converting the NonNull pointer back
+    ///     // into a Box and letting the Box be dropped.
+    ///     let x = unsafe{ Box::from_raw(ptr.as_ptr()) };
     /// }
     /// ```
     #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
