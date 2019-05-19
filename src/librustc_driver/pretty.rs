@@ -648,7 +648,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     // have to be user friendly.
     let name = format!(
         "hir_id_{}_{}",
-        hir_id.owner.as_array_index(),
+        hir_id.owner.index(),
         hir_id.local_id.index(),
     );
     let lcfg = LabelledCFG {

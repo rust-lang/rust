@@ -189,7 +189,7 @@ pub struct Map<'hir> {
 impl<'hir> Map<'hir> {
     #[inline]
     fn lookup(&self, id: HirId) -> Option<&Entry<'hir>> {
-        let local_map = self.map.get(id.owner.as_array_index())?;
+        let local_map = self.map.get(id.owner.index())?;
         local_map.as_ref()?.get(id.local_id)?.as_ref()
     }
 
@@ -1023,7 +1023,7 @@ impl<'hir> Map<'hir> {
             local_map.iter_enumerated().filter_map(move |(i, entry)| entry.map(move |_| {
                 // Reconstruct the HirId based on the 3 indices we used to find it
                 HirId {
-                    owner: DefIndex::from_array_index(array_index),
+                    owner: DefIndex::from(array_index),
                     local_id: i,
                 }
             }))

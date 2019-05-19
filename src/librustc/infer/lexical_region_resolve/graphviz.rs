@@ -56,7 +56,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
     }
 
     let requested_node = env::var("RUST_REGION_GRAPH_NODE")
-        .ok().and_then(|s| s.parse().map(DefIndex::from_raw_u32).ok());
+        .ok().and_then(|s| s.parse().map(DefIndex::from_u32).ok());
 
     if requested_node.is_some() && requested_node != Some(context.index) {
         return;
@@ -90,7 +90,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
             let mut new_str = String::new();
             for c in output_template.chars() {
                 if c == '%' {
-                    new_str.push_str(&context.index.as_raw_u32().to_string());
+                    new_str.push_str(&context.index.as_u32().to_string());
                 } else {
                     new_str.push(c);
                 }
