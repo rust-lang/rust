@@ -6,6 +6,28 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.8.2] 2018-05-28
+
+### Added
+
+- Use scoped attributes for skip attribute https://github.com/rust-lang/rustfmt/pull/2703
+
+### Changed
+
+- Comment options `wrap_comments` and `normalize_comments` are reverted back to unstable 416bc4c
+- Stabilise `reorder_imports` and `reorder_modules` options 7b6d2b4
+- Remove `spaces_within_parens_and_brackets` option d726492
+- Stabilise shorthand options: `use_try_shorthand`, `use_field_init_shorthand`, and `force_explicit_abi` 8afe367
+- Stabilise `remove_nested_parens` and set default to true a70f716
+- Unstabilise `unstable_features` dd9c15a
+- Remove `remove_blank_lines_at_start_or_end_of_block` option 2ee8b0e
+- Update rustc-ap-syntax to 146.0.0 and rustc-ap-rustc_target to 146.0.0 2c275a2
+- Audit the public API #2639
+
+### Fixed
+
+- Handle code block in doc comment without rust prefix f1974e2
+
 ## [0.7.0] 2018-05-14
 
 ### Added
