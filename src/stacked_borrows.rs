@@ -226,7 +226,7 @@ impl<'tcx> Stack {
             )
     }
 
-    /// Find the first write-incompatible item above the given one -- 
+    /// Find the first write-incompatible item above the given one --
     /// i.e, find the height to which the stack will be truncated when writing to `granting`.
     fn find_first_write_incompaible(&self, granting: usize) -> usize {
         let perm = self.borrows[granting].perm;
@@ -297,8 +297,7 @@ impl<'tcx> Stack {
             // Remove everything above the write-compatible items, like a proper stack. This makes sure read-only and unique
             // pointers become invalid on write accesses (ensures F2a, and ensures U2 for write accesses).
             let first_incompatible_idx = self.find_first_write_incompaible(granting_idx);
-            while self.borrows.len() > first_incompatible_idx {
-                let item = self.borrows.pop().unwrap();
+            for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {}", item);
                 Stack::check_protector(&item, Some(tag), global)?;
             }
@@ -340,8 +339,7 @@ impl<'tcx> Stack {
             )))?;
 
         // Step 2: Remove all items.  Also checks for protectors.
-        while self.borrows.len() > 0 {
-            let item = self.borrows.pop().unwrap();
+        for item in self.borrows.drain(..).rev() {
             Stack::check_protector(&item, None, global)?;
         }
 
