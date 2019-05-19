@@ -1,4 +1,4 @@
-// run-pass
+// compile-pass
 
 #![feature(untagged_unions)]
 
