@@ -13,7 +13,7 @@ use rustc::session::config::{nightly_options, build_codegen_options, build_debug
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
-use syntax::edition::Edition;
+use syntax::edition::{Edition, DEFAULT_EDITION};
 
 use crate::core::new_handler;
 use crate::externalfiles::ExternalHtml;
@@ -386,6 +386,18 @@ impl Options {
             }
         }
 
+        let edition = if let Some(e) = matches.opt_str("edition") {
+            match e.parse() {
+                Ok(e) => e,
+                Err(_) => {
+                    diag.struct_err("could not parse edition").emit();
+                    return Err(1);
+                }
+            }
+        } else {
+            DEFAULT_EDITION
+        };
+
         let mut id_map = html::markdown::IdMap::new();
         id_map.populate(html::render::initial_ids());
         let external_html = match ExternalHtml::load(
@@ -393,18 +405,10 @@ impl Options {
                 &matches.opt_strs("html-before-content"),
                 &matches.opt_strs("html-after-content"),
                 &matches.opt_strs("markdown-before-content"),
-                &matches.opt_strs("markdown-after-content"), &diag, &mut id_map) {
+                &matches.opt_strs("markdown-after-content"),
+                &diag, &mut id_map, edition) {
             Some(eh) => eh,
             None => return Err(3),
-        };
-
-        let edition = matches.opt_str("edition").unwrap_or("2015".to_string());
-        let edition = match edition.parse() {
-            Ok(e) => e,
-            Err(_) => {
-                diag.struct_err("could not parse edition").emit();
-                return Err(1);
-            }
         };
 
         match matches.opt_str("r").as_ref().map(|s| &**s) {

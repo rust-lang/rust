@@ -391,7 +391,10 @@ fn main_args(args: &[String]) -> i32 {
     match (options.should_test, options.markdown_input()) {
         (true, true) => return markdown::test(options, &diag),
         (true, false) => return test::run(options),
-        (false, true) => return markdown::render(options.input, options.render_options, &diag),
+        (false, true) => return markdown::render(options.input,
+                                                 options.render_options,
+                                                 &diag,
+                                                 options.edition),
         (false, false) => {}
     }
 
@@ -399,7 +402,8 @@ fn main_args(args: &[String]) -> i32 {
     // but we can't crates the Handler ahead of time because it's not Send
     let diag_opts = (options.error_format,
                      options.debugging_options.treat_err_as_bug,
-                     options.debugging_options.ui_testing);
+                     options.debugging_options.ui_testing,
+                     options.edition);
     let show_coverage = options.show_coverage;
     rust_input(options, move |out| {
         if show_coverage {
@@ -410,7 +414,7 @@ fn main_args(args: &[String]) -> i32 {
 
         let Output { krate, passes, renderinfo, renderopts } = out;
         info!("going to format");
-        let (error_format, treat_err_as_bug, ui_testing) = diag_opts;
+        let (error_format, treat_err_as_bug, ui_testing, edition) = diag_opts;
         let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
         match html::render::run(
             krate,
@@ -418,6 +422,7 @@ fn main_args(args: &[String]) -> i32 {
             passes.into_iter().collect(),
             renderinfo,
             &diag,
+            edition,
         ) {
             Ok(_) => rustc_driver::EXIT_SUCCESS,
             Err(e) => {

@@ -47,6 +47,7 @@ use std::rc::Rc;
 use errors;
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
+use syntax::edition::Edition;
 use syntax::ext::base::MacroKind;
 use syntax::source_map::FileName;
 use syntax::feature_gate::UnstableFeatures;
@@ -108,6 +109,8 @@ struct Context {
     /// publicly reused items to redirect to the right location.
     pub render_redirect_pages: bool,
     pub codes: ErrorCodes,
+    /// The default edition used to parse doctests.
+    pub edition: Edition,
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
@@ -514,7 +517,8 @@ pub fn run(mut krate: clean::Crate,
            options: RenderOptions,
            passes: FxHashSet<String>,
            renderinfo: RenderInfo,
-           diag: &errors::Handler) -> Result<(), Error> {
+           diag: &errors::Handler,
+           edition: Edition) -> Result<(), Error> {
     // need to save a copy of the options for rendering the index page
     let md_opts = options.clone();
     let RenderOptions {
@@ -604,6 +608,7 @@ pub fn run(mut krate: clean::Crate,
         dst,
         render_redirect_pages: false,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
+        edition,
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
     };
@@ -1128,7 +1133,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             md_opts.output = cx.dst.clone();
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
-            crate::markdown::render(index_page, md_opts, diag);
+            crate::markdown::render(index_page, md_opts, diag, cx.edition);
         } else {
             let dst = cx.dst.join("index.html");
             let mut w = BufWriter::new(try_err!(File::create(&dst), &dst));
@@ -2553,7 +2558,7 @@ fn render_markdown(w: &mut fmt::Formatter<'_>,
            if is_hidden { " hidden" } else { "" },
            prefix,
            Markdown(md_text, &links, RefCell::new(&mut ids),
-           cx.codes))
+           cx.codes, cx.edition))
 }
 
 fn document_short(
@@ -2918,7 +2923,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
         if let Some(note) = note {
             let mut ids = cx.id_map.borrow_mut();
-            let html = MarkdownHtml(&note, RefCell::new(&mut ids), error_codes);
+            let html = MarkdownHtml(&note, RefCell::new(&mut ids), error_codes, cx.edition);
             message.push_str(&format!(": {}", html));
         }
         stability.push(format!("<div class='stab deprecated'>{}</div>", message));
@@ -2967,7 +2972,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             message = format!(
                 "<details><summary>{}</summary>{}</details>",
                 message,
-                MarkdownHtml(&unstable_reason, RefCell::new(&mut ids), error_codes)
+                MarkdownHtml(&unstable_reason, RefCell::new(&mut ids), error_codes, cx.edition)
             );
         }
 
@@ -4197,7 +4202,8 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
-                   Markdown(&*dox, &i.impl_item.links(), RefCell::new(&mut ids), cx.codes))?;
+                   Markdown(&*dox, &i.impl_item.links(), RefCell::new(&mut ids),
+                            cx.codes, cx.edition))?;
         }
     }
 
