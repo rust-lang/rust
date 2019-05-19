@@ -504,6 +504,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         any_lifetime_bounds = true;
                     }
                 }
+                self.no_questions_in_bounds(bounds, "trait object types", false);
             }
             TyKind::ImplTrait(_, ref bounds) => {
                 if self.is_impl_trait_banned {

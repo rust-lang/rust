@@ -2,5 +2,6 @@
 
 type _0 = dyn ?Sized;
 //~^ ERROR at least one non-builtin trait is required for an object type [E0224]
+//~| ERROR ?Trait` is not permitted in trait object types
 
 fn main() {}
