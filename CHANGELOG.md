@@ -6,6 +6,18 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.99.2] 2018-08-07
+
+### Changed
+
+- Update rustc-ap-rustc_target to 218.0.0, rustc-ap-syntax to 218.0.0, and rustc-ap-syntax_pos to 218.0.0 5c9a2b6
+- Combine function-like attributes #2900
+
+### Fixed
+
+- Explicitly handle semicolon after the item in statement position d96e3ca
+- Fix parsing '#'-hiding of rustdoc 2eca09e
+
 ## [0.99.1] 2018-08-04
 
 ### Fixed
