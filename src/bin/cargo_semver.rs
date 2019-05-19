@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 
+extern crate curl;
 extern crate getopts;
 extern crate serde;
 #[macro_use]
@@ -8,6 +9,7 @@ extern crate serde_derive;
 extern crate serde_json;
 
 use cargo::core::{Package, PackageId, PackageSet, Source, SourceId, SourceMap, Workspace};
+use curl::easy::Easy;
 use log::debug;
 use std::{
     env,
@@ -463,7 +465,10 @@ impl<'a> WorkInfo<'a> {
 ///
 /// If no crate with the exact name is present, error out.
 pub fn find_on_crates_io(crate_name: &str) -> Result<crates_io::Crate> {
-    let mut registry = crates_io::Registry::new("https://crates.io".to_owned(), None);
+    let mut handle = Easy::new();
+    handle.useragent(&format!("rust-semverver {}", env!("CARGO_PKG_VERSION")))?;
+    let mut registry =
+        crates_io::Registry::new_handle("https://crates.io".to_owned(), None, handle);
 
     registry
         .search(crate_name, 1)
