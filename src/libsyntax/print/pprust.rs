@@ -163,7 +163,8 @@ fn binop_to_string(op: BinOpToken) -> &'static str {
     }
 }
 
-pub fn literal_to_string(token::Lit { kind, symbol, suffix }: token::Lit) -> String {
+pub fn literal_to_string(lit: token::Lit) -> String {
+    let token::Lit { kind, symbol, suffix } = lit;
     let mut out = match kind {
         token::Byte          => format!("b'{}'", symbol),
         token::Char          => format!("'{}'", symbol),

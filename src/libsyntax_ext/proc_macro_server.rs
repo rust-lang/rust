@@ -379,7 +379,7 @@ impl<'a> Rustc<'a> {
         }
     }
 
-    pub fn lit(&mut self, kind: token::LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Literal {
+    fn lit(&mut self, kind: token::LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Literal {
         Literal {
             lit: token::Lit::new(kind, symbol, suffix),
             span: server::Span::call_site(self),

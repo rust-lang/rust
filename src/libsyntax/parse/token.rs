@@ -73,6 +73,7 @@ pub enum LitKind {
     Err,
 }
 
+/// A literal token.
 #[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Lit {
     pub kind: LitKind,
@@ -81,6 +82,7 @@ pub struct Lit {
 }
 
 impl LitKind {
+    /// An English article for the literal token kind.
     crate fn article(self) -> &'static str {
         match self {
             Integer | Err => "an",
@@ -91,13 +93,13 @@ impl LitKind {
     crate fn descr(self) -> &'static str {
         match self {
             Bool => panic!("literal token contains `Lit::Bool`"),
-            Byte => "byte literal",
-            Char => "char literal",
-            Integer => "integer literal",
-            Float => "float literal",
-            Str | StrRaw(..) => "string literal",
-            ByteStr | ByteStrRaw(..) => "byte string literal",
-            Err => "invalid literal",
+            Byte => "byte",
+            Char => "char",
+            Integer => "integer",
+            Float => "float",
+            Str | StrRaw(..) => "string",
+            ByteStr | ByteStrRaw(..) => "byte string",
+            Err => "error",
         }
     }
 

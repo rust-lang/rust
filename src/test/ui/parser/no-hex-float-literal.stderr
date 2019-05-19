@@ -4,13 +4,13 @@ error: hexadecimal float literal is not supported
 LL |     0x567.89;
    |     ^^^^^^^^
 
-error: invalid suffix `f` for integer literal
+error: invalid suffix `f` for float literal
   --> $DIR/no-hex-float-literal.rs:6:18
    |
 LL |     0xDEAD.BEEFp-2f;
    |                  ^^ invalid suffix `f`
    |
-   = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
+   = help: valid suffixes are `f32` and `f64`
 
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/no-hex-float-literal.rs:2:11
