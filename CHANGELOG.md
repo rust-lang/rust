@@ -6,6 +6,16 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [1.0.3] 2019-02-14
+
+### Added
+
+- Point unstable options to tracking issues 412dcc7
+
+### Changed
+
+- Update `rustc-ap-*` crates to 373.0.0
+
 ## [1.0.2] 2019-02-12
 
 ### Added
