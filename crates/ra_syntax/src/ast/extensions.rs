@@ -3,7 +3,12 @@
 
 use itertools::Itertools;
 
-use crate::{SmolStr, SyntaxToken, ast::{self, AstNode, children, child_opt}, SyntaxKind::*, SyntaxElement, T};
+use crate::{
+    SmolStr, SyntaxToken,
+    ast::{self, AstNode, children, child_opt},
+    SyntaxKind::*,
+    SyntaxElement, T,
+};
 use ra_parser::SyntaxKind;
 
 impl ast::Name {
@@ -196,6 +201,17 @@ impl StructKind<'_> {
 }
 
 impl ast::StructDef {
+    pub fn is_union(&self) -> bool {
+        for child in self.syntax().children_with_tokens() {
+            match child.kind() {
+                T![struct] => return false,
+                T![union] => return true,
+                _ => (),
+            }
+        }
+        false
+    }
+
     pub fn kind(&self) -> StructKind {
         StructKind::from_node(self)
     }
