@@ -8,11 +8,10 @@ pr:
 
 jobs:
 - job: Linux
-  timeoutInMinutes: 180
   pool:
     vmImage: ubuntu-16.04
   steps:
-    - template: steps/linux.yml
+    - template: steps/run.yml
   strategy:
     matrix:
       x86_64-gnu-llvm-6.0:

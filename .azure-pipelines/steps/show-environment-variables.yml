@@ -1,3 +1,0 @@
-steps:
-- bash: printenv | sort
-  displayName: Show environment variables

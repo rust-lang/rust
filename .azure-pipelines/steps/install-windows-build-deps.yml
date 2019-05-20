@@ -1,19 +1,17 @@
 steps:
-- checkout: self
-  fetchDepth: 2
-
-- bash: |
-    set -x
-    git submodule
-    export SUBMODULES_EXCLUDES=$(git submodule | grep -Eow 'src/[^ ]+' | sed 's/\(.*\)/--exclude=\1\/\.git/')
-    echo "##vso[task.setvariable variable=SUBMODULES_EXCLUDES;]$SUBMODULES_EXCLUDES"
-
-- script: |
-    REM echo hack as drive D is too small
-    IF NOT "%DISABLE_DISK_SPACE_HACK%"=="1" (
-      mkdir c:\MORE_SPACE
-      mklink /J build c:\MORE_SPACE
-    )
+# FIXME: are these still needed?
+# - bash: |
+#     set -x
+#     git submodule
+#     export SUBMODULES_EXCLUDES=$(git submodule | grep -Eow 'src/[^ ]+' | sed 's/\(.*\)/--exclude=\1\/\.git/')
+#     echo "##vso[task.setvariable variable=SUBMODULES_EXCLUDES;]$SUBMODULES_EXCLUDES"
+#
+# - script: |
+#     REM echo hack as drive D is too small
+#     IF NOT "%DISABLE_DISK_SPACE_HACK%"=="1" (
+#       mkdir c:\MORE_SPACE
+#       mklink /J build c:\MORE_SPACE
+#     )
 
 - script: |
     set MSYS_PATH=%CD%\citools\msys64
@@ -31,6 +29,7 @@ steps:
     echo ##vso[task.setvariable variable=MSYS_PATH]%MSYS_PATH%
     echo ##vso[task.prependpath]%MSYS_PATH%\usr\bin
   displayName: Install msys2
+  condition: eq(variables['Agent.OS'], 'Windows_NT')
 
 # If we need to download a custom MinGW, do so here and set the path
 # appropriately.
@@ -44,27 +43,8 @@ steps:
     powershell -Command "iwr -outf %MINGW_ARCHIVE% %MINGW_URL%/%MINGW_ARCHIVE%"
     7z x -y %MINGW_ARCHIVE% > nul
     echo ##vso[task.prependpath]%CD%\%MINGW_DIR%\bin
-  condition: and(succeeded(), ne(variables['MINGW_URL'],''))
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), ne(variables['MINGW_URL'],''))
   displayName: Download custom MinGW
-
-# If we're compiling for MSVC then we, like most other distribution builders,
-# switch to clang as the compiler. This'll allow us eventually to enable LTO
-# amongst LLVM and rustc. Note that we only do this on MSVC as I don't think
-# clang has an output mode compatible with MinGW that we need. If it does we
-# should switch to clang for MinGW as well!
-#
-# Note that the LLVM installer is an NSIS installer
-#
-# Original downloaded here came from
-# http://releases.llvm.org/7.0.0/LLVM-7.0.0-win64.exe
-- script: |
-    powershell -Command "iwr -outf %TEMP%\LLVM-7.0.0-win64.exe https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-7.0.0-win64.exe"
-    set CLANG_DIR=%CD%\citools\clang-rust
-    %TEMP%\LLVM-7.0.0-win64.exe /S /NCRC /D=%CLANG_DIR%
-    set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=%CLANG_DIR%\bin\clang-cl.exe
-    echo ##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]%RUST_CONFIGURE_ARGS%
-  condition: and(succeeded(), eq(variables['MINGW_URL'],''))
-  displayName: Download clang
 
 # Here we do a pretty heinous thing which is to mangle the MinGW installation
 # we just had above. Currently, as of this writing, we're using MinGW-w64
@@ -87,28 +67,20 @@ steps:
     echo ON
     powershell -Command "iwr -outf 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_URL%/2017-04-20-%MSYS_BITS%bit-gdborig.exe"
     mv 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_DIR%\bin\gdborig.exe
-  condition: and(succeeded(), ne(variables['MINGW_URL'],''))
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), ne(variables['MINGW_URL'],''))
   displayName: Override with 6.3.0 gdb with 6.2.0 gdb
 
 # Otherwise pull in the MinGW installed on appveyor
 - script: |
-    echo Find mingw
-    set PATH | findstr /i msys
-    set PATH | findstr /i mingw
     echo ##vso[task.prependpath]%MSYS_PATH%\mingw%MSYS_BITS%\bin
-  condition: and(succeeded(), eq(variables['MINGW_URL'],''))
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['MINGW_URL'],''))
   displayName: Add MinGW to path
 
 - script: |
     copy C:\Python27amd64\python.exe C:\Python27amd64\python2.7.exe
     echo ##vso[task.prependpath]C:\Python27amd64
   displayName: Prefer the "native" Python as LLVM has trouble building with MSYS sometimes
-
-- script: |
-    md sccache
-    powershell -Command "iwr -outf sccache\sccache.exe https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-26-sccache-x86_64-pc-windows-msvc"
-    echo ##vso[task.prependpath]%CD%\sccache
-  displayName: Download and install sccache
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
 # Note that this is originally from the github releases patch of Ninja
 - script: |
@@ -120,41 +92,4 @@ steps:
     echo ##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]%RUST_CONFIGURE_ARGS%
     echo ##vso[task.prependpath]%CD%\ninja
   displayName: Download and install ninja
-
-- script: |
-    mkdir handle
-    powershell -Command "iwr -outf 2017-05-15-Handle.zip https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-15-Handle.zip"
-    7z x -ohandle 2017-05-15-Handle.zip
-    del 2017-05-15-Handle.zip
-    set PATH=%PATH%;%CD%\handle
-    handle.exe -accepteula -help
-    echo ##vso[task.setvariable variable=PATH]%PATH%
-  displayName: Help debug handle issues
-
-- template: show-environment-variables.yml
-
-- script: |
-    REM echo force the specific VS version
-    IF "%VCVARS_BAT%" NEQ "" (
-      CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\%VCVARS_BAT%"
-    )
-
-    where sccache
-    where rev
-    set | findstr /v SCCACHE_AZURE_CONNECTION_STRING
-
-    if not exist D:\cache\rustsrc\NUL mkdir D:\cache\rustsrc
-
-    sh src/ci/init_repo.sh . /d/cache/rustsrc
-    sh src/ci/run.sh
-  env:
-    CI: true
-    CI_JOB_NAME: $(System.JobDisplayName)
-    SRC: .
-    NO_CCACHE: 1
-
-    # explicitly decrypt secret variables
-    # see https://docs.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch
-    AWS_ACCESS_KEY_ID: $(SCCACHE_AWS_ACCESS_KEY_ID)
-    AWS_SECRET_ACCESS_KEY: $(SCCACHE_AWS_SECRET_ACCESS_KEY)
-  displayName: Run script
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
