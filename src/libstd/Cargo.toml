@@ -19,7 +19,7 @@ panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
 core = { path = "../libcore" }
 libc = { version = "0.2.51", default-features = false, features = ['rustc-dep-of-std'] }
-compiler_builtins = { version = "0.1.14" }
+compiler_builtins = { version = "0.1.15" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 hashbrown = { version = "0.3.0", features = ['rustc-dep-of-std'] }
@@ -49,12 +49,12 @@ fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
 cc = "1.0"
 
 [features]
-default = ["compiler_builtins_c", "std_detect_file_io", "std_detect_dlsym_getauxval"]
+default = ["std_detect_file_io", "std_detect_dlsym_getauxval"]
 
 backtrace = ["backtrace-sys"]
 panic-unwind = ["panic_unwind"]
 profiler = ["profiler_builtins"]
-compiler_builtins_c = ["alloc/compiler-builtins-c"]
+compiler-builtins-c = ["alloc/compiler-builtins-c"]
 llvm-libunwind = ["unwind/llvm-libunwind"]
 
 # Make panics and failed asserts immediately abort without formatting any message
