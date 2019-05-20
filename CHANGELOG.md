@@ -6,6 +6,25 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.99.7] 2018-11-07
+
+### Changed
+
+- Force a newline after the `if` condition if there is a different indentation level #3109
+- Use correct width when formatting type on local statement #3126
+- Treat crates non-alphabetically when ordering 799005f
+- Fix formatting of code that is annotated with rustfmt::skip #3113
+- Stabilize `edition` configuration option 9c3ae2d
+- cargo-fmt: detect Rust edition in use #3129
+- Trim the indentation on macros which heuristically appear to use block-style indentation #3178
+
+### Fixed
+
+- Do not remove path disambiugator inside macro #3142
+- Improve handling of Windows newlines #3141
+- Fix alignment of a struct's fields (`struct_field_align_threshold` option) with the Visual `indent_style` #3165
+- Fix a bug in formatting markdown lists within comments #3172
+
 ## [0.99.6] 2018-10-18
 
 ### Added
