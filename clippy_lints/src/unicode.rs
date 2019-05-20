@@ -1,4 +1,4 @@
-use crate::utils::{is_allowed, snippet, span_help_and_lint, span_lint_and_sugg};
+use crate::utils::{is_allowed, snippet, span_lint_and_sugg};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -92,15 +92,14 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
 fn check_str(cx: &LateContext<'_, '_>, span: Span, id: HirId) {
     let string = snippet(cx, span, "");
     if string.contains('\u{200B}') {
-        span_help_and_lint(
+        span_lint_and_sugg(
             cx,
             ZERO_WIDTH_SPACE,
             span,
             "zero-width space detected",
-            &format!(
-                "Consider replacing the string with:\n\"{}\"",
-                string.replace("\u{200B}", "\\u{200B}")
-            ),
+            "consider replacing the string with",
+            string.replace("\u{200B}", "\\u{200B}"),
+            Applicability::MachineApplicable,
         );
     }
     if string.chars().any(|c| c as u32 > 0x7F) {
@@ -109,35 +108,24 @@ fn check_str(cx: &LateContext<'_, '_>, span: Span, id: HirId) {
             NON_ASCII_LITERAL,
             span,
             "literal non-ASCII character detected",
-            &format!(
-                "Consider replacing the string with:\n\"{}\"",
-                if is_allowed(cx, UNICODE_NOT_NFC, id) {
-                    escape(string.chars())
-                } else {
-                    escape(string.nfc())
-                }
-            ),
-            format!(
-                "{}",
-                if is_allowed(cx, UNICODE_NOT_NFC, id) {
-                    escape(string.chars())
-                } else {
-                    escape(string.nfc())
-                }
-            ),
+            "consider replacing the string with",
+            if is_allowed(cx, UNICODE_NOT_NFC, id) {
+                escape(string.chars())
+            } else {
+                escape(string.nfc())
+            },
             Applicability::MachineApplicable,
         );
     }
     if is_allowed(cx, NON_ASCII_LITERAL, id) && string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
-        span_help_and_lint(
+        span_lint_and_sugg(
             cx,
             UNICODE_NOT_NFC,
             span,
             "non-nfc unicode sequence detected",
-            &format!(
-                "Consider replacing the string with:\n\"{}\"",
-                string.nfc().collect::<String>()
-            ),
+            "consider replacing the string with",
+            string.nfc().collect::<String>(),
+            Applicability::MachineApplicable,
         );
     }
 }
