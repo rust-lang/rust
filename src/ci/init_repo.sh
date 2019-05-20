@@ -46,7 +46,7 @@ function fetch_github_commit_archive {
     rm $cached
 }
 
-included="src/llvm-project src/llvm-emscripten src/doc/book src/doc/rust-by-example"
+included="src/llvm-project src/llvm-emscripten src/doc/book src/doc/rust-by-example src/tools/rustfmt"
 modules="$(git config --file .gitmodules --get-regexp '\.path$' | cut -d' ' -f2)"
 modules=($modules)
 use_git=""
