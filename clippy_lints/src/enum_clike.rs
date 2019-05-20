@@ -10,6 +10,7 @@ use rustc::ty;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::util::IntTypeExt;
 use rustc::{declare_lint_pass, declare_tool_lint};
+use std::convert::TryFrom;
 use syntax::ast::{IntTy, UintTy};
 
 declare_clippy_lint! {
@@ -65,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                         match ty.sty {
                             ty::Int(IntTy::Isize) => {
                                 let val = ((val as i128) << 64) >> 64;
-                                if val <= i128::from(i32::max_value()) && val >= i128::from(i32::min_value()) {
+                                if i32::try_from(val).is_ok() {
                                     continue;
                                 }
                             },

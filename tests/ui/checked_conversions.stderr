@@ -1,0 +1,52 @@
+error: Checked cast can be simplified.
+  --> $DIR/checked_conversions.rs:13:8
+   |
+LL |     if value <= (u32::max_value() as i64) && value >= 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u32::try_from(value).is_ok()`
+   |
+   = note: `-D clippy::checked-conversions` implied by `-D warnings`
+
+error: Checked cast can be simplified.
+  --> $DIR/checked_conversions.rs:21:8
+   |
+LL |     if value <= i64::from(u16::max_value()) && value >= 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u16::try_from(value).is_ok()`
+
+error: Checked cast can be simplified.
+  --> $DIR/checked_conversions.rs:29:8
+   |
+LL |     if value <= (u8::max_value() as isize) && value >= 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u8::try_from(value).is_ok()`
+
+error: Checked cast can be simplified.
+  --> $DIR/checked_conversions.rs:39:8
+   |
+LL |     if value <= (i32::max_value() as i64) && value >= (i32::min_value() as i64) {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i32::try_from(value).is_ok()`
+
+error: Checked cast can be simplified.
+  --> $DIR/checked_conversions.rs:47:8
+   |
+LL |     if value <= i64::from(i16::max_value()) && value >= i64::from(i16::min_value()) {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i16::try_from(value).is_ok()`
+
+error: Checked cast can be simplified.
+  --> $DIR/checked_conversions.rs:57:8
+   |
+LL |     if value <= i32::max_value() as u32 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i32::try_from(value).is_ok()`
+
+error: Checked cast can be simplified.
+  --> $DIR/checked_conversions.rs:65:8
+   |
+LL |     if value <= isize::max_value() as usize && value as i32 == 5 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `isize::try_from(value).is_ok()`
+
+error: Checked cast can be simplified.
+  --> $DIR/checked_conversions.rs:73:8
+   |
+LL |     if value <= u16::max_value() as u32 && value as i32 == 5 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u16::try_from(value).is_ok()`
+
+error: aborting due to 8 previous errors
+
