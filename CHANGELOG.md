@@ -6,6 +6,19 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.99.8] 2018-11-14
+
+### Added
+
+- Add `overflow_delimited_expr` config option to more aggressively allow overflow #3175
+
+### Fixed
+
+- Fix the logic for retaining a comment before the arrow in a match #3181
+- Do not wrap comments in doctest to avoid failing doctest runs #3183
+- Fix comment rewriting that was wrapping code into a line comment #3188
+- Fix formatting of unit-struct with `where`-clause #3200
+
 ## [0.99.7] 2018-11-07
 
 ### Changed
