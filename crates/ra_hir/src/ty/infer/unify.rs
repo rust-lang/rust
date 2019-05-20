@@ -56,7 +56,12 @@ where
                     self.var_stack.pop();
                     result
                 } else {
-                    let free_var = InferTy::TypeVar(self.ctx.var_unification_table.find(inner));
+                    let root = self.ctx.var_unification_table.find(inner);
+                    let free_var = match tv {
+                        InferTy::TypeVar(_) => InferTy::TypeVar(root),
+                        InferTy::IntVar(_) => InferTy::IntVar(root),
+                        InferTy::FloatVar(_) => InferTy::FloatVar(root),
+                    };
                     let position = self.add(free_var);
                     Ty::Bound(position as u32)
                 }
