@@ -141,4 +141,4 @@ else
   do_make "$RUST_CHECK_TARGET"
 fi
 
-sccache --show-stats
+sccache --show-stats || true
