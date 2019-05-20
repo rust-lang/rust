@@ -1,4 +1,5 @@
 // min-lldb-version: 310
+// ignore-cdb: Fails with exit code 0xc0000135 ("the application failed to initialize properly")
 
 // aux-build:issue-13213-aux.rs
 
