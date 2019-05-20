@@ -6,6 +6,34 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.99.6] 2018-10-18
+
+### Added
+
+- Add `enum_discrim_align_threshold` option to vertically align enum discriminants cc22869
+- Add `println!`-like heuristic to the `fail` attribute #3067
+- Handle itemized items inside comments #3083
+- Add `format_doc_comments` configuration option to control the formatting of code snippets inside comments #3089
+
+### Changed
+
+- Makes brace behavior consistent with empty bodies for traits and impls 2727d41
+- Consider a multi-lined array as a block-like expression #3969
+- Improve formatting of strings #3073
+- Get rid of extra commas in Visual struct literal formatting #3077
+- Update rustc-ap-rustc_target to 274.0.0, rustc-ap-syntax to 274.0.0, and rustc-ap-syntax_pos to 274.0.0
+- Format macro calls with item-like arguments #3080
+- Avoid control flow expressions conditions to go multi line ef59b34
+- Simplify multi-lining binop expressions #3101
+
+### Fixed
+
+- Do not format a code block in documentation if it is annotated with ignore or text 2bcc3a9
+- Fix inconsistent overflow behavior in Visual style #3078
+- Fix corner cases of the string formatting implementation #3083
+- Do not add parens around lifetimes 0ac68c9
+- Catch parser panic in format_snippet 8c4e92a
+
 ## [0.99.5] 2018-09-25
 
 ### Added
