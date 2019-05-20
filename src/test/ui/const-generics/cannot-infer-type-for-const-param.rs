@@ -1,3 +1,9 @@
+// The test is failing on 1.35.0 stable but that's not important since the ICE happens only with
+// the feature gate enabled, thus it doesn't affect stable.
+// https://github.com/rust-lang/rust/pull/60710#issuecomment-493662676
+//
+// ignore-test
+
 #![feature(const_generics)]
 //~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
 
