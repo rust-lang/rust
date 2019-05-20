@@ -17,6 +17,7 @@ jobs:
   strategy:
     matrix:
       dist-x86_64-linux:
+        IMAGE: dist-x86_64-linux
         DEPLOY: 1
 
       # "alternate" deployments, these are "nightlies" but have LLVM assertions
