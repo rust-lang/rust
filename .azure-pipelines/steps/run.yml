@@ -67,7 +67,13 @@ steps:
   condition: and(succeeded(), eq(variables['IMAGE'], 'mingw-check'))
   displayName: Verify the publish_toolstate script works
 
-- script: sh src/ci/run.sh
+- bash: |
+    set -e
+    if [ "$IMAGE" = ""]; then
+      src/ci/run.sh
+    else
+      src/ci/docker/run.sh $IMAGE
+    fi
   timeoutInMinutes: 180
   env:
     CI: true
