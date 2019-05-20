@@ -23,9 +23,11 @@ Be aware that Miri will not catch all possible errors in your program, and
 cannot run all programs:
 
 * There are still plenty of open questions around the basic invariants for some
-  types and when these invariants even have to hold, so if you program runs fine
-  in Miri right now that is by no means a guarantee that it is UB-free when
-  these questions get answered.
+  types and when these invariants even have to hold. Miri tries to avoid false
+  positives here, so if you program runs fine in Miri right now that is by no
+  means a guarantee that it is UB-free when these questions get answered. In
+  particular, Miri does currently not check that integers are initialized or
+  that references point to valid data.
 * If the program relies on unspecified details of how data is laid out, it will
   still run fine in Miri -- but might break (including causing UB) on different
   compiler versions or different platforms.
