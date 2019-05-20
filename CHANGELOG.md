@@ -6,6 +6,19 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [1.1.1] 2019-03-21
+
+### Added
+
+- Add new attribute `rustfmt::skip::macros` to prevent rustfmt from formatting a macro #3454
+
+### Fixed
+
+- Avoid panic on macro inside deeply nested block c9479de
+- Fix line numbering in missed spans and handle file_lines in edge cases cdd08da
+- Fix formatting of async blocks 1fa06ec
+- Avoid duplication on the presence of spaces between macro name and `!` #3464
+
 ## [1.1.0] 2019-03-17
 
 ### Added
