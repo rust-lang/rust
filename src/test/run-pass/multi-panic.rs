@@ -8,7 +8,7 @@ fn check_for_no_backtrace(test: std::process::Output) {
     let mut it = err.lines();
 
     assert_eq!(it.next().map(|l| l.starts_with("thread '<unnamed>' panicked at")), Some(true));
-    assert_eq!(it.next(), Some("note: Run with `RUST_BACKTRACE=1` \
+    assert_eq!(it.next(), Some("note: run with `RUST_BACKTRACE=1` \
                                 environment variable to display a backtrace."));
     assert_eq!(it.next().map(|l| l.starts_with("thread 'main' panicked at")), Some(true));
     assert_eq!(it.next(), None);
