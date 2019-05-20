@@ -206,23 +206,20 @@ pub(super) fn substs_from_path_segment(
         substs.push(Ty::Unknown);
     }
     assert_eq!(substs.len(), def_generics.count_params_including_parent());
-    let mut substs = Substs(substs.into());
 
     // handle defaults
     if let Some(def_generic) = def_generic {
         let default_substs = db.generic_defaults(def_generic);
         assert_eq!(substs.len(), default_substs.len());
 
-        let mut i = 0;
-        substs.walk_mut(&mut |ty| {
-            if *ty == Ty::Unknown {
-                *ty = default_substs[i].clone();
+        for (i, default_ty) in default_substs.iter().enumerate() {
+            if substs[i] == Ty::Unknown {
+                substs[i] = default_ty.clone();
             }
-            i += 1;
-        });
+        }
     }
 
-    substs
+    Substs(substs.into())
 }
 
 impl TraitRef {
