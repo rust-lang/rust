@@ -57,9 +57,7 @@ fn main() {
         cfg.define("COMPILER_RT_HAS_ATOMICS", Some("1"));
     }
 
-    // The source for `compiler-rt` comes from the `compiler-builtins` crate, so
-    // load our env var set by cargo to find the source code.
-    let root = env::var_os("DEP_COMPILER_RT_COMPILER_RT").unwrap();
+    let root = env::var_os("RUST_COMPILER_RT_ROOT").unwrap();
     let root = Path::new(&root);
 
     for src in profile_sources {
