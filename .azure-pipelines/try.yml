@@ -18,12 +18,62 @@ jobs:
       dist-x86_64-linux:
         IMAGE: dist-x86_64-linux
         DEPLOY: 1
-
-      # "alternate" deployments, these are "nightlies" but have LLVM assertions
-      # turned on, they're deployed to a different location primarily for
-      # additional testing.
       dist-x86_64-linux-alt:
         IMAGE: dist-x86_64-linux
         DEPLOY_ALT: 1
+      test-various:
+        IMAGE: test-various
+  steps:
+  - template: steps/run.yml
+
+- job: macOS
+  pool:
+    vmImage: macos-10.13
+  strategy:
+    matrix:
+      x86_64-apple:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+
+      dist-x86_64-apple:
+        RUST_CHECK_TARGET: dist
+        RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --enable-lldb --set rust.jemalloc
+        DEPLOY: 1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        DIST_REQUIRE_ALL_TOOLS: 1
+  steps:
+  - template: steps/run.yml
+
+- job: Windows
+  pool:
+    vmImage: 'vs2017-win2016'
+  strategy:
+    matrix:
+     x86_64-msvc-1:
+       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+       SCRIPT: make ci-subset-1
+       NO_DEBUG_ASSERTIONS: 1
+       NO_LLVM_ASSERTIONS: 1
+     x86_64-msvc-2:
+       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+       SCRIPT: make ci-subset-2
+
+     dist-x86_64-msvc:
+       RUST_CONFIGURE_ARGS: >
+         --build=x86_64-pc-windows-msvc
+         --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
+         --enable-full-tools
+         --enable-profiler
+       SCRIPT: python x.py dist
+       DIST_REQUIRE_ALL_TOOLS: 1
+       DEPLOY: 1
   steps:
   - template: steps/run.yml
