@@ -6,6 +6,13 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.99.9] 2018-11-15
+
+### Changed
+
+- Update rustc-ap-rustc_target to 297.0.0, rustc-ap-syntax to 297.0.0, to rustc-ap-syntax_pos to 297.0.0
+- Don't align comments on `extern crate`s dd7add7
+
 ## [0.99.8] 2018-11-14
 
 ### Added
