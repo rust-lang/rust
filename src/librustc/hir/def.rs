@@ -139,8 +139,7 @@ pub enum Res<Id = hir::HirId> {
     // Value namespace
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Local(Id),
-    Upvar(Id,           // `HirId` of closed over local
-          ast::NodeId), // expr node that creates the closure
+    Upvar(Id),
 
     // Macro namespace
     NonMacroAttr(NonMacroAttrKind), // e.g., `#[inline]` or `#[rustfmt::skip]`
@@ -396,7 +395,7 @@ impl<Id> Res<Id> {
             Res::SelfCtor(id) => Res::SelfCtor(id),
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)),
-            Res::Upvar(id, closure) => Res::Upvar(map(id), closure),
+            Res::Upvar(id) => Res::Upvar(map(id)),
             Res::SelfTy(a, b) => Res::SelfTy(a, b),
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),

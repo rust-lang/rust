@@ -78,6 +78,7 @@ use syntax_pos::Span;
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::rc::Rc;
 use crate::util::nodemap::ItemLocalSet;
@@ -289,6 +290,7 @@ impl HirNode for hir::Pat {
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub body_owner: DefId,
+    pub upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
     rvalue_promotable_map: Option<&'tcx ItemLocalSet>,
@@ -407,6 +409,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
         MemCategorizationContext {
             tcx,
             body_owner,
+            upvars: tcx.upvars(body_owner),
             region_scope_tree,
             tables,
             rvalue_promotable_map,
@@ -441,6 +444,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         MemCategorizationContext {
             tcx,
             body_owner,
+            upvars: tcx.upvars(body_owner),
             region_scope_tree,
             tables,
             rvalue_promotable_map,
@@ -742,21 +746,20 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 })
             }
 
-            Res::Upvar(var_id, closure_node_id) => {
+            Res::Upvar(var_id) => {
+                assert!(self.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)));
                 let var_nid = self.tcx.hir().hir_to_node_id(var_id);
-                let closure_def_id = self.tcx.hir().local_def_id(closure_node_id);
-                assert_eq!(self.body_owner, closure_def_id);
-
                 self.cat_upvar(hir_id, span, var_nid)
             }
 
-            Res::Local(vid) => {
-                let vnid = self.tcx.hir().hir_to_node_id(vid);
+            Res::Local(var_id) => {
+                assert!(!self.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)));
+                let var_nid = self.tcx.hir().hir_to_node_id(var_id);
                 Ok(cmt_ {
                     hir_id,
                     span,
-                    cat: Categorization::Local(vid),
-                    mutbl: MutabilityCategory::from_local(self.tcx, self.tables, vnid),
+                    cat: Categorization::Local(var_id),
+                    mutbl: MutabilityCategory::from_local(self.tcx, self.tables, var_nid),
                     ty: expr_ty,
                     note: NoteNone
                 })
@@ -768,7 +771,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     // Categorize an upvar, complete with invisible derefs of closure
     // environment and upvar reference as appropriate.
-    pub fn cat_upvar(
+    fn cat_upvar(
         &self,
         hir_id: hir::HirId,
         span: Span,

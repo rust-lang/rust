@@ -4053,7 +4053,7 @@ impl<'a> Resolver<'a> {
                                 Res::Upvar(..) => true,
                                 _ => false,
                             };
-                            res = Res::Upvar(var_id, function_id);
+                            res = Res::Upvar(var_id);
 
                             match self.upvars.entry(function_id).or_default().entry(var_id) {
                                 indexmap::map::Entry::Occupied(_) => continue,
