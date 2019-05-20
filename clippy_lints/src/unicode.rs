@@ -34,7 +34,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x = "Hä?"
+    /// let x = String::from("€");
+    /// ```
+    /// Could be written as:
+    /// ```rust
+    /// let x = String::from("\u{20ac}");
     /// ```
     pub NON_ASCII_LITERAL,
     pedantic,
