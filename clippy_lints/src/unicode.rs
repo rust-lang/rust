@@ -1,7 +1,8 @@
-use crate::utils::{is_allowed, snippet, span_help_and_lint};
+use crate::utils::{is_allowed, snippet, span_help_and_lint, span_lint_and_sugg};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::Span;
 use unicode_normalization::UnicodeNormalization;
@@ -103,7 +104,7 @@ fn check_str(cx: &LateContext<'_, '_>, span: Span, id: HirId) {
         );
     }
     if string.chars().any(|c| c as u32 > 0x7F) {
-        span_help_and_lint(
+        span_lint_and_sugg(
             cx,
             NON_ASCII_LITERAL,
             span,
@@ -116,6 +117,15 @@ fn check_str(cx: &LateContext<'_, '_>, span: Span, id: HirId) {
                     escape(string.nfc())
                 }
             ),
+            format!(
+                "{}",
+                if is_allowed(cx, UNICODE_NOT_NFC, id) {
+                    escape(string.chars())
+                } else {
+                    escape(string.nfc())
+                }
+            ),
+            Applicability::MachineApplicable,
         );
     }
     if is_allowed(cx, NON_ASCII_LITERAL, id) && string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
