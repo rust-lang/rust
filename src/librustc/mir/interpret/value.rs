@@ -54,7 +54,7 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert!(CONST_SIZE: ::std::mem::size_of::<ConstValue<'static>>() == 40);
+static_assert_size!(ConstValue<'_>, 40);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
@@ -111,7 +111,7 @@ pub enum Scalar<Tag=(), Id=AllocId> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert!(SCALAR_SIZE: ::std::mem::size_of::<Scalar>() == 24);
+static_assert_size!(Scalar, 24);
 
 impl<Tag> fmt::Display for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
