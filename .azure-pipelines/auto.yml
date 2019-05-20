@@ -160,9 +160,6 @@ jobs:
   - template: steps/macos.yml
   strategy:
     matrix:
-      # macOS builders. These are placed near the beginning because they are very
-      # slow to run.
-
       # OSX builders running tests, these run the full test suite.
       # NO_DEBUG_ASSERTIONS=1 to make them go faster, but also do have some
       # runners that run `//ignore-debug` tests.
