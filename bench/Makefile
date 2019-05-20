@@ -17,7 +17,10 @@
 %-raw2.ll: %-unopt.ll
 	#../build/bin/opt $^ -indvars -lower-autodiff -simplifycfg -mem2reg -sroa -S -o $@
 	#../build/bin/opt $^ -indvars -lower-autodiff -simplifycfg -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@
-	../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - | ../build/bin/opt - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce -O3 
+	../build/bin/opt $^ -indvars -lower-autodiff -S -o - | ../build/bin/opt - -S -o $@ 
+#-instsimplify -correlated-propagation
+#-early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce  
+	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - | ../build/bin/opt - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce  
 
 %-lowernovec.ll: %-unopt.ll
 	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -S -o $@
