@@ -176,7 +176,7 @@ LL |         41 => 2,
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms.rs:122:14
    |
-LL |         2 => 2, //~ ERROR 2rd matched arms have same body
+LL |         2 => 2, //~ ERROR 2nd matched arms have same body
    |              ^
    |
 note: same as this
@@ -216,12 +216,12 @@ LL |         3 => 2, //~ ERROR 3rd matched arms have same body
 note: same as this
   --> $DIR/match_same_arms.rs:122:14
    |
-LL |         2 => 2, //~ ERROR 2rd matched arms have same body
+LL |         2 => 2, //~ ERROR 2nd matched arms have same body
    |              ^
 help: consider refactoring into `2 | 3`
   --> $DIR/match_same_arms.rs:122:9
    |
-LL |         2 => 2, //~ ERROR 2rd matched arms have same body
+LL |         2 => 2, //~ ERROR 2nd matched arms have same body
    |         ^
 
 error: aborting due to 12 previous errors

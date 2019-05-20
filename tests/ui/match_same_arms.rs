@@ -119,7 +119,7 @@ fn match_same_arms() {
 
     let _ = match 42 {
         1 => 2,
-        2 => 2, //~ ERROR 2rd matched arms have same body
+        2 => 2, //~ ERROR 2nd matched arms have same body
         3 => 2, //~ ERROR 3rd matched arms have same body
         4 => 3,
         _ => 0,
