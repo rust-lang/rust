@@ -19,7 +19,7 @@ use std::{fmt, mem};
 use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait, GenericParams};
 use display::{HirDisplay, HirFormatter};
 
-pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig, generic_predicates};
+pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig, generic_predicates, generic_defaults};
 pub(crate) use infer::{infer, InferenceResult, InferTy};
 pub use lower::CallableDef;
 

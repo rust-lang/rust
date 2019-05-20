@@ -18,7 +18,7 @@ use crate::{
     nameres::Namespace,
     resolve::{Resolver, Resolution},
     path::{PathSegment, GenericArg},
-    generics::{GenericParams, HasGenericParams},
+    generics::{HasGenericParams},
     adt::VariantDef, Trait, generics::{ WherePredicate, GenericDef}
 };
 use super::{Ty, primitive, FnSig, Substs, TypeCtor, TraitRef, GenericPredicate};
@@ -120,15 +120,15 @@ impl Ty {
         segment: &PathSegment,
         resolved: TypableDef,
     ) -> Substs {
-        let def_generics = match resolved {
-            TypableDef::Function(func) => func.generic_params(db),
-            TypableDef::Struct(s) => s.generic_params(db),
-            TypableDef::Enum(e) => e.generic_params(db),
-            TypableDef::EnumVariant(var) => var.parent_enum(db).generic_params(db),
-            TypableDef::TypeAlias(t) => t.generic_params(db),
-            TypableDef::Const(_) | TypableDef::Static(_) => GenericParams::default().into(),
+        let def_generic: Option<GenericDef> = match resolved {
+            TypableDef::Function(func) => Some(func.into()),
+            TypableDef::Struct(s) => Some(s.into()),
+            TypableDef::Enum(e) => Some(e.into()),
+            TypableDef::EnumVariant(var) => Some(var.parent_enum(db).into()),
+            TypableDef::TypeAlias(t) => Some(t.into()),
+            TypableDef::Const(_) | TypableDef::Static(_) => None,
         };
-        substs_from_path_segment(db, resolver, segment, &def_generics, false)
+        substs_from_path_segment(db, resolver, segment, def_generic, false)
     }
 
     /// Collect generic arguments from a path into a `Substs`. See also
@@ -172,10 +172,12 @@ pub(super) fn substs_from_path_segment(
     db: &impl HirDatabase,
     resolver: &Resolver,
     segment: &PathSegment,
-    def_generics: &GenericParams,
+    def_generic: Option<GenericDef>,
     add_self_param: bool,
 ) -> Substs {
     let mut substs = Vec::new();
+    let def_generics = def_generic.map(|def| def.generic_params(db)).unwrap_or_default();
+
     let parent_param_count = def_generics.count_parent_params();
     substs.extend(iter::repeat(Ty::Unknown).take(parent_param_count));
     if add_self_param {
@@ -199,12 +201,24 @@ pub(super) fn substs_from_path_segment(
         }
     }
     // add placeholders for args that were not provided
-    // FIXME: handle defaults
     let supplied_params = substs.len();
     for _ in supplied_params..def_generics.count_params_including_parent() {
         substs.push(Ty::Unknown);
     }
     assert_eq!(substs.len(), def_generics.count_params_including_parent());
+
+    // handle defaults
+    if let Some(def_generic) = def_generic {
+        let default_substs = db.generic_defaults(def_generic);
+        assert_eq!(substs.len(), default_substs.len());
+
+        for (i, default_ty) in default_substs.iter().enumerate() {
+            if substs[i] == Ty::Unknown {
+                substs[i] = default_ty.clone();
+            }
+        }
+    }
+
     Substs(substs.into())
 }
 
@@ -249,7 +263,7 @@ impl TraitRef {
         resolved: Trait,
     ) -> Substs {
         let segment = path.segments.last().expect("path should have at least one segment");
-        substs_from_path_segment(db, resolver, segment, &resolved.generic_params(db), true)
+        substs_from_path_segment(db, resolver, segment, Some(resolved.into()), true)
     }
 
     pub(crate) fn for_trait(db: &impl HirDatabase, trait_: Trait) -> TraitRef {
@@ -329,6 +343,22 @@ pub(crate) fn generic_predicates(
         })
         .collect::<Vec<_>>();
     predicates.into()
+}
+
+/// Resolve the default type params from generics
+pub(crate) fn generic_defaults(db: &impl HirDatabase, def: GenericDef) -> Substs {
+    let resolver = def.resolver(db);
+    let generic_params = def.generic_params(db);
+
+    let defaults = generic_params
+        .params_including_parent()
+        .into_iter()
+        .map(|p| {
+            p.default.as_ref().map_or(Ty::Unknown, |path| Ty::from_hir_path(db, &resolver, path))
+        })
+        .collect::<Vec<_>>();
+
+    Substs(defaults.into())
 }
 
 fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
