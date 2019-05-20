@@ -6,6 +6,24 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.99.3] 2018-08-23
+
+### Added
+
+- Use path attribute when searching for modules #2901
+- Expose FileLines JSON representation to allow external libraries to use the file_lines option #2915
+
+### Changed
+
+- Replace '--conifig-help' with '--config=help' cb10e06
+- Improve formatting of slice patterns #2912
+
+### Fixed
+
+- Format chains with comment #2899
+- Fix indentation of formatted macro body #2920
+- Fix indentation of block comments f23e6aa
+
 ## [0.99.2] 2018-08-07
 
 ### Changed
