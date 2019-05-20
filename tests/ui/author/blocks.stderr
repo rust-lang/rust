@@ -1,5 +1,5 @@
 error: statement with no effect
-  --> $DIR/blocks.rs:13:5
+  --> $DIR/blocks.rs:14:5
    |
 LL |     -x;
    |     ^^^

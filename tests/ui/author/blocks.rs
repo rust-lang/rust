@@ -1,5 +1,6 @@
 #![feature(stmt_expr_attributes)]
 
+#[rustfmt::skip]
 fn main() {
     #[clippy::author]
     {
