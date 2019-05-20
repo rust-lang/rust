@@ -6,11 +6,22 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
-## [1.1.1] 2019-03-21
+## [1.2.0] 2019-03-27
 
 ### Added
 
 - Add new attribute `rustfmt::skip::macros` to prevent rustfmt from formatting a macro #3454
+
+### Changed
+
+- Discard error report in silent_emitter #3466
+
+### Fixed
+
+- Fix bad performance on deeply nested binary expressions #3467
+- Use BTreeMap to guarantee consistent ordering b4d4b57
+
+## [1.1.1] 2019-03-21
 
 ### Fixed
 
