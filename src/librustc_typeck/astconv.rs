@@ -702,7 +702,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     /// Instantiates the path for the given trait reference, assuming that it's
-    /// bound to a valid trait type. Returns the def-ID for the defining trait.
+    /// bound to a valid trait type. Returns the `DefId` of the defining trait.
     /// The type _cannot_ be a type other than a trait type.
     ///
     /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T = X>`
@@ -994,7 +994,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
-        let expanded_traits = traits::expand_trait_aliases(tcx, bound_trait_refs.clone());
+        let expanded_traits = traits::expand_trait_aliases(tcx, bound_trait_refs.iter().cloned());
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
@@ -1240,7 +1240,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     // Search for a bound on a type parameter which includes the associated item
-    // given by `assoc_name`. `ty_param_def_id` is the `DefId` for the type parameter
+    // given by `assoc_name`. `ty_param_def_id` is the `DefId` of the type parameter
     // This function will fail if there are no suitable bounds or there is
     // any ambiguity.
     fn find_bound_for_assoc_item(&self,

@@ -1216,7 +1216,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let hir_id = self.tcx.hir().node_to_hir_id(id);
         let access = access_from!(self.save_ctxt, root_item, hir_id);
 
-        // The parent def-ID of a given use tree is always the enclosing item.
+        // The parent `DefId` of a given use tree is always the enclosing item.
         let parent = self.save_ctxt.tcx.hir().opt_local_def_id(id)
             .and_then(|id| self.save_ctxt.tcx.parent(id))
             .map(id_from_def_id);

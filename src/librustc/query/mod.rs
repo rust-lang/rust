@@ -248,12 +248,12 @@ rustc_queries! {
             desc { "computing the variances for items in this crate" }
         }
 
-        /// Maps from def-ID of a type or region parameter to its (inferred) variance.
+        /// Maps from the `DefId` of a type or region parameter to its (inferred) variance.
         query variances_of(_: DefId) -> &'tcx [ty::Variance] {}
     }
 
     TypeChecking {
-        /// Maps from def-ID of a type to its (inferred) outlives.
+        /// Maps from thee `DefId` of a type to its (inferred) outlives.
         query inferred_outlives_crate(_: CrateNum)
             -> Lrc<ty::CratePredicatesMap<'tcx>> {
             desc { "computing the inferred outlives predicates for items in this crate" }
@@ -261,7 +261,7 @@ rustc_queries! {
     }
 
     Other {
-        /// Maps from an impl/trait def-ID to a list of the def-ids of its items.
+        /// Maps from an impl/trait `DefId to a list of the `DefId`s of its items.
         query associated_item_def_ids(_: DefId) -> Lrc<Vec<DefId>> {}
 
         /// Maps from a trait item to the trait item "descriptor".
@@ -274,7 +274,7 @@ rustc_queries! {
     }
 
     TypeChecking {
-        /// Maps a def-ID of a type to a list of its inherent impls.
+        /// Maps a `DefId` of a type to a list of its inherent impls.
         /// Contains implementations of methods that are inherent to a type.
         /// Methods in these implementations don't need to be exported.
         query inherent_impls(_: DefId) -> Lrc<Vec<DefId>> {

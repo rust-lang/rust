@@ -2143,7 +2143,7 @@ pub enum UseKind {
     ListStem,
 }
 
-/// `TraitRef` are references to traits in impls.
+/// References to traits in impls.
 ///
 /// `resolve` maps each `TraitRef`'s `ref_id` to its defining trait; that's all
 /// that the `ref_id` is for. Note that `ref_id`'s value is not the `NodeId` of the
