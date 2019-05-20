@@ -6,6 +6,13 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [1.2.2] 2019-04-24
+
+### Fixed
+
+- Fix processing of `ignore` paths #3522
+- Attempt to format attributes if only they exist #3523
+
 ## [1.2.1] 2019-04-18
 
 ### Added
