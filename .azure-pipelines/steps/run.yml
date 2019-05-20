@@ -8,22 +8,6 @@
 
 steps:
 
-# Ensure the `aws` CLI is installed so we can deploy later on, cache docker
-# images, etc.
-- bash: |
-    set -e
-    sudo apt-get install -y python3-setuptools
-    pip3 install awscli --upgrade --user
-    echo "##vso[task.prependpath]$HOME/.local/bin"
-  displayName: Install awscli (Linux)
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
-- script: pip install awscli
-  displayName: Install awscli (non-Linux)
-  condition: and(succeeded(), ne(variables['Agent.OS'], 'Linux'))
-
-- bash: aws s3 help
-- bash: exit 1
-
 - checkout: self
   fetchDepth: 2
 
@@ -66,6 +50,19 @@ steps:
     sh src/ci/init_repo.sh . /d/cache/rustsrc
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
   displayName: Check out submodules (Windows)
+
+# Ensure the `aws` CLI is installed so we can deploy later on, cache docker
+# images, etc.
+- bash: |
+    set -e
+    sudo apt-get install -y python3-setuptools
+    pip3 install awscli --upgrade --user
+    echo "##vso[task.prependpath]$HOME/.local/bin"
+  displayName: Install awscli (Linux)
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+- script: pip install awscli
+  displayName: Install awscli (non-Linux)
+  condition: and(succeeded(), ne(variables['Agent.OS'], 'Linux'))
 
 # Configure our CI_JOB_NAME variable which log analyzers can use for the main
 # step to see what's going on.
