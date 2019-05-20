@@ -9,9 +9,6 @@ steps:
     curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-apple-darwin
     chmod +x /usr/local/bin/sccache
 
-    curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin
-    chmod +x /usr/local/bin/stamp
-
     export CC=`pwd`/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang
     echo "##vso[task.setvariable variable=CC]$CC"
 

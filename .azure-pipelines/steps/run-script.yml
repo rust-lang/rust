@@ -6,7 +6,7 @@ steps:
     date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
 
     which sccache
-    stamp sh -x -c "$RUN_SCRIPT"
+    "$RUN_SCRIPT"
 
     date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
   env:
