@@ -32,7 +32,7 @@ steps:
     %TEMP%\LLVM-7.0.0-win64.exe /S /NCRC /D=%CLANG_DIR%
     set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=%CLANG_DIR%\bin\clang-cl.exe
     echo ##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]%RUST_CONFIGURE_ARGS%
-  condition: and(eq(variables['Agent.OS'], 'Darwin'), eq(variables['MINGW_URL'],''))
+  condition: and(eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['MINGW_URL'],''))
   displayName: Install clang (Windows)
 
 # Note that we don't install clang on Linux since its compiler story is just so
