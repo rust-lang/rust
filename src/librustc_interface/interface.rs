@@ -143,10 +143,10 @@ where
     )
 }
 
-pub fn default_thread_pool<F, R>(f: F) -> R
+pub fn default_thread_pool<F, R>(edition: edition::Edition, f: F) -> R
 where
     F: FnOnce() -> R + Send,
     R: Send,
 {
-    util::spawn_thread_pool(edition::DEFAULT_EDITION, None, &None, f)
+    util::spawn_thread_pool(edition, None, &None, f)
 }
