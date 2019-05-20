@@ -1,7 +1,6 @@
 //! Contains information about "passes", used to modify crate information during the documentation
 //! process.
 
-use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::lint as lint;
 use rustc::middle::privacy::AccessLevels;
@@ -314,10 +313,13 @@ pub fn look_for_tests<'tcx>(
     item: &Item,
     check_missing_code: bool,
 ) {
-    if cx.as_local_hir_id(item.def_id).is_none() {
-        // If non-local, no need to check anything.
-        return;
-    }
+    let hir_id = match cx.as_local_hir_id(item.def_id) {
+        Some(hir_id) => hir_id,
+        None => {
+            // If non-local, no need to check anything.
+            return;
+        }
+    };
 
     struct Tests {
         found_tests: usize,
@@ -336,10 +338,11 @@ pub fn look_for_tests<'tcx>(
     find_testable_code(&dox, &mut tests, ErrorCodes::No);
 
     if check_missing_code == true && tests.found_tests == 0 {
+        let sp = span_of_attrs(&item.attrs).substitute_dummy(item.source.span());
         let mut diag = cx.tcx.struct_span_lint_hir(
             lint::builtin::MISSING_DOC_CODE_EXAMPLES,
-            hir::CRATE_HIR_ID,
-            span_of_attrs(&item.attrs),
+            hir_id,
+            sp,
             "Missing code example in this documentation");
         diag.emit();
     } else if check_missing_code == false &&
@@ -347,7 +350,7 @@ pub fn look_for_tests<'tcx>(
               !cx.renderinfo.borrow().access_levels.is_doc_reachable(item.def_id) {
         let mut diag = cx.tcx.struct_span_lint_hir(
             lint::builtin::PRIVATE_DOC_TESTS,
-            hir::CRATE_HIR_ID,
+            hir_id,
             span_of_attrs(&item.attrs),
             "Documentation test in private item");
         diag.emit();

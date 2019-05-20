@@ -23,7 +23,7 @@ fn main() {
 //  bb0: {
 //      ...
 //      _5 = const true;
-//      assert(move _5, "index out of bounds: the len is move _4 but the index is _3") -> bb1;
+//      assert(const true, "index out of bounds: the len is move _4 but the index is _3") -> bb1;
 //  }
 //  bb1: {
 //      _1 = _2[_3];

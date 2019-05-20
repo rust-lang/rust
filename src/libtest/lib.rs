@@ -37,12 +37,13 @@ extern crate libc;
 use term;
 
 // FIXME(#54291): rustc and/or LLVM don't yet support building with panic-unwind
-//                on aarch64-pc-windows-msvc, so we don't link libtest against
-//                libunwind (for the time being), even though it means that
-//                libtest won't be fully functional on this platform.
+//                on aarch64-pc-windows-msvc, or thumbv7a-pc-windows-msvc
+//                so we don't link libtest against libunwind (for the time being)
+//                even though it means that libtest won't be fully functional on
+//                these platforms.
 //
 // See also: https://github.com/rust-lang/rust/issues/54190#issuecomment-422904437
-#[cfg(not(all(windows, target_arch = "aarch64")))]
+#[cfg(not(all(windows, any(target_arch = "aarch64", target_arch = "arm"))))]
 extern crate panic_unwind;
 
 pub use self::ColorConfig::*;

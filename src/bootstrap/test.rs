@@ -683,7 +683,7 @@ impl Step for RustdocUi {
             target: self.target,
             mode: "ui",
             suite: "rustdoc-ui",
-            path: None,
+            path: Some("src/test/rustdoc-ui"),
             compare_mode: None,
         })
     }

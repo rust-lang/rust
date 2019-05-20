@@ -795,10 +795,10 @@ fn create_msvc_imps(
         return
     }
     // The x86 ABI seems to require that leading underscores are added to symbol
-    // names, so we need an extra underscore on 32-bit. There's also a leading
+    // names, so we need an extra underscore on x86. There's also a leading
     // '\x01' here which disables LLVM's symbol mangling (e.g., no extra
     // underscores added in front).
-    let prefix = if cgcx.target_pointer_width == "32" {
+    let prefix = if cgcx.target_arch == "x86" {
         "\x01__imp__"
     } else {
         "\x01__imp_"
