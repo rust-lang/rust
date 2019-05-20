@@ -59,6 +59,7 @@ mod externalfiles;
 mod clean;
 mod config;
 mod core;
+mod docfs;
 mod doctree;
 mod fold;
 pub mod html {
