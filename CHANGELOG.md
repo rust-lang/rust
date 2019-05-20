@@ -6,6 +6,27 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [1.1.0] 2019-03-17
+
+### Added
+
+- Add `inline_attribute_width` configuration option to write an item and its attribute on the same line if their combined width is below a threshold #3409
+- Support `const` generics f0c861b
+- Support path clarity module #3448
+
+### Changed
+
+- Align loop and while formatting 7d9a2ef
+- Support `EmitMode::ModifiedLines` with stdin input #3424
+- Update `rustc-ap-*` crates to 407.0.0
+- Remove trailing whitespaces in missing spans 2d5bc69
+
+### Fixed
+
+- Do not remove comment in the case of no arg 8e3ef3e
+- Fix `Ident of macro+ident gets duplicated` error 40ff078
+- Format the if expression at the end of the block in a single line 5f3dfe6
+
 ## [1.0.3] 2019-02-14
 
 ### Added
