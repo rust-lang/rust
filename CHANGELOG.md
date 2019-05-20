@@ -6,6 +6,22 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.99.4] 2018-08-27
+
+### Added
+
+- Handle formatting of underscore imports #2951
+- Handle formatting of try blocks #2965
+
+### Changed
+
+- Update rustc-ap-rustc_target to 237.0.0, rustc-ap-syntax to 237.0.0, and rustc-ap-syntax_pos to 237.0.0 ca19c9a
+- Consider `dev` channel as nightly for unstable features #2948
+
+### Fixed
+
+- Fix formatting of patterns with ellipsis # 2942
+
 ## [0.99.3] 2018-08-23
 
 ### Added
