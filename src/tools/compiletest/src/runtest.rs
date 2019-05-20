@@ -244,11 +244,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
     config.stage_id.hash(&mut hash);
 
     if config.mode == DebugInfoCdb {
-        match config.cdb {
-            None => env::var_os("ProgramFiles(x86)").hash(&mut hash),
-            Some(ref s) if s.is_empty() => env::var_os("ProgramFiles(x86)").hash(&mut hash),
-            Some(ref s) => s.hash(&mut hash),
-        }
+        config.cdb.hash(&mut hash);
     }
 
     if config.mode == DebugInfoGdb || config.mode == DebugInfoGdbLldb {

@@ -1,6 +1,5 @@
 #![crate_name = "compiletest"]
 #![feature(test)]
-#![feature(path_buf_capacity)]
 #![feature(vec_remove_item)]
 #![deny(warnings, rust_2018_idioms)]
 
@@ -857,35 +856,34 @@ fn is_pc_windows_msvc_target(target: &String) -> bool {
 }
 
 fn find_cdb(target: &String) -> Option<OsString> {
-    if cfg!(windows) && is_pc_windows_msvc_target(target) {
-        let pf86 = env::var_os("ProgramFiles(x86)").or(env::var_os("ProgramFiles"))?;
-        let cdb_arch = if cfg!(target_arch="x86") {
-            "x86"
-        } else if cfg!(target_arch="x86_64") {
-            "x64"
-        } else if cfg!(target_arch="aarch64") {
-            "arm64"
-        } else if cfg!(target_arch="arm") {
-            "arm"
-        } else {
-            return None; // No compatible CDB.exe in the Windows 10 SDK
-        };
-
-        let mut path = PathBuf::with_capacity(64);
-        path.push(pf86);
-        path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
-        path.push(cdb_arch);
-        path.push(r"cdb.exe");
-
-        if path.exists() {
-            Some(path.into_os_string())
-        } else {
-            None
-        }
+    if !(cfg!(windows) && is_pc_windows_msvc_target(target)) {
+        return None;
     }
-    else {
-        None
+
+    let pf86 = env::var_os("ProgramFiles(x86)").or(env::var_os("ProgramFiles"))?;
+    let cdb_arch = if cfg!(target_arch="x86") {
+        "x86"
+    } else if cfg!(target_arch="x86_64") {
+        "x64"
+    } else if cfg!(target_arch="aarch64") {
+        "arm64"
+    } else if cfg!(target_arch="arm") {
+        "arm"
+    } else {
+        return None; // No compatible CDB.exe in the Windows 10 SDK
+    };
+
+    let mut path = PathBuf::new();
+    path.push(pf86);
+    path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
+    path.push(cdb_arch);
+    path.push(r"cdb.exe");
+
+    if !path.exists() {
+        return None;
     }
+
+    Some(path.into_os_string())
 }
 
 /// Returns Path to CDB
