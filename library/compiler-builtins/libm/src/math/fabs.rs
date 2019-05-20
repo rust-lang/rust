@@ -1,5 +1,8 @@
 use core::u64;
 
+/// Absolute value (magnitude) (f64)
+/// Calculates the absolute value (magnitude) of the argument `x`,
+/// by direct manipulation of the bit representation of `x`.
 #[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn fabs(x: f64) -> f64 {

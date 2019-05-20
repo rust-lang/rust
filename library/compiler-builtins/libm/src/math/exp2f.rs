@@ -69,6 +69,10 @@ static EXP2FT: [u64; TBLSIZE] = [
 //
 //      Tang, P.  Table-driven Implementation of the Exponential Function
 //      in IEEE Floating-Point Arithmetic.  TOMS 15(2), 144-157 (1989).
+
+/// Exponential, base 2 (f32)
+///
+/// Calculate `2^x`, that is, 2 raised to the power `x`.
 #[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn exp2f(mut x: f32) -> f32 {

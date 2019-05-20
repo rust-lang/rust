@@ -1,6 +1,10 @@
 use super::log1p;
 
 /* atanh(x) = log((1+x)/(1-x))/2 = log1p(2x/(1-x))/2 ~= x + x^3/3 + o(x^5) */
+/// Inverse hyperbolic tangent (f64)
+///
+/// Calculates the inverse hyperbolic tangent of `x`.
+/// Is defined as `log((1+x)/(1-x))/2 = log1p(2x/(1-x))/2`.
 pub fn atanh(x: f64) -> f64 {
     let u = x.to_bits();
     let e = ((u >> 52) as usize) & 0x7ff;

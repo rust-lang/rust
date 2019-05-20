@@ -48,6 +48,11 @@ fn mul(x: u64, y: u64) -> (u64, u64) {
     (hi, lo)
 }
 
+/// Floating multiply add (f64)
+///
+/// Computes `(x*y)+z`, rounded as one ternary operation:
+/// Computes the value (as if) to infinite precision and rounds once to the result format,
+/// according to the rounding mode characterized by the value of FLT_ROUNDS.
 #[inline]
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn fma(x: f64, y: f64, z: f64) -> f64 {
