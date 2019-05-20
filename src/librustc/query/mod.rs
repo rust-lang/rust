@@ -244,7 +244,7 @@ rustc_queries! {
         query static_mutability(_: DefId) -> Option<hir::Mutability> {}
 
         /// Gets a map with the variance of every item; use `item_variance` instead.
-        query crate_variances(_: CrateNum) -> Lrc<ty::CrateVariancesMap<'tcx>> {
+        query crate_variances(_: CrateNum) -> &'tcx ty::CrateVariancesMap<'tcx> {
             desc { "computing the variances for items in this crate" }
         }
 
@@ -255,7 +255,7 @@ rustc_queries! {
     TypeChecking {
         /// Maps from thee `DefId` of a type to its (inferred) outlives.
         query inferred_outlives_crate(_: CrateNum)
-            -> Lrc<ty::CratePredicatesMap<'tcx>> {
+            -> &'tcx ty::CratePredicatesMap<'tcx> {
             desc { "computing the inferred outlives predicates for items in this crate" }
         }
     }

@@ -99,6 +99,8 @@ macro_rules! arena_types {
             [few] reachable_non_generics: rustc::util::nodemap::DefIdMap<
                 rustc::middle::exported_symbols::SymbolExportLevel
             >,
+            [few] crate_variances: rustc::ty::CrateVariancesMap<'tcx>,
+            [few] inferred_outlives_crate: rustc::ty::CratePredicatesMap<'tcx>,
         ], $tcx);
     )
 }
