@@ -312,17 +312,15 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-        use syntax::symbol::Symbol;
-
         match t.sty {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 self.types.insert(
                     bound_ty.var.as_u32(),
                     match bound_ty.kind {
                         ty::BoundTyKind::Param(name) => name,
-                        ty::BoundTyKind::Anon => Symbol::intern(
-                            &format!("^{}", bound_ty.var.as_u32())
-                        ).as_interned_str(),
+                        ty::BoundTyKind::Anon =>
+                            InternedString::intern(&format!("^{}", bound_ty.var.as_u32()),
+                        ),
                     }
                 );
             }
@@ -334,8 +332,6 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-        use syntax::symbol::Symbol;
-
         match r {
             ty::ReLateBound(index, br) if *index == self.binder_index => {
                 match br {
@@ -344,9 +340,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
                     }
 
                     ty::BoundRegion::BrAnon(var) => {
-                        self.regions.insert(Symbol::intern(
-                            &format!("'^{}", var)
-                        ).as_interned_str());
+                        self.regions.insert(InternedString::intern(&format!("'^{}", var)));
                     }
 
                     _ => (),

@@ -3405,7 +3405,7 @@ impl_stable_hash_for!(struct self::SymbolName {
 impl SymbolName {
     pub fn new(name: &str) -> SymbolName {
         SymbolName {
-            name: Symbol::intern(name).as_interned_str()
+            name: InternedString::intern(name)
         }
     }
 

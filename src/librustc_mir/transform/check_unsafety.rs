@@ -12,7 +12,7 @@ use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSA
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
 
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{InternedString, sym};
 
 use std::ops::Bound;
 
@@ -167,9 +167,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     (CastTy::FnPtr, CastTy::Int(_)) => {
                         self.register_violations(&[UnsafetyViolation {
                             source_info: self.source_info,
-                            description: Symbol::intern("cast of pointer to int").as_interned_str(),
-                            details: Symbol::intern("casting pointers to integers in constants")
-                                     .as_interned_str(),
+                            description: InternedString::intern("cast of pointer to int"),
+                            details: InternedString::intern(
+                                "casting pointers to integers in constants"),
                             kind: UnsafetyViolationKind::General,
                         }], &[]);
                     },
@@ -185,9 +185,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.mir, self.tcx).sty {
                     self.register_violations(&[UnsafetyViolation {
                         source_info: self.source_info,
-                        description: Symbol::intern("pointer operation").as_interned_str(),
-                        details: Symbol::intern("operations on pointers in constants")
-                                 .as_interned_str(),
+                        description: InternedString::intern("pointer operation"),
+                        details: InternedString::intern("operations on pointers in constants"),
                         kind: UnsafetyViolationKind::General,
                     }], &[]);
                 }
@@ -212,13 +211,11 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                             self.source_scope_local_data[source_info.scope].lint_root;
                         self.register_violations(&[UnsafetyViolation {
                             source_info,
-                            description: Symbol::intern("borrow of packed field").as_interned_str(),
-                            details:
-                                Symbol::intern("fields of packed structs might be misaligned: \
-                                                dereferencing a misaligned pointer or even just \
-                                                creating a misaligned reference is undefined \
-                                                behavior")
-                                    .as_interned_str(),
+                            description: InternedString::intern("borrow of packed field"),
+                            details: InternedString::intern(
+                                "fields of packed structs might be misaligned: dereferencing a \
+                                misaligned pointer or even just creating a misaligned reference \
+                                is undefined behavior"),
                             kind: UnsafetyViolationKind::BorrowPacked(lint_root)
                         }], &[]);
                     }
@@ -315,12 +312,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         self.source_scope_local_data[source_info.scope].lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
-                        description: Symbol::intern("use of extern static").as_interned_str(),
-                        details:
-                            Symbol::intern("extern statics are not controlled by the Rust type \
-                                            system: invalid data, aliasing violations or data \
-                                            races will cause undefined behavior")
-                                .as_interned_str(),
+                        description: InternedString::intern("use of extern static"),
+                        details: InternedString::intern(
+                            "extern statics are not controlled by the Rust type system: invalid \
+                            data, aliasing violations or data races will cause undefined behavior"),
                         kind: UnsafetyViolationKind::ExternStatic(lint_root)
                     }], &[]);
                 }
@@ -340,8 +335,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         let source_info = self.source_info;
         self.register_violations(&[UnsafetyViolation {
             source_info,
-            description: Symbol::intern(description).as_interned_str(),
-            details: Symbol::intern(details).as_interned_str(),
+            description: InternedString::intern(description),
+            details: InternedString::intern(details),
             kind,
         }], &[]);
     }
@@ -441,8 +436,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                 let source_info = self.source_info;
                                 self.register_violations(&[UnsafetyViolation {
                                     source_info,
-                                    description: Symbol::intern(description).as_interned_str(),
-                                    details: Symbol::intern(details).as_interned_str(),
+                                    description: InternedString::intern(description),
+                                    details: InternedString::intern(details),
                                     kind: UnsafetyViolationKind::GeneralAndConstFn,
                                 }], &[]);
                             }

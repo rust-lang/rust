@@ -20,7 +20,7 @@ use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
 use syntax::ast::{self, FloatTy};
-use syntax::symbol::Symbol;
+use syntax::symbol::LocalInternedString;
 
 use rustc_codegen_ssa::traits::*;
 
@@ -213,7 +213,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             "type_name" => {
                 let tp_ty = substs.type_at(0);
-                let ty_name = Symbol::intern(&tp_ty.to_string()).as_str();
+                let ty_name = LocalInternedString::intern(&tp_ty.to_string());
                 self.const_str_slice(ty_name)
             }
             "type_id" => {

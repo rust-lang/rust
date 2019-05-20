@@ -7,10 +7,8 @@ use crate::middle::region;
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::{Kind, Subst, UnpackedKind};
 use crate::mir::interpret::ConstValue;
-use syntax::symbol::{keywords, Symbol};
-
 use rustc_target::spec::abi::Abi;
-use syntax::symbol::InternedString;
+use syntax::symbol::{keywords, InternedString};
 
 use std::cell::Cell;
 use std::fmt::{self, Write as _};
@@ -1285,10 +1283,10 @@ impl<F: fmt::Write> FmtPrinter<'_, 'gcx, 'tcx, F> {
     {
         fn name_by_region_index(index: usize) -> InternedString {
             match index {
-                0 => Symbol::intern("'r"),
-                1 => Symbol::intern("'s"),
-                i => Symbol::intern(&format!("'t{}", i-2)),
-            }.as_interned_str()
+                0 => InternedString::intern("'r"),
+                1 => InternedString::intern("'s"),
+                i => InternedString::intern(&format!("'t{}", i-2)),
+            }
         }
 
         // Replace any anonymous late-bound regions with named

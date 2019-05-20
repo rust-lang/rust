@@ -1036,6 +1036,17 @@ pub struct LocalInternedString {
 }
 
 impl LocalInternedString {
+    /// Maps a string to its interned representation.
+    pub fn intern(string: &str) -> Self {
+        let string = with_interner(|interner| {
+            let symbol = interner.intern(string);
+            interner.strings[symbol.0.as_usize()]
+        });
+        LocalInternedString {
+            string: unsafe { std::mem::transmute::<&str, &str>(string) }
+        }
+    }
+
     pub fn as_interned_str(self) -> InternedString {
         InternedString {
             symbol: Symbol::intern(self.string)
@@ -1112,7 +1123,7 @@ impl fmt::Display for LocalInternedString {
 
 impl Decodable for LocalInternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<LocalInternedString, D::Error> {
-        Ok(Symbol::intern(&d.read_str()?).as_str())
+        Ok(LocalInternedString::intern(&d.read_str()?))
     }
 }
 
@@ -1141,6 +1152,13 @@ pub struct InternedString {
 }
 
 impl InternedString {
+    /// Maps a string to its interned representation.
+    pub fn intern(string: &str) -> Self {
+        InternedString {
+            symbol: Symbol::intern(string)
+        }
+    }
+
     pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
         let str = with_interner(|interner| {
             interner.get(self.symbol) as *const str
@@ -1243,7 +1261,7 @@ impl fmt::Display for InternedString {
 
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(Symbol::intern(&d.read_str()?).as_interned_str())
+        Ok(InternedString::intern(&d.read_str()?))
     }
 }
 
