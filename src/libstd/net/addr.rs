@@ -546,6 +546,9 @@ impl FromInner<c::sockaddr_in6> for SocketAddrV6 {
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<SocketAddrV4> for SocketAddr {
     /// Converts a [`SocketAddrV4`] into a [`SocketAddr::V4`].
+    ///
+    /// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
+    /// [`SocketAddr::V4`]: ../../std/net/enum.SocketAddr.html#variant.V4
     fn from(sock4: SocketAddrV4) -> SocketAddr {
         SocketAddr::V4(sock4)
     }
@@ -554,6 +557,9 @@ impl From<SocketAddrV4> for SocketAddr {
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<SocketAddrV6> for SocketAddr {
     /// Converts a [`SocketAddrV6`] into a [`SocketAddr::V6`].
+    ///
+    /// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
+    /// [`SocketAddr::V6`]: ../../std/net/enum.SocketAddr.html#variant.V6
     fn from(sock6: SocketAddrV6) -> SocketAddr {
         SocketAddr::V6(sock6)
     }
@@ -567,6 +573,13 @@ impl<I: Into<IpAddr>> From<(I, u16)> for SocketAddr {
     /// and creates a [`SocketAddr::V6`] for a [`IpAddr::V6`].
     ///
     /// `u16` is treated as port of the newly created [`SocketAddr`].
+    ///
+    /// [`IpAddr`]: ../../std/net/enum.IpAddr.html
+    /// [`IpAddr::V4`]: ../../std/net/enum.IpAddr.html#variant.V4
+    /// [`IpAddr::V6`]: ../../std/net/enum.IpAddr.html#variant.V6
+    /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+    /// [`SocketAddr::V4`]: ../../std/net/enum.SocketAddr.html#variant.V4
+    /// [`SocketAddr::V6`]: ../../std/net/enum.SocketAddr.html#variant.V6
     fn from(pieces: (I, u16)) -> SocketAddr {
         SocketAddr::new(pieces.0.into(), pieces.1)
     }

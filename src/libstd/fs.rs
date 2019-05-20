@@ -1812,6 +1812,8 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///   function.)
 /// * `path` already exists.
 ///
+/// [`create_dir_all`]: fn.create_dir_all.html
+///
 /// # Examples
 ///
 /// ```no_run
