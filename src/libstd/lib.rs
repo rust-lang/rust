@@ -272,7 +272,6 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
-#![feature(maybe_uninit)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![feature(nll)]
