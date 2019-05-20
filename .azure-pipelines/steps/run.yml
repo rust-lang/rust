@@ -7,6 +7,17 @@
 # Check travis config for `gdb --batch` command to print all crash logs
 
 steps:
+
+# Ensure the `aws` CLI is installed so we can deploy later on, cache docker
+# images, etc.
+- bash: |
+    set -e
+    pip install setuptools
+    pip install awscli
+  displayName: Install awscli
+
+- bash: aws s3 help
+- bash: exit 1
 - checkout: self
   fetchDepth: 2
 
