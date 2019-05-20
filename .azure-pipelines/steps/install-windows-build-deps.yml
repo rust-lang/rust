@@ -29,7 +29,7 @@ steps:
     echo ##vso[task.setvariable variable=MSYS_PATH]%MSYS_PATH%
     echo ##vso[task.prependpath]%MSYS_PATH%\usr\bin
   displayName: Install msys2
-  condition: eq(variables['Agent.OS'], 'Windows_NT')
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
 # If we need to download a custom MinGW, do so here and set the path
 # appropriately.

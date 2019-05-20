@@ -12,12 +12,18 @@ steps:
 # images, etc.
 - bash: |
     set -e
-    pip install setuptools
-    pip install awscli
-  displayName: Install awscli
+    sudo apt-get install -y python3-setuptools
+    pip3 install awscli --upgrade --user
+    echo "##vso[task.prependpath]$HOME/.local/bin"
+  displayName: Install awscli (Linux)
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+- script: pip install awscli
+  displayName: Install awscli (non-Linux)
+  condition: and(succeeded(), ne(variables['Agent.OS'], 'Linux'))
 
 - bash: aws s3 help
 - bash: exit 1
+
 - checkout: self
   fetchDepth: 2
 
@@ -30,7 +36,7 @@ steps:
     du . | sort -nr | head -n100
   displayName: Show disk usage
   # FIXME: this hasn't been tested, but maybe it works on Windows? Should test!
-  condition: ne(variables['Agent.OS'], 'Windows_NT')
+  condition: and(succeeded(), ne(variables['Agent.OS'], 'Windows_NT'))
 
 - template: install-sccache.yml
 - template: install-clang.yml
@@ -43,7 +49,7 @@ steps:
     brew install xz
     brew install swig
   displayName: Install build dependencies (OSX)
-  condition: and(eq(variables['Agent.OS'], 'Darwin'), eq(variables['RUST_CHECK_TARGET'],'dist'))
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'), eq(variables['RUST_CHECK_TARGET'],'dist'))
 
 - template: install-windows-build-deps.yml
 
@@ -53,12 +59,12 @@ steps:
     set -e
     mkdir -p $HOME/rustsrc
     $BUILD_SOURCESDIRECTORY/src/ci/init_repo.sh . $HOME/rustsrc
-  condition: ne(variables['Agent.OS'], 'Windows_NT')
+  condition: and(succeeded(), ne(variables['Agent.OS'], 'Windows_NT'))
   displayName: Check out submodules (Unix)
 - script: |
     if not exist D:\cache\rustsrc\NUL mkdir D:\cache\rustsrc
     sh src/ci/init_repo.sh . /d/cache/rustsrc
-  condition: eq(variables['Agent.OS'], 'Windows_NT')
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
   displayName: Check out submodules (Windows)
 
 # Configure our CI_JOB_NAME variable which log analyzers can use for the main
