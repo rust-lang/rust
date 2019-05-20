@@ -6,6 +6,37 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [0.99.5] 2018-09-25
+
+### Added
+
+- Handle leading module separator for 2018 Edition #2952
+- Add configuration option `normalize_doc_attributes`: convert doc attributes to comments #3002
+
+### Changed
+
+- Accept 2015 and 2018 instead of Edition2015 and Edition2018 for edition option eec7436
+- Support platforms without a timer 46e2a2e
+- Update rustc-ap-rustc_target to 263.0.0, rustc-ap-syntax to 263.0.0, and rustc-ap-syntax_pos to 263.0.0
+
+### Fixed
+
+- Format of attributes with commas #2971
+- Fix optional arg condensing #2972
+- Improve formatting of long function parameters #2981
+- Fix formatting of raw string literals #2983
+- Handle chain with try operators with spaces #2986
+- Use correct shape in Visual tuple rewriting #2987
+- Impove formatting of arguments with `visual_style = "Visual"` option #2988
+- Change `print_diff` to output the correct line number 992b179
+- Propagate errors about failing to rewrite a macro 6f318e3
+- Handle formatting of long function signature #3010
+- Fix indent computation of a macro with braces c3edf6d
+- Format generics on associated types #3035
+- Incorrect indentation of multiline block match expression #3042
+- Fix bug in import where two consecutive module separators were possible 98a0ef2
+- Prevent right-shifting of block comments with bare lines 5fdb6db
+
 ## [0.99.4] 2018-08-27
 
 ### Added
