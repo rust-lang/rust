@@ -9,9 +9,7 @@ use std::sync::Arc;
 use std::iter;
 
 use crate::{
-    Function, Struct, StructField, Enum, EnumVariant, Path,
-    ModuleDef, TypeAlias,
-    Const, Static,
+    Function, Struct, StructField, Enum, EnumVariant, Path, ModuleDef, TypeAlias, Const, Static,
     HirDatabase,
     type_ref::TypeRef,
     name::KnownName,
@@ -19,7 +17,10 @@ use crate::{
     resolve::{Resolver, Resolution},
     path::{PathSegment, GenericArg},
     generics::{HasGenericParams},
-    adt::VariantDef, Trait, generics::{ WherePredicate, GenericDef}
+    adt::VariantDef,
+    Trait,
+    generics::{WherePredicate, GenericDef},
+    ty::AdtDef,
 };
 use super::{Ty, primitive, FnSig, Substs, TypeCtor, TraitRef, GenericPredicate};
 
@@ -288,9 +289,9 @@ impl TraitRef {
 pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace) -> Ty {
     match (def, ns) {
         (TypableDef::Function(f), Namespace::Values) => type_for_fn(db, f),
-        (TypableDef::Struct(s), Namespace::Types) => type_for_struct(db, s),
+        (TypableDef::Struct(s), Namespace::Types) => type_for_adt(db, s),
         (TypableDef::Struct(s), Namespace::Values) => type_for_struct_constructor(db, s),
-        (TypableDef::Enum(e), Namespace::Types) => type_for_enum(db, e),
+        (TypableDef::Enum(e), Namespace::Types) => type_for_adt(db, e),
         (TypableDef::EnumVariant(v), Namespace::Values) => type_for_enum_variant_constructor(db, v),
         (TypableDef::TypeAlias(t), Namespace::Types) => type_for_type_alias(db, t),
         (TypableDef::Const(c), Namespace::Values) => type_for_const(db, c),
@@ -405,7 +406,7 @@ fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
         .collect::<Vec<_>>();
-    let ret = type_for_struct(db, def);
+    let ret = type_for_adt(db, def);
     FnSig::from_params_and_return(params, ret)
 }
 
@@ -413,7 +414,7 @@ fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
 fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
     let var_data = def.variant_data(db);
     if var_data.fields().is_none() {
-        return type_for_struct(db, def); // Unit struct
+        return type_for_adt(db, def); // Unit struct
     }
     let generics = def.generic_params(db);
     let substs = Substs::identity(&generics);
@@ -433,7 +434,7 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) 
         .collect::<Vec<_>>();
     let generics = def.parent_enum(db).generic_params(db);
     let substs = Substs::identity(&generics);
-    let ret = type_for_enum(db, def.parent_enum(db)).subst(&substs);
+    let ret = type_for_adt(db, def.parent_enum(db)).subst(&substs);
     FnSig::from_params_and_return(params, ret)
 }
 
@@ -441,21 +442,16 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) 
 fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) -> Ty {
     let var_data = def.variant_data(db);
     if var_data.fields().is_none() {
-        return type_for_enum(db, def.parent_enum(db)); // Unit variant
+        return type_for_adt(db, def.parent_enum(db)); // Unit variant
     }
     let generics = def.parent_enum(db).generic_params(db);
     let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
-fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
-    let generics = s.generic_params(db);
-    Ty::apply(TypeCtor::Adt(s.into()), Substs::identity(&generics))
-}
-
-fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
-    let generics = s.generic_params(db);
-    Ty::apply(TypeCtor::Adt(s.into()), Substs::identity(&generics))
+fn type_for_adt(db: &impl HirDatabase, adt: impl Into<AdtDef> + HasGenericParams) -> Ty {
+    let generics = adt.generic_params(db);
+    Ty::apply(TypeCtor::Adt(adt.into()), Substs::identity(&generics))
 }
 
 fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {

@@ -197,13 +197,13 @@ impl From<crate::adt::AdtDef> for GenericDef {
     }
 }
 
-pub trait HasGenericParams {
+pub trait HasGenericParams: Copy {
     fn generic_params(self, db: &impl DefDatabase) -> Arc<GenericParams>;
 }
 
 impl<T> HasGenericParams for T
 where
-    T: Into<GenericDef>,
+    T: Into<GenericDef> + Copy,
 {
     fn generic_params(self, db: &impl DefDatabase) -> Arc<GenericParams> {
         db.generic_params(self.into())
