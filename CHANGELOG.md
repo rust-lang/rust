@@ -6,6 +6,13 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [1.0.0] 2018-11-19
+
+### Changed
+
+- Preserve possibly one whitespace for brace macros 1a3bc79
+- Prefer to break arguments over putting output type on the next line 1dd54e6
+
 ## [0.99.9] 2018-11-15
 
 ### Changed
