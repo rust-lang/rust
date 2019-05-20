@@ -69,7 +69,7 @@ steps:
 
 - bash: |
     set -e
-    if [ "$IMAGE" = ""]; then
+    if [ "$IMAGE" = "" ]; then
       src/ci/run.sh
     else
       src/ci/docker/run.sh $IMAGE
