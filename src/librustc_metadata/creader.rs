@@ -95,7 +95,7 @@ enum LoadError<'a> {
 impl<'a> LoadError<'a> {
     fn report(self) -> ! {
         match self {
-            LoadError::LocatorError(mut locate_ctxt) => locate_ctxt.report_errs(),
+            LoadError::LocatorError(locate_ctxt) => locate_ctxt.report_errs(),
         }
     }
 }
@@ -365,8 +365,8 @@ impl<'a> CrateLoader<'a> {
                 span,
                 ident,
                 crate_name: name,
-                hash: hash.map(|a| &*a),
-                extra_filename: extra_filename,
+                hash,
+                extra_filename,
                 filesearch: self.sess.target_filesearch(path_kind),
                 target: &self.sess.target.target,
                 triple: self.sess.opts.target_triple.clone(),

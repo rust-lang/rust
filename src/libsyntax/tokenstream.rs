@@ -21,7 +21,7 @@ use crate::print::pprust;
 
 use syntax_pos::{BytePos, Mark, Span, DUMMY_SP};
 #[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert;
+use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
 use serialize::{Decoder, Decodable, Encoder, Encodable};
 use smallvec::{SmallVec, smallvec};
@@ -158,7 +158,7 @@ pub type TreeAndJoint = (TokenTree, IsJoint);
 
 // `TokenStream` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_TOKEN_STREAM: mem::size_of::<TokenStream>() == 8);
+static_assert_size!(TokenStream, 8);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum IsJoint {

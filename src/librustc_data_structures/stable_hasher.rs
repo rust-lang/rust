@@ -15,7 +15,6 @@ use crate::bit_set;
 /// extended to 64 bits if needed.
 pub struct StableHasher<W> {
     state: SipHasher128,
-    bytes_hashed: u64,
     width: PhantomData<W>,
 }
 
@@ -33,7 +32,6 @@ impl<W: StableHasherResult> StableHasher<W> {
     pub fn new() -> Self {
         StableHasher {
             state: SipHasher128::new_with_keys(0, 0),
-            bytes_hashed: 0,
             width: PhantomData,
         }
     }
@@ -61,11 +59,6 @@ impl<W> StableHasher<W> {
     pub fn finalize(self) -> (u64, u64) {
         self.state.finish128()
     }
-
-    #[inline]
-    pub fn bytes_hashed(&self) -> u64 {
-        self.bytes_hashed
-    }
 }
 
 impl<W> Hasher for StableHasher<W> {
@@ -76,37 +69,31 @@ impl<W> Hasher for StableHasher<W> {
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
         self.state.write(bytes);
-        self.bytes_hashed += bytes.len() as u64;
     }
 
     #[inline]
     fn write_u8(&mut self, i: u8) {
         self.state.write_u8(i);
-        self.bytes_hashed += 1;
     }
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
         self.state.write_u16(i.to_le());
-        self.bytes_hashed += 2;
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
         self.state.write_u32(i.to_le());
-        self.bytes_hashed += 4;
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
         self.state.write_u64(i.to_le());
-        self.bytes_hashed += 8;
     }
 
     #[inline]
     fn write_u128(&mut self, i: u128) {
         self.state.write_u128(i.to_le());
-        self.bytes_hashed += 16;
     }
 
     #[inline]
@@ -115,37 +102,31 @@ impl<W> Hasher for StableHasher<W> {
         // platforms. This is important for symbol hashes when cross compiling,
         // for example.
         self.state.write_u64((i as u64).to_le());
-        self.bytes_hashed += 8;
     }
 
     #[inline]
     fn write_i8(&mut self, i: i8) {
         self.state.write_i8(i);
-        self.bytes_hashed += 1;
     }
 
     #[inline]
     fn write_i16(&mut self, i: i16) {
         self.state.write_i16(i.to_le());
-        self.bytes_hashed += 2;
     }
 
     #[inline]
     fn write_i32(&mut self, i: i32) {
         self.state.write_i32(i.to_le());
-        self.bytes_hashed += 4;
     }
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
         self.state.write_i64(i.to_le());
-        self.bytes_hashed += 8;
     }
 
     #[inline]
     fn write_i128(&mut self, i: i128) {
         self.state.write_i128(i.to_le());
-        self.bytes_hashed += 16;
     }
 
     #[inline]
@@ -154,12 +135,35 @@ impl<W> Hasher for StableHasher<W> {
         // platforms. This is important for symbol hashes when cross compiling,
         // for example.
         self.state.write_i64((i as i64).to_le());
-        self.bytes_hashed += 8;
     }
 }
 
 /// Something that implements `HashStable<CTX>` can be hashed in a way that is
 /// stable across multiple compilation sessions.
+///
+/// Note that `HashStable` imposes rather more strict requirements than usual
+/// hash functions:
+///
+/// - Stable hashes are sometimes used as identifiers. Therefore they must
+///   conform to the corresponding `PartialEq` implementations:
+///
+///     - `x == y` implies `hash_stable(x) == hash_stable(y)`, and
+///     - `x != y` implies `hash_stable(x) != hash_stable(y)`.
+///
+///   That second condition is usually not required for hash functions
+///   (e.g. `Hash`). In practice this means that `hash_stable` must feed any
+///   information into the hasher that a `PartialEq` comparision takes into
+///   account. See [#49300](https://github.com/rust-lang/rust/issues/49300)
+///   for an example where violating this invariant has caused trouble in the
+///   past.
+///
+/// - `hash_stable()` must be independent of the current
+///    compilation session. E.g. they must not hash memory addresses or other
+///    things that are "randomly" assigned per compilation session.
+///
+/// - `hash_stable()` must be independent of the host architecture. The
+///   `StableHasher` takes care of endianness and `isize`/`usize` platform
+///   differences.
 pub trait HashStable<CTX> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut CTX,

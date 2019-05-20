@@ -10,3 +10,12 @@ macro_rules! static_assert {
         static $name: () = [()][!($test: bool) as usize];
     }
 }
+
+/// Type size assertion. The first argument is a type and the second argument is its expected size.
+#[macro_export]
+#[allow_internal_unstable(underscore_const_names)]
+macro_rules! static_assert_size {
+    ($ty:ty, $size:expr) => {
+        const _: [(); $size] = [(); ::std::mem::size_of::<$ty>()];
+    }
+}

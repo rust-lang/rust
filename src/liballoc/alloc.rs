@@ -37,6 +37,8 @@ extern "Rust" {
 ///
 /// Note: while this type is unstable, the functionality it provides can be
 /// accessed through the [free functions in `alloc`](index.html#functions).
+///
+/// [`Alloc`]: trait.Alloc.html
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Global;
@@ -53,6 +55,10 @@ pub struct Global;
 /// # Safety
 ///
 /// See [`GlobalAlloc::alloc`].
+///
+/// [`Global`]: struct.Global.html
+/// [`Alloc`]: trait.Alloc.html
+/// [`GlobalAlloc::alloc`]: trait.GlobalAlloc.html#tymethod.alloc
 ///
 /// # Examples
 ///
@@ -87,6 +93,10 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 /// # Safety
 ///
 /// See [`GlobalAlloc::dealloc`].
+///
+/// [`Global`]: struct.Global.html
+/// [`Alloc`]: trait.Alloc.html
+/// [`GlobalAlloc::dealloc`]: trait.GlobalAlloc.html#tymethod.dealloc
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
@@ -105,6 +115,10 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 /// # Safety
 ///
 /// See [`GlobalAlloc::realloc`].
+///
+/// [`Global`]: struct.Global.html
+/// [`Alloc`]: trait.Alloc.html
+/// [`GlobalAlloc::realloc`]: trait.GlobalAlloc.html#method.realloc
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
@@ -123,6 +137,10 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// # Safety
 ///
 /// See [`GlobalAlloc::alloc_zeroed`].
+///
+/// [`Global`]: struct.Global.html
+/// [`Alloc`]: trait.Alloc.html
+/// [`GlobalAlloc::alloc_zeroed`]: trait.GlobalAlloc.html#method.alloc_zeroed
 ///
 /// # Examples
 ///

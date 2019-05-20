@@ -998,7 +998,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     (sym::repr, Normal, template!(List: "C, packed, ..."), Ungated),
     (sym::path, Normal, template!(NameValueStr: "file"), Ungated),
     (sym::automatically_derived, Normal, template!(Word), Ungated),
-    (sym::no_mangle, Normal, template!(Word), Ungated),
+    (sym::no_mangle, Whitelisted, template!(Word), Ungated),
     (sym::no_link, Normal, template!(Word), Ungated),
     (sym::derive, Normal, template!(List: "Trait1, Trait2, ..."), Ungated),
     (

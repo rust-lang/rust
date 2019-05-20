@@ -16,7 +16,7 @@ use crate::ThinVec;
 
 use rustc_data_structures::indexed_vec::Idx;
 #[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert;
+use rustc_data_structures::static_assert_size;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -964,7 +964,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_EXPR: std::mem::size_of::<Expr>() == 96);
+static_assert_size!(Expr, 96);
 
 impl Expr {
     /// Whether this expression would be valid somewhere that expects a value; for example, an `if`
