@@ -1,7 +1,5 @@
 // run-pass
 
-// FIXME(#4108)
-/*
 #![allow(clippy::useless_attribute)] //issue #2910
 
 #[macro_use]
@@ -19,6 +17,5 @@ struct MacroAttributesTest {
 fn macro_attributes_test() {
     let _ = MacroAttributesTest { _foo: 0 };
 }
-*/
 
 fn main() {}
