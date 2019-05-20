@@ -51,7 +51,10 @@ pub fn run(verbose: bool, path: &str, only: Option<&str>) -> Result<()> {
     println!("Total modules found: {}", visited_modules.len());
     println!("Total declarations: {}", num_decls);
     println!("Total functions: {}", funcs.len());
-    let bar = indicatif::ProgressBar::new(funcs.len() as u64);
+    let bar = indicatif::ProgressBar::with_draw_target(
+        funcs.len() as u64,
+        indicatif::ProgressDrawTarget::stderr_nohz(),
+    );
     bar.set_style(
         indicatif::ProgressStyle::default_bar().template("{wide_bar} {pos}/{len}\n{msg}"),
     );
