@@ -6,6 +6,21 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [1.2.1] 2019-04-18
+
+### Added
+
+- Add `--print-config current` CLI option b473e65
+- Create GitHub [page](https://rust-lang.github.io/rustfmt/) for Configuration.md #3485
+
+### Fixed
+
+- Keep comment appearing between parameter's name and its type #3491
+- Do not delete semicolon after macro call with square brackets #3500
+- Fix `--version` CLI option #3506
+- Fix duplication of attributes on a match arm's body #3510
+- Avoid overflowing item with attributes #3511
+
 ## [1.2.0] 2019-03-27
 
 ### Added
