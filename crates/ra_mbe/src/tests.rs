@@ -575,6 +575,20 @@ fn test_tt_to_stmts() {
     );
 }
 
+#[test]
+fn test_match_literal() {
+    let rules = create_rules(
+        r#"
+    macro_rules! foo {
+        ('(') => {
+            fn foo() {}
+        }
+    }
+"#,
+    );
+    assert_expansion(MacroKind::Items, &rules, "foo! ['(']", "fn foo () {}");
+}
+
 // The following tests are port from intellij-rust directly
 // https://github.com/intellij-rust/intellij-rust/blob/c4e9feee4ad46e7953b1948c112533360b6087bb/src/test/kotlin/org/rust/lang/core/macros/RsMacroExpansionTest.kt
 

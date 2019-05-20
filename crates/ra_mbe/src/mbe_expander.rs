@@ -281,7 +281,11 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                         return Err(ExpandError::UnexpectedToken);
                     }
                 }
-                _ => return Err(ExpandError::UnexpectedToken),
+                crate::Leaf::Literal(literal) => {
+                    if input.eat_literal().map(|i| &i.text) != Some(&literal.text) {
+                        return Err(ExpandError::UnexpectedToken);
+                    }
+                }
             },
             crate::TokenTree::Repeat(crate::Repeat { subtree, kind, separator }) => {
                 // Dirty hack to make macro-expansion terminate.
