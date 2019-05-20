@@ -6,6 +6,22 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [1.0.1] 2018-12-09
+
+### Added
+
+- Add a `version` option 378994b
+
+### Changed
+
+- End expressions like return/continue/break with a semicolon #3223
+- Update rustc-ap-rustc_target to 306.0.0, rustc-ap-syntax to 306.0.0, and rustc-ap-syntax_pos to 306.0.0
+
+### Fixed
+
+- Allow to run a rustfmt command from cargo-fmt even when there is no target a2da636
+- Fix `un-closed delimiter` errors when formatting break labels 40174e9
+
 ## [1.0.0] 2018-11-19
 
 ### Changed
