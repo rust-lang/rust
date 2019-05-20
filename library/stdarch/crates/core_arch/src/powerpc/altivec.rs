@@ -212,6 +212,13 @@ extern "C" {
 
     #[link_name = "llvm.ppc.altivec.vcmpbfp"]
     fn vcmpbfp(a: vector_float, b: vector_float) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.vcmpequb"]
+    fn vcmpequb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_bool_char;
+    #[link_name = "llvm.ppc.altivec.vcmpequh"]
+    fn vcmpequh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_bool_short;
+    #[link_name = "llvm.ppc.altivec.vcmpequw"]
+    fn vcmpequw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_bool_int;
 }
 
 macro_rules! s_t_l {
@@ -367,6 +374,28 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] ($fn, $fn, $fn, $fn, $fn, $fn) }
         }
     }
+
+    test_impl! { vec_vcmpequb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_bool_char [ vcmpequb, vcmpequb ] }
+    test_impl! { vec_vcmpequh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_bool_short [ vcmpequh, vcmpequh ] }
+    test_impl! { vec_vcmpequw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_bool_int [ vcmpequw, vcmpequw ] }
+
+    pub trait VectorCmpEq<Other> {
+        type Result;
+        unsafe fn vec_cmpeq(self, b: Other) -> Self::Result;
+    }
+
+    macro_rules! impl_vec_cmp {
+        ([$Trait:ident $m:ident] ($b:ident, $h:ident, $w:ident)) => {
+            impl_vec_trait!{ [$Trait $m] $b (vector_unsigned_char, vector_unsigned_char) -> vector_bool_char }
+            impl_vec_trait!{ [$Trait $m] $b (vector_signed_char, vector_signed_char) -> vector_bool_char }
+            impl_vec_trait!{ [$Trait $m] $h (vector_unsigned_short, vector_unsigned_short) -> vector_bool_short }
+            impl_vec_trait!{ [$Trait $m] $h (vector_signed_short, vector_signed_short) -> vector_bool_short }
+            impl_vec_trait!{ [$Trait $m] $w (vector_unsigned_int, vector_unsigned_int) -> vector_bool_int }
+            impl_vec_trait!{ [$Trait $m] $w (vector_signed_int, vector_signed_int) -> vector_bool_int }
+        }
+    }
+
+    impl_vec_cmp! { [VectorCmpEq vec_cmpeq] (vec_vcmpequb, vec_vcmpequh, vec_vcmpequw) }
 
     test_impl! { vec_vcmpbfp(a: vector_float, b: vector_float) -> vector_signed_int [vcmpbfp, vcmpbfp] }
 
@@ -1289,6 +1318,16 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector cmpeq.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_cmpeq<T, U>(a: T, b: U) -> <T as sealed::VectorCmpEq<U>>::Result
+where
+    T: sealed::VectorCmpEq<U>,
+{
+    a.vec_cmpeq(b)
+}
+
 /// Vector cmpb.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1625,16 +1664,55 @@ mod tests {
 
     macro_rules! test_vec_2 {
         { $name: ident, $fn:ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
+            test_vec_2! { $name, $fn, $ty -> $ty, [$($a),+], [$($b),+], [$($d),+] }
+        };
+        { $name: ident, $fn:ident, $ty: ident -> $ty_out: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
             #[simd_test(enable = "altivec")]
             unsafe fn $name() {
                 let a: s_t_l!($ty) = transmute($ty::new($($a),+));
                 let b: s_t_l!($ty) = transmute($ty::new($($b),+));
 
-                let d = $ty::new($($d),+);
-                let r : $ty = transmute($fn(a, b));
+                let d = $ty_out::new($($d),+);
+                let r : $ty_out = transmute($fn(a, b));
                 assert_eq!(d, r);
             }
          }
+    }
+
+    test_vec_2! { test_vec_cmpeq_i8, vec_cmpeq, i8x16 -> m8x16,
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true]
+    }
+
+    test_vec_2! { test_vec_cmpeq_u8, vec_cmpeq, u8x16 -> m8x16,
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true]
+    }
+
+    test_vec_2! { test_vec_cmpeq_i16, vec_cmpeq, i16x8 -> m16x8,
+        [1, -1, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0],
+        [false, false, false, false, true, true, true, true]
+    }
+
+    test_vec_2! { test_vec_cmpeq_u16, vec_cmpeq, u16x8 -> m16x8,
+        [1, 255, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 0, 0, 0, 0],
+        [false, false, false, false, true, true, true, true]
+    }
+
+    test_vec_2! { test_vec_cmpeq_i32, vec_cmpeq, i32x4 -> m32x4,
+        [1, -1, 0, 0],
+        [0, -1, 0, 1],
+        [false, true, true, false]
+    }
+
+    test_vec_2! { test_vec_cmpeq_u32, vec_cmpeq, u32x4 -> m32x4,
+        [1, 255, 0, 0],
+        [0, 255,  0, 1],
+        [false, true, true, false]
     }
 
     #[simd_test(enable = "altivec")]
