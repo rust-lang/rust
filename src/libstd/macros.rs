@@ -357,61 +357,6 @@ macro_rules! dbg {
     };
 }
 
-/// Selects the first successful receive event from a number of receivers.
-///
-/// This macro is used to wait for the first event to occur on a number of
-/// receivers. It places no restrictions on the types of receivers given to
-/// this macro, this can be viewed as a heterogeneous select.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(mpsc_select)]
-///
-/// use std::thread;
-/// use std::sync::mpsc;
-///
-/// // two placeholder functions for now
-/// fn long_running_thread() {}
-/// fn calculate_the_answer() -> u32 { 42 }
-///
-/// let (tx1, rx1) = mpsc::channel();
-/// let (tx2, rx2) = mpsc::channel();
-///
-/// thread::spawn(move|| { long_running_thread(); tx1.send(()).unwrap(); });
-/// thread::spawn(move|| { tx2.send(calculate_the_answer()).unwrap(); });
-///
-/// select! {
-///     _ = rx1.recv() => println!("the long running thread finished first"),
-///     answer = rx2.recv() => {
-///         println!("the answer was: {}", answer.unwrap());
-///     }
-/// }
-/// # drop(rx1.recv());
-/// # drop(rx2.recv());
-/// ```
-///
-/// For more information about select, see the `std::sync::mpsc::Select` structure.
-#[macro_export]
-#[unstable(feature = "mpsc_select", issue = "27800")]
-#[rustc_deprecated(since = "1.32.0",
-                   reason = "channel selection will be removed in a future release")]
-macro_rules! select {
-    (
-        $($name:pat = $rx:ident.$meth:ident() => $code:expr),+
-    ) => ({
-        use $crate::sync::mpsc::Select;
-        let sel = Select::new();
-        $( let mut $rx = sel.handle(&$rx); )+
-        unsafe {
-            $( $rx.add(); )+
-        }
-        let ret = sel.wait();
-        $( if ret == $rx.id() { let $name = $rx.$meth(); $code } else )+
-        { unreachable!() }
-    })
-}
-
 #[cfg(test)]
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({

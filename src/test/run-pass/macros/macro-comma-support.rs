@@ -233,8 +233,6 @@ fn println() {
     println!("hello {}", "world",);
 }
 
-// select! is too troublesome and unlikely to be stabilized
-
 // stringify! is N/A
 
 #[cfg(std)]
