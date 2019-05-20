@@ -873,7 +873,7 @@ fn find_cdb(target: &String) -> Option<OsString> {
 
         let mut path = PathBuf::with_capacity(64);
         path.push(pf86);
-        path.push(r"Windows Kits\10\Debuggers"); // We could check more known install locations (8.1?)
+        path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
         path.push(cdb_arch);
         path.push(r"cdb.exe");
 

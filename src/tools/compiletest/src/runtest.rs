@@ -3,7 +3,8 @@
 use crate::common::CompareMode;
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
-use crate::common::{Codegen, CodegenUnits, DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb, Rustdoc};
+use crate::common::{Codegen, CodegenUnits, Rustdoc};
+use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb};
 use crate::common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use crate::common::{Config, TestPaths};
 use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
@@ -709,7 +710,7 @@ impl<'test> TestCx<'test> {
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
         let mut script_str = String::with_capacity(2048);
         script_str.push_str("version\n"); // List CDB (and more) version info in test output
-        script_str.push_str(".nvlist\n"); // List loaded `*.natvis` files (bulk of MSVC debugger customizations)
+        script_str.push_str(".nvlist\n"); // List loaded `*.natvis` files, bulk of custom MSVC debug
 
         // Set breakpoints on every line that contains the string "#break"
         let source_file_name = self.testpaths.file.file_name().unwrap().to_string_lossy();
@@ -1968,8 +1969,8 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunFail | RunPassValgrind | Pretty | DebugInfoCdb | DebugInfoGdbLldb | DebugInfoGdb | DebugInfoLldb
-            | Codegen | Rustdoc | RunMake | CodegenUnits | JsDocTest | Assembly => {
+            RunFail | RunPassValgrind | Pretty | DebugInfoCdb | DebugInfoGdbLldb | DebugInfoGdb
+            | DebugInfoLldb | Codegen | Rustdoc | RunMake | CodegenUnits | JsDocTest | Assembly => {
                 // do not use JSON output
             }
         }
