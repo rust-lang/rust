@@ -1403,7 +1403,13 @@ pub fn checked_type_of<'a, 'tcx>(
                                     if !fail {
                                         return None;
                                     }
-                                    bug!("unexpected const parent path def {:?}", x);
+                                    tcx.sess.delay_span_bug(
+                                        DUMMY_SP,
+                                        &format!(
+                                            "unexpected const parent path def {:?}", x
+                                        ),
+                                    );
+                                    tcx.types.err
                                 }
                             }
                         }
@@ -1411,7 +1417,13 @@ pub fn checked_type_of<'a, 'tcx>(
                             if !fail {
                                 return None;
                             }
-                            bug!("unexpected const parent path {:?}", x);
+                            tcx.sess.delay_span_bug(
+                                DUMMY_SP,
+                                &format!(
+                                    "unexpected const parent path {:?}", x
+                                ),
+                            );
+                            tcx.types.err
                         }
                     }
                 }
@@ -1420,7 +1432,13 @@ pub fn checked_type_of<'a, 'tcx>(
                     if !fail {
                         return None;
                     }
-                    bug!("unexpected const parent in type_of_def_id(): {:?}", x);
+                    tcx.sess.delay_span_bug(
+                        DUMMY_SP,
+                        &format!(
+                            "unexpected const parent in type_of_def_id(): {:?}", x
+                        ),
+                    );
+                    tcx.types.err
                 }
             }
         }
