@@ -6,6 +6,41 @@
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 
+## [1.0.2] 2019-02-12
+
+### Added
+
+- Add a [section](https://github.com/rust-lang/rustfmt/blob/ae331be/Contributing.md#version-gate-formatting-changes) to the Contributing.md file about version-gating formatting changes 36e2cb0
+- Allow specifying package with `-p` CLI option a8d2591
+- Support `rustfmt::skip` on imports #3289
+- Support global `rustfmt.toml` to be written in user config directory #3280
+- Format visibility on trait alias 96a3df3
+
+### Changed
+
+- Do not modify original source code inside macro call #3260
+- Recognize strings inside comments in order to avoid indenting them baa62c6
+- Use Unicode-standard char width to wrap comments or strings a01990c
+- Change new line point in the case of no args #3294
+- Use the same formatting rule between functions and macros #3298
+- Update rustc-ap-rustc_target to 366.0.0, rustc-ap-syntax to 366.0.0, and rustc-ap-syntax_pos to 366.0.0
+
+### Fixed
+
+- rewrite_comment: fix block fallback when failing to rewrite an itemized block ab7f4e1
+- Catch possible tokenizer panics #3240
+- Fix macro indentation on Windows #3266
+- Fix shape when formatting return or break expr on statement position #3259
+- rewrite_comment: fix block fallback when failing to rewrite an itemized block
+- Keep leading double-colon to respect the 2018 edition of rust's paths a2bfc02
+- Fix glob and nested global imports 2125ad2
+- Do not force trailing comma when using mixed layout #3306
+- Prioritize `single_line_fn` and `empty_item_single_line` over `brace_style` #3308
+- Fix `internal error: left behind trailing whitespace` with long lines c2534f5
+- Fix attribute duplication #3325
+- Fix formatting of strings within a macro 813aa79
+- Handle a macro argument with a single keyword 9a7ea6a
+
 ## [1.0.1] 2018-12-09
 
 ### Added
