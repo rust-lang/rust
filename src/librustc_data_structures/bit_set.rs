@@ -518,10 +518,12 @@ impl<T: Idx> HybridBitSet<T> {
                         changed
                     }
                     HybridBitSet::Dense(other_dense) => {
-                        // `self` is sparse and `other` is dense. Densify
-                        // `self` and then do the bitwise union.
-                        let mut new_dense = self_sparse.to_dense();
-                        let changed = new_dense.union(other_dense);
+                        // `self` is sparse and `other` is dense. Clone the
+                        // other set and do the bitwise union with sparse
+                        // `self`. This avoids traversing the dense
+                        // representation twice.
+                        let mut new_dense = other_dense.clone();
+                        let changed = new_dense.union(self_sparse);
                         *self = HybridBitSet::Dense(new_dense);
                         changed
                     }
