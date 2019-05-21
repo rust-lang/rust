@@ -56,7 +56,7 @@ pub trait Emitter {
     /// Emit a notification that an artifact has been output.
     /// This is currently only supported for the JSON format,
     /// other formats can, and will, simply ignore it.
-    fn emit_artifact_notification(&mut self, _path: &Path) {}
+    fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
 
     /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
