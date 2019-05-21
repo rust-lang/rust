@@ -630,10 +630,12 @@ pub struct Ident {
 
 impl Ident {
     #[inline]
+    /// Constructs a new identifier from a symbol and a span.
     pub const fn new(name: Symbol, span: Span) -> Ident {
         Ident { name, span }
     }
 
+    /// Constructs a new identifier with an empty syntax context.
     #[inline]
     pub const fn with_empty_ctxt(name: Symbol) -> Ident {
         Ident::new(name, DUMMY_SP)
@@ -644,9 +646,14 @@ impl Ident {
         Ident::with_empty_ctxt(string.as_symbol())
     }
 
-    /// Maps a string to an identifier with an empty syntax context.
+    /// Maps a string to an identifier with an empty span.
     pub fn from_str(string: &str) -> Ident {
         Ident::with_empty_ctxt(Symbol::intern(string))
+    }
+
+    /// Maps a string and a span to an identifier.
+    pub fn from_str_and_span(string: &str, span: Span) -> Ident {
+        Ident::new(Symbol::intern(string), span)
     }
 
     /// Replaces `lo` and `hi` with those from `span`, but keep hygiene context.
@@ -676,12 +683,21 @@ impl Ident {
         Ident::new(self.name, self.span.modern_and_legacy())
     }
 
+    /// Transforms an identifier into one with the same name, but gensymed.
     pub fn gensym(self) -> Ident {
-        Ident::new(self.name.gensymed(), self.span)
+        let name = with_interner(|interner| interner.gensymed(self.name));
+        Ident::new(name, self.span)
     }
 
+    /// Transforms an underscore identifier into one with the same name, but
+    /// gensymed. Leaves non-underscore identifiers unchanged.
     pub fn gensym_if_underscore(self) -> Ident {
         if self.name == keywords::Underscore.name() { self.gensym() } else { self }
+    }
+
+    // WARNING: this function is deprecated and will be removed in the future.
+    pub fn is_gensymed(self) -> bool {
+        with_interner(|interner| interner.is_gensymed(self.name))
     }
 
     pub fn as_str(self) -> LocalInternedString {
@@ -736,30 +752,34 @@ impl Decodable for Ident {
         Ok(if !string.starts_with('#') {
             Ident::from_str(&string)
         } else { // FIXME(jseyfried): intercrate hygiene
-            Ident::with_empty_ctxt(Symbol::gensym(&string[1..]))
+            Ident::from_str(&string[1..]).gensym()
         })
     }
 }
 
 /// A symbol is an interned or gensymed string. A gensym is a symbol that is
-/// never equal to any other symbol. E.g.:
-/// ```
-/// assert_eq!(Symbol::intern("x"), Symbol::intern("x"))
-/// assert_ne!(Symbol::gensym("x"), Symbol::intern("x"))
-/// assert_ne!(Symbol::gensym("x"), Symbol::gensym("x"))
-/// ```
+/// never equal to any other symbol.
+///
 /// Conceptually, a gensym can be thought of as a normal symbol with an
 /// invisible unique suffix. Gensyms are useful when creating new identifiers
 /// that must not match any existing identifiers, e.g. during macro expansion
-/// and syntax desugaring.
+/// and syntax desugaring. Because gensyms should always be identifiers, all
+/// gensym operations are on `Ident` rather than `Symbol`. (Indeed, in the
+/// future the gensym-ness may be moved from `Symbol` to hygiene data.)
 ///
-/// Internally, a Symbol is implemented as an index, and all operations
+/// Examples:
+/// ```
+/// assert_eq!(Ident::from_str("x"), Ident::from_str("x"))
+/// assert_ne!(Ident::from_str("x").gensym(), Ident::from_str("x"))
+/// assert_ne!(Ident::from_str("x").gensym(), Ident::from_str("x").gensym())
+/// ```
+/// Internally, a symbol is implemented as an index, and all operations
 /// (including hashing, equality, and ordering) operate on that index. The use
 /// of `newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
 /// because `newtype_index!` reserves the last 256 values for tagging purposes.
 ///
-/// Note that `Symbol` cannot directly be a `newtype_index!` because it implements
-/// `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
+/// Note that `Symbol` cannot directly be a `newtype_index!` because it
+/// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
 
@@ -775,20 +795,6 @@ impl Symbol {
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
         with_interner(|interner| interner.intern(string))
-    }
-
-    /// Gensyms a new `usize`, using the current interner.
-    pub fn gensym(string: &str) -> Self {
-        with_interner(|interner| interner.gensym(string))
-    }
-
-    pub fn gensymed(self) -> Self {
-        with_interner(|interner| interner.gensymed(self))
-    }
-
-    // WARNING: this function is deprecated and will be removed in the future.
-    pub fn is_gensymed(self) -> bool {
-        with_interner(|interner| interner.is_gensymed(self))
     }
 
     pub fn as_str(self) -> LocalInternedString {
@@ -896,11 +902,6 @@ impl Interner {
         } else {
             self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize]
         }
-    }
-
-    fn gensym(&mut self, string: &str) -> Symbol {
-        let symbol = self.intern(string);
-        self.gensymed(symbol)
     }
 
     fn gensymed(&mut self, symbol: Symbol) -> Symbol {
@@ -1288,11 +1289,13 @@ mod tests {
         assert_eq!(i.intern("cat"), Symbol::new(1));
         // dog is still at zero
         assert_eq!(i.intern("dog"), Symbol::new(0));
-        assert_eq!(i.gensym("zebra"), Symbol::new(SymbolIndex::MAX_AS_U32));
+        let z = i.intern("zebra");
+        assert_eq!(i.gensymed(z), Symbol::new(SymbolIndex::MAX_AS_U32));
         // gensym of same string gets new number:
-        assert_eq!(i.gensym("zebra"), Symbol::new(SymbolIndex::MAX_AS_U32 - 1));
+        assert_eq!(i.gensymed(z), Symbol::new(SymbolIndex::MAX_AS_U32 - 1));
         // gensym of *existing* string gets new number:
-        assert_eq!(i.gensym("dog"), Symbol::new(SymbolIndex::MAX_AS_U32 - 2));
+        let d = i.intern("dog");
+        assert_eq!(i.gensymed(d), Symbol::new(SymbolIndex::MAX_AS_U32 - 2));
     }
 
     #[test]

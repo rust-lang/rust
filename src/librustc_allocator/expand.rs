@@ -140,7 +140,7 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
 
         // Generate the submodule itself
         let name = f.kind.fn_name("allocator_abi");
-        let allocator_abi = Ident::with_empty_ctxt(Symbol::gensym(&name));
+        let allocator_abi = Ident::from_str(&name).gensym();
         let module = f.cx.item_mod(span, span, allocator_abi, Vec::new(), items);
         let module = f.cx.monotonic_expander().flat_map_item(module).pop().unwrap();
 

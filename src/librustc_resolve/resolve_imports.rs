@@ -1395,7 +1395,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             // so they can cause name conflict errors downstream.
             let is_good_import = binding.is_import() && !binding.is_ambiguity() &&
                                  // Note that as_str() de-gensyms the Symbol
-                                 !(ident.name.is_gensymed() && ident.name.as_str() != "_");
+                                 !(ident.is_gensymed() && ident.name.as_str() != "_");
             if is_good_import || binding.is_macro_def() {
                 let res = binding.res();
                 if res != Res::Err {

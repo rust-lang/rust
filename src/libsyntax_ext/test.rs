@@ -127,7 +127,7 @@ pub fn expand_test_or_bench(
         ])
     };
 
-    let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name.gensymed(), sp),
+    let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name, sp).gensym(),
         vec![
             // #[cfg(test)]
             cx.attribute(attr_sp, cx.meta_list(attr_sp, Symbol::intern("cfg"), vec![

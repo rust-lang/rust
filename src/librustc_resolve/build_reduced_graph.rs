@@ -314,7 +314,7 @@ impl<'a> Resolver<'a> {
                             Ident::new(keywords::SelfLower.name(), new_span)
                         ),
                         kind: ast::UseTreeKind::Simple(
-                            Some(Ident::new(Name::gensym("__dummy"), new_span)),
+                            Some(Ident::from_str_and_span("__dummy", new_span).gensym()),
                             ast::DUMMY_NODE_ID,
                             ast::DUMMY_NODE_ID,
                         ),

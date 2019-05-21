@@ -7,7 +7,7 @@ use crate::ext::base::{ExtCtxt, MacEager, MacResult};
 use crate::ext::build::AstBuilder;
 use crate::parse::token;
 use crate::ptr::P;
-use crate::symbol::{keywords, Symbol};
+use crate::symbol::keywords;
 use crate::tokenstream::{TokenTree};
 
 use smallvec::smallvec;
@@ -121,13 +121,13 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt<'_>,
 
     let span = span.apply_mark(ecx.current_expansion.mark);
 
-    let sym = Ident::new(Symbol::gensym(&format!("__register_diagnostic_{}", code)), span);
+    let name = Ident::from_str_and_span(&format!("__register_diagnostic_{}", code), span).gensym();
 
     MacEager::items(smallvec![
         ecx.item_mod(
             span,
             span,
-            sym,
+            name,
             vec![],
             vec![],
         )

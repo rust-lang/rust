@@ -232,11 +232,11 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
         items,
     };
 
-    let sym = Ident::with_empty_ctxt(Symbol::gensym("__test_reexports"));
+    let name = Ident::from_str("__test_reexports").gensym();
     let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
     cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
     let it = cx.ext_cx.monotonic_expander().flat_map_item(P(ast::Item {
-        ident: sym,
+        ident: name,
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::Mod(reexport_mod),
@@ -245,7 +245,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
         tokens: None,
     })).pop().unwrap();
 
-    (it, sym)
+    (it, name)
 }
 
 /// Crawl over the crate, inserting test reexports and the test main function
@@ -373,9 +373,10 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
                            main_body);
 
     // Honor the reexport_test_harness_main attribute
-    let main_id = Ident::new(
-        cx.reexport_test_harness_main.unwrap_or(Symbol::gensym("main")),
-        sp);
+    let main_id = match cx.reexport_test_harness_main {
+        Some(sym) => Ident::new(sym, sp),
+        None => Ident::from_str_and_span("main", sp).gensym(),
+    };
 
     P(ast::Item {
         ident: main_id,

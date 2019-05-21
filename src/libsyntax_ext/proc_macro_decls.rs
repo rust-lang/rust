@@ -429,7 +429,7 @@ fn mk_decls(
     let module = cx.item_mod(
         span,
         span,
-        ast::Ident::with_empty_ctxt(Symbol::gensym("decls")),
+        ast::Ident::from_str("decls").gensym(),
         vec![doc_hidden],
         vec![krate, decls_static],
     ).map(|mut i| {
