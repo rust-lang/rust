@@ -47,7 +47,7 @@ impl Command {
             match result {
                 0 => {
                     drop(input);
-                    let err = self.do_exec(theirs, envp.as_ref());
+                    let Err(err) = self.do_exec(theirs, envp.as_ref());
                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
                     let bytes = [
                         (errno >> 24) as u8,
@@ -123,7 +123,8 @@ impl Command {
                     // environment lock before we try to exec.
                     let _lock = sys::os::env_lock();
 
-                    self.do_exec(theirs, envp.as_ref())
+                    let Err(e) = self.do_exec(theirs, envp.as_ref());
+                    e
                 }
             }
             Err(e) => e,
@@ -164,29 +165,22 @@ impl Command {
         &mut self,
         stdio: ChildPipes,
         maybe_envp: Option<&CStringArray>
-    ) -> io::Error {
+    ) -> Result<!, io::Error> {
         use crate::sys::{self, cvt_r};
 
-        macro_rules! t {
-            ($e:expr) => (match $e {
-                Ok(e) => e,
-                Err(e) => return e,
-            })
-        }
-
         if let Some(fd) = stdio.stdin.fd() {
-            t!(cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO)));
+            cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO))?;
         }
         if let Some(fd) = stdio.stdout.fd() {
-            t!(cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO)));
+            cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO))?;
         }
         if let Some(fd) = stdio.stderr.fd() {
-            t!(cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO)));
+            cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
         }
 
         if cfg!(not(any(target_os = "l4re"))) {
             if let Some(u) = self.get_gid() {
-                t!(cvt(libc::setgid(u as gid_t)));
+                cvt(libc::setgid(u as gid_t))?;
             }
             if let Some(u) = self.get_uid() {
                 // When dropping privileges from root, the `setgroups` call
@@ -198,11 +192,11 @@ impl Command {
                 // privilege dropping function.
                 let _ = libc::setgroups(0, ptr::null());
 
-                t!(cvt(libc::setuid(u as uid_t)));
+                cvt(libc::setuid(u as uid_t))?;
             }
         }
         if let Some(ref cwd) = *self.get_cwd() {
-            t!(cvt(libc::chdir(cwd.as_ptr())));
+            cvt(libc::chdir(cwd.as_ptr()))?;
         }
 
         // emscripten has no signal support.
@@ -225,18 +219,18 @@ impl Command {
                              0,
                              mem::size_of::<libc::sigset_t>());
             } else {
-                t!(cvt(libc::sigemptyset(&mut set)));
+                cvt(libc::sigemptyset(&mut set))?;
             }
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
-                                         ptr::null_mut())));
+            cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
+                                         ptr::null_mut()))?;
             let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
             if ret == libc::SIG_ERR {
-                return io::Error::last_os_error()
+                return Err(io::Error::last_os_error())
             }
         }
 
         for callback in self.get_closures().iter_mut() {
-            t!(callback());
+            callback()?;
         }
 
         // Although we're performing an exec here we may also return with an
@@ -261,7 +255,7 @@ impl Command {
         }
 
         libc::execvp(self.get_argv()[0], self.get_argv().as_ptr());
-        io::Error::last_os_error()
+        Err(io::Error::last_os_error())
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "freebsd",
