@@ -9,6 +9,7 @@ use std::{
 };
 
 use once_cell::sync::Lazy;
+use itertools::Itertools;
 
 /// Set profiling filter. It specifies descriptions allowed to profile.
 /// This is helpful when call stack has too many nested profiling scopes.
@@ -179,8 +180,9 @@ impl Drop for Profiler {
                     stack.messages.push(Message { level, duration, message });
                     if level == 0 {
                         let stdout = stderr();
-                        if duration >= stack.filter_data.longer_than {
-                            print(0, &stack.messages, &mut stdout.lock());
+                        let longer_than = stack.filter_data.longer_than;
+                        if duration >= longer_than {
+                            print(0, &stack.messages, &mut stdout.lock(), longer_than);
                         }
                         stack.messages.clear();
                     }
@@ -191,19 +193,36 @@ impl Drop for Profiler {
     }
 }
 
-fn print(lvl: usize, msgs: &[Message], out: &mut impl Write) {
+fn print(lvl: usize, msgs: &[Message], out: &mut impl Write, longer_than: Duration) {
     let mut last = 0;
     let indent = repeat("    ").take(lvl + 1).collect::<String>();
-    for (i, &Message { level: l, duration: dur, message: ref msg }) in msgs.iter().enumerate() {
-        if l != lvl {
+    // We output hierarchy for long calls, but sum up all short calls
+    let mut short = Vec::new();
+    for (i, &Message { level, duration, message: ref msg }) in msgs.iter().enumerate() {
+        if level != lvl {
             continue;
         }
+        if duration >= longer_than {
+            writeln!(out, "{} {:6}ms - {}", indent, duration.as_millis(), msg)
+                .expect("printing profiling info to stdout");
 
-        writeln!(out, "{} {:6}ms - {}", indent, dur.as_millis(), msg)
-            .expect("printing profiling info to stdout");
+            print(lvl + 1, &msgs[last..i], out, longer_than);
+        } else {
+            short.push((msg, duration))
+        }
 
-        print(lvl + 1, &msgs[last..i], out);
         last = i;
+    }
+    short.sort_by_key(|(msg, _time)| *msg);
+    for (msg, entires) in short.iter().group_by(|(msg, _time)| msg).into_iter() {
+        let mut count = 0;
+        let mut total_duration = Duration::default();
+        entires.for_each(|(_msg, time)| {
+            count += 1;
+            total_duration += *time;
+        });
+        writeln!(out, "{} {:6}ms - {} ({} calls)", indent, total_duration.as_millis(), msg, count)
+            .expect("printing profiling info to stdout");
     }
 }
 
