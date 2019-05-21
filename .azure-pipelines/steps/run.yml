@@ -118,7 +118,7 @@ steps:
     set -e
     if [ "$AGENT_OS" = "Linux" ]; then
         rm -rf obj/build/dist/doc
-        upload_dir=obj/build/dist deploy/$BUILD_SOURCEVERSION
+        upload_dir=obj/build/dist
     else
         rm -rf build/dist/doc
         upload_dir=build/dist
