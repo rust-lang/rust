@@ -641,7 +641,7 @@ impl Ident {
 
     /// Maps an interned string to an identifier with an empty syntax context.
     pub fn from_interned_str(string: InternedString) -> Ident {
-        Ident::with_empty_ctxt(string.as_symbol())
+        Ident::with_empty_ctxt(string.symbol)
     }
 
     /// Maps a string to an identifier with an empty syntax context.
@@ -1269,6 +1269,18 @@ impl Encodable for InternedString {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         self.with(|string| s.emit_str(string))
     }
+}
+
+/// Append "first::rest1::rest2::rest3" to `output`. This function is
+/// provided to combine multiple interner accesses into one.
+pub fn push_path(first: Symbol, rest: &[InternedString], output: &mut String) {
+    with_interner(|interner| {
+        output.push_str(interner.get(first));
+        for path_element in rest {
+            output.push_str("::");
+            output.push_str(interner.strings[path_element.symbol.0.as_usize()]);
+        }
+    });
 }
 
 #[cfg(test)]

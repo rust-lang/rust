@@ -3,6 +3,8 @@
 use rustc::hir::{self, def_id::DefId};
 use rustc::ty::{self, Ty, TyCtxt, subst::SubstsRef};
 use rustc_data_structures::fx::FxHashSet;
+use smallvec::SmallVec;
+use syntax::symbol::{self};
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do
@@ -213,11 +215,10 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       qualified: bool,
                       output: &mut String) {
         if qualified {
-            output.push_str(&tcx.crate_name(def_id.krate).as_str());
-            for path_element in tcx.def_path(def_id).data {
-                output.push_str("::");
-                output.push_str(&path_element.data.as_interned_str().as_str());
-            }
+            let first = tcx.crate_name(def_id.krate);
+            let rest: SmallVec<[symbol::InternedString; 8]> =
+                tcx.def_path(def_id).data.iter().map(|data| data.data.as_interned_str()).collect();
+            symbol::push_path(first, &rest, output);
         } else {
             output.push_str(&tcx.item_name(def_id).as_str());
         }
