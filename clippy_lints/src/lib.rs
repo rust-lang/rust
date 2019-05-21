@@ -186,6 +186,7 @@ pub mod fallible_impl_from;
 pub mod format;
 pub mod formatting;
 pub mod functions;
+pub mod get_last_with_len;
 pub mod identity_conversion;
 pub mod identity_op;
 pub mod if_not_else;
@@ -492,6 +493,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box types::CharLitAsU8);
     reg.register_late_lint_pass(box vec::UselessVec);
     reg.register_late_lint_pass(box drop_bounds::DropBounds);
+    reg.register_late_lint_pass(box get_last_with_len::GetLastWithLen);
     reg.register_late_lint_pass(box drop_forget_ref::DropForgetRef);
     reg.register_late_lint_pass(box empty_enum::EmptyEnum);
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
@@ -710,6 +712,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         formatting::SUSPICIOUS_ELSE_FORMATTING,
         functions::NOT_UNSAFE_PTR_ARG_DEREF,
         functions::TOO_MANY_ARGUMENTS,
+        get_last_with_len::GET_LAST_WITH_LEN,
         identity_conversion::IDENTITY_CONVERSION,
         identity_op::IDENTITY_OP,
         indexing_slicing::OUT_OF_BOUNDS_INDEXING,
@@ -981,6 +984,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         explicit_write::EXPLICIT_WRITE,
         format::USELESS_FORMAT,
         functions::TOO_MANY_ARGUMENTS,
+        get_last_with_len::GET_LAST_WITH_LEN,
         identity_conversion::IDENTITY_CONVERSION,
         identity_op::IDENTITY_OP,
         int_plus_one::INT_PLUS_ONE,

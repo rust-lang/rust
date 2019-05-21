@@ -936,6 +936,7 @@ All notable changes to this project will be documented in this file.
 [`for_loop_over_result`]: https://rust-lang.github.io/rust-clippy/master/index.html#for_loop_over_result
 [`forget_copy`]: https://rust-lang.github.io/rust-clippy/master/index.html#forget_copy
 [`forget_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#forget_ref
+[`get_last_with_len`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_last_with_len
 [`get_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#get_unwrap
 [`identity_conversion`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_conversion
 [`identity_op`]: https://rust-lang.github.io/rust-clippy/master/index.html#identity_op
