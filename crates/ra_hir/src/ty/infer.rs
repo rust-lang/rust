@@ -23,6 +23,7 @@ use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
 use rustc_hash::FxHashMap;
 
 use ra_arena::map::ArenaMap;
+use ra_prof::profile;
 use test_utils::tested_by;
 
 use crate::{
@@ -51,7 +52,8 @@ use super::{
 mod unify;
 
 /// The entry point of type inference.
-pub fn infer(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
+pub fn infer_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
+    let _p = profile("infer_query");
     db.check_canceled();
     let body = def.body(db);
     let resolver = def.resolver(db);
