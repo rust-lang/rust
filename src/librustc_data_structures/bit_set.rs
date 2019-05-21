@@ -181,6 +181,45 @@ impl<T: Idx> BitSet<T> {
         // Note: we currently don't bother trying to make a Sparse set.
         HybridBitSet::Dense(self.to_owned())
     }
+
+    /// Set `self = self | other`. In contrast to `union` returns `true` if the set contains at
+    /// least one bit that is not in `other` (i.e. `other` is not a superset of `self`).
+    ///
+    /// This is an optimization for union of a hybrid bitset.
+    fn reverse_union_sparse(&mut self, sparse: &SparseBitSet<T>) -> bool {
+        assert!(sparse.domain_size == self.domain_size);
+        self.clear_excess_bits();
+
+        let mut not_already = false;
+        // Index of the current word not yet merged.
+        let mut current_index = 0;
+        // Mask of bits that came from the sparse set in the current word.
+        let mut new_bit_mask = 0;
+        for (word_index, mask) in sparse.iter().map(|x| word_index_and_mask(*x)) {
+            // Next bit is in a word not inspected yet.
+            if word_index > current_index {
+                self.words[current_index] |= new_bit_mask;
+                // Were there any bits in the old word that did not occur in the sparse set?
+                not_already |= (self.words[current_index] ^ new_bit_mask) != 0;
+                // Check all words we skipped for any set bit.
+                not_already |= self.words[current_index+1..word_index].iter().any(|&x| x != 0);
+                // Update next word.
+                current_index = word_index;
+                // Reset bit mask, no bits have been merged yet.
+                new_bit_mask = 0;
+            }
+            // Add bit and mark it as coming from the sparse set.
+            // self.words[word_index] |= mask;
+            new_bit_mask |= mask;
+        }
+        self.words[current_index] |= new_bit_mask;
+        // Any bits in the last inspected word that were not in the sparse set?
+        not_already |= (self.words[current_index] ^ new_bit_mask) != 0;
+        // Any bits in the tail? Note `clear_excess_bits` before.
+        not_already |= self.words[current_index+1..].iter().any(|&x| x != 0);
+
+        not_already
+    }
 }
 
 /// This is implemented by all the bitsets so that BitSet::union() can be
@@ -518,10 +557,12 @@ impl<T: Idx> HybridBitSet<T> {
                         changed
                     }
                     HybridBitSet::Dense(other_dense) => {
-                        // `self` is sparse and `other` is dense. Densify
-                        // `self` and then do the bitwise union.
-                        let mut new_dense = self_sparse.to_dense();
-                        let changed = new_dense.union(other_dense);
+                        // `self` is sparse and `other` is dense. Clone the
+                        // other set and do the bitwise union with sparse
+                        // `self`. This avoids traversing the dense
+                        // representation twice.
+                        let mut new_dense = other_dense.clone();
+                        let changed = new_dense.reverse_union_sparse(self_sparse);
                         *self = HybridBitSet::Dense(new_dense);
                         changed
                     }
