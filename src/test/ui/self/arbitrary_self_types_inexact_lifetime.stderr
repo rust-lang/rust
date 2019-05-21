@@ -1,0 +1,35 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/arbitrary_self_types_inexact_lifetime.rs:16:39
+   |
+LL |     fn a(self: &Box<Foo>, f: &Foo) -> &Foo { f }
+   |                                       ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `self` or `f`
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/arbitrary_self_types_inexact_lifetime.rs:18:39
+   |
+LL |     fn b(self: &Box<Foo>, f: &Foo) -> &Box<Foo> { self }
+   |                                       ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `self` or `f`
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/arbitrary_self_types_inexact_lifetime.rs:20:39
+   |
+LL |     fn c(this: &Box<Foo>, f: &Foo) -> &Foo { f }
+   |                                       ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `this` or `f`
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/arbitrary_self_types_inexact_lifetime.rs:24:53
+   |
+LL |     fn d(self: Self, f: &Foo, g: &Foo) -> (Bar<'a>, &Foo) { (self, f) }
+   |                                                     ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `f` or `g`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

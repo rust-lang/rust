@@ -2121,6 +2121,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             _ => false,
         };
 
+        // Only skip `Self`, `&Self` and `&mut Self`,
+        // and to handle other `self`s like normal arguments.
+        let mut should_skip = false;
+
         // In accordance with the rules for lifetime elision, we can determine
         // what region to use for elision in the output type in two ways.
         // First (determined here), if `self` is by-reference, then the
@@ -2154,19 +2158,26 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 false
             };
 
-            if let hir::TyKind::Rptr(lifetime_ref, ref mt) = inputs[0].node {
-                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
-                    if is_self_ty(path.res) {
-                        if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.hir_id) {
-                            let scope = Scope::Elision {
-                                elide: Elide::Exact(lifetime),
-                                s: self.scope,
-                            };
-                            self.with(scope, |_, this| this.visit_ty(output));
-                            return;
+            match inputs[0].node {
+                hir::TyKind::Rptr(lifetime_ref, ref mt) => {
+                    if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
+                        if is_self_ty(path.res) {
+                            if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.hir_id) {
+                                let scope = Scope::Elision {
+                                    elide: Elide::Exact(lifetime),
+                                    s: self.scope,
+                                };
+                                self.with(scope, |_, this| this.visit_ty(output));
+                                return;
+                            }
+                            should_skip = true;
                         }
                     }
                 }
+                hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) if is_self_ty(path.res) => {
+                    should_skip = true;
+                }
+                _ => {}
             }
         }
 
@@ -2178,7 +2189,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let arg_lifetimes = inputs
             .iter()
             .enumerate()
-            .skip(has_self as usize)
+            .skip(should_skip as usize)
             .map(|(i, input)| {
                 let mut gather = GatherLifetimes {
                     map: self.map,

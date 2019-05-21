@@ -1,0 +1,23 @@
+error: cannot infer an appropriate lifetime
+  --> $DIR/arbitrary_self_types_impl_trait_lifetime.rs:21:9
+   |
+LL |     fn f(self: Bar<'_>) -> impl std::fmt::Debug {
+   |                            -------------------- this return type evaluates to the `'static` lifetime...
+LL |         self
+   |         ^^^^ ...but this borrow...
+   |
+note: ...can't outlive the anonymous lifetime #1 defined on the method body at 20:5
+  --> $DIR/arbitrary_self_types_impl_trait_lifetime.rs:20:5
+   |
+LL | /     fn f(self: Bar<'_>) -> impl std::fmt::Debug {
+LL | |         self
+LL | |
+LL | |     }
+   | |_____^
+help: you can add a constraint to the return type to make it last less than `'static` and match the anonymous lifetime #1 defined on the method body at 20:5
+   |
+LL |     fn f(self: Bar<'_>) -> impl std::fmt::Debug + '_ {
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
