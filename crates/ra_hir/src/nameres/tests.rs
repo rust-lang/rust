@@ -61,8 +61,8 @@ fn def_map(fixtute: &str) -> String {
     render_crate_def_map(&dm)
 }
 
-fn def_map_with_crate_graph(fixtute: &str, graph: CrateGraphFixture) -> String {
-    let dm = compute_crate_def_map(fixtute, Some(graph));
+fn def_map_with_crate_graph(fixture: &str, graph: CrateGraphFixture) -> String {
+    let dm = compute_crate_def_map(fixture, Some(graph));
     render_crate_def_map(&dm)
 }
 
@@ -423,8 +423,12 @@ fn extern_crate_rename() {
     );
 
     assert_snapshot_matches!(map, @r###"
-        ⋮crate
-        ⋮Arc: t v
+   ⋮crate
+   ⋮alloc_crate: t
+   ⋮sync: t
+   ⋮
+   ⋮crate::sync
+   ⋮Arc: t v
     "###);
 }
 
@@ -453,6 +457,10 @@ fn extern_crate_rename_2015_edition() {
     assert_snapshot_matches!(map,
         @r###"
    ⋮crate
+   ⋮alloc_crate: t
+   ⋮sync: t
+   ⋮
+   ⋮crate::sync
    ⋮Arc: t v
     "###
     );

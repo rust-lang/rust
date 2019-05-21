@@ -236,7 +236,7 @@ impl MockDatabase {
 }
 
 #[derive(Default)]
-pub struct CrateGraphFixture(pub FxHashMap<String, (String, Edition, Vec<String>)>);
+pub struct CrateGraphFixture(pub Vec<(String, (String, Edition, Vec<String>))>);
 
 #[macro_export]
 macro_rules! crate_graph {
@@ -246,10 +246,10 @@ macro_rules! crate_graph {
             #[allow(unused_mut, unused_assignments)]
             let mut edition = ra_db::Edition::Edition2018;
             $(edition = ra_db::Edition::from_string($edition);)?
-            res.0.insert(
+            res.0.push((
                 $crate_name.to_string(),
                 ($crate_path.to_string(), edition, vec![$($dep.to_string()),*])
-            );
+            ));
         )*
         res
     }}
