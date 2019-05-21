@@ -212,8 +212,8 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
     // Create a statement which reads the discriminant into a temporary
     fn get_discr(&self, mir: &mut Mir<'tcx>) -> (Statement<'tcx>, Place<'tcx>) {
         let temp_decl = LocalDecl::new_internal(self.tcx.types.isize, mir.span);
-        let temp = Place::Base(PlaceBase::Local(Local::new(mir.local_decls.len())));
-        mir.local_decls.push(temp_decl);
+        let local_decls_len = mir.local_decls.push(temp_decl);
+        let temp = Place::Base(PlaceBase::Local(local_decls_len));
 
         let self_place = Place::Base(PlaceBase::Local(self_arg()));
         let assign = Statement {
