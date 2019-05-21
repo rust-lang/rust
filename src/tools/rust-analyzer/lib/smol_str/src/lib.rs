@@ -1,4 +1,10 @@
-use std::{borrow::Borrow, fmt, hash, iter, ops::Deref, sync::Arc};
+use std::{
+    fmt, hash, iter,
+    borrow::Borrow,
+    cmp::Ordering,
+    ops::Deref,
+    sync::Arc,
+};
 
 /// A `SmolStr` is a string type that has the following properties:
 ///
@@ -122,6 +128,18 @@ impl<'a> PartialEq<&'a String> for SmolStr {
 impl<'a> PartialEq<SmolStr> for &'a String {
     fn eq(&self, other: &SmolStr) -> bool {
         *self == other
+    }
+}
+
+impl Ord for SmolStr {
+    fn cmp(&self, other: &SmolStr) -> Ordering {
+        self.as_str().cmp(other.as_str())
+    }
+}
+
+impl PartialOrd for SmolStr {
+    fn partial_cmp(&self, other: &SmolStr) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
