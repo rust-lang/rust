@@ -1272,6 +1272,18 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.err("Linker plugin based LTO is not supported together with \
                   `-C prefer-dynamic` when targeting MSVC");
     }
+
+    // PGO does not work reliably with panic=unwind on Windows. Let's make it
+    // an error to combine the two for now. It always runs into an assertions
+    // if LLVM is built with assertions, but without assertions it sometimes
+    // does not crash and will probably generate a corrupted binary.
+    if sess.opts.debugging_opts.pgo_gen.enabled() &&
+       sess.target.target.options.is_like_windows &&
+       sess.panic_strategy() == PanicStrategy::Unwind {
+        sess.err("Profile-guided optimization does not yet work in conjunction \
+                  with `-Cpanic=unwind` on Windows. \
+                  See https://github.com/rust-lang/rust/issues/61002 for details.");
+    }
 }
 
 /// Hash value constructed out of all the `-C metadata` arguments passed to the
