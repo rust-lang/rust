@@ -361,51 +361,35 @@ fn rewrite_macro_inner(
 
     match style {
         DelimToken::Paren => {
-            // Format macro invocation as function call, preserve the trailing
-            // comma because not all macros support them.
-            overflow::rewrite_with_parens(
-                context,
-                &macro_name,
-                arg_vec.iter(),
-                shape,
-                mac.span,
-                context.config.width_heuristics().fn_call_width,
-                if trailing_comma {
-                    Some(SeparatorTactic::Always)
-                } else {
-                    Some(SeparatorTactic::Never)
-                },
-            )
-            .map(|rw| match position {
-                MacroPosition::Item => format!("{};", rw),
-                _ => rw,
-            })
+            // Handle special case: `vec!(expr; expr)`
+            if vec_with_semi {
+                handle_vec_semi(context, shape, arg_vec, macro_name, style)
+            } else {
+                // Format macro invocation as function call, preserve the trailing
+                // comma because not all macros support them.
+                overflow::rewrite_with_parens(
+                    context,
+                    &macro_name,
+                    arg_vec.iter(),
+                    shape,
+                    mac.span,
+                    context.config.width_heuristics().fn_call_width,
+                    if trailing_comma {
+                        Some(SeparatorTactic::Always)
+                    } else {
+                        Some(SeparatorTactic::Never)
+                    },
+                )
+                .map(|rw| match position {
+                    MacroPosition::Item => format!("{};", rw),
+                    _ => rw,
+                })
+            }
         }
         DelimToken::Bracket => {
             // Handle special case: `vec![expr; expr]`
             if vec_with_semi {
-                let mac_shape = shape.offset_left(macro_name.len())?;
-                // 8 = `vec![]` + `; `
-                let total_overhead = 8;
-                let nested_shape = mac_shape.block_indent(context.config.tab_spaces());
-                let lhs = arg_vec[0].rewrite(context, nested_shape)?;
-                let rhs = arg_vec[1].rewrite(context, nested_shape)?;
-                if !lhs.contains('\n')
-                    && !rhs.contains('\n')
-                    && lhs.len() + rhs.len() + total_overhead <= shape.width
-                {
-                    Some(format!("{}[{}; {}]", macro_name, lhs, rhs))
-                } else {
-                    Some(format!(
-                        "{}[{}{};{}{}{}]",
-                        macro_name,
-                        nested_shape.indent.to_string_with_newline(context.config),
-                        lhs,
-                        nested_shape.indent.to_string_with_newline(context.config),
-                        rhs,
-                        shape.indent.to_string_with_newline(context.config),
-                    ))
-                }
+                handle_vec_semi(context, shape, arg_vec, macro_name, style)
             } else {
                 // If we are rewriting `vec!` macro or other special macros,
                 // then we can rewrite this as an usual array literal.
@@ -450,6 +434,47 @@ fn rewrite_macro_inner(
             }
         }
         _ => unreachable!(),
+    }
+}
+
+fn handle_vec_semi(
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    arg_vec: Vec<MacroArg>,
+    macro_name: String,
+    delim_token: DelimToken,
+) -> Option<String> {
+    let (left, right) = match delim_token {
+        DelimToken::Paren => ("(", ")"),
+        DelimToken::Bracket => ("[", "]"),
+        _ => unreachable!(),
+    };
+
+    let mac_shape = shape.offset_left(macro_name.len())?;
+    // 8 = `vec![]` + `; ` or `vec!()` + `; `
+    let total_overhead = 8;
+    let nested_shape = mac_shape.block_indent(context.config.tab_spaces());
+    let lhs = arg_vec[0].rewrite(context, nested_shape)?;
+    let rhs = arg_vec[1].rewrite(context, nested_shape)?;
+    if !lhs.contains('\n')
+        && !rhs.contains('\n')
+        && lhs.len() + rhs.len() + total_overhead <= shape.width
+    {
+        // macro_name(lhs; rhs) or macro_name[lhs; rhs]
+        Some(format!("{}{}{}; {}{}", macro_name, left, lhs, rhs, right))
+    } else {
+        // macro_name(\nlhs;\nrhs\n) or macro_name[\nlhs;\nrhs\n]
+        Some(format!(
+            "{}{}{}{};{}{}{}{}",
+            macro_name,
+            left,
+            nested_shape.indent.to_string_with_newline(context.config),
+            lhs,
+            nested_shape.indent.to_string_with_newline(context.config),
+            rhs,
+            shape.indent.to_string_with_newline(context.config),
+            right
+        ))
     }
 }
 
