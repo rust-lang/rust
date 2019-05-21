@@ -1,3 +1,4 @@
+// run-pass
 #![feature(arbitrary_self_types)]
 #![feature(rustc_attrs)]
 
