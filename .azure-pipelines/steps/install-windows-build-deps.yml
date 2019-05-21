@@ -13,6 +13,8 @@ steps:
       mkdir c:\MORE_SPACE
       mklink /J build c:\MORE_SPACE
     )
+  displayName: "Ensure build happens on C:/ instead of D:/"
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
 - script: |
     set MSYS_PATH=%CD%\citools\msys64
