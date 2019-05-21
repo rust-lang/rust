@@ -11,6 +11,7 @@ variables:
 
 jobs:
 - job: Linux
+  timeoutInMinutes: 600
   pool:
     vmImage: ubuntu-16.04
   strategy:
@@ -27,6 +28,7 @@ jobs:
   - template: steps/run.yml
 
 - job: macOS
+  timeoutInMinutes: 600
   pool:
     vmImage: macos-10.13
   strategy:
@@ -53,6 +55,7 @@ jobs:
   - template: steps/run.yml
 
 - job: Windows
+  timeoutInMinutes: 600
   pool:
     vmImage: 'vs2017-win2016'
   strategy:
