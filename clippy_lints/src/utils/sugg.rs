@@ -135,7 +135,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Box(..)
             | ast::ExprKind::Closure(..)
             | ast::ExprKind::If(..)
-            | ast::ExprKind::IfLet(..)
+            | ast::ExprKind::Let(..)
             | ast::ExprKind::Unary(..)
             | ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
             ast::ExprKind::Async(..)
@@ -162,7 +162,6 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Tup(..)
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
-            | ast::ExprKind::WhileLet(..)
             | ast::ExprKind::Await(..)
             | ast::ExprKind::Err => Sugg::NonParen(snippet),
             ast::ExprKind::Range(.., RangeLimits::HalfOpen) => Sugg::BinOp(AssocOp::DotDot, snippet),
