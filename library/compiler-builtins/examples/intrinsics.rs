@@ -399,7 +399,7 @@ pub fn _Unwind_Resume() {}
 pub extern "C" fn eh_personality() {}
 
 #[cfg(all(windows, target_env = "gnu"))]
-mod mingw_unwidning {
+mod mingw_unwinding {
     #[no_mangle]
     pub fn rust_eh_personality() {}
     #[no_mangle]
