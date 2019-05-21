@@ -60,8 +60,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
 
             // Argument to "get" is a subtraction
             if let Some(get_index_arg) = args.get(1);
-            if let ExprKind::Binary(Spanned{node: BinOpKind::Sub, ..},
-                                    lhs, rhs) = &get_index_arg.node;
+            if let ExprKind::Binary(
+                Spanned {
+                    node: BinOpKind::Sub,
+                    ..
+                },
+                lhs,
+                rhs,
+            ) = &get_index_arg.node;
 
             // LHS of subtraction is "x.len()"
             if let ExprKind::MethodCall(arg_lhs_path, _, lhs_args) = &lhs.node;
@@ -91,7 +97,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
                     &format!("accessing last element with `{0}.get({0}.len() - 1)`", vec_name),
                     "try",
                     format!("{}.last()", vec_name),
-                    applicability);
+                    applicability,
+                );
             }
         }
     }
