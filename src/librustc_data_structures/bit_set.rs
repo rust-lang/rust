@@ -5,6 +5,10 @@ use std::iter;
 use std::marker::PhantomData;
 use std::mem;
 use std::slice;
+#[cfg(test)]
+extern crate test;
+#[cfg(test)]
+use test::Bencher;
 
 pub type Word = u64;
 pub const WORD_BYTES: usize = mem::size_of::<Word>();
@@ -1131,4 +1135,18 @@ fn sparse_matrix_iter() {
         assert_eq!(i, j);
     }
     assert!(iter.next().is_none());
+}
+
+#[bench]
+fn union_hybrid_sparse_to_dense(b: &mut Bencher) {
+    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(256);
+    for i in 0..10 {
+        assert!(pre_dense.insert(i));
+    }
+    let pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(256);
+    b.iter(|| {
+        let dense = pre_dense.clone();
+        let mut sparse = pre_sparse.clone();
+        sparse.union(&dense);
+    })
 }
