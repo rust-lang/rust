@@ -5,6 +5,10 @@ use std::iter;
 use std::marker::PhantomData;
 use std::mem;
 use std::slice;
+#[cfg(test)]
+extern crate test;
+#[cfg(test)]
+use test::Bencher;
 
 pub type Word = u64;
 pub const WORD_BYTES: usize = mem::size_of::<Word>();
@@ -1131,4 +1135,88 @@ fn sparse_matrix_iter() {
         assert_eq!(i, j);
     }
     assert!(iter.next().is_none());
+}
+
+/// Merge dense hybrid set into empty sparse hybrid set.
+#[bench]
+fn union_hybrid_sparse_empty_to_dense(b: &mut Bencher) {
+    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(256);
+    for i in 0..10 {
+        assert!(pre_dense.insert(i));
+    }
+    let pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(256);
+    b.iter(|| {
+        let dense = pre_dense.clone();
+        let mut sparse = pre_sparse.clone();
+        sparse.union(&dense);
+    })
+}
+
+/// Merge dense hybrid set into full hybrid set with same indices.
+#[bench]
+fn union_hybrid_sparse_full_to_dense(b: &mut Bencher) {
+    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(256);
+    for i in 0..10 {
+        assert!(pre_dense.insert(i));
+    }
+    let mut pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(256);
+    for i in 0..SPARSE_MAX {
+        assert!(pre_sparse.insert(i));
+    }
+    b.iter(|| {
+        let dense = pre_dense.clone();
+        let mut sparse = pre_sparse.clone();
+        sparse.union(&dense);
+    })
+}
+
+/// Merge dense hybrid set into full hybrid set with indices over the whole domain.
+#[bench]
+fn union_hybrid_sparse_domain_to_dense(b: &mut Bencher) {
+    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX*64);
+    for i in 0..10 {
+        assert!(pre_dense.insert(i));
+    }
+    let mut pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX*64);
+    for i in 0..SPARSE_MAX {
+        assert!(pre_sparse.insert(i*64));
+    }
+    b.iter(|| {
+        let dense = pre_dense.clone();
+        let mut sparse = pre_sparse.clone();
+        sparse.union(&dense);
+    })
+}
+
+/// Merge dense hybrid set into empty hybrid set where the domain is very small.
+#[bench]
+fn union_hybrid_sparse_empty_small_domain(b: &mut Bencher) {
+    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX);
+    for i in 0..SPARSE_MAX {
+        assert!(pre_dense.insert(i));
+    }
+    let pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX);
+    b.iter(|| {
+        let dense = pre_dense.clone();
+        let mut sparse = pre_sparse.clone();
+        sparse.union(&dense);
+    })
+}
+
+/// Merge dense hybrid set into full hybrid set where the domain is very small.
+#[bench]
+fn union_hybrid_sparse_full_small_domain(b: &mut Bencher) {
+    let mut pre_dense: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX);
+    for i in 0..SPARSE_MAX {
+        assert!(pre_dense.insert(i));
+    }
+    let mut pre_sparse: HybridBitSet<usize> = HybridBitSet::new_empty(SPARSE_MAX);
+    for i in 0..SPARSE_MAX {
+        assert!(pre_sparse.insert(i));
+    }
+    b.iter(|| {
+        let dense = pre_dense.clone();
+        let mut sparse = pre_sparse.clone();
+        sparse.union(&dense);
+    })
 }
