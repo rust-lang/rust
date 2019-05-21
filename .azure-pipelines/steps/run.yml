@@ -88,7 +88,8 @@ steps:
     else
       src/ci/docker/run.sh $IMAGE
     fi
-  timeoutInMinutes: 180
+  #timeoutInMinutes: 180
+  timeoutInMinutes: 600
   env:
     CI: true
     SRC: .
