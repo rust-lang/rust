@@ -11,6 +11,7 @@ variables:
 
 jobs:
 - job: Linux
+  timeoutInMinutes: 600
   pool:
     vmImage: ubuntu-16.04
   steps:
@@ -144,6 +145,7 @@ jobs:
         IMAGE: mingw-check
 
 - job: macOS
+  timeoutInMinutes: 600
   pool:
     vmImage: macos-10.13
   steps:
@@ -204,6 +206,7 @@ jobs:
         DIST_REQUIRE_ALL_TOOLS: 1
 
 - job: Windows
+  timeoutInMinutes: 600
   pool:
     vmImage: 'vs2017-win2016'
   steps:
