@@ -11,11 +11,10 @@ variables:
 
 jobs:
 - job: Linux
-  timeoutInMinutes: 180
   pool:
     vmImage: ubuntu-16.04
   steps:
-  - template: steps/linux.yml
+  - template: steps/run.yml
   strategy:
     matrix:
       x86_64-gnu-llvm-6.0:
@@ -151,13 +150,12 @@ jobs:
         IMAGE: mingw-check
 
 - job: macOS
-  timeoutInMinutes: 180
   pool:
     vmImage: macos-10.13
   steps:
   - checkout: self
     fetchDepth: 2
-  - template: steps/macos.yml
+  - template: steps/run.yml
   strategy:
     matrix:
       # OSX builders running tests, these run the full test suite.
@@ -216,11 +214,10 @@ jobs:
 
 
 - job: Windows
-  timeoutInMinutes: 180
   pool:
     vmImage: 'vs2017-win2016'
   steps:
-  - template: steps/windows.yml
+  - template: steps/run.yml
   strategy:
     matrix:
 #      # 32/64 bit MSVC tests
