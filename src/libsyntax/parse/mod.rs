@@ -329,6 +329,13 @@ pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser<'_> {
     Parser::new(sess, stream, None, true, false)
 }
 
+/// Given stream, the `ParseSess` and the base directory, produces a parser.
+pub fn stream_to_parser_with_base_dir<'a>(sess: &'a ParseSess,
+                                          stream: TokenStream,
+                                          base_dir: Directory<'a>) -> Parser<'a> {
+    Parser::new(sess, stream, Some(base_dir), true, false)
+}
+
 /// A sequence separator.
 pub struct SeqSep {
     /// The seperator token.
