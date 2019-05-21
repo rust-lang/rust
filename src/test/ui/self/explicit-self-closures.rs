@@ -1,4 +1,4 @@
-// run-pass
+// compile-pass
 #![allow(dead_code)]
 // Test to make sure that explicit self params work inside closures
 
