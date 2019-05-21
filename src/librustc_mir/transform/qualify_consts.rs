@@ -544,14 +544,14 @@ impl Qualif for IsNotImplicitlyPromotable {
 // Ensure the `IDX` values are sequential (`0..QUALIF_COUNT`).
 macro_rules! static_assert_seq_qualifs {
     ($i:expr => $first:ident $(, $rest:ident)*) => {
-        static_assert!(SEQ_QUALIFS: {
+        static_assert!({
             static_assert_seq_qualifs!($i + 1 => $($rest),*);
 
             $first::IDX == $i
         });
     };
     ($i:expr =>) => {
-        static_assert!(SEQ_QUALIFS: QUALIF_COUNT == $i);
+        static_assert!(QUALIF_COUNT == $i);
     };
 }
 static_assert_seq_qualifs!(
