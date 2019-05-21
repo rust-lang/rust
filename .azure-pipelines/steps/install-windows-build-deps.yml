@@ -5,13 +5,14 @@ steps:
 #     git submodule
 #     export SUBMODULES_EXCLUDES=$(git submodule | grep -Eow 'src/[^ ]+' | sed 's/\(.*\)/--exclude=\1\/\.git/')
 #     echo "##vso[task.setvariable variable=SUBMODULES_EXCLUDES;]$SUBMODULES_EXCLUDES"
-#
-# - script: |
-#     REM echo hack as drive D is too small
-#     IF NOT "%DISABLE_DISK_SPACE_HACK%"=="1" (
-#       mkdir c:\MORE_SPACE
-#       mklink /J build c:\MORE_SPACE
-#     )
+
+# FIXME: needs a comment to justify its existence
+- script: |
+    REM echo hack as drive D is too small
+    IF NOT "%DISABLE_DISK_SPACE_HACK%"=="1" (
+      mkdir c:\MORE_SPACE
+      mklink /J build c:\MORE_SPACE
+    )
 
 - script: |
     set MSYS_PATH=%CD%\citools\msys64
