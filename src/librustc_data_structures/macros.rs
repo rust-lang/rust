@@ -1,5 +1,4 @@
-/// A simple static assertion macro. The first argument should be a unique
-/// ALL_CAPS identifier that describes the condition.
+/// A simple static assertion macro.
 #[macro_export]
 #[allow_internal_unstable(type_ascription, underscore_const_names)]
 macro_rules! static_assert {
