@@ -4,16 +4,6 @@
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
 //! drop their contents when they go out of scope.
 //!
-//! For non-zero-sized values, a [`Box`] will use the [`Global`] allocator for
-//! its allocation. It is valid to convert both ways between a [`Box`] and a
-//! raw pointer allocated with the [`Global`] allocator, given that the
-//! [`Layout`] used with the allocator is correct for the type. More precisely,
-//! a `value: *mut T` that has been allocated with the [`Global`] allocator
-//! with `Layout::for_value(&*value)` may be converted into a box using
-//! `Box::<T>::from_raw(value)`. Conversely, the memory backing a `value: *mut
-//! T` obtained from `Box::<T>::into_raw` may be deallocated using the
-//! [`Global`] allocator with `Layout::for_value(&*value)`.
-//!
 //! # Examples
 //!
 //! Move a value from the stack to the heap by creating a [`Box`]:
@@ -60,6 +50,19 @@
 //! elements are in the list, and so we don't know how much memory to allocate
 //! for a `Cons`. By introducing a `Box`, which has a defined size, we know how
 //! big `Cons` needs to be.
+//!
+//! # Memory layout
+//!
+//! For non-zero-sized values, a [`Box`] will use the [`Global`] allocator for
+//! its allocation. It is valid to convert both ways between a [`Box`] and a
+//! raw pointer allocated with the [`Global`] allocator, given that the
+//! [`Layout`] used with the allocator is correct for the type. More precisely,
+//! a `value: *mut T` that has been allocated with the [`Global`] allocator
+//! with `Layout::for_value(&*value)` may be converted into a box using
+//! `Box::<T>::from_raw(value)`. Conversely, the memory backing a `value: *mut
+//! T` obtained from `Box::<T>::into_raw` may be deallocated using the
+//! [`Global`] allocator with `Layout::for_value(&*value)`.
+//!
 //!
 //! [dereferencing]: ../../std/ops/trait.Deref.html
 //! [`Box`]: struct.Box.html
@@ -128,11 +131,8 @@ impl<T: ?Sized> Box<T> {
     /// After calling this function, the raw pointer is owned by the
     /// resulting `Box`. Specifically, the `Box` destructor will call
     /// the destructor of `T` and free the allocated memory. For this
-    /// to be safe, the memory must have been allocated in the precise
-    /// way that `Box` expects, namely, using the global allocator
-    /// with the correct [`Layout`] for holding a value of type `T`. In
-    /// particular, this will be satisfied for a pointer obtained
-    /// from a previously existing `Box` using [`Box::into_raw`].
+    /// to be safe, the memory must have been allocated in accordance
+    /// with the [memory layout] used by `Box` .
     ///
     /// # Safety
     ///
@@ -141,7 +141,8 @@ impl<T: ?Sized> Box<T> {
     /// function is called twice on the same raw pointer.
     ///
     /// # Examples
-    /// Recreate a `Box` which was previously converted to a raw pointer using [`Box::into_raw`]:
+    /// Recreate a `Box` which was previously converted to a raw pointer
+    /// using [`Box::into_raw`]:
     /// ```
     /// let x = Box::new(5);
     /// let ptr = Box::into_raw(x);
@@ -149,16 +150,18 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// Manually create a `Box` from scratch by using the global allocator:
     /// ```
-    /// use std::alloc::{Layout, alloc};
+    /// use std::alloc::{alloc, Layout};
     ///
-    /// let ptr = unsafe{ alloc(Layout::new::<i32>()) } as *mut i32;
-    /// unsafe{ *ptr = 5; }
-    /// let x = unsafe{ Box::from_raw(ptr) };
+    /// unsafe {
+    ///     let ptr = alloc(Layout::new::<i32>()) as *mut i32;
+    ///     *ptr = 5;
+    ///     let x = Box::from_raw(ptr);
+    /// }
     /// ```
     ///
+    /// [memory layout]: index.html#memory-layout
     /// [`Layout`]: ../alloc/struct.Layout.html
     /// [`Box::into_raw`]: struct.Box.html#method.into_raw
-    ///
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
@@ -171,9 +174,11 @@ impl<T: ?Sized> Box<T> {
     ///
     /// After calling this function, the caller is responsible for the
     /// memory previously managed by the `Box`. In particular, the
-    /// caller should properly destroy `T` and release the memory. The
-    /// easiest way to do so is to convert the raw pointer back into a `Box`
-    /// with the [`Box::from_raw`] function.
+    /// caller should properly destroy `T` and release the memory, taking
+    /// into account the [memory layout] used by `Box`. The easiest way to
+    /// do this is to convert the raw pointer back into a `Box` with the
+    /// [`Box::from_raw`] function, allowing the `Box` destructor to perform
+    /// the cleanup.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::into_raw(b)` instead of `b.into_raw()`. This
@@ -185,21 +190,24 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// let x = Box::new(String::from("Hello"));
     /// let ptr = Box::into_raw(x);
-    /// let x = unsafe{ Box::from_raw(ptr) };
+    /// let x = unsafe { Box::from_raw(ptr) };
     /// ```
-    /// Manual cleanup by running the destructor and deallocating the memory:
+    /// Manual cleanup by explicitly running the destructor and deallocating
+    /// the memory:
     /// ```
-    /// use std::alloc::{Layout, dealloc};
+    /// use std::alloc::{dealloc, Layout};
     /// use std::ptr;
     ///
     /// let x = Box::new(String::from("Hello"));
     /// let p = Box::into_raw(x);
-    /// unsafe{ ptr::drop_in_place(p); }
-    /// unsafe{ dealloc(p as *mut u8, Layout::new::<String>()); }
+    /// unsafe {
+    ///     ptr::drop_in_place(p);
+    ///     dealloc(p as *mut u8, Layout::new::<String>());
+    /// }
     /// ```
     ///
+    /// [memory layout]: index.html#memory-layout
     /// [`Box::from_raw`]: struct.Box.html#method.from_raw
-    ///
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
@@ -233,7 +241,7 @@ impl<T: ?Sized> Box<T> {
     ///
     ///     // Clean up the memory by converting the NonNull pointer back
     ///     // into a Box and letting the Box be dropped.
-    ///     let x = unsafe{ Box::from_raw(ptr.as_ptr()) };
+    ///     let x = unsafe { Box::from_raw(ptr.as_ptr()) };
     /// }
     /// ```
     #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
