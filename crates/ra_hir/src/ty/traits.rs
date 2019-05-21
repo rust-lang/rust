@@ -25,7 +25,7 @@ struct ChalkContext<'a, DB> {
     krate: Crate,
 }
 
-pub(crate) fn solver(_db: &impl HirDatabase, _krate: Crate) -> Arc<Mutex<Solver>> {
+pub(crate) fn solver_query(_db: &impl HirDatabase, _krate: Crate) -> Arc<Mutex<Solver>> {
     // krate parameter is just so we cache a unique solver per crate
     let solver_choice = chalk_solve::SolverChoice::SLG { max_size: CHALK_SOLVER_MAX_SIZE };
     debug!("Creating new solver for crate {:?}", _krate);
@@ -33,7 +33,7 @@ pub(crate) fn solver(_db: &impl HirDatabase, _krate: Crate) -> Arc<Mutex<Solver>
 }
 
 /// Collects impls for the given trait in the whole dependency tree of `krate`.
-pub(crate) fn impls_for_trait(
+pub(crate) fn impls_for_trait_query(
     db: &impl HirDatabase,
     krate: Crate,
     trait_: Trait,
@@ -76,7 +76,7 @@ pub enum Obligation {
 }
 
 /// Check using Chalk whether trait is implemented for given parameters including `Self` type.
-pub(crate) fn implements(
+pub(crate) fn implements_query(
     db: &impl HirDatabase,
     krate: Crate,
     trait_ref: Canonical<TraitRef>,
