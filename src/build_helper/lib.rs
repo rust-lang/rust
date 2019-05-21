@@ -288,9 +288,9 @@ pub fn sanitizer_lib_boilerplate(sanitizer_name: &str)
     } else {
         format!("static={}", link_name)
     };
-    // The source for `compiler-rt` comes from the `compiler-builtins` crate, so
-    // load our env var set by cargo to find the source code.
-    let dir = env::var_os("DEP_COMPILER_RT_COMPILER_RT").unwrap();
+    // This env var is provided by rustbuild to tell us where `compiler-rt`
+    // lives.
+    let dir = env::var_os("RUST_COMPILER_RT_ROOT").unwrap();
     let lib = native_lib_boilerplate(
         dir.as_ref(),
         sanitizer_name,
