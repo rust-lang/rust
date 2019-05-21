@@ -21,9 +21,9 @@ tt = { path = "../ra_tt", package = "ra_tt" }
 test_utils = { path = "../test_utils" }
 ra_prof = { path = "../ra_prof" }
 
-chalk-solve = { git = "https://github.com/rust-lang/chalk.git" }
-chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git" }
-chalk-ir = { git = "https://github.com/rust-lang/chalk.git" }
+chalk-solve = { git = "https://github.com/flodiebold/chalk.git", branch = "fuel" }
+chalk-rust-ir = { git = "https://github.com/flodiebold/chalk.git", branch = "fuel" }
+chalk-ir = { git = "https://github.com/flodiebold/chalk.git", branch = "fuel" }
 
 [dev-dependencies]
 flexi_logger = "0.11.0"
