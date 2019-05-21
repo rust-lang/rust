@@ -9,7 +9,6 @@ use crate::common::{Config, TestPaths};
 use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
 use diff;
 use crate::errors::{self, Error, ErrorKind};
-use filetime::FileTime;
 use crate::header::TestProps;
 use crate::json;
 use regex::{Captures, Regex};
@@ -1650,7 +1649,9 @@ impl<'test> TestCx<'test> {
                 (true, None)
             } else if self.config.target.contains("cloudabi")
                 || self.config.target.contains("emscripten")
-                || (self.config.target.contains("musl") && !aux_props.force_host)
+                || (self.config.target.contains("musl")
+                    && !aux_props.force_host
+                    && !self.config.host.contains("musl"))
                 || self.config.target.contains("wasm32")
                 || self.config.target.contains("nvptx")
             {
@@ -1910,8 +1911,7 @@ impl<'test> TestCx<'test> {
 
         match self.config.compare_mode {
             Some(CompareMode::Nll) => {
-                // FIXME(#56993) use -Zborrowck=mir
-                rustc.args(&["-Zborrowck=migrate"]);
+                rustc.args(&["-Zborrowck=mir"]);
             }
             Some(CompareMode::Polonius) => {
                 rustc.args(&["-Zpolonius", "-Zborrowck=mir"]);
@@ -1930,6 +1930,11 @@ impl<'test> TestCx<'test> {
                     rustc.arg(format!("-Clinker={}", linker));
                 }
             }
+        }
+
+        // Use dynamic musl for tests because static doesn't allow creating dylibs
+        if self.config.host.contains("musl") {
+            rustc.arg("-Ctarget-feature=-crt-static");
         }
 
         rustc.args(&self.props.compile_flags);
@@ -2210,9 +2215,7 @@ impl<'test> TestCx<'test> {
 
     fn charset() -> &'static str {
         // FreeBSD 10.1 defaults to GDB 6.1.1 which doesn't support "auto" charset
-        if cfg!(target_os = "bitrig") {
-            "auto"
-        } else if cfg!(target_os = "freebsd") {
+        if cfg!(target_os = "freebsd") {
             "ISO-8859-1"
         } else {
             "UTF-8"
@@ -2663,8 +2666,7 @@ impl<'test> TestCx<'test> {
         create_dir_all(&tmpdir).unwrap();
 
         let host = &self.config.host;
-        let make = if host.contains("bitrig")
-            || host.contains("dragonfly")
+        let make = if host.contains("dragonfly")
             || host.contains("freebsd")
             || host.contains("netbsd")
             || host.contains("openbsd")
@@ -2724,6 +2726,12 @@ impl<'test> TestCx<'test> {
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");
+
+        // Use dynamic musl for tests because static doesn't allow creating dylibs
+        if self.config.host.contains("musl") {
+            cmd.env("RUSTFLAGS", "-Ctarget-feature=-crt-static")
+                .env("IS_MUSL_HOST", "1");
+        }
 
         if self.config.target.contains("msvc") && self.config.cc != "" {
             // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
@@ -3019,7 +3027,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_mir_test_timestamp(&self, test_name: &str, output_file: &Path) {
-        let t = |file| FileTime::from_last_modification_time(&fs::metadata(file).unwrap());
+        let t = |file| fs::metadata(file).unwrap().modified().unwrap();
         let source_file = &self.testpaths.file;
         let output_time = t(output_file);
         let source_time = t(source_file);

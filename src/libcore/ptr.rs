@@ -155,12 +155,12 @@ pub use crate::intrinsics::write_bytes;
 /// location first:
 /// ```
 /// use std::ptr;
-/// use std::mem;
+/// use std::mem::{self, MaybeUninit};
 ///
 /// unsafe fn drop_after_copy<T>(to_drop: *mut T) {
-///     let mut copy: T = mem::uninitialized();
-///     ptr::copy(to_drop, &mut copy, 1);
-///     drop(copy);
+///     let mut copy: MaybeUninit<T> = MaybeUninit::uninit();
+///     ptr::copy(to_drop, copy.as_mut_ptr(), 1);
+///     drop(copy.assume_init());
 /// }
 ///
 /// #[repr(packed, C)]
@@ -374,10 +374,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     // #[repr(simd)], even if we don't actually use this struct directly.
     //
     // FIXME repr(simd) broken on emscripten and redox
-    // It's also broken on big-endian powerpc64 and s390x.  #42778
-    #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox",
-                       target_endian = "big")),
-               repr(simd))]
+    #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox")), repr(simd))]
     struct Block(u64, u64, u64, u64);
     struct UnalignedBlock(u64, u64, u64, u64);
 
@@ -813,9 +810,6 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// to not be elided or reordered by the compiler across other volatile
 /// operations.
 ///
-/// Memory accessed with `read_volatile` or [`write_volatile`] should not be
-/// accessed with non-volatile operations.
-///
 /// [`write_volatile`]: ./fn.write_volatile.html
 ///
 /// # Notes
@@ -840,7 +834,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// * `src` must be properly aligned.
 ///
-/// Like [`read`], `read_unaligned` creates a bitwise copy of `T`, regardless of
+/// Like [`read`], `read_volatile` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
 /// However, storing non-[`Copy`] types in volatile memory is almost certainly
@@ -883,9 +877,6 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// Volatile operations are intended to act on I/O memory, and are guaranteed
 /// to not be elided or reordered by the compiler across other volatile
 /// operations.
-///
-/// Memory accessed with [`read_volatile`] or `write_volatile` should not be
-/// accessed with non-volatile operations.
 ///
 /// `write_volatile` does not drop the contents of `dst`. This is safe, but it
 /// could leak allocations or resources, so care should be taken not to overwrite
@@ -2973,7 +2964,6 @@ impl<T: Sized> NonNull<T> {
     /// some other means.
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_ptr_nonnull")]
     pub const fn dangling() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
@@ -3037,7 +3027,6 @@ impl<T: ?Sized> NonNull<T> {
     /// Cast to a pointer of another type
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_ptr_nonnull")]
     pub const fn cast<U>(self) -> NonNull<U> {
         unsafe {
             NonNull::new_unchecked(self.as_ptr() as *mut U)

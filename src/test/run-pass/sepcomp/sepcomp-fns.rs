@@ -1,5 +1,4 @@
 // run-pass
-// ignore-bitrig
 // compile-flags: -C codegen-units=3
 
 // Test basic separate compilation functionality.  The functions should be able

@@ -1,4 +1,3 @@
-#![feature(nll)]
 // compile-pass
 
 // rust-lang/rust#32382: Borrow checker used to complain about

@@ -27,7 +27,7 @@ pub fn graphviz_safe_def_name(def_id: DefId) -> String {
     format!(
         "{}_{}",
         def_id.krate.index(),
-        def_id.index.as_array_index(),
+        def_id.index.index(),
     )
 }
 
@@ -167,7 +167,7 @@ fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
                    Place::Base(PlaceBase::Local(local)), escape(&decl.ty), name)?;
         } else {
-            write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
+            write!(w, r#"{:?}: {};<br align="left"/>"#,
                    Place::Base(PlaceBase::Local(local)), escape(&decl.ty))?;
         }
     }

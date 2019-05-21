@@ -225,7 +225,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::util::nodemap::FxHashMap;
 
 use errors::DiagnosticBuilder;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax::struct_span_err;
 use syntax_pos::Span;
 use rustc_target::spec::{Target, TargetTriple};
@@ -321,7 +321,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn report_errs(&mut self) -> ! {
+    pub fn report_errs(self) -> ! {
         let add = match self.root {
             &None => String::new(),
             &Some(ref r) => format!(" which `{}` depends on", r.ident),
@@ -408,7 +408,7 @@ impl<'a> Context<'a> {
                                            self.ident,
                                            add);
 
-            if (self.ident == "std" || self.ident == "core")
+            if (self.ident == sym::std || self.ident == sym::core)
                 && self.triple != TargetTriple::from_triple(config::host_triple()) {
                 err.note(&format!("the `{}` target may not be installed", self.triple));
             }
@@ -901,8 +901,7 @@ fn get_metadata_section_imp(target: &Target,
             let mut inflated = Vec::new();
             match DeflateDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
                 Ok(_) => {
-                    let buf = unsafe { OwningRef::new_assert_stable_address(inflated) };
-                    rustc_erase_owner!(buf.map_owner_box())
+                    rustc_erase_owner!(OwningRef::new(inflated).map_owner_box())
                 }
                 Err(_) => {
                     return Err(format!("failed to decompress metadata: {}", filename.display()));

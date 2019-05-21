@@ -6,6 +6,7 @@ pub use crate::symbol::{Ident, Symbol as Name};
 pub use crate::util::parser::ExprPrecedence;
 
 use crate::ext::hygiene::{Mark, SyntaxContext};
+use crate::parse::token;
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
@@ -15,7 +16,7 @@ use crate::ThinVec;
 
 use rustc_data_structures::indexed_vec::Idx;
 #[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert;
+use rustc_data_structures::static_assert_size;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -71,18 +72,8 @@ pub struct Path {
 impl PartialEq<Symbol> for Path {
     fn eq(&self, symbol: &Symbol) -> bool {
         self.segments.len() == 1 && {
-            let name = self.segments[0].ident.name;
-            // Make sure these symbols are pure strings
-            debug_assert!(!symbol.is_gensymed());
-            debug_assert!(!name.is_gensymed());
-            name == *symbol
+            self.segments[0].ident.name == *symbol
         }
-    }
-}
-
-impl<'a> PartialEq<&'a str> for Path {
-    fn eq(&self, string: &&'a str) -> bool {
-        self.segments.len() == 1 && self.segments[0].ident.name == *string
     }
 }
 
@@ -969,7 +960,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_EXPR: std::mem::size_of::<Expr>() == 96);
+static_assert_size!(Expr, 96);
 
 impl Expr {
     /// Whether this expression would be valid somewhere that expects a value; for example, an `if`
@@ -1350,8 +1341,19 @@ pub enum StrStyle {
     Raw(u16),
 }
 
-/// A literal.
-pub type Lit = Spanned<LitKind>;
+/// An AST literal.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct Lit {
+    /// The original literal token as written in source code.
+    pub token: token::Lit,
+    /// The original literal suffix as written in source code.
+    pub suffix: Option<Symbol>,
+    /// The "semantic" representation of the literal lowered from the original tokens.
+    /// Strings are unescaped, hexadecimal forms are eliminated, etc.
+    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
+    pub node: LitKind,
+    pub span: Span,
+}
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
 pub enum LitIntType {

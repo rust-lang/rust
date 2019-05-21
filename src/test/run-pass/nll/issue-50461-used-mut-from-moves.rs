@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(nll)]
 #![deny(unused_mut)]
 
 struct Foo {

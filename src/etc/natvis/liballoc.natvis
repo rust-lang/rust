@@ -7,11 +7,11 @@
       <Item Name="[capacity]" ExcludeView="simple">buf.cap</Item>
       <ArrayItems>
         <Size>len</Size>
-        <ValuePointer>buf.ptr.pointer.__0</ValuePointer>
+        <ValuePointer>buf.ptr.pointer</ValuePointer>
       </ArrayItems>
     </Expand>
   </Type>
-  <Type Name="alloc::vec_deque::VecDeque&lt;*&gt;">
+  <Type Name="alloc::collections::vec_deque::VecDeque&lt;*&gt;">
     <DisplayString>{{ size={tail &lt;= head ? head - tail : buf.cap - tail + head} }}</DisplayString>
     <Expand>
       <Item Name="[size]" ExcludeView="simple">tail &lt;= head ? head - tail : buf.cap - tail + head</Item>
@@ -24,19 +24,19 @@
           <If Condition="i == head">
             <Break/>
           </If>
-          <Item>buf.ptr.pointer.__0 + i</Item>
+          <Item>buf.ptr.pointer[i]</Item>
           <Exec>i = (i + 1 == buf.cap ? 0 : i + 1)</Exec>
         </Loop>
       </CustomListItems>
     </Expand>
   </Type>
-  <Type Name="alloc::linked_list::LinkedList&lt;*&gt;">
+  <Type Name="alloc::collections::linked_list::LinkedList&lt;*&gt;">
     <DisplayString>{{ size={len} }}</DisplayString>
     <Expand>
       <LinkedListItems>
         <Size>len</Size>
-        <HeadPointer>*(alloc::linked_list::Node&lt;$T1&gt; **)&amp;head</HeadPointer>
-        <NextPointer>*(alloc::linked_list::Node&lt;$T1&gt; **)&amp;next</NextPointer>
+        <HeadPointer>*(alloc::collections::linked_list::Node&lt;$T1&gt; **)&amp;head</HeadPointer>
+        <NextPointer>*(alloc::collections::linked_list::Node&lt;$T1&gt; **)&amp;next</NextPointer>
         <ValueNode>element</ValueNode>
       </LinkedListItems>
     </Expand>

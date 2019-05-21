@@ -33,7 +33,6 @@ use core::ptr;
 
 use crate::sync::atomic::{Ordering, AtomicUsize};
 use crate::sync::mpsc::blocking::{self, WaitToken, SignalToken};
-use crate::sync::mpsc::select::StartResult::{self, Installed, Abort};
 use crate::sync::{Mutex, MutexGuard};
 use crate::time::Instant;
 
@@ -405,42 +404,6 @@ impl<T> Packet<T> {
 
         while let Some(token) = queue.dequeue() { token.signal(); }
         waiter.map(|t| t.signal());
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // select implementation
-    ////////////////////////////////////////////////////////////////////////////
-
-    // If Ok, the value is whether this port has data, if Err, then the upgraded
-    // port needs to be checked instead of this one.
-    pub fn can_recv(&self) -> bool {
-        let guard = self.lock.lock().unwrap();
-        guard.disconnected || guard.buf.size() > 0
-    }
-
-    // Attempts to start selection on this port. This can either succeed or fail
-    // because there is data waiting.
-    pub fn start_selection(&self, token: SignalToken) -> StartResult {
-        let mut guard = self.lock.lock().unwrap();
-        if guard.disconnected || guard.buf.size() > 0 {
-            Abort
-        } else {
-            match mem::replace(&mut guard.blocker, BlockedReceiver(token)) {
-                NoneBlocked => {}
-                BlockedSender(..) => unreachable!(),
-                BlockedReceiver(..) => unreachable!(),
-            }
-            Installed
-        }
-    }
-
-    // Remove a previous selecting thread from this port. This ensures that the
-    // blocked thread will no longer be visible to any other threads.
-    //
-    // The return value indicates whether there's data on this port.
-    pub fn abort_selection(&self) -> bool {
-        let mut guard = self.lock.lock().unwrap();
-        abort_selection(&mut guard)
     }
 }
 

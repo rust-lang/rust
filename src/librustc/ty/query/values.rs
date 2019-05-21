@@ -1,7 +1,7 @@
 use crate::ty::{self, Ty, TyCtxt, AdtSizedConstraint};
 use crate::ty::util::NeedsDrop;
 
-use syntax::symbol::Symbol;
+use syntax::symbol::InternedString;
 
 pub(super) trait Value<'tcx>: Sized {
     fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self;
@@ -28,7 +28,7 @@ impl<'tcx> Value<'tcx> for Ty<'tcx> {
 
 impl<'tcx> Value<'tcx> for ty::SymbolName {
     fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
-        ty::SymbolName { name: Symbol::intern("<error>").as_interned_str() }
+        ty::SymbolName { name: InternedString::intern("<error>") }
     }
 }
 

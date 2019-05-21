@@ -4,7 +4,7 @@
 #![deny(unreachable_code)]
 
 fn foo() {
-    if {return} {
+    if {return} { //~ ERROR unreachable block in `if` expression
         println!("Hello, world!");
     }
 }

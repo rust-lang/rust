@@ -4,7 +4,7 @@ use crate::source_map::{hygiene, ExpnInfo, ExpnFormat};
 use crate::ext::base::ExtCtxt;
 use crate::ext::build::AstBuilder;
 use crate::parse::parser::PathStyle;
-use crate::symbol::Symbol;
+use crate::symbol::{Symbol, sym};
 
 use syntax_pos::Span;
 
@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashSet;
 pub fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
     let mut result = Vec::new();
     attrs.retain(|attr| {
-        if attr.path != "derive" {
+        if attr.path != sym::derive {
             return true;
         }
         if !attr.is_meta_item_list() {

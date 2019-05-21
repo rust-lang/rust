@@ -192,7 +192,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::Pointer { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
-            | ExprKind::If { .. }
             | ExprKind::Match { .. }
             | ExprKind::Loop { .. }
             | ExprKind::Block { .. }

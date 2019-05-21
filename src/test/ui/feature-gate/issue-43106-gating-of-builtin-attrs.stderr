@@ -1153,12 +1153,6 @@ LL | #![automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:55:1
-   |
-LL | #![no_mangle]
-   | ^^^^^^^^^^^^^
-
-warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:56:1
    |
 LL | #![no_link]

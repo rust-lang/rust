@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use std::sync::mpsc::{Sender};
 use syntax_pos::{SpanData};
+use syntax::symbol::{Symbol, sym};
 use rustc_macros::HashStable;
 use crate::ty::TyCtxt;
 use crate::dep_graph::{DepNode};
@@ -18,7 +19,7 @@ use lazy_static;
 use crate::session::Session;
 
 // The name of the associated type for `Fn` return types
-pub const FN_OUTPUT_NAME: &str = "Output";
+pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
 // Useful type to use with `Result<>` indicate that an error has already
 // been reported to the user, so no need to continue checking.

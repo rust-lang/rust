@@ -1,0 +1,16 @@
+error[E0005]: refutable pattern in local binding: `Err(_)` not covered
+  --> $DIR/recursive-types-are-not-uninhabited.rs:6:9
+   |
+LL |     let Ok(x) = res;
+   |         ^^^^^ pattern `Err(_)` not covered
+
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/recursive-types-are-not-uninhabited.rs:8:5
+   |
+LL |     x
+   |     ^ use of possibly uninitialized `x`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0005, E0381.
+For more information about an error, try `rustc --explain E0005`.

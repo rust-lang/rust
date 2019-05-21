@@ -197,15 +197,28 @@ pub trait Error: Debug + Display {
     fn source(&self) -> Option<&(dyn Error + 'static)> { None }
 
     /// Gets the `TypeId` of `self`
-    #[stable(feature = "error_type_id", since = "1.34.0")]
-    fn type_id(&self) -> TypeId where Self: 'static {
+    #[doc(hidden)]
+    #[unstable(feature = "error_type_id",
+               reason = "this is memory unsafe to override in user code",
+               issue = "60784")]
+    fn type_id(&self, _: private::Internal) -> TypeId where Self: 'static {
         TypeId::of::<Self>()
     }
+}
+
+mod private {
+    // This is a hack to prevent `type_id` from being overridden by `Error`
+    // implementations, since that can enable unsound downcasting.
+    #[unstable(feature = "error_type_id", issue = "60784")]
+    #[derive(Debug)]
+    pub struct Internal;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     /// Converts a type of [`Error`] into a box of dyn [`Error`].
+    ///
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -243,6 +256,8 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of dyn [`Error`] +
     /// [`Send`] + [`Sync`].
+    ///
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -285,6 +300,8 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
 impl From<String> for Box<dyn Error + Send + Sync> {
     /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -318,6 +335,8 @@ impl From<String> for Box<dyn Error + Send + Sync> {
 impl From<String> for Box<dyn Error> {
     /// Converts a [`String`] into a box of dyn [`Error`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -339,6 +358,8 @@ impl From<String> for Box<dyn Error> {
 impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -359,6 +380,8 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
 impl From<&str> for Box<dyn Error> {
     /// Converts a [`str`] into a box of dyn [`Error`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -377,6 +400,9 @@ impl From<&str> for Box<dyn Error> {
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`Cow`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// [`Cow`]: ../borrow/enum.Cow.html
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -398,6 +424,9 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     /// Converts a [`Cow`] into a box of dyn [`Error`].
+    ///
+    /// [`Cow`]: ../borrow/enum.Cow.html
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -572,7 +601,7 @@ impl dyn Error + 'static {
         let t = TypeId::of::<T>();
 
         // Get TypeId of the type in the trait object
-        let boxed = self.type_id();
+        let boxed = self.type_id(private::Internal);
 
         // Compare both TypeIds on equality
         t == boxed

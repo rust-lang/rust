@@ -1,7 +1,5 @@
 // compile-pass
 
-#![feature(nll)]
-#![allow(unreachable_code)]
 #![deny(unused_mut)]
 
 pub fn foo() {

@@ -1,5 +1,5 @@
 error[E0626]: borrow may still be in use when generator yields
-  --> $DIR/generator-with-nll.rs:8:17
+  --> $DIR/generator-with-nll.rs:7:17
    |
 LL |         let b = &mut true;
    |                 ^^^^^^^^^

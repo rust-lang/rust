@@ -10,7 +10,7 @@ use rustc_codegen_ssa::traits::*;
 
 use crate::common;
 use crate::type_of::LayoutLlvmExt;
-use crate::abi::{LlvmType, FnTypeExt};
+use crate::abi::{LlvmType, FnTypeLlvmExt};
 use syntax::ast;
 use rustc::ty::Ty;
 use rustc::ty::layout::{self, Align, Size, TyLayout};

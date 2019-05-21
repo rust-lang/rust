@@ -47,7 +47,6 @@ mod android_base;
 mod apple_base;
 mod apple_ios_base;
 mod arm_base;
-mod bitrig_base;
 mod cloudabi_base;
 mod dragonfly_base;
 mod freebsd_base;
@@ -390,8 +389,6 @@ supported_targets! {
     ("i686-unknown-dragonfly", i686_unknown_dragonfly),
     ("x86_64-unknown-dragonfly", x86_64_unknown_dragonfly),
 
-    ("x86_64-unknown-bitrig", x86_64_unknown_bitrig),
-
     ("aarch64-unknown-openbsd", aarch64_unknown_openbsd),
     ("i686-unknown-openbsd", i686_unknown_openbsd),
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
@@ -444,7 +441,7 @@ supported_targets! {
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
-    ("wasm32-unknown-wasi", wasm32_unknown_wasi),
+    ("wasm32-wasi", wasm32_wasi),
     ("wasm32-experimental-emscripten", wasm32_experimental_emscripten),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),

@@ -1,0 +1,31 @@
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
+  --> $DIR/min_const_fn_dyn.rs:9:5
+   |
+LL |     x.0.field;
+   |     ^^^^^^^^^
+   |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = help: add #![feature(const_fn)] to the crate attributes to enable
+
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
+  --> $DIR/min_const_fn_dyn.rs:12:66
+   |
+LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
+   |                                                                  ^^
+   |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = help: add #![feature(const_fn)] to the crate attributes to enable
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/min_const_fn_dyn.rs:12:67
+   |
+LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
+   |                                                                  -^    - temporary value is freed at the end of this statement
+   |                                                                  ||
+   |                                                                  |creates a temporary which is freed while still in use
+   |                                                                  cast requires that borrow lasts for `'static`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0716, E0723.
+For more information about an error, try `rustc --explain E0716`.

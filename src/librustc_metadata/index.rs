@@ -93,7 +93,7 @@ impl Index {
     pub fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry<'_>>) {
         assert!(entry.position < (u32::MAX as usize));
         let position = entry.position as u32;
-        let array_index = item.as_array_index();
+        let array_index = item.index();
 
         let positions = &mut self.positions;
         assert!(u32::read_from_bytes_at(positions, array_index) == u32::MAX,
@@ -126,7 +126,7 @@ impl<'tcx> LazySeq<Index> {
                def_index,
                self.len);
 
-        let position = u32::read_from_bytes_at(bytes, 1 + def_index.as_array_index());
+        let position = u32::read_from_bytes_at(bytes, 1 + def_index.index());
         if position == u32::MAX {
             debug!("Index::lookup: position=u32::MAX");
             None

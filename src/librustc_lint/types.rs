@@ -62,7 +62,7 @@ impl TypeLimits {
 /// Returns `true` iff the lint was overridden.
 fn lint_overflowing_range_endpoint<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    lit: &ast::Lit,
+    lit: &hir::Lit,
     lit_val: u128,
     max: u128,
     expr: &'tcx hir::Expr,
@@ -132,7 +132,7 @@ fn uint_ty_range(uint_ty: ast::UintTy) -> (u128, u128) {
     }
 }
 
-fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &ast::Lit) -> Option<String> {
+fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &hir::Lit) -> Option<String> {
     let src = cx.sess().source_map().span_to_snippet(lit.span).ok()?;
     let firstch = src.chars().next()?;
 
@@ -249,7 +249,7 @@ fn lint_int_literal<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     type_limits: &TypeLimits,
     e: &'tcx hir::Expr,
-    lit: &ast::Lit,
+    lit: &hir::Lit,
     t: ast::IntTy,
     v: u128,
 ) {
@@ -301,7 +301,7 @@ fn lint_int_literal<'a, 'tcx>(
 fn lint_uint_literal<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     e: &'tcx hir::Expr,
-    lit: &ast::Lit,
+    lit: &hir::Lit,
     t: ast::UintTy,
 ) {
     let uint_type = if let ast::UintTy::Usize = t {
@@ -363,7 +363,7 @@ fn lint_literal<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     type_limits: &TypeLimits,
     e: &'tcx hir::Expr,
-    lit: &ast::Lit,
+    lit: &hir::Lit,
 ) {
     match cx.tables.node_type(e.hir_id).sty {
         ty::Int(t) => {

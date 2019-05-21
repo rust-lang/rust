@@ -13,7 +13,7 @@ git clone https://github.com/CraneStation/wasi-sysroot
 
 cd wasi-sysroot
 git reset --hard e5f14be38362f1ab83302895a6e74b2ffd0e2302
-make -j$(nproc) INSTALL_DIR=/wasm32-unknown-wasi install
+make -j$(nproc) INSTALL_DIR=/wasm32-wasi install
 
 cd ..
 rm -rf reference-sysroot-wasi

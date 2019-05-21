@@ -26,8 +26,6 @@ fn main() {
         println!("cargo:rustc-link-lib=c++abi");
     } else if target.contains("solaris") {
         println!("cargo:rustc-link-lib=gcc_s");
-    } else if target.contains("bitrig") {
-        println!("cargo:rustc-link-lib=c++abi");
     } else if target.contains("dragonfly") {
         println!("cargo:rustc-link-lib=gcc_pic");
     } else if target.contains("windows-gnu") {
@@ -69,13 +67,10 @@ mod llvm_libunwind {
             cfg.flag("-std=c99");
             cfg.flag("-std=c++11");
             cfg.flag("-nostdinc++");
-            if cfg.is_flag_supported("-funwind-tables").unwrap_or_default() &&
-               cfg.is_flag_supported("-fno-exceptions").unwrap_or_default() {
-                cfg.flag("-funwind-tables");
-                cfg.flag("-fno-exceptions");
-            }
+            cfg.flag("-fno-exceptions");
             cfg.flag("-fno-rtti");
             cfg.flag("-fstrict-aliasing");
+            cfg.flag("-funwind-tables");
         }
 
         let mut unwind_sources = vec![

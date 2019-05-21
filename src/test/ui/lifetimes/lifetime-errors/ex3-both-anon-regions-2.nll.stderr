@@ -1,0 +1,12 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-2.rs:2:5
+   |
+LL | fn foo(&mut (ref mut v, w): &mut (&u8, &u8), x: &u8) {
+   |                                   -             - let's call the lifetime of this reference `'1`
+   |                                   |
+   |                                   let's call the lifetime of this reference `'2`
+LL |     *v = x;
+   |     ^^^^^^ assignment requires that `'1` must outlive `'2`
+
+error: aborting due to previous error
+

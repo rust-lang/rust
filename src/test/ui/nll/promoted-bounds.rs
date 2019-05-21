@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 fn shorten_lifetime<'a, 'b, 'min>(a: &'a i32, b: &'b i32) -> &'min i32
 where
     'a: 'min,

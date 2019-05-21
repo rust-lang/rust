@@ -158,7 +158,7 @@ newtype_index! {
 impl_stable_hash_for!(struct crate::middle::region::FirstStatementIndex { private });
 
 // compilation error if size of `ScopeData` is not the same as a `u32`
-static_assert!(ASSERT_SCOPE_DATA: mem::size_of::<ScopeData>() == 4);
+static_assert_size!(ScopeData, 4);
 
 impl Scope {
     /// Returns a item-local ID associated with this scope.
@@ -882,17 +882,6 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
                     // For shortcircuiting operators, mark the RHS as a terminating
                     // scope since it only executes conditionally.
                     terminating(r.hir_id.local_id);
-            }
-
-            hir::ExprKind::If(ref expr, ref then, Some(ref otherwise)) => {
-                terminating(expr.hir_id.local_id);
-                terminating(then.hir_id.local_id);
-                terminating(otherwise.hir_id.local_id);
-            }
-
-            hir::ExprKind::If(ref expr, ref then, None) => {
-                terminating(expr.hir_id.local_id);
-                terminating(then.hir_id.local_id);
             }
 
             hir::ExprKind::Loop(ref body, _, _) => {

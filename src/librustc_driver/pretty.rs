@@ -648,7 +648,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     // have to be user friendly.
     let name = format!(
         "hir_id_{}_{}",
-        hir_id.owner.as_array_index(),
+        hir_id.owner.index(),
         hir_id.local_id.index(),
     );
     let lcfg = LabelledCFG {
@@ -805,8 +805,7 @@ pub fn print_after_hir_lowering<'tcx>(
                                             src_name,
                                             &mut rdr,
                                             box out,
-                                            annotation.pp_ann(),
-                                            true)
+                                            annotation.pp_ann())
                 })
             }
 
@@ -829,8 +828,7 @@ pub fn print_after_hir_lowering<'tcx>(
                                                                          src_name,
                                                                          &mut rdr,
                                                                          box out,
-                                                                         annotation.pp_ann(),
-                                                                         true);
+                                                                         annotation.pp_ann());
                     for node_id in uii.all_matching_node_ids(hir_map) {
                         let node = hir_map.get(node_id);
                         pp_state.print_node(node)?;

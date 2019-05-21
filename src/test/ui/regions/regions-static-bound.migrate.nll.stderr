@@ -1,0 +1,28 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-static-bound.rs:9:5
+   |
+LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
+   |                        -- lifetime `'a` defined here
+LL |     t
+   |     ^ returning this value requires that `'a` must outlive `'static`
+
+error[E0621]: explicit lifetime required in the type of `u`
+  --> $DIR/regions-static-bound.rs:14:5
+   |
+LL | fn error(u: &(), v: &()) {
+   |             --- help: add explicit lifetime `'static` to the type of `u`: `&'static ()`
+LL |     static_id(&u);
+   |     ^^^^^^^^^^^^^ lifetime `'static` required
+
+error[E0621]: explicit lifetime required in the type of `v`
+  --> $DIR/regions-static-bound.rs:16:5
+   |
+LL | fn error(u: &(), v: &()) {
+   |                     --- help: add explicit lifetime `'static` to the type of `v`: `&'static ()`
+...
+LL |     static_id_indirect(&v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime `'static` required
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0621`.

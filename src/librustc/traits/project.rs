@@ -19,6 +19,7 @@ use crate::mir::interpret::{GlobalId, ConstValue};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_macros::HashStable;
 use syntax::ast::Ident;
+use syntax::symbol::sym;
 use crate::ty::subst::{Subst, InternalSubsts};
 use crate::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
@@ -1318,9 +1319,9 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
                                             gen_sig)
         .map_bound(|(trait_ref, yield_ty, return_ty)| {
             let name = tcx.associated_item(obligation.predicate.item_def_id).ident.name;
-            let ty = if name == "Return" {
+            let ty = if name == sym::Return {
                 return_ty
-            } else if name == "Yield" {
+            } else if name == sym::Yield {
                 yield_ty
             } else {
                 bug!()
@@ -1420,7 +1421,7 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
                 projection_ty: ty::ProjectionTy::from_ref_and_name(
                     tcx,
                     trait_ref,
-                    Ident::from_str(FN_OUTPUT_NAME),
+                    Ident::with_empty_ctxt(FN_OUTPUT_NAME),
                 ),
                 ty: ret_type
             }

@@ -5,7 +5,6 @@ use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::feature_gate::UnstableFeatures;
 use crate::parse::parser::Parser;
-use crate::symbol::Symbol;
 use crate::syntax::parse::parser::emit_unclosed_delims;
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::diagnostics::plugin::ErrorMap;
@@ -14,7 +13,6 @@ use crate::print::pprust::token_to_string;
 use errors::{Applicability, FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::sync::{Lrc, Lock};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
-use log::debug;
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use std::borrow::Cow;
@@ -25,18 +23,15 @@ pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 
 #[macro_use]
 pub mod parser;
-
+pub mod attr;
 pub mod lexer;
 pub mod token;
-pub mod attr;
-pub mod diagnostics;
 
-pub mod classify;
-
-pub(crate) mod unescape;
-use unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
-
-pub(crate) mod unescape_error_reporting;
+crate mod classify;
+crate mod diagnostics;
+crate mod literal;
+crate mod unescape;
+crate mod unescape_error_reporting;
 
 /// Info about a parsing session.
 pub struct ParseSess {
@@ -295,22 +290,22 @@ pub fn source_file_to_stream(
 }
 
 /// Given a source file, produces a sequence of token trees. Returns any buffered errors from
-/// parsing the token tream.
+/// parsing the token stream.
 pub fn maybe_file_to_stream(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
 ) -> Result<(TokenStream, Vec<lexer::UnmatchedBrace>), Vec<Diagnostic>> {
-    let mut srdr = lexer::StringReader::new_or_buffered_errs(sess, source_file, override_span)?;
-    srdr.real_token();
+    let srdr = lexer::StringReader::new_or_buffered_errs(sess, source_file, override_span)?;
+    let (token_trees, unmatched_braces) = srdr.into_token_trees();
 
-    match srdr.parse_all_token_trees() {
-        Ok(stream) => Ok((stream, srdr.unmatched_braces)),
+    match token_trees {
+        Ok(stream) => Ok((stream, unmatched_braces)),
         Err(err) => {
             let mut buffer = Vec::with_capacity(1);
             err.buffer(&mut buffer);
             // Not using `emit_unclosed_delims` to use `db.buffer`
-            for unmatched in srdr.unmatched_braces {
+            for unmatched in unmatched_braces {
                 let mut db = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
                     "incorrect close delimiter: `{}`",
                     token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
@@ -332,284 +327,6 @@ pub fn maybe_file_to_stream(
 /// Given stream and the `ParseSess`, produces a parser.
 pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser<'_> {
     Parser::new(sess, stream, None, true, false)
-}
-
-/// Parses a string representing a raw string literal into its final form. The
-/// only operation this does is convert embedded CRLF into a single LF.
-fn raw_str_lit(lit: &str) -> String {
-    debug!("raw_str_lit: given {}", lit.escape_default());
-    let mut res = String::with_capacity(lit.len());
-
-    let mut chars = lit.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '\r' {
-            if *chars.peek().unwrap() != '\n' {
-                panic!("lexer accepted bare CR");
-            }
-            chars.next();
-            res.push('\n');
-        } else {
-            res.push(c);
-        }
-    }
-
-    res.shrink_to_fit();
-    res
-}
-
-// check if `s` looks like i32 or u1234 etc.
-fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
-    s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
-}
-
-macro_rules! err {
-    ($opt_diag:expr, |$span:ident, $diag:ident| $($body:tt)*) => {
-        match $opt_diag {
-            Some(($span, $diag)) => { $($body)* }
-            None => return None,
-        }
-    }
-}
-
-crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Handler)>)
-                 -> (bool /* suffix illegal? */, Option<ast::LitKind>) {
-    use ast::LitKind;
-
-    match lit {
-        token::Byte(i) => {
-            let lit_kind = match unescape_byte(&i.as_str()) {
-                Ok(c) => LitKind::Byte(c),
-                Err(_) => LitKind::Err(i),
-            };
-            (true, Some(lit_kind))
-        },
-        token::Char(i) => {
-            let lit_kind = match unescape_char(&i.as_str()) {
-                Ok(c) => LitKind::Char(c),
-                Err(_) => LitKind::Err(i),
-            };
-            (true, Some(lit_kind))
-        },
-        token::Err(i) => (true, Some(LitKind::Err(i))),
-
-        // There are some valid suffixes for integer and float literals,
-        // so all the handling is done internally.
-        token::Integer(s) => (false, integer_lit(&s.as_str(), suf, diag)),
-        token::Float(s) => (false, float_lit(&s.as_str(), suf, diag)),
-
-        token::Str_(mut sym) => {
-            // If there are no characters requiring special treatment we can
-            // reuse the symbol from the Token. Otherwise, we must generate a
-            // new symbol because the string in the LitKind is different to the
-            // string in the Token.
-            let mut has_error = false;
-            let s = &sym.as_str();
-            if s.as_bytes().iter().any(|&c| c == b'\\' || c == b'\r') {
-                let mut buf = String::with_capacity(s.len());
-                unescape_str(s, &mut |_, unescaped_char| {
-                    match unescaped_char {
-                        Ok(c) => buf.push(c),
-                        Err(_) => has_error = true,
-                    }
-                });
-                if has_error {
-                    return (true, Some(LitKind::Err(sym)));
-                }
-                sym = Symbol::intern(&buf)
-            }
-
-            (true, Some(LitKind::Str(sym, ast::StrStyle::Cooked)))
-        }
-        token::StrRaw(mut sym, n) => {
-            // Ditto.
-            let s = &sym.as_str();
-            if s.contains('\r') {
-                sym = Symbol::intern(&raw_str_lit(s));
-            }
-            (true, Some(LitKind::Str(sym, ast::StrStyle::Raw(n))))
-        }
-        token::ByteStr(i) => {
-            let s = &i.as_str();
-            let mut buf = Vec::with_capacity(s.len());
-            let mut has_error = false;
-            unescape_byte_str(s, &mut |_, unescaped_byte| {
-                match unescaped_byte {
-                    Ok(c) => buf.push(c),
-                    Err(_) => has_error = true,
-                }
-            });
-            if has_error {
-                return (true, Some(LitKind::Err(i)));
-            }
-            buf.shrink_to_fit();
-            (true, Some(LitKind::ByteStr(Lrc::new(buf))))
-        }
-        token::ByteStrRaw(i, _) => {
-            (true, Some(LitKind::ByteStr(Lrc::new(i.to_string().into_bytes()))))
-        }
-    }
-}
-
-fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
-                      -> Option<ast::LitKind> {
-    debug!("filtered_float_lit: {}, {:?}", data, suffix);
-    let suffix = match suffix {
-        Some(suffix) => suffix,
-        None => return Some(ast::LitKind::FloatUnsuffixed(data)),
-    };
-
-    Some(match &*suffix.as_str() {
-        "f32" => ast::LitKind::Float(data, ast::FloatTy::F32),
-        "f64" => ast::LitKind::Float(data, ast::FloatTy::F64),
-        suf => {
-            err!(diag, |span, diag| {
-                if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
-                    // if it looks like a width, lets try to be helpful.
-                    let msg = format!("invalid width `{}` for float literal", &suf[1..]);
-                    diag.struct_span_err(span, &msg).help("valid widths are 32 and 64").emit()
-                } else {
-                    let msg = format!("invalid suffix `{}` for float literal", suf);
-                    diag.struct_span_err(span, &msg)
-                        .span_label(span, format!("invalid suffix `{}`", suf))
-                        .help("valid suffixes are `f32` and `f64`")
-                        .emit();
-                }
-            });
-
-            ast::LitKind::FloatUnsuffixed(data)
-        }
-    })
-}
-fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
-                 -> Option<ast::LitKind> {
-    debug!("float_lit: {:?}, {:?}", s, suffix);
-    // FIXME #2252: bounds checking float literals is deferred until trans
-
-    // Strip underscores without allocating a new String unless necessary.
-    let s2;
-    let s = if s.chars().any(|c| c == '_') {
-        s2 = s.chars().filter(|&c| c != '_').collect::<String>();
-        &s2
-    } else {
-        s
-    };
-
-    filtered_float_lit(Symbol::intern(s), suffix, diag)
-}
-
-fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
-                   -> Option<ast::LitKind> {
-    // s can only be ascii, byte indexing is fine
-
-    // Strip underscores without allocating a new String unless necessary.
-    let s2;
-    let mut s = if s.chars().any(|c| c == '_') {
-        s2 = s.chars().filter(|&c| c != '_').collect::<String>();
-        &s2
-    } else {
-        s
-    };
-
-    debug!("integer_lit: {}, {:?}", s, suffix);
-
-    let mut base = 10;
-    let orig = s;
-    let mut ty = ast::LitIntType::Unsuffixed;
-
-    if s.starts_with('0') && s.len() > 1 {
-        match s.as_bytes()[1] {
-            b'x' => base = 16,
-            b'o' => base = 8,
-            b'b' => base = 2,
-            _ => { }
-        }
-    }
-
-    // 1f64 and 2f32 etc. are valid float literals.
-    if let Some(suf) = suffix {
-        if looks_like_width_suffix(&['f'], &suf.as_str()) {
-            let err = match base {
-                16 => Some("hexadecimal float literal is not supported"),
-                8 => Some("octal float literal is not supported"),
-                2 => Some("binary float literal is not supported"),
-                _ => None,
-            };
-            if let Some(err) = err {
-                err!(diag, |span, diag| {
-                    diag.struct_span_err(span, err)
-                        .span_label(span, "not supported")
-                        .emit();
-                });
-            }
-            return filtered_float_lit(Symbol::intern(s), Some(suf), diag)
-        }
-    }
-
-    if base != 10 {
-        s = &s[2..];
-    }
-
-    if let Some(suf) = suffix {
-        if suf.as_str().is_empty() {
-            err!(diag, |span, diag| diag.span_bug(span, "found empty literal suffix in Some"));
-        }
-        ty = match &*suf.as_str() {
-            "isize" => ast::LitIntType::Signed(ast::IntTy::Isize),
-            "i8"  => ast::LitIntType::Signed(ast::IntTy::I8),
-            "i16" => ast::LitIntType::Signed(ast::IntTy::I16),
-            "i32" => ast::LitIntType::Signed(ast::IntTy::I32),
-            "i64" => ast::LitIntType::Signed(ast::IntTy::I64),
-            "i128" => ast::LitIntType::Signed(ast::IntTy::I128),
-            "usize" => ast::LitIntType::Unsigned(ast::UintTy::Usize),
-            "u8"  => ast::LitIntType::Unsigned(ast::UintTy::U8),
-            "u16" => ast::LitIntType::Unsigned(ast::UintTy::U16),
-            "u32" => ast::LitIntType::Unsigned(ast::UintTy::U32),
-            "u64" => ast::LitIntType::Unsigned(ast::UintTy::U64),
-            "u128" => ast::LitIntType::Unsigned(ast::UintTy::U128),
-            suf => {
-                // i<digits> and u<digits> look like widths, so lets
-                // give an error message along those lines
-                err!(diag, |span, diag| {
-                    if looks_like_width_suffix(&['i', 'u'], suf) {
-                        let msg = format!("invalid width `{}` for integer literal", &suf[1..]);
-                        diag.struct_span_err(span, &msg)
-                            .help("valid widths are 8, 16, 32, 64 and 128")
-                            .emit();
-                    } else {
-                        let msg = format!("invalid suffix `{}` for numeric literal", suf);
-                        diag.struct_span_err(span, &msg)
-                            .span_label(span, format!("invalid suffix `{}`", suf))
-                            .help("the suffix must be one of the integral types \
-                                   (`u32`, `isize`, etc)")
-                            .emit();
-                    }
-                });
-
-                ty
-            }
-        }
-    }
-
-    debug!("integer_lit: the type is {:?}, base {:?}, the new string is {:?}, the original \
-           string was {:?}, the original suffix was {:?}", ty, base, s, orig, suffix);
-
-    Some(match u128::from_str_radix(s, base) {
-        Ok(r) => ast::LitKind::Int(r, ty),
-        Err(_) => {
-            // small bases are lexed as if they were base 10, e.g, the string
-            // might be `0b10201`. This will cause the conversion above to fail,
-            // but these cases have errors in the lexer: we don't want to emit
-            // two errors, and we especially don't want to emit this error since
-            // it isn't necessarily true.
-            let already_errored = base < 10 &&
-                s.chars().any(|c| c.to_digit(10).map_or(false, |d| d >= base));
-
-            if !already_errored {
-                err!(diag, |span, diag| diag.span_err(span, "int literal is too large"));
-            }
-            ast::LitKind::Int(0, ty)
-        }
-    })
 }
 
 /// A sequence separator.
@@ -674,6 +391,8 @@ mod tests {
     #[test]
     fn string_to_tts_macro () {
         with_globals(|| {
+            use crate::symbol::sym;
+
             let tts: Vec<_> =
                 string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).trees().collect();
             let tts: &[TokenTree] = &tts[..];
@@ -686,8 +405,8 @@ mod tests {
                     Some(&TokenTree::Token(_, token::Ident(name_zip, false))),
                     Some(&TokenTree::Delimited(_, macro_delim, ref macro_tts)),
                 )
-                if name_macro_rules.name == "macro_rules"
-                && name_zip.name == "zip" => {
+                if name_macro_rules.name == sym::macro_rules
+                && name_zip.name.as_str() == "zip" => {
                     let tts = &macro_tts.trees().collect::<Vec<_>>();
                     match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
                         (
@@ -704,7 +423,7 @@ mod tests {
                                     Some(&TokenTree::Token(_, token::Dollar)),
                                     Some(&TokenTree::Token(_, token::Ident(ident, false))),
                                 )
-                                if first_delim == token::Paren && ident.name == "a" => {},
+                                if first_delim == token::Paren && ident.name.as_str() == "a" => {},
                                 _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
                             }
                             let tts = &second_tts.trees().collect::<Vec<_>>();
@@ -714,7 +433,7 @@ mod tests {
                                     Some(&TokenTree::Token(_, token::Dollar)),
                                     Some(&TokenTree::Token(_, token::Ident(ident, false))),
                                 )
-                                if second_delim == token::Paren && ident.name == "a" => {},
+                                if second_delim == token::Paren && ident.name.as_str() == "a" => {},
                                 _ => panic!("value 4: {:?} {:?}", second_delim, second_tts),
                             }
                         },
@@ -858,20 +577,22 @@ mod tests {
 
     #[test] fn crlf_doc_comments() {
         with_globals(|| {
+            use crate::symbol::sym;
+
             let sess = ParseSess::new(FilePathMapping::empty());
 
             let name_1 = FileName::Custom("crlf_source_1".to_string());
             let source = "/// doc comment\r\nfn foo() {}".to_string();
             let item = parse_item_from_source_str(name_1, source, &sess)
                 .unwrap().unwrap();
-            let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-            assert_eq!(doc, "/// doc comment");
+            let doc = first_attr_value_str_by_name(&item.attrs, sym::doc).unwrap();
+            assert_eq!(doc.as_str(), "/// doc comment");
 
             let name_2 = FileName::Custom("crlf_source_2".to_string());
             let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
             let item = parse_item_from_source_str(name_2, source, &sess)
                 .unwrap().unwrap();
-            let docs = item.attrs.iter().filter(|a| a.path == "doc")
+            let docs = item.attrs.iter().filter(|a| a.path == sym::doc)
                         .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
             let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
             assert_eq!(&docs[..], b);
@@ -879,8 +600,8 @@ mod tests {
             let name_3 = FileName::Custom("clrf_source_3".to_string());
             let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
             let item = parse_item_from_source_str(name_3, source, &sess).unwrap().unwrap();
-            let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-            assert_eq!(doc, "/** doc comment\n *  with CRLF */");
+            let doc = first_attr_value_str_by_name(&item.attrs, sym::doc).unwrap();
+            assert_eq!(doc.as_str(), "/** doc comment\n *  with CRLF */");
         });
     }
 

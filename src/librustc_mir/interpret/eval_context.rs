@@ -613,7 +613,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         trace!("{:?} is now live", local);
 
         let local_val = LocalValue::Uninitialized;
-        // StorageLive *always* kills the value that's currently stored
+        // StorageLive *always* kills the value that's currently stored.
+        // However, we do not error if the variable already is live;
+        // see <https://github.com/rust-lang/rust/issues/42371>.
         Ok(mem::replace(&mut self.frame_mut().locals[local].value, local_val))
     }
 

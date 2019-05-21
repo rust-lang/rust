@@ -76,43 +76,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     end_block.unit()
                 }
             }
-            ExprKind::If {
-                condition: cond_expr,
-                then: then_expr,
-                otherwise: else_expr,
-            } => {
-                let operand = unpack!(block = this.as_local_operand(block, cond_expr));
-
-                let mut then_block = this.cfg.start_new_block();
-                let mut else_block = this.cfg.start_new_block();
-                let term = TerminatorKind::if_(this.hir.tcx(), operand, then_block, else_block);
-                this.cfg.terminate(block, source_info, term);
-
-                unpack!(then_block = this.into(destination, then_block, then_expr));
-                else_block = if let Some(else_expr) = else_expr {
-                    unpack!(this.into(destination, else_block, else_expr))
-                } else {
-                    // Body of the `if` expression without an `else` clause must return `()`, thus
-                    // we implicitly generate a `else {}` if it is not specified.
-                    this.cfg
-                        .push_assign_unit(else_block, source_info, destination);
-                    else_block
-                };
-
-                let join_block = this.cfg.start_new_block();
-                this.cfg.terminate(
-                    then_block,
-                    source_info,
-                    TerminatorKind::Goto { target: join_block },
-                );
-                this.cfg.terminate(
-                    else_block,
-                    source_info,
-                    TerminatorKind::Goto { target: join_block },
-                );
-
-                join_block.unit()
-            }
             ExprKind::LogicalOp { op, lhs, rhs } => {
                 // And:
                 //

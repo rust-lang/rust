@@ -1,5 +1,5 @@
 error[E0597]: `v` does not live long enough
-  --> $DIR/method-ufcs-inherent-2.rs:16:37
+  --> $DIR/method-ufcs-inherent-2.rs:14:37
    |
 LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here
@@ -14,7 +14,7 @@ LL | }
    | - `v` dropped here while still borrowed
 
 error[E0597]: `v` does not live long enough
-  --> $DIR/method-ufcs-inherent-2.rs:16:41
+  --> $DIR/method-ufcs-inherent-2.rs:14:41
    |
 LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here

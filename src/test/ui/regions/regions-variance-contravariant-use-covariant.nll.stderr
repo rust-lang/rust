@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-variance-contravariant-use-covariant.rs:23:12
+   |
+LL | fn use_<'short,'long>(c: Contravariant<'short>,
+   |         ------ ----- lifetime `'long` defined here
+   |         |
+   |         lifetime `'short` defined here
+...
+LL |     let _: Contravariant<'long> = c;
+   |            ^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'short` must outlive `'long`
+
+error: aborting due to previous error
+

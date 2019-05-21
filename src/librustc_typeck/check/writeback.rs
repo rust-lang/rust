@@ -16,6 +16,7 @@ use rustc::mir::interpret::ConstValue;
 use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
 use std::mem;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -36,8 +37,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let item_def_id = self.tcx.hir().local_def_id(item_id);
 
         // This attribute causes us to dump some writeback information
-        // in the form of errors, which is used for unit tests.
-        let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, "rustc_dump_user_substs");
+        // in the form of errors, which is uSymbolfor unit tests.
+        let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_substs);
 
         let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
         for arg in &body.arguments {
@@ -465,6 +466,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             let hir_id = self.tcx().hir().as_local_hir_id(def_id).unwrap();
             let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &hir_id);
 
+            debug_assert!(!instantiated_ty.has_escaping_bound_vars());
+
             let generics = self.tcx().generics_of(def_id);
 
             let definition_ty = if generics.parent.is_some() {
@@ -523,8 +526,9 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     },
                     lt_op: |region| {
                         match region {
-                            // ignore static regions
-                            ty::ReStatic => region,
+                            // Skip static and bound regions: they don't
+                            // require substitution.
+                            ty::ReStatic | ty::ReLateBound(..) => region,
                             _ => {
                                 trace!("checking {:?}", region);
                                 for (subst, p) in opaque_defn.substs.iter().zip(&generics.params) {
@@ -611,26 +615,33 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            let new = ty::ResolvedOpaqueTy {
-                concrete_type: definition_ty,
-                substs: self.tcx().lift_to_global(&opaque_defn.substs).unwrap(),
-            };
+            if let Some(substs) = self.tcx().lift_to_global(&opaque_defn.substs) {
+                let new = ty::ResolvedOpaqueTy {
+                    concrete_type: definition_ty,
+                    substs,
+                };
 
-            let old = self.tables
-                .concrete_existential_types
-                .insert(def_id, new);
-            if let Some(old) = old {
-                if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
-                    span_bug!(
-                        span,
-                        "visit_opaque_types tried to write \
-                        different types for the same existential type: {:?}, {:?}, {:?}, {:?}",
-                        def_id,
-                        definition_ty,
-                        opaque_defn,
-                        old,
-                    );
+                let old = self.tables
+                    .concrete_existential_types
+                    .insert(def_id, new);
+                if let Some(old) = old {
+                    if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
+                        span_bug!(
+                            span,
+                            "visit_opaque_types tried to write \
+                            different types for the same existential type: {:?}, {:?}, {:?}, {:?}",
+                            def_id,
+                            definition_ty,
+                            opaque_defn,
+                            old,
+                        );
+                    }
                 }
+            } else {
+                self.tcx().sess.delay_span_bug(
+                    span,
+                    "cannot lift `opaque_defn` substs to global type context",
+                );
             }
         }
     }

@@ -1,22 +1,52 @@
-error: lifetime may not live long enough
-  --> $DIR/type-alias-free-regions.rs:19:9
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/type-alias-free-regions.rs:17:9
+   |
+LL |         C { f: b }
+   |         ^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 16:5...
+  --> $DIR/type-alias-free-regions.rs:16:5
+   |
+LL | /     fn from_box(b: Box<B>) -> Self {
+LL | |         C { f: b }
+LL | |     }
+   | |_____^
+   = note: ...so that the expression is assignable:
+           expected std::boxed::Box<std::boxed::Box<&isize>>
+              found std::boxed::Box<std::boxed::Box<&isize>>
+note: but, the lifetime must be valid for the lifetime 'a as defined on the impl at 15:6...
+  --> $DIR/type-alias-free-regions.rs:15:6
    |
 LL | impl<'a> FromBox<'a> for C<'a> {
-   |      -- lifetime `'a` defined here
-LL |     fn from_box(b: Box<B>) -> Self {
-   |                 - has type `std::boxed::Box<std::boxed::Box<&'1 isize>>`
-LL |         C { f: b }
-   |         ^^^^^^^^^^ returning this value requires that `'1` must outlive `'a`
+   |      ^^
+   = note: ...so that the expression is assignable:
+           expected C<'a>
+              found C<'_>
 
-error: lifetime may not live long enough
-  --> $DIR/type-alias-free-regions.rs:29:9
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/type-alias-free-regions.rs:27:16
+   |
+LL |         C { f: Box::new(b.0) }
+   |                ^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 26:5...
+  --> $DIR/type-alias-free-regions.rs:26:5
+   |
+LL | /     fn from_tuple(b: (B,)) -> Self {
+LL | |         C { f: Box::new(b.0) }
+LL | |     }
+   | |_____^
+   = note: ...so that the expression is assignable:
+           expected std::boxed::Box<&isize>
+              found std::boxed::Box<&isize>
+note: but, the lifetime must be valid for the lifetime 'a as defined on the impl at 25:6...
+  --> $DIR/type-alias-free-regions.rs:25:6
    |
 LL | impl<'a> FromTuple<'a> for C<'a> {
-   |      -- lifetime `'a` defined here
-LL |     fn from_tuple(b: (B,)) -> Self {
-   |                   - has type `(std::boxed::Box<&'1 isize>,)`
-LL |         C { f: Box::new(b.0) }
-   |         ^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'a`
+   |      ^^
+   = note: ...so that the expression is assignable:
+           expected C<'a>
+              found C<'_>
 
 error: aborting due to 2 previous errors
 

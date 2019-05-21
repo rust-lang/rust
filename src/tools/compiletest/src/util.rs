@@ -9,7 +9,6 @@ use log::*;
 const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("android", "android"),
     ("androideabi", "android"),
-    ("bitrig", "bitrig"),
     ("cloudabi", "cloudabi"),
     ("cuda", "cuda"),
     ("darwin", "macos"),

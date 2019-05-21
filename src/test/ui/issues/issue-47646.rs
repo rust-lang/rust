@@ -1,6 +1,3 @@
-#![allow(warnings)]
-#![feature(nll)]
-
 use std::collections::BinaryHeap;
 
 fn main() {

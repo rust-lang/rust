@@ -683,7 +683,7 @@ impl Step for RustdocUi {
             target: self.target,
             mode: "ui",
             suite: "rustdoc-ui",
-            path: None,
+            path: Some("src/test/rustdoc-ui"),
             compare_mode: None,
         })
     }
@@ -1184,8 +1184,19 @@ impl Step for Compiletest {
                     Err(_) => p,
                 }
             })
-            .filter(|p| p.starts_with(suite_path) && p.is_file())
-            .map(|p| p.strip_prefix(suite_path).unwrap().to_str().unwrap())
+            .filter(|p| p.starts_with(suite_path) && (p.is_dir() || p.is_file()))
+            .filter_map(|p| {
+                // Since test suite paths are themselves directories, if we don't
+                // specify a directory or file, we'll get an empty string here
+                // (the result of the test suite directory without its suite prefix).
+                // Therefore, we need to filter these out, as only the first --test-args
+                // flag is respected, so providing an empty --test-args conflicts with
+                // any following it.
+                match p.strip_prefix(suite_path).ok().and_then(|p| p.to_str()) {
+                    Some(s) if s != "" => Some(s),
+                    _ => None,
+                }
+            })
             .collect();
 
         test_args.append(&mut builder.config.cmd.test_args());
@@ -1869,6 +1880,10 @@ impl Step for CrateRustdoc {
 
         cargo.arg("--");
         cargo.args(&builder.config.cmd.test_args());
+
+        if self.host.contains("musl") {
+            cargo.arg("'-Ctarget-feature=-crt-static'");
+        }
 
         if !builder.config.verbose_tests {
             cargo.arg("--quiet");

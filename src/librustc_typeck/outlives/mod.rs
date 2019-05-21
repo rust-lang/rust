@@ -5,6 +5,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, CratePredicatesMap, TyCtxt};
 use rustc_data_structures::sync::Lrc;
+use syntax::symbol::sym;
 
 mod explicit;
 mod implicit_infer;
@@ -40,7 +41,7 @@ fn inferred_outlives_of<'a, 'tcx>(
                     .map(|p| *p)
                     .unwrap_or(&[]);
 
-                if tcx.has_attr(item_def_id, "rustc_outlives") {
+                if tcx.has_attr(item_def_id, sym::rustc_outlives) {
                     let mut pred: Vec<String> = predicates
                         .iter()
                         .map(|out_pred| match out_pred {

@@ -3,9 +3,6 @@
 
 // run-pass
 
-#![feature(nll)]
-#![allow(warnings)]
-
 pub struct Container<T: Iterator> {
     value: Option<T::Item>,
 }

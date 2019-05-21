@@ -191,7 +191,7 @@ use syntax::ext::build::AstBuilder;
 use syntax::source_map::{self, respan};
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::{Symbol, keywords, sym};
 use syntax::parse::ParseSess;
 use syntax_pos::{DUMMY_SP, Span};
 
@@ -426,7 +426,7 @@ impl<'a> TraitDef<'a> {
                     }
                 };
                 let is_always_copy =
-                    attr::contains_name(&item.attrs, "rustc_copy_clone_marker") &&
+                    attr::contains_name(&item.attrs, sym::rustc_copy_clone_marker) &&
                     has_no_type_params;
                 let use_temporaries = is_packed && is_always_copy;
 
@@ -464,8 +464,8 @@ impl<'a> TraitDef<'a> {
                 attrs.extend(item.attrs
                     .iter()
                     .filter(|a| {
-                        ["allow", "warn", "deny", "forbid", "stable", "unstable"]
-                            .contains(&a.name_or_empty().get())
+                        [sym::allow, sym::warn, sym::deny, sym::forbid, sym::stable, sym::unstable]
+                            .contains(&a.name_or_empty())
                     })
                     .cloned());
                 push(Annotatable::Item(P(ast::Item { attrs: attrs, ..(*newitem).clone() })))

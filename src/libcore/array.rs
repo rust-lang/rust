@@ -8,7 +8,7 @@
 
 use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
-use crate::convert::TryFrom;
+use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{Hash, self};
 use crate::marker::Unsize;
@@ -71,6 +71,13 @@ impl TryFromSliceError {
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
         "could not convert slice to array"
+    }
+}
+
+#[stable(feature = "try_from_slice_error", since = "1.36.0")]
+impl From<Infallible> for TryFromSliceError {
+    fn from(x: Infallible) -> TryFromSliceError {
+        match x {}
     }
 }
 

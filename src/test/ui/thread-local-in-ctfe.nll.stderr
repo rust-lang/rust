@@ -1,0 +1,49 @@
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-in-ctfe.rs:6:17
+   |
+LL | static B: u32 = A;
+   |                 ^
+
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-in-ctfe.rs:9:18
+   |
+LL | static C: &u32 = &A;
+   |                  ^^
+
+error[E0712]: thread-local variable borrowed past end of function
+  --> $DIR/thread-local-in-ctfe.rs:9:18
+   |
+LL | static C: &u32 = &A;
+   |                  ^^- end of enclosing function is here
+   |                  |
+   |                  thread-local variables cannot be borrowed beyond the end of the function
+
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-in-ctfe.rs:15:16
+   |
+LL | const D: u32 = A;
+   |                ^
+
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-in-ctfe.rs:18:17
+   |
+LL | const E: &u32 = &A;
+   |                 ^^
+
+error[E0712]: thread-local variable borrowed past end of function
+  --> $DIR/thread-local-in-ctfe.rs:18:17
+   |
+LL | const E: &u32 = &A;
+   |                 ^^- end of enclosing function is here
+   |                 |
+   |                 thread-local variables cannot be borrowed beyond the end of the function
+
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-in-ctfe.rs:25:5
+   |
+LL |     A
+   |     ^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0712`.

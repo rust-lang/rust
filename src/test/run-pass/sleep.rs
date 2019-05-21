@@ -1,4 +1,5 @@
 // ignore-emscripten no threads support
+// ignore-sgx no thread sleep support
 
 use std::thread::{self, sleep};
 use std::time::Duration;

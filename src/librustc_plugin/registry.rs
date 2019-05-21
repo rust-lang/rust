@@ -7,7 +7,7 @@ use rustc::util::nodemap::FxHashMap;
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
 use syntax::ext::base::MacroExpanderFn;
 use syntax::ext::hygiene;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
 use syntax_pos::Span;
@@ -49,7 +49,7 @@ pub struct Registry<'a> {
     pub llvm_passes: Vec<String>,
 
     #[doc(hidden)]
-    pub attributes: Vec<(String, AttributeType)>,
+    pub attributes: Vec<(Symbol, AttributeType)>,
 }
 
 impl<'a> Registry<'a> {
@@ -86,7 +86,7 @@ impl<'a> Registry<'a> {
     ///
     /// This is the most general hook into `libsyntax`'s expansion behavior.
     pub fn register_syntax_extension(&mut self, name: ast::Name, extension: SyntaxExtension) {
-        if name == "macro_rules" {
+        if name == sym::macro_rules {
             panic!("user-defined macros may not be named `macro_rules`");
         }
         self.syntax_exts.push((name, match extension {
@@ -169,7 +169,7 @@ impl<'a> Registry<'a> {
     /// Registered attributes will bypass the `custom_attribute` feature gate.
     /// `Whitelisted` attributes will additionally not trigger the `unused_attribute`
     /// lint. `CrateLevel` attributes will not be allowed on anything other than a crate.
-    pub fn register_attribute(&mut self, name: String, ty: AttributeType) {
+    pub fn register_attribute(&mut self, name: Symbol, ty: AttributeType) {
         self.attributes.push((name, ty));
     }
 }

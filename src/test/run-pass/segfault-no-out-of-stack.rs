@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 // ignore-cloudabi can't run commands
 // ignore-emscripten can't run commands
+// ignore-sgx no processes
 
 #![feature(rustc_private)]
 

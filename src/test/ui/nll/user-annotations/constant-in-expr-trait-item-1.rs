@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 trait Foo<'a> {
     const C: &'a u32;
 }

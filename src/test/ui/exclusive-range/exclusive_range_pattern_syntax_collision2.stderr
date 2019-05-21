@@ -1,8 +1,8 @@
 error: unexpected token: `]`
-  --> $DIR/exclusive_range_pattern_syntax_collision2.rs:5:15
+  --> $DIR/exclusive_range_pattern_syntax_collision2.rs:5:17
    |
 LL |         [_, 99..] => {},
-   |               ^^
+   |                 ^
 
 error: aborting due to previous error
 

@@ -17,6 +17,13 @@ fn wrapped_closure() -> impl Sized {
     A(f)
 }
 
+fn wrapped_closure_with_bound() -> impl Sized + 'static {
+    let f = |x| x;
+    f(&0);
+    A(f)
+}
+
 fn main() {
     let x: Box<dyn Send> = Box::new(wrapped_closure());
+    let y: Box<dyn Send> = Box::new(wrapped_closure_with_bound());
 }

@@ -4,6 +4,7 @@ use rustc::hir;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
 use syntax::attr;
+use syntax::symbol::sym;
 
 pub fn find<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> Option<DefId> {
     tcx.proc_macro_decls_static(LOCAL_CRATE)
@@ -27,7 +28,7 @@ struct Finder {
 
 impl<'v> ItemLikeVisitor<'v> for Finder {
     fn visit_item(&mut self, item: &hir::Item) {
-        if attr::contains_name(&item.attrs, "rustc_proc_macro_decls") {
+        if attr::contains_name(&item.attrs, sym::rustc_proc_macro_decls) {
             self.decls = Some(item.hir_id);
         }
     }

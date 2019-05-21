@@ -3,8 +3,7 @@ pub use CommentStyle::*;
 use crate::ast;
 use crate::source_map::SourceMap;
 use crate::parse::lexer::{is_block_doc_comment, is_pattern_whitespace};
-use crate::parse::lexer::{self, ParseSess, StringReader, TokenAndSpan};
-use crate::print::pprust;
+use crate::parse::lexer::{self, ParseSess, StringReader};
 
 use syntax_pos::{BytePos, CharPos, Pos, FileName};
 use log::debug;
@@ -339,16 +338,9 @@ fn consume_comment(rdr: &mut StringReader<'_>,
     debug!("<<< consume comment");
 }
 
-#[derive(Clone)]
-pub struct Literal {
-    pub lit: String,
-    pub pos: BytePos,
-}
-
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
-pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut dyn Read)
-    -> (Vec<Comment>, Vec<Literal>)
+pub fn gather_comments(sess: &ParseSess, path: FileName, srdr: &mut dyn Read) -> Vec<Comment>
 {
     let mut src = String::new();
     srdr.read_to_string(&mut src).unwrap();
@@ -357,7 +349,6 @@ pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut
     let mut rdr = lexer::StringReader::new_raw(sess, source_file, None);
 
     let mut comments: Vec<Comment> = Vec::new();
-    let mut literals: Vec<Literal> = Vec::new();
     let mut code_to_the_left = false; // Only code
     let mut anything_to_the_left = false; // Code or comments
 
@@ -382,26 +373,12 @@ pub fn gather_comments_and_literals(sess: &ParseSess, path: FileName, srdr: &mut
             }
         }
 
-        let bstart = rdr.pos;
         rdr.next_token();
-        // discard, and look ahead; we're working with internal state
-        let TokenAndSpan { tok, sp } = rdr.peek();
-        if tok.is_lit() {
-            rdr.with_str_from(bstart, |s| {
-                debug!("tok lit: {}", s);
-                literals.push(Literal {
-                    lit: s.to_string(),
-                    pos: sp.lo(),
-                });
-            })
-        } else {
-            debug!("tok: {}", pprust::token_to_string(&tok));
-        }
         code_to_the_left = true;
         anything_to_the_left = true;
     }
 
-    (comments, literals)
+    comments
 }
 
 #[cfg(test)]

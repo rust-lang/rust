@@ -4,7 +4,7 @@ use crate::ext::build::AstBuilder;
 use crate::parse::{self, token, DirectoryOwnership};
 use crate::print::pprust;
 use crate::ptr::P;
-use crate::symbol::Symbol;
+use crate::symbol::{Symbol, sym};
 use crate::tokenstream;
 
 use smallvec::SmallVec;
@@ -44,7 +44,7 @@ pub fn expand_column(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::TokenTr
 /* __rust_unstable_column!(): expands to the current column number */
 pub fn expand_column_gated(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::TokenTree])
                   -> Box<dyn base::MacResult+'static> {
-    if sp.allows_unstable("__rust_unstable_column") {
+    if sp.allows_unstable(sym::__rust_unstable_column) {
         expand_column(cx, sp, tts)
     } else {
         cx.span_fatal(sp, "the __rust_unstable_column macro is unstable");

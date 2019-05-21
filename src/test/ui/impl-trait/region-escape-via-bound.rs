@@ -5,7 +5,6 @@
 
 #![allow(dead_code)]
 #![feature(in_band_lifetimes)]
-#![feature(nll)]
 
 use std::cell::Cell;
 

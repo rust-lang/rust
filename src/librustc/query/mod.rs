@@ -1052,7 +1052,7 @@ rustc_queries! {
     }
 
     Other {
-        query target_features_whitelist(_: CrateNum) -> Lrc<FxHashMap<String, Option<String>>> {
+        query target_features_whitelist(_: CrateNum) -> Lrc<FxHashMap<String, Option<Symbol>>> {
             eval_always
             desc { "looking up the whitelist of target features" }
         }

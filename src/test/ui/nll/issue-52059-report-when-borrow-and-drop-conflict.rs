@@ -4,7 +4,6 @@
 // of the fact that the type implements Drop.
 
 #![feature(nll)]
-#![allow(dead_code)]
 
 pub struct S<'a> { url: &'a mut String }
 

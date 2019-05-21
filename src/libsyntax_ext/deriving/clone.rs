@@ -7,7 +7,7 @@ use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::{Symbol, keywords, sym};
 use syntax_pos::Span;
 
 pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
@@ -37,7 +37,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
             match annitem.node {
                 ItemKind::Struct(_, Generics { ref params, .. }) |
                 ItemKind::Enum(_, Generics { ref params, .. }) => {
-                    if attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker") &&
+                    if attr::contains_name(&annitem.attrs, sym::rustc_copy_clone_marker) &&
                         !params.iter().any(|param| match param.kind {
                             ast::GenericParamKind::Type { .. } => true,
                             _ => false,

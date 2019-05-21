@@ -601,13 +601,6 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 arms: arms.iter().map(|a| convert_arm(cx, a)).collect(),
             }
         }
-        hir::ExprKind::If(ref cond, ref then, ref otherwise) => {
-            ExprKind::If {
-                condition: cond.to_ref(),
-                then: then.to_ref(),
-                otherwise: otherwise.to_ref(),
-            }
-        }
         hir::ExprKind::While(ref cond, ref body, _) => {
             ExprKind::Loop {
                 condition: Some(cond.to_ref()),

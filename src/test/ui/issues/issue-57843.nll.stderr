@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-57843.rs:23:9
+   |
+LL |     Foo(Box::new(|_| ()));
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

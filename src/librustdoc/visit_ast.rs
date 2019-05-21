@@ -10,6 +10,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::ext::base::MacroKind;
 use syntax::source_map::Spanned;
+use syntax::symbol::sym;
 use syntax_pos::{self, Span};
 
 use std::mem;
@@ -165,11 +166,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     body: hir::BodyId) {
         debug!("Visiting fn");
         let macro_kind = item.attrs.iter().filter_map(|a| {
-            if a.check_name("proc_macro") {
+            if a.check_name(sym::proc_macro) {
                 Some(MacroKind::Bang)
-            } else if a.check_name("proc_macro_derive") {
+            } else if a.check_name(sym::proc_macro_derive) {
                 Some(MacroKind::Derive)
-            } else if a.check_name("proc_macro_attribute") {
+            } else if a.check_name(sym::proc_macro_attribute) {
                 Some(MacroKind::Attr)
             } else {
                 None
@@ -178,7 +179,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         match macro_kind {
             Some(kind) => {
                 let name = if kind == MacroKind::Derive {
-                    item.attrs.lists("proc_macro_derive")
+                    item.attrs.lists(sym::proc_macro_derive)
                               .filter_map(|mi| mi.ident())
                               .next()
                               .expect("proc-macro derives require a name")
@@ -188,8 +189,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
 
                 let mut helpers = Vec::new();
-                for mi in item.attrs.lists("proc_macro_derive") {
-                    if !mi.check_name("attributes") {
+                for mi in item.attrs.lists(sym::proc_macro_derive) {
+                    if !mi.check_name(sym::attributes) {
                         continue;
                     }
 
@@ -274,7 +275,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: hir::HirId) -> bool {
             while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
                 node = id;
-                if cx.tcx.hir().attrs_by_hir_id(node).lists("doc").has_word("hidden") {
+                if cx.tcx.hir().attrs_by_hir_id(node)
+                    .lists(sym::doc).has_word(sym::hidden) {
                     return true;
                 }
                 if node == hir::CRATE_HIR_ID {
@@ -295,8 +297,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         let use_attrs = tcx.hir().attrs_by_hir_id(id);
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
-        let is_no_inline = use_attrs.lists("doc").has_word("no_inline") ||
-                           use_attrs.lists("doc").has_word("hidden");
+        let is_no_inline = use_attrs.lists(sym::doc).has_word(sym::no_inline) ||
+                           use_attrs.lists(sym::doc).has_word(sym::hidden);
 
         // For cross-crate impl inlining we need to know whether items are
         // reachable in documentation -- a previously nonreachable item can be
@@ -304,7 +306,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // (this is done here because we need to know this upfront).
         if !res_did.is_local() && !is_no_inline {
             let attrs = clean::inline::load_attrs(self.cx, res_did);
-            let self_is_hidden = attrs.lists("doc").has_word("hidden");
+            let self_is_hidden = attrs.lists(sym::doc).has_word(sym::hidden);
             match res {
                 Res::Def(DefKind::Trait, did) |
                 Res::Def(DefKind::Struct, did) |
@@ -432,8 +434,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 if item.vis.node.is_pub() && self.inside_public_path {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
-                            Some(ref list) if item.check_name("doc") => {
-                                list.iter().any(|i| i.check_name("inline"))
+                            Some(ref list) if item.check_name(sym::doc) => {
+                                list.iter().any(|i| i.check_name(sym::inline))
                             }
                             _ => false,
                         }

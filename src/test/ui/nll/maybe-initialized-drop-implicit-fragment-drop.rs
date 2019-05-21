@@ -1,6 +1,3 @@
-#![allow(warnings)]
-#![feature(nll)]
-
 struct Wrap<'p> { p: &'p mut i32 }
 
 impl<'p> Drop for Wrap<'p> {

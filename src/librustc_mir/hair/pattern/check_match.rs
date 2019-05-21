@@ -208,7 +208,11 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                                     .map(|variant| variant.ident)
                                     .collect();
                             }
-                            def.variants.is_empty()
+
+                            let is_non_exhaustive_and_non_local =
+                                def.is_variant_list_non_exhaustive() && !def.did.is_local();
+
+                            !(is_non_exhaustive_and_non_local) && def.variants.is_empty()
                         },
                         _ => false
                     }
@@ -365,6 +369,7 @@ fn check_arms<'a, 'tcx>(
             match is_useful(cx, &seen, &v, LeaveOutWitness) {
                 NotUseful => {
                     match source {
+                        hir::MatchSource::IfDesugar { .. } => bug!(),
                         hir::MatchSource::IfLetDesugar { .. } => {
                             cx.tcx.lint_hir(
                                 lint::builtin::IRREFUTABLE_LET_PATTERNS,

@@ -1,5 +1,5 @@
 // ignore-wasm32-bare no libc to test ffi with
-
+// ignore-sgx no libc
 // GetLastError doesn't seem to work with stack switching
 
 #[cfg(windows)]
@@ -23,7 +23,6 @@ pub fn main() {
 }
 
 #[cfg(any(target_os = "android",
-          target_os = "bitrig",
           target_os = "cloudabi",
           target_os = "dragonfly",
           target_os = "emscripten",

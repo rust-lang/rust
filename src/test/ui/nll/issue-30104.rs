@@ -2,8 +2,6 @@
 
 // compile-pass
 
-#![feature(nll)]
-
 use std::ops::{Deref, DerefMut};
 
 fn box_two_field(v: &mut Box<(i32, i32)>) {

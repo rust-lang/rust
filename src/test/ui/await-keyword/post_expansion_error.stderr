@@ -2,7 +2,9 @@ error: expected expression, found `)`
   --> $DIR/post_expansion_error.rs:8:12
    |
 LL |     await!()
-   |            ^ expected expression
+   |     -----  ^ expected expression
+   |     |
+   |     while parsing this await macro call
 
 error: aborting due to previous error
 

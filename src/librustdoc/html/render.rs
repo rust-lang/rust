@@ -47,9 +47,11 @@ use std::rc::Rc;
 use errors;
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
+use syntax::edition::Edition;
 use syntax::ext::base::MacroKind;
 use syntax::source_map::FileName;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::symbol::{Symbol, sym};
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
@@ -107,6 +109,8 @@ struct Context {
     /// publicly reused items to redirect to the right location.
     pub render_redirect_pages: bool,
     pub codes: ErrorCodes,
+    /// The default edition used to parse doctests.
+    pub edition: Edition,
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
@@ -505,7 +509,7 @@ pub fn initial_ids() -> Vec<String> {
      "methods",
      "deref-methods",
      "implementations",
-    ].into_iter().map(|id| (String::from(*id))).collect()
+    ].iter().map(|id| (String::from(*id))).collect()
 }
 
 /// Generates the documentation for `crate` into the directory `dst`
@@ -513,7 +517,8 @@ pub fn run(mut krate: clean::Crate,
            options: RenderOptions,
            passes: FxHashSet<String>,
            renderinfo: RenderInfo,
-           diag: &errors::Handler) -> Result<(), Error> {
+           diag: &errors::Handler,
+           edition: Edition) -> Result<(), Error> {
     // need to save a copy of the options for rendering the index page
     let md_opts = options.clone();
     let RenderOptions {
@@ -571,24 +576,24 @@ pub fn run(mut krate: clean::Crate,
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
     if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
-        for attr in attrs.lists("doc") {
-            match (attr.name_or_empty().get(), attr.value_str()) {
-                ("html_favicon_url", Some(s)) => {
+        for attr in attrs.lists(sym::doc) {
+            match (attr.name_or_empty(), attr.value_str()) {
+                (sym::html_favicon_url, Some(s)) => {
                     scx.layout.favicon = s.to_string();
                 }
-                ("html_logo_url", Some(s)) => {
+                (sym::html_logo_url, Some(s)) => {
                     scx.layout.logo = s.to_string();
                 }
-                ("html_playground_url", Some(s)) => {
+                (sym::html_playground_url, Some(s)) => {
                     markdown::PLAYGROUND.with(|slot| {
                         let name = krate.name.clone();
                         *slot.borrow_mut() = Some((Some(name), s.to_string()));
                     });
                 }
-                ("issue_tracker_base_url", Some(s)) => {
+                (sym::issue_tracker_base_url, Some(s)) => {
                     scx.issue_tracker_base_url = Some(s.to_string());
                 }
-                ("html_no_source", None) if attr.is_word() => {
+                (sym::html_no_source, None) if attr.is_word() => {
                     scx.include_sources = false;
                 }
                 _ => {}
@@ -603,6 +608,7 @@ pub fn run(mut krate: clean::Crate,
         dst,
         render_redirect_pages: false,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
+        edition,
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
     };
@@ -1127,7 +1133,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             md_opts.output = cx.dst.clone();
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
-            crate::markdown::render(index_page, md_opts, diag);
+            crate::markdown::render(index_page, md_opts, diag, cx.edition);
         } else {
             let dst = cx.dst.join("index.html");
             let mut w = BufWriter::new(try_err!(File::create(&dst), &dst));
@@ -1388,8 +1394,8 @@ fn extern_location(e: &clean::ExternalCrate, extern_url: Option<&str>, dst: &Pat
 
     // Failing that, see if there's an attribute specifying where to find this
     // external crate
-    e.attrs.lists("doc")
-     .filter(|a| a.check_name("html_root_url"))
+    e.attrs.lists(sym::doc)
+     .filter(|a| a.check_name(sym::html_root_url))
      .filter_map(|a| a.value_str())
      .map(|url| {
         let mut url = url.to_string();
@@ -1779,8 +1785,8 @@ impl<'a> Cache {
             let path = self.paths.get(&item.def_id)
                                  .map(|p| p.0[..p.0.len() - 1].join("::"))
                                  .unwrap_or("std".to_owned());
-            for alias in item.attrs.lists("doc")
-                                   .filter(|a| a.check_name("alias"))
+            for alias in item.attrs.lists(sym::doc)
+                                   .filter(|a| a.check_name(sym::alias))
                                    .filter_map(|a| a.value_str()
                                                     .map(|s| s.to_string().replace("\"", "")))
                                    .filter(|v| !v.is_empty())
@@ -2552,7 +2558,7 @@ fn render_markdown(w: &mut fmt::Formatter<'_>,
            if is_hidden { " hidden" } else { "" },
            prefix,
            Markdown(md_text, &links, RefCell::new(&mut ids),
-           cx.codes))
+           cx.codes, cx.edition))
 }
 
 fn document_short(
@@ -2917,7 +2923,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
         if let Some(note) = note {
             let mut ids = cx.id_map.borrow_mut();
-            let html = MarkdownHtml(&note, RefCell::new(&mut ids), error_codes);
+            let html = MarkdownHtml(&note, RefCell::new(&mut ids), error_codes, cx.edition);
             message.push_str(&format!(": {}", html));
         }
         stability.push(format!("<div class='stab deprecated'>{}</div>", message));
@@ -2966,7 +2972,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             message = format!(
                 "<details><summary>{}</summary>{}</details>",
                 message,
-                MarkdownHtml(&unstable_reason, RefCell::new(&mut ids), error_codes)
+                MarkdownHtml(&unstable_reason, RefCell::new(&mut ids), error_codes, cx.edition)
             );
         }
 
@@ -2991,7 +2997,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 fn item_constant(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                  c: &clean::Constant) -> fmt::Result {
     write!(w, "<pre class='rust const'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "{vis}const \
                {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
@@ -3003,7 +3009,7 @@ fn item_constant(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 fn item_static(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                s: &clean::Static) -> fmt::Result {
     write!(w, "<pre class='rust static'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "{vis}static {mutability}\
                {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
@@ -3026,7 +3032,7 @@ fn item_function(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
         f.generics
     ).len();
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w,
            "{vis}{constness}{unsafety}{asyncness}{abi}fn \
            {name}{generics}{decl}{where_clause}</pre>",
@@ -3115,7 +3121,7 @@ fn item_trait(
     // Output the trait definition
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust trait'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         write!(w, "{}{}{}trait {}{}{}",
                VisSpace(&it.visibility),
                UnsafetySpace(t.unsafety),
@@ -3378,8 +3384,10 @@ fn assoc_const(w: &mut fmt::Formatter<'_>,
                it: &clean::Item,
                ty: &clean::Type,
                _default: Option<&String>,
-               link: AssocItemLink<'_>) -> fmt::Result {
-    write!(w, "{}const <a href='{}' class=\"constant\"><b>{}</b></a>: {}",
+               link: AssocItemLink<'_>,
+               extra: &str) -> fmt::Result {
+    write!(w, "{}{}const <a href='{}' class=\"constant\"><b>{}</b></a>: {}",
+           extra,
            VisSpace(&it.visibility),
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap(),
@@ -3390,8 +3398,10 @@ fn assoc_const(w: &mut fmt::Formatter<'_>,
 fn assoc_type<W: fmt::Write>(w: &mut W, it: &clean::Item,
                              bounds: &[clean::GenericBound],
                              default: Option<&clean::Type>,
-                             link: AssocItemLink<'_>) -> fmt::Result {
-    write!(w, "type <a href='{}' class=\"type\">{}</a>",
+                             link: AssocItemLink<'_>,
+                             extra: &str) -> fmt::Result {
+    write!(w, "{}type <a href='{}' class=\"type\">{}</a>",
+           extra,
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap())?;
     if !bounds.is_empty() {
@@ -3468,7 +3478,7 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
         } else {
             (0, true)
         };
-        render_attributes(w, meth)?;
+        render_attributes(w, meth, false)?;
         write!(w, "{}{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                if parent == ItemType::Trait { "    " } else { "" },
@@ -3502,10 +3512,12 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
             method(w, item, m.header, &m.generics, &m.decl, link, parent)
         }
         clean::AssociatedConstItem(ref ty, ref default) => {
-            assoc_const(w, item, ty, default.as_ref(), link)
+            assoc_const(w, item, ty, default.as_ref(), link,
+                        if parent == ItemType::Trait { "    " } else { "" })
         }
         clean::AssociatedTypeItem(ref bounds, ref default) => {
-            assoc_type(w, item, bounds, default.as_ref(), link)
+            assoc_type(w, item, bounds, default.as_ref(), link,
+                       if parent == ItemType::Trait { "    " } else { "" })
         }
         _ => panic!("render_assoc_item called on non-associated-item")
     }
@@ -3515,7 +3527,7 @@ fn item_struct(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                s: &clean::Struct) -> fmt::Result {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust struct'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         render_struct(w,
                       it,
                       Some(&s.generics),
@@ -3566,7 +3578,7 @@ fn item_union(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                s: &clean::Union) -> fmt::Result {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust union'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         render_union(w,
                      it,
                      Some(&s.generics),
@@ -3611,7 +3623,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust enum'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         write!(w, "{}enum {}{}{}",
                VisSpace(&it.visibility),
                it.name.as_ref().unwrap(),
@@ -3761,22 +3773,30 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
     }
 }
 
-const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
-    "export_name",
-    "lang",
-    "link_section",
-    "must_use",
-    "no_mangle",
-    "repr",
-    "unsafe_destructor_blind_to_params",
-    "non_exhaustive"
+const ATTRIBUTE_WHITELIST: &'static [Symbol] = &[
+    sym::export_name,
+    sym::lang,
+    sym::link_section,
+    sym::must_use,
+    sym::no_mangle,
+    sym::repr,
+    sym::unsafe_destructor_blind_to_params,
+    sym::non_exhaustive
 ];
 
-fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item) -> fmt::Result {
+// The `top` parameter is used when generating the item declaration to ensure it doesn't have a
+// left padding. For example:
+//
+// #[foo] <----- "top" attribute
+// struct Foo {
+//     #[bar] <---- not "top" attribute
+//     bar: usize,
+// }
+fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item, top: bool) -> fmt::Result {
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
-        if !ATTRIBUTE_WHITELIST.contains(&attr.name_or_empty().get()) {
+        if !ATTRIBUTE_WHITELIST.contains(&attr.name_or_empty()) {
             continue;
         }
         if let Some(s) = render_attribute(&attr.meta().unwrap()) {
@@ -3784,7 +3804,8 @@ fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item) -> fmt::Result {
         }
     }
     if attrs.len() > 0 {
-        write!(w, "<div class=\"docblock attributes\">{}</div>", &attrs)?;
+        write!(w, "<div class=\"docblock attributes{}\">{}</div>",
+               if top { " top-attr" } else { "" }, &attrs)?;
     }
     Ok(())
 }
@@ -4117,7 +4138,8 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                             out.push_str("<span class=\"where fmt-newline\">    ");
                             assoc_type(&mut out, it, &[],
                                        Some(&tydef.type_),
-                                       AssocItemLink::GotoSource(t_did, &FxHashSet::default()))?;
+                                       AssocItemLink::GotoSource(t_did, &FxHashSet::default()),
+                                       "")?;
                             out.push_str(";</span>");
                         }
                     }
@@ -4157,7 +4179,8 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                     if let clean::TypedefItem(ref tydef, _) = it.inner {
                         write!(w, "<span class=\"where fmt-newline\">  ")?;
                         assoc_type(w, it, &vec![], Some(&tydef.type_),
-                                   AssocItemLink::Anchor(None))?;
+                                   AssocItemLink::Anchor(None),
+                                   "")?;
                         write!(w, ";</span>")?;
                     }
                 }
@@ -4179,7 +4202,8 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
-                   Markdown(&*dox, &i.impl_item.links(), RefCell::new(&mut ids), cx.codes))?;
+                   Markdown(&*dox, &i.impl_item.links(), RefCell::new(&mut ids),
+                            cx.codes, cx.edition))?;
         }
     }
 
@@ -4227,7 +4251,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<code id='{}'>", ns_id)?;
-                assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id))?;
+                assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id), "")?;
                 write!(w, "</code></h4>")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
@@ -4235,7 +4259,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<code id='{}'>", ns_id)?;
-                assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
+                assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "")?;
                 write!(w, "</code>")?;
                 render_stability_since_raw(w, item.stable_since(), outer_version)?;
                 if let Some(l) = (Item { cx, item }).src_href() {
@@ -4249,7 +4273,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<code id='{}'>", ns_id)?;
-                assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id))?;
+                assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id), "")?;
                 write!(w, "</code></h4>")?;
             }
             clean::StrippedItem(..) => return Ok(()),
@@ -4337,7 +4361,7 @@ fn item_existential(
     t: &clean::Existential,
 ) -> fmt::Result {
     write!(w, "<pre class='rust existential'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "existential type {}{}{where_clause}: {bounds};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
@@ -4356,7 +4380,7 @@ fn item_existential(
 fn item_trait_alias(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                     t: &clean::TraitAlias) -> fmt::Result {
     write!(w, "<pre class='rust trait-alias'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "trait {}{}{} = {};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
@@ -4375,7 +4399,7 @@ fn item_trait_alias(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 fn item_typedef(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
     write!(w, "<pre class='rust typedef'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "type {}{}{where_clause} = {type_};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
@@ -4393,7 +4417,7 @@ fn item_typedef(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 
 fn item_foreign_type(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item) -> fmt::Result {
     writeln!(w, "<pre class='rust foreigntype'>extern {{")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(
         w,
         "    {}type {};\n}}</pre>",

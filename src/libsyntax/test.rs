@@ -29,7 +29,7 @@ use crate::parse::{token, ParseSess};
 use crate::print::pprust;
 use crate::ast::{self, Ident};
 use crate::ptr::P;
-use crate::symbol::{self, Symbol, keywords};
+use crate::symbol::{self, Symbol, keywords, sym};
 use crate::ThinVec;
 
 struct Test {
@@ -65,8 +65,7 @@ pub fn modify_for_testing(sess: &ParseSess,
     // unconditional, so that the attribute is still marked as used in
     // non-test builds.
     let reexport_test_harness_main =
-        attr::first_attr_value_str_by_name(&krate.attrs,
-                                           "reexport_test_harness_main");
+        attr::first_attr_value_str_by_name(&krate.attrs, sym::reexport_test_harness_main);
 
     // Do this here so that the test_runner crate attribute gets marked as used
     // even in non-test builds
@@ -172,7 +171,7 @@ impl MutVisitor for EntryPointCleaner {
             EntryPointType::MainAttr |
             EntryPointType::Start =>
                 item.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
-                    let allow_ident = Ident::from_str("allow");
+                    let allow_ident = Ident::with_empty_ctxt(sym::allow);
                     let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
                     let allow_dead_code_item = attr::mk_list_item(DUMMY_SP, allow_ident,
                                                                   vec![dc_nested]);
@@ -185,7 +184,7 @@ impl MutVisitor for EntryPointCleaner {
                         ident,
                         attrs: attrs.into_iter()
                             .filter(|attr| {
-                                !attr.check_name("main") && !attr.check_name("start")
+                                !attr.check_name(sym::main) && !attr.check_name(sym::start)
                             })
                             .chain(iter::once(allow_dead_code))
                             .collect(),
@@ -216,7 +215,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
                    tests: Vec<Ident>,
                    tested_submods: Vec<(Ident, Ident)>)
                    -> (P<ast::Item>, Ident) {
-    let super_ = Ident::from_str("super");
+    let super_ = Ident::with_empty_ctxt(keywords::Super.name());
 
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public),
@@ -233,11 +232,11 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
         items,
     };
 
-    let sym = Ident::with_empty_ctxt(Symbol::gensym("__test_reexports"));
+    let name = Ident::from_str("__test_reexports").gensym();
     let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
     cx.ext_cx.current_expansion.mark = cx.ext_cx.resolver.get_module_scope(parent);
     let it = cx.ext_cx.monotonic_expander().flat_map_item(P(ast::Item {
-        ident: sym,
+        ident: name,
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::Mod(reexport_mod),
@@ -246,7 +245,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
         tokens: None,
     })).pop().unwrap();
 
-    (it, sym)
+    (it, name)
 }
 
 /// Crawl over the crate, inserting test reexports and the test main function
@@ -273,7 +272,8 @@ fn generate_test_harness(sess: &ParseSess,
         test_cases: Vec::new(),
         reexport_test_harness_main,
         // N.B., doesn't consider the value of `--crate-name` passed on the command line.
-        is_libtest: attr::find_crate_name(&krate.attrs).map(|s| s == "test").unwrap_or(false),
+        is_libtest: attr::find_crate_name(&krate.attrs)
+            .map(|s| s == sym::test).unwrap_or(false),
         toplevel_reexport: None,
         ctxt: SyntaxContext::empty().apply_mark(mark),
         features,
@@ -373,9 +373,10 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
                            main_body);
 
     // Honor the reexport_test_harness_main attribute
-    let main_id = Ident::new(
-        cx.reexport_test_harness_main.unwrap_or(Symbol::gensym("main")),
-        sp);
+    let main_id = match cx.reexport_test_harness_main {
+        Some(sym) => Ident::new(sym, sp),
+        None => Ident::from_str_and_span("main", sp).gensym(),
+    };
 
     P(ast::Item {
         ident: main_id,
@@ -428,11 +429,11 @@ fn visible_path(cx: &TestCtxt<'_>, path: &[Ident]) -> Vec<Ident>{
 }
 
 fn is_test_case(i: &ast::Item) -> bool {
-    attr::contains_name(&i.attrs, "rustc_test_marker")
+    attr::contains_name(&i.attrs, sym::rustc_test_marker)
 }
 
 fn get_test_runner(sd: &errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {
-    let test_attr = attr::find_by_name(&krate.attrs, "test_runner")?;
+    let test_attr = attr::find_by_name(&krate.attrs, sym::test_runner)?;
     test_attr.meta_item_list().map(|meta_list| {
         if meta_list.len() != 1 {
             sd.span_fatal(test_attr.span,

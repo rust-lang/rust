@@ -1,0 +1,12 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-28848.rs:10:5
+   |
+LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
+   |            --  -- lifetime `'b` defined here
+   |            |
+   |            lifetime `'a` defined here
+LL |     Foo::<'a, 'b>::xmute(u)
+   |     ^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+
+error: aborting due to previous error
+

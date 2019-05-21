@@ -8,8 +8,6 @@
 // meant to compile and run successfully once rust-lang/rust#54987 is
 // implemented.
 
-#![feature(nll)]
-
 struct D {
     x: u32,
     s: S,

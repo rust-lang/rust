@@ -72,6 +72,7 @@ use crate::hir::{MutImmutable, MutMutable, PatKind};
 use crate::hir::pat_util::EnumerateAndAdjustIterator;
 use crate::hir;
 use syntax::ast::{self, Name};
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 use std::borrow::Cow;
@@ -678,7 +679,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             hir::ExprKind::Closure(..) | hir::ExprKind::Ret(..) |
             hir::ExprKind::Unary(..) | hir::ExprKind::Yield(..) |
             hir::ExprKind::MethodCall(..) | hir::ExprKind::Cast(..) | hir::ExprKind::DropTemps(..) |
-            hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) | hir::ExprKind::If(..) |
+            hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) |
             hir::ExprKind::Binary(..) | hir::ExprKind::While(..) |
             hir::ExprKind::Block(..) | hir::ExprKind::Loop(..) | hir::ExprKind::Match(..) |
             hir::ExprKind::Lit(..) | hir::ExprKind::Break(..) |
@@ -714,7 +715,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 // they also cannot be moved out of.
                 let is_thread_local = self.tcx.get_attrs(def_id)[..]
                     .iter()
-                    .any(|attr| attr.check_name("thread_local"));
+                    .any(|attr| attr.check_name(sym::thread_local));
 
                 let cat = if is_thread_local {
                     let re = self.temporary_scope(hir_id.local_id);

@@ -1,4 +1,3 @@
-#![feature(nll)]
 #![feature(in_band_lifetimes)]
 
 struct Foo<'a, 'b> {
@@ -13,7 +12,7 @@ struct Bar<'b> {
 impl Foo<'_, '_> {
     fn take_bar(&mut self, b: Bar<'_>) {
         self.y = b.z
-        //~^ ERROR lifetime may not live long enough
+        //~^ ERROR
     }
 }
 

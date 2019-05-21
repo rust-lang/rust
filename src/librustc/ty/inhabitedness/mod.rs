@@ -113,9 +113,14 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         substs: SubstsRef<'tcx>) -> DefIdForest
     {
-        DefIdForest::intersection(tcx, self.variants.iter().map(|v| {
-            v.uninhabited_from(tcx, substs, self.adt_kind())
-        }))
+        // Non-exhaustive ADTs from other crates are always considered inhabited.
+        if self.is_variant_list_non_exhaustive() && !self.did.is_local() {
+            DefIdForest::empty()
+        } else {
+            DefIdForest::intersection(tcx, self.variants.iter().map(|v| {
+                v.uninhabited_from(tcx, substs, self.adt_kind())
+            }))
+        }
     }
 }
 
@@ -134,9 +139,14 @@ impl<'a, 'gcx, 'tcx> VariantDef {
             AdtKind::Enum => true,
             AdtKind::Struct => false,
         };
-        DefIdForest::union(tcx, self.fields.iter().map(|f| {
-            f.uninhabited_from(tcx, substs, is_enum)
-        }))
+        // Non-exhaustive variants from other crates are always considered inhabited.
+        if self.is_field_list_non_exhaustive() && !self.def_id.is_local() {
+            DefIdForest::empty()
+        } else {
+            DefIdForest::union(tcx, self.fields.iter().map(|f| {
+                f.uninhabited_from(tcx, substs, is_enum)
+            }))
+        }
     }
 }
 

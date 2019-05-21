@@ -23,7 +23,7 @@ use syntax::{ast, source_map};
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box MissingWhitelistedAttrPass);
-    reg.register_attribute("whitelisted_attr".to_string(), Whitelisted);
+    reg.register_attribute(Symbol::intern("whitelisted_attr"), Whitelisted);
 }
 
 declare_lint! {
@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
             _ => cx.tcx.hir().expect_item_by_hir_id(cx.tcx.hir().get_parent_item(id)),
         };
 
-        if !attr::contains_name(&item.attrs, "whitelisted_attr") {
+        if !attr::contains_name(&item.attrs, Symbol::intern("whitelisted_attr")) {
             cx.span_lint(MISSING_WHITELISTED_ATTR, span,
                          "Missing 'whitelisted_attr' attribute");
         }

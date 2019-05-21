@@ -1,6 +1,3 @@
-//
-
-#![allow(warnings)]
 #![feature(nll)]
 
 trait Bazinga {}

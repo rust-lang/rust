@@ -14,7 +14,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate;
 use syntax::source_map::MultiSpan;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 
 pub struct LintLevelSets {
     list: Vec<LintSet>,
@@ -194,7 +194,7 @@ impl<'a> LintLevelsBuilder<'a> {
             struct_span_err!(sess, span, E0452, "malformed lint attribute")
         };
         for attr in attrs {
-            let level = match Level::from_str(&attr.name_or_empty()) {
+            let level = match Level::from_symbol(attr.name_or_empty()) {
                 None => continue,
                 Some(lvl) => lvl,
             };
@@ -221,7 +221,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 match item.node {
                     ast::MetaItemKind::Word => {}  // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
-                        if item.path == "reason" {
+                        if item.path == sym::reason {
                             // found reason, reslice meta list to exclude it
                             metas = &metas[0..metas.len()-1];
                             // FIXME (#55112): issue unused-attributes lint if we thereby
@@ -230,7 +230,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                 if !self.sess.features_untracked().lint_reasons {
                                     feature_gate::emit_feature_err(
                                         &self.sess.parse_sess,
-                                        "lint_reasons",
+                                        sym::lint_reasons,
                                         item.span,
                                         feature_gate::GateIssue::Language,
                                         "lint reasons are experimental"
@@ -261,7 +261,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         let mut err = bad_attr(li.span());
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.node {
-                                if item.path == "reason" {
+                                if item.path == sym::reason {
                                     err.help("reason in lint attribute must come last");
                                 }
                             }

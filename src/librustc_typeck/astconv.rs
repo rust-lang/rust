@@ -25,6 +25,7 @@ use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span, MultiSpan};
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
@@ -289,6 +290,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         }
 
         // Prohibit explicit lifetime arguments if late-bound lifetime parameters are present.
+        let mut reported_late_bound_region_err = None;
         if !infer_lifetimes {
             if let Some(span_late) = def.has_late_bound_regions {
                 let msg = "cannot specify lifetime arguments explicitly \
@@ -300,13 +302,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     let mut err = tcx.sess.struct_span_err(span, msg);
                     err.span_note(span_late, note);
                     err.emit();
-                    return (true, None);
+                    reported_late_bound_region_err = Some(true);
                 } else {
                     let mut multispan = MultiSpan::from_span(span);
                     multispan.push_span_label(span_late, note.to_string());
                     tcx.lint_hir(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
                                  args.args[0].id(), multispan, msg);
-                    return (false, None);
+                    reported_late_bound_region_err = Some(false);
                 }
             }
         }
@@ -324,7 +326,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             // For kinds without defaults (i.e., lifetimes), `required == permitted`.
             // For other kinds (i.e., types), `permitted` may be greater than `required`.
             if required <= provided && provided <= permitted {
-                return (false, None);
+                return (reported_late_bound_region_err.unwrap_or(false), None);
             }
 
             // Unfortunately lifetime and type parameter mismatches are typically styled
@@ -379,7 +381,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
              potential_assoc_types)
         };
 
-        if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
+        if reported_late_bound_region_err.is_none()
+            && (!infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes) {
             check_kind_count(
                 "lifetime",
                 param_counts.lifetimes,
@@ -409,7 +412,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 arg_counts.lifetimes,
             )
         } else {
-            (false, None)
+            (reported_late_bound_region_err.unwrap_or(false), None)
         }
     }
 
@@ -802,7 +805,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             } else {
                 "parenthetical notation is only stable when used with `Fn`-family traits"
             };
-            emit_feature_err(&self.tcx().sess.parse_sess, "unboxed_closures",
+            emit_feature_err(&self.tcx().sess.parse_sess, sym::unboxed_closures,
                              span, GateIssue::Language, msg);
         }
 
@@ -1902,7 +1905,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             ty,
         };
 
-        let expr = &tcx.hir().body(ast_const.body).value;
+        let mut expr = &tcx.hir().body(ast_const.body).value;
+
+        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+        if let ExprKind::Block(block, _) = &expr.node {
+            if block.stmts.is_empty() {
+                if let Some(trailing) = &block.expr {
+                    expr = &trailing;
+                }
+            }
+        }
+
         if let ExprKind::Path(ref qpath) = expr.node {
             if let hir::QPath::Resolved(_, ref path) = qpath {
                 if let Res::Def(DefKind::ConstParam, def_id) = path.res {

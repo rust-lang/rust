@@ -1,5 +1,6 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 use std::alloc::{Layout, handle_alloc_error};
 use std::env;

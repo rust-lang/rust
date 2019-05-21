@@ -3,6 +3,7 @@
 // ignore-pretty issue #37199
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 #![feature(process_exec)]
 

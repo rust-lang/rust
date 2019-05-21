@@ -68,13 +68,5 @@ help: you can escape reserved keywords to use them as identifiers
 LL | macro_rules! r#await {
    |              ^^^^^^^
 
-error: expected `!`, found `{`
-  --> $DIR/2018-edition-error-in-non-macro-position.rs:26:17
-   |
-LL |     match await { await => () }
-   |     -----       ^ expected `!`
-   |     |
-   |     while parsing this match expression
-
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 

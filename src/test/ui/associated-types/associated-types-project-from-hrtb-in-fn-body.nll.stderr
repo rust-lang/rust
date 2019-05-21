@@ -1,0 +1,24 @@
+error: lifetime may not live long enough
+  --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:22:29
+   |
+LL | fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+...
+LL |     let z: I::A = if cond { x } else { y };
+   |                             ^ assignment requires that `'a` must outlive `'b`
+
+error: lifetime may not live long enough
+  --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:22:40
+   |
+LL | fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+...
+LL |     let z: I::A = if cond { x } else { y };
+   |                                        ^ assignment requires that `'b` must outlive `'a`
+
+error: aborting due to 2 previous errors
+

@@ -40,7 +40,7 @@ mod m {
     }
 }
 
-#[cfg(target_os = "bitrig")]
+#[cfg(target_env = "sgx")]
 mod m {
     #[main]
     #[cfg(target_arch = "x86_64")]

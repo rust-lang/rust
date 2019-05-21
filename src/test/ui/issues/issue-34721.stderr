@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/issue-34721.rs:27:9
+  --> $DIR/issue-34721.rs:25:9
    |
 LL |     pub fn baz<T: Foo>(x: T) -> T {
    |                -       - move occurs because `x` has type `T`, which does not implement the `Copy` trait

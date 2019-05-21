@@ -15,7 +15,6 @@
 
 // compile-pass
 
-#![feature(nll)]
 #![feature(box_patterns)]
 
 struct Root {

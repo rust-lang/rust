@@ -2,7 +2,7 @@
 // This test checks that instantiating an uninhabited type via `mem::{uninitialized,zeroed}` results
 // in a runtime panic.
 
-#![feature(never_type, maybe_uninit)]
+#![feature(never_type)]
 
 use std::{mem, panic};
 

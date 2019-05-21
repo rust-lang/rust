@@ -5,6 +5,7 @@ use std::cell::RefCell;
 
 use errors;
 use testing;
+use syntax::edition::Edition;
 use syntax::source_map::DUMMY_SP;
 use syntax::feature_gate::UnstableFeatures;
 
@@ -36,7 +37,12 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 
 /// Render `input` (e.g., "foo.md") into an HTML file in `output`
 /// (e.g., output = "bar" => "bar/foo.html").
-pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) -> i32 {
+pub fn render(
+    input: PathBuf,
+    options: RenderOptions,
+    diag: &errors::Handler,
+    edition: Edition
+) -> i32 {
     let mut output = options.output;
     output.push(input.file_stem().unwrap());
     output.set_extension("html");
@@ -76,9 +82,9 @@ pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) ->
     let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let text = if !options.markdown_no_toc {
-        MarkdownWithToc(text, RefCell::new(&mut ids), error_codes).to_string()
+        MarkdownWithToc(text, RefCell::new(&mut ids), error_codes, edition).to_string()
     } else {
-        Markdown(text, &[], RefCell::new(&mut ids), error_codes).to_string()
+        Markdown(text, &[], RefCell::new(&mut ids), error_codes, edition).to_string()
     };
 
     let err = write!(

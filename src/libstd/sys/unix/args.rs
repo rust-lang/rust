@@ -35,6 +35,8 @@ impl Iterator for Args {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> { self.iter.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+    #[inline]
+    fn last(mut self) -> Option<OsString> { self.next_back() }
 }
 
 impl ExactSizeIterator for Args {
@@ -49,7 +51,6 @@ impl DoubleEndedIterator for Args {
           target_os = "android",
           target_os = "freebsd",
           target_os = "dragonfly",
-          target_os = "bitrig",
           target_os = "netbsd",
           target_os = "openbsd",
           target_os = "solaris",

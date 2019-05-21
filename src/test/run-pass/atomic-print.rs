@@ -2,6 +2,7 @@
 #![allow(deprecated)]
 // ignore-cloudabi no process support
 // ignore-emscripten no threads support
+// ignore-sgx no processes
 
 use std::{env, fmt, process, sync, thread};
 

@@ -1,4 +1,3 @@
-#![feature(nll)]
 struct FancyNum {
     num: u8,
 }

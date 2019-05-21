@@ -19,7 +19,7 @@ pub struct Bool {
     b: bool,
 }
 
-// CHECK: target triple = "i686-apple-darwin"
+// CHECK: target triple = "i686-apple-macosx10.7.0"
 #[no_mangle]
 pub extern "C" fn structbool() -> Bool {
     Bool { b: true }

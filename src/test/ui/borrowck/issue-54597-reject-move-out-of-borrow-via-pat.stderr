@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-54597-reject-move-out-of-borrow-via-pat.rs:16:13
+  --> $DIR/issue-54597-reject-move-out-of-borrow-via-pat.rs:14:13
    |
 LL |             *array
    |             ^^^^^^

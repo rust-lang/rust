@@ -1,5 +1,4 @@
 // run-pass
-// ignore-bitrig
 // compile-flags: -C codegen-units=3
 // aux-build:sepcomp-extern-lib.rs
 

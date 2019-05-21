@@ -16,3 +16,23 @@ enum World {
     Hello,
     Goodbye,
 }
+
+fn foo() {
+    let a = String::new();
+    let b = String::new();
+    let c = "";
+    let d = "";
+    let e = &a;
+    let _ = &a + &b; //~ ERROR binary operation
+    let _ = &a + b; //~ ERROR binary operation
+    let _ = a + &b; // ok
+    let _ = a + b; //~ ERROR mismatched types
+    let _ = e + b; //~ ERROR binary operation
+    let _ = e + &b; //~ ERROR binary operation
+    let _ = e + d; //~ ERROR binary operation
+    let _ = e + &d; //~ ERROR binary operation
+    let _ = &c + &d; //~ ERROR binary operation
+    let _ = &c + d; //~ ERROR binary operation
+    let _ = c + &d; //~ ERROR binary operation
+    let _ = c + d; //~ ERROR binary operation
+}

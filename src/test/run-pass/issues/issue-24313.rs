@@ -1,6 +1,7 @@
 // run-pass
 // ignore-cloudabi no processes
 // ignore-emscripten no threads
+// ignore-sgx no processes
 
 use std::thread;
 use std::env;

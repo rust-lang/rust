@@ -1,5 +1,5 @@
 warning: function cannot return without recursing
-  --> $DIR/issue-51191.rs:6:5
+  --> $DIR/issue-51191.rs:4:5
    |
 LL |     fn bar(self: &mut Self) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
@@ -11,7 +11,7 @@ LL |         (&mut self).bar();
    = help: a `loop` may express intention better if this is on purpose
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:8:9
+  --> $DIR/issue-51191.rs:6:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL |         (&mut self).bar();
    |         try removing `&mut` here
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:13:9
+  --> $DIR/issue-51191.rs:11:9
    |
 LL |     fn imm(self) {
    |            ---- help: consider changing this to be mutable: `mut self`
@@ -28,19 +28,19 @@ LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:22:9
+  --> $DIR/issue-51191.rs:20:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/issue-51191.rs:22:9
+  --> $DIR/issue-51191.rs:20:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:28:9
+  --> $DIR/issue-51191.rs:26:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^

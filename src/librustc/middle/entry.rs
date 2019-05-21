@@ -4,6 +4,7 @@ use crate::session::{config, Session};
 use crate::session::config::EntryFnType;
 use syntax::attr;
 use syntax::entry::EntryPointType;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 use crate::hir::{HirId, Item, ItemKind, ImplItem, TraitItem};
 use crate::hir::itemlikevisit::ItemLikeVisitor;
@@ -58,7 +59,7 @@ fn entry_fn(tcx: TyCtxt<'_, '_, '_>, cnum: CrateNum) -> Option<(DefId, EntryFnTy
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(&tcx.hir().krate().attrs, "no_main") {
+    if attr::contains_name(&tcx.hir().krate().attrs, sym::no_main) {
         return None;
     }
 
@@ -81,11 +82,11 @@ fn entry_fn(tcx: TyCtxt<'_, '_, '_>, cnum: CrateNum) -> Option<(DefId, EntryFnTy
 fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
     match item.node {
         ItemKind::Fn(..) => {
-            if attr::contains_name(&item.attrs, "start") {
+            if attr::contains_name(&item.attrs, sym::start) {
                 EntryPointType::Start
-            } else if attr::contains_name(&item.attrs, "main") {
+            } else if attr::contains_name(&item.attrs, sym::main) {
                 EntryPointType::MainAttr
-            } else if item.ident.name == "main" {
+            } else if item.ident.name == sym::main {
                 if at_root {
                     // This is a top-level function so can be 'main'.
                     EntryPointType::MainNamed

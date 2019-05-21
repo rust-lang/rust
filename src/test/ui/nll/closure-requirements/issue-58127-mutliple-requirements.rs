@@ -1,7 +1,3 @@
-// revisions: migrate nll
-//[migrate]compile-flags: -Z borrowck=migrate
-#![cfg_attr(nll, feature(nll))]
-
 // compile-pass
 
 // Test that we propagate region relations from closures precisely when there is

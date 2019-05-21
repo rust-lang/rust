@@ -886,7 +886,7 @@ pub trait Pointer {
 ///
 /// # Examples
 ///
-/// Basic usage with `i32`:
+/// Basic usage with `f64`:
 ///
 /// ```
 /// let x = 42.0; // 42.0 is '4.2e1' in scientific notation
@@ -929,7 +929,7 @@ pub trait LowerExp {
 ///
 /// # Examples
 ///
-/// Basic usage with `f32`:
+/// Basic usage with `f64`:
 ///
 /// ```
 /// let x = 42.0; // 42.0 is '4.2E1' in scientific notation

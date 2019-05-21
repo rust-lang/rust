@@ -1,3 +1,4 @@
+use crate::symbol::{Symbol, sym};
 use std::fmt;
 use std::str::FromStr;
 
@@ -44,10 +45,10 @@ impl Edition {
         }
     }
 
-    pub fn feature_name(&self) -> &'static str {
+    pub fn feature_name(&self) -> Symbol {
         match *self {
-            Edition::Edition2015 => "rust_2015_preview",
-            Edition::Edition2018 => "rust_2018_preview",
+            Edition::Edition2015 => sym::rust_2015_preview,
+            Edition::Edition2018 => sym::rust_2018_preview,
         }
     }
 

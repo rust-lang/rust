@@ -1,7 +1,6 @@
 // Check that we error when a bound from the impl is not satisfied when
 // normalizing an associated type.
 
-#![feature(nll)]
 trait Visitor<'d> {
     type Value;
 }

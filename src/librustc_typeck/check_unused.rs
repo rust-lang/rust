@@ -158,6 +158,13 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
             continue;
         }
 
+        // If the extern crate is renamed, then we cannot suggest replacing it with a use as this
+        // would not insert the new name into the prelude, where other imports in the crate may be
+        // expecting it.
+        if extern_crate.orig_name.is_some() {
+            continue;
+        }
+
         // If the extern crate has any attributes, they may have funky
         // semantics we can't faithfully represent using `use` (most
         // notably `#[macro_use]`). Ignore it.

@@ -8,8 +8,6 @@
 
 // run-pass
 
-#![feature(nll)]
-
 fn foo(x: &mut Result<(u32, u32), (u32, u32)>) -> u32 {
     match *x {
         Ok((ref mut v, _)) | Err((_, ref mut v)) if *v > 0 => { *v }

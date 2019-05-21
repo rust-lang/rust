@@ -1,0 +1,36 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:6:5
+   |
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:12:5
+   |
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:18:5
+   |
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'a`...
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-close-param-into-object.rs:24:5
+   |
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'a`...
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0309, E0310.
+For more information about an error, try `rustc --explain E0309`.

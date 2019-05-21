@@ -52,7 +52,7 @@
 //~^ WARN unused attribute
 #![path = "3800"] //~ WARN unused attribute
 #![automatically_derived] //~ WARN unused attribute
-#![no_mangle] //~ WARN unused attribute
+#![no_mangle]
 #![no_link] //~ WARN unused attribute
 // see issue-43106-gating-of-derive.rs
 #![should_panic] //~ WARN unused attribute

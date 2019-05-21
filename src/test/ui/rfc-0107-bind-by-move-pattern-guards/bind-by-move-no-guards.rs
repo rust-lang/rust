@@ -4,7 +4,6 @@
 
 // compile-pass
 
-#![feature(nll)]
 #![feature(bind_by_move_pattern_guards)]
 
 use std::sync::mpsc::channel;

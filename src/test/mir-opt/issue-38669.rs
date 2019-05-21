@@ -27,15 +27,17 @@ fn main() {
 //     bb3: {
 //         StorageLive(_4);
 //         _4 = _1;
-//         switchInt(move _4) -> [false: bb5, otherwise: bb4];
+//         FakeRead(ForMatchedPlace, _4);
+//         switchInt(_4) -> [false: bb5, otherwise: bb4];
 //     }
-//     bb4: {
+//     ...
+//     bb7: {
 //         _0 = ();
 //         StorageDead(_4);
 //         StorageDead(_1);
 //         return;
 //     }
-//     bb5: {
+//     bb8: {
 //         _3 = ();
 //         StorageDead(_4);
 //         _1 = const true;

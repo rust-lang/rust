@@ -11,7 +11,7 @@ use quote::quote;
 #[allow(non_camel_case_types)]
 mod kw {
     syn::custom_keyword!(Keywords);
-    syn::custom_keyword!(Other);
+    syn::custom_keyword!(Symbols);
 }
 
 struct Keyword {
@@ -33,14 +33,24 @@ impl Parse for Keyword {
     }
 }
 
-struct Symbol(Ident);
+struct Symbol {
+    name: Ident,
+    value: Option<LitStr>,
+}
 
 impl Parse for Symbol {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let ident: Ident = input.parse()?;
+        let name = input.parse()?;
+        let value = match input.parse::<Token![:]>() {
+            Ok(_) => Some(input.parse()?),
+            Err(_) => None,
+        };
         input.parse::<Token![,]>()?;
 
-        Ok(Symbol(ident))
+        Ok(Symbol {
+            name,
+            value,
+        })
     }
 }
 
@@ -69,7 +79,7 @@ impl Parse for Input {
         braced!(content in input);
         let keywords = content.parse()?;
 
-        input.parse::<kw::Other>()?;
+        input.parse::<kw::Symbols>()?;
         let content;
         braced!(content in input);
         let symbols = content.parse()?;
@@ -116,19 +126,22 @@ pub fn symbols(input: TokenStream) -> TokenStream {
     }
 
     for symbol in &input.symbols.0 {
-        let value = &symbol.0;
-        let value_str = value.to_string();
-        check_dup(&value_str);
+        let name = &symbol.name;
+        let value = match &symbol.value {
+            Some(value) => value.value(),
+            None => name.to_string(),
+        };
+        check_dup(&value);
         prefill_stream.extend(quote! {
-            #value_str,
+            #value,
         });
         symbols_stream.extend(quote! {
-            pub const #value: Symbol = Symbol::new(#counter);
+            pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
     }
 
-    TokenStream::from(quote! {
+    let tt = TokenStream::from(quote! {
         macro_rules! keywords {
             () => {
                 #keyword_stream
@@ -159,5 +172,11 @@ pub fn symbols(input: TokenStream) -> TokenStream {
                 ])
             }
         }
-    })
+    });
+
+    // To see the generated code generated, uncomment this line, recompile, and
+    // run the resulting output through `rustfmt`.
+    //eprintln!("{}", tt);
+
+    tt
 }

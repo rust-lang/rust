@@ -168,7 +168,7 @@ pub fn std_cargo(builder: &Builder<'_>,
             .arg("--manifest-path")
             .arg(builder.src.join("src/liballoc/Cargo.toml"))
             .arg("--features")
-            .arg("compiler-builtins-mem");
+            .arg("compiler-builtins-mem compiler-builtins-c");
     } else {
         let features = builder.std_features();
 

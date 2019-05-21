@@ -2,7 +2,7 @@ use crate::ast;
 use crate::attr;
 use crate::edition::Edition;
 use crate::ext::hygiene::{Mark, SyntaxContext};
-use crate::symbol::{Symbol, keywords};
+use crate::symbol::{Ident, Symbol, keywords, sym};
 use crate::source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
 use crate::ptr::P;
 use crate::tokenstream::TokenStream;
@@ -35,6 +35,9 @@ pub fn injected_crate_name() -> Option<&'static str> {
 }
 
 thread_local! {
+    // A `Symbol` might make more sense here, but it doesn't work, probably for
+    // reasons relating to the use of thread-local storage for the Symbol
+    // interner.
     static INJECTED_CRATE_NAME: Cell<Option<&'static str>> = Cell::new(None);
 }
 
@@ -46,10 +49,10 @@ pub fn maybe_inject_crates_ref(
     let rust_2018 = edition >= Edition::Edition2018;
 
     // the first name in this list is the crate name of the crate with the prelude
-    let names: &[&str] = if attr::contains_name(&krate.attrs, "no_core") {
+    let names: &[&str] = if attr::contains_name(&krate.attrs, sym::no_core) {
         return krate;
-    } else if attr::contains_name(&krate.attrs, "no_std") {
-        if attr::contains_name(&krate.attrs, "compiler_builtins") {
+    } else if attr::contains_name(&krate.attrs, sym::no_std) {
+        if attr::contains_name(&krate.attrs, sym::compiler_builtins) {
             &["core"]
         } else {
             &["core", "compiler_builtins"]
@@ -60,26 +63,25 @@ pub fn maybe_inject_crates_ref(
 
     // .rev() to preserve ordering above in combination with insert(0, ...)
     let alt_std_name = alt_std_name.map(Symbol::intern);
-    for orig_name in names.iter().rev() {
-        let orig_name = Symbol::intern(orig_name);
-        let mut rename = orig_name;
+    for orig_name_str in names.iter().rev() {
         // HACK(eddyb) gensym the injected crates on the Rust 2018 edition,
         // so they don't accidentally interfere with the new import paths.
-        if rust_2018 {
-            rename = orig_name.gensymed();
-        }
-        let orig_name = if rename != orig_name {
-            Some(orig_name)
+        let orig_name_sym = Symbol::intern(orig_name_str);
+        let orig_name_ident = Ident::with_empty_ctxt(orig_name_sym);
+        let (rename, orig_name) = if rust_2018 {
+            (orig_name_ident.gensym(), Some(orig_name_sym))
         } else {
-            None
+            (orig_name_ident, None)
         };
         krate.module.items.insert(0, P(ast::Item {
-            attrs: vec![attr::mk_attr_outer(DUMMY_SP,
-                                            attr::mk_attr_id(),
-                                            attr::mk_word_item(ast::Ident::from_str("macro_use")))],
+            attrs: vec![attr::mk_attr_outer(
+                DUMMY_SP,
+                attr::mk_attr_id(),
+                attr::mk_word_item(ast::Ident::with_empty_ctxt(sym::macro_use))
+            )],
             vis: dummy_spanned(ast::VisibilityKind::Inherited),
             node: ast::ItemKind::ExternCrate(alt_std_name.or(orig_name)),
-            ident: ast::Ident::with_empty_ctxt(rename),
+            ident: rename,
             id: ast::DUMMY_NODE_ID,
             span: DUMMY_SP,
             tokens: None,

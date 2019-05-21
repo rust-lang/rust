@@ -11,6 +11,7 @@ use std::mem;
 use std::path::PathBuf;
 use syntax::ast;
 use syntax::span_err;
+use syntax::symbol::{Symbol, keywords, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
 /// Pointer to a registrar function.
@@ -45,7 +46,7 @@ pub fn load_plugins(sess: &Session,
     // the feature enabled will result in an error later...
     if sess.features_untracked().plugin {
         for attr in &krate.attrs {
-            if !attr.check_name("plugin") {
+            if !attr.check_name(sym::plugin) {
                 continue;
             }
 
@@ -57,9 +58,9 @@ pub fn load_plugins(sess: &Session,
             for plugin in plugins {
                 // plugins must have a name and can't be key = value
                 let name = plugin.name_or_empty();
-                if !name.is_empty() && !plugin.is_value_str() {
+                if name != keywords::Invalid.name() && !plugin.is_value_str() {
                     let args = plugin.meta_item_list().map(ToOwned::to_owned);
-                    loader.load_plugin(plugin.span(), &name, args.unwrap_or_default());
+                    loader.load_plugin(plugin.span(), name, args.unwrap_or_default());
                 } else {
                     call_malformed_plugin_attribute(sess, attr.span);
                 }
@@ -69,7 +70,7 @@ pub fn load_plugins(sess: &Session,
 
     if let Some(plugins) = addl_plugins {
         for plugin in plugins {
-            loader.load_plugin(DUMMY_SP, &plugin, vec![]);
+            loader.load_plugin(DUMMY_SP, Symbol::intern(&plugin), vec![]);
         }
     }
 
@@ -85,7 +86,7 @@ impl<'a> PluginLoader<'a> {
         }
     }
 
-    fn load_plugin(&mut self, span: Span, name: &str, args: Vec<ast::NestedMetaItem>) {
+    fn load_plugin(&mut self, span: Span, name: Symbol, args: Vec<ast::NestedMetaItem>) {
         let registrar = self.reader.find_plugin_registrar(span, name);
 
         if let Some((lib, disambiguator)) = registrar {

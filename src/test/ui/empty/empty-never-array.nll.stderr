@@ -1,0 +1,23 @@
+error[E0005]: refutable pattern in local binding: `T(_, _)` not covered
+  --> $DIR/empty-never-array.rs:10:9
+   |
+LL | / enum Helper<T, U> {
+LL | |     T(T, [!; 0]),
+LL | |     #[allow(dead_code)]
+LL | |     U(U),
+LL | | }
+   | |_- `Helper<T, U>` defined here
+...
+LL |       let Helper::U(u) = Helper::T(t, []);
+   |           ^^^^^^^^^^^^ pattern `T(_, _)` not covered
+
+error[E0381]: use of possibly uninitialized variable: `u`
+  --> $DIR/empty-never-array.rs:12:5
+   |
+LL |     u
+   |     ^ use of possibly uninitialized `u`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0005, E0381.
+For more information about an error, try `rustc --explain E0005`.
