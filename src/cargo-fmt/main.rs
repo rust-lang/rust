@@ -62,7 +62,16 @@ const FAILURE: i32 = 1;
 
 fn execute() -> i32 {
     // Drop extra `fmt` argument provided by `cargo`.
-    let args = env::args().filter(|x| x != "fmt");
+    let mut found_fmt = false;
+    let args = env::args().filter(|x| {
+        if found_fmt {
+            true
+        } else {
+            found_fmt = x == "fmt";
+            x != "fmt"
+        }
+    });
+
     let opts = Opts::from_iter(args);
 
     let verbosity = match (opts.verbose, opts.quiet) {
