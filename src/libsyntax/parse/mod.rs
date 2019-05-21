@@ -334,7 +334,7 @@ pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser<'_> {
 /// Use this function when you are creating a parser from the token stream
 /// and also care about the current working directory of the parser (e.g.,
 /// you are trying to resolve modules defined inside a macro invocation).
-/// 
+///
 /// # Note
 ///
 /// The main usage of this function is outside of rustc, for those who uses
