@@ -93,7 +93,7 @@ steps:
   env:
     CI: true
     SRC: .
-    AWS_SECRET_ACCESS_KEY: $(SCCACHE_AWS_SECRET_ACCESS_KEY)
+    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
   displayName: Run build
 
 - bash: |
@@ -104,6 +104,6 @@ steps:
     fi
     aws s3 cp --no-progress --recursive --acl public-read ./deploy s3://$DEPLOY_BUCKET/$deploy_dir
   env:
-    AWS_SECRET_ACCESS_KEY: $(SCCACHE_AWS_SECRET_ACCESS_KEY)
+    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
   condition: and(succeeded(), or(eq(variables.DEPLOY, '1'), eq(variables.DEPLOY_ALT, '1')))
   displayName: Upload artifacts
