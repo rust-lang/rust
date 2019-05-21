@@ -57,7 +57,7 @@ export class CargoWatchProvider implements vscode.Disposable {
             return;
         }
 
-        let args = 'check --message-format json';
+        let args = 'check --all-targets --message-format json';
         if (Server.config.cargoWatchOptions.checkArguments.length > 0) {
             // Excape the double quote string:
             args += ' ' + Server.config.cargoWatchOptions.checkArguments;
