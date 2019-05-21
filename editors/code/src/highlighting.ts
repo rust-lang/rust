@@ -13,23 +13,31 @@ export class Highlighter {
         string,
         vscode.TextEditorDecorationType
     > {
-        const decor = (color: string) =>
-            vscode.window.createTextEditorDecorationType({ color });
+        const colorContrib = (
+            tag: string
+        ): [string, vscode.TextEditorDecorationType] => {
+            const color = new vscode.ThemeColor('ralsp.' + tag);
+            const decor = vscode.window.createTextEditorDecorationType({
+                color
+            });
+            return [tag, decor];
+        };
 
         const decorations: Iterable<
             [string, vscode.TextEditorDecorationType]
         > = [
-            ['background', decor('#3F3F3F')],
-            ['comment', decor('#7F9F7F')],
-            ['string', decor('#CC9393')],
-            ['keyword', decor('#F0DFAF')],
-            ['function', decor('#93E0E3')],
-            ['parameter', decor('#94BFF3')],
-            ['builtin', decor('#DD6718')],
-            ['text', decor('#DCDCCC')],
-            ['attribute', decor('#BFEBBF')],
-            ['literal', decor('#DFAF8F')],
-            ['macro', decor('#DFAF8F')]
+            colorContrib('comment'),
+            colorContrib('string'),
+            colorContrib('keyword'),
+            colorContrib('keyword.control'),
+            colorContrib('keyword.unsafe'),
+            colorContrib('function'),
+            colorContrib('parameter'),
+            colorContrib('builtin'),
+            colorContrib('text'),
+            colorContrib('attribute'),
+            colorContrib('literal'),
+            colorContrib('macro')
         ];
 
         return new Map<string, vscode.TextEditorDecorationType>(decorations);

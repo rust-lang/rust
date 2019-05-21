@@ -1,6 +1,6 @@
 use rustc_hash::FxHashSet;
 
-use ra_syntax::{ast, AstNode, TextRange, Direction, SyntaxKind::*, SyntaxElement, T};
+use ra_syntax::{ast, AstNode, TextRange, Direction, SyntaxKind, SyntaxKind::*, SyntaxElement, T};
 use ra_db::SourceDatabase;
 
 use crate::{FileId, db::RootDatabase};
@@ -9,6 +9,21 @@ use crate::{FileId, db::RootDatabase};
 pub struct HighlightedRange {
     pub range: TextRange,
     pub tag: &'static str,
+}
+
+fn is_control_keyword(kind: SyntaxKind) -> bool {
+    match kind {
+        T![for]
+        | T![loop]
+        | T![while]
+        | T![continue]
+        | T![break]
+        | T![if]
+        | T![else]
+        | T![match]
+        | T![return] => true,
+        _ => false,
+    }
 }
 
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
@@ -29,6 +44,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME => "function",
             INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
             LIFETIME => "parameter",
+            T![unsafe] => "keyword.unsafe",
+            k if is_control_keyword(k) => "keyword.control",
             k if k.is_keyword() => "keyword",
             _ => {
                 if let Some(macro_call) = node.as_node().and_then(ast::MacroCall::cast) {
