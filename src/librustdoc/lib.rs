@@ -35,14 +35,11 @@ extern crate rustc_interface;
 extern crate rustc_metadata;
 extern crate rustc_target;
 extern crate rustc_typeck;
-extern crate serialize;
 extern crate syntax;
 extern crate syntax_pos;
 extern crate test as testing;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
-
-extern crate serialize as rustc_serialize; // used by deriving
 
 use std::default::Default;
 use std::env;
