@@ -13,8 +13,15 @@ pub struct HighlightedRange {
 
 fn is_control_keyword(kind: SyntaxKind) -> bool {
     match kind {
-        FOR_KW | LOOP_KW | WHILE_KW | CONTINUE_KW | BREAK_KW | IF_KW | ELSE_KW | MATCH_KW
-        | RETURN_KW => true,
+        T![for]
+        | T![loop]
+        | T![while]
+        | T![continue]
+        | T![break]
+        | T![if]
+        | T![else]
+        | T![match]
+        | T![return] => true,
         _ => false,
     }
 }
@@ -37,8 +44,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME => "function",
             INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
             LIFETIME => "parameter",
-            UNSAFE_KW => "unsafe",
-            k if is_control_keyword(k) => "control",
+            T![unsafe] => "keyword.unsafe",
+            k if is_control_keyword(k) => "keyword.control",
             k if k.is_keyword() => "keyword",
             _ => {
                 if let Some(macro_call) = node.as_node().and_then(ast::MacroCall::cast) {

@@ -271,19 +271,10 @@
         ],
         "colors": [
             {
-                "id": "ralsp.background",
-                "description": "Background color",
-                "defaults": {
-                    "dark": "#3F3F3F",
-                    "light": "#001080",
-                    "highContrast": "#000000"
-                }
-            },
-            {
                 "id": "ralsp.comment",
                 "description": "Color for comments",
                 "defaults": {
-                    "dark": "#7F9F7F",
+                    "dark": "#6A9955",
                     "light": "#008000",
                     "highContrast": "#7CA668"
                 }
@@ -292,13 +283,31 @@
                 "id": "ralsp.string",
                 "description": "Color for strings",
                 "defaults": {
-                    "dark": "#CC9393",
+                    "dark": "#CE9178",
                     "light": "#A31515",
                     "highContrast": "#CE9178"
                 }
             },
             {
-                "id": "ralsp.unsafe",
+                "id": "ralsp.keyword",
+                "description": "Color for keywords",
+                "defaults": {
+                    "dark": "#569cd6",
+                    "light": "#0000FF",
+                    "highContrast": "#569CD6"
+                }
+            },
+            {
+                "id": "ralsp.keyword.control",
+                "description": "Color for control keywords",
+                "defaults": {
+                    "dark": "#C586C0",
+                    "light": "#AF00DB",
+                    "highContrast": "#C586C0"
+                }
+            },
+            {
+                "id": "ralsp.keyword.unsafe",
                 "description": "Color for unsafe",
                 "defaults": {
                     "dark": "#FF3030",
@@ -307,28 +316,10 @@
                 }
             },
             {
-                "id": "ralsp.keyword",
-                "description": "Color for keywords",
-                "defaults": {
-                    "dark": "#F0DFAF",
-                    "light": "#0000FF",
-                    "highContrast": "#569CD6"
-                }
-            },
-            {
-                "id": "ralsp.control",
-                "description": "Color for control keywords",
-                "defaults": {
-                    "dark": "#CF20FB",
-                    "light": "#AF00DB",
-                    "highContrast": "#C586C0"
-                }
-            },
-            {
                 "id": "ralsp.function",
                 "description": "Color for functions",
                 "defaults": {
-                    "dark": "#93E0E3",
+                    "dark": "#DCDCAA",
                     "light": "#795E26",
                     "highContrast": "#DCDCAA"
                 }
@@ -337,7 +328,7 @@
                 "id": "ralsp.parameter",
                 "description": "Color for parameters",
                 "defaults": {
-                    "dark": "#94BFF3",
+                    "dark": "#9CDCFE",
                     "light": "#001080",
                     "highContrast": "#9CDCFE"
                 }
@@ -355,7 +346,7 @@
                 "id": "ralsp.text",
                 "description": "Color for text",
                 "defaults": {
-                    "dark": "#DCDCCC",
+                    "dark": "#D4D4D4",
                     "light": "#000000",
                     "highContrast": "#FFFFFF"
                 }
@@ -364,7 +355,7 @@
                 "id": "ralsp.attribute",
                 "description": "Color for attributes",
                 "defaults": {
-                    "dark": "#BFEBBF",
+                    "dark": "#9FE9BF",
                     "light": "#1F4B1F",
                     "highContrast": "#108010"
                 }
@@ -373,7 +364,7 @@
                 "id": "ralsp.literal",
                 "description": "Color for literals",
                 "defaults": {
-                    "dark": "#DFAF8F",
+                    "dark": "#BECEA8",
                     "light": "#09885A",
                     "highContrast": "#B5CEA8"
                 }

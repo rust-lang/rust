@@ -26,12 +26,11 @@ export class Highlighter {
         const decorations: Iterable<
             [string, vscode.TextEditorDecorationType]
         > = [
-            colorContrib('background'),
             colorContrib('comment'),
             colorContrib('string'),
-            colorContrib('unsafe'),
             colorContrib('keyword'),
-            colorContrib('control'),
+            colorContrib('keyword.control'),
+            colorContrib('keyword.unsafe'),
             colorContrib('function'),
             colorContrib('parameter'),
             colorContrib('builtin'),
