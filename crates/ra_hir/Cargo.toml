@@ -27,4 +27,4 @@ chalk-ir = { git = "https://github.com/rust-lang/chalk.git" }
 
 [dev-dependencies]
 flexi_logger = "0.11.0"
-insta = "0.7.0"
+insta = "0.8.1"
