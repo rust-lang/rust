@@ -18,20 +18,20 @@ fn glob_1() {
         ",
     );
     assert_snapshot_matches!(map, @r###"
-crate
-bar: t
-Foo: t v
-Baz: t v
-foo: t
-
-crate::foo
-bar: t
-Foo: t v
-Baz: t v
-
-crate::foo::bar
-Baz: t v
-"###
+   ⋮crate
+   ⋮Baz: t v
+   ⋮Foo: t v
+   ⋮bar: t
+   ⋮foo: t
+   ⋮
+   ⋮crate::foo
+   ⋮Baz: t v
+   ⋮Foo: t v
+   ⋮bar: t
+   ⋮
+   ⋮crate::foo::bar
+   ⋮Baz: t v
+    "###
     );
 }
 
@@ -54,22 +54,22 @@ fn glob_2() {
         ",
     );
     assert_snapshot_matches!(map, @r###"
-crate
-bar: t
-Foo: t v
-Baz: t v
-foo: t
-
-crate::foo
-bar: t
-Foo: t v
-Baz: t v
-
-crate::foo::bar
-bar: t
-Foo: t v
-Baz: t v
-"###
+   ⋮crate
+   ⋮Baz: t v
+   ⋮Foo: t v
+   ⋮bar: t
+   ⋮foo: t
+   ⋮
+   ⋮crate::foo
+   ⋮Baz: t v
+   ⋮Foo: t v
+   ⋮bar: t
+   ⋮
+   ⋮crate::foo::bar
+   ⋮Baz: t v
+   ⋮Foo: t v
+   ⋮bar: t
+    "###
     );
 }
 
@@ -90,9 +90,9 @@ fn glob_across_crates() {
         },
     );
     assert_snapshot_matches!(map, @r###"
-crate
-Baz: t v
-"###
+   ⋮crate
+   ⋮Baz: t v
+    "###
     );
 }
 
@@ -109,10 +109,10 @@ fn glob_enum() {
         ",
     );
     assert_snapshot_matches!(map, @r###"
-crate
-Foo: t
-Bar: t v
-Baz: t v
-"###
+   ⋮crate
+   ⋮Bar: t v
+   ⋮Baz: t v
+   ⋮Foo: t
+    "###
     );
 }
