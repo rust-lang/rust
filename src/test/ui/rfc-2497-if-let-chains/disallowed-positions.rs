@@ -17,6 +17,8 @@
 //
 // To that end, we check some positions which is not part of the language above.
 
+#![feature(const_generics)] //~ WARN the feature `const_generics` is incomplete
+
 #![allow(irrefutable_let_patterns)]
 
 use std::ops::Range;
@@ -156,4 +158,32 @@ fn outside_if_and_while_expr() {
     // Check function tail position.
     &let 0 = 0
     //~^ ERROR `let` expressions are not supported here
+}
+
+// Let's make sure that `let` inside const generic arguments are considered.
+fn inside_const_generic_arguments() {
+    struct A<const B: bool>;
+    impl<const B: bool> A<{B}> { const O: u32 = 5; }
+
+    if let A::<{
+        true && let 1 = 1 //~ ERROR `let` expressions are not supported here
+    }>::O = 5 {}
+
+    while let A::<{
+        true && let 1 = 1 //~ ERROR `let` expressions are not supported here
+    }>::O = 5 {}
+
+    if A::<{
+        true && let 1 = 1 //~ ERROR `let` expressions are not supported here
+    }>::O == 5 {}
+
+    // In the cases above we have `ExprKind::Block` to help us out.
+    // Below however, we would not have a block and so an implementation might go
+    // from visiting expressions to types without banning `let` expressions down the tree.
+    // This tests ensures that we are not caught by surprise should the parser
+    // admit non-IDENT expressions in const generic arguments.
+
+    if A::<
+        true && let 1 = 1 //~ ERROR expected one of `,` or `>`, found `&&`
+    >::O == 5 {}
 }
