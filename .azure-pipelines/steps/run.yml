@@ -37,6 +37,15 @@ steps:
 
 - template: install-windows-build-deps.yml
 
+# Looks like docker containers have IPv6 disabled by default, so let's turn it
+# on since libstd tests require it
+- bash: |
+    set -e
+    echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json
+    sudo service docker restart
+  displayName: Enable IPv6
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+
 # Check out all our submodules, but more quickly than using git by using one of
 # our custom scripts
 - bash: |
