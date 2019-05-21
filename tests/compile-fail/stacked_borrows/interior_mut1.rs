@@ -3,8 +3,13 @@ use std::cell::UnsafeCell;
 fn main() { unsafe {
     let c = &UnsafeCell::new(UnsafeCell::new(0));
     let inner_uniq = &mut *c.get();
-    let inner_shr = &*inner_uniq; // a SharedRW with a tag
-    *c.get() = UnsafeCell::new(1); // invalidates the SharedRW
+    // stack: [c: SharedReadWrite, inner_uniq: Unique]
+
+    let inner_shr = &*inner_uniq; // adds a SharedReadWrite
+    // stack: [c: SharedReadWrite, inner_uniq: Unique, inner_shr: SharedReadWrite]
+
+    *c.get() = UnsafeCell::new(1); // invalidates inner_shr
+    // stack: [c: SharedReadWrite]
+
     let _val = *inner_shr.get(); //~ ERROR borrow stack
-    let _val = *inner_uniq.get();
 } }
