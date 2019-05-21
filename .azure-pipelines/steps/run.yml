@@ -35,6 +35,12 @@ steps:
   displayName: Install build dependencies (OSX)
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'), eq(variables['RUST_CHECK_TARGET'],'dist'))
 
+- bash: |
+    set -e
+    sudo xcode-select --switch /Applications/Xcode_9.3.app
+  displayName: Switch to Xcode 9.3 (OSX)
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'), eq(variables['RUST_CHECK_TARGET'],'dist'))
+
 - template: install-windows-build-deps.yml
 
 # Looks like docker containers have IPv6 disabled by default, so let's turn it
