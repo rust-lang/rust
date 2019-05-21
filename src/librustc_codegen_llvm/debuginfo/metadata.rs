@@ -31,7 +31,7 @@ use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, Integer, IntegerExt, LayoutOf,
                         PrimitiveExt, Size, TyLayout, VariantIdx};
 use rustc::ty::subst::UnpackedKind;
-use rustc::session::config;
+use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::FxHashMap;
 use rustc_fs_util::path_to_c_string;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -925,7 +925,26 @@ pub fn compile_unit_metadata(tcx: TyCtxt<'_, '_, '_>,
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
-    let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
+
+    // FIXME(#60020):
+    //
+    //    This should actually be
+    //
+    //    ```
+    //      let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
+    //    ```
+    //
+    //    that is, we should set LLVM's emission kind to `LineTablesOnly` if
+    //    we are compiling with "limited" debuginfo. However, some of the
+    //    existing tools relied on slightly more debuginfo being generated than
+    //    would be the case with `LineTablesOnly`, and we did not want to break
+    //    these tools in a "drive-by fix", without a good idea or plan about
+    //    what limited debuginfo should exactly look like. So for now we keep
+    //    the emission kind as `FullDebug`.
+    //
+    //    See https://github.com/rust-lang/rust/issues/60020 for details.
+    let kind = DebugEmissionKind::FullDebug;
+    assert!(tcx.sess.opts.debuginfo != DebugInfo::None);
 
     unsafe {
         let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
