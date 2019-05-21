@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/attribute-with-error.rs:11:18
+  --> $DIR/attribute-with-error.rs:10:18
    |
 LL |     let a: i32 = "foo";
    |                  ^^^^^ expected i32, found reference
@@ -8,7 +8,7 @@ LL |     let a: i32 = "foo";
               found type `&'static str`
 
 error[E0308]: mismatched types
-  --> $DIR/attribute-with-error.rs:13:18
+  --> $DIR/attribute-with-error.rs:12:18
    |
 LL |     let b: i32 = "f'oo";
    |                  ^^^^^^ expected i32, found reference
@@ -17,7 +17,7 @@ LL |     let b: i32 = "f'oo";
               found type `&'static str`
 
 error[E0308]: mismatched types
-  --> $DIR/attribute-with-error.rs:26:22
+  --> $DIR/attribute-with-error.rs:25:22
    |
 LL |         let a: i32 = "foo";
    |                      ^^^^^ expected i32, found reference
@@ -26,7 +26,7 @@ LL |         let a: i32 = "foo";
               found type `&'static str`
 
 error[E0308]: mismatched types
-  --> $DIR/attribute-with-error.rs:36:22
+  --> $DIR/attribute-with-error.rs:35:22
    |
 LL |         let a: i32 = "foo";
    |                      ^^^^^ expected i32, found reference

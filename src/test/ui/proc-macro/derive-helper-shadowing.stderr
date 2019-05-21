@@ -1,29 +1,29 @@
-error[E0658]: The attribute `my_attr` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/derive-helper-shadowing.rs:20:15
+error[E0658]: The attribute `empty_helper` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/derive-helper-shadowing.rs:22:15
    |
-LL |             #[my_attr]
-   |               ^^^^^^^
+LL |             #[empty_helper]
+   |               ^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
-error[E0659]: `my_attr` is ambiguous (derive helper attribute vs any other name)
-  --> $DIR/derive-helper-shadowing.rs:6:3
+error[E0659]: `empty_helper` is ambiguous (derive helper attribute vs any other name)
+  --> $DIR/derive-helper-shadowing.rs:8:3
    |
-LL | #[my_attr]
-   |   ^^^^^^^ ambiguous name
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^ ambiguous name
    |
-note: `my_attr` could refer to the derive helper attribute defined here
-  --> $DIR/derive-helper-shadowing.rs:7:10
+note: `empty_helper` could refer to the derive helper attribute defined here
+  --> $DIR/derive-helper-shadowing.rs:9:10
    |
-LL | #[derive(MyTrait)]
-   |          ^^^^^^^
-note: `my_attr` could also refer to the attribute macro imported here
-  --> $DIR/derive-helper-shadowing.rs:4:5
+LL | #[derive(Empty)]
+   |          ^^^^^
+note: `empty_helper` could also refer to the attribute macro imported here
+  --> $DIR/derive-helper-shadowing.rs:6:5
    |
-LL | use derive_helper_shadowing::*;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `crate::my_attr` to refer to this attribute macro unambiguously
+LL | use test_macros::empty_attr as empty_helper;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
 
 error: aborting due to 2 previous errors
 

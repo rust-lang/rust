@@ -1,8 +1,8 @@
 error: proc-macro derive panicked
-  --> $DIR/load-panic.rs:6:10
+  --> $DIR/issue-36935.rs:6:20
    |
-LL | #[derive(Panic)]
-   |          ^^^^^
+LL | #[derive(Identity, Panic)]
+   |                    ^^^^^
    |
    = help: message: panic-derive
 

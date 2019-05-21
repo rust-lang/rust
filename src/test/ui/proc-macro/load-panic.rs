@@ -1,10 +1,9 @@
-// aux-build:derive-panic.rs
-// compile-flags:--error-format human
+// aux-build:test-macros.rs
 
 #[macro_use]
-extern crate derive_panic;
+extern crate test_macros;
 
-#[derive(A)]
+#[derive(Panic)]
 //~^ ERROR: proc-macro derive panicked
 struct Foo;
 
