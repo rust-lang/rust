@@ -29,7 +29,7 @@ test_utils = { path = "../test_utils" }
 ra_assists = { path = "../ra_assists" }
 
 [dev-dependencies]
-insta = "0.7.0"
+insta = "0.8.1"
 
 [dev-dependencies.proptest]
 version = "0.9.0"
