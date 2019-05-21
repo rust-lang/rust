@@ -198,6 +198,7 @@ fn print(lvl: usize, msgs: &[Message], out: &mut impl Write) {
         if l != lvl {
             continue;
         }
+
         writeln!(out, "{} {:6}ms - {}", indent, dur.as_millis(), msg)
             .expect("printing profiling info to stdout");
 

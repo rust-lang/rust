@@ -20,7 +20,7 @@ use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait, GenericP
 use display::{HirDisplay, HirFormatter};
 
 pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig, generic_predicates, generic_defaults};
-pub(crate) use infer::{infer, InferenceResult, InferTy};
+pub(crate) use infer::{infer_query, InferenceResult, InferTy};
 pub use lower::CallableDef;
 
 /// A type constructor or type name: this might be something like the primitive

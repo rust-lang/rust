@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use rustc_hash::FxHashSet;
 use log::debug;
 use chalk_ir::cast::Cast;
+use ra_prof::profile;
 
 use crate::{Crate, Trait, db::HirDatabase, ImplBlock};
 use super::{TraitRef, Ty, Canonical};
@@ -81,6 +82,7 @@ pub(crate) fn implements_query(
     krate: Crate,
     trait_ref: Canonical<TraitRef>,
 ) -> Option<Solution> {
+    let _p = profile("implements_query");
     let goal: chalk_ir::Goal = trait_ref.value.to_chalk(db).cast();
     debug!("goal: {:?}", goal);
     let env = chalk_ir::Environment::new();
