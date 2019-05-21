@@ -1,10 +1,8 @@
 // Inspired by Paul Woolcock's cargo-fmt (https://github.com/pwoolcoc/cargo-fmt/).
 
-#![cfg(not(test))]
 #![deny(warnings)]
 
 use cargo_metadata;
-use getopts;
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
@@ -17,7 +15,41 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
-use getopts::{Matches, Options};
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+#[structopt(
+    bin_name = "cargo fmt",
+    author = "",
+    about = "This utility formats all bin and lib files of \
+             the current crate using rustfmt."
+)]
+pub struct Opts {
+    /// No output printed to stdout
+    #[structopt(short = "q", long = "quiet")]
+    quiet: bool,
+
+    /// Use verbose output
+    #[structopt(short = "v", long = "verbose")]
+    verbose: bool,
+
+    /// Print rustfmt version and exit
+    #[structopt(long = "version")]
+    version: bool,
+
+    /// Specify package to format (only usable in workspaces)
+    #[structopt(short = "p", long = "package", value_name = "package")]
+    packages: Vec<String>,
+
+    /// Options passed to rustfmt
+    // 'raw = true' to make `--` explicit.
+    #[structopt(name = "rustfmt_options", raw(raw = "true"))]
+    rustfmt_options: Vec<String>,
+
+    /// Format all packages (only usable in workspaces)
+    #[structopt(long = "all")]
+    format_all: bool,
+}
 
 fn main() {
     let exit_status = execute();
@@ -29,80 +61,43 @@ const SUCCESS: i32 = 0;
 const FAILURE: i32 = 1;
 
 fn execute() -> i32 {
-    let mut opts = getopts::Options::new();
-    opts.optflag("h", "help", "show this message");
-    opts.optflag("q", "quiet", "no output printed to stdout");
-    opts.optflag("v", "verbose", "use verbose output");
-    opts.optmulti(
-        "p",
-        "package",
-        "specify package to format (only usable in workspaces)",
-        "<package>",
-    );
-    opts.optflag("", "version", "print rustfmt version and exit");
-    opts.optflag("", "all", "format all packages (only usable in workspaces)");
-
-    // If there is any invalid argument passed to `cargo fmt`, return without formatting.
-    let mut is_package_arg = false;
-    for arg in env::args().skip(2).take_while(|a| a != "--") {
-        if arg.starts_with('-') {
-            is_package_arg = arg.starts_with("--package") | arg.starts_with("-p");
-        } else if !is_package_arg {
-            print_usage_to_stderr(&opts, &format!("Invalid argument: `{}`.", arg));
-            return FAILURE;
+    // Drop extra `fmt` argument provided by `cargo`.
+    let mut found_fmt = false;
+    let args = env::args().filter(|x| {
+        if found_fmt {
+            true
         } else {
-            is_package_arg = false;
+            found_fmt = x == "fmt";
+            x != "fmt"
         }
-    }
+    });
 
-    let matches = match opts.parse(env::args().skip(1).take_while(|a| a != "--")) {
-        Ok(m) => m,
-        Err(e) => {
-            print_usage_to_stderr(&opts, &e.to_string());
-            return FAILURE;
-        }
-    };
+    let opts = Opts::from_iter(args);
 
-    let verbosity = match (matches.opt_present("v"), matches.opt_present("q")) {
+    let verbosity = match (opts.verbose, opts.quiet) {
         (false, false) => Verbosity::Normal,
         (false, true) => Verbosity::Quiet,
         (true, false) => Verbosity::Verbose,
         (true, true) => {
-            print_usage_to_stderr(&opts, "quiet mode and verbose mode are not compatible");
+            print_usage_to_stderr("quiet mode and verbose mode are not compatible");
             return FAILURE;
         }
     };
 
-    if matches.opt_present("h") {
-        print_usage_to_stdout(&opts, "");
-        return SUCCESS;
+    if opts.version {
+        return handle_command_status(get_version());
     }
 
-    if matches.opt_present("version") {
-        return handle_command_status(get_version(), &opts);
-    }
+    let strategy = CargoFmtStrategy::from_opts(&opts);
 
-    let strategy = CargoFmtStrategy::from_matches(&matches);
-    handle_command_status(format_crate(verbosity, &strategy), &opts)
+    handle_command_status(format_crate(verbosity, &strategy, opts.rustfmt_options))
 }
 
-macro_rules! print_usage {
-    ($print:ident, $opts:ident, $reason:expr) => {{
-        let msg = format!("{}\nusage: cargo fmt [options]", $reason);
-        $print!(
-            "{}\nThis utility formats all bin and lib files of the current crate using rustfmt. \
-             Arguments after `--` are passed to rustfmt.",
-            $opts.usage(&msg)
-        );
-    }};
-}
-
-fn print_usage_to_stdout(opts: &Options, reason: &str) {
-    print_usage!(println, opts, reason);
-}
-
-fn print_usage_to_stderr(opts: &Options, reason: &str) {
-    print_usage!(eprintln, opts, reason);
+fn print_usage_to_stderr(reason: &str) {
+    eprintln!("{}", reason);
+    let app = Opts::clap();
+    app.write_help(&mut io::stderr())
+        .expect("failed to write to stderr");
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -112,10 +107,10 @@ pub enum Verbosity {
     Quiet,
 }
 
-fn handle_command_status(status: Result<i32, io::Error>, opts: &getopts::Options) -> i32 {
+fn handle_command_status(status: Result<i32, io::Error>) -> i32 {
     match status {
         Err(e) => {
-            print_usage_to_stderr(opts, &e.to_string());
+            print_usage_to_stderr(&e.to_string());
             FAILURE
         }
         Ok(status) => status,
@@ -142,8 +137,11 @@ fn get_version() -> Result<i32, io::Error> {
     }
 }
 
-fn format_crate(verbosity: Verbosity, strategy: &CargoFmtStrategy) -> Result<i32, io::Error> {
-    let rustfmt_args = get_fmt_args();
+fn format_crate(
+    verbosity: Verbosity,
+    strategy: &CargoFmtStrategy,
+    rustfmt_args: Vec<String>,
+) -> Result<i32, io::Error> {
     let targets = if rustfmt_args
         .iter()
         .any(|s| ["--print-config", "-h", "--help", "-V", "--version"].contains(&s.as_str()))
@@ -155,11 +153,6 @@ fn format_crate(verbosity: Verbosity, strategy: &CargoFmtStrategy) -> Result<i32
 
     // Currently only bin and lib files get formatted.
     run_rustfmt(&targets, &rustfmt_args, verbosity)
-}
-
-fn get_fmt_args() -> Vec<String> {
-    // All arguments after -- are passed to rustfmt.
-    env::args().skip_while(|a| a != "--").skip(1).collect()
 }
 
 /// Target uses a `path` field for equality and hashing.
@@ -223,11 +216,11 @@ pub enum CargoFmtStrategy {
 }
 
 impl CargoFmtStrategy {
-    pub fn from_matches(matches: &Matches) -> CargoFmtStrategy {
-        match (matches.opt_present("all"), matches.opt_present("p")) {
-            (false, false) => CargoFmtStrategy::Root,
+    pub fn from_opts(opts: &Opts) -> CargoFmtStrategy {
+        match (opts.format_all, opts.packages.is_empty()) {
+            (false, true) => CargoFmtStrategy::Root,
             (true, _) => CargoFmtStrategy::All,
-            (false, true) => CargoFmtStrategy::Some(matches.opt_strs("p")),
+            (false, false) => CargoFmtStrategy::Some(opts.packages.clone()),
         }
     }
 }
@@ -401,5 +394,135 @@ fn get_cargo_metadata(manifest_path: Option<&Path>) -> Result<cargo_metadata::Me
     match cmd.exec() {
         Ok(metadata) => Ok(metadata),
         Err(error) => Err(io::Error::new(io::ErrorKind::Other, error.to_string())),
+    }
+}
+
+#[cfg(test)]
+mod cargo_fmt_tests {
+    use super::*;
+
+    #[test]
+    fn default_options() {
+        let empty: Vec<String> = vec![];
+        let o = Opts::from_iter(&empty);
+        assert_eq!(false, o.quiet);
+        assert_eq!(false, o.verbose);
+        assert_eq!(false, o.version);
+        assert_eq!(empty, o.packages);
+        assert_eq!(empty, o.rustfmt_options);
+        assert_eq!(false, o.format_all);
+    }
+
+    #[test]
+    fn good_options() {
+        let o = Opts::from_iter(&[
+            "test",
+            "-q",
+            "-p",
+            "p1",
+            "-p",
+            "p2",
+            "--",
+            "--edition",
+            "2018",
+        ]);
+        assert_eq!(true, o.quiet);
+        assert_eq!(false, o.verbose);
+        assert_eq!(false, o.version);
+        assert_eq!(vec!["p1", "p2"], o.packages);
+        assert_eq!(vec!["--edition", "2018"], o.rustfmt_options);
+        assert_eq!(false, o.format_all);
+    }
+
+    #[test]
+    fn unexpected_option() {
+        assert!(
+            Opts::clap()
+                .get_matches_from_safe(&["test", "unexpected"])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn unexpected_flag() {
+        assert!(
+            Opts::clap()
+                .get_matches_from_safe(&["test", "--flag"])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn mandatory_separator() {
+        assert!(
+            Opts::clap()
+                .get_matches_from_safe(&["test", "--check"])
+                .is_err()
+        );
+        assert!(
+            !Opts::clap()
+                .get_matches_from_safe(&["test", "--", "--check"])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn multiple_packages_one_by_one() {
+        let o = Opts::from_iter(&[
+            "test",
+            "-p",
+            "package1",
+            "--package",
+            "package2",
+            "-p",
+            "package3",
+        ]);
+        assert_eq!(3, o.packages.len());
+    }
+
+    #[test]
+    fn multiple_packages_grouped() {
+        let o = Opts::from_iter(&[
+            "test",
+            "--package",
+            "package1",
+            "package2",
+            "-p",
+            "package3",
+            "package4",
+        ]);
+        assert_eq!(4, o.packages.len());
+    }
+
+    #[test]
+    fn empty_packages_1() {
+        assert!(Opts::clap().get_matches_from_safe(&["test", "-p"]).is_err());
+    }
+
+    #[test]
+    fn empty_packages_2() {
+        assert!(
+            Opts::clap()
+                .get_matches_from_safe(&["test", "-p", "--", "--check"])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn empty_packages_3() {
+        assert!(
+            Opts::clap()
+                .get_matches_from_safe(&["test", "-p", "--verbose"])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn empty_packages_4() {
+        assert!(
+            Opts::clap()
+                .get_matches_from_safe(&["test", "-p", "--check"])
+                .is_err()
+        );
     }
 }

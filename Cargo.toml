@@ -58,6 +58,7 @@ unicode_categories = "0.1.1"
 dirs = "1.0.4"
 ignore = "0.4.6"
 annotate-snippets = { version = "0.5.0", features = ["ansi_term"] }
+structopt = "0.2.15"
 
 config_proc_macro = { path = "config_proc_macro" }
 
