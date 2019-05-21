@@ -478,7 +478,7 @@ impl UseTree {
 
         // Normalise foo::{bar} -> foo::bar
         if let UseSegment::List(ref list) = last {
-            if list.len() == 1 {
+            if list.len() == 1 && list[0].to_string() != "self" {
                 normalize_sole_list = true;
             }
         }
@@ -1034,7 +1034,10 @@ mod test {
             parse_use_tree("a::self as foo").normalize(),
             parse_use_tree("a as foo")
         );
-        assert_eq!(parse_use_tree("a::{self}").normalize(), parse_use_tree("a"));
+        assert_eq!(
+            parse_use_tree("a::{self}").normalize(),
+            parse_use_tree("a::{self}")
+        );
         assert_eq!(parse_use_tree("a::{b}").normalize(), parse_use_tree("a::b"));
         assert_eq!(
             parse_use_tree("a::{b, c::self}").normalize(),
@@ -1069,8 +1072,8 @@ mod test {
         );
 
         assert!(
-            parse_use_tree("foo::{self as bar}").normalize()
-                < parse_use_tree("foo::{qux as bar}").normalize()
+            parse_use_tree("foo::{qux as bar}").normalize()
+                < parse_use_tree("foo::{self as bar}").normalize()
         );
         assert!(
             parse_use_tree("foo::{qux as bar}").normalize()

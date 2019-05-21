@@ -22,13 +22,13 @@ use list::{
 
 use test::{/* A */ self /* B */, Other /* C */};
 
-use syntax;
 pub use syntax::ast::{Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath, Expr_};
+use syntax::{self};
 use Foo::{Bar, Baz};
 use {Bar /* comment */, /* Pre-comment! */ Foo};
 
 use std::io;
-use std::io;
+use std::io::{self};
 
 mod Foo {
     pub use syntax::ast::{
@@ -53,8 +53,8 @@ use foo;
 use foo::bar::baz;
 
 // With aliases.
-use foo as bar;
 use foo::qux as bar;
+use foo::{self as bar};
 use foo::{self as bar, baz};
 use foo::{baz, qux as bar};
 
