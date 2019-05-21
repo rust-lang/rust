@@ -8,7 +8,11 @@ use ra_db::SourceDatabase;
 use test_utils::covers;
 use insta::assert_snapshot_matches;
 
-use crate::{Crate, mock::{MockDatabase, CrateGraphFixture}, nameres::Resolution};
+use crate::{
+    Crate,
+    mock::{MockDatabase, CrateGraphFixture},
+    nameres::Resolution,
+};
 
 use super::*;
 
@@ -25,12 +29,15 @@ fn compute_crate_def_map(fixture: &str, graph: Option<CrateGraphFixture>) -> Arc
 fn render_crate_def_map(map: &CrateDefMap) -> String {
     let mut buf = String::new();
     go(&mut buf, map, "\ncrate", map.root);
-    return buf;
+    return buf.trim().to_string();
 
     fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: CrateModuleId) {
         *buf += path;
         *buf += "\n";
-        for (name, res) in map.modules[module].scope.items.iter() {
+
+        let mut entries = map.modules[module].scope.items.iter().collect::<Vec<_>>();
+        entries.sort_by_key(|(name, _)| *name);
+        for (name, res) in entries {
             *buf += &format!("{}: {}\n", name, dump_resolution(res))
         }
         for (name, child) in map.modules[module].children.iter() {
@@ -79,21 +86,20 @@ fn crate_def_map_smoke_test() {
         ",
     );
     assert_snapshot_matches!(map, @r###"
-crate
-V: t v
-E: t
-foo: t
-S: t v
-
-crate::foo
-bar: t
-f: v
-
-crate::foo::bar
-Baz: t v
-E: t
-"###
-    )
+        ⋮crate
+        ⋮E: t
+        ⋮S: t v
+        ⋮V: t v
+        ⋮foo: t
+        ⋮
+        ⋮crate::foo
+        ⋮bar: t
+        ⋮f: v
+        ⋮
+        ⋮crate::foo::bar
+        ⋮Baz: t v
+        ⋮E: t
+    "###)
 }
 
 #[test]
@@ -113,12 +119,12 @@ fn bogus_paths() {
         ",
     );
     assert_snapshot_matches!(map, @r###"
-crate
-foo: t
-S: t v
-
-crate::foo
-"###
+   ⋮crate
+   ⋮S: t v
+   ⋮foo: t
+   ⋮
+   ⋮crate::foo
+    "###
     )
 }
 
@@ -137,13 +143,13 @@ fn use_as() {
     );
     assert_snapshot_matches!(map,
         @r###"
-crate
-Foo: t v
-foo: t
-
-crate::foo
-Baz: t v
-"###
+   ⋮crate
+   ⋮Foo: t v
+   ⋮foo: t
+   ⋮
+   ⋮crate::foo
+   ⋮Baz: t v
+    "###
     );
 }
 
@@ -164,21 +170,19 @@ fn use_trees() {
         pub enum Quux {};
         ",
     );
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-Quux: t
-Baz: t v
-foo: t
-
-crate::foo
-bar: t
-
-crate::foo::bar
-Quux: t
-Baz: t v
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Baz: t v
+        ⋮Quux: t
+        ⋮foo: t
+        ⋮
+        ⋮crate::foo
+        ⋮bar: t
+        ⋮
+        ⋮crate::foo::bar
+        ⋮Baz: t v
+        ⋮Quux: t
+    "###);
 }
 
 #[test]
@@ -199,20 +203,18 @@ fn re_exports() {
         pub struct Baz;
         ",
     );
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-Baz: t v
-foo: t
-
-crate::foo
-bar: t
-Baz: t v
-
-crate::foo::bar
-Baz: t v
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Baz: t v
+        ⋮foo: t
+        ⋮
+        ⋮crate::foo
+        ⋮Baz: t v
+        ⋮bar: t
+        ⋮
+        ⋮crate::foo::bar
+        ⋮Baz: t v
+    "###);
 }
 
 #[test]
@@ -237,10 +239,10 @@ fn std_prelude() {
         },
     );
     assert_snapshot_matches!(map, @r###"
-crate
-Bar: t v
-Baz: t v
-"###);
+        ⋮crate
+        ⋮Bar: t v
+        ⋮Baz: t v
+    "###);
 }
 
 #[test]
@@ -254,10 +256,10 @@ fn can_import_enum_variant() {
         ",
     );
     assert_snapshot_matches!(map, @r###"
-crate
-V: t v
-E: t
-"###
+        ⋮crate
+        ⋮E: t
+        ⋮V: t v
+    "###
     );
 }
 
@@ -285,20 +287,18 @@ fn edition_2015_imports() {
         },
     );
 
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-bar: t
-foo: t
-
-crate::bar
-Bar: t v
-
-crate::foo
-FromLib: t v
-Bar: t v
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮bar: t
+        ⋮foo: t
+        ⋮
+        ⋮crate::bar
+        ⋮Bar: t v
+        ⋮
+        ⋮crate::foo
+        ⋮Bar: t v
+        ⋮FromLib: t v
+    "###);
 }
 
 #[test]
@@ -317,16 +317,14 @@ fn module_resolution_works_for_non_standard_filenames() {
         },
     );
 
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-Bar: t v
-foo: t
-
-crate::foo
-Bar: t v
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Bar: t v
+        ⋮foo: t
+        ⋮
+        ⋮crate::foo
+        ⋮Bar: t v
+    "###);
 }
 
 #[test]
@@ -348,12 +346,10 @@ fn name_res_works_for_broken_modules() {
         pub struct Baz;
         ",
     );
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-Baz: _
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Baz: _
+    "###);
 }
 
 #[test]
@@ -369,19 +365,17 @@ fn item_map_using_self() {
         pub struct Baz;
         ",
     );
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-Baz: t v
-foo: t
-
-crate::foo
-bar: t
-
-crate::foo::bar
-Baz: t v
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Baz: t v
+        ⋮foo: t
+        ⋮
+        ⋮crate::foo
+        ⋮bar: t
+        ⋮
+        ⋮crate::foo::bar
+        ⋮Baz: t v
+    "###);
 }
 
 #[test]
@@ -400,12 +394,10 @@ fn item_map_across_crates() {
         },
     );
 
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-Baz: t v
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Baz: t v
+    "###);
 }
 
 #[test]
@@ -430,12 +422,10 @@ fn extern_crate_rename() {
         },
     );
 
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-Arc: t v
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Arc: t v
+    "###);
 }
 
 #[test]
@@ -462,9 +452,9 @@ fn extern_crate_rename_2015_edition() {
 
     assert_snapshot_matches!(map,
         @r###"
-crate
-Arc: t v
-"###
+   ⋮crate
+   ⋮Arc: t v
+    "###
     );
 }
 
@@ -490,12 +480,10 @@ fn import_across_source_roots() {
         },
     );
 
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-C: t v
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮C: t v
+    "###);
 }
 
 #[test]
@@ -519,12 +507,10 @@ fn reexport_across_crates() {
         },
     );
 
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-Baz: t v
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Baz: t v
+    "###);
 }
 
 #[test]
@@ -544,13 +530,11 @@ fn values_dont_shadow_extern_crates() {
         },
     );
 
-    assert_snapshot_matches!(map,
-        @r###"
-crate
-Bar: t v
-foo: v
-"###
-    );
+    assert_snapshot_matches!(map, @r###"
+        ⋮crate
+        ⋮Bar: t v
+        ⋮foo: v
+    "###);
 }
 
 #[test]

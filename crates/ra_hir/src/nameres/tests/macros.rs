@@ -18,14 +18,14 @@ fn macro_rules_are_globally_visible() {
         ",
     );
     assert_snapshot_matches!(map, @r###"
-crate
-nested: t
-Foo: t v
-
-crate::nested
-Bar: t v
-Baz: t v
-"###);
+   ⋮crate
+   ⋮Foo: t v
+   ⋮nested: t
+   ⋮
+   ⋮crate::nested
+   ⋮Bar: t v
+   ⋮Baz: t v
+    "###);
 }
 
 #[test]
@@ -45,15 +45,15 @@ fn macro_rules_can_define_modules() {
         ",
     );
     assert_snapshot_matches!(map, @r###"
-crate
-n1: t
-
-crate::n1
-n2: t
-
-crate::n1::n2
-X: t v
-"###);
+   ⋮crate
+   ⋮n1: t
+   ⋮
+   ⋮crate::n1
+   ⋮n2: t
+   ⋮
+   ⋮crate::n1::n2
+   ⋮X: t v
+    "###);
 }
 
 #[test]
@@ -81,14 +81,14 @@ fn macro_rules_from_other_crates_are_visible() {
         },
     );
     assert_snapshot_matches!(map, @r###"
-crate
-bar: t
-Foo: t v
-Bar: t v
-
-crate::bar
-bar: t
-Foo: t v
-Bar: t v
-"###);
+   ⋮crate
+   ⋮Bar: t v
+   ⋮Foo: t v
+   ⋮bar: t
+   ⋮
+   ⋮crate::bar
+   ⋮Bar: t v
+   ⋮Foo: t v
+   ⋮bar: t
+    "###);
 }
