@@ -107,11 +107,19 @@ steps:
 
 - bash: |
     set -e
+    if [ "$AGENT_OS" = "Linux" ]; then
+        rm -rf obj/build/dist/doc
+        upload_dir=obj/build/dist deploy/$BUILD_SOURCEVERSION
+    else
+        rm -rf build/dist/doc
+        upload_dir=build/dist
+    fi
+    ls -la $upload_dir
     deploy_dir=rustc-builds
     if [ "$DEPLOY_ALT" == "1" ]; then
         deploy_dir=rustc-builds-alt
     fi
-    aws s3 cp --no-progress --recursive --acl public-read ./deploy s3://$DEPLOY_BUCKET/$deploy_dir
+    aws s3 cp --no-progress --recursive --acl public-read ./$upload_dir s3://$DEPLOY_BUCKET/$deploy_dir/$BUILD_SOURCEVERSION
   env:
     AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
   condition: and(succeeded(), or(eq(variables.DEPLOY, '1'), eq(variables.DEPLOY_ALT, '1')))
