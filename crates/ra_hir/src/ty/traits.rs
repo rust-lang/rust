@@ -78,24 +78,23 @@ pub enum Obligation {
 
 /// Check using Chalk whether trait is implemented for given parameters including `Self` type.
 pub(crate) fn implements_query(
-    _db: &impl HirDatabase,
-    _krate: Crate,
-    _trait_ref: Canonical<TraitRef>,
+    db: &impl HirDatabase,
+    krate: Crate,
+    trait_ref: Canonical<TraitRef>,
 ) -> Option<Solution> {
-    return None;
-    // let _p = profile("implements_query");
-    // let goal: chalk_ir::Goal = trait_ref.value.to_chalk(db).cast();
-    // debug!("goal: {:?}", goal);
-    // let env = chalk_ir::Environment::new();
-    // let in_env = chalk_ir::InEnvironment::new(&env, goal);
-    // let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
-    // let canonical =
-    //     chalk_ir::Canonical { value: in_env, binders: vec![parameter; trait_ref.num_vars] };
-    // // We currently don't deal with universes (I think / hope they're not yet
-    // // relevant for our use cases?)
-    // let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
-    // let solution = solve(db, krate, &u_canonical);
-    // solution.map(|solution| solution_from_chalk(db, solution))
+    let _p = profile("implements_query");
+    let goal: chalk_ir::Goal = trait_ref.value.to_chalk(db).cast();
+    debug!("goal: {:?}", goal);
+    let env = chalk_ir::Environment::new();
+    let in_env = chalk_ir::InEnvironment::new(&env, goal);
+    let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
+    let canonical =
+        chalk_ir::Canonical { value: in_env, binders: vec![parameter; trait_ref.num_vars] };
+    // We currently don't deal with universes (I think / hope they're not yet
+    // relevant for our use cases?)
+    let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
+    let solution = solve(db, krate, &u_canonical);
+    solution.map(|solution| solution_from_chalk(db, solution))
 }
 
 fn solution_from_chalk(db: &impl HirDatabase, solution: chalk_solve::Solution) -> Solution {
