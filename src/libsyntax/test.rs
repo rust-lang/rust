@@ -283,12 +283,8 @@ fn generate_test_harness(sess: &ParseSess,
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
         def_site: None,
-        format: MacroAttribute(Symbol::intern("test_case")),
-        allow_internal_unstable: Some(vec![
-            Symbol::intern("main"),
-            Symbol::intern("test"),
-            Symbol::intern("rustc_attrs"),
-        ].into()),
+        format: MacroAttribute(sym::test_case),
+        allow_internal_unstable: Some(vec![sym::main, sym::test, sym::rustc_attrs].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
         edition: sess.edition,
@@ -347,14 +343,14 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let call_test_main = ecx.stmt_expr(call_test_main);
 
     // #![main]
-    let main_meta = ecx.meta_word(sp, Symbol::intern("main"));
+    let main_meta = ecx.meta_word(sp, sym::main);
     let main_attr = ecx.attribute(sp, main_meta);
 
     // extern crate test as test_gensym
     let test_extern_stmt = ecx.stmt_item(sp, ecx.item(sp,
         test_id,
         vec![],
-        ast::ItemKind::ExternCrate(Some(Symbol::intern("test")))
+        ast::ItemKind::ExternCrate(Some(sym::test))
     ));
 
     // pub fn main() { ... }

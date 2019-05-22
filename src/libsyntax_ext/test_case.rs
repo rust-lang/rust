@@ -14,7 +14,7 @@ use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast;
 use syntax::source_map::respan;
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span};
 use syntax::source_map::{ExpnInfo, MacroAttribute};
 use syntax::feature_gate;
@@ -40,11 +40,8 @@ pub fn expand(
         mark.set_expn_info(ExpnInfo {
             call_site: DUMMY_SP,
             def_site: None,
-            format: MacroAttribute(Symbol::intern("test_case")),
-            allow_internal_unstable: Some(vec![
-                Symbol::intern("test"),
-                Symbol::intern("rustc_attrs"),
-            ].into()),
+            format: MacroAttribute(sym::test_case),
+            allow_internal_unstable: Some(vec![sym::test, sym::rustc_attrs].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: ecx.parse_sess.edition,
@@ -59,7 +56,7 @@ pub fn expand(
         item.ident = item.ident.gensym();
         item.attrs.push(
             ecx.attribute(sp,
-                ecx.meta_word(sp, Symbol::intern("rustc_test_marker")))
+                ecx.meta_word(sp, sym::rustc_test_marker))
         );
         item
     });

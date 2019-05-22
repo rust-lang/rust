@@ -11,7 +11,7 @@ use syntax::ext::base::{self, *};
 use syntax::feature_gate;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax::ast::AsmDialect;
 use syntax_pos::Span;
 use syntax::tokenstream;
@@ -93,7 +93,7 @@ fn parse_inline_asm<'a>(
         })
         .unwrap_or(tts.len());
     let mut p = cx.new_parser_from_tts(&tts[first_colon..]);
-    let mut asm = Symbol::intern("");
+    let mut asm = kw::Invalid;
     let mut asm_str_style = None;
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();
