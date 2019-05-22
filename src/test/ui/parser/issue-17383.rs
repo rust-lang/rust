@@ -1,6 +1,6 @@
 enum X {
     A = 3,
-    //~^ ERROR discriminator values can only be used with a field-less enum
+    //~^ ERROR custom discriminant values are not allowed in enums with fields
     B(usize)
 }
 

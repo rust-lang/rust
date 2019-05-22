@@ -1,16 +1,19 @@
 use crate::ast;
-use crate::ast::{BlockCheckMode, Expr, ExprKind, Item, ItemKind, Pat, PatKind, QSelf, Ty, TyKind};
-use crate::parse::parser::{BlockMode, PathStyle, TokenType, SemiColonMode};
+use crate::ast::{
+    BlockCheckMode, Expr, ExprKind, Item, ItemKind, Pat, PatKind, QSelf, Ty, TyKind, VariantData,
+};
+use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType};
 use crate::parse::token;
 use crate::parse::PResult;
 use crate::parse::Parser;
 use crate::print::pprust;
 use crate::ptr::P;
+use crate::source_map::Spanned;
 use crate::symbol::kw;
 use crate::ThinVec;
 use errors::{Applicability, DiagnosticBuilder};
-use syntax_pos::Span;
 use log::debug;
+use syntax_pos::Span;
 
 pub trait RecoverQPath: Sized + 'static {
     const PATH_STYLE: PathStyle = PathStyle::Expr;
@@ -76,6 +79,44 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 )
                 .emit();
+        }
+    }
+
+    crate fn maybe_report_invalid_custom_discriminants(
+        &mut self,
+        discriminant_spans: Vec<Span>,
+        variants: &[Spanned<ast::Variant_>],
+    ) {
+        let has_fields = variants.iter().any(|variant| match variant.node.data {
+            VariantData::Tuple(..) | VariantData::Struct(..) => true,
+            VariantData::Unit(..) => false,
+        });
+
+        if !discriminant_spans.is_empty() && has_fields {
+            let mut err = self.struct_span_err(
+                discriminant_spans.clone(),
+                "custom discriminant values are not allowed in enums with fields",
+            );
+            for sp in discriminant_spans {
+                err.span_label(sp, "invalid custom discriminant");
+            }
+            for variant in variants.iter() {
+                if let VariantData::Struct(fields, ..) | VariantData::Tuple(fields, ..) =
+                    &variant.node.data
+                {
+                    let fields = if fields.len() > 1 {
+                        "fields"
+                    } else {
+                        "a field"
+                    };
+                    err.span_label(
+                        variant.span,
+                        &format!("variant with {fields} defined here", fields = fields),
+                    );
+
+                }
+            }
+            err.emit();
         }
     }
 
