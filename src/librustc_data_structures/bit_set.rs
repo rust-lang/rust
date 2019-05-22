@@ -557,10 +557,20 @@ impl<T: Idx> HybridBitSet<T> {
                         changed
                     }
                     HybridBitSet::Dense(other_dense) => {
-                        // `self` is sparse and `other` is dense. Clone the
-                        // other set and do the bitwise union with sparse
-                        // `self`. This avoids traversing the dense
-                        // representation twice.
+                        // `self` is sparse and `other` is dense. To
+                        // merge them, we have two available strategies:
+                        // * Densify `self` then merge other
+                        // * Clone other then integrate bits from `self`
+                        // The second strategy requires dedicated method
+                        // since the usual `union` returns the wrong
+                        // result. In the dedicated case the computation
+                        // is slightly faster if the bits of the sparse
+                        // bitset map to only few words of the dense
+                        // representation, i.e. indices are near each
+                        // other.
+                        //
+                        // Benchmarking seems to suggest that the second
+                        // option is worth it.
                         let mut new_dense = other_dense.clone();
                         let changed = new_dense.reverse_union_sparse(self_sparse);
                         *self = HybridBitSet::Dense(new_dense);
