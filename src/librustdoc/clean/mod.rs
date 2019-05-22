@@ -10,7 +10,6 @@ mod auto_trait;
 mod blanket_impl;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
@@ -1690,7 +1689,7 @@ impl Clean<Generics> for hir::Generics {
 }
 
 impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
-                                    &'a Lrc<ty::GenericPredicates<'tcx>>) {
+                                    &'a &'tcx ty::GenericPredicates<'tcx>) {
     fn clean(&self, cx: &DocContext<'_>) -> Generics {
         use self::WherePredicate as WP;
 
@@ -4437,7 +4436,7 @@ pub fn path_to_def(tcx: TyCtxt<'_, '_, '_>, path: &[Symbol]) -> Option<DefId> {
         loop {
             let segment = path_it.next()?;
 
-            for item in mem::replace(&mut items, Lrc::new(vec![])).iter() {
+            for item in mem::replace(&mut items, &[]).iter() {
                 if item.ident.name == *segment {
                     if path_it.peek().is_none() {
                         return match item.res {

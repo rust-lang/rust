@@ -2298,7 +2298,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Lrc<GenericPredicates<'gcx>> {
+    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx GenericPredicates<'gcx> {
         tcx.predicates_of(self.did)
     }
 
@@ -3106,7 +3106,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
 pub struct AssociatedItemsIterator<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    def_ids: Lrc<Vec<DefId>>,
+    def_ids: &'gcx [DefId],
     next_index: usize,
 }
 
@@ -3183,26 +3183,27 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      def_id: DefId)
-                                     -> Lrc<Vec<DefId>> {
+                                     -> &'tcx [DefId] {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let item = tcx.hir().expect_item_by_hir_id(id);
-    let vec: Vec<_> = match item.node {
+    match item.node {
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
-            trait_item_refs.iter()
-                           .map(|trait_item_ref| trait_item_ref.id)
-                           .map(|id| tcx.hir().local_def_id_from_hir_id(id.hir_id))
-                           .collect()
+            tcx.arena.alloc_from_iter(
+                trait_item_refs.iter()
+                               .map(|trait_item_ref| trait_item_ref.id)
+                               .map(|id| tcx.hir().local_def_id_from_hir_id(id.hir_id))
+            )
         }
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
-            impl_item_refs.iter()
-                          .map(|impl_item_ref| impl_item_ref.id)
-                          .map(|id| tcx.hir().local_def_id_from_hir_id(id.hir_id))
-                          .collect()
+            tcx.arena.alloc_from_iter(
+                impl_item_refs.iter()
+                              .map(|impl_item_ref| impl_item_ref.id)
+                              .map(|id| tcx.hir().local_def_id_from_hir_id(id.hir_id))
+            )
         }
-        hir::ItemKind::TraitAlias(..) => vec![],
+        hir::ItemKind::TraitAlias(..) => &[],
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")
-    };
-    Lrc::new(vec)
+    }
 }
 
 fn def_span<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Span {
@@ -3388,7 +3389,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 /// (constructing this map requires touching the entire crate).
 #[derive(Clone, Debug, Default, HashStable)]
 pub struct CrateInherentImpls {
-    pub inherent_impls: DefIdMap<Lrc<Vec<DefId>>>,
+    pub inherent_impls: DefIdMap<Vec<DefId>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]

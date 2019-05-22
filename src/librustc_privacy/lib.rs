@@ -67,7 +67,7 @@ trait DefIdVisitor<'a, 'tcx: 'a> {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> bool {
         self.skeleton().visit_trait(trait_ref)
     }
-    fn visit_predicates(&mut self, predicates: Lrc<ty::GenericPredicates<'tcx>>) -> bool {
+    fn visit_predicates(&mut self, predicates: &ty::GenericPredicates<'tcx>) -> bool {
         self.skeleton().visit_predicates(predicates)
     }
 }
@@ -89,8 +89,8 @@ impl<'a, 'tcx, V> DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
         (!self.def_id_visitor.shallow() && substs.visit_with(self))
     }
 
-    fn visit_predicates(&mut self, predicates: Lrc<ty::GenericPredicates<'tcx>>) -> bool {
-        let ty::GenericPredicates { parent: _, predicates } = &*predicates;
+    fn visit_predicates(&mut self, predicates: &ty::GenericPredicates<'tcx>) -> bool {
+        let ty::GenericPredicates { parent: _, predicates } = predicates;
         for (predicate, _span) in predicates {
             match predicate {
                 ty::Predicate::Trait(poly_predicate) => {

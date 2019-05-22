@@ -61,7 +61,7 @@ rustc_queries! {
         /// predicate gets in the way of some checks, which are intended
         /// to operate over only the actual where-clauses written by the
         /// user.)
-        query predicates_of(_: DefId) -> Lrc<ty::GenericPredicates<'tcx>> {}
+        query predicates_of(_: DefId) -> &'tcx ty::GenericPredicates<'tcx> {}
 
         query native_libraries(_: CrateNum) -> Lrc<Vec<NativeLibrary>> {
             desc { "looking up the native libraries of a linked crate" }
@@ -166,11 +166,11 @@ rustc_queries! {
         /// equal to the `explicit_predicates_of` predicates plus the
         /// `inferred_outlives_of` predicates.
         query predicates_defined_on(_: DefId)
-            -> Lrc<ty::GenericPredicates<'tcx>> {}
+            -> &'tcx ty::GenericPredicates<'tcx> {}
 
         /// Returns the predicates written explicit by the user.
         query explicit_predicates_of(_: DefId)
-            -> Lrc<ty::GenericPredicates<'tcx>> {}
+            -> &'tcx ty::GenericPredicates<'tcx> {}
 
         /// Returns the inferred outlives predicates (e.g., for `struct
         /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
@@ -182,14 +182,14 @@ rustc_queries! {
         /// evaluate them even during type conversion, often before the
         /// full predicates are available (note that supertraits have
         /// additional acyclicity requirements).
-        query super_predicates_of(key: DefId) -> Lrc<ty::GenericPredicates<'tcx>> {
+        query super_predicates_of(key: DefId) -> &'tcx ty::GenericPredicates<'tcx> {
             desc { |tcx| "computing the supertraits of `{}`", tcx.def_path_str(key) }
         }
 
         /// To avoid cycles within the predicates of a single item we compute
         /// per-type-parameter predicates for resolving `T::AssocTy`.
         query type_param_predicates(key: (DefId, DefId))
-            -> Lrc<ty::GenericPredicates<'tcx>> {
+            -> &'tcx ty::GenericPredicates<'tcx> {
             no_force
             desc { |tcx| "computing the bounds for type parameter `{}`", {
                 let id = tcx.hir().as_local_hir_id(key.1).unwrap();
@@ -264,7 +264,7 @@ rustc_queries! {
 
     Other {
         /// Maps from an impl/trait def-id to a list of the def-ids of its items
-        query associated_item_def_ids(_: DefId) -> Lrc<Vec<DefId>> {}
+        query associated_item_def_ids(_: DefId) -> &'tcx [DefId] {}
 
         /// Maps from a trait item to the trait item "descriptor"
         query associated_item(_: DefId) -> ty::AssociatedItem {}
@@ -279,7 +279,7 @@ rustc_queries! {
         /// Maps a DefId of a type to a list of its inherent impls.
         /// Contains implementations of methods that are inherent to a type.
         /// Methods in these implementations don't need to be exported.
-        query inherent_impls(_: DefId) -> Lrc<Vec<DefId>> {
+        query inherent_impls(_: DefId) -> &'tcx [DefId] {
             eval_always
         }
     }
@@ -361,7 +361,7 @@ rustc_queries! {
     }
 
     Other {
-        query used_trait_imports(_: DefId) -> Lrc<DefIdSet> {}
+        query used_trait_imports(_: DefId) -> &'tcx DefIdSet {}
     }
 
     TypeChecking {
@@ -373,7 +373,7 @@ rustc_queries! {
     }
 
     BorrowChecking {
-        query borrowck(_: DefId) -> Lrc<BorrowCheckResult> {}
+        query borrowck(_: DefId) -> &'tcx BorrowCheckResult {}
 
         /// Borrow checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
@@ -385,7 +385,7 @@ rustc_queries! {
         /// Not meant to be used directly outside of coherence.
         /// (Defined only for `LOCAL_CRATE`.)
         query crate_inherent_impls(k: CrateNum)
-            -> Lrc<CrateInherentImpls> {
+            -> &'tcx CrateInherentImpls {
             eval_always
             desc { "all inherent impls defined in crate `{:?}`", k }
         }
@@ -683,11 +683,11 @@ rustc_queries! {
     Codegen {
         query upstream_monomorphizations(
             k: CrateNum
-        ) -> Lrc<DefIdMap<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>> {
+        ) -> &'tcx DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>> {
             desc { "collecting available upstream monomorphizations `{:?}`", k }
         }
         query upstream_monomorphizations_for(_: DefId)
-            -> Option<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>> {}
+            -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>> {}
     }
 
     Other {
@@ -726,12 +726,12 @@ rustc_queries! {
 
     TypeChecking {
         query implementations_of_trait(_: (CrateNum, DefId))
-            -> Lrc<Vec<DefId>> {
+            -> &'tcx [DefId] {
             no_force
             desc { "looking up implementations of a trait in a crate" }
         }
         query all_trait_implementations(_: CrateNum)
-            -> Lrc<Vec<DefId>> {
+            -> &'tcx [DefId] {
             desc { "looking up all (?) trait implementations" }
         }
     }
@@ -756,19 +756,19 @@ rustc_queries! {
 
     BorrowChecking {
         // Lifetime resolution. See `middle::resolve_lifetimes`.
-        query resolve_lifetimes(_: CrateNum) -> Lrc<ResolveLifetimes> {
+        query resolve_lifetimes(_: CrateNum) -> &'tcx ResolveLifetimes {
             desc { "resolving lifetimes" }
         }
         query named_region_map(_: DefIndex) ->
-            Option<Lrc<FxHashMap<ItemLocalId, Region>>> {
+            Option<&'tcx FxHashMap<ItemLocalId, Region>> {
             desc { "looking up a named region" }
         }
         query is_late_bound_map(_: DefIndex) ->
-            Option<Lrc<FxHashSet<ItemLocalId>>> {
+            Option<&'tcx FxHashSet<ItemLocalId>> {
             desc { "testing if a region is late bound" }
         }
         query object_lifetime_defaults_map(_: DefIndex)
-            -> Option<Lrc<FxHashMap<ItemLocalId, Lrc<Vec<ObjectLifetimeDefault>>>>> {
+            -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>> {
             desc { "looking up lifetime defaults for a region" }
         }
     }
@@ -786,7 +786,7 @@ rustc_queries! {
             eval_always
             desc { "fetching what a crate is named" }
         }
-        query item_children(_: DefId) -> Lrc<Vec<Export<hir::HirId>>> {}
+        query item_children(_: DefId) -> &'tcx [Export<hir::HirId>] {}
         query extern_mod_stmt_cnum(_: DefId) -> Option<CrateNum> {}
 
         query get_lib_features(_: CrateNum) -> Lrc<LibFeatures> {

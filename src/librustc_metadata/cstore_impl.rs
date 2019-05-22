@@ -21,6 +21,7 @@ use rustc::hir::map::definitions::DefPathTable;
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::svh::Svh;
 
+use smallvec::SmallVec;
 use std::any::Any;
 use rustc_data_structures::sync::Lrc;
 use std::sync::Arc;
@@ -95,9 +96,11 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     generics_of => {
         tcx.alloc_generics(cdata.get_generics(def_id.index, tcx.sess))
     }
-    predicates_of => { Lrc::new(cdata.get_predicates(def_id.index, tcx)) }
-    predicates_defined_on => { Lrc::new(cdata.get_predicates_defined_on(def_id.index, tcx)) }
-    super_predicates_of => { Lrc::new(cdata.get_super_predicates(def_id.index, tcx)) }
+    predicates_of => { tcx.arena.alloc(cdata.get_predicates(def_id.index, tcx)) }
+    predicates_defined_on => {
+        tcx.arena.alloc(cdata.get_predicates_defined_on(def_id.index, tcx))
+    }
+    super_predicates_of => { tcx.arena.alloc(cdata.get_super_predicates(def_id.index, tcx)) }
     trait_def => {
         tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx.sess))
     }
@@ -108,10 +111,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     variances_of => { tcx.arena.alloc_from_iter(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
-        let mut result = vec![];
+        let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index,
           |child| result.push(child.res.def_id()), tcx.sess);
-        Lrc::new(result)
+        tcx.arena.alloc_slice(&result)
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
@@ -134,7 +137,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         (cdata.mir_const_qualif(def_id.index), tcx.arena.alloc(BitSet::new_empty(0)))
     }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
-    inherent_impls => { Lrc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
+    inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     static_mutability => { cdata.static_mutability(def_id.index) }
@@ -207,18 +210,12 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
-
     implementations_of_trait => {
-        let mut result = vec![];
-        let filter = Some(other);
-        cdata.get_implementations_for_trait(filter, &mut result);
-        Lrc::new(result)
+        cdata.get_implementations_for_trait(tcx, Some(other))
     }
 
     all_trait_implementations => {
-        let mut result = vec![];
-        cdata.get_implementations_for_trait(None, &mut result);
-        Lrc::new(result)
+        cdata.get_implementations_for_trait(tcx, None)
     }
 
     visibility => { cdata.get_visibility(def_id.index) }
@@ -228,9 +225,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     crate_name => { cdata.name }
     item_children => {
-        let mut result = vec![];
+        let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
-        Lrc::new(result)
+        tcx.arena.alloc_slice(&result)
     }
     defined_lib_features => { Lrc::new(cdata.get_lib_features()) }
     defined_lang_items => { Lrc::new(cdata.get_lang_items()) }
