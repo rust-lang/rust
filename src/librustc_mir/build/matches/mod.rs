@@ -544,7 +544,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let place = Place::Base(PlaceBase::Local(local_id));
         let var_ty = self.local_decls[local_id].ty;
         let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
-        self.schedule_drop(span, region_scope, &place, var_ty, DropKind::Storage);
+        self.schedule_drop(span, region_scope, &place, var_ty, DropKind::Storage { cached_block: CachedBlock::default() });
         place
     }
 

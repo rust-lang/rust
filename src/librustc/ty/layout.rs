@@ -666,7 +666,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     size,
                     align,
                 });
-                debug!("generator layout: {:#?}", layout);
+                debug!("generator layout ({:?}): {:#?}", ty, layout);
                 layout
             }
 
