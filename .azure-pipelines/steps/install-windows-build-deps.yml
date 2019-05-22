@@ -1,21 +1,20 @@
 steps:
-# FIXME: are these still needed?
-# - bash: |
-#     set -x
-#     git submodule
-#     export SUBMODULES_EXCLUDES=$(git submodule | grep -Eow 'src/[^ ]+' | sed 's/\(.*\)/--exclude=\1\/\.git/')
-#     echo "##vso[task.setvariable variable=SUBMODULES_EXCLUDES;]$SUBMODULES_EXCLUDES"
-
-# FIXME: needs a comment to justify its existence
+# We've had issues with the default drive in use running out of space during a
+# build, and it looks like the `C:` drive has more space than the default `D:`
+# drive. We should probably confirm this with the azure pipelines team at some
+# point, but this seems to fix our "disk space full" problems.
 - script: |
-    REM echo hack as drive D is too small
-    IF NOT "%DISABLE_DISK_SPACE_HACK%"=="1" (
-      mkdir c:\MORE_SPACE
-      mklink /J build c:\MORE_SPACE
-    )
+    mkdir c:\MORE_SPACE
+    mklink /J build c:\MORE_SPACE
   displayName: "Ensure build happens on C:/ instead of D:/"
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
+# Download and install MSYS2, needed primarily for the test suite (run-make) but
+# also used by the MinGW toolchain for assembling things.
+#
+# FIXME: we should probe the default azure image and see if we can use the MSYS2
+# toolchain there. (if there's even one there). For now though this gets the job
+# done.
 - script: |
     set MSYS_PATH=%CD%\citools\msys64
     choco install msys2 --params="/InstallDir:%MSYS_PATH% /NoPath" -y
@@ -37,23 +36,11 @@ steps:
 # If we need to download a custom MinGW, do so here and set the path
 # appropriately.
 #
-# Note that this *also* means that we're not using what is typically
-# /mingw32/bin/python2.7.exe, which is a "correct" python interpreter where
-# /usr/bin/python2.7.exe is not. To ensure we use the right interpreter we
-# move `C:\Python27` ahead in PATH and then also make sure the `python2.7.exe`
-# file exists in there (which it doesn't by default).
-- script: |
-    powershell -Command "iwr -outf %MINGW_ARCHIVE% %MINGW_URL%/%MINGW_ARCHIVE%"
-    7z x -y %MINGW_ARCHIVE% > nul
-    echo ##vso[task.prependpath]%CD%\%MINGW_DIR%\bin
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), ne(variables['MINGW_URL'],''))
-  displayName: Download custom MinGW
-
-# Here we do a pretty heinous thing which is to mangle the MinGW installation
-# we just had above. Currently, as of this writing, we're using MinGW-w64
-# builds of gcc, and that's currently at 6.3.0. We use 6.3.0 as it appears to
-# be the first version which contains a fix for #40546, builds randomly
-# failing during LLVM due to ar.exe/ranlib.exe failures.
+# Here we also do a pretty heinous thing which is to mangle the MinGW
+# installation we just downloaded. Currently, as of this writing, we're using
+# MinGW-w64 builds of gcc, and that's currently at 6.3.0. We use 6.3.0 as it
+# appears to be the first version which contains a fix for #40546, builds
+# randomly failing during LLVM due to ar.exe/ranlib.exe failures.
 #
 # Unfortunately, though, 6.3.0 *also* is the first version of MinGW-w64 builds
 # to contain a regression in gdb (#40184). As a result if we were to use the
@@ -67,11 +54,13 @@ steps:
 # Note that we don't literally overwrite the gdb.exe binary because it appears
 # to just use gdborig.exe, so that's the binary we deal with instead.
 - script: |
-    echo ON
+    powershell -Command "iwr -outf %MINGW_ARCHIVE% %MINGW_URL%/%MINGW_ARCHIVE%"
+    7z x -y %MINGW_ARCHIVE% > nul
     powershell -Command "iwr -outf 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_URL%/2017-04-20-%MSYS_BITS%bit-gdborig.exe"
     mv 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_DIR%\bin\gdborig.exe
+    echo ##vso[task.prependpath]%CD%\%MINGW_DIR%\bin
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), ne(variables['MINGW_URL'],''))
-  displayName: Override with 6.3.0 gdb with 6.2.0 gdb
+  displayName: Download custom MinGW
 
 # Otherwise pull in the MinGW installed on appveyor
 - script: |
@@ -79,6 +68,10 @@ steps:
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['MINGW_URL'],''))
   displayName: Add MinGW to path
 
+# Make sure we use the native python interpreter instead of some msys equivalent
+# one way or another. The msys interpreters seem to have weird path conversions
+# baked in which break LLVM's build system one way or another, so let's use the
+# native version which keeps everything as native as possible.
 - script: |
     copy C:\Python27amd64\python.exe C:\Python27amd64\python2.7.exe
     echo ##vso[task.prependpath]C:\Python27amd64

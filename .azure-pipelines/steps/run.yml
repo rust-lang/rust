@@ -114,6 +114,8 @@ steps:
     AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
   displayName: Run build
 
+# If we're a deploy builder, use the `aws` command to publish everything to our
+# bucket.
 - bash: |
     set -e
     if [ "$AGENT_OS" = "Linux" ]; then
