@@ -1,10 +1,11 @@
 #![allow(non_snake_case)]
 
 use rustc::hir::{ExprKind, Node};
+use crate::hir::def_id::DefId;
 use rustc::hir::lowering::is_range_literal;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
+use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx, SizeSkeleton};
 use rustc::{lint, util};
 use rustc_data_structures::indexed_vec::Idx;
 use util::nodemap::FxHashSet;
@@ -14,11 +15,11 @@ use lint::{LintPass, LateLintPass};
 use std::cmp;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
-use syntax::{ast, attr};
+use syntax::{ast, attr, source_map};
 use syntax::errors::Applicability;
+use syntax::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::Span;
-use syntax::source_map;
 
 use rustc::hir;
 
@@ -522,42 +523,79 @@ enum FfiResult<'tcx> {
     },
 }
 
+fn is_zst<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId, ty: Ty<'tcx>) -> bool {
+    tcx.layout_of(tcx.param_env(did).and(ty)).map(|layout| layout.is_zst()).unwrap_or(false)
+}
+
+fn ty_is_known_nonnull<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.sty {
+        ty::FnPtr(_) => true,
+        ty::Ref(..) => true,
+        ty::Adt(field_def, substs) if field_def.repr.transparent() && field_def.is_struct() => {
+            for field in &field_def.non_enum_variant().fields {
+                let field_ty = tcx.normalize_erasing_regions(
+                    ParamEnv::reveal_all(),
+                    field.ty(tcx, substs),
+                );
+                if is_zst(tcx, field.did, field_ty) {
+                    continue;
+                }
+
+                let attrs = tcx.get_attrs(field_def.did);
+                if attrs.iter().any(|a| a.check_name(sym::rustc_nonnull_optimization_guaranteed)) ||
+                    ty_is_known_nonnull(tcx, field_ty) {
+                    return true;
+                }
+            }
+
+            false
+        }
+        _ => false,
+    }
+}
+
 /// Check if this enum can be safely exported based on the
 /// "nullable pointer optimization". Currently restricted
-/// to function pointers and references, but could be
-/// expanded to cover NonZero raw pointers and newtypes.
+/// to function pointers, references, core::num::NonZero*,
+/// core::ptr::NonNull, and #[repr(transparent)] newtypes.
 /// FIXME: This duplicates code in codegen.
 fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  def: &'tcx ty::AdtDef,
+                                  ty: Ty<'tcx>,
+                                  ty_def: &'tcx ty::AdtDef,
                                   substs: SubstsRef<'tcx>)
                                   -> bool {
-    if def.variants.len() == 2 {
-        let data_idx;
-
-        let zero = VariantIdx::new(0);
-        let one = VariantIdx::new(1);
-
-        if def.variants[zero].fields.is_empty() {
-            data_idx = one;
-        } else if def.variants[one].fields.is_empty() {
-            data_idx = zero;
-        } else {
-            return false;
-        }
-
-        if def.variants[data_idx].fields.len() == 1 {
-            match def.variants[data_idx].fields[0].ty(tcx, substs).sty {
-                ty::FnPtr(_) => {
-                    return true;
-                }
-                ty::Ref(..) => {
-                    return true;
-                }
-                _ => {}
-            }
-        }
+    if ty_def.variants.len() != 2 {
+        return false;
     }
-    false
+
+    let get_variant_fields = |index| &ty_def.variants[VariantIdx::new(index)].fields;
+    let variant_fields = [get_variant_fields(0), get_variant_fields(1)];
+    let fields = if variant_fields[0].is_empty() {
+        &variant_fields[1]
+    } else if variant_fields[1].is_empty() {
+        &variant_fields[0]
+    } else {
+        return false;
+    };
+
+    if fields.len() != 1 {
+        return false;
+    }
+
+    let field_ty = fields[0].ty(tcx, substs);
+    if !ty_is_known_nonnull(tcx, field_ty) {
+        return false;
+    }
+
+    // At this point, the field's type is known to be nonnull and the parent enum is Option-like.
+    // If the computed size for the field and the enum are different, the nonnull optimization isn't
+    // being applied (and we've got a problem somewhere).
+    let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, ParamEnv::reveal_all()).unwrap();
+    if !compute_size_skeleton(ty).same_size(compute_size_skeleton(field_ty)) {
+        bug!("improper_ctypes: Option nonnull optimization not applied?");
+    }
+
+    true
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
@@ -612,14 +650,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             );
                             // repr(transparent) types are allowed to have arbitrary ZSTs, not just
                             // PhantomData -- skip checking all ZST fields
-                            if def.repr.transparent() {
-                                let is_zst = cx
-                                    .layout_of(cx.param_env(field.did).and(field_ty))
-                                    .map(|layout| layout.is_zst())
-                                    .unwrap_or(false);
-                                if is_zst {
-                                    continue;
-                                }
+                            if def.repr.transparent() && is_zst(cx, field.did, field_ty) {
+                                continue;
                             }
                             let r = self.check_type_for_ffi(cache, field_ty);
                             match r {
@@ -682,7 +714,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // discriminant.
                         if !def.repr.c() && def.repr.int.is_none() {
                             // Special-case types like `Option<extern fn()>`.
-                            if !is_repr_nullable_ptr(cx, def, substs) {
+                            if !is_repr_nullable_ptr(cx, ty, def, substs) {
                                 return FfiUnsafe {
                                     ty: ty,
                                     reason: "enum has no representation hint",

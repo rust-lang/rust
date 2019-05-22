@@ -491,6 +491,7 @@ symbols! {
         rustc_layout_scalar_valid_range_end,
         rustc_layout_scalar_valid_range_start,
         rustc_mir,
+        rustc_nonnull_optimization_guaranteed,
         rustc_object_lifetime_default,
         rustc_on_unimplemented,
         rustc_outlives,

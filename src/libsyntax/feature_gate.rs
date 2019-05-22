@@ -1134,6 +1134,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             is just used to enable niche optimizations in libcore \
             and will never be stable",
         cfg_fn!(rustc_attrs))),
+    (sym::rustc_nonnull_optimization_guaranteed, Whitelisted, template!(Word),
+    Gated(Stability::Unstable,
+        sym::rustc_attrs,
+        "the `#[rustc_nonnull_optimization_guaranteed]` attribute \
+            is just used to enable niche optimizations in libcore \
+            and will never be stable",
+        cfg_fn!(rustc_attrs))),
     (sym::rustc_regions, Normal, template!(Word), Gated(Stability::Unstable,
                                     sym::rustc_attrs,
                                     "the `#[rustc_regions]` attribute \
