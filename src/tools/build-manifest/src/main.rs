@@ -100,6 +100,7 @@ static TARGETS: &[&str] = &[
     "sparc64-unknown-linux-gnu",
     "sparcv9-sun-solaris",
     "thumbv6m-none-eabi",
+    "thumbv7a-pc-windows-msvc",
     "thumbv7em-none-eabi",
     "thumbv7em-none-eabihf",
     "thumbv7m-none-eabi",
