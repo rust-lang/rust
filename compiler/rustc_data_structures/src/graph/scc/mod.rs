@@ -274,30 +274,118 @@ where
     /// of `r2` (and updates `r` to reflect current result). This is
     /// basically the "find" part of a standard union-find algorithm
     /// (with path compression).
-    fn find_state(&mut self, r: G::Node) -> NodeState<G::Node, S> {
-        debug!("find_state(r = {:?} in state {:?})", r, self.node_states[r]);
-        match self.node_states[r] {
-            NodeState::InCycle { scc_index } => NodeState::InCycle { scc_index },
-            NodeState::BeingVisited { depth } => NodeState::BeingVisited { depth },
-            NodeState::NotVisited => NodeState::NotVisited,
-            NodeState::InCycleWith { parent } => {
-                let parent_state = self.find_state(parent);
-                debug!("find_state: parent_state = {:?}", parent_state);
-                match parent_state {
-                    NodeState::InCycle { .. } => {
-                        self.node_states[r] = parent_state;
-                        parent_state
-                    }
+    fn find_state(&mut self, mut node: G::Node) -> NodeState<G::Node, S> {
+        // To avoid recursion we temporarily reuse the `parent` of each
+        // InCycleWith link to encode a downwards link while compressing
+        // the path. After we have found the root or deepest node being
+        // visited, we traverse the reverse links and correct the node
+        // states on the way.
+        //
+        // **Note**: This mutation requires that this is a leaf function
+        // or at least that none of the called functions inspects the
+        // current node states. Luckily, we are a leaf.
 
-                    NodeState::BeingVisited { depth } => {
-                        self.node_states[r] =
-                            NodeState::InCycleWith { parent: self.node_stack[depth] };
-                        parent_state
-                    }
+        // Remember one previous link. The termination condition when
+        // following links downwards is then simply as soon as we have
+        // found the initial self-loop.
+        let mut previous_node = node;
 
-                    NodeState::NotVisited | NodeState::InCycleWith { .. } => {
-                        panic!("invalid parent state: {:?}", parent_state)
-                    }
+        // Ultimately assigned by the parent when following
+        // `InCycleWith` upwards.
+        let node_state = loop {
+            debug!("find_state(r = {:?} in state {:?})", node, self.node_states[node]);
+            match self.node_states[node] {
+                NodeState::InCycle { scc_index } => break NodeState::InCycle { scc_index },
+                NodeState::BeingVisited { depth } => break NodeState::BeingVisited { depth },
+                NodeState::NotVisited => break NodeState::NotVisited,
+                NodeState::InCycleWith { parent } => {
+                    // We test this, to be extremely sure that we never
+                    // ever break our termination condition for the
+                    // reverse iteration loop.
+                    assert!(node != parent, "Node can not be in cycle with itself");
+                    // Store the previous node as an inverted list link
+                    self.node_states[node] = NodeState::InCycleWith { parent: previous_node };
+                    // Update to parent node.
+                    previous_node = node;
+                    node = parent;
+                }
+            }
+        };
+
+        // The states form a graph where up to one outgoing link is stored at
+        // each node. Initially in general,
+        //
+        //                                                  E
+        //                                                  ^
+        //                                                  |
+        //                                InCycleWith/BeingVisited/NotVisited
+        //                                                  |
+        //   A-InCycleWith->B-InCycleWith…>C-InCycleWith->D-+
+        //   |
+        //   = node, previous_node
+        //
+        // After the first loop, this will look like
+        //                                                  E
+        //                                                  ^
+        //                                                  |
+        //                                InCycleWith/BeingVisited/NotVisited
+        //                                                  |
+        // +>A<-InCycleWith-B<…InCycleWith-C<-InCycleWith-D-+
+        // | |                             |              |
+        // | InCycleWith                   |              = node
+        // +-+                             =previous_node
+        //
+        // Note in particular that A will be linked to itself in a self-cycle
+        // and no other self-cycles occur due to how InCycleWith is assigned in
+        // the find phase implemented by `walk_unvisited_node`.
+        //
+        // We now want to compress the path, that is assign the state of the
+        // link D-E to all other links.
+        //
+        // We can then walk backwards, starting from `previous_node`, and assign
+        // each node in the list with the updated state. The loop terminates
+        // when we reach the self-cycle.
+
+        // Move backwards until we found the node where we started. We
+        // will know when we hit the state where previous_node == node.
+        loop {
+            // Back at the beginning, we can return.
+            if previous_node == node {
+                return node_state;
+            }
+            // Update to previous node in the link.
+            match self.node_states[previous_node] {
+                NodeState::InCycleWith { parent: previous } => {
+                    node = previous_node;
+                    previous_node = previous;
+                }
+                // Only InCycleWith nodes were added to the reverse linked list.
+                other => panic!("Invalid previous link while compressing cycle: {:?}", other),
+            }
+
+            debug!("find_state: parent_state = {:?}", node_state);
+
+            // Update the node state from the parent state. The assigned
+            // state is actually a loop invariant but it will only be
+            // evaluated if there is at least one backlink to follow.
+            // Fully trusting llvm here to find this loop optimization.
+            match node_state {
+                // Path compression, make current node point to the same root.
+                NodeState::InCycle { .. } => {
+                    self.node_states[node] = node_state;
+                }
+                // Still visiting nodes, compress to cycle to the node
+                // at that depth.
+                NodeState::BeingVisited { depth } => {
+                    self.node_states[node] =
+                        NodeState::InCycleWith { parent: self.node_stack[depth] };
+                }
+                // These are never allowed as parent nodes. InCycleWith
+                // should have been followed to a real parent and
+                // NotVisited can not be part of a cycle since it should
+                // have instead gotten explored.
+                NodeState::NotVisited | NodeState::InCycleWith { .. } => {
+                    panic!("invalid parent state: {:?}", node_state)
                 }
             }
         }
