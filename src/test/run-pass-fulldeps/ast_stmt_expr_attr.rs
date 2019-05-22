@@ -105,7 +105,7 @@ fn reject_stmt_parse(es: &str) {
 }
 
 fn main() {
-    syntax::with_globals(|| run());
+    syntax::with_default_globals(|| run());
 }
 
 fn run() {

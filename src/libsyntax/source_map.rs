@@ -947,7 +947,7 @@ impl SourceMap {
             allow_internal_unstable,
             allow_internal_unsafe: false,
             local_inner_macros: false,
-            edition: hygiene::default_edition(),
+            edition: edition::Edition::from_session(),
         });
         span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     }

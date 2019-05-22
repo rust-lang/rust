@@ -8,6 +8,7 @@ use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
 use rustc::session::search_paths::SearchPath;
 use rustc::util::common::ErrorReported;
 use syntax::ast;
+use syntax::with_globals;
 use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
@@ -386,12 +387,10 @@ pub fn make_test(s: &str,
 
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
-    let (already_has_main, already_has_extern_crate, found_macro) = crate::syntax::with_globals(|| {
+    let (already_has_main, already_has_extern_crate, found_macro) = with_globals(edition, || {
         use crate::syntax::{parse::{self, ParseSess}, source_map::FilePathMapping};
         use errors::emitter::EmitterWriter;
         use errors::Handler;
-
-        syntax::ext::hygiene::set_default_edition(edition);
 
         let filename = FileName::anon_source_code(s);
         let source = crates + &everything_else;

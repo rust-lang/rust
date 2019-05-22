@@ -42,17 +42,17 @@ pub mod proc_macro_impl;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension, MultiModifier};
-use syntax::ext::hygiene;
 use syntax::symbol::Symbol;
+use syntax::edition::Edition;
 
 pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
-                         user_exts: Vec<NamedSyntaxExtension>) {
+                         user_exts: Vec<NamedSyntaxExtension>,
+                         edition: Edition) {
     deriving::register_builtin_derives(resolver);
 
     let mut register = |name, ext| {
         resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
     };
-
     macro_rules! register {
         ($( $name:ident: $f:expr, )*) => { $(
             register(Symbol::intern(stringify!($name)),
@@ -63,7 +63,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                         allow_internal_unsafe: false,
                         local_inner_macros: false,
                         unstable_feature: None,
-                        edition: hygiene::default_edition(),
+                        edition,
                     });
         )* }
     }
@@ -108,7 +108,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                 allow_internal_unsafe: false,
                 local_inner_macros: false,
                 unstable_feature: None,
-                edition: hygiene::default_edition(),
+                edition,
             });
     register(Symbol::intern("format_args_nl"),
              NormalTT {
@@ -120,7 +120,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                  allow_internal_unsafe: false,
                  local_inner_macros: false,
                  unstable_feature: None,
-                 edition: hygiene::default_edition(),
+                 edition,
              });
 
     for (name, ext) in user_exts {

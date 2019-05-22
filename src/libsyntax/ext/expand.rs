@@ -5,7 +5,7 @@ use crate::source_map::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, resp
 use crate::config::StripUnconfigured;
 use crate::ext::base::*;
 use crate::ext::derive::{add_derived_markers, collect_derives};
-use crate::ext::hygiene::{self, Mark, SyntaxContext};
+use crate::ext::hygiene::{Mark, SyntaxContext};
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use crate::mut_visit::*;
@@ -560,7 +560,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
-            edition: ext.edition(),
+            edition: ext.edition(self.cx.parse_sess.edition),
         });
 
         match *ext {
@@ -805,7 +805,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         allow_internal_unstable: allow_internal_unstable.clone(),
                         allow_internal_unsafe: false,
                         local_inner_macros: false,
-                        edition: hygiene::default_edition(),
+                        edition: self.cx.parse_sess.edition,
                     });
 
                     let input: Vec<_> = mac.node.stream().into_trees().collect();
@@ -921,7 +921,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
-            edition: ext.edition(),
+            edition: ext.edition(self.cx.parse_sess.edition),
         };
 
         match *ext {

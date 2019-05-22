@@ -14,7 +14,7 @@ use syntax::{
         base::{ExtCtxt, Resolver},
         build::AstBuilder,
         expand::ExpansionConfig,
-        hygiene::{self, Mark, SyntaxContext},
+        hygiene::{Mark, SyntaxContext},
     },
     mut_visit::{self, MutVisitor},
     parse::ParseSess,
@@ -96,7 +96,7 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
             ].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
-            edition: hygiene::default_edition(),
+            edition: self.sess.edition,
         });
 
         // Tie the span to the macro expansion info we just created

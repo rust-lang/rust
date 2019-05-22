@@ -7,7 +7,7 @@
 
 use crate::GLOBALS;
 use crate::Span;
-use crate::edition::{Edition, DEFAULT_EDITION};
+use crate::edition::Edition;
 use crate::symbol::{keywords, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -174,7 +174,6 @@ crate struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: FxHashMap<(SyntaxContext, Mark, Transparency), SyntaxContext>,
-    default_edition: Edition,
 }
 
 impl HygieneData {
@@ -196,21 +195,12 @@ impl HygieneData {
                 dollar_crate_name: keywords::DollarCrate.name(),
             }],
             markings: FxHashMap::default(),
-            default_edition: DEFAULT_EDITION,
         }
     }
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
-}
-
-pub fn default_edition() -> Edition {
-    HygieneData::with(|data| data.default_edition)
-}
-
-pub fn set_default_edition(edition: Edition) {
-    HygieneData::with(|data| data.default_edition = edition);
 }
 
 pub fn clear_markings() {
