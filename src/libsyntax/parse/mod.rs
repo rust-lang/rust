@@ -332,6 +332,23 @@ pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser<'_> {
     Parser::new(sess, stream, None, true, false)
 }
 
+/// Given stream, the `ParseSess` and the base directory, produces a parser.
+///
+/// Use this function when you are creating a parser from the token stream
+/// and also care about the current working directory of the parser (e.g.,
+/// you are trying to resolve modules defined inside a macro invocation).
+///
+/// # Note
+///
+/// The main usage of this function is outside of rustc, for those who uses
+/// libsyntax as a library. Please do not remove this function while refactoring
+/// just because it is not used in rustc codebase!
+pub fn stream_to_parser_with_base_dir<'a>(sess: &'a ParseSess,
+                                          stream: TokenStream,
+                                          base_dir: Directory<'a>) -> Parser<'a> {
+    Parser::new(sess, stream, Some(base_dir), true, false)
+}
+
 /// A sequence separator.
 pub struct SeqSep {
     /// The seperator token.
