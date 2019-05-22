@@ -432,7 +432,7 @@ impl cstore::CStore {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
             return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
-        } else if data.name == sym::proc_macro && data.item_name(id.index) == "quote" {
+        } else if data.name == sym::proc_macro && data.item_name(id.index) == sym::quote {
             use syntax::ext::base::SyntaxExtension;
             use syntax_ext::proc_macro_impl::BangProcMacro;
 
