@@ -219,6 +219,9 @@ extern "C" {
     fn vcmpequh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_bool_short;
     #[link_name = "llvm.ppc.altivec.vcmpequw"]
     fn vcmpequw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_bool_int;
+
+    #[link_name = "llvm.ppc.altivec.vcmpgefp"]
+    fn vcmpgefp(a: vector_float, b: vector_float) -> vector_bool_int;
 }
 
 macro_rules! s_t_l {
@@ -374,6 +377,8 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] ($fn, $fn, $fn, $fn, $fn, $fn) }
         }
     }
+
+    test_impl! { vec_vcmpgefp(a: vector_float, b: vector_float) -> vector_bool_int [ vcmpgefp, vcmpgefp ] }
 
     test_impl! { vec_vcmpequb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_bool_char [ vcmpequb, vcmpequb ] }
     test_impl! { vec_vcmpequh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_bool_short [ vcmpequh, vcmpequh ] }
@@ -1318,6 +1323,13 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector cmpge.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_cmpge(a: vector_float, b: vector_float) -> vector_bool_int {
+    sealed::vec_vcmpgefp(a, b)
+}
+
 /// Vector cmpeq.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1677,6 +1689,12 @@ mod tests {
                 assert_eq!(d, r);
             }
          }
+    }
+
+    test_vec_2! { test_vec_cmpge, vec_cmpge, f32x4 -> m32x4,
+        [0.1, -0.1, 0.0, 0.99],
+        [0.1, 0.0, 0.1, 1.0],
+        [true, false, false, false]
     }
 
     test_vec_2! { test_vec_cmpeq_i8, vec_cmpeq, i8x16 -> m8x16,
