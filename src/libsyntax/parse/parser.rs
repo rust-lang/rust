@@ -2601,25 +2601,7 @@ impl<'a> Parser<'a> {
                         }
                         Err(mut err) => {
                             self.cancel(&mut err);
-                            let (span, msg) = match (&self.token, self.subparser_name) {
-                                (&token::Token::Eof, Some(origin)) => {
-                                    let sp = self.sess.source_map().next_point(self.span);
-                                    (sp, format!( "expected expression, found end of {}", origin))
-                                }
-                                _ => (self.span, format!(
-                                    "expected expression, found {}",
-                                    self.this_token_descr(),
-                                )),
-                            };
-                            let mut err = self.struct_span_err(span, &msg);
-                            let sp = self.sess.source_map().start_point(self.span);
-                            if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow()
-                                .get(&sp)
-                            {
-                                self.sess.expr_parentheses_needed(&mut err, *sp, None);
-                            }
-                            err.span_label(span, "expected expression");
-                            return Err(err);
+                            return Err(self.expected_expression_found());
                         }
                     }
                 }
