@@ -2,21 +2,16 @@
 //! This crate handles protocol handshaking and parsing messages, while you
 //! control the message dispatch loop yourself.
 //!
-//! Run with `RUST_LOG=sync_lsp_server=debug` to see all the messages.
+//! Run with `RUST_LOG=gen_lsp_server=debug` to see all the messages.
 //!
 //! ```no_run
-//! extern crate gen_lsp_server;
-//! extern crate lsp_types;
-//! extern crate failure;
-//! extern crate crossbeam_channel;
-//!
 //! use crossbeam_channel::{Sender, Receiver};
 //! use lsp_types::{ServerCapabilities, InitializeParams, request::{GotoDefinition, GotoDefinitionResponse}};
 //! use gen_lsp_server::{run_server, stdio_transport, handle_shutdown, RawMessage, RawResponse};
 //!
 //! fn main() -> Result<(), failure::Error> {
 //!     let (receiver, sender, io_threads) = stdio_transport();
-//!     gen_lsp_server::run_server(
+//!     run_server(
 //!         ServerCapabilities::default(),
 //!         receiver,
 //!         sender,
@@ -38,13 +33,13 @@
 //!                     None => return Ok(()),
 //!                     Some(req) => req,
 //!                 };
-//!                 let req = match req.cast::<GotoDefinition>() {
+//!                 match req.cast::<GotoDefinition>() {
 //!                     Ok((id, _params)) => {
 //!                         let resp = RawResponse::ok::<GotoDefinition>(
 //!                             id,
 //!                             &Some(GotoDefinitionResponse::Array(Vec::new())),
 //!                         );
-//!                         sender.send(RawMessage::Response(resp));
+//!                         sender.send(RawMessage::Response(resp))?;
 //!                         continue;
 //!                     },
 //!                     Err(req) => req,
