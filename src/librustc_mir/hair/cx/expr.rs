@@ -512,10 +512,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
             };
-            let upvars = cx.tcx.upvars(def_id).iter()
-                .flat_map(|upvars| upvars.iter())
+            let upvars = cx.tables().upvar_list[&def_id].iter()
                 .zip(substs.upvar_tys(def_id, cx.tcx))
-                .map(|(upvar, ty)| capture_upvar(cx, expr, upvar, ty))
+                .enumerate()
+                .map(|(index, (&upvar_id, ty))| capture_upvar(cx, expr, index, upvar_id, def_id, ty))
                 .collect();
             ExprKind::Closure {
                 closure_id: def_id,
@@ -1178,22 +1178,26 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
 
 fn capture_upvar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    closure_expr: &'tcx hir::Expr,
-                                   upvar: &hir::Upvar,
+                                   index: usize,
+                                   upvar_id: ty::UpvarId,
+                                   def_id: DefId,
                                    upvar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let var_hir_id = upvar.var_id();
-    let upvar_id = ty::UpvarId {
-        var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),
-    };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
-    let var_ty = cx.tables().node_type(var_hir_id);
+    let var_ty = cx.tables().node_type(upvar_id.var_path.hir_id);
+
+    // let var_node_id = cx.tcx.hir().hir_to_node_id(upvar_id.var_path.hir_id);
+    let closure_expr_id = match cx.tcx.hir().as_local_node_id(def_id) {
+        Some(node_id) => node_id,
+        None => bug!("cannot retrieve closure_expr_id from fake def id"),
+    };
+    let upvar = Res::Upvar(upvar_id.var_path.hir_id, index, closure_expr_id);
     let captured_var = Expr {
         temp_lifetime,
         ty: var_ty,
         span: closure_expr.span,
-        kind: convert_var(cx, closure_expr, upvar.res),
+        kind: convert_var(cx, closure_expr, upvar),
     };
     match upvar_capture {
         ty::UpvarCapture::ByValue => captured_var.to_ref(),
