@@ -197,7 +197,7 @@ impl LitKind {
                     ast::LitIntType::Signed(ty) => Some(Symbol::intern(ty.ty_to_string())),
                     ast::LitIntType::Unsuffixed => None,
                 };
-                (token::Integer, Symbol::intern(&n.to_string()), suffix)
+                (token::Integer, sym::integer(n), suffix)
             }
             LitKind::Float(symbol, ty) => {
                 (token::Float, symbol, Some(Symbol::intern(ty.ty_to_string())))

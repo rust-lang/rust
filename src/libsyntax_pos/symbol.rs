@@ -9,10 +9,10 @@ use rustc_data_structures::newtype_index;
 use rustc_macros::symbols;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use std::fmt;
-use std::str;
 use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
+use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::str;
 
 use crate::hygiene::SyntaxContext;
 use crate::{Span, DUMMY_SP, GLOBALS};
@@ -102,6 +102,9 @@ symbols! {
     // Symbols that can be referred to with syntax_pos::sym::*. The symbol is
     // the stringified identifier unless otherwise specified (e.g.
     // `proc_dash_macro` represents "proc-macro").
+    //
+    // As well as the symbols listed, there are symbols for the the strings
+    // "0", "1", ..., "9", which are accessible via `sym::integer`.
     Symbols {
         aarch64_target_feature,
         abi,
@@ -966,8 +969,21 @@ pub mod kw {
 
 // This module has a very short name because it's used a lot.
 pub mod sym {
+    use std::convert::TryInto;
     use super::Symbol;
+
     symbols!();
+
+    // Get the symbol for an integer. The first few non-negative integers each
+    // have a static symbol and therefore are fast.
+    pub fn integer<N: TryInto<usize> + Copy + ToString>(n: N) -> Symbol {
+        if let Result::Ok(idx) = n.try_into() {
+            if let Option::Some(&sym) = digits_array.get(idx) {
+                return sym;
+            }
+        }
+        Symbol::intern(&n.to_string())
+    }
 }
 
 impl Symbol {
