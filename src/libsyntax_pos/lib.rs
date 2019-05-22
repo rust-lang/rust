@@ -26,6 +26,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 extern crate serialize as rustc_serialize; // used by deriving
 
 pub mod edition;
+use edition::Edition;
 pub mod hygiene;
 pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnFormat, CompilerDesugaringKind};
 
@@ -52,14 +53,16 @@ pub struct Globals {
     symbol_interner: Lock<symbol::Interner>,
     span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
+    edition: Edition,
 }
 
 impl Globals {
-    pub fn new() -> Globals {
+    pub fn new(edition: Edition) -> Globals {
         Globals {
             symbol_interner: Lock::new(symbol::Interner::fresh()),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new()),
+            edition,
         }
     }
 }
@@ -356,8 +359,9 @@ impl Span {
 
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
-        self.ctxt().outer().expn_info().map_or_else(|| hygiene::default_edition(),
-                                                    |einfo| einfo.edition)
+        self.ctxt().outer().expn_info().map_or_else(|| {
+            Edition::from_session()
+        }, |einfo| einfo.edition)
     }
 
     #[inline]

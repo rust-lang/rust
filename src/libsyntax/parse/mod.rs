@@ -13,6 +13,7 @@ use crate::print::pprust::token_to_string;
 use errors::{Applicability, FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::sync::{Lrc, Lock};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
+use syntax_pos::edition::Edition;
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use std::borrow::Cow;
@@ -38,6 +39,7 @@ pub struct ParseSess {
     pub span_diagnostic: Handler,
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
+    pub edition: Edition,
     pub missing_fragment_specifiers: Lock<FxHashSet<Span>>,
     /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
     pub raw_identifier_spans: Lock<Vec<Span>>,
@@ -74,6 +76,7 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
+            edition: Edition::from_session(),
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
         }
     }
@@ -329,6 +332,23 @@ pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser<'_> {
     Parser::new(sess, stream, None, true, false)
 }
 
+/// Given stream, the `ParseSess` and the base directory, produces a parser.
+///
+/// Use this function when you are creating a parser from the token stream
+/// and also care about the current working directory of the parser (e.g.,
+/// you are trying to resolve modules defined inside a macro invocation).
+///
+/// # Note
+///
+/// The main usage of this function is outside of rustc, for those who uses
+/// libsyntax as a library. Please do not remove this function while refactoring
+/// just because it is not used in rustc codebase!
+pub fn stream_to_parser_with_base_dir<'a>(sess: &'a ParseSess,
+                                          stream: TokenStream,
+                                          base_dir: Directory<'a>) -> Parser<'a> {
+    Parser::new(sess, stream, Some(base_dir), true, false)
+}
+
 /// A sequence separator.
 pub struct SeqSep {
     /// The seperator token.
@@ -363,7 +383,7 @@ mod tests {
     use crate::tokenstream::{DelimSpan, TokenTree};
     use crate::util::parser_testing::string_to_stream;
     use crate::util::parser_testing::{string_to_expr, string_to_item};
-    use crate::with_globals;
+    use crate::with_default_globals;
     use syntax_pos::{Span, BytePos, Pos, NO_EXPANSION};
 
     /// Parses an item.
@@ -382,7 +402,7 @@ mod tests {
 
     #[should_panic]
     #[test] fn bad_path_expr_1() {
-        with_globals(|| {
+        with_default_globals(|| {
             string_to_expr("::abc::def::return".to_string());
         })
     }
@@ -390,7 +410,7 @@ mod tests {
     // check the token-tree-ization of macros
     #[test]
     fn string_to_tts_macro () {
-        with_globals(|| {
+        with_default_globals(|| {
             use crate::symbol::sym;
 
             let tts: Vec<_> =
@@ -447,7 +467,7 @@ mod tests {
 
     #[test]
     fn string_to_tts_1() {
-        with_globals(|| {
+        with_default_globals(|| {
             let tts = string_to_stream("fn a (b : i32) { b; }".to_string());
 
             let expected = TokenStream::new(vec![
@@ -480,7 +500,7 @@ mod tests {
     }
 
     #[test] fn parse_use() {
-        with_globals(|| {
+        with_default_globals(|| {
             let use_s = "use foo::bar::baz;";
             let vitem = string_to_item(use_s.to_string()).unwrap();
             let vitem_s = item_to_string(&vitem);
@@ -494,7 +514,7 @@ mod tests {
     }
 
     #[test] fn parse_extern_crate() {
-        with_globals(|| {
+        with_default_globals(|| {
             let ex_s = "extern crate foo;";
             let vitem = string_to_item(ex_s.to_string()).unwrap();
             let vitem_s = item_to_string(&vitem);
@@ -531,7 +551,7 @@ mod tests {
     }
 
     #[test] fn span_of_self_arg_pat_idents_are_correct() {
-        with_globals(|| {
+        with_default_globals(|| {
 
             let srcs = ["impl z { fn a (&self, &myarg: i32) {} }",
                         "impl z { fn a (&mut self, &myarg: i32) {} }",
@@ -551,7 +571,7 @@ mod tests {
     }
 
     #[test] fn parse_exprs () {
-        with_globals(|| {
+        with_default_globals(|| {
             // just make sure that they parse....
             string_to_expr("3 + 4".to_string());
             string_to_expr("a::z.froob(b,&(987+3))".to_string());
@@ -559,7 +579,7 @@ mod tests {
     }
 
     #[test] fn attrs_fix_bug () {
-        with_globals(|| {
+        with_default_globals(|| {
             string_to_item("pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
                    -> Result<Box<Writer>, String> {
     #[cfg(windows)]
@@ -576,7 +596,7 @@ mod tests {
     }
 
     #[test] fn crlf_doc_comments() {
-        with_globals(|| {
+        with_default_globals(|| {
             use crate::symbol::sym;
 
             let sess = ParseSess::new(FilePathMapping::empty());
@@ -613,7 +633,7 @@ mod tests {
             new_parser_from_source_str(sess, name, source).parse_expr()
         }
 
-        with_globals(|| {
+        with_default_globals(|| {
             let sess = ParseSess::new(FilePathMapping::empty());
             let expr = parse_expr_from_source_str(PathBuf::from("foo").into(),
                 "foo!( fn main() { body } )".to_string(), &sess).unwrap();
@@ -637,7 +657,7 @@ mod tests {
     // See `recurse_into_file_modules` in the parser.
     #[test]
     fn out_of_line_mod() {
-        with_globals(|| {
+        with_default_globals(|| {
             let sess = ParseSess::new(FilePathMapping::empty());
             let item = parse_item_from_source_str(
                 PathBuf::from("foo").into(),

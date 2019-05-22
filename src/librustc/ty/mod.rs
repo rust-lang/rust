@@ -2981,9 +2981,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn item_name(self, id: DefId) -> InternedString {
+    pub fn item_name(self, id: DefId) -> Symbol {
         if id.index == CRATE_DEF_INDEX {
-            self.original_crate_name(id.krate).as_interned_str()
+            self.original_crate_name(id.krate)
         } else {
             let def_key = self.def_key(id);
             match def_key.disambiguated_data.data {
@@ -2995,7 +2995,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }),
                 _ => def_key.disambiguated_data.data.get_opt_name().unwrap_or_else(|| {
                     bug!("item_name: no name for {:?}", self.def_path(id));
-                }),
+                }).as_symbol(),
             }
         }
     }

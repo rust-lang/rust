@@ -355,19 +355,19 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                         return;
                     }
 
-                    let child = child.res.def_id();
-
-                    match visible_parent_map.entry(child) {
-                        Entry::Occupied(mut entry) => {
-                            // If `child` is defined in crate `cnum`, ensure
-                            // that it is mapped to a parent in `cnum`.
-                            if child.krate == cnum && entry.get().krate != cnum {
-                                entry.insert(parent);
+                    if let Some(child) = child.res.opt_def_id() {
+                        match visible_parent_map.entry(child) {
+                            Entry::Occupied(mut entry) => {
+                                // If `child` is defined in crate `cnum`, ensure
+                                // that it is mapped to a parent in `cnum`.
+                                if child.krate == cnum && entry.get().krate != cnum {
+                                    entry.insert(parent);
+                                }
                             }
-                        }
-                        Entry::Vacant(entry) => {
-                            entry.insert(parent);
-                            bfs_queue.push_back(child);
+                            Entry::Vacant(entry) => {
+                                entry.insert(parent);
+                                bfs_queue.push_back(child);
+                            }
                         }
                     }
                 };
@@ -432,7 +432,7 @@ impl cstore::CStore {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
             return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
-        } else if data.name == sym::proc_macro && data.item_name(id.index) == "quote" {
+        } else if data.name == sym::proc_macro && data.item_name(id.index) == sym::quote {
             use syntax::ext::base::SyntaxExtension;
             use syntax_ext::proc_macro_impl::BangProcMacro;
 

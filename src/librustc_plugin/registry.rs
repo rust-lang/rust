@@ -6,7 +6,6 @@ use rustc::util::nodemap::FxHashMap;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
 use syntax::ext::base::MacroExpanderFn;
-use syntax::ext::hygiene;
 use syntax::symbol::{Symbol, sym};
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
@@ -130,7 +129,7 @@ impl<'a> Registry<'a> {
             allow_internal_unsafe: false,
             local_inner_macros: false,
             unstable_feature: None,
-            edition: hygiene::default_edition(),
+            edition: self.sess.edition(),
         });
     }
 

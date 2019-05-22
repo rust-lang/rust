@@ -37,6 +37,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::source_map::{FileLoader, RealFileLoader, SourceMap};
 use syntax::symbol::{Symbol, sym};
 use syntax::{self, ast, attr};
+use syntax_pos::edition::Edition;
 #[cfg(not(parallel_compiler))]
 use std::{thread, panic};
 
@@ -167,6 +168,7 @@ pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: 
 
 #[cfg(not(parallel_compiler))]
 pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
+    edition: Edition,
     _threads: Option<usize>,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
@@ -178,7 +180,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     }
 
     scoped_thread(cfg, || {
-        syntax::with_globals( || {
+        syntax::with_globals(edition, || {
             ty::tls::GCX_PTR.set(&Lock::new(0), || {
                 if let Some(stderr) = stderr {
                     io::set_panic(Some(box Sink(stderr.clone())));
@@ -191,6 +193,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 
 #[cfg(parallel_compiler)]
 pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
+    edition: Edition,
     threads: Option<usize>,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
@@ -213,7 +216,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 
     let with_pool = move |pool: &ThreadPool| pool.install(move || f());
 
-    syntax::with_globals(|| {
+    syntax::with_globals(edition, || {
         syntax::GLOBALS.with(|syntax_globals| {
             syntax_pos::GLOBALS.with(|syntax_pos_globals| {
                 // The main handler runs for each Rayon worker thread and sets up

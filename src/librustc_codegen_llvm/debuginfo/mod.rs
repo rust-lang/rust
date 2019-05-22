@@ -37,7 +37,7 @@ use std::ffi::CString;
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
-use syntax::symbol::{Symbol, InternedString};
+use syntax::symbol::InternedString;
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc_codegen_ssa::traits::*;
 
@@ -63,7 +63,7 @@ pub struct CrateDebugContext<'a, 'tcx> {
     llcontext: &'a llvm::Context,
     llmod: &'a llvm::Module,
     builder: &'a mut DIBuilder<'a>,
-    created_files: RefCell<FxHashMap<(Option<Symbol>, Option<Symbol>), &'a DIFile>>,
+    created_files: RefCell<FxHashMap<(Option<String>, Option<String>), &'a DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Primitive), &'a DIType>>,
 
     type_map: RefCell<TypeMap<'a, 'tcx>>,

@@ -1,6 +1,6 @@
 use crate::attr::HasAttrs;
 use crate::ast;
-use crate::source_map::{hygiene, ExpnInfo, ExpnFormat};
+use crate::source_map::{ExpnInfo, ExpnFormat};
 use crate::ext::base::ExtCtxt;
 use crate::ext::build::AstBuilder;
 use crate::parse::parser::PathStyle;
@@ -64,7 +64,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::P
         ].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
-        edition: hygiene::default_edition(),
+        edition: cx.parse_sess.edition,
     });
 
     let span = span.with_ctxt(cx.backtrace());

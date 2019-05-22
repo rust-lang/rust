@@ -94,9 +94,7 @@ pub fn main() {
     rustc_driver::set_sigpipe_handler();
     env_logger::init();
     let res = std::thread::Builder::new().stack_size(thread_stack_size).spawn(move || {
-        rustc_interface::interface::default_thread_pool(move || {
-            get_args().map(|args| main_args(&args)).unwrap_or(1)
-        })
+        get_args().map(|args| main_args(&args)).unwrap_or(1)
     }).unwrap().join().unwrap_or(rustc_driver::EXIT_FAILURE);
     process::exit(res);
 }
@@ -382,7 +380,12 @@ fn main_args(args: &[String]) -> i32 {
         Ok(opts) => opts,
         Err(code) => return code,
     };
+    rustc_interface::interface::default_thread_pool(options.edition, move || {
+        main_options(options)
+    })
+}
 
+fn main_options(options: config::Options) -> i32 {
     let diag = core::new_handler(options.error_format,
                                  None,
                                  options.debugging_options.treat_err_as_bug,

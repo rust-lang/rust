@@ -1147,7 +1147,7 @@ impl Encodable for LocalInternedString {
 /// assert_ne!(Symbol::gensym("x"), Symbol::gensym("x"))
 /// assert_eq!(Symbol::gensym("x").as_interned_str(), Symbol::gensym("x").as_interned_str())
 /// ```
-#[derive(Clone, Copy, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct InternedString {
     symbol: Symbol,
 }
@@ -1212,42 +1212,6 @@ impl Ord for InternedString {
     }
 }
 
-impl<T: std::ops::Deref<Target = str>> PartialEq<T> for InternedString {
-    fn eq(&self, other: &T) -> bool {
-        self.with(|string| string == other.deref())
-    }
-}
-
-impl PartialEq<InternedString> for InternedString {
-    fn eq(&self, other: &InternedString) -> bool {
-        self.symbol == other.symbol
-    }
-}
-
-impl PartialEq<InternedString> for str {
-    fn eq(&self, other: &InternedString) -> bool {
-        other.with(|string| self == string)
-    }
-}
-
-impl<'a> PartialEq<InternedString> for &'a str {
-    fn eq(&self, other: &InternedString) -> bool {
-        other.with(|string| *self == string)
-    }
-}
-
-impl PartialEq<InternedString> for String {
-    fn eq(&self, other: &InternedString) -> bool {
-        other.with(|string| self == string)
-    }
-}
-
-impl<'a> PartialEq<InternedString> for &'a String {
-    fn eq(&self, other: &InternedString) -> bool {
-        other.with(|string| *self == string)
-    }
-}
-
 impl fmt::Debug for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.with(|str| fmt::Debug::fmt(&str, f))
@@ -1276,6 +1240,7 @@ impl Encodable for InternedString {
 mod tests {
     use super::*;
     use crate::Globals;
+    use crate::edition;
 
     #[test]
     fn interner_tests() {
@@ -1300,7 +1265,7 @@ mod tests {
 
     #[test]
     fn without_first_quote_test() {
-        GLOBALS.set(&Globals::new(), || {
+        GLOBALS.set(&Globals::new(edition::DEFAULT_EDITION), || {
             let i = Ident::from_str("'break");
             assert_eq!(i.without_first_quote().name, keywords::Break.name());
         });

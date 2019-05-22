@@ -929,7 +929,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
 
         fn def_id_is_transmute(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
             cx.tcx.fn_sig(def_id).abi() == RustIntrinsic &&
-            cx.tcx.item_name(def_id) == "transmute"
+            cx.tcx.item_name(def_id) == sym::transmute
         }
     }
 }

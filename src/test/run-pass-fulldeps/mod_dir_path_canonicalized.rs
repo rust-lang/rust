@@ -13,7 +13,7 @@ use syntax::parse::{self, ParseSess};
 mod gravy;
 
 pub fn main() {
-    syntax::with_globals(|| parse());
+    syntax::with_default_globals(|| parse());
 
     assert_eq!(gravy::foo(), 10);
 }
