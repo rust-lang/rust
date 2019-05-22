@@ -13,7 +13,7 @@ error: unterminated double quote string
 
 error: aborting due to previous error
 
-thread '$DIR/unparseable-doc-test.rs - foo (line 6)' panicked at 'couldn't compile the test', src/librustdoc/test.rs:319:13
+thread '$DIR/unparseable-doc-test.rs - foo (line 6)' panicked at 'couldn't compile the test', src/librustdoc/test.rs:320:13
 note: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
 

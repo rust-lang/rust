@@ -4,7 +4,7 @@ use crate::deriving;
 
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::source_map::{ExpnInfo, MacroAttribute, hygiene, respan};
+use syntax::source_map::{ExpnInfo, MacroAttribute, respan};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
@@ -358,7 +358,7 @@ fn mk_decls(
         ].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
-        edition: hygiene::default_edition(),
+        edition: cx.parse_sess.edition,
     });
     let span = DUMMY_SP.apply_mark(mark);
 

@@ -3147,12 +3147,12 @@ mod tests {
 
     use crate::ast;
     use crate::source_map;
-    use crate::with_globals;
+    use crate::with_default_globals;
     use syntax_pos;
 
     #[test]
     fn test_fun_to_string() {
-        with_globals(|| {
+        with_default_globals(|| {
             let abba_ident = ast::Ident::from_str("abba");
 
             let decl = ast::FnDecl {
@@ -3180,7 +3180,7 @@ mod tests {
 
     #[test]
     fn test_variant_to_string() {
-        with_globals(|| {
+        with_default_globals(|| {
             let ident = ast::Ident::from_str("principal_skinner");
 
             let var = source_map::respan(syntax_pos::DUMMY_SP, ast::Variant_ {

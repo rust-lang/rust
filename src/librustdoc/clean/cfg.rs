@@ -418,7 +418,7 @@ mod test {
     use syntax::attr;
     use syntax::source_map::dummy_spanned;
     use syntax::symbol::Symbol;
-    use syntax::with_globals;
+    use syntax::with_default_globals;
 
     fn word_cfg(s: &str) -> Cfg {
         Cfg::Cfg(Symbol::intern(s), None)
@@ -466,7 +466,7 @@ mod test {
 
     #[test]
     fn test_cfg_not() {
-        with_globals(|| {
+        with_default_globals(|| {
             assert_eq!(!Cfg::False, Cfg::True);
             assert_eq!(!Cfg::True, Cfg::False);
             assert_eq!(!word_cfg("test"), Cfg::Not(Box::new(word_cfg("test"))));
@@ -484,7 +484,7 @@ mod test {
 
     #[test]
     fn test_cfg_and() {
-        with_globals(|| {
+        with_default_globals(|| {
             let mut x = Cfg::False;
             x &= Cfg::True;
             assert_eq!(x, Cfg::False);
@@ -536,7 +536,7 @@ mod test {
 
     #[test]
     fn test_cfg_or() {
-        with_globals(|| {
+        with_default_globals(|| {
             let mut x = Cfg::True;
             x |= Cfg::False;
             assert_eq!(x, Cfg::True);
@@ -588,7 +588,7 @@ mod test {
 
     #[test]
     fn test_parse_ok() {
-        with_globals(|| {
+        with_default_globals(|| {
             let mi = dummy_meta_item_word("all");
             assert_eq!(Cfg::parse(&mi), Ok(word_cfg("all")));
 
@@ -622,7 +622,7 @@ mod test {
 
     #[test]
     fn test_parse_err() {
-        with_globals(|| {
+        with_default_globals(|| {
             let mi = attr::mk_name_value_item(
                 DUMMY_SP,
                 Ident::from_str("foo"),
@@ -661,7 +661,7 @@ mod test {
 
     #[test]
     fn test_render_short_html() {
-        with_globals(|| {
+        with_default_globals(|| {
             assert_eq!(
                 word_cfg("unix").render_short_html(),
                 "Unix"
@@ -741,7 +741,7 @@ mod test {
 
     #[test]
     fn test_render_long_html() {
-        with_globals(|| {
+        with_default_globals(|| {
             assert_eq!(
                 word_cfg("unix").render_long_html(),
                 "This is supported on <strong>Unix</strong> only."

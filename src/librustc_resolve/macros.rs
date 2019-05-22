@@ -17,7 +17,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
-use syntax::ext::hygiene::{self, Mark};
+use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{
     feature_err, is_builtin_attr_name, AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES,
@@ -1100,7 +1100,7 @@ impl<'a> Resolver<'a> {
         let def_id = self.definitions.local_def_id(item.id);
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
                                                &self.session.features_untracked(),
-                                               item, hygiene::default_edition()));
+                                               item, self.session.edition()));
         self.macro_map.insert(def_id, ext);
 
         let def = match item.node { ast::ItemKind::MacroDef(ref def) => def, _ => unreachable!() };

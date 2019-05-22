@@ -291,7 +291,7 @@ fn generate_test_harness(sess: &ParseSess,
         ].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
-        edition: hygiene::default_edition(),
+        edition: sess.edition,
     });
 
     TestHarnessGenerator {
