@@ -341,6 +341,7 @@ LL |             drop(x);
    |
    = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+   = note: for more information, try `rustc --explain E0729`
 
 warning[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-describe-lvalue.rs:227:33
@@ -355,6 +356,7 @@ LL |             drop(x);
    |
    = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+   = note: for more information, try `rustc --explain E0729`
 
 error[E0382]: use of moved value: `x`
   --> $DIR/borrowck-describe-lvalue.rs:282:22
