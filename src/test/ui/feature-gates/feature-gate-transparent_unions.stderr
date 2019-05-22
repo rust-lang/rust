@@ -1,0 +1,15 @@
+error[E0658]: transparent unions are unstable
+  --> $DIR/feature-gate-transparent_unions.rs:2:1
+   |
+LL | / union OkButUnstableUnion {
+LL | |     field: u8,
+LL | |     zst: (),
+LL | | }
+   | |_^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/60405
+   = help: add #![feature(transparent_unions)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

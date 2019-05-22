@@ -3,32 +3,24 @@ error[E0690]: transparent struct needs exactly one non-zero-sized field, but has
    |
 LL | struct NoFields;
    | ^^^^^^^^^^^^^^^^
-   |
-   = note: non-zero-sized field
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
   --> $DIR/repr-transparent.rs:14:1
    |
 LL | struct ContainsOnlyZst(());
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: non-zero-sized field
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
   --> $DIR/repr-transparent.rs:17:1
    |
 LL | struct ContainsOnlyZstArray([bool; 0]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: non-zero-sized field
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 0
   --> $DIR/repr-transparent.rs:20:1
    |
 LL | struct ContainsMultipleZst(PhantomData<*const i32>, NoFields);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: non-zero-sized field
 
 error[E0690]: transparent struct needs exactly one non-zero-sized field, but has 2
   --> $DIR/repr-transparent.rs:24:1
@@ -36,7 +28,7 @@ error[E0690]: transparent struct needs exactly one non-zero-sized field, but has
 LL | struct MultipleNonZst(u8, u8);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: non-zero-sized field
+note: the following non-zero-sized fields exist on `MultipleNonZst`:
   --> $DIR/repr-transparent.rs:24:23
    |
 LL | struct MultipleNonZst(u8, u8);
@@ -48,7 +40,7 @@ error[E0690]: transparent struct needs exactly one non-zero-sized field, but has
 LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: non-zero-sized field
+note: the following non-zero-sized fields exist on `StructWithProjection`:
   --> $DIR/repr-transparent.rs:30:33
    |
 LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
@@ -66,7 +58,85 @@ error[E0691]: zero-sized field in transparent struct has alignment larger than 1
 LL | struct GenericAlign<T>(ZstAlign32<T>, u32);
    |                        ^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error[E0084]: unsupported representation for zero-variant enum
+  --> $DIR/repr-transparent.rs:42:1
+   |
+LL | #[repr(transparent)]
+   | ^^^^^^^^^^^^^^^^^^^^
+LL | enum Void {}
+   | ------------ zero-variant enum
 
-Some errors have detailed explanations: E0690, E0691.
-For more information about an error, try `rustc --explain E0690`.
+error[E0731]: transparent enum needs exactly one variant, but has 0
+  --> $DIR/repr-transparent.rs:43:1
+   |
+LL | enum Void {}
+   | ^^^^^^^^^^^^
+
+error[E0690]: the variant of a transparent enum needs exactly one non-zero-sized field, but has 0
+  --> $DIR/repr-transparent.rs:47:1
+   |
+LL | / enum FieldlessEnum {
+LL | |     Foo,
+LL | | }
+   | |_^
+
+error[E0690]: the variant of a transparent enum needs exactly one non-zero-sized field, but has 2
+  --> $DIR/repr-transparent.rs:52:1
+   |
+LL | / enum TooManyFieldsEnum {
+LL | |     Foo(u32, String),
+LL | | }
+   | |_^
+   |
+note: the following non-zero-sized fields exist on `TooManyFieldsEnum`:
+  --> $DIR/repr-transparent.rs:53:9
+   |
+LL |     Foo(u32, String),
+   |         ^^^  ^^^^^^
+
+error[E0731]: transparent enum needs exactly one variant, but has 2
+  --> $DIR/repr-transparent.rs:58:1
+   |
+LL | / enum TooManyVariants {
+LL | |     Foo(String),
+LL | |     Bar,
+LL | | }
+   | |_^
+   |
+note: the following variants exist on `TooManyVariants`
+  --> $DIR/repr-transparent.rs:59:5
+   |
+LL |     Foo(String),
+   |     ^^^^^^^^^^^
+LL |     Bar,
+   |     ^^^
+
+error[E0690]: transparent union needs exactly one non-zero-sized field, but has 0
+  --> $DIR/repr-transparent.rs:64:1
+   |
+LL | / union UnitUnion {
+LL | |     u: (),
+LL | | }
+   | |_^
+
+error[E0690]: transparent union needs exactly one non-zero-sized field, but has 2
+  --> $DIR/repr-transparent.rs:69:1
+   |
+LL | / union TooManyFields {
+LL | |     u: u32,
+LL | |     s: i32
+LL | | }
+   | |_^
+   |
+note: the following non-zero-sized fields exist on `TooManyFields`:
+  --> $DIR/repr-transparent.rs:70:5
+   |
+LL |     u: u32,
+   |     ^^^^^^
+LL |     s: i32
+   |     ^^^^^^
+
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0084, E0690, E0691, E0731.
+For more information about an error, try `rustc --explain E0084`.

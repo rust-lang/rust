@@ -181,12 +181,9 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
             let (article, allowed_targets) = match hint.name_or_empty() {
                 name @ sym::C | name @ sym::align => {
                     is_c |= name == sym::C;
-                    if target != Target::Struct &&
-                            target != Target::Union &&
-                            target != Target::Enum {
-                                ("a", "struct, enum or union")
-                    } else {
-                        continue
+                    match target {
+                        Target::Struct | Target::Union | Target::Enum => continue,
+                        _ => ("a", "struct, enum, or union"),
                     }
                 }
                 sym::packed => {
@@ -207,10 +204,9 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 }
                 sym::transparent => {
                     is_transparent = true;
-                    if target != Target::Struct {
-                        ("a", "struct")
-                    } else {
-                        continue
+                    match target {
+                        Target::Struct | Target::Union | Target::Enum => continue,
+                        _ => ("a", "struct, enum, or union"),
                     }
                 }
                 sym::i8  | sym::u8  | sym::i16 | sym::u16 |
@@ -241,7 +237,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         if is_transparent && hints.len() > 1 {
             let hint_spans: Vec<_> = hint_spans.clone().collect();
             span_err!(self.tcx.sess, hint_spans, E0692,
-                      "transparent struct cannot have other repr hints");
+                      "transparent {} cannot have other repr hints", target);
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
@@ -277,7 +273,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                         attr.span,
                         stmt.span,
                         "attribute should not be applied to a statement",
-                        "not a struct, enum or union",
+                        "not a struct, enum, or union",
                     );
                 }
             }
@@ -298,7 +294,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     attr.span,
                     expr.span,
                     "attribute should not be applied to an expression",
-                    "not defining a struct, enum or union",
+                    "not defining a struct, enum, or union",
                 );
             }
         }
