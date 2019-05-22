@@ -16,6 +16,7 @@ use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::bit_set::BitSet;
 use std::fmt;
+use std::iter;
 use syntax_pos::Span;
 
 pub struct ElaborateDrops;
@@ -468,14 +469,22 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let terminator = data.terminator();
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
+        let storage_live = match location {
+            Place::Base(PlaceBase::Local(local)) => Some(Statement {
+                kind: StatementKind::StorageLive(*local),
+                source_info: terminator.source_info
+            }),
+            _ => None,
+        };
         let assign = Statement {
             kind: StatementKind::Assign(location.clone(), box Rvalue::Use(value.clone())),
             source_info: terminator.source_info
         };
+        let statements = storage_live.into_iter().chain(iter::once(assign)).collect::<Vec<_>>();
 
         let unwind = unwind.unwrap_or_else(|| self.patch.resume_block());
         let unwind = self.patch.new_block(BasicBlockData {
-            statements: vec![assign.clone()],
+            statements: statements.clone(),
             terminator: Some(Terminator {
                 kind: TerminatorKind::Goto { target: unwind },
                 ..*terminator
@@ -484,7 +493,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         });
 
         let target = self.patch.new_block(BasicBlockData {
-            statements: vec![assign],
+            statements,
             terminator: Some(Terminator {
                 kind: TerminatorKind::Goto { target },
                 ..*terminator
