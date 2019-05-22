@@ -2956,7 +2956,7 @@ impl<'a> LoweringContext<'a> {
             ident: match f.ident {
                 Some(ident) => ident,
                 // FIXME(jseyfried): positional field hygiene
-                None => Ident::new(Symbol::intern(&index.to_string()), f.span),
+                None => Ident::new(sym::integer(index), f.span),
             },
             vis: self.lower_visibility(&f.vis, None),
             ty: self.lower_ty(&f.ty, ImplTraitContext::disallowed()),
