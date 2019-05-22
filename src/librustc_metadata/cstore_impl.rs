@@ -355,19 +355,19 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                         return;
                     }
 
-                    let child = child.res.def_id();
-
-                    match visible_parent_map.entry(child) {
-                        Entry::Occupied(mut entry) => {
-                            // If `child` is defined in crate `cnum`, ensure
-                            // that it is mapped to a parent in `cnum`.
-                            if child.krate == cnum && entry.get().krate != cnum {
-                                entry.insert(parent);
+                    if let Some(child) = child.res.opt_def_id() {
+                        match visible_parent_map.entry(child) {
+                            Entry::Occupied(mut entry) => {
+                                // If `child` is defined in crate `cnum`, ensure
+                                // that it is mapped to a parent in `cnum`.
+                                if child.krate == cnum && entry.get().krate != cnum {
+                                    entry.insert(parent);
+                                }
                             }
-                        }
-                        Entry::Vacant(entry) => {
-                            entry.insert(parent);
-                            bfs_queue.push_back(child);
+                            Entry::Vacant(entry) => {
+                                entry.insert(parent);
+                                bfs_queue.push_back(child);
+                            }
                         }
                     }
                 };
