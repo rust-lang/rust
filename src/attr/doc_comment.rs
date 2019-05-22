@@ -12,6 +12,12 @@ impl Display for DocCommentFormatter<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         let opener = self.style.opener().trim_end();
         let mut lines = self.literal.lines().peekable();
+
+        // Handle `#[doc = ""]`.
+        if lines.peek().is_none() {
+            return write!(formatter, "{}", opener);
+        }
+
         while let Some(line) = lines.next() {
             let is_last_line = lines.peek().is_none();
             if is_last_line {
