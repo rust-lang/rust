@@ -3211,7 +3211,7 @@ mod tests {
         assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.pgo_use = String::from("abc");
+        opts.debugging_opts.pgo_use = Some(PathBuf::from("abc"));
         assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts = reference.clone();
