@@ -51,7 +51,7 @@ use crate::symbol::{kw, sym, Symbol};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{
-    Span, MultiSpan, BytePos, FileName,
+    BytePos, DUMMY_SP, FileName, MultiSpan, Span,
     hygiene::CompilerDesugaringKind,
 };
 use log::{debug, trace};
@@ -233,6 +233,8 @@ pub struct Parser<'a> {
     /// error.
     crate unclosed_delims: Vec<UnmatchedBrace>,
     last_unexpected_token_span: Option<Span>,
+    /// If `true`, this `Parser` is not parsing Rust code but rather a macro call.
+    is_subparser: Option<&'static str>,
 }
 
 impl<'a> Drop for Parser<'a> {
@@ -309,7 +311,7 @@ impl TokenCursor {
                 self.frame = frame;
                 continue
             } else {
-                return TokenAndSpan { tok: token::Eof, sp: syntax_pos::DUMMY_SP }
+                return TokenAndSpan { tok: token::Eof, sp: DUMMY_SP }
             };
 
             match self.frame.last_token {
@@ -533,17 +535,19 @@ enum TokenExpectType {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(sess: &'a ParseSess,
-               tokens: TokenStream,
-               directory: Option<Directory<'a>>,
-               recurse_into_file_modules: bool,
-               desugar_doc_comments: bool)
-               -> Self {
+    pub fn new(
+        sess: &'a ParseSess,
+        tokens: TokenStream,
+        directory: Option<Directory<'a>>,
+        recurse_into_file_modules: bool,
+        desugar_doc_comments: bool,
+        is_subparser: Option<&'static str>,
+    ) -> Self {
         let mut parser = Parser {
             sess,
             token: token::Whitespace,
-            span: syntax_pos::DUMMY_SP,
-            prev_span: syntax_pos::DUMMY_SP,
+            span: DUMMY_SP,
+            prev_span: DUMMY_SP,
             meta_var_span: None,
             prev_token_kind: PrevTokenKind::Other,
             restrictions: Restrictions::empty(),
@@ -568,6 +572,7 @@ impl<'a> Parser<'a> {
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
             last_unexpected_token_span: None,
+            is_subparser,
         };
 
         let tok = parser.next_tok();
@@ -639,16 +644,28 @@ impl<'a> Parser<'a> {
             } else {
                 let token_str = pprust::token_to_string(t);
                 let this_token_str = self.this_token_descr();
-                let mut err = self.fatal(&format!("expected `{}`, found {}",
-                                                  token_str,
-                                                  this_token_str));
-
-                let sp = if self.token == token::Token::Eof {
-                    // EOF, don't want to point at the following char, but rather the last token
-                    self.prev_span
-                } else {
-                    self.sess.source_map().next_point(self.prev_span)
+                let (prev_sp, sp) = match (&self.token, self.is_subparser) {
+                    // Point at the end of the macro call when reaching end of macro arguments.
+                    (token::Token::Eof, Some(_)) => {
+                        let sp = self.sess.source_map().next_point(self.span);
+                        (sp, sp)
+                    }
+                    // We don't want to point at the following span after DUMMY_SP.
+                    // This happens when the parser finds an empty TokenStream.
+                    _ if self.prev_span == DUMMY_SP => (self.span, self.span),
+                    // EOF, don't want to point at the following char, but rather the last token.
+                    (token::Token::Eof, None) => (self.prev_span, self.span),
+                    _ => (self.sess.source_map().next_point(self.prev_span), self.span),
                 };
+                let msg = format!(
+                    "expected `{}`, found {}",
+                    token_str,
+                    match (&self.token, self.is_subparser) {
+                        (token::Token::Eof, Some(origin)) => format!("end of {}", origin),
+                        _ => this_token_str,
+                    },
+                );
+                let mut err = self.struct_span_err(sp, &msg);
                 let label_exp = format!("expected `{}`", token_str);
                 match self.recover_closing_delimiter(&[t.clone()], err) {
                     Err(e) => err = e,
@@ -657,15 +674,15 @@ impl<'a> Parser<'a> {
                     }
                 }
                 let cm = self.sess.source_map();
-                match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
+                match (cm.lookup_line(prev_sp.lo()), cm.lookup_line(sp.lo())) {
                     (Ok(ref a), Ok(ref b)) if a.line == b.line => {
                         // When the spans are in the same line, it means that the only content
                         // between them is whitespace, point only at the found token.
-                        err.span_label(self.span, label_exp);
+                        err.span_label(sp, label_exp);
                     }
                     _ => {
-                        err.span_label(sp, label_exp);
-                        err.span_label(self.span, "unexpected token");
+                        err.span_label(prev_sp, label_exp);
+                        err.span_label(sp, "unexpected token");
                     }
                 }
                 Err(err)
@@ -812,7 +829,7 @@ impl<'a> Parser<'a> {
                     //   |                   expected one of 8 possible tokens here
                     err.span_label(self.span, label_exp);
                 }
-                _ if self.prev_span == syntax_pos::DUMMY_SP => {
+                _ if self.prev_span == DUMMY_SP => {
                     // Account for macro context where the previous span might not be
                     // available to avoid incorrect output (#54841).
                     err.span_label(self.span, "unexpected token");
@@ -2041,7 +2058,7 @@ impl<'a> Parser<'a> {
             path = self.parse_path(PathStyle::Type)?;
             path_span = path_lo.to(self.prev_span);
         } else {
-            path = ast::Path { segments: Vec::new(), span: syntax_pos::DUMMY_SP };
+            path = ast::Path { segments: Vec::new(), span: DUMMY_SP };
             path_span = self.span.to(self.span);
         }
 
@@ -2627,16 +2644,24 @@ impl<'a> Parser<'a> {
                         }
                         Err(mut err) => {
                             self.cancel(&mut err);
-                            let msg = format!("expected expression, found {}",
-                                              self.this_token_descr());
-                            let mut err = self.fatal(&msg);
+                            let (span, msg) = match (&self.token, self.is_subparser) {
+                                (&token::Token::Eof, Some(origin)) => {
+                                    let sp = self.sess.source_map().next_point(self.span);
+                                    (sp, format!( "expected expression, found end of {}", origin))
+                                }
+                                _ => (self.span, format!(
+                                    "expected expression, found {}",
+                                    self.this_token_descr(),
+                                )),
+                            };
+                            let mut err = self.struct_span_err(span, &msg);
                             let sp = self.sess.source_map().start_point(self.span);
                             if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow()
                                 .get(&sp)
                             {
                                 self.sess.expr_parentheses_needed(&mut err, *sp, None);
                             }
-                            err.span_label(self.span, "expected expression");
+                            err.span_label(span, "expected expression");
                             return Err(err);
                         }
                     }
@@ -5592,7 +5617,7 @@ impl<'a> Parser<'a> {
                 where_clause: WhereClause {
                     id: ast::DUMMY_NODE_ID,
                     predicates: Vec::new(),
-                    span: syntax_pos::DUMMY_SP,
+                    span: DUMMY_SP,
                 },
                 span: span_lo.to(self.prev_span),
             })
@@ -5838,7 +5863,7 @@ impl<'a> Parser<'a> {
         let mut where_clause = WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
-            span: syntax_pos::DUMMY_SP,
+            span: DUMMY_SP,
         };
 
         if !self.eat_keyword(kw::Where) {
@@ -7005,7 +7030,7 @@ impl<'a> Parser<'a> {
                             Ident::with_empty_ctxt(sym::warn_directory_ownership)),
                         tokens: TokenStream::empty(),
                         is_sugared_doc: false,
-                        span: syntax_pos::DUMMY_SP,
+                        span: DUMMY_SP,
                     };
                     attr::mark_known(&attr);
                     attrs.push(attr);
@@ -7013,7 +7038,7 @@ impl<'a> Parser<'a> {
                 Ok((id, ItemKind::Mod(module), Some(attrs)))
             } else {
                 let placeholder = ast::Mod {
-                    inner: syntax_pos::DUMMY_SP,
+                    inner: DUMMY_SP,
                     items: Vec::new(),
                     inline: false
                 };

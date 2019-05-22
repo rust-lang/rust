@@ -94,6 +94,17 @@ impl<'a> StripUnconfigured<'a> {
         if !attr.check_name(sym::cfg_attr) {
             return vec![attr];
         }
+        if attr.tokens.len() == 0 {
+            self.sess.span_diagnostic.struct_span_err(attr.span, "bad `cfg_attr` attribute")
+                .span_label(attr.span, "missing condition and attribute")
+                .note("`cfg_attr` must be of the form: \
+                       `#[cfg_attr(condition, attribute)]`")
+                .note("for more information, visit \
+                       <https://doc.rust-lang.org/reference/conditional-compilation.html\
+                       #the-cfg_attr-attribute>")
+                .emit();
+            return vec![];
+        }
 
         let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |parser| {
             parser.expect(&token::OpenDelim(token::Paren))?;
@@ -117,7 +128,7 @@ impl<'a> StripUnconfigured<'a> {
             Ok(result) => result,
             Err(mut e) => {
                 e.emit();
-                return Vec::new();
+                return vec![];
             }
         };
 

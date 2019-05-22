@@ -1,13 +1,13 @@
-#[cfg_attr] //~ ERROR expected `(`, found `<eof>`
+#[cfg_attr] //~ ERROR bad `cfg_attr` attribute
 struct S1;
 
 #[cfg_attr = ""] //~ ERROR expected `(`, found `=`
 struct S2;
 
-#[derive] //~ ERROR attribute must be of the form
+#[derive] //~ ERROR bad `derive` attribute
 struct S3;
 
-#[derive = ""] //~ ERROR attribute must be of the form
+#[derive = ""] //~ ERROR bad `derive` attribute
 struct S4;
 
 fn main() {}

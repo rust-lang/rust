@@ -12,17 +12,17 @@ error: expected expression, found keyword `struct`
 LL |     format!(struct);
    |             ^^^^^^ expected expression
 
-error: expected expression, found `<eof>`
-  --> $DIR/format-parse-errors.rs:4:23
+error: expected expression, found end of macro arguments
+  --> $DIR/format-parse-errors.rs:4:24
    |
 LL |     format!("s", name =);
-   |                       ^ expected expression
+   |                        ^ expected expression
 
-error: expected `=`, found `<eof>`
-  --> $DIR/format-parse-errors.rs:5:29
+error: expected `=`, found end of macro arguments
+  --> $DIR/format-parse-errors.rs:5:32
    |
 LL |     format!("s", foo = foo, bar);
-   |                             ^^^ expected `=`
+   |                                ^ expected `=`
 
 error: expected expression, found keyword `struct`
   --> $DIR/format-parse-errors.rs:6:24

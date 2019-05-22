@@ -236,7 +236,7 @@ fn maybe_source_file_to_parser(
 ) -> Result<Parser<'_>, Vec<Diagnostic>> {
     let end_pos = source_file.end_pos;
     let (stream, unclosed_delims) = maybe_file_to_stream(sess, source_file, None)?;
-    let mut parser = stream_to_parser(sess, stream);
+    let mut parser = stream_to_parser(sess, stream, None);
     parser.unclosed_delims = unclosed_delims;
     if parser.token == token::Eof && parser.span.is_dummy() {
         parser.span = Span::new(end_pos, end_pos, parser.span.ctxt());
@@ -248,7 +248,7 @@ fn maybe_source_file_to_parser(
 // must preserve old name for now, because quote! from the *existing*
 // compiler expands into it
 pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser<'_> {
-    stream_to_parser(sess, tts.into_iter().collect())
+    stream_to_parser(sess, tts.into_iter().collect(), Some("macro arguments"))
 }
 
 
@@ -328,8 +328,12 @@ pub fn maybe_file_to_stream(
 }
 
 /// Given stream and the `ParseSess`, produces a parser.
-pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser<'_> {
-    Parser::new(sess, stream, None, true, false)
+pub fn stream_to_parser<'a>(
+    sess: &'a ParseSess,
+    stream: TokenStream,
+    is_subparser: Option<&'static str>,
+) -> Parser<'a> {
+    Parser::new(sess, stream, None, true, false, is_subparser)
 }
 
 /// Given stream, the `ParseSess` and the base directory, produces a parser.
