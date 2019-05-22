@@ -365,7 +365,7 @@ for DecodeContext<'a, 'tcx> {
 
 implement_ty_decoder!( DecodeContext<'a, 'tcx> );
 
-impl<'a, 'tcx> MetadataBlob {
+impl<'tcx> MetadataBlob {
     pub fn is_compatible(&self) -> bool {
         self.raw_bytes().starts_with(METADATA_HEADER)
     }
@@ -374,7 +374,7 @@ impl<'a, 'tcx> MetadataBlob {
         Lazy::with_position(METADATA_HEADER.len() + 4).decode(self)
     }
 
-    pub fn get_root(&self) -> CrateRoot {
+    pub fn get_root(&self) -> CrateRoot<'tcx> {
         let slice = self.raw_bytes();
         let offset = METADATA_HEADER.len();
         let pos = (((slice[offset + 0] as u32) << 24) | ((slice[offset + 1] as u32) << 16) |
@@ -444,7 +444,7 @@ impl<'tcx> EntryKind<'tcx> {
 ///  |- proc macro #0 (DefIndex 1:N)
 ///  |- proc macro #1 (DefIndex 1:N+1)
 ///  \- ...
-crate fn proc_macro_def_path_table(crate_root: &CrateRoot,
+crate fn proc_macro_def_path_table(crate_root: &CrateRoot<'_>,
                                    proc_macros: &[(ast::Name, Lrc<SyntaxExtension>)])
                                    -> DefPathTable
 {
@@ -475,7 +475,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         assert!(!self.is_proc_macro(item_id));
-        self.root.index.lookup(self.blob.raw_bytes(), item_id)
+        self.root.entries_index.lookup(self.blob.raw_bytes(), item_id)
     }
 
     fn entry(&self, item_id: DefIndex) -> Entry<'tcx> {
@@ -1126,10 +1126,7 @@ impl<'a, 'tcx> CrateMetadata {
             // link those in so we skip those crates.
             vec![]
         } else {
-            let lazy_seq: LazySeq<(ExportedSymbol<'tcx>, SymbolExportLevel)> =
-                LazySeq::with_position_and_length(self.root.exported_symbols.position,
-                                                  self.root.exported_symbols.len);
-            lazy_seq.decode((self, tcx)).collect()
+            self.root.exported_symbols.decode((self, tcx)).collect()
         }
     }
 
