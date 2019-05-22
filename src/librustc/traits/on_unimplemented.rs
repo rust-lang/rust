@@ -243,15 +243,15 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                     // `{Self}` is allowed
                     Position::ArgumentNamed(s) if s == "Self" => (),
                     // `{ThisTraitsName}` is allowed
-                    Position::ArgumentNamed(s) if s == name => (),
+                    Position::ArgumentNamed(s) if s == name.as_str() => (),
                     // `{from_method}` is allowed
                     Position::ArgumentNamed(s) if s == "from_method" => (),
                     // `{from_desugaring}` is allowed
                     Position::ArgumentNamed(s) if s == "from_desugaring" => (),
                     // So is `{A}` if A is a type parameter
-                    Position::ArgumentNamed(s) => match generics.params.iter().find(|param|
-                        param.name == s
-                    ) {
+                    Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
+                        param.name.as_str() == s
+                    }) {
                         Some(_) => (),
                         None => {
                             span_err!(tcx.sess, span, E0230,
@@ -301,7 +301,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                 Piece::NextArgument(a) => match a.position {
                     Position::ArgumentNamed(s) => match generic_map.get(s) {
                         Some(val) => val,
-                        None if s == name => {
+                        None if s == name.as_str() => {
                             &trait_str
                         }
                         None => {

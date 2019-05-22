@@ -264,7 +264,7 @@ fn compute_symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) ->
             return name.as_interned_str();
         }
         // Don't mangle foreign items.
-        return tcx.item_name(def_id);
+        return tcx.item_name(def_id).as_interned_str();
     }
 
     if let Some(name) = &attrs.export_name {
@@ -274,7 +274,7 @@ fn compute_symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) ->
 
     if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
         // Don't mangle
-        return tcx.item_name(def_id);
+        return tcx.item_name(def_id).as_interned_str();
     }
 
     // We want to compute the "type" of this item. Unfortunately, some
