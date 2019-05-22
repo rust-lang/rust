@@ -1,4 +1,4 @@
-// Tests that `?` is a Kleene op and not a macro separator in the 2018 edition.
+// Tests that `?` is a Kleene op and not a macro separator in the 2015 edition.
 
 // edition:2018
 
@@ -6,6 +6,7 @@ macro_rules! foo {
     ($(a)?) => {};
 }
 
+// The Kleene op `?` does not admit a separator before it.
 macro_rules! baz {
     ($(a),?) => {}; //~ERROR the `?` macro repetition operator
 }
