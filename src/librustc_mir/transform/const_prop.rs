@@ -162,11 +162,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let def_id = source.def_id();
         let param_env = tcx.param_env(def_id);
         let span = tcx.def_span(def_id);
-        let mut ecx = mk_eval_cx(tcx, span, param_env);
+        let substs = InternalSubsts::identity_for_item(tcx, def_id);
+        let mut ecx = mk_eval_cx(tcx, span, param_env, substs);
         let can_const_prop = CanConstProp::check(body);
 
         ecx.push_stack_frame(
-            Instance::new(def_id, &InternalSubsts::identity_for_item(tcx, def_id)),
+            Instance::new(def_id, &substs),
             span,
             dummy_body,
             None,

@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty, Instance};
+use rustc::ty::{self, Ty, Instance, TypeFoldable};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic,};
 
@@ -31,6 +31,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let methods = if let Some(poly_trait_ref) = poly_trait_ref {
             let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
             let trait_ref = self.tcx.erase_regions(&trait_ref);
+
+            if trait_ref.needs_subst() {
+                return err!(TooGeneric);
+            }
 
             self.tcx.vtable_methods(trait_ref)
         } else {
@@ -77,7 +81,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
                 // resolve for vtable: insert shims where needed
-                let substs = self.subst_and_normalize_erasing_regions(substs)?;
+                let substs = self.subst_and_normalize_erasing_regions_in_frame(substs);
                 let instance = ty::Instance::resolve_for_vtable(
                     *self.tcx,
                     self.param_env,

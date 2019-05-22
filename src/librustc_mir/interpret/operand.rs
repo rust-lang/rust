@@ -554,7 +554,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         // Other cases need layout.
         let layout = from_known_layout(layout, || {
-            self.layout_of(self.monomorphize(val.ty)?)
+            self.layout_of(self.subst_and_normalize_erasing_regions_in_frame(val.ty))
         })?;
         let op = match val.val {
             ConstValue::ByRef { alloc, offset } => {

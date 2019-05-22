@@ -1,6 +1,6 @@
 // run-pass
-// The const-evaluator was at one point ICE'ing while trying to
-// evaluate the body of `fn id` during the `s.id()` call in main.
+// The const propagator was at one point ICE'ing while trying to
+// propagate constants in the body of `fn id` during the `s.id()` call in main.
 
 struct S<T>(T);
 

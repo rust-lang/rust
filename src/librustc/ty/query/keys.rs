@@ -127,7 +127,7 @@ impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (&'tcx ty::Const<'tcx>, mir::Field) {
+impl<'tcx> Key for (&'tcx ty::Const<'tcx>, mir::Field, SubstsRef<'tcx>) {
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }

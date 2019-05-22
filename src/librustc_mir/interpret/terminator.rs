@@ -242,7 +242,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("eval_fn_call: {:#?}", fn_val);
 
         let instance = match fn_val {
-            FnVal::Instance(instance) => instance,
+            FnVal::Instance(instance) => {
+                self.subst_and_normalize_erasing_regions_in_frame(instance)
+            },
             FnVal::Other(extra) => {
                 return M::call_extra_fn(self, extra, args, dest, ret);
             }

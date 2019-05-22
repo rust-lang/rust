@@ -46,7 +46,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 let values: Vec<_> = (0..fields).map(|field| {
                     let field = bx.tcx().const_field(
-                        ty::ParamEnv::reveal_all().and((&c, mir::Field::new(field as usize)))
+                        ty::ParamEnv::reveal_all().and((
+                            &c, mir::Field::new(field as usize), self.instance.substs,
+                        ))
                     );
                     if let Some(prim) = field.val.try_to_scalar() {
                         let layout = bx.layout_of(field_ty);

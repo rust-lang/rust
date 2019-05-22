@@ -616,10 +616,11 @@ where
                     Some(return_place) => {
                         // We use our layout to verify our assumption; caller will validate
                         // their layout on return.
+                        let ret_ty = self.frame().body.return_ty();
+                        let ret_ty = self.subst_and_normalize_erasing_regions_in_frame(ret_ty);
                         PlaceTy {
                             place: *return_place,
-                            layout: self
-                                .layout_of(self.monomorphize(self.frame().body.return_ty())?)?,
+                            layout: self.layout_of(ret_ty)?,
                         }
                     }
                     None => throw_unsup!(InvalidNullPointerUsage),

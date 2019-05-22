@@ -35,6 +35,11 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Bounds in scope for polymorphic evaluations.
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 
+    /// Base substitutions for when there are no frames that we can grab them from.
+    // HACK(oli-obk): this is because we don't want to push stack frames for `const_field` and
+    // `const_variant_index`, because that would be expensive
+    pub(crate) substs: SubstsRef<'tcx>,
+
     /// The virtual memory system.
     pub(crate) memory: Memory<'mir, 'tcx, M>,
 
@@ -199,6 +204,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn new(
         tcx: TyCtxtAt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        substs: SubstsRef<'tcx>,
         machine: M,
         memory_extra: M::MemoryExtra,
     ) -> Self {
@@ -206,6 +212,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             machine,
             tcx,
             param_env,
+            substs,
             memory: Memory::new(tcx, memory_extra),
             stack: Vec::new(),
             vtables: FxHashMap::default(),
@@ -291,22 +298,35 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ty.is_freeze(*self.tcx, self.param_env, DUMMY_SP)
     }
 
+    pub(super) fn subst_and_normalize_erasing_regions_in_frame<T: TypeFoldable<'tcx>>(
+        &self,
+        value: T,
+    ) -> T {
+        // HACK(oli-obk): see `self.substs` docs
+        let substs = self.stack.last().map_or(self.substs, |frame| frame.instance.substs);
+        self.subst_and_normalize_erasing_regions(substs, value)
+    }
+
     pub(super) fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
-        substs: T,
-    ) -> InterpResult<'tcx, T> {
-        match self.stack.last() {
-            Some(frame) => Ok(self.tcx.subst_and_normalize_erasing_regions(
-                frame.instance.substs,
-                self.param_env,
-                &substs,
-            )),
-            None => if substs.needs_subst() {
-                throw_inval!(TooGeneric)
-            } else {
-                Ok(substs)
-            },
+        param_substs: SubstsRef<'tcx>,
+        value: T,
+    ) -> T {
+        if !value.needs_subst() {
+            return self.tcx.erase_regions(&value);
         }
+        // can't use `TyCtxt::subst_and_normalize_erasing_regions`, because that call
+        // `normalize_erasing_regions`, even if the value still `needs_subst` after substituting.
+        // This will trigger an assertion in `normalize_erasing_regions`. So we handroll the code
+        // here.
+        let substituted = value.subst(self.tcx.tcx, param_substs);
+        if substituted.needs_subst() {
+            return self.tcx.erase_regions(&substituted);
+        }
+        self.tcx.normalize_erasing_regions(
+            self.param_env,
+            substituted,
+        )
     }
 
     pub(super) fn resolve(
@@ -316,7 +336,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("param_env: {:#?}", self.param_env);
-        let substs = self.subst_and_normalize_erasing_regions(substs)?;
+        let substs = self.subst_and_normalize_erasing_regions_in_frame(substs);
         trace!("substs: {:#?}", substs);
         ty::Instance::resolve(
             *self.tcx,
@@ -349,36 +369,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub(super) fn monomorphize<T: TypeFoldable<'tcx> + Subst<'tcx>>(
-        &self,
-        t: T,
-    ) -> InterpResult<'tcx, T> {
-        match self.stack.last() {
-            Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)?),
-            None => if t.needs_subst() {
-                throw_inval!(TooGeneric)
-            } else {
-                Ok(t)
-            },
-        }
-    }
-
-    fn monomorphize_with_substs<T: TypeFoldable<'tcx> + Subst<'tcx>>(
-        &self,
-        t: T,
-        substs: SubstsRef<'tcx>
-    ) -> InterpResult<'tcx, T> {
-        // miri doesn't care about lifetimes, and will choke on some crazy ones
-        // let's simply get rid of them
-        let substituted = t.subst(*self.tcx, substs);
-
-        if substituted.needs_subst() {
-            throw_inval!(TooGeneric)
-        }
-
-        Ok(self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted))
-    }
-
     pub fn layout_of_local(
         &self,
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
@@ -391,7 +381,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
-                    let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs)?;
+                    let local_ty = self.subst_and_normalize_erasing_regions(
+                        frame.instance.substs, local_ty,
+                    );
                     self.layout_of(local_ty)
                 })?;
                 if let Some(state) = frame.locals.get(local) {
