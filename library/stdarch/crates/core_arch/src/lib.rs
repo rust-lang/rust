@@ -17,7 +17,6 @@
     rustc_attrs,
     stdsimd,
     staged_api,
-    maybe_uninit,
     doc_cfg,
     mmx_target_feature,
     tbm_target_feature,
