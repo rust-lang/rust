@@ -38,6 +38,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_target::abi::HasDataLayout;
 
 use libc::{c_uint, c_longlong};
+use std::collections::hash_map::Entry;
 use std::ffi::CString;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
@@ -45,7 +46,7 @@ use std::iter;
 use std::ptr;
 use std::path::{Path, PathBuf};
 use syntax::ast;
-use syntax::symbol::{Interner, InternedString, Symbol};
+use syntax::symbol::{Interner, InternedString};
 use syntax_pos::{self, Span, FileName};
 
 impl PartialEq for llvm::Metadata {
@@ -787,49 +788,48 @@ pub fn file_metadata(cx: &CodegenCx<'ll, '_>,
            file_name,
            defining_crate);
 
-    let file_name = &file_name.to_string();
-    let file_name_symbol = Symbol::intern(file_name);
-    if defining_crate == LOCAL_CRATE {
-        let directory = &cx.sess().working_dir.0.to_string_lossy();
-        file_metadata_raw(cx, file_name, Some(file_name_symbol),
-                          directory, Some(Symbol::intern(directory)))
+    let file_name = Some(file_name.to_string());
+    let directory = if defining_crate == LOCAL_CRATE {
+        Some(cx.sess().working_dir.0.to_string_lossy().to_string())
     } else {
         // If the path comes from an upstream crate we assume it has been made
         // independent of the compiler's working directory one way or another.
-        file_metadata_raw(cx, file_name, Some(file_name_symbol), "", None)
-    }
+        None
+    };
+    file_metadata_raw(cx, file_name, directory)
 }
 
 pub fn unknown_file_metadata(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
-    file_metadata_raw(cx, "<unknown>", None, "", None)
+    file_metadata_raw(cx, None, None)
 }
 
 fn file_metadata_raw(cx: &CodegenCx<'ll, '_>,
-                     file_name: &str,
-                     file_name_symbol: Option<Symbol>,
-                     directory: &str,
-                     directory_symbol: Option<Symbol>)
+                     file_name: Option<String>,
+                     directory: Option<String>)
                      -> &'ll DIFile {
-    let key = (file_name_symbol, directory_symbol);
+    let key = (file_name, directory);
 
-    if let Some(file_metadata) = debug_context(cx).created_files.borrow().get(&key) {
-        return *file_metadata;
+    match debug_context(cx).created_files.borrow_mut().entry(key) {
+        Entry::Occupied(o) => return o.get(),
+        Entry::Vacant(v) => {
+            let (file_name, directory) = v.key();
+            debug!("file_metadata: file_name: {:?}, directory: {:?}", file_name, directory);
+
+            let file_name = SmallCStr::new(
+                if let Some(file_name) = file_name { &file_name } else { "<unknown>" });
+            let directory = SmallCStr::new(
+                if let Some(directory) = directory { &directory } else { "" });
+
+            let file_metadata = unsafe {
+                llvm::LLVMRustDIBuilderCreateFile(DIB(cx),
+                                                  file_name.as_ptr(),
+                                                  directory.as_ptr())
+            };
+
+            v.insert(file_metadata);
+            file_metadata
+        }
     }
-
-    debug!("file_metadata: file_name: {}, directory: {}", file_name, directory);
-
-    let file_name = SmallCStr::new(file_name);
-    let directory = SmallCStr::new(directory);
-
-    let file_metadata = unsafe {
-        llvm::LLVMRustDIBuilderCreateFile(DIB(cx),
-                                          file_name.as_ptr(),
-                                          directory.as_ptr())
-    };
-
-    let mut created_files = debug_context(cx).created_files.borrow_mut();
-    created_files.insert(key, file_metadata);
-    file_metadata
 }
 
 fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
