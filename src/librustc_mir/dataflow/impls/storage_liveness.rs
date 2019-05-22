@@ -43,9 +43,14 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
     }
 
     fn terminator_effect(&self,
-                         _sets: &mut BlockSets<'_, Local>,
-                         _loc: Location) {
-        // Terminators have no effect
+                         sets: &mut BlockSets<'_, Local>,
+                         loc: Location) {
+        match &self.mir[loc.block].terminator().kind {
+            TerminatorKind::Drop { location, .. } => if let Some(l) = location.local() {
+                sets.kill(l);
+            }
+            _ => (),
+        }
     }
 
     fn propagate_call_return(
