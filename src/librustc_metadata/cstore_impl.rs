@@ -246,12 +246,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     used_crate_source => { Lrc::new(cdata.source.clone()) }
 
-    exported_symbols => {
-        let cnum = cdata.cnum;
-        assert!(cnum != LOCAL_CRATE);
-
-        Arc::new(cdata.exported_symbols(tcx))
-    }
+    exported_symbols => { Arc::new(cdata.exported_symbols(tcx)) }
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {

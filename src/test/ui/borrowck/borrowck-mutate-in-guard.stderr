@@ -28,6 +28,7 @@ LL |         Enum::A(_) if { x = Enum::B(false); false } => 1,
    |
    = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+   = note: for more information, try `rustc --explain E0729`
 
 warning[E0510]: cannot mutably borrow `x` in match guard
   --> $DIR/borrowck-mutate-in-guard.rs:15:33
@@ -40,6 +41,7 @@ LL |         Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
    |
    = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+   = note: for more information, try `rustc --explain E0729`
 
 error: aborting due to 3 previous errors
 

@@ -64,7 +64,11 @@ pub struct CrateMetadata {
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     pub alloc_decoding_state: AllocDecodingState,
 
-    pub root: schema::CrateRoot,
+    // NOTE(eddyb) we pass `'static` to a `'tcx` parameter because this
+    // lifetime is only used behind `Lazy` / `LazySeq`, and therefore
+    // acts like an universal (`for<'tcx>`), that is paired up with
+    // whichever `TyCtxt` is being used to decode those values.
+    pub root: schema::CrateRoot<'static>,
 
     /// For each public item in this crate, we encode a key. When the
     /// crate is loaded, we read all the keys and put them in this
