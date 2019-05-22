@@ -390,18 +390,47 @@ fn foo() {
 
 - Move guard expression to match arm body
 ```rust
-//before:
+// before:
 fn f() {
     match x {
         <|>y @ 4 | y @ 5    if y > 5 => true,
         _ => false
     }
 }
-//after:
+// after:
 fn f() {
     match x {
         y @ 4 | y @ 5 => if y > 5 { <|>true },
         _ => false
+    }
+}
+```
+
+- Move if condition to match arm guard
+```rust
+// before:
+fn f() {
+    let mut t = 'a';
+    let chars = "abcd";
+    match t {
+        '\r' => if chars.clone().next().is_some() {
+            t = 'e';<|>
+            false
+        },
+        _ => true
+    }
+}
+
+// after:
+fn f() {
+    let mut t = 'a';
+    let chars = "abcd";
+    match t {
+        '\r' <|>if chars.clone().next().is_some() => {
+            t = 'e';
+            false
+        },
+        _ => true
     }
 }
 ```
