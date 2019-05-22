@@ -16,6 +16,15 @@ LL | #[rustc_error]
    = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
 
-error: aborting due to 2 previous errors
+error[E0658]: the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable niche optimizations in libcore and will never be stable
+  --> $DIR/feature-gate-rustc-attrs-1.rs:7:1
+   |
+LL | #[rustc_nonnull_optimization_guaranteed]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

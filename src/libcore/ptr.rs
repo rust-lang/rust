@@ -2938,6 +2938,7 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
+#[cfg_attr(not(stage0), rustc_nonnull_optimization_guaranteed)]
 pub struct NonNull<T: ?Sized> {
     pointer: *const T,
 }
