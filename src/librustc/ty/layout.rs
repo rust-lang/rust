@@ -649,13 +649,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 use SavedLocalEligibility::*;
 
                 let mut assignments: IndexVec<GeneratorSavedLocal, SavedLocalEligibility> =
-                    iter::repeat(Unassigned)
-                    .take(info.field_tys.len())
-                    .collect();
+                    IndexVec::from_elem_n(Unassigned, info.field_tys.len());
 
                 // The saved locals not eligible for overlap. These will get
                 // "promoted" to the prefix of our generator.
-                let mut eligible_locals = BitSet::new_filled(info.field_tys.len());
+                let mut ineligible_locals = BitSet::new_empty(info.field_tys.len());
 
                 // Figure out which of our saved locals are fields in only
                 // one variant. The rest are deemed ineligible for overlap.
@@ -670,7 +668,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                 // point, so it is no longer a candidate.
                                 trace!("removing local {:?} in >1 variant ({:?}, {:?})",
                                        local, variant_index, idx);
-                                eligible_locals.remove(*local);
+                                ineligible_locals.insert(*local);
                                 assignments[*local] = Ineligible(None);
                             }
                             Ineligible(_) => {},
@@ -681,46 +679,50 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 // Next, check every pair of eligible locals to see if they
                 // conflict.
                 for (local_a, conflicts_a) in info.storage_conflicts.iter_enumerated() {
-                    if !eligible_locals.contains(local_a) {
+                    if ineligible_locals.contains(local_a) {
                         continue;
                     }
 
                     for local_b in conflicts_a.iter() {
-                        // local_a and local_b have overlapping storage, therefore they
+                        // local_a and local_b are storage live at the same time, therefore they
                         // cannot overlap in the generator layout. The only way to guarantee
                         // this is if they are in the same variant, or one is ineligible
                         // (which means it is stored in every variant).
-                        if !eligible_locals.contains(local_b) ||
+                        if ineligible_locals.contains(local_b) ||
                             assignments[local_a] == assignments[local_b]
                         {
                             continue;
                         }
 
                         // If they conflict, we will choose one to make ineligible.
+                        // This is not always optimal; it's just a greedy heuristic
+                        // that seems to produce good results most of the time.
                         let conflicts_b = &info.storage_conflicts[local_b];
                         let (remove, other) = if conflicts_a.count() > conflicts_b.count() {
                             (local_a, local_b)
                         } else {
                             (local_b, local_a)
                         };
-                        eligible_locals.remove(remove);
+                        ineligible_locals.insert(remove);
                         assignments[remove] = Ineligible(None);
                         trace!("removing local {:?} due to conflict with {:?}", remove, other);
                     }
                 }
 
-                let mut ineligible_locals = BitSet::new_filled(info.field_tys.len());
-                ineligible_locals.subtract(&eligible_locals);
-
                 // Write down the order of our locals that will be promoted to
                 // the prefix.
-                for (idx, local) in ineligible_locals.iter().enumerate() {
-                    assignments[local] = Ineligible(Some(idx as u32));
+                {
+                    let mut idx = 0u32;
+                    for local in ineligible_locals.iter() {
+                        assignments[local] = Ineligible(Some(idx));
+                        idx += 1;
+                    }
                 }
                 debug!("generator saved local assignments: {:?}", assignments);
 
                 // Build a prefix layout, including "promoting" all ineligible
-                // locals as part of the prefix.
+                // locals as part of the prefix. We compute the layout of all of
+                // these fields at once to get optimal packing.
                 let discr_index = substs.prefix_tys(def_id, tcx).count();
                 let promoted_tys =
                     ineligible_locals.iter().map(|local| subst_field(info.field_tys[local]));
@@ -733,20 +735,23 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     StructKind::AlwaysSized)?;
                 let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 
+                let recompute_memory_index = |offsets: &Vec<u32>| -> Vec<u32> {
+                    debug!("recompute_memory_index({:?})", offsets);
+                    let mut inverse_index = (0..offsets.len() as u32).collect::<Vec<_>>();
+                    inverse_index.sort_unstable_by_key(|i| offsets[*i as usize]);
+
+                    let mut index = vec![0; offsets.len()];
+                    for i in 0..index.len() {
+                        index[inverse_index[i] as usize] = i as u32;
+                    }
+                    debug!("recompute_memory_index() => {:?}", index);
+                    index
+                };
+
                 // Split the prefix layout into the "outer" fields (upvars and
                 // discriminant) and the "promoted" fields. Promoted fields will
                 // get included in each variant that requested them in
                 // GeneratorLayout.
-                let renumber_indices = |mut index: Vec<u32>| -> Vec<u32> {
-                    debug!("renumber_indices({:?})", index);
-                    let mut inverse_index = (0..index.len() as u32).collect::<Vec<_>>();
-                    inverse_index.sort_unstable_by_key(|i| index[*i as usize]);
-                    for i in 0..index.len() {
-                        index[inverse_index[i] as usize] = i as u32;
-                    }
-                    debug!("renumber_indices() => {:?}", index);
-                    index
-                };
                 debug!("prefix = {:#?}", prefix);
                 let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
                     FieldPlacement::Arbitrary { offsets, memory_index } => {
@@ -756,11 +761,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                             memory_index.split_at(discr_index + 1);
                         let outer_fields = FieldPlacement::Arbitrary {
                             offsets: offsets_a.to_vec(),
-                            memory_index: renumber_indices(memory_index_a.to_vec())
+                            memory_index: recompute_memory_index(&memory_index_a.to_vec())
                         };
                         (outer_fields,
                          offsets_b.to_vec(),
-                         renumber_indices(memory_index_b.to_vec()))
+                         recompute_memory_index(&memory_index_b.to_vec()))
                     }
                     _ => bug!(),
                 };
@@ -769,15 +774,17 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let mut align = prefix.align;
                 let variants = info.variant_fields.iter_enumerated().map(|(index, variant_fields)| {
                     // Only include overlap-eligible fields when we compute our variant layout.
-                    let variant_only_tys = variant_fields.iter().flat_map(|local| {
-                        let ty = info.field_tys[*local];
-                        match assignments[*local] {
-                            Unassigned => bug!(),
-                            Assigned(v) if v == index => Some(subst_field(ty)),
-                            Assigned(_) => bug!("assignment does not match variant"),
-                            Ineligible(_) => None,
-                        }
-                    });
+                    let variant_only_tys = variant_fields
+                        .iter()
+                        .filter(|local| {
+                            match assignments[**local] {
+                                Unassigned => bug!(),
+                                Assigned(v) if v == index => true,
+                                Assigned(_) => bug!("assignment does not match variant"),
+                                Ineligible(_) => false,
+                            }
+                        })
+                        .map(|local| subst_field(info.field_tys[*local]));
 
                     let mut variant = univariant_uninterned(
                         &variant_only_tys
@@ -823,7 +830,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     }
                     variant.fields = FieldPlacement::Arbitrary {
                         offsets: combined_offsets,
-                        memory_index: renumber_indices(combined_memory_index),
+                        memory_index: recompute_memory_index(&combined_memory_index),
                     };
 
                     size = size.max(variant.size);

@@ -431,7 +431,7 @@ fn for_each_block_location<'tcx, T: BitDenotation<'tcx>>(
         let term_loc = Location { block, statement_index: mir[block].statements.len() };
         analysis.before_terminator_effect(&mut sets, term_loc);
         f(sets.gen_set, term_loc);
-        analysis.before_statement_effect(&mut sets, term_loc);
+        analysis.terminator_effect(&mut sets, term_loc);
         f(sets.gen_set, term_loc);
     }
 }

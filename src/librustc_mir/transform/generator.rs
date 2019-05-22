@@ -394,17 +394,33 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
     }
 }
 
+struct LivenessInfo {
+    /// Which locals are live across any suspension point.
+    ///
+    /// GeneratorSavedLocal is indexed in terms of the elements in this set;
+    /// i.e. GeneratorSavedLocal::new(1) corresponds to the second local
+    /// included in this set.
+    live_locals: liveness::LiveVarSet,
+
+    /// The set of saved locals live at each suspension point.
+    live_locals_at_suspension_points: Vec<BitSet<GeneratorSavedLocal>>,
+
+    /// For every saved local, the set of other saved locals that are
+    /// storage-live at the same time as this local. We cannot overlap locals in
+    /// the layout which have conflicting storage.
+    storage_conflicts: IndexVec<GeneratorSavedLocal, BitSet<GeneratorSavedLocal>>,
+
+    /// For every suspending block, the locals which are storage-live across
+    /// that suspension point.
+    storage_liveness: FxHashMap<BasicBlock, liveness::LiveVarSet>,
+}
+
 fn locals_live_across_suspend_points(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     body: &Body<'tcx>,
     source: MirSource<'tcx>,
     movable: bool,
-) -> (
-    liveness::LiveVarSet,
-    Vec<BitSet<GeneratorSavedLocal>>,
-    IndexVec<GeneratorSavedLocal, BitSet<GeneratorSavedLocal>>,
-    FxHashMap<BasicBlock, liveness::LiveVarSet>,
-) {
+) -> LivenessInfo {
     let dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
     let def_id = source.def_id();
 
@@ -434,7 +450,7 @@ fn locals_live_across_suspend_points(
     };
 
     // Calculate the liveness of MIR locals ignoring borrows.
-    let mut set = liveness::LiveVarSet::new_empty(body.local_decls.len());
+    let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
     let mut liveness = liveness::liveness_of_locals(
         body,
     );
@@ -489,18 +505,17 @@ fn locals_live_across_suspend_points(
             // Locals live are live at this point only if they are used across
             // suspension points (the `liveness` variable)
             // and their storage is live (the `storage_liveness` variable)
-            storage_liveness.intersect(&liveness.outs[block]);
+            let mut live_locals_here = storage_liveness;
+            live_locals_here.intersect(&liveness.outs[block]);
 
             // The generator argument is ignored
-            storage_liveness.remove(self_arg());
-
-            let live_locals = storage_liveness;
+            live_locals_here.remove(self_arg());
 
             // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
-            set.union(&live_locals);
+            live_locals.union(&live_locals_here);
 
-            live_locals_at_suspension_points.push(live_locals);
+            live_locals_at_suspension_points.push(live_locals_here);
         }
     }
 
@@ -508,17 +523,22 @@ fn locals_live_across_suspend_points(
     // saving.
     let live_locals_at_suspension_points = live_locals_at_suspension_points
         .iter()
-        .map(|live_locals| renumber_bitset(&live_locals, &set))
+        .map(|live_here| renumber_bitset(&live_here, &live_locals))
         .collect();
 
     let storage_conflicts = compute_storage_conflicts(
         body,
-        &set,
+        &live_locals,
         &ignored,
         storage_live,
         storage_live_analysis);
 
-    (set, live_locals_at_suspension_points, storage_conflicts, storage_liveness_map)
+    LivenessInfo {
+        live_locals,
+        live_locals_at_suspension_points,
+        storage_conflicts,
+        storage_liveness: storage_liveness_map,
+    }
 }
 
 /// For every saved local, looks for which locals are StorageLive at the same
@@ -555,14 +575,11 @@ fn compute_storage_conflicts(
         eligible_storage_live.intersect(&stored_locals);
 
         for local in eligible_storage_live.iter() {
-            let mut overlaps = eligible_storage_live.clone();
-            overlaps.remove(local);
-            local_conflicts[local].union(&overlaps);
+            local_conflicts[local].union(&eligible_storage_live);
+        }
 
-            if !overlaps.is_empty() {
-                trace!("at {:?}, local {:?} conflicts with {:?}",
-                       loc, local, overlaps);
-            }
+        if eligible_storage_live.count() > 1 {
+            trace!("at {:?}, eligible_storage_live={:?}", loc, eligible_storage_live);
         }
     });
 
@@ -617,8 +634,9 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         FxHashMap<BasicBlock, liveness::LiveVarSet>)
 {
     // Use a liveness analysis to compute locals which are live across a suspension point
-    let (live_locals, live_locals_at_suspension_points, storage_conflicts, storage_liveness) =
-        locals_live_across_suspend_points(tcx, body, source, movable);
+    let LivenessInfo {
+        live_locals, live_locals_at_suspension_points, storage_conflicts, storage_liveness
+    } = locals_live_across_suspend_points(tcx, body, source, movable);
 
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
@@ -673,11 +691,11 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut fields = IndexVec::new();
         for (idx, saved_local) in live_locals.iter().enumerate() {
             fields.push(saved_local);
-            // Note that if a field is included in multiple variants, it will be
-            // added overwritten here. That's fine; fields do not move around
-            // inside generators, so it doesn't matter which variant index we
-            // access them by.
-            remap.insert(locals[saved_local], (tys[saved_local], variant_index, idx));
+            // Note that if a field is included in multiple variants, we will
+            // just use the first one here. That's fine; fields do not move
+            // around inside generators, so it doesn't matter which variant
+            // index we access them by.
+            remap.entry(locals[saved_local]).or_insert((tys[saved_local], variant_index, idx));
         }
         variant_fields.push(fields);
     }
