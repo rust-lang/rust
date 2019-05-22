@@ -1,4 +1,12 @@
 error[E0393]: the type parameter `Rhs` must be explicitly specified
+  --> $DIR/issue-22560.rs:6:13
+   |
+LL |             Sub;
+   |             ^^^ missing reference to `Rhs`
+   |
+   = note: because of the default `Self` reference, type parameters must be specified on object types
+
+error[E0393]: the type parameter `Rhs` must be explicitly specified
   --> $DIR/issue-22560.rs:3:13
    |
 LL | type Test = Add +
@@ -6,29 +14,35 @@ LL | type Test = Add +
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 
-error[E0393]: the type parameter `Rhs` must be explicitly specified
-  --> $DIR/issue-22560.rs:6:13
-   |
-LL |             Sub;
-   |             ^^^ missing reference to `Rhs`
-   |
-   = note: because of the default `Self` reference, type parameters must be specified on object types
-
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/issue-22560.rs:6:13
    |
+LL | type Test = Add +
+   |             ---
+   |             |
+   |             first non-auto trait
+   |             trait alias used in trait object type (first use)
+...
 LL |             Sub;
-   |             ^^^ non-auto additional trait
+   |             ^^^
+   |             |
+   |             additional non-auto trait
+   |             trait alias used in trait object type (additional use)
 
-error[E0191]: the value of the associated type `Output` (from the trait `std::ops::Add`) must be specified
+error[E0191]: the value of the associated types `Output` (from the trait `std::ops::Add`), `Output` (from the trait `std::ops::Sub`) must be specified
   --> $DIR/issue-22560.rs:3:13
    |
 LL |   type Test = Add +
    |  _____________^
+   | |_____________|
+   | |
 LL | |
 LL | |
 LL | |             Sub;
-   | |_______________^ associated type `Output` must be specified
+   | |               ^
+   | |_______________|
+   | |_______________associated type `Output` must be specified
+   |                 associated type `Output` must be specified
 
 error: aborting due to 4 previous errors
 

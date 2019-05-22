@@ -7,16 +7,16 @@ LL | trait Tr: ?Sized {}
    = note: traits are `?Sized` by default
 
 error: `?Trait` is not permitted in trait object types
-  --> $DIR/maybe-bounds.rs:3:16
+  --> $DIR/maybe-bounds.rs:4:20
    |
-LL | type A1 = Tr + (?Sized);
-   |                ^^^^^^^^
+LL | type A1 = dyn Tr + (?Sized);
+   |                    ^^^^^^^^
 
 error: `?Trait` is not permitted in trait object types
-  --> $DIR/maybe-bounds.rs:4:24
+  --> $DIR/maybe-bounds.rs:6:28
    |
-LL | type A2 = for<'a> Tr + (?Sized);
-   |                        ^^^^^^^^
+LL | type A2 = dyn for<'a> Tr + (?Sized);
+   |                            ^^^^^^^^
 
 error: aborting due to 3 previous errors
 

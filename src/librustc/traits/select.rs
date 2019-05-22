@@ -1772,7 +1772,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             bounds
         );
 
-        let matching_bound = util::elaborate_predicates(self.tcx(), bounds.predicates)
+        let elaborated_predicates = util::elaborate_predicates(self.tcx(), bounds.predicates);
+        let matching_bound = elaborated_predicates
             .filter_to_traits()
             .find(|bound| {
                 self.infcx.probe(|_| {

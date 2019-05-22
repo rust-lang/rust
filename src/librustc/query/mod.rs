@@ -168,7 +168,7 @@ rustc_queries! {
         query predicates_defined_on(_: DefId)
             -> Lrc<ty::GenericPredicates<'tcx>> {}
 
-        /// Returns the predicates written explicit by the user.
+        /// Returns the predicates written explicitly by the user.
         query explicit_predicates_of(_: DefId)
             -> Lrc<ty::GenericPredicates<'tcx>> {}
 
@@ -216,9 +216,9 @@ rustc_queries! {
             _: DefId
         ) -> Result<DtorckConstraint<'tcx>, NoSolution> {}
 
-        /// True if this is a const fn, use the `is_const_fn` to know whether your crate actually
-        /// sees it as const fn (e.g., the const-fn-ness might be unstable and you might not have
-        /// the feature gate active)
+        /// Returns `true` if this is a const fn, use the `is_const_fn` to know whether your crate
+        /// actually sees it as const fn (e.g., the const-fn-ness might be unstable and you might
+        /// not have the feature gate active).
         ///
         /// **Do not call this function manually.** It is only meant to cache the base data for the
         /// `is_const_fn` function.
@@ -226,7 +226,7 @@ rustc_queries! {
             desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
         }
 
-        /// Returns true if calls to the function may be promoted
+        /// Returns `true` if calls to the function may be promoted.
         ///
         /// This is either because the function is e.g., a tuple-struct or tuple-variant
         /// constructor, or because it has the `#[rustc_promotable]` attribute. The attribute should
@@ -237,25 +237,23 @@ rustc_queries! {
 
         query const_fn_is_allowed_fn_ptr(_: DefId) -> bool {}
 
-        /// True if this is a foreign item (i.e., linked via `extern { ... }`).
+        /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
         query is_foreign_item(_: DefId) -> bool {}
 
         /// Returns `Some(mutability)` if the node pointed to by `def_id` is a static item.
         query static_mutability(_: DefId) -> Option<hir::Mutability> {}
 
-        /// Get a map with the variance of every item; use `item_variance`
-        /// instead.
+        /// Gets a map with the variance of every item; use `item_variance` instead.
         query crate_variances(_: CrateNum) -> Lrc<ty::CrateVariancesMap<'tcx>> {
             desc { "computing the variances for items in this crate" }
         }
 
-        /// Maps from def-id of a type or region parameter to its
-        /// (inferred) variance.
+        /// Maps from the `DefId` of a type or region parameter to its (inferred) variance.
         query variances_of(_: DefId) -> &'tcx [ty::Variance] {}
     }
 
     TypeChecking {
-        /// Maps from def-id of a type to its (inferred) outlives.
+        /// Maps from thee `DefId` of a type to its (inferred) outlives.
         query inferred_outlives_crate(_: CrateNum)
             -> Lrc<ty::CratePredicatesMap<'tcx>> {
             desc { "computing the inferred outlives predicates for items in this crate" }
@@ -263,10 +261,10 @@ rustc_queries! {
     }
 
     Other {
-        /// Maps from an impl/trait def-id to a list of the def-ids of its items
+        /// Maps from an impl/trait `DefId to a list of the `DefId`s of its items.
         query associated_item_def_ids(_: DefId) -> Lrc<Vec<DefId>> {}
 
-        /// Maps from a trait item to the trait item "descriptor"
+        /// Maps from a trait item to the trait item "descriptor".
         query associated_item(_: DefId) -> ty::AssociatedItem {}
 
         query impl_trait_ref(_: DefId) -> Option<ty::TraitRef<'tcx>> {}
@@ -276,7 +274,7 @@ rustc_queries! {
     }
 
     TypeChecking {
-        /// Maps a DefId of a type to a list of its inherent impls.
+        /// Maps a `DefId` of a type to a list of its inherent impls.
         /// Contains implementations of methods that are inherent to a type.
         /// Methods in these implementations don't need to be exported.
         query inherent_impls(_: DefId) -> Lrc<Vec<DefId>> {
@@ -300,7 +298,7 @@ rustc_queries! {
             desc { |tcx| "linting {}", key.describe_as_module(tcx) }
         }
 
-        /// Checks the attributes in the module
+        /// Checks the attributes in the module.
         query check_mod_attrs(key: DefId) -> () {
             desc { |tcx| "checking attributes in {}", key.describe_as_module(tcx) }
         }
@@ -309,7 +307,7 @@ rustc_queries! {
             desc { |tcx| "checking for unstable API usage in {}", key.describe_as_module(tcx) }
         }
 
-        /// Checks the loops in the module
+        /// Checks the loops in the module.
         query check_mod_loops(key: DefId) -> () {
             desc { |tcx| "checking loops in {}", key.describe_as_module(tcx) }
         }
@@ -338,7 +336,7 @@ rustc_queries! {
             desc { |tcx| "collecting item types in {}", key.describe_as_module(tcx) }
         }
 
-        /// Caches CoerceUnsized kinds for impls on custom types.
+        /// Caches `CoerceUnsized` kinds for impls on custom types.
         query coerce_unsized_info(_: DefId)
             -> ty::adjustment::CoerceUnsizedInfo {}
     }
@@ -375,7 +373,7 @@ rustc_queries! {
     BorrowChecking {
         query borrowck(_: DefId) -> Lrc<BorrowCheckResult> {}
 
-        /// Borrow checks the function body. If this is a closure, returns
+        /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
         query mir_borrowck(_: DefId) -> mir::BorrowCheckResult<'tcx> {}
     }
@@ -401,11 +399,11 @@ rustc_queries! {
     }
 
     Other {
-        /// Evaluate a constant without running sanity checks
+        /// Evaluates a constant without running sanity checks.
         ///
         /// **Do not use this** outside const eval. Const eval uses this to break query cycles
         /// during validation. Please add a comment to every use site explaining why using
-        /// `const_eval` isn't sufficient
+        /// `const_eval` isn't sufficient.
         query const_eval_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalRawResult<'tcx> {
             no_force
@@ -660,12 +658,12 @@ rustc_queries! {
     }
 
     Linking {
-        // The DefIds of all non-generic functions and statics in the given crate
+        // The `DefId`s of all non-generic functions and statics in the given crate
         // that can be reached from outside the crate.
         //
         // We expect this items to be available for being linked to.
         //
-        // This query can also be called for LOCAL_CRATE. In this case it will
+        // This query can also be called for `LOCAL_CRATE`. In this case it will
         // compute which items will be reachable to other crates, taking into account
         // the kind of crate that is currently compiled. Crates with only a
         // C interface have fewer reachable things.

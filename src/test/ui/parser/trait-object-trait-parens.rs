@@ -7,6 +7,6 @@ fn main() {
     //~^ ERROR `?Trait` is not permitted in trait object types
     let _: Box<(?Sized) + (for<'a> Trait<'a>) + (Copy)>;
     let _: Box<(for<'a> Trait<'a>) + (Copy) + (?Sized)>;
-    //~^ ERROR `?Trait` is not permitted in trait object types
-    //~| ERROR use of undeclared lifetime name `'a`
+    //~^ ERROR use of undeclared lifetime name `'a`
+    //~| ERROR `?Trait` is not permitted in trait object types
 }

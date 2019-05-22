@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(trait_alias)]
 
 use std::marker::PhantomData;

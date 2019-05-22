@@ -1075,25 +1075,25 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub enum Predicate<'tcx> {
-    /// Corresponds to `where Foo: Bar<A,B,C>`. `Foo` here would be
+    /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
     Trait(PolyTraitPredicate<'tcx>),
 
-    /// where `'a: 'b`
+    /// `where 'a: 'b`
     RegionOutlives(PolyRegionOutlivesPredicate<'tcx>),
 
-    /// where `T: 'a`
+    /// `where T: 'a`
     TypeOutlives(PolyTypeOutlivesPredicate<'tcx>),
 
-    /// where `<T as TraitRef>::Name == X`, approximately.
+    /// `where <T as TraitRef>::Name == X`, approximately.
     /// See the `ProjectionPredicate` struct for details.
     Projection(PolyProjectionPredicate<'tcx>),
 
     /// no syntax: `T` well-formed
     WellFormed(Ty<'tcx>),
 
-    /// trait must be object-safe
+    /// Trait must be object-safe.
     ObjectSafe(DefId),
 
     /// No direct syntax. May be thought of as `where T: FnFoo<...>`
@@ -1234,7 +1234,7 @@ impl<'tcx> TraitPredicate<'tcx> {
         self.trait_ref.def_id
     }
 
-    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'a {
         self.trait_ref.input_types()
     }
 
@@ -2400,7 +2400,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     pub fn discriminants(
         &'a self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    ) -> impl Iterator<Item=(VariantIdx, Discr<'tcx>)> + Captures<'gcx> + 'a {
+    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'gcx> + 'a {
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
         let mut prev_discr = None::<Discr<'tcx>>;

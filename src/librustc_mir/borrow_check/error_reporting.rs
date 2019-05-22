@@ -1502,7 +1502,6 @@ enum StorageDeadOrDrop<'tcx> {
 }
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
-
     /// Adds a suggestion when a closure is invoked twice with a moved variable or when a closure
     /// is moved after being invoked.
     ///

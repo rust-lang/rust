@@ -2143,11 +2143,11 @@ pub enum UseKind {
     ListStem,
 }
 
-/// TraitRef's appear in impls.
+/// References to traits in impls.
 ///
-/// resolve maps each TraitRef's ref_id to its defining trait; that's all
-/// that the ref_id is for. Note that ref_id's value is not the NodeId of the
-/// trait being referred to but just a unique NodeId that serves as a key
+/// `resolve` maps each `TraitRef`'s `ref_id` to its defining trait; that's all
+/// that the `ref_id` is for. Note that `ref_id`'s value is not the `NodeId` of the
+/// trait being referred to but just a unique `NodeId` that serves as a key
 /// within the resolution map.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct TraitRef {

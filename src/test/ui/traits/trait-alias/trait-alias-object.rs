@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(trait_alias)]
 
 trait Foo = PartialEq<i32> + Send;

@@ -2129,10 +2129,10 @@ pub struct TraitRef {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct PolyTraitRef {
-    /// The `'a` in `<'a> Foo<&'a T>`
+    /// The `'a` in `<'a> Foo<&'a T>`.
     pub bound_generic_params: Vec<GenericParam>,
 
-    /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`
+    /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef,
 
     pub span: Span,

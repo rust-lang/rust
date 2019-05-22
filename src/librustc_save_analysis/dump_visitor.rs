@@ -1177,13 +1177,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 );
             }
             ast::ImplItemKind::Type(ref ty) => {
-                // FIXME uses of the assoc type should ideally point to this
+                // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
                 self.visit_ty(ty)
             }
             ast::ImplItemKind::Existential(ref bounds) => {
-                // FIXME uses of the assoc type should ideally point to this
+                // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
                 for bound in bounds.iter() {
@@ -1216,7 +1216,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let hir_id = self.tcx.hir().node_to_hir_id(id);
         let access = access_from!(self.save_ctxt, root_item, hir_id);
 
-        // The parent def id of a given use tree is always the enclosing item.
+        // The parent `DefId` of a given use tree is always the enclosing item.
         let parent = self.save_ctxt.tcx.hir().opt_local_def_id(id)
             .and_then(|id| self.save_ctxt.tcx.parent(id))
             .map(id_from_def_id);

@@ -2,7 +2,12 @@ error[E0225]: only auto traits can be used as additional traits in a trait objec
   --> $DIR/issue-32963.rs:8:25
    |
 LL |     size_of_copy::<Misc+Copy>();
-   |                         ^^^^ non-auto additional trait
+   |                    ---- ^^^^
+   |                    |    |
+   |                    |    additional non-auto trait
+   |                    |    trait alias used in trait object type (additional use)
+   |                    first non-auto trait
+   |                    trait alias used in trait object type (first use)
 
 error[E0277]: the trait bound `dyn Misc: std::marker::Copy` is not satisfied
   --> $DIR/issue-32963.rs:8:5

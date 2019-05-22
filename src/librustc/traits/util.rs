@@ -1,3 +1,7 @@
+use errors::DiagnosticBuilder;
+use smallvec::SmallVec;
+use syntax_pos::Span;
+
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::traits::specialize::specialization_graph::NodeItem;
@@ -41,15 +45,14 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     }
 }
 
-
-struct PredicateSet<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct PredicateSet<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     set: FxHashSet<ty::Predicate<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> PredicateSet<'a, 'gcx, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PredicateSet<'a, 'gcx, 'tcx> {
-        PredicateSet { tcx: tcx, set: Default::default() }
+    fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+        Self { tcx: tcx, set: Default::default() }
     }
 
     fn insert(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
@@ -67,18 +70,25 @@ impl<'a, 'gcx, 'tcx> PredicateSet<'a, 'gcx, 'tcx> {
     }
 }
 
+impl<'a, 'gcx, 'tcx, T: AsRef<ty::Predicate<'tcx>>> Extend<T> for PredicateSet<'a, 'gcx, 'tcx> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        for pred in iter {
+            self.insert(pred.as_ref());
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // `Elaboration` iterator
 ///////////////////////////////////////////////////////////////////////////
 
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently this basically means
-/// walking the "supertraits" and other similar assumptions. For
-/// example, if we know that `T : Ord`, the elaborator would deduce
-/// that `T : PartialOrd` holds as well. Similarly, if we have `trait
-/// Foo : 'static`, and we know that `T : Foo`, then we know that `T :
-/// 'static`.
-pub struct Elaborator<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+/// walking the "supertraits" and other similar assumptions. For example,
+/// if we know that `T: Ord`, the elaborator would deduce that `T: PartialOrd`
+/// holds as well. Similarly, if we have `trait Foo: 'static`, and we know that
+/// `T: Foo`, then we know that `T: 'static`.
+pub struct Elaborator<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     stack: Vec<ty::Predicate<'tcx>>,
     visited: PredicateSet<'a, 'gcx, 'tcx>,
 }
@@ -96,8 +106,7 @@ pub fn elaborate_trait_refs<'cx, 'gcx, 'tcx>(
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>)
     -> Elaborator<'cx, 'gcx, 'tcx>
 {
-    let predicates = trait_refs.map(|trait_ref| trait_ref.to_predicate())
-                               .collect();
+    let predicates = trait_refs.map(|trait_ref| trait_ref.to_predicate()).collect();
     elaborate_predicates(tcx, predicates)
 }
 
@@ -108,7 +117,7 @@ pub fn elaborate_predicates<'cx, 'gcx, 'tcx>(
 {
     let mut visited = PredicateSet::new(tcx);
     predicates.retain(|pred| visited.insert(pred));
-    Elaborator { stack: predicates, visited: visited }
+    Elaborator { stack: predicates, visited }
 }
 
 impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
@@ -116,28 +125,25 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
         FilterToTraits::new(self)
     }
 
-    fn push(&mut self, predicate: &ty::Predicate<'tcx>) {
+    fn elaborate(&mut self, predicate: &ty::Predicate<'tcx>) {
         let tcx = self.visited.tcx;
         match *predicate {
             ty::Predicate::Trait(ref data) => {
-                // Predicates declared on the trait.
+                // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let mut predicates: Vec<_> =
-                    predicates.predicates
-                              .iter()
-                              .map(|(p, _)| p.subst_supertrait(tcx, &data.to_poly_trait_ref()))
-                              .collect();
-
+                let predicates = predicates.predicates
+                    .iter()
+                    .map(|(pred, _)| pred.subst_supertrait(tcx, &data.to_poly_trait_ref()));
                 debug!("super_predicates: data={:?} predicates={:?}",
-                       data, predicates);
+                       data, predicates.clone());
 
-                // Only keep those bounds that we haven't already
-                // seen.  This is necessary to prevent infinite
-                // recursion in some cases.  One common case is when
-                // people define `trait Sized: Sized { }` rather than `trait
-                // Sized { }`.
-                predicates.retain(|r| self.visited.insert(r));
+                // Only keep those bounds that we haven't already seen.
+                // This is necessary to prevent infinite recursion in some
+                // cases. One common case is when people define
+                // `trait Sized: Sized { }` rather than `trait Sized { }`.
+                let visited = &mut self.visited;
+                let predicates = predicates.filter(|pred| visited.insert(pred));
 
                 self.stack.extend(predicates);
             }
@@ -150,8 +156,8 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 // predicates.
             }
             ty::Predicate::Subtype(..) => {
-                // Currently, we do not "elaborate" predicates like `X
-                // <: Y`, though conceivably we might.
+                // Currently, we do not "elaborate" predicates like `X <: Y`,
+                // though conceivably we might.
             }
             ty::Predicate::Projection(..) => {
                 // Nothing to elaborate in a projection predicate.
@@ -163,11 +169,9 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 // Currently, we do not elaborate const-evaluatable
                 // predicates.
             }
-
             ty::Predicate::RegionOutlives(..) => {
                 // Nothing to elaborate from `'a: 'b`.
             }
-
             ty::Predicate::TypeOutlives(ref data) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that
@@ -194,34 +198,35 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 tcx.push_outlives_components(ty_max, &mut components);
                 self.stack.extend(
                     components
-                       .into_iter()
-                       .filter_map(|component| match component {
-                           Component::Region(r) => if r.is_late_bound() {
-                               None
-                           } else {
-                               Some(ty::Predicate::RegionOutlives(
-                                   ty::Binder::dummy(ty::OutlivesPredicate(r, r_min))))
-                           },
+                        .into_iter()
+                        .filter_map(|component| match component {
+                            Component::Region(r) => if r.is_late_bound() {
+                                None
+                            } else {
+                                Some(ty::Predicate::RegionOutlives(
+                                    ty::Binder::dummy(ty::OutlivesPredicate(r, r_min))))
+                            }
 
-                           Component::Param(p) => {
-                               let ty = tcx.mk_ty_param(p.index, p.name);
-                               Some(ty::Predicate::TypeOutlives(
-                                   ty::Binder::dummy(ty::OutlivesPredicate(ty, r_min))))
-                           },
+                            Component::Param(p) => {
+                                let ty = tcx.mk_ty_param(p.index, p.name);
+                                Some(ty::Predicate::TypeOutlives(
+                                    ty::Binder::dummy(ty::OutlivesPredicate(ty, r_min))))
+                            }
 
-                           Component::UnresolvedInferenceVariable(_) => {
-                               None
-                           },
+                            Component::UnresolvedInferenceVariable(_) => {
+                                None
+                            }
 
-                           Component::Projection(_) |
-                           Component::EscapingProjection(_) => {
-                               // We can probably do more here. This
-                               // corresponds to a case like `<T as
-                               // Foo<'a>>::U: 'b`.
-                               None
-                           },
-                       })
-                       .filter(|p| visited.insert(p)));
+                            Component::Projection(_) |
+                            Component::EscapingProjection(_) => {
+                                // We can probably do more here. This
+                                // corresponds to a case like `<T as
+                                // Foo<'a>>::U: 'b`.
+                                None
+                            }
+                        })
+                        .filter(|p| visited.insert(p))
+                );
             }
         }
     }
@@ -236,15 +241,12 @@ impl<'cx, 'gcx, 'tcx> Iterator for Elaborator<'cx, 'gcx, 'tcx> {
 
     fn next(&mut self) -> Option<ty::Predicate<'tcx>> {
         // Extract next item from top-most stack frame, if any.
-        let next_predicate = match self.stack.pop() {
-            Some(predicate) => predicate,
-            None => {
-                // No more stack frames. Done.
-                return None;
-            }
-        };
-        self.push(&next_predicate);
-        return Some(next_predicate);
+        if let Some(pred) = self.stack.pop() {
+            self.elaborate(&pred);
+            Some(pred)
+        } else {
+            None
+        }
     }
 }
 
@@ -256,20 +258,161 @@ pub type Supertraits<'cx, 'gcx, 'tcx> = FilterToTraits<Elaborator<'cx, 'gcx, 'tc
 
 pub fn supertraits<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
                                     trait_ref: ty::PolyTraitRef<'tcx>)
-                                    -> Supertraits<'cx, 'gcx, 'tcx>
-{
+                                    -> Supertraits<'cx, 'gcx, 'tcx> {
     elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
 }
 
 pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
                                           bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>)
-                                          -> Supertraits<'cx, 'gcx, 'tcx>
-{
+                                          -> Supertraits<'cx, 'gcx, 'tcx> {
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Iterator over def-ids of supertraits
+// `TraitAliasExpander` iterator
+///////////////////////////////////////////////////////////////////////////
+
+/// "Trait alias expansion" is the process of expanding a sequence of trait
+/// references into another sequence by transitively following all trait
+/// aliases. e.g. If you have bounds like `Foo + Send`, a trait alias
+/// `trait Foo = Bar + Sync;`, and another trait alias
+/// `trait Bar = Read + Write`, then the bounds would expand to
+/// `Read + Write + Sync + Send`.
+/// Expansion is done via a DFS (depth-first search), and the `visited` field
+/// is used to avoid cycles.
+pub struct TraitAliasExpander<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    stack: Vec<TraitAliasExpansionInfo<'tcx>>,
+}
+
+/// Stores information about the expansion of a trait via a path of zero or more trait aliases.
+#[derive(Debug, Clone)]
+pub struct TraitAliasExpansionInfo<'tcx> {
+    pub path: SmallVec<[(ty::PolyTraitRef<'tcx>, Span); 4]>,
+}
+
+impl<'tcx> TraitAliasExpansionInfo<'tcx> {
+    fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
+        Self {
+            path: smallvec![(trait_ref, span)]
+        }
+    }
+
+    /// Adds diagnostic labels to `diag` for the expansion path of a trait through all intermediate
+    /// trait aliases.
+    pub fn label_with_exp_info(&self,
+        diag: &mut DiagnosticBuilder<'_>,
+        top_label: &str,
+        use_desc: &str
+    ) {
+        diag.span_label(self.top().1, top_label);
+        if self.path.len() > 1 {
+            for (_, sp) in self.path.iter().rev().skip(1).take(self.path.len() - 2) {
+                diag.span_label(*sp, format!("referenced here ({})", use_desc));
+            }
+        }
+        diag.span_label(self.bottom().1,
+            format!("trait alias used in trait object type ({})", use_desc));
+    }
+
+    pub fn trait_ref(&self) -> &ty::PolyTraitRef<'tcx> {
+        &self.top().0
+    }
+
+    pub fn top(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
+        self.path.last().unwrap()
+    }
+
+    pub fn bottom(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
+        self.path.first().unwrap()
+    }
+
+    fn clone_and_push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
+        let mut path = self.path.clone();
+        path.push((trait_ref, span));
+
+        Self {
+            path
+        }
+    }
+}
+
+pub fn expand_trait_aliases<'cx, 'gcx, 'tcx>(
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>
+) -> TraitAliasExpander<'cx, 'gcx, 'tcx> {
+    let items: Vec<_> = trait_refs
+        .into_iter()
+        .map(|(trait_ref, span)| TraitAliasExpansionInfo::new(trait_ref, span))
+        .collect();
+    TraitAliasExpander { tcx, stack: items }
+}
+
+impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'cx, 'gcx, 'tcx> {
+    /// If `item` is a trait alias and its predicate has not yet been visited, then expands `item`
+    /// to the definition, pushes the resulting expansion onto `self.stack`, and returns `false`.
+    /// Otherwise, immediately returns `true` if `item` is a regular trait, or `false` if it is a
+    /// trait alias.
+    /// The return value indicates whether `item` should be yielded to the user.
+    fn expand(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
+        let tcx = self.tcx;
+        let trait_ref = item.trait_ref();
+        let pred = trait_ref.to_predicate();
+
+        debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
+
+        // Don't recurse if this bound is not a trait alias.
+        let is_alias = tcx.is_trait_alias(trait_ref.def_id());
+        if !is_alias {
+            return true;
+        }
+
+        // Don't recurse if this trait alias is already on the stack for the DFS search.
+        let anon_pred = anonymize_predicate(tcx, &pred);
+        if item.path.iter().rev().skip(1)
+                .any(|(tr, _)| anonymize_predicate(tcx, &tr.to_predicate()) == anon_pred) {
+            return false;
+        }
+
+        // Get components of trait alias.
+        let predicates = tcx.super_predicates_of(trait_ref.def_id());
+
+        let items = predicates.predicates
+            .iter()
+            .rev()
+            .filter_map(|(pred, span)| {
+                pred.subst_supertrait(tcx, &trait_ref)
+                    .to_opt_poly_trait_ref()
+                    .map(|trait_ref| item.clone_and_push(trait_ref, *span))
+            });
+        debug!("expand_trait_aliases: items={:?}", items.clone());
+
+        self.stack.extend(items);
+
+        false
+    }
+}
+
+impl<'cx, 'gcx, 'tcx> Iterator for TraitAliasExpander<'cx, 'gcx, 'tcx> {
+    type Item = TraitAliasExpansionInfo<'tcx>;
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.stack.len(), None)
+    }
+
+    fn next(&mut self) -> Option<TraitAliasExpansionInfo<'tcx>> {
+        while let Some(item) = self.stack.pop() {
+            if self.expand(&item) {
+                return Some(item);
+            }
+        }
+        None
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Iterator over def-IDs of supertraits
+///////////////////////////////////////////////////////////////////////////
 
 pub struct SupertraitDefIds<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -298,8 +441,8 @@ impl<'cx, 'gcx, 'tcx> Iterator for SupertraitDefIds<'cx, 'gcx, 'tcx> {
         self.stack.extend(
             predicates.predicates
                       .iter()
-                      .filter_map(|(p, _)| p.to_opt_poly_trait_ref())
-                      .map(|t| t.def_id())
+                      .filter_map(|(pred, _)| pred.to_opt_poly_trait_ref())
+                      .map(|trait_ref| trait_ref.def_id())
                       .filter(|&super_def_id| visited.insert(super_def_id)));
         Some(def_id)
     }
@@ -325,17 +468,12 @@ impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<
     type Item = ty::PolyTraitRef<'tcx>;
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
-        loop {
-            match self.base_iterator.next() {
-                None => {
-                    return None;
-                }
-                Some(ty::Predicate::Trait(data)) => {
-                    return Some(data.to_poly_trait_ref());
-                }
-                Some(_) => {}
+        while let Some(pred) = self.base_iterator.next() {
+            if let ty::Predicate::Trait(data) = pred {
+                return Some(data.to_poly_trait_ref());
             }
         }
+        None
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

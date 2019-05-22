@@ -684,9 +684,9 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
     tcx.alloc_adt_def(def_id, kind, variants, repr)
 }
 
-/// Ensures that the super-predicates of the trait with `DefId`
-/// trait_def_id are converted and stored. This also ensures that
-/// the transitive super-predicates are converted;
+/// Ensures that the super-predicates of the trait with a `DefId`
+/// of `trait_def_id` are converted and stored. This also ensures that
+/// the transitive super-predicates are converted.
 fn super_predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_def_id: DefId,
@@ -707,15 +707,15 @@ fn super_predicates_of<'a, 'tcx>(
 
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
-    // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo : Bar + Zed`.
+    // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
     let self_param_ty = tcx.mk_self_type();
     let superbounds1 = compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
 
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
-    // Convert any explicit superbounds in the where clause,
-    // e.g., `trait Foo where Self : Bar`.
-    // In the case of trait aliases, however, we include all bounds in the where clause,
+    // Convert any explicit superbounds in the where-clause,
+    // e.g., `trait Foo where Self: Bar`.
+    // In the case of trait aliases, however, we include all bounds in the where-clause,
     // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
     // as one of its "superpredicates".
     let is_trait_alias = tcx.is_trait_alias(trait_def_id);

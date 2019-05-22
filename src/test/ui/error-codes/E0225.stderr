@@ -1,9 +1,28 @@
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/E0225.rs:2:32
+  --> $DIR/E0225.rs:6:36
    |
-LL |     let _: Box<std::io::Read + std::io::Write>;
-   |                                ^^^^^^^^^^^^^^ non-auto additional trait
+LL |     let _: Box<dyn std::io::Read + std::io::Write>;
+   |                    -------------   ^^^^^^^^^^^^^^
+   |                    |               |
+   |                    |               additional non-auto trait
+   |                    |               trait alias used in trait object type (additional use)
+   |                    first non-auto trait
+   |                    trait alias used in trait object type (first use)
 
-error: aborting due to previous error
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/E0225.rs:8:20
+   |
+LL | trait Foo = std::io::Read + std::io::Write;
+   |             -------------   -------------- additional non-auto trait
+   |             |
+   |             first non-auto trait
+...
+LL |     let _: Box<dyn Foo>;
+   |                    ^^^
+   |                    |
+   |                    trait alias used in trait object type (additional use)
+   |                    trait alias used in trait object type (first use)
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0225`.

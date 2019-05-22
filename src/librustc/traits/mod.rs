@@ -60,8 +60,10 @@ pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
-pub use self::util::{supertraits, supertrait_def_ids, transitive_bounds,
-                     Supertraits, SupertraitDefIds};
+pub use self::util::{
+    supertraits, supertrait_def_ids, transitive_bounds, Supertraits, SupertraitDefIds,
+};
+pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 
 pub use self::chalk_fulfill::{
     CanonicalGoal as ChalkCanonicalGoal,
@@ -1043,7 +1045,7 @@ fn vtable_methods<'a, 'tcx>(
     )
 }
 
-impl<'tcx,O> Obligation<'tcx,O> {
+impl<'tcx, O> Obligation<'tcx, O> {
     pub fn new(cause: ObligationCause<'tcx>,
                param_env: ty::ParamEnv<'tcx>,
                predicate: O)
