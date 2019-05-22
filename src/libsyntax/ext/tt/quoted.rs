@@ -400,18 +400,13 @@ fn parse_sep_and_kleene_op(
 ) -> (Option<Token>, KleeneOp) {
     // We basically look at two token trees here, denoted as #1 and #2 below
     let span = match parse_kleene_op(input, span) {
-        // #1 is a `?` (needs feature gate)
-        Ok(Ok((op, _op1_span))) if op == KleeneOp::ZeroOrOne => {
-            return (None, op);
-        }
-
-        // #1 is a `+` or `*` KleeneOp
+        // #1 is a `?`, `+`, or `*` KleeneOp
         Ok(Ok((op, _))) => return (None, op),
 
         // #1 is a separator followed by #2, a KleeneOp
         Ok(Err(token)) => match parse_kleene_op(input, token.span) {
             // #2 is the `?` Kleene op, which does not take a separator (error)
-            Ok(Ok((op, _op2_span))) if op == KleeneOp::ZeroOrOne => {
+            Ok(Ok((KleeneOp::ZeroOrOne, _))) => {
                 // Error!
                 sess.span_diagnostic.span_err(
                     token.span,
@@ -425,11 +420,8 @@ fn parse_sep_and_kleene_op(
             // #2 is a KleeneOp :D
             Ok(Ok((op, _))) => return (Some(token), op),
 
-            // #2 is a random token :(
-            Ok(Err(token)) => token.span,
-
-            // #2 is not a token at all :(
-            Err(span) => span,
+            // #2 is a random token or not a token at all :(
+            Ok(Err(Token { span, .. })) | Err(span) => span,
         },
 
         // #1 is not a token
