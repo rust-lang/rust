@@ -92,7 +92,15 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
                     }
 
                     diagnostic.map(|d| {
-                        span_err!(d, attr.span, E0633, "malformed `#[unwind]` attribute");
+                        struct_span_err!(d, attr.span, E0633, "malformed `unwind` attribute input")
+                            .span_label(attr.span, "invalid argument")
+                            .span_suggestions(
+                                attr.span,
+                                "the allowed arguments are `allowed` and `aborts`",
+                                (vec!["allowed", "aborts"]).into_iter()
+                                    .map(|s| format!("#[unwind({})]", s)),
+                                Applicability::MachineApplicable,
+                            ).emit();
                     });
                 }
             }

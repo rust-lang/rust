@@ -25,7 +25,7 @@ use crate::parse::{token, ParseSess};
 use crate::symbol::{Symbol, kw, sym};
 use crate::tokenstream::TokenTree;
 
-use errors::{DiagnosticBuilder, Handler};
+use errors::{Applicability, DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Span, DUMMY_SP};
@@ -1422,7 +1422,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         Normal,
         template!(
             Word,
-            List: r#"/*opt*/ since = "version", /*opt*/ note = "reason"#,
+            List: r#"/*opt*/ since = "version", /*opt*/ note = "reason""#,
             NameValueStr: "reason"
         ),
         Ungated
@@ -1858,24 +1858,32 @@ impl<'a> PostExpansionVisitor<'a> {
 
         match attr.parse_meta(self.context.parse_sess) {
             Ok(meta) => if !should_skip(name) && !template.compatible(&meta.node) {
+                let error_msg = format!("malformed `{}` attribute input", name);
                 let mut msg = "attribute must be of the form ".to_owned();
+                let mut suggestions = vec![];
                 let mut first = true;
                 if template.word {
                     first = false;
-                    msg.push_str(&format!("`#[{}{}]`", name, ""));
+                    let code = format!("#[{}]", name);
+                    msg.push_str(&format!("`{}`", &code));
+                    suggestions.push(code);
                 }
                 if let Some(descr) = template.list {
                     if !first {
                         msg.push_str(" or ");
                     }
                     first = false;
-                    msg.push_str(&format!("`#[{}({})]`", name, descr));
+                    let code = format!("#[{}({})]", name, descr);
+                    msg.push_str(&format!("`{}`", &code));
+                    suggestions.push(code);
                 }
                 if let Some(descr) = template.name_value_str {
                     if !first {
                         msg.push_str(" or ");
                     }
-                    msg.push_str(&format!("`#[{} = \"{}\"]`", name, descr));
+                    let code = format!("#[{} = \"{}\"]", name, descr);
+                    msg.push_str(&format!("`{}`", &code));
+                    suggestions.push(code);
                 }
                 if should_warn(name) {
                     self.context.parse_sess.buffer_lint(
@@ -1885,7 +1893,17 @@ impl<'a> PostExpansionVisitor<'a> {
                         &msg,
                     );
                 } else {
-                    self.context.parse_sess.span_diagnostic.span_err(meta.span, &msg);
+                    self.context.parse_sess.span_diagnostic.struct_span_err(meta.span, &error_msg)
+                        .span_suggestions(
+                            meta.span,
+                            if suggestions.len() == 1 {
+                                "must be of the form"
+                            } else {
+                                "the following are the possible correct uses"
+                            },
+                            suggestions.into_iter(),
+                            Applicability::HasPlaceholders,
+                        ).emit();
                 }
             }
             Err(mut err) => err.emit(),
@@ -2298,6 +2316,8 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         let mut err = struct_span_err!(span_handler, span, E0557, "feature has been removed");
         if let Some(reason) = reason {
             err.span_note(span, reason);
+        } else {
+            err.span_label(span, "feature has been removed");
         }
         err.emit();
     }
@@ -2379,12 +2399,24 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             None => continue,
         };
 
+        let bad_input = |span| {
+            struct_span_err!(span_handler, span, E0556, "malformed `feature` attribute input")
+        };
+
         for mi in list {
             let name = match mi.ident() {
                 Some(ident) if mi.is_word() => ident.name,
-                _ => {
-                    span_err!(span_handler, mi.span(), E0556,
-                            "malformed feature, expected just one word");
+                Some(ident) => {
+                    bad_input(mi.span()).span_suggestion(
+                        mi.span(),
+                        "expected just one word",
+                        format!("{}", ident.name),
+                        Applicability::MaybeIncorrect,
+                    ).emit();
+                    continue
+                }
+                None => {
+                    bad_input(mi.span()).span_label(mi.span(), "expected just one word").emit();
                     continue
                 }
             };

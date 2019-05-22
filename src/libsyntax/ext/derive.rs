@@ -5,6 +5,7 @@ use crate::ext::base::ExtCtxt;
 use crate::ext::build::AstBuilder;
 use crate::parse::parser::PathStyle;
 use crate::symbol::{Symbol, sym};
+use crate::errors::Applicability;
 
 use syntax_pos::Span;
 
@@ -17,8 +18,13 @@ pub fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) ->
             return true;
         }
         if !attr.is_meta_item_list() {
-            cx.span_err(attr.span,
-                        "attribute must be of the form `#[derive(Trait1, Trait2, ...)]`");
+            cx.struct_span_err(attr.span, "malformed `derive` attribute input")
+                .span_suggestion(
+                    attr.span,
+                    "missing traits to be derived",
+                    "#[derive(Trait1, Trait2, ...)]".to_owned(),
+                    Applicability::HasPlaceholders,
+                ).emit();
             return false;
         }
 

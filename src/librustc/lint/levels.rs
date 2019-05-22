@@ -191,7 +191,7 @@ impl<'a> LintLevelsBuilder<'a> {
         let store = self.sess.lint_store.borrow();
         let sess = self.sess;
         let bad_attr = |span| {
-            struct_span_err!(sess, span, E0452, "malformed lint attribute")
+            struct_span_err!(sess, span, E0452, "malformed lint attribute input")
         };
         for attr in attrs {
             let level = match Level::from_symbol(attr.name_or_empty()) {
@@ -238,18 +238,20 @@ impl<'a> LintLevelsBuilder<'a> {
                                 }
                                 reason = Some(rationale);
                             } else {
-                                let mut err = bad_attr(name_value.span);
-                                err.help("reason must be a string literal");
-                                err.emit();
+                                bad_attr(name_value.span)
+                                    .span_label(name_value.span, "reason must be a string literal")
+                                    .emit();
                             }
                         } else {
-                            let mut err = bad_attr(item.span);
-                            err.emit();
+                            bad_attr(item.span)
+                                .span_label(item.span, "bad attribute argument")
+                                .emit();
                         }
                     },
                     ast::MetaItemKind::List(_) => {
-                        let mut err = bad_attr(item.span);
-                        err.emit();
+                        bad_attr(item.span)
+                            .span_label(item.span, "bad attribute argument")
+                            .emit();
                     }
                 }
             }
@@ -258,13 +260,19 @@ impl<'a> LintLevelsBuilder<'a> {
                 let meta_item = match li.meta_item() {
                     Some(meta_item) if meta_item.is_word() => meta_item,
                     _ => {
-                        let mut err = bad_attr(li.span());
+                        let sp = li.span();
+                        let mut err = bad_attr(sp);
+                        let mut add_label = true;
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.node {
                                 if item.path == sym::reason {
-                                    err.help("reason in lint attribute must come last");
+                                    err.span_label(sp, "reason in lint attribute must come last");
+                                    add_label = false;
                                 }
                             }
+                        }
+                        if add_label {
+                            err.span_label(sp, "bad attribute argument");
                         }
                         err.emit();
                         continue;
@@ -318,15 +326,14 @@ impl<'a> LintLevelsBuilder<'a> {
                                      Also `cfg_attr(cargo-clippy)` won't be necessary anymore",
                                     name
                                 );
-                                let mut err = lint::struct_lint_level(
+                                lint::struct_lint_level(
                                     self.sess,
                                     lint,
                                     lvl,
                                     src,
                                     Some(li.span().into()),
                                     &msg,
-                                );
-                                err.span_suggestion(
+                                ).span_suggestion(
                                     li.span(),
                                     "change it to",
                                     new_lint_name.to_string(),

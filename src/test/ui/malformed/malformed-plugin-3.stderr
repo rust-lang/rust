@@ -1,8 +1,8 @@
-error[E0498]: malformed plugin attribute
+error[E0498]: malformed `plugin` attribute
   --> $DIR/malformed-plugin-3.rs:2:1
    |
 LL | #![plugin(foo="bleh")]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^ malformed attribute
 
 error: aborting due to previous error
 

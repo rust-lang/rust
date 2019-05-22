@@ -10,7 +10,7 @@ use std::env;
 use std::mem;
 use std::path::PathBuf;
 use syntax::ast;
-use syntax::span_err;
+use syntax::struct_span_err;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -29,8 +29,10 @@ struct PluginLoader<'a> {
     plugins: Vec<PluginRegistrar>,
 }
 
-fn call_malformed_plugin_attribute(a: &Session, b: Span) {
-    span_err!(a, b, E0498, "malformed plugin attribute");
+fn call_malformed_plugin_attribute(sess: &Session, span: Span) {
+    struct_span_err!(sess, span, E0498, "malformed `plugin` attribute")
+        .span_label(span, "malformed attribute")
+        .emit();
 }
 
 /// Read plugin metadata and dynamically load registrar functions.

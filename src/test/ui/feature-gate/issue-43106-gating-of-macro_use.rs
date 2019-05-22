@@ -13,7 +13,7 @@ mod macro_escape {
     //~^ ERROR arguments to macro_use are not allowed here
 
     #[macro_use = "2700"] struct S;
-    //~^ ERROR attribute must be of the form
+    //~^ ERROR malformed `macro_use` attribute
 
     #[macro_use] fn f() { }
 

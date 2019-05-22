@@ -1,35 +1,38 @@
-error: attribute must be of the form `#[target_feature(enable = "name")]`
+error: malformed `target_feature` attribute input
   --> $DIR/target-feature-wrong.rs:16:1
    |
 LL | #[target_feature = "+sse2"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[target_feature(enable = "name")]`
 
 error: the feature named `foo` is not valid for this target
   --> $DIR/target-feature-wrong.rs:18:18
    |
 LL | #[target_feature(enable = "foo")]
-   |                  ^^^^^^^^^^^^^^
+   |                  ^^^^^^^^^^^^^^ `foo` is not valid for this target
 
-error: #[target_feature(..)] only accepts sub-keys of `enable` currently
-  --> $DIR/target-feature-wrong.rs:20:18
+error: malformed `target_feature` attribute input
+  --> $DIR/target-feature-wrong.rs:21:18
    |
 LL | #[target_feature(bar)]
-   |                  ^^^
+   |                  ^^^ help: must be of the form: `enable = ".."`
 
-error: #[target_feature(..)] only accepts sub-keys of `enable` currently
-  --> $DIR/target-feature-wrong.rs:22:18
+error: malformed `target_feature` attribute input
+  --> $DIR/target-feature-wrong.rs:23:18
    |
 LL | #[target_feature(disable = "baz")]
-   |                  ^^^^^^^^^^^^^^^
+   |                  ^^^^^^^^^^^^^^^ help: must be of the form: `enable = ".."`
 
-error: #[target_feature(..)] can only be applied to `unsafe` function
-  --> $DIR/target-feature-wrong.rs:26:1
+error: #[target_feature(..)] can only be applied to `unsafe` functions
+  --> $DIR/target-feature-wrong.rs:27:1
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only be applied to `unsafe` functions
+...
+LL | fn bar() {}
+   | ----------- not an `unsafe` function
 
 error: attribute should be applied to a function
-  --> $DIR/target-feature-wrong.rs:30:1
+  --> $DIR/target-feature-wrong.rs:33:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,7 +41,7 @@ LL | mod another {}
    | -------------- not a function
 
 error: cannot use #[inline(always)] with #[target_feature]
-  --> $DIR/target-feature-wrong.rs:34:1
+  --> $DIR/target-feature-wrong.rs:38:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^

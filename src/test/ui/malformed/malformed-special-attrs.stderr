@@ -1,8 +1,10 @@
-error: expected `(`, found end of attribute
+error: malformed `cfg_attr` attribute input
   --> $DIR/malformed-special-attrs.rs:1:1
    |
 LL | #[cfg_attr]
-   | ^ expected `(`
+   | ^^^^^^^^^^^ help: missing condition and attribute: `#[cfg_attr(condition, attribute, other_attribute, ...)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected `(`, found `=`
   --> $DIR/malformed-special-attrs.rs:4:12
@@ -10,17 +12,17 @@ error: expected `(`, found `=`
 LL | #[cfg_attr = ""]
    |            ^ expected `(`
 
-error: attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
+error: malformed `derive` attribute input
   --> $DIR/malformed-special-attrs.rs:7:1
    |
 LL | #[derive]
-   | ^^^^^^^^^
+   | ^^^^^^^^^ help: missing traits to be derived: `#[derive(Trait1, Trait2, ...)]`
 
-error: attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
+error: malformed `derive` attribute input
   --> $DIR/malformed-special-attrs.rs:10:1
    |
 LL | #[derive = ""]
-   | ^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^ help: missing traits to be derived: `#[derive(Trait1, Trait2, ...)]`
 
 error: aborting due to 4 previous errors
 
