@@ -3,7 +3,8 @@
 use crate::common::CompareMode;
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
-use crate::common::{Codegen, CodegenUnits, DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Rustdoc};
+use crate::common::{Codegen, CodegenUnits, Rustdoc};
+use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb};
 use crate::common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use crate::common::{Config, TestPaths};
 use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
@@ -242,7 +243,11 @@ pub fn compute_stamp_hash(config: &Config) -> String {
     let mut hash = DefaultHasher::new();
     config.stage_id.hash(&mut hash);
 
-    if config.mode == DebugInfoGdb || config.mode == DebugInfoBoth {
+    if config.mode == DebugInfoCdb {
+        config.cdb.hash(&mut hash);
+    }
+
+    if config.mode == DebugInfoGdb || config.mode == DebugInfoGdbLldb {
         match config.gdb {
             None => env::var_os("PATH").hash(&mut hash),
             Some(ref s) if s.is_empty() => env::var_os("PATH").hash(&mut hash),
@@ -250,7 +255,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         };
     }
 
-    if config.mode == DebugInfoLldb || config.mode == DebugInfoBoth {
+    if config.mode == DebugInfoLldb || config.mode == DebugInfoGdbLldb {
         env::var_os("PATH").hash(&mut hash);
         env::var_os("PYTHONPATH").hash(&mut hash);
     }
@@ -285,10 +290,11 @@ impl<'test> TestCx<'test> {
             RunFail => self.run_rfail_test(),
             RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
-            DebugInfoBoth => {
+            DebugInfoGdbLldb => {
                 self.run_debuginfo_gdb_test();
                 self.run_debuginfo_lldb_test();
             },
+            DebugInfoCdb => self.run_debuginfo_cdb_test(),
             DebugInfoGdb => self.run_debuginfo_gdb_test(),
             DebugInfoLldb => self.run_debuginfo_lldb_test(),
             Codegen => self.run_codegen_test(),
@@ -654,6 +660,95 @@ impl<'test> TestCx<'test> {
         rustc.args(&self.props.compile_flags);
 
         self.compose_and_run_compiler(rustc, Some(src))
+    }
+
+    fn run_debuginfo_cdb_test(&self) {
+        assert!(self.revision.is_none(), "revisions not relevant here");
+
+        let config = Config {
+            target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
+            host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
+            mode: DebugInfoCdb,
+            ..self.config.clone()
+        };
+
+        let test_cx = TestCx {
+            config: &config,
+            ..*self
+        };
+
+        test_cx.run_debuginfo_cdb_test_no_opt();
+    }
+
+    fn run_debuginfo_cdb_test_no_opt(&self) {
+        // compile test file (it should have 'compile-flags:-g' in the header)
+        let compile_result = self.compile_test();
+        if !compile_result.status.success() {
+            self.fatal_proc_rec("compilation failed!", &compile_result);
+        }
+
+        let exe_file = self.make_exe_name();
+
+        let prefixes = {
+            static PREFIXES: &'static [&'static str] = &["cdb", "cdbg"];
+            // No "native rust support" variation for CDB yet.
+            PREFIXES
+        };
+
+        // Parse debugger commands etc from test files
+        let DebuggerCommands {
+            commands,
+            check_lines,
+            breakpoint_lines,
+            ..
+        } = self.parse_debugger_commands(prefixes);
+
+        // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
+        let mut script_str = String::with_capacity(2048);
+        script_str.push_str("version\n"); // List CDB (and more) version info in test output
+        script_str.push_str(".nvlist\n"); // List loaded `*.natvis` files, bulk of custom MSVC debug
+
+        // Set breakpoints on every line that contains the string "#break"
+        let source_file_name = self.testpaths.file.file_name().unwrap().to_string_lossy();
+        for line in &breakpoint_lines {
+            script_str.push_str(&format!(
+                "bp `{}:{}`\n",
+                source_file_name, line
+            ));
+        }
+
+        // Append the other `cdb-command:`s
+        for line in &commands {
+            script_str.push_str(line);
+            script_str.push_str("\n");
+        }
+
+        script_str.push_str("\nqq\n"); // Quit the debugger (including remote debugger, if any)
+
+        // Write the script into a file
+        debug!("script_str = {}", script_str);
+        self.dump_output_file(&script_str, "debugger.script");
+        let debugger_script = self.make_out_name("debugger.script");
+
+        let cdb_path = &self.config.cdb.as_ref().unwrap();
+        let mut cdb = Command::new(cdb_path);
+        cdb
+            .arg("-lines") // Enable source line debugging.
+            .arg("-cf").arg(&debugger_script)
+            .arg(&exe_file);
+
+        let debugger_run_result = self.compose_and_run(
+            cdb,
+            self.config.run_lib_path.to_str().unwrap(),
+            None, // aux_path
+            None  // input
+        );
+
+        if !debugger_run_result.status.success() {
+            self.fatal_proc_rec("Error while running CDB", &debugger_run_result);
+        }
+
+        self.check_debugger_output(&debugger_run_result, &check_lines);
     }
 
     fn run_debuginfo_gdb_test(&self) {
@@ -1429,7 +1524,7 @@ impl<'test> TestCx<'test> {
             RunPass | Ui => self.should_run_successfully(),
             Incremental => self.revision.unwrap().starts_with("r"),
             RunFail | RunPassValgrind | MirOpt |
-            DebugInfoBoth | DebugInfoGdb | DebugInfoLldb => true,
+            DebugInfoCdb | DebugInfoGdbLldb | DebugInfoGdb | DebugInfoLldb => true,
             _ => false,
         };
         let output_file = if will_execute {
@@ -1870,8 +1965,8 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunFail | RunPassValgrind | Pretty | DebugInfoBoth | DebugInfoGdb | DebugInfoLldb
-            | Codegen | Rustdoc | RunMake | CodegenUnits | JsDocTest | Assembly => {
+            RunFail | RunPassValgrind | Pretty | DebugInfoCdb | DebugInfoGdbLldb | DebugInfoGdb
+            | DebugInfoLldb | Codegen | Rustdoc | RunMake | CodegenUnits | JsDocTest | Assembly => {
                 // do not use JSON output
             }
         }
