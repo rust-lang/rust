@@ -268,6 +268,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
     /// See also `with_infer`, which is used *during* typeck.
     pub fn new(delegate: &'a mut (dyn Delegate<'tcx>+'a),
                tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               body_owner: DefId,
                param_env: ty::ParamEnv<'tcx>,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
@@ -276,6 +277,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
     {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::new(tcx,
+                                                  body_owner,
                                                   region_scope_tree,
                                                   tables,
                                                   rvalue_promotable_map),
@@ -288,13 +290,19 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn with_infer(delegate: &'a mut (dyn Delegate<'tcx>+'a),
                       infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                      body_owner: DefId,
                       param_env: ty::ParamEnv<'tcx>,
                       region_scope_tree: &'a region::ScopeTree,
                       tables: &'a ty::TypeckTables<'tcx>)
                       -> Self
     {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::with_infer(infcx, region_scope_tree, tables),
+            mc: mc::MemCategorizationContext::with_infer(
+                infcx,
+                body_owner,
+                region_scope_tree,
+                tables,
+            ),
             delegate,
             param_env,
         }
@@ -965,10 +973,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // caller's perspective
         if upvar.has_parent {
             let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_hir_id);
-            let parent_def_id = self.tcx().parent(closure_def_id).unwrap();
-            assert!(self.tcx().is_closure(parent_def_id));
+            assert_eq!(self.mc.body_owner, self.tcx().parent(closure_def_id).unwrap());
             let var_nid = self.tcx().hir().hir_to_node_id(var_id);
-            self.mc.cat_upvar(closure_hir_id, closure_span, var_nid, parent_def_id)
+            self.mc.cat_upvar(closure_hir_id, closure_span, var_nid)
         } else {
             let var_ty = self.mc.node_ty(var_id)?;
             self.mc.cat_res(closure_hir_id, closure_span, var_ty, Res::Local(var_id))

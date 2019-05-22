@@ -288,6 +288,7 @@ impl HirNode for hir::Pat {
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub body_owner: DefId,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
     rvalue_promotable_map: Option<&'tcx ItemLocalSet>,
@@ -398,12 +399,14 @@ impl MutabilityCategory {
 
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               body_owner: DefId,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
                rvalue_promotable_map: Option<&'tcx ItemLocalSet>)
                -> MemCategorizationContext<'a, 'tcx, 'tcx> {
         MemCategorizationContext {
             tcx,
+            body_owner,
             region_scope_tree,
             tables,
             rvalue_promotable_map,
@@ -423,6 +426,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     /// - similarly, as the results of upvar analysis are not yet
     ///   known, the results around upvar accesses may be incorrect.
     pub fn with_infer(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                      body_owner: DefId,
                       region_scope_tree: &'a region::ScopeTree,
                       tables: &'a ty::TypeckTables<'tcx>)
                       -> MemCategorizationContext<'a, 'gcx, 'tcx> {
@@ -436,6 +440,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         MemCategorizationContext {
             tcx,
+            body_owner,
             region_scope_tree,
             tables,
             rvalue_promotable_map,
@@ -739,8 +744,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
             Res::Upvar(var_id, closure_node_id) => {
                 let var_nid = self.tcx.hir().hir_to_node_id(var_id);
-                let closure_expr_def_id = self.tcx.hir().local_def_id(closure_node_id);
-                self.cat_upvar(hir_id, span, var_nid, closure_expr_def_id)
+                let closure_def_id = self.tcx.hir().local_def_id(closure_node_id);
+                assert_eq!(self.body_owner, closure_def_id);
+
+                self.cat_upvar(hir_id, span, var_nid)
             }
 
             Res::Local(vid) => {
@@ -766,7 +773,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         hir_id: hir::HirId,
         span: Span,
         var_id: ast::NodeId,
-        closure_expr_def_id: DefId,
     ) -> McResult<cmt_<'tcx>> {
         // An upvar can have up to 3 components. We translate first to a
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
@@ -791,6 +797,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // FnMut          | copied -> &'env mut  | upvar -> &'env mut -> &'up bk
         // FnOnce         | copied               | upvar -> &'up bk
 
+        let closure_expr_def_id = self.body_owner;
         let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(
             LocalDefId::from_def_id(closure_expr_def_id),
         );
