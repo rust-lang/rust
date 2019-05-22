@@ -466,7 +466,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// [`MaybeUninit<T>`]: union.MaybeUninit.html
 /// [inv]: union.MaybeUninit.html#initialization-invariant
 #[inline]
-#[rustc_deprecated(since = "1.40.0", reason = "use `mem::MaybeUninit` instead")]
+#[rustc_deprecated(since = "1.38.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn uninitialized<T>() -> T {
     intrinsics::panic_if_uninhabited::<T>();
