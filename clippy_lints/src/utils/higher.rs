@@ -63,10 +63,10 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
     if def_path.data.len() != 3 {
         return None;
     }
-    if def_path.data.get(0)?.data.as_interned_str() != "ops" {
+    if def_path.data.get(0)?.data.as_interned_str().as_symbol() != sym!(ops) {
         return None;
     }
-    if def_path.data.get(1)?.data.as_interned_str() != "range" {
+    if def_path.data.get(1)?.data.as_interned_str().as_symbol() != sym!(range) {
         return None;
     }
     let type_name = def_path.data.get(2)?.data.as_interned_str();

@@ -248,7 +248,7 @@ impl EarlyLintPass for EnumVariantNames {
             if let Some(&(ref mod_name, ref mod_camel)) = self.modules.last() {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {
-                    if *mod_name == item_name {
+                    if mod_name.as_symbol() == item.ident.name {
                         if let ItemKind::Mod(..) = item.node {
                             span_lint(
                                 cx,
