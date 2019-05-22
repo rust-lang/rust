@@ -64,7 +64,7 @@ for details.
 * `rust-analyzer.showWorkspaceLoadedNotification`: to ease troubleshooting, a
   notification is shown by default when a workspace is loaded
 * `rust-analyzer.enableEnhancedTyping`: by default, rust-analyzer intercepts
-  `Enter` key to make it easier to continue comments
+  `Enter` key to make it easier to continue comments. Note that it may conflict with VIM emulation plugin.
 * `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
 * `rust-analyzer.enableCargoWatchOnStartup`: prompt to install & enable `cargo
   watch` for live error highlighting (note, this **does not** use rust-analyzer)
