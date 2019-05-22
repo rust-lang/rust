@@ -222,6 +222,20 @@ extern "C" {
 
     #[link_name = "llvm.ppc.altivec.vcmpgefp"]
     fn vcmpgefp(a: vector_float, b: vector_float) -> vector_bool_int;
+
+    #[link_name = "llvm.ppc.altivec.vcmpgtub"]
+    fn vcmpgtub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_bool_char;
+    #[link_name = "llvm.ppc.altivec.vcmpgtuh"]
+    fn vcmpgtuh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_bool_short;
+    #[link_name = "llvm.ppc.altivec.vcmpgtuw"]
+    fn vcmpgtuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_bool_int;
+
+    #[link_name = "llvm.ppc.altivec.vcmpgtsb"]
+    fn vcmpgtsb(a: vector_signed_char, b: vector_signed_char) -> vector_bool_char;
+    #[link_name = "llvm.ppc.altivec.vcmpgtsh"]
+    fn vcmpgtsh(a: vector_signed_short, b: vector_signed_short) -> vector_bool_short;
+    #[link_name = "llvm.ppc.altivec.vcmpgtsw"]
+    fn vcmpgtsw(a: vector_signed_int, b: vector_signed_int) -> vector_bool_int;
 }
 
 macro_rules! s_t_l {
@@ -378,6 +392,35 @@ mod sealed {
         }
     }
 
+    macro_rules! impl_vec_cmp {
+        ([$Trait:ident $m:ident] ($b:ident, $h:ident, $w:ident)) => {
+            impl_vec_cmp! { [$Trait $m] ($b, $b, $h, $h, $w, $w) }
+        };
+        ([$Trait:ident $m:ident] ($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident)) => {
+            impl_vec_trait!{ [$Trait $m] $ub (vector_unsigned_char, vector_unsigned_char) -> vector_bool_char }
+            impl_vec_trait!{ [$Trait $m] $sb (vector_signed_char, vector_signed_char) -> vector_bool_char }
+            impl_vec_trait!{ [$Trait $m] $uh (vector_unsigned_short, vector_unsigned_short) -> vector_bool_short }
+            impl_vec_trait!{ [$Trait $m] $sh (vector_signed_short, vector_signed_short) -> vector_bool_short }
+            impl_vec_trait!{ [$Trait $m] $uw (vector_unsigned_int, vector_unsigned_int) -> vector_bool_int }
+            impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, vector_signed_int) -> vector_bool_int }
+        }
+    }
+
+    test_impl! { vec_vcmpgtub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_bool_char [ vcmpgtub, vcmpgtub ] }
+    test_impl! { vec_vcmpgtuh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_bool_short [ vcmpgtuh, vcmpgtuh ] }
+    test_impl! { vec_vcmpgtuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_bool_int [ vcmpgtuw, vcmpgtuw ] }
+
+    test_impl! { vec_vcmpgtsb(a: vector_signed_char, b: vector_signed_char) -> vector_bool_char [ vcmpgtsb, vcmpgtsb ] }
+    test_impl! { vec_vcmpgtsh(a: vector_signed_short, b: vector_signed_short) -> vector_bool_short [ vcmpgtsh, vcmpgtsh ] }
+    test_impl! { vec_vcmpgtsw(a: vector_signed_int, b: vector_signed_int) -> vector_bool_int [ vcmpgtsw, vcmpgtsw ] }
+
+    pub trait VectorCmpGt<Other> {
+        type Result;
+        unsafe fn vec_cmpgt(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_cmp! { [VectorCmpGt vec_cmpgt] ( vec_vcmpgtub, vec_vcmpgtsb, vec_vcmpgtuh, vec_vcmpgtsh, vec_vcmpgtuw, vec_vcmpgtsw ) }
+
     test_impl! { vec_vcmpgefp(a: vector_float, b: vector_float) -> vector_bool_int [ vcmpgefp, vcmpgefp ] }
 
     test_impl! { vec_vcmpequb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_bool_char [ vcmpequb, vcmpequb ] }
@@ -387,17 +430,6 @@ mod sealed {
     pub trait VectorCmpEq<Other> {
         type Result;
         unsafe fn vec_cmpeq(self, b: Other) -> Self::Result;
-    }
-
-    macro_rules! impl_vec_cmp {
-        ([$Trait:ident $m:ident] ($b:ident, $h:ident, $w:ident)) => {
-            impl_vec_trait!{ [$Trait $m] $b (vector_unsigned_char, vector_unsigned_char) -> vector_bool_char }
-            impl_vec_trait!{ [$Trait $m] $b (vector_signed_char, vector_signed_char) -> vector_bool_char }
-            impl_vec_trait!{ [$Trait $m] $h (vector_unsigned_short, vector_unsigned_short) -> vector_bool_short }
-            impl_vec_trait!{ [$Trait $m] $h (vector_signed_short, vector_signed_short) -> vector_bool_short }
-            impl_vec_trait!{ [$Trait $m] $w (vector_unsigned_int, vector_unsigned_int) -> vector_bool_int }
-            impl_vec_trait!{ [$Trait $m] $w (vector_signed_int, vector_signed_int) -> vector_bool_int }
-        }
     }
 
     impl_vec_cmp! { [VectorCmpEq vec_cmpeq] (vec_vcmpequb, vec_vcmpequh, vec_vcmpequw) }
@@ -1323,6 +1355,16 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector cmpgt.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_cmpgt<T, U>(a: T, b: U) -> <T as sealed::VectorCmpGt<U>>::Result
+where
+    T: sealed::VectorCmpGt<U>,
+{
+    a.vec_cmpgt(b)
+}
+
 /// Vector cmpge.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1689,6 +1731,42 @@ mod tests {
                 assert_eq!(d, r);
             }
          }
+    }
+
+    test_vec_2! { test_vec_cmpgt_i8, vec_cmpgt, i8x16 -> m8x16,
+        [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [true, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false]
+    }
+
+    test_vec_2! { test_vec_cmpgt_u8, vec_cmpgt, u8x16 -> m8x16,
+        [1, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false]
+    }
+
+    test_vec_2! { test_vec_cmpgt_i16, vec_cmpgt, i16x8 -> m16x8,
+        [1, -1, 0, 0, 0, 0, 0, 0],
+        [0, 0, -1, 1, 0, 0, 0, 0],
+        [true, false, true, false, false, false, false, false]
+    }
+
+    test_vec_2! { test_vec_cmpgt_u16, vec_cmpgt, u16x8 -> m16x8,
+        [1, 255, 0, 0, 0, 0, 0, 0],
+        [0, 0, 255, 1, 0, 0, 0, 0],
+        [true, true, false, false, false, false, false, false]
+    }
+
+    test_vec_2! { test_vec_cmpgt_i32, vec_cmpgt, i32x4 -> m32x4,
+        [1, -1, 0, 0],
+        [0, -1, 0, 1],
+        [true, false, false, false]
+    }
+
+    test_vec_2! { test_vec_cmpgt_u32, vec_cmpgt, u32x4 -> m32x4,
+        [1, 255, 0, 0],
+        [0, 255,  0, 1],
+        [true, false, false, false]
     }
 
     test_vec_2! { test_vec_cmpge, vec_cmpge, f32x4 -> m32x4,
