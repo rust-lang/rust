@@ -110,12 +110,8 @@ impl Index<'tcx> {
 
     crate fn write_index(&self, buf: &mut Encoder) -> Lazy<[Self]> {
         let pos = buf.position();
-
-        // First we write the length of the lower range ...
-        buf.emit_raw_bytes(&(self.positions.len() as u32 / 4).to_le_bytes());
-        // ... then the values.
         buf.emit_raw_bytes(&self.positions);
-        Lazy::from_position_and_meta(pos as usize, self.positions.len() / 4 + 1)
+        Lazy::from_position_and_meta(pos as usize, self.positions.len() / 4)
     }
 }
 
@@ -124,12 +120,12 @@ impl Lazy<[Index<'tcx>]> {
     /// DefIndex (if any).
     #[inline(never)]
     crate fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
-        let bytes = &bytes[self.position..];
         debug!("Index::lookup: index={:?} len={:?}",
                def_index,
                self.meta);
 
-        let position = u32::read_from_bytes_at(bytes, 1 + def_index.index());
+        let bytes = &bytes[self.position..][..self.meta * 4];
+        let position = u32::read_from_bytes_at(bytes, def_index.index());
         if position == u32::MAX {
             debug!("Index::lookup: position=u32::MAX");
             None
