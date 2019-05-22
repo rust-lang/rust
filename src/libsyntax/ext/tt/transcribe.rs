@@ -170,9 +170,11 @@ pub fn transcribe(
                     }
 
                     LockstepIterSize::Contradiction(ref msg) => {
-                        // This should never happen because the macro parser should generate
-                        // properly-sized matches for all meta-vars.
-                        cx.span_bug(seq.span(), &msg[..]);
+                        // FIXME: this really ought to be caught at macro definition time... It
+                        // happens when two meta-variables are used in the same repetition in a
+                        // sequence, but they come from different sequence matchers and repeat
+                        // different amounts.
+                        cx.span_fatal(seq.span(), &msg[..]);
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -187,9 +189,10 @@ pub fn transcribe(
                         // Is the repetition empty?
                         if len == 0 {
                             if seq.op == quoted::KleeneOp::OneOrMore {
-                                // This should be impossible because the macro parser would not
-                                // match the given macro arm.
-                                cx.span_bug(sp.entire(), "this must repeat at least once");
+                                // FIXME: this really ought to be caught at macro definition
+                                // time... It happens when the Kleene operator in the matcher and
+                                // the body for the same meta-variable do not match.
+                                cx.span_fatal(sp.entire(), "this must repeat at least once");
                             }
                         } else {
                             // 0 is the initial counter (we have done 0 repretitions so far). `len`
@@ -327,8 +330,7 @@ impl LockstepIterSize {
                 LockstepIterSize::Constraint(r_len, _) if l_len == r_len => self,
                 LockstepIterSize::Constraint(r_len, r_id) => {
                     let msg = format!(
-                        "inconsistent lockstep iteration: \
-                         '{}' has {} items, but '{}' has {}",
+                        "meta-variable `{}` repeats {} times, but `{}` repeats {} times",
                         l_id, l_len, r_id, r_len
                     );
                     LockstepIterSize::Contradiction(msg)
