@@ -5,6 +5,7 @@ use std::{
 
 use ra_db::{FileId, salsa};
 use ra_syntax::{TreeArc, AstNode, ast, SyntaxNode};
+use ra_prof::profile;
 use mbe::MacroRules;
 
 use crate::{
@@ -60,6 +61,7 @@ impl HirFileId {
         db: &impl DefDatabase,
         file_id: HirFileId,
     ) -> Option<TreeArc<SyntaxNode>> {
+        let _p = profile("parse_or_expand_query");
         match file_id.0 {
             HirFileIdRepr::File(file_id) => Some(db.parse(file_id).syntax().to_owned()),
             HirFileIdRepr::Macro(macro_file) => {
