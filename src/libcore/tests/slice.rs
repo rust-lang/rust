@@ -158,7 +158,6 @@ fn test_chunks_nth_back() {
     assert_eq!(c4.nth_back(1_000_000_000usize), None);
 }
 
-
 #[test]
 fn test_chunks_last() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
