@@ -347,10 +347,12 @@ pub fn stream_to_parser<'a>(
 /// The main usage of this function is outside of rustc, for those who uses
 /// libsyntax as a library. Please do not remove this function while refactoring
 /// just because it is not used in rustc codebase!
-pub fn stream_to_parser_with_base_dir<'a>(sess: &'a ParseSess,
-                                          stream: TokenStream,
-                                          base_dir: Directory<'a>) -> Parser<'a> {
-    Parser::new(sess, stream, Some(base_dir), true, false)
+pub fn stream_to_parser_with_base_dir<'a>(
+    sess: &'a ParseSess,
+    stream: TokenStream,
+    base_dir: Directory<'a>,
+) -> Parser<'a> {
+    Parser::new(sess, stream, Some(base_dir), true, false, None)
 }
 
 /// A sequence separator.
