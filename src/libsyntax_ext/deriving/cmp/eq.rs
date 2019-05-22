@@ -6,7 +6,7 @@ use syntax::ast::{self, Expr, MetaItem, GenericArg};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
-use syntax::symbol::sym;
+use syntax::symbol::{sym, Symbol};
 use syntax_pos::Span;
 
 pub fn expand_deriving_eq(cx: &mut ExtCtxt<'_>,
@@ -54,7 +54,7 @@ fn cs_total_eq_assert(cx: &mut ExtCtxt<'_>,
         // set the expn ID so we can use the unstable struct.
         let span = span.with_ctxt(cx.backtrace());
         let assert_path = cx.path_all(span, true,
-                                        cx.std_path(&["cmp", helper_name]),
+                                        cx.std_path(&[sym::cmp, Symbol::intern(helper_name)]),
                                         vec![GenericArg::Type(ty)], vec![]);
         stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
