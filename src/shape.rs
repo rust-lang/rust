@@ -136,6 +136,9 @@ impl Sub<usize> for Indent {
     }
 }
 
+// 8096 is close enough to infinite for rustfmt.
+const INFINITE_SHAPE_WIDTH: usize = 8096;
+
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct Shape {
     pub(crate) width: usize,
@@ -273,6 +276,14 @@ impl Shape {
         let mut offset_indent = self.indent;
         offset_indent.alignment = self.offset;
         offset_indent.to_string_inner(config, 0)
+    }
+
+    /// Creates a `Shape` with a virtually infinite width.
+    pub(crate) fn infinite_width(&self) -> Shape {
+        Shape {
+            width: INFINITE_SHAPE_WIDTH,
+            ..*self
+        }
     }
 }
 

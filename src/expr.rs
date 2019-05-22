@@ -1894,6 +1894,9 @@ pub(crate) enum RhsTactics {
     Default,
     /// Put the rhs on the next line if it uses multiple line, without extra indentation.
     ForceNextLineWithoutIndent,
+    /// Allow overflowing max width if neither `Default` nor `ForceNextLineWithoutIndent`
+    /// did not work.
+    AllowOverflow,
 }
 
 // The left hand side must contain everything up to, and including, the
@@ -1970,6 +1973,10 @@ fn choose_rhs<R: Rewrite>(
                     Some(format!("{}{}", new_indent_str, new_rhs))
                 }
                 (None, Some(ref new_rhs)) => Some(format!("{}{}", new_indent_str, new_rhs)),
+                (None, None) if rhs_tactics == RhsTactics::AllowOverflow => {
+                    let shape = shape.infinite_width();
+                    expr.rewrite(context, shape).map(|s| format!(" {}", s))
+                }
                 (None, None) => None,
                 (Some(orig_rhs), _) => Some(format!(" {}", orig_rhs)),
             }
@@ -1986,7 +1993,7 @@ fn shape_from_rhs_tactic(
         RhsTactics::ForceNextLineWithoutIndent => shape
             .with_max_width(context.config)
             .sub_width(shape.indent.width()),
-        RhsTactics::Default => {
+        RhsTactics::Default | RhsTactics::AllowOverflow => {
             Shape::indented(shape.indent.block_indent(context.config), context.config)
                 .sub_width(shape.rhs_overhead(context.config))
         }

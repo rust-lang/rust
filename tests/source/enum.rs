@@ -195,3 +195,10 @@ pub enum QlError {
 // #2594
 enum Foo {}
 enum Bar { }
+
+// #3562
+enum PublishedFileVisibility {
+    Public = sys::ERemoteStoragePublishedFileVisibility_k_ERemoteStoragePublishedFileVisibilityPublic,
+    FriendsOnly = sys::ERemoteStoragePublishedFileVisibility_k_ERemoteStoragePublishedFileVisibilityFriendsOnly,
+    Private = sys::ERemoteStoragePublishedFileVisibility_k_ERemoteStoragePublishedFileVisibilityPrivate,
+}

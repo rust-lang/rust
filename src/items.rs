@@ -592,7 +592,13 @@ impl<'a> FmtVisitor<'a> {
                         rewrite_ident(&context, field.node.ident),
                         pad_discrim_ident_to
                     );
-                    rewrite_assign_rhs(&context, lhs, &*expr.value, shape)?
+                    rewrite_assign_rhs_with(
+                        &context,
+                        lhs,
+                        &*expr.value,
+                        shape,
+                        RhsTactics::AllowOverflow,
+                    )?
                 } else {
                     rewrite_ident(&context, field.node.ident).to_owned()
                 }
