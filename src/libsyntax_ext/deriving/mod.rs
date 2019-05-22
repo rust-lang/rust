@@ -150,7 +150,7 @@ fn call_intrinsic(cx: &ExtCtxt<'_>,
         mark.set_expn_info(info);
         span = span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
     }
-    let path = cx.std_path(&["intrinsics", intrinsic]);
+    let path = cx.std_path(&[sym::intrinsics, Symbol::intern(intrinsic)]);
     let call = cx.expr_call_global(span, path, args);
 
     cx.expr_block(P(ast::Block {
