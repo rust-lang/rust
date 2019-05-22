@@ -664,7 +664,7 @@ pub fn parse(
         directory,
         recurse_into_modules,
         true,
-        Some("macro arguments"),
+        crate::MACRO_ARGUMENTS,
     );
 
     // A queue of possible matcher positions. We initialize it with the matcher position in which

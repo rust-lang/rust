@@ -98,7 +98,7 @@ impl<'a> StripUnconfigured<'a> {
             self.sess.span_diagnostic.struct_span_err(attr.span, "bad `cfg_attr` attribute")
                 .span_label(attr.span, "missing condition and attribute")
                 .note("`cfg_attr` must be of the form: \
-                       `#[cfg_attr(condition, attribute)]`")
+                       `#[cfg_attr(condition, attribute, other_attribute, ...)]`")
                 .note("for more information, visit \
                        <https://doc.rust-lang.org/reference/conditional-compilation.html\
                        #the-cfg_attr-attribute>")

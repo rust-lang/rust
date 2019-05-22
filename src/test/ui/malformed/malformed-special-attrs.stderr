@@ -4,7 +4,7 @@ error: bad `cfg_attr` attribute
 LL | #[cfg_attr]
    | ^^^^^^^^^^^ missing condition and attribute
    |
-   = note: `cfg_attr` must be of the form: `#[cfg_attr(condition, attribute)]`
+   = note: `cfg_attr` must be of the form: `#[cfg_attr(condition, attribute, other_attribute, ...)]`
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected `(`, found `=`

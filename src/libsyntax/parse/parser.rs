@@ -233,8 +233,8 @@ pub struct Parser<'a> {
     /// error.
     crate unclosed_delims: Vec<UnmatchedBrace>,
     last_unexpected_token_span: Option<Span>,
-    /// If `true`, this `Parser` is not parsing Rust code but rather a macro call.
-    is_subparser: Option<&'static str>,
+    /// If present, this `Parser` is not parsing Rust code but rather a macro call.
+    crate subparser_name: Option<&'static str>,
 }
 
 impl<'a> Drop for Parser<'a> {
@@ -541,7 +541,7 @@ impl<'a> Parser<'a> {
         directory: Option<Directory<'a>>,
         recurse_into_file_modules: bool,
         desugar_doc_comments: bool,
-        is_subparser: Option<&'static str>,
+        subparser_name: Option<&'static str>,
     ) -> Self {
         let mut parser = Parser {
             sess,
@@ -572,7 +572,7 @@ impl<'a> Parser<'a> {
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
             last_unexpected_token_span: None,
-            is_subparser,
+            subparser_name,
         };
 
         let tok = parser.next_tok();
@@ -636,56 +636,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Expects and consumes the token `t`. Signals an error if the next token is not `t`.
-    pub fn expect(&mut self, t: &token::Token) -> PResult<'a,  bool /* recovered */> {
+    pub fn expect(&mut self, t: &token::Token) -> PResult<'a, bool /* recovered */> {
         if self.expected_tokens.is_empty() {
             if self.token == *t {
                 self.bump();
                 Ok(false)
             } else {
-                let token_str = pprust::token_to_string(t);
-                let this_token_str = self.this_token_descr();
-                let (prev_sp, sp) = match (&self.token, self.is_subparser) {
-                    // Point at the end of the macro call when reaching end of macro arguments.
-                    (token::Token::Eof, Some(_)) => {
-                        let sp = self.sess.source_map().next_point(self.span);
-                        (sp, sp)
-                    }
-                    // We don't want to point at the following span after DUMMY_SP.
-                    // This happens when the parser finds an empty TokenStream.
-                    _ if self.prev_span == DUMMY_SP => (self.span, self.span),
-                    // EOF, don't want to point at the following char, but rather the last token.
-                    (token::Token::Eof, None) => (self.prev_span, self.span),
-                    _ => (self.sess.source_map().next_point(self.prev_span), self.span),
-                };
-                let msg = format!(
-                    "expected `{}`, found {}",
-                    token_str,
-                    match (&self.token, self.is_subparser) {
-                        (token::Token::Eof, Some(origin)) => format!("end of {}", origin),
-                        _ => this_token_str,
-                    },
-                );
-                let mut err = self.struct_span_err(sp, &msg);
-                let label_exp = format!("expected `{}`", token_str);
-                match self.recover_closing_delimiter(&[t.clone()], err) {
-                    Err(e) => err = e,
-                    Ok(recovered) => {
-                        return Ok(recovered);
-                    }
-                }
-                let cm = self.sess.source_map();
-                match (cm.lookup_line(prev_sp.lo()), cm.lookup_line(sp.lo())) {
-                    (Ok(ref a), Ok(ref b)) if a.line == b.line => {
-                        // When the spans are in the same line, it means that the only content
-                        // between them is whitespace, point only at the found token.
-                        err.span_label(sp, label_exp);
-                    }
-                    _ => {
-                        err.span_label(prev_sp, label_exp);
-                        err.span_label(sp, "unexpected token");
-                    }
-                }
-                Err(err)
+                self.unexpected_try_recover(t)
             }
         } else {
             self.expect_one_of(slice::from_ref(t), &[])
@@ -2644,7 +2601,7 @@ impl<'a> Parser<'a> {
                         }
                         Err(mut err) => {
                             self.cancel(&mut err);
-                            let (span, msg) = match (&self.token, self.is_subparser) {
+                            let (span, msg) = match (&self.token, self.subparser_name) {
                                 (&token::Token::Eof, Some(origin)) => {
                                     let sp = self.sess.source_map().next_point(self.span);
                                     (sp, format!( "expected expression, found end of {}", origin))

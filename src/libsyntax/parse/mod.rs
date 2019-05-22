@@ -248,7 +248,7 @@ fn maybe_source_file_to_parser(
 // must preserve old name for now, because quote! from the *existing*
 // compiler expands into it
 pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser<'_> {
-    stream_to_parser(sess, tts.into_iter().collect(), Some("macro arguments"))
+    stream_to_parser(sess, tts.into_iter().collect(), crate::MACRO_ARGUMENTS)
 }
 
 
@@ -331,9 +331,9 @@ pub fn maybe_file_to_stream(
 pub fn stream_to_parser<'a>(
     sess: &'a ParseSess,
     stream: TokenStream,
-    is_subparser: Option<&'static str>,
+    subparser_name: Option<&'static str>,
 ) -> Parser<'a> {
-    Parser::new(sess, stream, None, true, false, is_subparser)
+    Parser::new(sess, stream, None, true, false, subparser_name)
 }
 
 /// Given stream, the `ParseSess` and the base directory, produces a parser.
