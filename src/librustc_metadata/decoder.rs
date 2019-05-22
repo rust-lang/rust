@@ -475,7 +475,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         assert!(!self.is_proc_macro(item_id));
-        self.root.index.lookup(self.blob.raw_bytes(), item_id)
+        self.root.entries_index.lookup(self.blob.raw_bytes(), item_id)
     }
 
     fn entry(&self, item_id: DefIndex) -> Entry<'tcx> {

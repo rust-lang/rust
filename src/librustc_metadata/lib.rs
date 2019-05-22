@@ -29,12 +29,10 @@ extern crate rustc_data_structures;
 
 mod error_codes;
 
-mod index_builder;
 mod index;
 mod encoder;
 mod decoder;
 mod cstore_impl;
-mod isolated_encoder;
 mod schema;
 mod native_libs;
 mod link_args;
