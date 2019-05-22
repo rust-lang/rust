@@ -249,19 +249,16 @@ pub fn parse(
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
 /// - `features`, `attrs`: language feature flags and attributes so that we know whether to use
 ///   unstable features or not.
-fn parse_tree<I>(
+fn parse_tree(
     tree: tokenstream::TokenTree,
-    trees: &mut Peekable<I>,
+    trees: &mut Peekable<impl Iterator<Item = tokenstream::TokenTree>>,
     expect_matchers: bool,
     sess: &ParseSess,
     features: &Features,
     attrs: &[ast::Attribute],
     edition: Edition,
     macro_node_id: NodeId,
-) -> TokenTree
-where
-    I: Iterator<Item = tokenstream::TokenTree>,
-{
+) -> TokenTree {
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
@@ -365,10 +362,10 @@ fn kleene_op(token: &Token) -> Option<KleeneOp> {
 /// - Ok(Ok((op, span))) if the next token tree is a KleeneOp
 /// - Ok(Err(tok, span)) if the next token tree is a token but not a KleeneOp
 /// - Err(span) if the next token tree is not a token
-fn parse_kleene_op<I>(input: &mut I, span: Span) -> Result<Result<(KleeneOp, Span), Token>, Span>
-where
-    I: Iterator<Item = tokenstream::TokenTree>,
-{
+fn parse_kleene_op(
+    input: &mut impl Iterator<Item = tokenstream::TokenTree>,
+    span: Span,
+) -> Result<Result<(KleeneOp, Span), Token>, Span> {
     match input.next() {
         Some(tokenstream::TokenTree::Token(token)) => match kleene_op(&token) {
             Some(op) => Ok(Ok((op, token.span))),
@@ -378,7 +375,7 @@ where
             .as_ref()
             .map(tokenstream::TokenTree::span)
             .unwrap_or(span)),
-    }
+    }   
 }
 
 /// Attempt to parse a single Kleene star, possibly with a separator.
