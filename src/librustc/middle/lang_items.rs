@@ -210,8 +210,8 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
 pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| Some(match attr {
         _ if attr.check_name(sym::lang) => (attr.value_str()?, attr.span),
-        _ if attr.check_name(sym::panic_handler) => (Symbol::intern("panic_impl"), attr.span),
-        _ if attr.check_name(sym::alloc_error_handler) => (Symbol::intern("oom"), attr.span),
+        _ if attr.check_name(sym::panic_handler) => (sym::panic_impl, attr.span),
+        _ if attr.check_name(sym::alloc_error_handler) => (sym::oom, attr.span),
         _ => return None,
     }))
 }

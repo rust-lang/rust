@@ -431,9 +431,7 @@ impl cstore::CStore {
             let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
             let ext = SyntaxExtension::ProcMacro {
                 expander: Box::new(BangProcMacro { client }),
-                allow_internal_unstable: Some(vec![
-                    Symbol::intern("proc_macro_def_site"),
-                ].into()),
+                allow_internal_unstable: Some(vec![sym::proc_macro_def_site].into()),
                 edition: data.root.edition,
             };
             return LoadedMacro::ProcMacro(Lrc::new(ext));

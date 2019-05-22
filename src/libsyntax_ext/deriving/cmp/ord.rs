@@ -6,7 +6,7 @@ use syntax::ast::{self, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 pub fn expand_deriving_ord(cx: &mut ExtCtxt<'_>,
@@ -14,7 +14,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt<'_>,
                            mitem: &MetaItem,
                            item: &Annotatable,
                            push: &mut dyn FnMut(Annotatable)) {
-    let inline = cx.meta_word(span, Symbol::intern("inline"));
+    let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
         span,

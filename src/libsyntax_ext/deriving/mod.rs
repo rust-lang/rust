@@ -145,7 +145,7 @@ fn call_intrinsic(cx: &ExtCtxt<'_>,
         span = span.with_ctxt(cx.backtrace());
     } else { // Avoid instability errors with user defined curstom derives, cc #36316
         let mut info = cx.current_expansion.mark.expn_info().unwrap();
-        info.allow_internal_unstable = Some(vec![Symbol::intern("core_intrinsics")].into());
+        info.allow_internal_unstable = Some(vec![sym::core_intrinsics].into());
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(info);
         span = span.with_ctxt(SyntaxContext::empty().apply_mark(mark));

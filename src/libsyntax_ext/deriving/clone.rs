@@ -7,7 +7,7 @@ use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, kw, sym};
+use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
 pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
@@ -76,7 +76,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
         _ => cx.span_bug(span, "#[derive(Clone)] on trait item or impl item"),
     }
 
-    let inline = cx.meta_word(span, Symbol::intern("inline"));
+    let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
         span,

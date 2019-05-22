@@ -396,7 +396,7 @@ pub fn compile(
                         future this will become a hard error. Please use `allow_internal_unstable(\
                         foo, bar)` to only allow the `foo` and `bar` features",
                     );
-                    vec![Symbol::intern("allow_internal_unstable_backcompat_hack")].into()
+                    vec![sym::allow_internal_unstable_backcompat_hack].into()
                 })
             );
         let allow_internal_unsafe = attr::contains_name(&def.attrs, sym::allow_internal_unsafe);

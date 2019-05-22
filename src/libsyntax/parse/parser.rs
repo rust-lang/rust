@@ -5787,7 +5787,7 @@ impl<'a> Parser<'a> {
             VisibilityKind::Inherited => {}
             _ => {
                 let is_macro_rules: bool = match self.token {
-                    token::Ident(sid, _) => sid.name == Symbol::intern("macro_rules"),
+                    token::Ident(sid, _) => sid.name == sym::macro_rules,
                     _ => false,
                 };
                 let mut err = if is_macro_rules {

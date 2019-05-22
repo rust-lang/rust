@@ -351,9 +351,9 @@ fn mk_decls(
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
         def_site: None,
-        format: MacroAttribute(Symbol::intern("proc_macro")),
+        format: MacroAttribute(sym::proc_macro),
         allow_internal_unstable: Some(vec![
-            Symbol::intern("rustc_attrs"),
+            sym::rustc_attrs,
             Symbol::intern("proc_macro_internals"),
         ].into()),
         allow_internal_unsafe: false,
@@ -420,7 +420,7 @@ fn mk_decls(
         ast::Mutability::Immutable,
         cx.expr_vec_slice(span, decls),
     ).map(|mut i| {
-        let attr = cx.meta_word(span, Symbol::intern("rustc_proc_macro_decls"));
+        let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);
         i.attrs.push(cx.attribute(span, attr));
         i.vis = respan(span, ast::VisibilityKind::Public);
         i

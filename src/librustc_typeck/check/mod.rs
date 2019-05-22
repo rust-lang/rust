@@ -4944,7 +4944,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
-                Some((decl, ident, ident.name != Symbol::intern("main")))
+                Some((decl, ident, ident.name != sym::main))
             }),
             Node::TraitItem(&hir::TraitItem {
                 ident, node: hir::TraitItemKind::Method(hir::MethodSig {
