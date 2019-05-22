@@ -12,4 +12,5 @@ parking_lot = "0.7.0"
 
 ra_arena = { path = "../ra_arena" }
 ra_syntax = { path = "../ra_syntax" }
+ra_prof = { path = "../ra_prof" }
 test_utils = { path = "../test_utils" }

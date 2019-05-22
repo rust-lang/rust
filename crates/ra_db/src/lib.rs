@@ -6,6 +6,7 @@ use std::{panic, sync::Arc};
 
 use ra_syntax::{TextUnit, TextRange, SourceFile, TreeArc};
 use relative_path::RelativePathBuf;
+use ra_prof::profile;
 
 pub use ::salsa as salsa;
 pub use crate::{
@@ -72,6 +73,7 @@ pub trait SourceDatabase: CheckCanceled + std::fmt::Debug {
     #[salsa::input]
     fn file_text(&self, file_id: FileId) -> Arc<String>;
     // Parses the file into the syntax tree.
+    #[salsa::invoke(parse_query)]
     fn parse(&self, file_id: FileId) -> TreeArc<SourceFile>;
     /// Path to a file, relative to the root of its source root.
     #[salsa::input]
@@ -96,7 +98,8 @@ fn source_root_crates(db: &impl SourceDatabase, id: SourceRootId) -> Arc<Vec<Cra
     Arc::new(res)
 }
 
-fn parse(db: &impl SourceDatabase, file_id: FileId) -> TreeArc<SourceFile> {
+fn parse_query(db: &impl SourceDatabase, file_id: FileId) -> TreeArc<SourceFile> {
+    let _p = profile("parse_query");
     let text = db.file_text(file_id);
     SourceFile::parse(&*text)
 }
