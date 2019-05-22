@@ -396,22 +396,21 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cx = self.cx;
         let tcx = self.cx.tcx();
 
-        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
-            match self.locals[index] {
-                LocalRef::Place(place) => {
-                    return place;
-                }
-                LocalRef::UnsizedPlace(place) => {
-                    return bx.load_operand(place).deref(cx);
-                }
-                LocalRef::Operand(..) => {
-                    bug!("using operand local {:?} as place", place);
+        let result = match place {
+            mir::Place::Base(mir::PlaceBase::Local(index)) => {
+                match self.locals[*index] {
+                    LocalRef::Place(place) => {
+                        return place;
+                    }
+                    LocalRef::UnsizedPlace(place) => {
+                        return bx.load_operand(place).deref(cx);
+                    }
+                    LocalRef::Operand(..) => {
+                        bug!("using operand local {:?} as place", place);
+                    }
                 }
             }
-        }
 
-        let result = match *place {
-            mir::Place::Base(mir::PlaceBase::Local(_)) => bug!(), // handled above
             mir::Place::Base(
                 mir::PlaceBase::Static(
                     box mir::Static { ty, kind: mir::StaticKind::Promoted(promoted) }
@@ -420,7 +419,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let param_env = ty::ParamEnv::reveal_all();
                 let cid = mir::interpret::GlobalId {
                     instance: self.instance,
-                    promoted: Some(promoted),
+                    promoted: Some(*promoted),
                 };
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 match bx.tcx().const_eval(param_env.and(cid)) {
@@ -451,7 +450,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // NB: The layout of a static may be unsized as is the case when working
                 // with a static that is an extern_type.
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                let static_ = bx.get_static(def_id);
+                let static_ = bx.get_static(*def_id);
                 PlaceRef::new_thin_place(bx, static_, layout, layout.align.abi)
             },
             mir::Place::Projection(box mir::Projection {
