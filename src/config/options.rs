@@ -5,7 +5,8 @@ use std::path::{Path, PathBuf};
 use atty;
 use config_proc_macro::config_type;
 use serde::de::{SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::ser::SerializeSeq;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::config::lists::*;
 use crate::config::Config;
@@ -254,14 +255,25 @@ impl Default for EmitMode {
 }
 
 /// A set of directories, files and modules that rustfmt should ignore.
-#[derive(Default, Serialize, Clone, Debug, PartialEq)]
+#[derive(Default, Clone, Debug, PartialEq)]
 pub struct IgnoreList {
     /// A set of path specified in rustfmt.toml.
-    #[serde(flatten)]
     path_set: HashSet<PathBuf>,
     /// A path to rustfmt.toml.
-    #[serde(skip_serializing)]
     rustfmt_toml_path: PathBuf,
+}
+
+impl Serialize for IgnoreList {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.path_set.len()))?;
+        for e in &self.path_set {
+            seq.serialize_element(e)?;
+        }
+        seq.end()
+    }
 }
 
 impl<'de> Deserialize<'de> for IgnoreList {
