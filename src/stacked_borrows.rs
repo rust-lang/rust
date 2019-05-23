@@ -545,7 +545,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let this = self.eval_context_mut();
         let protector = if protect { Some(this.frame().extra) } else { None };
         let ptr = place.ptr.to_ptr()?;
-        trace!("reborrow: {:?} reference {} derived from {} (pointee {}): {:?}, size {}",
+        trace!("reborrow: {} reference {} derived from {} (pointee {}): {:?}, size {}",
             kind, new_tag, ptr.tag, place.layout.ty, ptr, size.bytes());
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
