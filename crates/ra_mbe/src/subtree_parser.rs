@@ -2,6 +2,7 @@ use crate::subtree_source::SubtreeTokenSource;
 
 use ra_parser::{TokenSource, TreeSink};
 use ra_syntax::{SyntaxKind};
+use tt::buffer::TokenBuffer;
 
 struct OffsetTokenSink {
     token_pos: usize,
@@ -69,7 +70,8 @@ impl<'a> Parser<'a> {
     where
         F: FnOnce(&dyn TokenSource, &mut dyn TreeSink),
     {
-        let mut src = SubtreeTokenSource::new(&self.subtree.token_trees[*self.cur_pos..]);
+        let buffer = TokenBuffer::new(&self.subtree.token_trees[*self.cur_pos..]);
+        let mut src = SubtreeTokenSource::new(&buffer);
         let mut sink = OffsetTokenSink { token_pos: 0, error: false };
 
         f(&src, &mut sink);
@@ -85,7 +87,7 @@ impl<'a> Parser<'a> {
         let res = src.bump_n(parsed_token);
         *self.cur_pos += res.len();
 
-        let res: Vec<_> = res.into_iter().cloned().collect();
+        let res: Vec<_> = res.into_iter().collect();
 
         match res.len() {
             0 => None,

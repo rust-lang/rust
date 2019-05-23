@@ -1,50 +1,10 @@
 use ra_parser::{TokenSource};
 use ra_syntax::{classify_literal, SmolStr, SyntaxKind, SyntaxKind::*, T};
-use std::cell::{RefCell};
+use std::cell::{RefCell, Cell};
+use tt::buffer::{TokenBuffer, Cursor};
 
-// A Sequece of Token,
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub(super) enum TokenSeq<'a> {
-    Subtree(&'a tt::Subtree),
-    Seq(&'a [tt::TokenTree]),
-}
-
-impl<'a> From<&'a tt::Subtree> for TokenSeq<'a> {
-    fn from(s: &'a tt::Subtree) -> TokenSeq<'a> {
-        TokenSeq::Subtree(s)
-    }
-}
-
-impl<'a> From<&'a [tt::TokenTree]> for TokenSeq<'a> {
-    fn from(s: &'a [tt::TokenTree]) -> TokenSeq<'a> {
-        TokenSeq::Seq(s)
-    }
-}
-
-#[derive(Debug)]
-enum DelimToken<'a> {
-    Delim(&'a tt::Delimiter, bool),
-    Token(&'a tt::TokenTree),
-    End,
-}
-
-impl<'a> TokenSeq<'a> {
-    fn get(&self, pos: usize) -> DelimToken<'a> {
-        match self {
-            TokenSeq::Subtree(subtree) => {
-                let len = subtree.token_trees.len() + 2;
-                match pos {
-                    p if p >= len => DelimToken::End,
-                    p if p == len - 1 => DelimToken::Delim(&subtree.delimiter, true),
-                    0 => DelimToken::Delim(&subtree.delimiter, false),
-                    p => DelimToken::Token(&subtree.token_trees[p - 1]),
-                }
-            }
-            TokenSeq::Seq(tokens) => {
-                tokens.get(pos).map(DelimToken::Token).unwrap_or(DelimToken::End)
-            }
-        }
-    }
+pub(crate) trait Querier {
+    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool);
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -54,183 +14,101 @@ struct TtToken {
     pub text: SmolStr,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-enum WalkCursor {
-    Token(usize, TtToken),
-    Eof,
-}
-
-#[derive(Debug)]
-struct SubTreeWalker<'a> {
-    pos: usize,
-    stack: Vec<(TokenSeq<'a>, usize)>,
-    cursor: WalkCursor,
-    ts: TokenSeq<'a>,
-}
-
-impl<'a> SubTreeWalker<'a> {
-    fn new(ts: TokenSeq<'a>) -> SubTreeWalker {
-        let mut res = SubTreeWalker { pos: 0, stack: vec![], cursor: WalkCursor::Eof, ts };
-
-        res.reset();
-        res
-    }
-
-    fn is_eof(&self) -> bool {
-        self.cursor == WalkCursor::Eof
-    }
-
-    fn reset(&mut self) {
-        self.pos = 0;
-        self.stack = vec![];
-
-        self.cursor = match self.ts.get(0) {
-            DelimToken::Token(token) => match token {
-                tt::TokenTree::Subtree(subtree) => {
-                    let ts = TokenSeq::from(subtree);
-                    self.stack.push((ts, 0));
-                    WalkCursor::Token(0, convert_delim(subtree.delimiter, false))
-                }
-                tt::TokenTree::Leaf(leaf) => WalkCursor::Token(0, convert_leaf(leaf)),
-            },
-            DelimToken::Delim(delim, is_end) => {
-                assert!(!is_end);
-                WalkCursor::Token(0, convert_delim(*delim, false))
-            }
-            DelimToken::End => WalkCursor::Eof,
-        }
-    }
-
-    fn current(&self) -> Option<&TtToken> {
-        match &self.cursor {
-            WalkCursor::Token(_, t) => Some(t),
-            WalkCursor::Eof => None,
-        }
-    }
-
-    fn top(&self) -> &TokenSeq {
-        self.stack.last().map(|(t, _)| t).unwrap_or(&self.ts)
-    }
-
-    /// Move cursor forward by 1 step        
-    fn forward(&mut self) {
-        if self.is_eof() {
-            return;
-        }
-        self.pos += 1;
-
-        if let WalkCursor::Token(u, _) = self.cursor {
-            self.cursor = self.walk_token(u)
-        }
-    }
-
-    /// Traversal child token
-    fn walk_token(&mut self, pos: usize) -> WalkCursor {
-        let top = self.stack.last().map(|(t, _)| t).unwrap_or(&self.ts);
-        let pos = pos + 1;
-
-        match top.get(pos) {
-            DelimToken::Token(token) => match token {
-                tt::TokenTree::Subtree(subtree) => {
-                    let ts = TokenSeq::from(subtree);
-                    self.stack.push((ts, pos));
-                    WalkCursor::Token(0, convert_delim(subtree.delimiter, false))
-                }
-                tt::TokenTree::Leaf(leaf) => WalkCursor::Token(pos, convert_leaf(leaf)),
-            },
-            DelimToken::Delim(delim, is_end) => {
-                WalkCursor::Token(pos, convert_delim(*delim, is_end))
-            }
-            DelimToken::End => {
-                // it is the top level
-                if let Some((_, last_idx)) = self.stack.pop() {
-                    self.walk_token(last_idx)
-                } else {
-                    WalkCursor::Eof
-                }
-            }
-        }
-    }
-}
-
-pub(crate) trait Querier {
-    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool);
-}
-
 // A wrapper class for ref cell
 #[derive(Debug)]
-pub(crate) struct WalkerOwner<'a> {
-    walker: RefCell<SubTreeWalker<'a>>,
+pub(crate) struct SubtreeWalk<'a> {
+    start: Cursor<'a>,
+    cursor: Cell<Cursor<'a>>,
     cached: RefCell<Vec<Option<TtToken>>>,
 }
 
-impl<'a> WalkerOwner<'a> {
-    fn new<I: Into<TokenSeq<'a>>>(ts: I) -> Self {
-        WalkerOwner {
-            walker: RefCell::new(SubTreeWalker::new(ts.into())),
+impl<'a> SubtreeWalk<'a> {
+    fn new(cursor: Cursor<'a>) -> Self {
+        SubtreeWalk {
+            start: cursor,
+            cursor: Cell::new(cursor),
             cached: RefCell::new(Vec::with_capacity(10)),
         }
     }
 
-    fn get<'b>(&self, pos: usize) -> Option<TtToken> {
+    fn get(&self, pos: usize) -> Option<TtToken> {
         let mut cached = self.cached.borrow_mut();
         if pos < cached.len() {
             return cached[pos].clone();
         }
 
         while pos >= cached.len() {
-            self.set_pos(cached.len());
-            let walker = self.walker.borrow();
-            cached.push(walker.current().cloned());
+            let cursor = self.cursor.get();
+            if cursor.eof() {
+                cached.push(None);
+                continue;
+            }
+
+            match cursor.token_tree() {
+                Some(tt::TokenTree::Leaf(leaf)) => {
+                    cached.push(Some(convert_leaf(&leaf)));
+                    self.cursor.set(cursor.bump());
+                }
+                Some(tt::TokenTree::Subtree(subtree)) => {
+                    self.cursor.set(cursor.subtree().unwrap());
+                    cached.push(Some(convert_delim(subtree.delimiter, false)));
+                }
+                None => {
+                    if let Some(subtree) = cursor.end() {
+                        cached.push(Some(convert_delim(subtree.delimiter, true)));
+                        self.cursor.set(cursor.bump());
+                    }
+                }
+            }
         }
 
         return cached[pos].clone();
     }
 
-    fn set_pos(&self, pos: usize) {
-        let mut walker = self.walker.borrow_mut();
-        assert!(walker.pos <= pos);
-
-        while pos > walker.pos && !walker.is_eof() {
-            walker.forward();
-        }
-    }
-
-    fn collect_token_trees(&mut self, n: usize) -> Vec<&tt::TokenTree> {
+    fn collect_token_trees(&mut self, n: usize) -> Vec<tt::TokenTree> {
         let mut res = vec![];
-        let mut walker = self.walker.borrow_mut();
-        walker.reset();
 
-        while walker.pos < n {
-            if let WalkCursor::Token(u, _) = &walker.cursor {
-                // We only collect the topmost child
-                if walker.stack.len() == 0 {
-                    if let DelimToken::Token(token) = walker.ts.get(*u) {
-                        res.push(token);
+        let mut pos = 0;
+        let mut cursor = self.start;
+        let mut level = 0;
+
+        while pos < n {
+            if cursor.eof() {
+                break;
+            }
+
+            match cursor.token_tree() {
+                Some(tt::TokenTree::Leaf(leaf)) => {
+                    if level == 0 {
+                        res.push(leaf.into());
                     }
+                    cursor = cursor.bump();
+                    pos += 1;
                 }
-                // Check whether the second level is a subtree
-                // if so, collect its parent which is topmost child
-                else if walker.stack.len() == 1 {
-                    if let DelimToken::Delim(_, is_end) = walker.top().get(*u) {
-                        if !is_end {
-                            let (_, last_idx) = &walker.stack[0];
-                            if let DelimToken::Token(token) = walker.ts.get(*last_idx) {
-                                res.push(token);
-                            }
-                        }
+                Some(tt::TokenTree::Subtree(subtree)) => {
+                    if level == 0 {
+                        res.push(subtree.into());
+                    }
+                    pos += 1;
+                    level += 1;
+                    cursor = cursor.subtree().unwrap();
+                }
+
+                None => {
+                    if let Some(_) = cursor.end() {
+                        level -= 1;
+                        pos += 1;
+                        cursor = cursor.bump();
                     }
                 }
             }
-
-            walker.forward();
         }
 
         res
     }
 }
 
-impl<'a> Querier for WalkerOwner<'a> {
+impl<'a> Querier for SubtreeWalk<'a> {
     fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool) {
         self.get(uidx)
             .map(|tkn| (tkn.kind, tkn.text, tkn.is_joint_to_next))
@@ -239,22 +117,22 @@ impl<'a> Querier for WalkerOwner<'a> {
 }
 
 pub(crate) struct SubtreeTokenSource<'a> {
-    walker: WalkerOwner<'a>,
+    walker: SubtreeWalk<'a>,
 }
 
 impl<'a> SubtreeTokenSource<'a> {
-    pub fn new<I: Into<TokenSeq<'a>>>(ts: I) -> SubtreeTokenSource<'a> {
-        SubtreeTokenSource { walker: WalkerOwner::new(ts) }
+    pub fn new(buffer: &'a TokenBuffer) -> SubtreeTokenSource<'a> {
+        SubtreeTokenSource { walker: SubtreeWalk::new(buffer.begin()) }
     }
 
-    pub fn querier<'b>(&'a self) -> &'b WalkerOwner<'a>
+    pub fn querier<'b>(&'a self) -> &'b SubtreeWalk<'a>
     where
         'a: 'b,
     {
         &self.walker
     }
 
-    pub(crate) fn bump_n(&mut self, parsed_tokens: usize) -> Vec<&tt::TokenTree> {
+    pub(crate) fn bump_n(&mut self, parsed_tokens: usize) -> Vec<tt::TokenTree> {
         let res = self.walker.collect_token_trees(parsed_tokens);
         res
     }
