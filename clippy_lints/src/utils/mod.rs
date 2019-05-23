@@ -45,7 +45,7 @@ use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::ext::hygiene::ExpnFormat;
 use syntax::source_map::{Span, DUMMY_SP};
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::{kw, Symbol};
 
 use crate::reexport::*;
 
@@ -839,7 +839,7 @@ pub fn remove_blocks(expr: &Expr) -> &Expr {
 
 pub fn is_self(slf: &Arg) -> bool {
     if let PatKind::Binding(.., name, _) = slf.pat.node {
-        name.name == keywords::SelfLower.name()
+        name.name == kw::SelfLower
     } else {
         false
     }

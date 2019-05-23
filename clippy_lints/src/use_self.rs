@@ -8,7 +8,7 @@ use rustc::ty;
 use rustc::ty::{DefIdTree, Ty};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
-use syntax_pos::symbol::keywords::SelfUpper;
+use syntax_pos::symbol::kw;
 
 use crate::utils::span_lint_and_sugg;
 
@@ -220,7 +220,7 @@ struct UseSelfVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
-        if path.segments.last().expect(SEGMENTS_MSG).ident.name != SelfUpper.name() {
+        if path.segments.last().expect(SEGMENTS_MSG).ident.name != kw::SelfUpper {
             if self.item_path.res == path.res {
                 span_use_self_lint(self.cx, path);
             } else if let Res::Def(DefKind::Ctor(def::CtorOf::Struct, CtorKind::Fn), ctor_did) = path.res {
