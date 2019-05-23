@@ -1,19 +1,104 @@
 use crate::ast;
 use crate::ast::{
-    BlockCheckMode, Expr, ExprKind, Item, ItemKind, Pat, PatKind, QSelf, Ty, TyKind, VariantData,
+    BlockCheckMode, BinOpKind, Expr, ExprKind, Item, ItemKind, Pat, PatKind, PathSegment, QSelf,
+    Ty, TyKind, VariantData,
 };
-use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType};
+use crate::parse::{SeqSep, token, PResult, Parser};
+use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
 use crate::parse::token;
-use crate::parse::PResult;
-use crate::parse::Parser;
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::Spanned;
 use crate::symbol::kw;
 use crate::ThinVec;
-use errors::{Applicability, DiagnosticBuilder};
-use log::debug;
-use syntax_pos::{Span, DUMMY_SP};
+use crate::tokenstream::TokenTree;
+use crate::util::parser::AssocOp;
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
+use syntax_pos::{Span, DUMMY_SP, MultiSpan};
+use log::{debug, trace};
+use std::slice;
+
+pub enum Error {
+    FileNotFoundForModule {
+        mod_name: String,
+        default_path: String,
+        secondary_path: String,
+        dir_path: String,
+    },
+    DuplicatePaths {
+        mod_name: String,
+        default_path: String,
+        secondary_path: String,
+    },
+    UselessDocComment,
+    InclusiveRangeWithNoEnd,
+}
+
+impl Error {
+    fn span_err<S: Into<MultiSpan>>(
+        self,
+        sp: S,
+        handler: &errors::Handler,
+    ) -> DiagnosticBuilder<'_> {
+        match self {
+            Error::FileNotFoundForModule {
+                ref mod_name,
+                ref default_path,
+                ref secondary_path,
+                ref dir_path,
+            } => {
+                let mut err = struct_span_err!(
+                    handler,
+                    sp,
+                    E0583,
+                    "file not found for module `{}`",
+                    mod_name,
+                );
+                err.help(&format!(
+                    "name the file either {} or {} inside the directory \"{}\"",
+                    default_path,
+                    secondary_path,
+                    dir_path,
+                ));
+                err
+            }
+            Error::DuplicatePaths { ref mod_name, ref default_path, ref secondary_path } => {
+                let mut err = struct_span_err!(
+                    handler,
+                    sp,
+                    E0584,
+                    "file for module `{}` found at both {} and {}",
+                    mod_name,
+                    default_path,
+                    secondary_path,
+                );
+                err.help("delete or rename one of them to remove the ambiguity");
+                err
+            }
+            Error::UselessDocComment => {
+                let mut err = struct_span_err!(
+                    handler,
+                    sp,
+                    E0585,
+                    "found a documentation comment that doesn't document anything",
+                );
+                err.help("doc comments must come before what they document, maybe a comment was \
+                          intended with `//`?");
+                err
+            }
+            Error::InclusiveRangeWithNoEnd => {
+                let mut err = struct_span_err!(
+                    handler,
+                    sp,
+                    E0586,
+                    "inclusive range with no end",
+                );
+                err.help("inclusive ranges must be bounded at the end (`..=b` or `a..=b`)");
+                err
+            }
+        }
+    }
+}
 
 pub trait RecoverQPath: Sized + 'static {
     const PATH_STYLE: PathStyle = PathStyle::Expr;
@@ -63,6 +148,253 @@ impl RecoverQPath for Expr {
 }
 
 impl<'a> Parser<'a> {
+    pub fn look_ahead<R, F>(&self, dist: usize, f: F) -> R where
+        F: FnOnce(&token::Token) -> R,
+    {
+        if dist == 0 {
+            return f(&self.token)
+        }
+
+        f(&match self.token_cursor.frame.tree_cursor.look_ahead(dist - 1) {
+            Some(tree) => match tree {
+                TokenTree::Token(_, tok) => tok,
+                TokenTree::Delimited(_, delim, _) => token::OpenDelim(delim),
+            },
+            None => token::CloseDelim(self.token_cursor.frame.delim),
+        })
+    }
+
+    crate fn look_ahead_span(&self, dist: usize) -> Span {
+        if dist == 0 {
+            return self.span
+        }
+
+        match self.token_cursor.frame.tree_cursor.look_ahead(dist - 1) {
+            Some(TokenTree::Token(span, _)) => span,
+            Some(TokenTree::Delimited(span, ..)) => span.entire(),
+            None => self.look_ahead_span(dist - 1),
+        }
+    }
+
+    pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
+        self.sess.span_diagnostic.struct_span_fatal(self.span, m)
+    }
+
+    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
+        self.sess.span_diagnostic.struct_span_fatal(sp, m)
+    }
+
+    pub fn span_fatal_err<S: Into<MultiSpan>>(&self, sp: S, err: Error) -> DiagnosticBuilder<'a> {
+        err.span_err(sp, self.diagnostic())
+    }
+
+    pub fn bug(&self, m: &str) -> ! {
+        self.sess.span_diagnostic.span_bug(self.span, m)
+    }
+
+    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) {
+        self.sess.span_diagnostic.span_err(sp, m)
+    }
+
+    crate fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
+        self.sess.span_diagnostic.struct_span_err(sp, m)
+    }
+
+    crate fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
+        self.sess.span_diagnostic.span_bug(sp, m)
+    }
+
+    crate fn cancel(&self, err: &mut DiagnosticBuilder<'_>) {
+        self.sess.span_diagnostic.cancel(err)
+    }
+
+    crate fn diagnostic(&self) -> &'a errors::Handler {
+        &self.sess.span_diagnostic
+    }
+
+    crate fn expected_ident_found(&self) -> DiagnosticBuilder<'a> {
+        let mut err = self.struct_span_err(
+            self.span,
+            &format!("expected identifier, found {}", self.this_token_descr()),
+        );
+        if let token::Ident(ident, false) = &self.token {
+            if ident.is_raw_guess() {
+                err.span_suggestion(
+                    self.span,
+                    "you can escape reserved keywords to use them as identifiers",
+                    format!("r#{}", ident),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
+        if let Some(token_descr) = self.token_descr() {
+            err.span_label(self.span, format!("expected identifier, found {}", token_descr));
+        } else {
+            err.span_label(self.span, "expected identifier");
+            if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
+                err.span_suggestion(
+                    self.span,
+                    "remove this comma",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+        err
+    }
+
+    /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
+    /// passes through any errors encountered. Used for error recovery.
+    crate fn eat_to_tokens(&mut self, kets: &[&token::Token]) {
+        let handler = self.diagnostic();
+
+        if let Err(ref mut err) = self.parse_seq_to_before_tokens(
+            kets,
+            SeqSep::none(),
+            TokenExpectType::Expect,
+            |p| Ok(p.parse_token_tree()),
+        ) {
+            handler.cancel(err);
+        }
+    }
+
+    /// This function checks if there are trailing angle brackets and produces
+    /// a diagnostic to suggest removing them.
+    ///
+    /// ```ignore (diagnostic)
+    /// let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>();
+    ///                                                        ^^ help: remove extra angle brackets
+    /// ```
+    crate fn check_trailing_angle_brackets(&mut self, segment: &PathSegment, end: token::Token) {
+        // This function is intended to be invoked after parsing a path segment where there are two
+        // cases:
+        //
+        // 1. A specific token is expected after the path segment.
+        //    eg. `x.foo(`, `x.foo::<u32>(` (parenthesis - method call),
+        //        `Foo::`, or `Foo::<Bar>::` (mod sep - continued path).
+        // 2. No specific token is expected after the path segment.
+        //    eg. `x.foo` (field access)
+        //
+        // This function is called after parsing `.foo` and before parsing the token `end` (if
+        // present). This includes any angle bracket arguments, such as `.foo::<u32>` or
+        // `Foo::<Bar>`.
+
+        // We only care about trailing angle brackets if we previously parsed angle bracket
+        // arguments. This helps stop us incorrectly suggesting that extra angle brackets be
+        // removed in this case:
+        //
+        // `x.foo >> (3)` (where `x.foo` is a `u32` for example)
+        //
+        // This case is particularly tricky as we won't notice it just looking at the tokens -
+        // it will appear the same (in terms of upcoming tokens) as below (since the `::<u32>` will
+        // have already been parsed):
+        //
+        // `x.foo::<u32>>>(3)`
+        let parsed_angle_bracket_args = segment.args
+            .as_ref()
+            .map(|args| args.is_angle_bracketed())
+            .unwrap_or(false);
+
+        debug!(
+            "check_trailing_angle_brackets: parsed_angle_bracket_args={:?}",
+            parsed_angle_bracket_args,
+        );
+        if !parsed_angle_bracket_args {
+            return;
+        }
+
+        // Keep the span at the start so we can highlight the sequence of `>` characters to be
+        // removed.
+        let lo = self.span;
+
+        // We need to look-ahead to see if we have `>` characters without moving the cursor forward
+        // (since we might have the field access case and the characters we're eating are
+        // actual operators and not trailing characters - ie `x.foo >> 3`).
+        let mut position = 0;
+
+        // We can encounter `>` or `>>` tokens in any order, so we need to keep track of how
+        // many of each (so we can correctly pluralize our error messages) and continue to
+        // advance.
+        let mut number_of_shr = 0;
+        let mut number_of_gt = 0;
+        while self.look_ahead(position, |t| {
+            trace!("check_trailing_angle_brackets: t={:?}", t);
+            if *t == token::BinOp(token::BinOpToken::Shr) {
+                number_of_shr += 1;
+                true
+            } else if *t == token::Gt {
+                number_of_gt += 1;
+                true
+            } else {
+                false
+            }
+        }) {
+            position += 1;
+        }
+
+        // If we didn't find any trailing `>` characters, then we have nothing to error about.
+        debug!(
+            "check_trailing_angle_brackets: number_of_gt={:?} number_of_shr={:?}",
+            number_of_gt, number_of_shr,
+        );
+        if number_of_gt < 1 && number_of_shr < 1 {
+            return;
+        }
+
+        // Finally, double check that we have our end token as otherwise this is the
+        // second case.
+        if self.look_ahead(position, |t| {
+            trace!("check_trailing_angle_brackets: t={:?}", t);
+            *t == end
+        }) {
+            // Eat from where we started until the end token so that parsing can continue
+            // as if we didn't have those extra angle brackets.
+            self.eat_to_tokens(&[&end]);
+            let span = lo.until(self.span);
+
+            let plural = number_of_gt > 1 || number_of_shr >= 1;
+            self.diagnostic()
+                .struct_span_err(
+                    span,
+                    &format!("unmatched angle bracket{}", if plural { "s" } else { "" }),
+                )
+                .span_suggestion(
+                    span,
+                    &format!("remove extra angle bracket{}", if plural { "s" } else { "" }),
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        }
+    }
+
+    /// Produce an error if comparison operators are chained (RFC #558).
+    /// We only need to check lhs, not rhs, because all comparison ops
+    /// have same precedence and are left-associative
+    crate fn check_no_chained_comparison(&self, lhs: &Expr, outer_op: &AssocOp) {
+        debug_assert!(outer_op.is_comparison(),
+                      "check_no_chained_comparison: {:?} is not comparison",
+                      outer_op);
+        match lhs.node {
+            ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
+                // respan to include both operators
+                let op_span = op.span.to(self.span);
+                let mut err = self.diagnostic().struct_span_err(op_span,
+                    "chained comparison operators require parentheses");
+                if op.node == BinOpKind::Lt &&
+                    *outer_op == AssocOp::Less ||  // Include `<` to provide this recommendation
+                    *outer_op == AssocOp::Greater  // even in a case like the following:
+                {                                  //     Foo<Bar<Baz<Qux, ()>>>
+                    err.help(
+                        "use `::<...>` instead of `<...>` if you meant to specify type arguments");
+                    err.help("or use `(...)` if you meant to specify fn arguments");
+                }
+                err.emit();
+            }
+            _ => {}
+        }
+    }
+
     crate fn maybe_report_ambiguous_plus(
         &mut self,
         allow_plus: bool,
@@ -591,6 +923,96 @@ impl<'a> Parser<'a> {
                     self.bump()
                 }
             }
+        }
+    }
+
+    crate fn check_for_for_in_in_typo(&mut self, in_span: Span) {
+        if self.eat_keyword(kw::In) {
+            // a common typo: `for _ in in bar {}`
+            let mut err = self.sess.span_diagnostic.struct_span_err(
+                self.prev_span,
+                "expected iterable, found keyword `in`",
+            );
+            err.span_suggestion_short(
+                in_span.until(self.prev_span),
+                "remove the duplicated `in`",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+            err.note("if you meant to use emplacement syntax, it is obsolete (for now, anyway)");
+            err.note("for more information on the status of emplacement syntax, see <\
+                      https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>");
+            err.emit();
+        }
+    }
+
+    crate fn expected_semi_or_open_brace(&mut self) -> PResult<'a, ast::TraitItem> {
+        let token_str = self.this_token_descr();
+        let mut err = self.fatal(&format!("expected `;` or `{{`, found {}", token_str));
+        err.span_label(self.span, "expected `;` or `{`");
+        Err(err)
+    }
+
+    crate fn eat_incorrect_doc_comment(&mut self, applied_to: &str) {
+        if let token::DocComment(_) = self.token {
+            let mut err = self.diagnostic().struct_span_err(
+                self.span,
+                &format!("documentation comments cannot be applied to {}", applied_to),
+            );
+            err.span_label(self.span, "doc comments are not allowed here");
+            err.emit();
+            self.bump();
+        } else if self.token == token::Pound && self.look_ahead(1, |t| {
+            *t == token::OpenDelim(token::Bracket)
+        }) {
+            let lo = self.span;
+            // Skip every token until next possible arg.
+            while self.token != token::CloseDelim(token::Bracket) {
+                self.bump();
+            }
+            let sp = lo.to(self.span);
+            self.bump();
+            let mut err = self.diagnostic().struct_span_err(
+                sp,
+                &format!("attributes cannot be applied to {}", applied_to),
+            );
+            err.span_label(sp, "attributes are not allowed here");
+            err.emit();
+        }
+    }
+
+    crate fn argument_without_type(
+        &mut self,
+        err: &mut DiagnosticBuilder<'_>,
+        pat: P<ast::Pat>,
+        require_name: bool,
+        is_trait_item: bool,
+    ) {
+        // If we find a pattern followed by an identifier, it could be an (incorrect)
+        // C-style parameter declaration.
+        if self.check_ident() && self.look_ahead(1, |t| {
+            *t == token::Comma || *t == token::CloseDelim(token::Paren)
+        }) {
+            let ident = self.parse_ident().unwrap();
+            let span = pat.span.with_hi(ident.span.hi());
+
+            err.span_suggestion(
+                span,
+                "declare the type after the parameter binding",
+                String::from("<identifier>: <type>"),
+                Applicability::HasPlaceholders,
+            );
+        } else if require_name && is_trait_item {
+            if let PatKind::Ident(_, ident, _) = pat.node {
+                err.span_suggestion(
+                    pat.span,
+                    "explicitly ignore parameter",
+                    format!("_: {}", ident),
+                    Applicability::MachineApplicable,
+                );
+            }
+
+            err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
         }
     }
 
