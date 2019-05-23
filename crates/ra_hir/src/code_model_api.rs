@@ -533,16 +533,16 @@ pub enum DefWithBody {
 impl_froms!(DefWithBody: Function, Const, Static);
 
 impl DefWithBody {
-    pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(*self)
+    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
+        db.infer(self)
     }
 
-    pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body_hir(*self)
+    pub fn body(self, db: &impl HirDatabase) -> Arc<Body> {
+        db.body_hir(self)
     }
 
-    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(*self).1
+    pub fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_with_source_map(self).1
     }
 
     /// Builds a resolver for code inside this item.
@@ -592,50 +592,50 @@ impl FnSignature {
 }
 
 impl Function {
-    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
+    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
         self.id.source(db)
     }
 
-    pub fn module(&self, db: &impl DefDatabase) -> Module {
+    pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
 
-    pub fn name(&self, db: &impl HirDatabase) -> Name {
+    pub fn name(self, db: &impl HirDatabase) -> Name {
         self.signature(db).name.clone()
     }
 
-    pub(crate) fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map((*self).into()).1
+    pub(crate) fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_with_source_map(self.into()).1
     }
 
-    pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body_hir((*self).into())
+    pub fn body(self, db: &impl HirDatabase) -> Arc<Body> {
+        db.body_hir(self.into())
     }
 
-    pub fn ty(&self, db: &impl HirDatabase) -> Ty {
-        db.type_for_def((*self).into(), Namespace::Values)
+    pub fn ty(self, db: &impl HirDatabase) -> Ty {
+        db.type_for_def(self.into(), Namespace::Values)
     }
 
-    pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {
-        db.fn_signature(*self)
+    pub fn signature(self, db: &impl HirDatabase) -> Arc<FnSignature> {
+        db.fn_signature(self)
     }
 
-    pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer((*self).into())
+    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
+        db.infer(self.into())
     }
 
     /// The containing impl block, if this is a method.
-    pub fn impl_block(&self, db: &impl DefDatabase) -> Option<ImplBlock> {
+    pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
-        ImplBlock::containing(module_impls, (*self).into())
+        ImplBlock::containing(module_impls, self.into())
     }
 
     /// The containing trait, if this is a trait method definition.
-    pub fn parent_trait(&self, db: &impl DefDatabase) -> Option<Trait> {
-        db.trait_items_index(self.module(db)).get_parent_trait((*self).into())
+    pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
+        db.trait_items_index(self.module(db)).get_parent_trait(self.into())
     }
 
-    pub fn container(&self, db: &impl DefDatabase) -> Option<Container> {
+    pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
         if let Some(impl_block) = self.impl_block(db) {
             Some(impl_block.into())
         } else if let Some(trait_) = self.parent_trait(db) {
@@ -647,7 +647,7 @@ impl Function {
 
     // FIXME: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
-    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self.container(db).map_or_else(|| self.module(db).resolver(db), |c| c.resolver(db));
         // ...and add generic params, if present
@@ -656,10 +656,10 @@ impl Function {
         r
     }
 
-    pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
+    pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
         let infer = self.infer(db);
-        infer.add_diagnostics(db, *self, sink);
-        let mut validator = ExprValidator::new(*self, infer, sink);
+        infer.add_diagnostics(db, self, sink);
+        let mut validator = ExprValidator::new(self, infer, sink);
         validator.validate_body(db);
     }
 }
@@ -676,31 +676,31 @@ pub struct Const {
 }
 
 impl Const {
-    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
+    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
         self.id.source(db)
     }
 
-    pub fn module(&self, db: &impl DefDatabase) -> Module {
+    pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
 
-    pub fn signature(&self, db: &impl HirDatabase) -> Arc<ConstSignature> {
-        db.const_signature(*self)
+    pub fn signature(self, db: &impl HirDatabase) -> Arc<ConstSignature> {
+        db.const_signature(self)
     }
 
-    pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer((*self).into())
+    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
+        db.infer(self.into())
     }
 
     /// The containing impl block, if this is a method.
-    pub fn impl_block(&self, db: &impl DefDatabase) -> Option<ImplBlock> {
+    pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
-        ImplBlock::containing(module_impls, (*self).into())
+        ImplBlock::containing(module_impls, self.into())
     }
 
     // FIXME: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
-    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self
             .impl_block(db)
@@ -739,26 +739,26 @@ pub struct Static {
 }
 
 impl Static {
-    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
+    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
         self.id.source(db)
     }
 
-    pub fn module(&self, db: &impl DefDatabase) -> Module {
+    pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
 
-    pub fn signature(&self, db: &impl HirDatabase) -> Arc<ConstSignature> {
-        db.static_signature(*self)
+    pub fn signature(self, db: &impl HirDatabase) -> Arc<ConstSignature> {
+        db.static_signature(self)
     }
 
     /// Builds a resolver for code inside this item.
-    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         self.module(db).resolver(db)
     }
 
-    pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer((*self).into())
+    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
+        db.infer(self.into())
     }
 }
 
@@ -774,11 +774,11 @@ pub struct Trait {
 }
 
 impl Trait {
-    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
+    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
         self.id.source(db)
     }
 
-    pub fn module(&self, db: &impl DefDatabase) -> Module {
+    pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
 
@@ -802,7 +802,7 @@ impl Trait {
         self.trait_data(db).is_auto()
     }
 
-    pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {
+    pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
         let r = self.module(db).resolver(db);
         // add generic params, if present
         let p = self.generic_params(db);
@@ -823,26 +823,26 @@ pub struct TypeAlias {
 }
 
 impl TypeAlias {
-    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::TypeAliasDef>) {
+    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::TypeAliasDef>) {
         self.id.source(db)
     }
 
-    pub fn module(&self, db: &impl DefDatabase) -> Module {
+    pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
 
     /// The containing impl block, if this is a method.
-    pub fn impl_block(&self, db: &impl DefDatabase) -> Option<ImplBlock> {
+    pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
-        ImplBlock::containing(module_impls, (*self).into())
+        ImplBlock::containing(module_impls, self.into())
     }
 
     /// The containing trait, if this is a trait method definition.
-    pub fn parent_trait(&self, db: &impl DefDatabase) -> Option<Trait> {
-        db.trait_items_index(self.module(db)).get_parent_trait((*self).into())
+    pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
+        db.trait_items_index(self.module(db)).get_parent_trait(self.into())
     }
 
-    pub fn container(&self, db: &impl DefDatabase) -> Option<Container> {
+    pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
         if let Some(impl_block) = self.impl_block(db) {
             Some(impl_block.into())
         } else if let Some(trait_) = self.parent_trait(db) {
@@ -857,7 +857,7 @@ impl TypeAlias {
     }
 
     /// Builds a resolver for the type references in this type alias.
-    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self
             .impl_block(db)
@@ -883,7 +883,7 @@ pub enum Container {
 impl_froms!(Container: Trait, ImplBlock);
 
 impl Container {
-    pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {
+    pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
         match self {
             Container::Trait(trait_) => trait_.resolver(db),
             Container::ImplBlock(impl_block) => impl_block.resolver(db),
