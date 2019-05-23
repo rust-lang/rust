@@ -24,7 +24,7 @@ RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no
   gpg-agent
 
 RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7924C5513486
-RUN add-apt-repository -y 'deb http://apt.dilos.org/dilos dilos2-testing main'
+RUN add-apt-repository -y 'deb http://apt.dilos.org/dilos dilos2 main'
 
 WORKDIR /tmp
 COPY dist-various-2/shared.sh /tmp/
