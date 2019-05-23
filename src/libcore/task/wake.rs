@@ -147,14 +147,13 @@ impl RawWakerVTable {
     /// [`Waker`]: struct.Waker.html
     /// [`RawWaker`]: struct.RawWaker.html
     #[rustc_promotable]
-    #[cfg_attr(stage0, unstable(feature = "futures_api_const_fn_ptr", issue = "50547"))]
-    #[cfg_attr(not(stage0), stable(feature = "futures_api", since = "1.36.0"))]
+    #[stable(feature = "futures_api", since = "1.36.0")]
     // `rustc_allow_const_fn_ptr` is a hack that should not be used anywhere else
     // without first consulting with T-Lang.
     //
     // FIXME: remove whenever we have a stable way to accept fn pointers from const fn
     // (see https://github.com/rust-rfcs/const-eval/issues/19#issuecomment-472799062)
-    #[cfg_attr(not(stage0), rustc_allow_const_fn_ptr)]
+    #[rustc_allow_const_fn_ptr]
     pub const fn new(
         clone: unsafe fn(*const ()) -> RawWaker,
         wake: unsafe fn(*const ()),

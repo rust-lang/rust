@@ -13,7 +13,7 @@ use build_helper::output;
 use crate::Build;
 
 // The version number
-pub const CFG_RELEASE_NUM: &str = "1.36.0";
+pub const CFG_RELEASE_NUM: &str = "1.37.0";
 
 pub struct GitInfo {
     inner: Option<Info>,
