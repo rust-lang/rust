@@ -359,3 +359,9 @@ This flag allows rustdoc to treat your rust code as the given edition. It will c
 the given edition as well. As with `rustc`, the default edition that `rustdoc` will use is `2015`
 (the first edition).
 
+### `disable-minification`: prevent minification of CSS and JS files
+
+By default, all JS and CSS files are minified in order to make them smaller. However,
+sometimes there are bugs in the minification process, or the files are harder to read
+when this happens. Passing this flag to rustdoc skips the minifier, passing the original
+JS and CSS all the way into the final output.
