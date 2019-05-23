@@ -241,7 +241,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
 
         let toml = dir.path().join("Cargo.toml");
-        *bad = *bad || !check_license(&toml);
+        *bad = !check_license(&toml) || *bad;
     }
     assert!(saw_dir, "no vendored source");
 }
