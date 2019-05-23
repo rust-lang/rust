@@ -691,11 +691,11 @@ impl Nonterminal {
                 prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
             }
             Nonterminal::NtIdent(ident, is_raw) => {
-                let token = Token::Ident(ident, is_raw);
+                let token = Ident(ident, is_raw);
                 Some(TokenTree::Token(ident.span, token).into())
             }
             Nonterminal::NtLifetime(ident) => {
-                let token = Token::Lifetime(ident);
+                let token = Lifetime(ident);
                 Some(TokenTree::Token(ident.span, token).into())
             }
             Nonterminal::NtTT(ref tt) => {

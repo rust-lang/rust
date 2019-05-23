@@ -465,7 +465,7 @@ impl MetaItem {
                 let mod_sep_span = Span::new(last_pos,
                                              segment.ident.span.lo(),
                                              segment.ident.span.ctxt());
-                idents.push(TokenTree::Token(mod_sep_span, Token::ModSep).into());
+                idents.push(TokenTree::Token(mod_sep_span, token::ModSep).into());
             }
             idents.push(TokenTree::Token(segment.ident.span,
                                          Token::from_ast_ident(segment.ident)).into());
@@ -480,10 +480,10 @@ impl MetaItem {
     {
         // FIXME: Share code with `parse_path`.
         let path = match tokens.next() {
-            Some(TokenTree::Token(span, token @ Token::Ident(..))) |
-            Some(TokenTree::Token(span, token @ Token::ModSep)) => 'arm: {
-                let mut segments = if let Token::Ident(ident, _) = token {
-                    if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
+            Some(TokenTree::Token(span, token @ token::Ident(..))) |
+            Some(TokenTree::Token(span, token @ token::ModSep)) => 'arm: {
+                let mut segments = if let token::Ident(ident, _) = token {
+                    if let Some(TokenTree::Token(_, token::ModSep)) = tokens.peek() {
                         tokens.next();
                         vec![PathSegment::from_ident(ident.with_span_pos(span))]
                     } else {
@@ -494,12 +494,12 @@ impl MetaItem {
                 };
                 loop {
                     if let Some(TokenTree::Token(span,
-                                                    Token::Ident(ident, _))) = tokens.next() {
+                                                    token::Ident(ident, _))) = tokens.next() {
                         segments.push(PathSegment::from_ident(ident.with_span_pos(span)));
                     } else {
                         return None;
                     }
-                    if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
+                    if let Some(TokenTree::Token(_, token::ModSep)) = tokens.peek() {
                         tokens.next();
                     } else {
                         break;
@@ -508,7 +508,7 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments }
             }
-            Some(TokenTree::Token(_, Token::Interpolated(nt))) => match *nt {
+            Some(TokenTree::Token(_, token::Interpolated(nt))) => match *nt {
                 token::Nonterminal::NtIdent(ident, _) => Path::from_ident(ident),
                 token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
                 token::Nonterminal::NtPath(ref path) => path.clone(),
@@ -533,7 +533,7 @@ impl MetaItemKind {
         match *self {
             MetaItemKind::Word => TokenStream::empty(),
             MetaItemKind::NameValue(ref lit) => {
-                let mut vec = vec![TokenTree::Token(span, Token::Eq).into()];
+                let mut vec = vec![TokenTree::Token(span, token::Eq).into()];
                 lit.tokens().append_to_tree_and_joint_vec(&mut vec);
                 TokenStream::new(vec)
             }
@@ -541,7 +541,7 @@ impl MetaItemKind {
                 let mut tokens = Vec::new();
                 for (i, item) in list.iter().enumerate() {
                     if i > 0 {
-                        tokens.push(TokenTree::Token(span, Token::Comma).into());
+                        tokens.push(TokenTree::Token(span, token::Comma).into());
                     }
                     item.tokens().append_to_tree_and_joint_vec(&mut tokens);
                 }
@@ -579,7 +579,7 @@ impl MetaItemKind {
             let item = NestedMetaItem::from_tokens(&mut tokens)?;
             result.push(item);
             match tokens.next() {
-                None | Some(TokenTree::Token(_, Token::Comma)) => {}
+                None | Some(TokenTree::Token(_, token::Comma)) => {}
                 _ => return None,
             }
         }

@@ -3359,7 +3359,7 @@ impl<'a> Parser<'a> {
         let discriminant = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL,
                                                None)?;
         if let Err(mut e) = self.expect(&token::OpenDelim(token::Brace)) {
-            if self.token == token::Token::Semi {
+            if self.token == token::Semi {
                 e.span_suggestion_short(
                     match_span,
                     "try removing this `match`",
@@ -5920,7 +5920,7 @@ impl<'a> Parser<'a> {
             while !self.eat(&token::CloseDelim(token::Brace)) {
                 if let token::DocComment(_) = self.token {
                     if self.look_ahead(1,
-                    |tok| tok == &token::Token::CloseDelim(token::Brace)) {
+                    |tok| tok == &token::CloseDelim(token::Brace)) {
                         let mut err = self.diagnostic().struct_span_err_with_code(
                             self.span,
                             "found a documentation comment that doesn't document anything",
@@ -6796,7 +6796,7 @@ impl<'a> Parser<'a> {
         let mut replacement = vec![];
         let mut fixed_crate_name = false;
         // Accept `extern crate name-like-this` for better diagnostics
-        let dash = token::Token::BinOp(token::BinOpToken::Minus);
+        let dash = token::BinOp(token::BinOpToken::Minus);
         if self.token == dash {  // Do not include `-` as part of the expected tokens list
             while self.eat(&dash) {
                 fixed_crate_name = true;
@@ -7869,7 +7869,7 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, handler: 
     for unmatched in unclosed_delims.iter() {
         let mut err = handler.struct_span_err(unmatched.found_span, &format!(
             "incorrect close delimiter: `{}`",
-            pprust::token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
+            pprust::token_to_string(&token::CloseDelim(unmatched.found_delim)),
         ));
         err.span_label(unmatched.found_span, "incorrect close delimiter");
         if let Some(sp) = unmatched.candidate_span {

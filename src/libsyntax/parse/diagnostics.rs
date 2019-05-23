@@ -294,7 +294,7 @@ impl<'a> Parser<'a> {
                 Applicability::MaybeIncorrect,
             );
         }
-        let sp = if self.token == token::Token::Eof {
+        let sp = if self.token == token::Eof {
             // This is EOF, don't want to point at the following char, but rather the last token
             self.prev_span
         } else {
@@ -732,7 +732,7 @@ impl<'a> Parser<'a> {
         let this_token_str = self.this_token_descr();
         let (prev_sp, sp) = match (&self.token, self.subparser_name) {
             // Point at the end of the macro call when reaching end of macro arguments.
-            (token::Token::Eof, Some(_)) => {
+            (token::Eof, Some(_)) => {
                 let sp = self.sess.source_map().next_point(self.span);
                 (sp, sp)
             }
@@ -740,14 +740,14 @@ impl<'a> Parser<'a> {
             // This happens when the parser finds an empty TokenStream.
             _ if self.prev_span == DUMMY_SP => (self.span, self.span),
             // EOF, don't want to point at the following char, but rather the last token.
-            (token::Token::Eof, None) => (self.prev_span, self.span),
+            (token::Eof, None) => (self.prev_span, self.span),
             _ => (self.sess.source_map().next_point(self.prev_span), self.span),
         };
         let msg = format!(
             "expected `{}`, found {}",
             token_str,
             match (&self.token, self.subparser_name) {
-                (token::Token::Eof, Some(origin)) => format!("end of {}", origin),
+                (token::Eof, Some(origin)) => format!("end of {}", origin),
                 _ => this_token_str,
             },
         );
@@ -1215,7 +1215,7 @@ impl<'a> Parser<'a> {
 
     crate fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
         let (span, msg) = match (&self.token, self.subparser_name) {
-            (&token::Token::Eof, Some(origin)) => {
+            (&token::Eof, Some(origin)) => {
                 let sp = self.sess.source_map().next_point(self.span);
                 (sp, format!("expected expression, found end of {}", origin))
             }

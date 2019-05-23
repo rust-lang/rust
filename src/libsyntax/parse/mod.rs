@@ -311,7 +311,7 @@ pub fn maybe_file_to_stream(
             for unmatched in unmatched_braces {
                 let mut db = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
                     "incorrect close delimiter: `{}`",
-                    token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
+                    token_to_string(&token::CloseDelim(unmatched.found_delim)),
                 ));
                 db.span_label(unmatched.found_span, "incorrect close delimiter");
                 if let Some(sp) = unmatched.candidate_span {

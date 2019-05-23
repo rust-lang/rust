@@ -835,12 +835,12 @@ fn may_begin_with(name: Symbol, token: &Token) -> bool {
         sym::literal => token.can_begin_literal_or_bool(),
         sym::vis => match *token {
             // The follow-set of :vis + "priv" keyword + interpolated
-            Token::Comma | Token::Ident(..) | Token::Interpolated(_) => true,
+            token::Comma | token::Ident(..) | token::Interpolated(_) => true,
             _ => token.can_begin_type(),
         },
         sym::block => match *token {
-            Token::OpenDelim(token::Brace) => true,
-            Token::Interpolated(ref nt) => match **nt {
+            token::OpenDelim(token::Brace) => true,
+            token::Interpolated(ref nt) => match **nt {
                 token::NtItem(_)
                 | token::NtPat(_)
                 | token::NtTy(_)
@@ -853,32 +853,32 @@ fn may_begin_with(name: Symbol, token: &Token) -> bool {
             _ => false,
         },
         sym::path | sym::meta => match *token {
-            Token::ModSep | Token::Ident(..) => true,
-            Token::Interpolated(ref nt) => match **nt {
+            token::ModSep | token::Ident(..) => true,
+            token::Interpolated(ref nt) => match **nt {
                 token::NtPath(_) | token::NtMeta(_) => true,
                 _ => may_be_ident(&nt),
             },
             _ => false,
         },
         sym::pat => match *token {
-            Token::Ident(..) |               // box, ref, mut, and other identifiers (can stricten)
-            Token::OpenDelim(token::Paren) |    // tuple pattern
-            Token::OpenDelim(token::Bracket) |  // slice pattern
-            Token::BinOp(token::And) |          // reference
-            Token::BinOp(token::Minus) |        // negative literal
-            Token::AndAnd |                     // double reference
-            Token::Literal(..) |                // literal
-            Token::DotDot |                     // range pattern (future compat)
-            Token::DotDotDot |                  // range pattern (future compat)
-            Token::ModSep |                     // path
-            Token::Lt |                         // path (UFCS constant)
-            Token::BinOp(token::Shl) => true,   // path (double UFCS)
-            Token::Interpolated(ref nt) => may_be_ident(nt),
+            token::Ident(..) |               // box, ref, mut, and other identifiers (can stricten)
+            token::OpenDelim(token::Paren) |    // tuple pattern
+            token::OpenDelim(token::Bracket) |  // slice pattern
+            token::BinOp(token::And) |          // reference
+            token::BinOp(token::Minus) |        // negative literal
+            token::AndAnd |                     // double reference
+            token::Literal(..) |                // literal
+            token::DotDot |                     // range pattern (future compat)
+            token::DotDotDot |                  // range pattern (future compat)
+            token::ModSep |                     // path
+            token::Lt |                         // path (UFCS constant)
+            token::BinOp(token::Shl) => true,   // path (double UFCS)
+            token::Interpolated(ref nt) => may_be_ident(nt),
             _ => false,
         },
         sym::lifetime => match *token {
-            Token::Lifetime(_) => true,
-            Token::Interpolated(ref nt) => match **nt {
+            token::Lifetime(_) => true,
+            token::Interpolated(ref nt) => match **nt {
                 token::NtLifetime(_) | token::NtTT(_) => true,
                 _ => false,
             },

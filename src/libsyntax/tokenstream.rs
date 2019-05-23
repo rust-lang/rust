@@ -167,7 +167,7 @@ impl TokenTree {
 /// A `TokenStream` is an abstract sequence of tokens, organized into `TokenTree`s.
 /// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
 /// instead of a representation of the abstract syntax tree.
-/// Today's `TokenTree`s can still contain AST via `Token::Interpolated` for back-compat.
+/// Today's `TokenTree`s can still contain AST via `token::Interpolated` for back-compat.
 ///
 /// The use of `Option` is an optimization that avoids the need for an
 /// allocation when the stream is empty. However, it is not guaranteed that an
@@ -201,7 +201,7 @@ impl TokenStream {
             while let Some((pos, ts)) = iter.next() {
                 if let Some((_, next)) = iter.peek() {
                     let sp = match (&ts, &next) {
-                        (_, (TokenTree::Token(_, token::Token::Comma), _)) => continue,
+                        (_, (TokenTree::Token(_, token::Comma), _)) => continue,
                         ((TokenTree::Token(sp, token_left), NonJoint),
                          (TokenTree::Token(_, token_right), _))
                         if ((token_left.is_ident() && !token_left.is_reserved_ident())
@@ -352,17 +352,17 @@ impl TokenStream {
             match tree {
                 // The pretty printer tends to add trailing commas to
                 // everything, and in particular, after struct fields.
-                | TokenTree::Token(_, Token::Comma)
+                | TokenTree::Token(_, token::Comma)
                 // The pretty printer emits `NoDelim` as whitespace.
-                | TokenTree::Token(_, Token::OpenDelim(DelimToken::NoDelim))
-                | TokenTree::Token(_, Token::CloseDelim(DelimToken::NoDelim))
+                | TokenTree::Token(_, token::OpenDelim(DelimToken::NoDelim))
+                | TokenTree::Token(_, token::CloseDelim(DelimToken::NoDelim))
                 // The pretty printer collapses many semicolons into one.
-                | TokenTree::Token(_, Token::Semi)
+                | TokenTree::Token(_, token::Semi)
                 // The pretty printer collapses whitespace arbitrarily and can
                 // introduce whitespace from `NoDelim`.
-                | TokenTree::Token(_, Token::Whitespace)
+                | TokenTree::Token(_, token::Whitespace)
                 // The pretty printer can turn `$crate` into `::crate_name`
-                | TokenTree::Token(_, Token::ModSep) => false,
+                | TokenTree::Token(_, token::ModSep) => false,
                 _ => true
             }
         }
@@ -664,7 +664,7 @@ mod tests {
         with_default_globals(|| {
             let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
             let test1: TokenStream =
-                TokenTree::Token(sp(0, 1), Token::Ident(Ident::from_str("a"), false)).into();
+                TokenTree::Token(sp(0, 1), token::Ident(Ident::from_str("a"), false)).into();
             let test2 = string_to_ts("foo(bar::baz)");
 
             assert_eq!(test0.is_empty(), true);
@@ -677,9 +677,9 @@ mod tests {
     fn test_dotdotdot() {
         with_default_globals(|| {
             let mut builder = TokenStreamBuilder::new();
-            builder.push(TokenTree::Token(sp(0, 1), Token::Dot).joint());
-            builder.push(TokenTree::Token(sp(1, 2), Token::Dot).joint());
-            builder.push(TokenTree::Token(sp(2, 3), Token::Dot));
+            builder.push(TokenTree::Token(sp(0, 1), token::Dot).joint());
+            builder.push(TokenTree::Token(sp(1, 2), token::Dot).joint());
+            builder.push(TokenTree::Token(sp(2, 3), token::Dot));
             let stream = builder.build();
             assert!(stream.eq_unspanned(&string_to_ts("...")));
             assert_eq!(stream.trees().count(), 1);
