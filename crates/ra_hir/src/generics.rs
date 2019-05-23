@@ -9,7 +9,7 @@ use ra_syntax::ast::{self, NameOwner, TypeParamsOwner, TypeBoundsOwner, DefaultT
 
 use crate::{
     db::{ HirDatabase, DefDatabase},
-    Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock, Container, path::Path, type_ref::TypeRef, AdtDef
+    Name, AsName, Function, Struct, Union, Enum, Trait, TypeAlias, ImplBlock, Container, path::Path, type_ref::TypeRef, AdtDef
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -42,12 +42,13 @@ pub struct WherePredicate {
 pub enum GenericDef {
     Function(Function),
     Struct(Struct),
+    Union(Union),
     Enum(Enum),
     Trait(Trait),
     TypeAlias(TypeAlias),
     ImplBlock(ImplBlock),
 }
-impl_froms!(GenericDef: Function, Struct, Enum, Trait, TypeAlias, ImplBlock);
+impl_froms!(GenericDef: Function, Struct, Union, Enum, Trait, TypeAlias, ImplBlock);
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
@@ -58,7 +59,10 @@ impl GenericParams {
         let parent = match def {
             GenericDef::Function(it) => it.container(db).map(GenericDef::from),
             GenericDef::TypeAlias(it) => it.container(db).map(GenericDef::from),
-            GenericDef::Struct(_) | GenericDef::Enum(_) | GenericDef::Trait(_) => None,
+            GenericDef::Struct(_)
+            | GenericDef::Union(_)
+            | GenericDef::Enum(_)
+            | GenericDef::Trait(_) => None,
             GenericDef::ImplBlock(_) => None,
         };
         generics.parent_params = parent.map(|p| db.generic_params(p));
@@ -66,6 +70,7 @@ impl GenericParams {
         match def {
             GenericDef::Function(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Struct(it) => generics.fill(&*it.source(db).1, start),
+            GenericDef::Union(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Enum(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Trait(it) => {
                 // traits get the Self type as an implicit first type parameter
@@ -171,6 +176,7 @@ impl GenericDef {
         match self {
             GenericDef::Function(inner) => inner.resolver(db),
             GenericDef::Struct(inner) => inner.resolver(db),
+            GenericDef::Union(inner) => inner.resolver(db),
             GenericDef::Enum(inner) => inner.resolver(db),
             GenericDef::Trait(inner) => inner.resolver(db),
             GenericDef::TypeAlias(inner) => inner.resolver(db),
@@ -192,6 +198,7 @@ impl From<crate::adt::AdtDef> for GenericDef {
     fn from(adt: crate::adt::AdtDef) -> Self {
         match adt {
             AdtDef::Struct(s) => s.into(),
+            AdtDef::Union(u) => u.into(),
             AdtDef::Enum(e) => e.into(),
         }
     }

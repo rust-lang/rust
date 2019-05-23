@@ -10,7 +10,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    Name, AsName, Struct, Enum, EnumVariant, Crate,
+    Name, AsName, Struct, Union, Enum, EnumVariant, Crate,
     HirDatabase, HirFileId, StructField, FieldSource,
     type_ref::TypeRef, DefDatabase,
 };
@@ -18,14 +18,16 @@ use crate::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AdtDef {
     Struct(Struct),
+    Union(Union),
     Enum(Enum),
 }
-impl_froms!(AdtDef: Struct, Enum);
+impl_froms!(AdtDef: Struct, Union, Enum);
 
 impl AdtDef {
     pub(crate) fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
         match self {
             AdtDef::Struct(s) => s.module(db),
+            AdtDef::Union(s) => s.module(db),
             AdtDef::Enum(e) => e.module(db),
         }
         .krate(db)
@@ -38,6 +40,7 @@ impl Struct {
     }
 }
 
+/// Note that we use `StructData` for unions as well!
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructData {
     pub(crate) name: Option<Name>,

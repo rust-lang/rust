@@ -27,13 +27,13 @@ use ra_prof::profile;
 use test_utils::tested_by;
 
 use crate::{
-    Function, StructField, Path, Name,
-    FnSignature, AdtDef,ConstSignature,
-    HirDatabase,
-    DefWithBody,
-    ImplItem,
+    Function, StructField, Path, Name, FnSignature, AdtDef, ConstSignature, HirDatabase,
+    DefWithBody, ImplItem,
     type_ref::{TypeRef, Mutability},
-    expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat,Array, self},
+    expr::{
+        Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement,
+        FieldPat, Array, self,
+    },
     generics::{GenericParams, HasGenericParams},
     path::{GenericArgs, GenericArg},
     ModuleDef,
@@ -644,7 +644,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
                 (ty, Some(var.into()))
             }
-            TypableDef::TypeAlias(_)
+            TypableDef::Union(_)
+            | TypableDef::TypeAlias(_)
             | TypableDef::Function(_)
             | TypableDef::Enum(_)
             | TypableDef::Const(_)
@@ -1407,7 +1408,11 @@ impl Expectation {
 }
 
 mod diagnostics {
-    use crate::{expr::ExprId, diagnostics::{DiagnosticSink, NoSuchField}, HirDatabase, Function};
+    use crate::{
+        expr::ExprId,
+        diagnostics::{DiagnosticSink, NoSuchField},
+        HirDatabase, Function,
+};
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     pub(super) enum InferenceDiagnostic {

@@ -154,6 +154,10 @@ impl NavigationTarget {
                 let (file_id, node) = s.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
+            hir::AdtDef::Union(s) => {
+                let (file_id, node) = s.source(db);
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            }
             hir::AdtDef::Enum(s) => {
                 let (file_id, node) = s.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
@@ -166,6 +170,10 @@ impl NavigationTarget {
             hir::ModuleDef::Module(module) => NavigationTarget::from_module(db, module),
             hir::ModuleDef::Function(func) => NavigationTarget::from_function(db, func),
             hir::ModuleDef::Struct(s) => {
+                let (file_id, node) = s.source(db);
+                NavigationTarget::from_named(file_id.original_file(db), &*node)
+            }
+            hir::ModuleDef::Union(s) => {
                 let (file_id, node) = s.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }

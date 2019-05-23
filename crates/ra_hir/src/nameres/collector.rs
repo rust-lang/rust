@@ -6,7 +6,7 @@ use ra_db::FileId;
 use ra_syntax::ast;
 
 use crate::{
-    Function, Module, Struct, Enum, Const, Static, Trait, TypeAlias,
+    Function, Module, Struct, Union, Enum, Const, Static, Trait, TypeAlias,
     DefDatabase, HirFileId, Name, Path,
     KnownName,
     nameres::{
@@ -493,6 +493,10 @@ where
             raw::DefKind::Function(ast_id) => PerNs::values(def!(Function, ast_id)),
             raw::DefKind::Struct(ast_id) => {
                 let s = def!(Struct, ast_id);
+                PerNs::both(s, s)
+            }
+            raw::DefKind::Union(ast_id) => {
+                let s = def!(Union, ast_id);
                 PerNs::both(s, s)
             }
             raw::DefKind::Enum(ast_id) => PerNs::types(def!(Enum, ast_id)),

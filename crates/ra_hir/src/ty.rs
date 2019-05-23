@@ -536,6 +536,7 @@ impl HirDisplay for ApplicationTy {
             TypeCtor::Adt(def_id) => {
                 let name = match def_id {
                     AdtDef::Struct(s) => s.name(f.db),
+                    AdtDef::Union(u) => u.name(f.db),
                     AdtDef::Enum(e) => e.name(f.db),
                 }
                 .unwrap_or_else(Name::missing);
