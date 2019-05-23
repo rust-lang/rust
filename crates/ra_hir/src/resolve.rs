@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     ModuleDef, Trait,
-    code_model_api::Crate,
+    code_model::Crate,
     MacroDefId,
     db::HirDatabase,
     name::{Name, KnownName},
