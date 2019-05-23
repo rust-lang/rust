@@ -77,7 +77,7 @@ pub use self::code_model_api::{
     Crate, CrateDependency,
     DefWithBody,
     Module, ModuleDef, ModuleSource,
-    Struct, Enum, EnumVariant,
+    Struct, Union, Enum, EnumVariant,
     Function, FnSignature,
     StructField, FieldSource,
     Static, Const, ConstSignature,

@@ -1,7 +1,4 @@
-use std::{
-    sync::Arc,
-    ops::Index,
-};
+use std::{sync::Arc, ops::Index};
 
 use test_utils::tested_by;
 use ra_arena::{Arena, impl_arena_id, RawId, map::ArenaMap};
@@ -10,10 +7,7 @@ use ra_syntax::{
     ast::{self, NameOwner, AttrsOwner},
 };
 
-use crate::{
-    DefDatabase, Name, AsName, Path, HirFileId, ModuleSource,
-    AstIdMap, FileAstId, Either,
-};
+use crate::{DefDatabase, Name, AsName, Path, HirFileId, ModuleSource, AstIdMap, FileAstId, Either};
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
 ///
@@ -161,6 +155,7 @@ pub(super) struct DefData {
 pub(super) enum DefKind {
     Function(FileAstId<ast::FnDef>),
     Struct(FileAstId<ast::StructDef>),
+    Union(FileAstId<ast::StructDef>),
     Enum(FileAstId<ast::EnumDef>),
     Const(FileAstId<ast::ConstDef>),
     Static(FileAstId<ast::StaticDef>),
@@ -215,7 +210,13 @@ impl RawItemsCollector {
                 return;
             }
             ast::ModuleItemKind::StructDef(it) => {
-                (DefKind::Struct(self.source_ast_id_map.ast_id(it)), it.name())
+                let id = self.source_ast_id_map.ast_id(it);
+                let name = it.name();
+                if it.is_union() {
+                    (DefKind::Union(id), name)
+                } else {
+                    (DefKind::Struct(id), name)
+                }
             }
             ast::ModuleItemKind::EnumDef(it) => {
                 (DefKind::Enum(self.source_ast_id_map.ast_id(it)), it.name())

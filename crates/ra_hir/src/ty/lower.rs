@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::iter;
 
 use crate::{
-    Function, Struct, StructField, Enum, EnumVariant, Path, ModuleDef, TypeAlias, Const, Static,
+    Function, Struct, Union, StructField, Enum, EnumVariant, Path, ModuleDef, TypeAlias, Const, Static,
     HirDatabase,
     type_ref::TypeRef,
     name::KnownName,
@@ -124,6 +124,7 @@ impl Ty {
         let def_generic: Option<GenericDef> = match resolved {
             TypableDef::Function(func) => Some(func.into()),
             TypableDef::Struct(s) => Some(s.into()),
+            TypableDef::Union(u) => Some(u.into()),
             TypableDef::Enum(e) => Some(e.into()),
             TypableDef::EnumVariant(var) => Some(var.parent_enum(db).into()),
             TypableDef::TypeAlias(t) => Some(t.into()),
@@ -144,6 +145,7 @@ impl Ty {
         let segment = match resolved {
             TypableDef::Function(_)
             | TypableDef::Struct(_)
+            | TypableDef::Union(_)
             | TypableDef::Enum(_)
             | TypableDef::Const(_)
             | TypableDef::Static(_)
@@ -293,12 +295,14 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
         (TypableDef::Struct(s), Namespace::Values) => type_for_struct_constructor(db, s),
         (TypableDef::Enum(e), Namespace::Types) => type_for_adt(db, e),
         (TypableDef::EnumVariant(v), Namespace::Values) => type_for_enum_variant_constructor(db, v),
+        (TypableDef::Union(u), Namespace::Types) => type_for_adt(db, u),
         (TypableDef::TypeAlias(t), Namespace::Types) => type_for_type_alias(db, t),
         (TypableDef::Const(c), Namespace::Values) => type_for_const(db, c),
         (TypableDef::Static(c), Namespace::Values) => type_for_static(db, c),
 
         // 'error' cases:
         (TypableDef::Function(_), Namespace::Types) => Ty::Unknown,
+        (TypableDef::Union(_), Namespace::Values) => Ty::Unknown,
         (TypableDef::Enum(_), Namespace::Values) => Ty::Unknown,
         (TypableDef::EnumVariant(_), Namespace::Types) => Ty::Unknown,
         (TypableDef::TypeAlias(_), Namespace::Values) => Ty::Unknown,
@@ -467,19 +471,21 @@ fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {
 pub enum TypableDef {
     Function(Function),
     Struct(Struct),
+    Union(Union),
     Enum(Enum),
     EnumVariant(EnumVariant),
     TypeAlias(TypeAlias),
     Const(Const),
     Static(Static),
 }
-impl_froms!(TypableDef: Function, Struct, Enum, EnumVariant, TypeAlias, Const, Static);
+impl_froms!(TypableDef: Function, Struct, Union, Enum, EnumVariant, TypeAlias, Const, Static);
 
 impl From<ModuleDef> for Option<TypableDef> {
     fn from(def: ModuleDef) -> Option<TypableDef> {
         let res = match def {
             ModuleDef::Function(f) => f.into(),
             ModuleDef::Struct(s) => s.into(),
+            ModuleDef::Union(u) => u.into(),
             ModuleDef::Enum(e) => e.into(),
             ModuleDef::EnumVariant(v) => v.into(),
             ModuleDef::TypeAlias(t) => t.into(),

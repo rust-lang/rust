@@ -57,6 +57,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         Some(Def(ModuleDef::Module(_))) => "module",
                         Some(Def(ModuleDef::Function(_))) => "function",
                         Some(Def(ModuleDef::Struct(_))) => "type",
+                        Some(Def(ModuleDef::Union(_))) => "type",
                         Some(Def(ModuleDef::Enum(_))) => "type",
                         Some(Def(ModuleDef::EnumVariant(_))) => "constant",
                         Some(Def(ModuleDef::Const(_))) => "constant",

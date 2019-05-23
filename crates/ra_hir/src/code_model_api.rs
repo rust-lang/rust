@@ -71,6 +71,7 @@ pub enum ModuleDef {
     Module(Module),
     Function(Function),
     Struct(Struct),
+    Union(Union),
     Enum(Enum),
     // Can't be directly declared, but can be imported.
     EnumVariant(EnumVariant),
@@ -83,6 +84,7 @@ impl_froms!(
     ModuleDef: Module,
     Function,
     Struct,
+    Union,
     Enum,
     EnumVariant,
     Const,
@@ -320,6 +322,42 @@ impl Struct {
 }
 
 impl Docs for Struct {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        docs_from_ast(&*self.source(db).1)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Union {
+    pub(crate) id: StructId,
+}
+
+impl Union {
+    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
+        self.id.source(db)
+    }
+
+    pub fn name(&self, db: &impl HirDatabase) -> Option<Name> {
+        db.struct_data(Struct { id: self.id }).name.clone()
+    }
+
+    pub fn module(&self, db: &impl HirDatabase) -> Module {
+        self.id.module(db)
+    }
+
+    // FIXME move to a more general type
+    /// Builds a resolver for type references inside this union.
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+        // take the outer scope...
+        let r = self.module(db).resolver(db);
+        // ...and add generic params, if present
+        let p = self.generic_params(db);
+        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
+        r
+    }
+}
+
+impl Docs for Union {
     fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
         docs_from_ast(&*self.source(db).1)
     }
