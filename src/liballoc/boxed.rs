@@ -260,7 +260,8 @@ impl<T: ?Sized> Box<T> {
         // Stacked Borrows.  This function here corresponds to "reborrowing to
         // a raw pointer", but there is no actual reborrow here -- so
         // without some care, the pointer we are returning here still carries
-        // the `Uniq` tag.  We round-trip through a mutable reference to avoid that.
+        // the tag of `b`, with `Unique` permission.
+        // We round-trip through a mutable reference to avoid that.
         unsafe { Unique::new_unchecked(unique.as_mut() as *mut T) }
     }
 
