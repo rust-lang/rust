@@ -12,4 +12,8 @@ fn main() {
         "cargo:rustc-env=COMMIT_DATE={}",
         rustc_tools_util::get_commit_date().unwrap_or_default()
     );
+    println!(
+        "cargo:rustc-env=RUSTC_RELEASE_CHANNEL={}",
+        rustc_tools_util::get_channel().unwrap_or_default()
+    );
 }
