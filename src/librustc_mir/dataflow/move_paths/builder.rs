@@ -95,13 +95,15 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                      -> Result<MovePathIndex, MoveError<'tcx>>
     {
         debug!("lookup({:?})", place);
-        match *place {
-            Place::Base(PlaceBase::Local(local)) => Ok(self.builder.data.rev_lookup.locals[local]),
-            Place::Base(PlaceBase::Static(..)) => {
-                Err(MoveError::cannot_move_out_of(self.loc, Static))
-            }
-            Place::Projection(ref proj) => {
-                let base = self.move_path_for(&proj.base)?;
+        place.iterate(|place_base, place_projection| {
+            let mut base = match place_base {
+                PlaceBase::Local(local) => self.builder.data.rev_lookup.locals[*local],
+                PlaceBase::Static(..) => {
+                    return Err(MoveError::cannot_move_out_of(self.loc, Static));
+                }
+            };
+
+            for proj in place_projection {
                 let mir = self.builder.mir;
                 let tcx = self.builder.tcx;
                 let place_ty = proj.base.ty(mir, tcx).ty;
@@ -109,7 +111,9 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                     ty::Ref(..) | ty::RawPtr(..) =>
                         return Err(MoveError::cannot_move_out_of(
                             self.loc,
-                            BorrowedContent { target_place: place.clone() })),
+                            BorrowedContent {
+                                target_place: Place::Projection(Box::new(proj.clone())),
+                            })),
                     ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
                         return Err(MoveError::cannot_move_out_of(self.loc,
                                                                  InteriorOfTypeWithDestructor {
@@ -140,22 +144,31 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                     },
                     _ => {}
                 };
-                match self.builder.data.rev_lookup.projections.entry((base, proj.elem.lift())) {
-                    Entry::Occupied(ent) => Ok(*ent.get()),
+
+                base = match self
+                    .builder
+                    .data
+                    .rev_lookup
+                    .projections
+                    .entry((base, proj.elem.lift()))
+                {
+                    Entry::Occupied(ent) => *ent.get(),
                     Entry::Vacant(ent) => {
                         let path = MoveDataBuilder::new_move_path(
                             &mut self.builder.data.move_paths,
                             &mut self.builder.data.path_map,
                             &mut self.builder.data.init_path_map,
                             Some(base),
-                            place.clone()
+                            Place::Projection(Box::new(proj.clone())),
                         );
                         ent.insert(path);
-                        Ok(path)
+                        path
                     }
-                }
+                };
             }
-        }
+
+            Ok(base)
+        })
     }
 
     fn create_move_path(&mut self, place: &Place<'tcx>) {
