@@ -306,11 +306,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// In addition of this check, it also checks between references mutability state. If the
     /// expected is mutable but the provided isn't, maybe we could just say "Hey, try with
     /// `&mut`!".
-    pub fn check_ref(&self,
-                 expr: &hir::Expr,
-                 checked_ty: Ty<'tcx>,
-                 expected: Ty<'tcx>)
-                 -> Option<(Span, &'static str, String)> {
+    pub fn check_ref(
+        &self,
+        expr: &hir::Expr,
+        checked_ty: Ty<'tcx>,
+        expected: Ty<'tcx>,
+    ) -> Option<(Span, &'static str, String)> {
         let cm = self.sess().source_map();
         let sp = expr.span;
         if !cm.span_to_filename(sp).is_real() {
@@ -397,6 +398,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         } else {
                             String::new()
                         };
+                        if let Some(hir::Node::Expr(hir::Expr {
+                            node: hir::ExprKind::Assign(left_expr, _),
+                            ..
+                        })) = self.tcx.hir().find_by_hir_id(
+                            self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id),
+                        ) {
+                            if mutability == hir::Mutability::MutMutable {
+                                // Found the following case:
+                                // fn foo(opt: &mut Option<String>){ opt = None }
+                                //                                   ---   ^^^^
+                                //                                   |     |
+                                //    consider dereferencing here: `*opt`  |
+                                // expected mutable reference, found enum `Option`
+                                if let Ok(src) = cm.span_to_snippet(left_expr.span) {
+                                    return Some((
+                                        left_expr.span,
+                                        "consider dereferencing here to assign to the mutable \
+                                         borrowed piece of memory",
+                                        format!("*{}", src),
+                                    ));
+                                }
+                            }
+                        }
                         return Some(match mutability {
                             hir::Mutability::MutMutable => (
                                 sp,
