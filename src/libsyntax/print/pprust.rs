@@ -163,22 +163,23 @@ fn binop_to_string(op: BinOpToken) -> &'static str {
     }
 }
 
-pub fn literal_to_string(lit: token::Lit, suffix: Option<ast::Name>) -> String {
-    let mut out = match lit {
-        token::Byte(b)           => format!("b'{}'", b),
-        token::Char(c)           => format!("'{}'", c),
-        token::Err(c)            => format!("'{}'", c),
-        token::Bool(c)           |
-        token::Float(c)          |
-        token::Integer(c)        => c.to_string(),
-        token::Str_(s)           => format!("\"{}\"", s),
-        token::StrRaw(s, n)      => format!("r{delim}\"{string}\"{delim}",
-                                            delim="#".repeat(n as usize),
-                                            string=s),
-        token::ByteStr(v)        => format!("b\"{}\"", v),
-        token::ByteStrRaw(s, n)  => format!("br{delim}\"{string}\"{delim}",
-                                            delim="#".repeat(n as usize),
-                                            string=s),
+pub fn literal_to_string(lit: token::Lit) -> String {
+    let token::Lit { kind, symbol, suffix } = lit;
+    let mut out = match kind {
+        token::Byte          => format!("b'{}'", symbol),
+        token::Char          => format!("'{}'", symbol),
+        token::Bool          |
+        token::Float         |
+        token::Integer       => symbol.to_string(),
+        token::Str           => format!("\"{}\"", symbol),
+        token::StrRaw(n)     => format!("r{delim}\"{string}\"{delim}",
+                                        delim="#".repeat(n as usize),
+                                        string=symbol),
+        token::ByteStr       => format!("b\"{}\"", symbol),
+        token::ByteStrRaw(n) => format!("br{delim}\"{string}\"{delim}",
+                                        delim="#".repeat(n as usize),
+                                        string=symbol),
+        token::Err           => format!("'{}'", symbol),
     };
 
     if let Some(suffix) = suffix {
@@ -231,7 +232,7 @@ pub fn token_to_string(tok: &Token) -> String {
         token::SingleQuote          => "'".to_string(),
 
         /* Literals */
-        token::Literal(lit, suf) => literal_to_string(lit, suf),
+        token::Literal(lit) => literal_to_string(lit),
 
         /* Name components */
         token::Ident(s, false)      => s.to_string(),
@@ -571,7 +572,7 @@ pub trait PrintState<'a> {
 
     fn print_literal(&mut self, lit: &ast::Lit) -> io::Result<()> {
         self.maybe_print_comment(lit.span.lo())?;
-        self.writer().word(literal_to_string(lit.token, lit.suffix))
+        self.writer().word(literal_to_string(lit.token))
     }
 
     fn print_string(&mut self, st: &str,

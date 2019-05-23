@@ -165,7 +165,6 @@ impl_stable_hash_for!(enum ::syntax::ast::LitIntType {
 impl_stable_hash_for!(struct ::syntax::ast::Lit {
     node,
     token,
-    suffix,
     span
 });
 
@@ -288,17 +287,23 @@ for tokenstream::TokenStream {
     }
 }
 
-impl_stable_hash_for!(enum token::Lit {
-    Bool(val),
-    Byte(val),
-    Char(val),
-    Err(val),
-    Integer(val),
-    Float(val),
-    Str_(val),
-    ByteStr(val),
-    StrRaw(val, n),
-    ByteStrRaw(val, n)
+impl_stable_hash_for!(enum token::LitKind {
+    Bool,
+    Byte,
+    Char,
+    Integer,
+    Float,
+    Str,
+    ByteStr,
+    StrRaw(n),
+    ByteStrRaw(n),
+    Err
+});
+
+impl_stable_hash_for!(struct token::Lit {
+    kind,
+    symbol,
+    suffix
 });
 
 fn hash_token<'a, 'gcx, W: StableHasherResult>(
@@ -348,10 +353,7 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
         token::Token::CloseDelim(delim_token) => {
             std_hash::Hash::hash(&delim_token, hasher);
         }
-        token::Token::Literal(lit, opt_name) => {
-            lit.hash_stable(hcx, hasher);
-            opt_name.hash_stable(hcx, hasher);
-        }
+        token::Token::Literal(lit) => lit.hash_stable(hcx, hasher),
 
         token::Token::Ident(ident, is_raw) => {
             ident.name.hash_stable(hcx, hasher);

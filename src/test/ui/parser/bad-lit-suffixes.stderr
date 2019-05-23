@@ -78,7 +78,7 @@ LL |     1234.5f1024;
    |
    = help: valid widths are 32 and 64
 
-error: invalid suffix `suffix` for numeric literal
+error: invalid suffix `suffix` for integer literal
   --> $DIR/bad-lit-suffixes.rs:25:5
    |
 LL |     1234suffix;
@@ -86,7 +86,7 @@ LL |     1234suffix;
    |
    = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
 
-error: invalid suffix `suffix` for numeric literal
+error: invalid suffix `suffix` for integer literal
   --> $DIR/bad-lit-suffixes.rs:26:5
    |
 LL |     0b101suffix;

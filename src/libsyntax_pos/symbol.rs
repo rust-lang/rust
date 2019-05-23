@@ -246,6 +246,8 @@ symbols! {
         extern_prelude,
         extern_types,
         f16c_target_feature,
+        f32,
+        f64,
         feature,
         ffi_returns_twice,
         field_init_shorthand,

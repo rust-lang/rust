@@ -1,7 +1,7 @@
 pub use BinOpToken::*;
 pub use Nonterminal::*;
 pub use DelimToken::*;
-pub use Lit::*;
+pub use LitKind::*;
 pub use Token::*;
 
 use crate::ast::{self};
@@ -59,48 +59,61 @@ impl DelimToken {
     }
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum Lit {
-    Bool(ast::Name), // AST only, must never appear in a `Token`
-    Byte(ast::Name),
-    Char(ast::Name),
-    Err(ast::Name),
-    Integer(ast::Name),
-    Float(ast::Name),
-    Str_(ast::Name),
-    StrRaw(ast::Name, u16), /* raw str delimited by n hash symbols */
-    ByteStr(ast::Name),
-    ByteStrRaw(ast::Name, u16), /* raw byte str delimited by n hash symbols */
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+pub enum LitKind {
+    Bool, // AST only, must never appear in a `Token`
+    Byte,
+    Char,
+    Integer,
+    Float,
+    Str,
+    StrRaw(u16), // raw string delimited by `n` hash symbols
+    ByteStr,
+    ByteStrRaw(u16), // raw byte string delimited by `n` hash symbols
+    Err,
 }
 
-#[cfg(target_arch = "x86_64")]
-static_assert_size!(Lit, 8);
+/// A literal token.
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+pub struct Lit {
+    pub kind: LitKind,
+    pub symbol: Symbol,
+    pub suffix: Option<Symbol>,
+}
 
-impl Lit {
-    crate fn literal_name(&self) -> &'static str {
-        match *self {
-            Bool(_) => panic!("literal token contains `Lit::Bool`"),
-            Byte(_) => "byte literal",
-            Char(_) => "char literal",
-            Err(_) => "invalid literal",
-            Integer(_) => "integer literal",
-            Float(_) => "float literal",
-            Str_(_) | StrRaw(..) => "string literal",
-            ByteStr(_) | ByteStrRaw(..) => "byte string literal"
+impl LitKind {
+    /// An English article for the literal token kind.
+    crate fn article(self) -> &'static str {
+        match self {
+            Integer | Err => "an",
+            _ => "a",
         }
     }
 
-    crate fn may_have_suffix(&self) -> bool {
-        match *self {
-            Integer(..) | Float(..) => true,
+    crate fn descr(self) -> &'static str {
+        match self {
+            Bool => panic!("literal token contains `Lit::Bool`"),
+            Byte => "byte",
+            Char => "char",
+            Integer => "integer",
+            Float => "float",
+            Str | StrRaw(..) => "string",
+            ByteStr | ByteStrRaw(..) => "byte string",
+            Err => "error",
+        }
+    }
+
+    crate fn may_have_suffix(self) -> bool {
+        match self {
+            Integer | Float | Err => true,
             _ => false,
         }
     }
+}
 
-    // See comments in `Nonterminal::to_tokenstream` for why we care about
-    // *probably* equal here rather than actual equality
-    fn probably_equal_for_proc_macro(&self, other: &Lit) -> bool {
-        mem::discriminant(self) == mem::discriminant(other)
+impl Lit {
+    pub fn new(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Lit {
+        Lit { kind, symbol, suffix }
     }
 }
 
@@ -193,7 +206,7 @@ pub enum Token {
     CloseDelim(DelimToken),
 
     /* Literals */
-    Literal(Lit, Option<ast::Name>),
+    Literal(Lit),
 
     /* Name components */
     Ident(ast::Ident, /* is_raw */ bool),
@@ -310,11 +323,22 @@ impl Token {
         self == &Question || self == &OpenDelim(Paren)
     }
 
+    pub fn lit(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Token {
+        Literal(Lit::new(kind, symbol, suffix))
+    }
+
     /// Returns `true` if the token is any literal
     crate fn is_lit(&self) -> bool {
         match *self {
             Literal(..) => true,
             _           => false,
+        }
+    }
+
+    crate fn expect_lit(&self) -> Lit {
+        match *self {
+            Literal(lit) => lit,
+            _=> panic!("`expect_lit` called on non-literal"),
         }
     }
 
@@ -564,14 +588,12 @@ impl Token {
             (&DocComment(a), &DocComment(b)) |
             (&Shebang(a), &Shebang(b)) => a == b,
 
+            (&Literal(a), &Literal(b)) => a == b,
+
             (&Lifetime(a), &Lifetime(b)) => a.name == b.name,
             (&Ident(a, b), &Ident(c, d)) => b == d && (a.name == c.name ||
                                                        a.name == kw::DollarCrate ||
                                                        c.name == kw::DollarCrate),
-
-            (&Literal(ref a, b), &Literal(ref c, d)) => {
-                b == d && a.probably_equal_for_proc_macro(c)
-            }
 
             (&Interpolated(_), &Interpolated(_)) => false,
 

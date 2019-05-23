@@ -65,43 +65,43 @@ LL |     0x539.0;
    |     ^^^^^^^
 
 error: no valid digits found for number
-  --> $DIR/lex-bad-numeric-literals.rs:18:5
+  --> $DIR/lex-bad-numeric-literals.rs:20:5
    |
 LL |     0x;
    |     ^^
 
 error: no valid digits found for number
-  --> $DIR/lex-bad-numeric-literals.rs:19:5
+  --> $DIR/lex-bad-numeric-literals.rs:21:5
    |
 LL |     0xu32;
    |     ^^
 
 error: no valid digits found for number
-  --> $DIR/lex-bad-numeric-literals.rs:20:5
+  --> $DIR/lex-bad-numeric-literals.rs:22:5
    |
 LL |     0ou32;
    |     ^^
 
 error: no valid digits found for number
-  --> $DIR/lex-bad-numeric-literals.rs:21:5
+  --> $DIR/lex-bad-numeric-literals.rs:23:5
    |
 LL |     0bu32;
    |     ^^
 
 error: no valid digits found for number
-  --> $DIR/lex-bad-numeric-literals.rs:22:5
+  --> $DIR/lex-bad-numeric-literals.rs:24:5
    |
 LL |     0b;
    |     ^^
 
 error: octal float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:24:5
+  --> $DIR/lex-bad-numeric-literals.rs:26:5
    |
 LL |     0o123.456;
    |     ^^^^^^^^^
 
 error: binary float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:26:5
+  --> $DIR/lex-bad-numeric-literals.rs:28:5
    |
 LL |     0b111.101;
    |     ^^^^^^^^^
@@ -112,26 +112,26 @@ error: octal float literal is not supported
 LL |     0o2f32;
    |     ^^^^^^ not supported
 
-error: int literal is too large
+error: integer literal is too large
   --> $DIR/lex-bad-numeric-literals.rs:16:5
    |
 LL |     9900000000000000000000000000999999999999999999999999999999;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: int literal is too large
-  --> $DIR/lex-bad-numeric-literals.rs:17:5
+error: integer literal is too large
+  --> $DIR/lex-bad-numeric-literals.rs:18:5
    |
 LL |     9900000000000000000000000000999999999999999999999999999999;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: octal float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:23:5
+  --> $DIR/lex-bad-numeric-literals.rs:25:5
    |
 LL |     0o123f64;
    |     ^^^^^^^^ not supported
 
 error: binary float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:25:5
+  --> $DIR/lex-bad-numeric-literals.rs:27:5
    |
 LL |     0b101f64;
    |     ^^^^^^^^ not supported

@@ -352,10 +352,12 @@ impl TokenCursor {
         let body = TokenTree::Delimited(
             delim_span,
             token::Bracket,
-            [TokenTree::Token(sp, token::Ident(ast::Ident::with_empty_ctxt(sym::doc), false)),
-             TokenTree::Token(sp, token::Eq),
-             TokenTree::Token(sp, token::Literal(
-                token::StrRaw(Symbol::intern(&stripped), num_of_hashes), None))
+            [
+                TokenTree::Token(sp, token::Ident(ast::Ident::with_empty_ctxt(sym::doc), false)),
+                TokenTree::Token(sp, token::Eq),
+                TokenTree::Token(sp, token::Token::lit(
+                    token::StrRaw(num_of_hashes), Symbol::intern(&stripped), None
+                )),
             ]
             .iter().cloned().collect::<TokenStream>().into(),
         );
@@ -1054,7 +1056,7 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
-        literal::expect_no_suffix(sp, &self.sess.span_diagnostic, kind, suffix)
+        literal::expect_no_suffix(&self.sess.span_diagnostic, sp, kind, suffix)
     }
 
     /// Attempts to consume a `<`. If `<<` is seen, replaces it with a single
@@ -2241,10 +2243,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_field_name(&mut self) -> PResult<'a, Ident> {
-        if let token::Literal(token::Integer(name), suffix) = self.token {
+        if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token {
             self.expect_no_suffix(self.span, "a tuple index", suffix);
             self.bump();
-            Ok(Ident::new(name, self.prev_span))
+            Ok(Ident::new(symbol, self.prev_span))
         } else {
             self.parse_ident_common(false)
         }
@@ -3045,19 +3047,19 @@ impl<'a> Parser<'a> {
                     token::Ident(..) => {
                         e = self.parse_dot_suffix(e, lo)?;
                     }
-                    token::Literal(token::Integer(name), suffix) => {
+                    token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
                         let span = self.span;
                         self.bump();
-                        let field = ExprKind::Field(e, Ident::new(name, span));
+                        let field = ExprKind::Field(e, Ident::new(symbol, span));
                         e = self.mk_expr(lo.to(span), field, ThinVec::new());
 
                         self.expect_no_suffix(span, "a tuple index", suffix);
                     }
-                    token::Literal(token::Float(n), _suf) => {
+                    token::Literal(token::Lit { kind: token::Float, symbol, .. }) => {
                       self.bump();
-                      let fstr = n.as_str();
-                      let mut err = self.diagnostic()
-                          .struct_span_err(self.prev_span, &format!("unexpected token: `{}`", n));
+                      let fstr = symbol.as_str();
+                      let msg = format!("unexpected token: `{}`", symbol);
+                      let mut err = self.diagnostic().struct_span_err(self.prev_span, &msg);
                       err.span_label(self.prev_span, "unexpected token");
                       if fstr.chars().all(|x| "0123456789.".contains(x)) {
                           let float = match fstr.parse::<f64>().ok() {
@@ -7557,11 +7559,12 @@ impl<'a> Parser<'a> {
     /// the `extern` keyword, if one is found.
     fn parse_opt_abi(&mut self) -> PResult<'a, Option<Abi>> {
         match self.token {
-            token::Literal(token::Str_(s), suf) | token::Literal(token::StrRaw(s, _), suf) => {
+            token::Literal(token::Lit { kind: token::Str, symbol, suffix }) |
+            token::Literal(token::Lit { kind: token::StrRaw(..), symbol, suffix }) => {
                 let sp = self.span;
-                self.expect_no_suffix(sp, "an ABI spec", suf);
+                self.expect_no_suffix(sp, "an ABI spec", suffix);
                 self.bump();
-                match abi::lookup(&s.as_str()) {
+                match abi::lookup(&symbol.as_str()) {
                     Some(abi) => Ok(Some(abi)),
                     None => {
                         let prev_span = self.prev_span;
@@ -7570,7 +7573,7 @@ impl<'a> Parser<'a> {
                             prev_span,
                             E0703,
                             "invalid ABI: found `{}`",
-                            s);
+                            symbol);
                         err.span_label(prev_span, "invalid ABI");
                         err.help(&format!("valid ABIs: {}", abi::all_names().join(", ")));
                         err.emit();
@@ -8370,8 +8373,10 @@ impl<'a> Parser<'a> {
 
     pub fn parse_optional_str(&mut self) -> Option<(Symbol, ast::StrStyle, Option<ast::Name>)> {
         let ret = match self.token {
-            token::Literal(token::Str_(s), suf) => (s, ast::StrStyle::Cooked, suf),
-            token::Literal(token::StrRaw(s, n), suf) => (s, ast::StrStyle::Raw(n), suf),
+            token::Literal(token::Lit { kind: token::Str, symbol, suffix }) =>
+                (symbol, ast::StrStyle::Cooked, suffix),
+            token::Literal(token::Lit { kind: token::StrRaw(n), symbol, suffix }) =>
+                (symbol, ast::StrStyle::Raw(n), suffix),
             _ => return None
         };
         self.bump();

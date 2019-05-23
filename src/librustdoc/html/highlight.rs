@@ -310,17 +310,17 @@ impl<'a> Classifier<'a> {
                 }
             }
 
-            token::Literal(lit, _suf) => {
-                match lit {
+            token::Literal(lit) => {
+                match lit.kind {
                     // Text literals.
-                    token::Byte(..) | token::Char(..) | token::Err(..) |
-                        token::ByteStr(..) | token::ByteStrRaw(..) |
-                        token::Str_(..) | token::StrRaw(..) => Class::String,
+                    token::Byte | token::Char | token::Err |
+                    token::ByteStr | token::ByteStrRaw(..) |
+                    token::Str | token::StrRaw(..) => Class::String,
 
                     // Number literals.
-                    token::Integer(..) | token::Float(..) => Class::Number,
+                    token::Integer | token::Float => Class::Number,
 
-                    token::Bool(..) => panic!("literal token contains `Lit::Bool`"),
+                    token::Bool => panic!("literal token contains `Lit::Bool`"),
                 }
             }
 

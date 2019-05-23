@@ -1249,8 +1249,7 @@ impl<'a> State<'a> {
 
     fn print_literal(&mut self, lit: &hir::Lit) -> io::Result<()> {
         self.maybe_print_comment(lit.span.lo())?;
-        let (token, suffix) = lit.node.to_lit_token();
-        self.writer().word(pprust::literal_to_string(token, suffix))
+        self.writer().word(pprust::literal_to_string(lit.node.to_lit_token()))
     }
 
     pub fn print_expr(&mut self, expr: &hir::Expr) -> io::Result<()> {
