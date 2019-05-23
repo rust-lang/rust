@@ -1,6 +1,6 @@
 ---
-created: "2019-04-02T07:43:12.954637543Z"
-creator: insta@0.7.4
+created: "2019-05-23T22:23:35.091325331Z"
+creator: insta@0.8.1
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
@@ -13,8 +13,8 @@ expression: kind_completions
         kind: EnumVariant,
         detail: "(i32, u32)",
         documentation: Documentation(
-            "Bar Variant with i32 and u32"
-        )
+            "Bar Variant with i32 and u32",
+        ),
     },
     CompletionItem {
         label: "Foo",
@@ -24,8 +24,8 @@ expression: kind_completions
         kind: EnumVariant,
         detail: "()",
         documentation: Documentation(
-            "Foo Variant (empty)"
-        )
+            "Foo Variant (empty)",
+        ),
     },
     CompletionItem {
         label: "S",
@@ -35,7 +35,7 @@ expression: kind_completions
         kind: EnumVariant,
         detail: "(S)",
         documentation: Documentation(
-            ""
-        )
-    }
+            "",
+        ),
+    },
 ]

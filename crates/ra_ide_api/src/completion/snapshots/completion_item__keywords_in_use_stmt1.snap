@@ -1,6 +1,6 @@
 ---
-created: "2019-02-18T09:22:23.988755424Z"
-creator: insta@0.6.2
+created: "2019-05-23T22:23:35.066687241Z"
+creator: insta@0.8.1
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
@@ -10,20 +10,20 @@ expression: kind_completions
         source_range: [17; 17),
         delete: [17; 17),
         insert: "crate::",
-        kind: Keyword
+        kind: Keyword,
     },
     CompletionItem {
         label: "self",
         source_range: [17; 17),
         delete: [17; 17),
         insert: "self",
-        kind: Keyword
+        kind: Keyword,
     },
     CompletionItem {
         label: "super",
         source_range: [17; 17),
         delete: [17; 17),
         insert: "super::",
-        kind: Keyword
-    }
+        kind: Keyword,
+    },
 ]

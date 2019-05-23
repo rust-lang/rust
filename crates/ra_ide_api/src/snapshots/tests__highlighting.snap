@@ -1,5 +1,5 @@
 ---
-created: "2019-05-23T12:10:32.628883358Z"
+created: "2019-05-23T22:23:35.242742395Z"
 creator: insta@0.8.1
 source: crates/ra_ide_api/src/syntax_highlighting.rs
 expression: result
@@ -8,139 +8,139 @@ Ok(
     [
         HighlightedRange {
             range: [1; 24),
-            tag: "attribute"
+            tag: "attribute",
         },
         HighlightedRange {
             range: [25; 31),
-            tag: "keyword"
+            tag: "keyword",
         },
         HighlightedRange {
             range: [32; 35),
-            tag: "function"
+            tag: "function",
         },
         HighlightedRange {
             range: [42; 45),
-            tag: "keyword"
+            tag: "keyword",
         },
         HighlightedRange {
             range: [46; 47),
-            tag: "function"
+            tag: "function",
         },
         HighlightedRange {
             range: [49; 52),
-            tag: "text"
+            tag: "text",
         },
         HighlightedRange {
             range: [58; 61),
-            tag: "keyword"
+            tag: "keyword",
         },
         HighlightedRange {
             range: [62; 63),
-            tag: "function"
+            tag: "function",
         },
         HighlightedRange {
             range: [65; 68),
-            tag: "text"
+            tag: "text",
         },
         HighlightedRange {
             range: [73; 75),
-            tag: "keyword"
+            tag: "keyword",
         },
         HighlightedRange {
             range: [76; 79),
-            tag: "function"
+            tag: "function",
         },
         HighlightedRange {
             range: [80; 81),
-            tag: "type"
+            tag: "type",
         },
         HighlightedRange {
             range: [80; 81),
-            tag: "function"
+            tag: "function",
         },
         HighlightedRange {
             range: [88; 89),
-            tag: "type"
+            tag: "type",
         },
         HighlightedRange {
             range: [96; 110),
-            tag: "macro"
+            tag: "macro",
         },
         HighlightedRange {
             range: [117; 127),
-            tag: "comment"
+            tag: "comment",
         },
         HighlightedRange {
             range: [128; 130),
-            tag: "keyword"
+            tag: "keyword",
         },
         HighlightedRange {
             range: [131; 135),
-            tag: "function"
+            tag: "function",
         },
         HighlightedRange {
             range: [145; 153),
-            tag: "macro"
+            tag: "macro",
         },
         HighlightedRange {
             range: [154; 166),
-            tag: "string"
+            tag: "string",
         },
         HighlightedRange {
             range: [168; 170),
-            tag: "literal"
+            tag: "literal",
         },
         HighlightedRange {
             range: [178; 181),
-            tag: "keyword"
+            tag: "keyword",
         },
         HighlightedRange {
             range: [182; 185),
-            tag: "keyword"
+            tag: "keyword",
         },
         HighlightedRange {
             range: [186; 189),
-            tag: "macro"
+            tag: "macro",
         },
         HighlightedRange {
             range: [197; 200),
-            tag: "macro"
+            tag: "macro",
         },
         HighlightedRange {
             range: [192; 195),
-            tag: "text"
+            tag: "text",
         },
         HighlightedRange {
             range: [208; 211),
-            tag: "macro"
+            tag: "macro",
         },
         HighlightedRange {
             range: [212; 216),
-            tag: "macro"
+            tag: "macro",
         },
         HighlightedRange {
             range: [226; 227),
-            tag: "literal"
+            tag: "literal",
         },
         HighlightedRange {
             range: [232; 233),
-            tag: "literal"
+            tag: "literal",
         },
         HighlightedRange {
             range: [242; 248),
-            tag: "keyword.unsafe"
+            tag: "keyword.unsafe",
         },
         HighlightedRange {
             range: [251; 254),
-            tag: "text"
+            tag: "text",
         },
         HighlightedRange {
             range: [255; 262),
-            tag: "text"
+            tag: "text",
         },
         HighlightedRange {
             range: [263; 264),
-            tag: "literal"
-        }
-    ]
+            tag: "literal",
+        },
+    ],
 )

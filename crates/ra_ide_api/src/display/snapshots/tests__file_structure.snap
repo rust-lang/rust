@@ -1,6 +1,6 @@
 ---
-created: "2019-04-08T09:44:50.196004400Z"
-creator: insta@0.7.4
+created: "2019-05-23T22:23:35.168422050Z"
+creator: insta@0.8.1
 source: crates/ra_ide_api/src/display/structure.rs
 expression: structure
 ---
@@ -12,20 +12,20 @@ expression: structure
         node_range: [1; 26),
         kind: STRUCT_DEF,
         detail: None,
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: Some(
-            0
+            0,
         ),
         label: "x",
         navigation_range: [18; 19),
         node_range: [18; 24),
         kind: NAMED_FIELD_DEF,
         detail: Some(
-            "i32"
+            "i32",
         ),
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: None,
@@ -34,46 +34,46 @@ expression: structure
         node_range: [28; 158),
         kind: MODULE,
         detail: None,
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: Some(
-            2
+            2,
         ),
         label: "bar1",
         navigation_range: [43; 47),
         node_range: [40; 52),
         kind: FN_DEF,
         detail: Some(
-            "fn()"
+            "fn()",
         ),
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: Some(
-            2
+            2,
         ),
         label: "bar2",
         navigation_range: [60; 64),
         node_range: [57; 81),
         kind: FN_DEF,
         detail: Some(
-            "fn<T>(t: T) -> T"
+            "fn<T>(t: T) -> T",
         ),
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: Some(
-            2
+            2,
         ),
         label: "bar3",
         navigation_range: [89; 93),
         node_range: [86; 156),
         kind: FN_DEF,
         detail: Some(
-            "fn<A, B>(a: A, b: B) -> Vec< u32 >"
+            "fn<A, B>(a: A, b: B) -> Vec< u32 >",
         ),
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: None,
@@ -82,29 +82,29 @@ expression: structure
         node_range: [160; 180),
         kind: ENUM_DEF,
         detail: None,
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: Some(
-            6
+            6,
         ),
         label: "X",
         navigation_range: [169; 170),
         node_range: [169; 170),
         kind: ENUM_VARIANT,
         detail: None,
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: Some(
-            6
+            6,
         ),
         label: "Y",
         navigation_range: [172; 173),
         node_range: [172; 178),
         kind: ENUM_VARIANT,
         detail: None,
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: None,
@@ -113,9 +113,9 @@ expression: structure
         node_range: [181; 193),
         kind: TYPE_ALIAS_DEF,
         detail: Some(
-            "()"
+            "()",
         ),
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: None,
@@ -124,9 +124,9 @@ expression: structure
         node_range: [194; 213),
         kind: STATIC_DEF,
         detail: Some(
-            "i32"
+            "i32",
         ),
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: None,
@@ -135,9 +135,9 @@ expression: structure
         node_range: [214; 232),
         kind: CONST_DEF,
         detail: Some(
-            "i32"
+            "i32",
         ),
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: None,
@@ -146,7 +146,7 @@ expression: structure
         node_range: [234; 243),
         kind: IMPL_BLOCK,
         detail: None,
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: None,
@@ -155,7 +155,7 @@ expression: structure
         node_range: [245; 269),
         kind: IMPL_BLOCK,
         detail: None,
-        deprecated: false
+        deprecated: false,
     },
     StructureNode {
         parent: None,
@@ -164,9 +164,9 @@ expression: structure
         node_range: [271; 301),
         kind: FN_DEF,
         detail: Some(
-            "fn()"
+            "fn()",
         ),
-        deprecated: true
+        deprecated: true,
     },
     StructureNode {
         parent: None,
@@ -175,8 +175,8 @@ expression: structure
         node_range: [303; 359),
         kind: FN_DEF,
         detail: Some(
-            "fn()"
+            "fn()",
         ),
-        deprecated: true
-    }
+        deprecated: true,
+    },
 ]

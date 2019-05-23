@@ -1,6 +1,6 @@
 ---
-created: "2019-02-18T09:22:24.161888678Z"
-creator: insta@0.6.2
+created: "2019-05-23T22:23:35.133106898Z"
+creator: insta@0.8.1
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
@@ -10,14 +10,14 @@ expression: kind_completions
         source_range: [89; 89),
         delete: [89; 89),
         insert: "Baz",
-        kind: Enum
+        kind: Enum,
     },
     CompletionItem {
         label: "Foo",
         source_range: [89; 89),
         delete: [89; 89),
         insert: "Foo",
-        kind: Struct
+        kind: Struct,
     },
     CompletionItem {
         label: "quux",
@@ -25,6 +25,6 @@ expression: kind_completions
         delete: [89; 89),
         insert: "quux()$0",
         kind: Function,
-        detail: "fn quux()"
-    }
+        detail: "fn quux()",
+    },
 ]

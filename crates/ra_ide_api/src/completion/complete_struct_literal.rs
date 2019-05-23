@@ -44,15 +44,17 @@ mod tests {
             }
             ",
         );
-        assert_debug_snapshot_matches!(completions, @r###"[
-    CompletionItem {
-        label: "the_field",
-        source_range: [83; 86),
-        delete: [83; 86),
-        insert: "the_field",
-        kind: Field,
-        detail: "u32"
-    }
-]"###);
+        assert_debug_snapshot_matches!(completions, @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "the_field",
+       ⋮        source_range: [83; 86),
+       ⋮        delete: [83; 86),
+       ⋮        insert: "the_field",
+       ⋮        kind: Field,
+       ⋮        detail: "u32",
+       ⋮    },
+       ⋮]
+        "###);
     }
 }
