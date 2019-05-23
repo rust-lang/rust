@@ -4,7 +4,7 @@ use ra_db::{CrateId, SourceRootId, Edition};
 use ra_syntax::{ast::self, TreeArc};
 
 use crate::{
-    Name, Ty, HirFileId, Either,
+    Name, AsName, Ty, HirFileId, Either,
     HirDatabase, DefDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
@@ -40,11 +40,20 @@ impl Crate {
     }
 
     pub fn dependencies(self, db: &impl DefDatabase) -> Vec<CrateDependency> {
-        self.dependencies_impl(db)
+        db.crate_graph()
+            .dependencies(self.crate_id)
+            .map(|dep| {
+                let krate = Crate { crate_id: dep.crate_id() };
+                let name = dep.as_name();
+                CrateDependency { krate, name }
+            })
+            .collect()
     }
 
     pub fn root_module(self, db: &impl DefDatabase) -> Option<Module> {
-        self.root_module_impl(db)
+        let module_id = db.crate_def_map(self).root();
+        let module = Module { krate: self, module_id };
+        Some(module)
     }
 
     pub fn edition(self, db: &impl DefDatabase) -> Edition {
