@@ -448,7 +448,7 @@ macro_rules! writeln {
 /// program immediately terminates with a [`panic!`].
 ///
 /// The unsafe counterpart of this macro is the [`unreachable_unchecked`] function, which
-/// instead of a [`panic!`] will cause undefined behavior if the code is reached.
+/// will cause undefined behavior if the code is reached.
 ///
 /// [`panic!`]:  ../std/macro.panic.html
 /// [`unreachable_unchecked`]: ../std/hint/fn.unreachable_unchecked.html
