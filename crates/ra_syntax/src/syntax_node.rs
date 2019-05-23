@@ -523,6 +523,10 @@ impl<'a> SyntaxElement<'a> {
         }
     }
 
+    pub fn as_ast_node<T: AstNode>(&self) -> Option<&T> {
+        self.as_node().and_then(|x| <T as AstNode>::cast(x))
+    }
+
     pub fn as_token(&self) -> Option<SyntaxToken<'a>> {
         match self {
             SyntaxElement::Node(_) => None,

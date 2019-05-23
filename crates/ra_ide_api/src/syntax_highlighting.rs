@@ -10,6 +10,7 @@ use crate::{FileId, db::RootDatabase};
 pub struct HighlightedRange {
     pub range: TextRange,
     pub tag: &'static str,
+    pub id: Option<u64>,
 }
 
 fn is_control_keyword(kind: SyntaxKind) -> bool {
@@ -32,6 +33,14 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
 
     let source_file = db.parse(file_id);
 
+    fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
+        use std::{collections::hash_map::DefaultHasher, hash::Hasher};
+
+        let mut hasher = DefaultHasher::new();
+        x.hash(&mut hasher);
+        hasher.finish()
+    }
+
     // Visited nodes to handle highlighting priorities
     let mut highlighted: FxHashSet<SyntaxElement> = FxHashSet::default();
     let mut res = Vec::new();
@@ -39,52 +48,59 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
         if highlighted.contains(&node) {
             continue;
         }
-        let tag = match node.kind() {
-            COMMENT => "comment",
-            STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => "string",
-            ATTR => "attribute",
+        let (tag, id) = match node.kind() {
+            COMMENT => ("comment", None),
+            STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => ("string", None),
+            ATTR => ("attribute", None),
             NAME_REF => {
-                if let Some(name_ref) = node.as_node().and_then(|n| ast::NameRef::cast(n)) {
+                if let Some(name_ref) = node.as_ast_node::<ast::NameRef>() {
                     use crate::name_ref_kind::{classify_name_ref, NameRefKind::*};
                     use hir::{ModuleDef, ImplItem};
 
                     // FIXME: try to reuse the SourceAnalyzers
                     let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
                     match classify_name_ref(db, &analyzer, name_ref) {
-                        Some(Method(_)) => "function",
-                        Some(Macro(_)) => "macro",
-                        Some(FieldAccess(_)) => "field",
-                        Some(AssocItem(ImplItem::Method(_))) => "function",
-                        Some(AssocItem(ImplItem::Const(_))) => "constant",
-                        Some(AssocItem(ImplItem::TypeAlias(_))) => "type",
-                        Some(Def(ModuleDef::Module(_))) => "module",
-                        Some(Def(ModuleDef::Function(_))) => "function",
-                        Some(Def(ModuleDef::Struct(_))) => "type",
-                        Some(Def(ModuleDef::Union(_))) => "type",
-                        Some(Def(ModuleDef::Enum(_))) => "type",
-                        Some(Def(ModuleDef::EnumVariant(_))) => "constant",
-                        Some(Def(ModuleDef::Const(_))) => "constant",
-                        Some(Def(ModuleDef::Static(_))) => "constant",
-                        Some(Def(ModuleDef::Trait(_))) => "type",
-                        Some(Def(ModuleDef::TypeAlias(_))) => "type",
-                        Some(SelfType(_)) => "type",
-                        Some(Pat(_)) => "text",
-                        Some(SelfParam(_)) => "type",
-                        Some(GenericParam(_)) => "type",
-                        None => "text",
+                        Some(Method(_)) => ("function", None),
+                        Some(Macro(_)) => ("macro", None),
+                        Some(FieldAccess(_)) => ("field", None),
+                        Some(AssocItem(ImplItem::Method(_))) => ("function", None),
+                        Some(AssocItem(ImplItem::Const(_))) => ("constant", None),
+                        Some(AssocItem(ImplItem::TypeAlias(_))) => ("type", None),
+                        Some(Def(ModuleDef::Module(_))) => ("module", None),
+                        Some(Def(ModuleDef::Function(_))) => ("function", None),
+                        Some(Def(ModuleDef::Struct(_))) => ("type", None),
+                        Some(Def(ModuleDef::Union(_))) => ("type", None),
+                        Some(Def(ModuleDef::Enum(_))) => ("type", None),
+                        Some(Def(ModuleDef::EnumVariant(_))) => ("constant", None),
+                        Some(Def(ModuleDef::Const(_))) => ("constant", None),
+                        Some(Def(ModuleDef::Static(_))) => ("constant", None),
+                        Some(Def(ModuleDef::Trait(_))) => ("type", None),
+                        Some(Def(ModuleDef::TypeAlias(_))) => ("type", None),
+                        Some(SelfType(_)) => ("type", None),
+                        Some(Pat(ptr)) => ("variable", Some(hash(ptr.syntax_node_ptr().range()))),
+                        Some(SelfParam(_)) => ("type", None),
+                        Some(GenericParam(_)) => ("type", None),
+                        None => ("text", None),
                     }
                 } else {
-                    "text"
+                    ("text", None)
                 }
             }
-            NAME => "function",
-            TYPE_ALIAS_DEF | TYPE_ARG | TYPE_PARAM => "type",
-            INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
-            LIFETIME => "parameter",
-            T![unsafe] => "keyword.unsafe",
-            k if is_control_keyword(k) => "keyword.control",
-            k if k.is_keyword() => "keyword",
+            NAME => {
+                if let Some(name) = node.as_ast_node::<ast::Name>() {
+                    ("variable", Some(hash(name.syntax().range())))
+                } else {
+                    ("text", None)
+                }
+            }
+            TYPE_ALIAS_DEF | TYPE_ARG | TYPE_PARAM => ("type", None),
+            INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => ("literal", None),
+            LIFETIME => ("parameter", None),
+            T![unsafe] => ("keyword.unsafe", None),
+            k if is_control_keyword(k) => ("keyword.control", None),
+            k if k.is_keyword() => ("keyword", None),
             _ => {
+                // let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
                 if let Some(macro_call) = node.as_node().and_then(ast::MacroCall::cast) {
                     if let Some(path) = macro_call.path() {
                         if let Some(segment) = path.segment() {
@@ -101,6 +117,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                                 res.push(HighlightedRange {
                                     range: TextRange::from_to(range_start, range_end),
                                     tag: "macro",
+                                    id: None,
                                 })
                             }
                         }
@@ -109,7 +126,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 continue;
             }
         };
-        res.push(HighlightedRange { range: node.range(), tag })
+        res.push(HighlightedRange { range: node.range(), tag, id })
     }
     res
 }
@@ -220,5 +237,19 @@ fn main() {
         let expected_html = &read_text(&dst_file);
         // std::fs::write(dst_file, &actual_html).unwrap();
         assert_eq_text!(expected_html, actual_html);
+    }
+
+    #[test]
+    fn test_sematic_highlighting() {
+        let (analysis, file_id) = single_file(
+            r#"
+fn main() {
+    let hello = "hello";
+    let x = hello.to_string();
+    let y = hello.to_string();
+}"#,
+        );
+        let result = analysis.highlight(file_id);
+        assert_debug_snapshot_matches!("sematic_highlighting", result);
     }
 }

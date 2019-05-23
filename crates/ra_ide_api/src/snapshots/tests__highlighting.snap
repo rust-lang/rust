@@ -1,0 +1,192 @@
+---
+created: "2019-05-25T10:53:54.439877Z"
+creator: insta@0.8.1
+source: crates/ra_ide_api/src/syntax_highlighting.rs
+expression: result
+---
+Ok(
+    [
+        HighlightedRange {
+            range: [1; 24),
+            tag: "attribute",
+            id: None,
+        },
+        HighlightedRange {
+            range: [25; 31),
+            tag: "keyword",
+            id: None,
+        },
+        HighlightedRange {
+            range: [32; 35),
+            tag: "variable",
+            id: Some(
+                461893210254723387,
+            ),
+        },
+        HighlightedRange {
+            range: [42; 45),
+            tag: "keyword",
+            id: None,
+        },
+        HighlightedRange {
+            range: [46; 47),
+            tag: "variable",
+            id: Some(
+                8312289520117458465,
+            ),
+        },
+        HighlightedRange {
+            range: [49; 52),
+            tag: "text",
+            id: None,
+        },
+        HighlightedRange {
+            range: [58; 61),
+            tag: "keyword",
+            id: None,
+        },
+        HighlightedRange {
+            range: [62; 63),
+            tag: "variable",
+            id: Some(
+                4497542318236667727,
+            ),
+        },
+        HighlightedRange {
+            range: [65; 68),
+            tag: "text",
+            id: None,
+        },
+        HighlightedRange {
+            range: [73; 75),
+            tag: "keyword",
+            id: None,
+        },
+        HighlightedRange {
+            range: [76; 79),
+            tag: "variable",
+            id: Some(
+                4506850079084802999,
+            ),
+        },
+        HighlightedRange {
+            range: [80; 81),
+            tag: "type",
+            id: None,
+        },
+        HighlightedRange {
+            range: [80; 81),
+            tag: "variable",
+            id: Some(
+                16968185728268100018,
+            ),
+        },
+        HighlightedRange {
+            range: [88; 89),
+            tag: "type",
+            id: None,
+        },
+        HighlightedRange {
+            range: [96; 110),
+            tag: "macro",
+            id: None,
+        },
+        HighlightedRange {
+            range: [117; 127),
+            tag: "comment",
+            id: None,
+        },
+        HighlightedRange {
+            range: [128; 130),
+            tag: "keyword",
+            id: None,
+        },
+        HighlightedRange {
+            range: [131; 135),
+            tag: "variable",
+            id: Some(
+                14467718814232352107,
+            ),
+        },
+        HighlightedRange {
+            range: [145; 153),
+            tag: "macro",
+            id: None,
+        },
+        HighlightedRange {
+            range: [154; 166),
+            tag: "string",
+            id: None,
+        },
+        HighlightedRange {
+            range: [168; 170),
+            tag: "literal",
+            id: None,
+        },
+        HighlightedRange {
+            range: [178; 181),
+            tag: "keyword",
+            id: None,
+        },
+        HighlightedRange {
+            range: [182; 185),
+            tag: "keyword",
+            id: None,
+        },
+        HighlightedRange {
+            range: [186; 189),
+            tag: "macro",
+            id: None,
+        },
+        HighlightedRange {
+            range: [197; 200),
+            tag: "macro",
+            id: None,
+        },
+        HighlightedRange {
+            range: [192; 195),
+            tag: "text",
+            id: None,
+        },
+        HighlightedRange {
+            range: [208; 211),
+            tag: "macro",
+            id: None,
+        },
+        HighlightedRange {
+            range: [212; 216),
+            tag: "macro",
+            id: None,
+        },
+        HighlightedRange {
+            range: [226; 227),
+            tag: "literal",
+            id: None,
+        },
+        HighlightedRange {
+            range: [232; 233),
+            tag: "literal",
+            id: None,
+        },
+        HighlightedRange {
+            range: [242; 248),
+            tag: "keyword.unsafe",
+            id: None,
+        },
+        HighlightedRange {
+            range: [251; 254),
+            tag: "text",
+            id: None,
+        },
+        HighlightedRange {
+            range: [255; 262),
+            tag: "text",
+            id: None,
+        },
+        HighlightedRange {
+            range: [263; 264),
+            tag: "literal",
+            id: None,
+        },
+    ],
+)
