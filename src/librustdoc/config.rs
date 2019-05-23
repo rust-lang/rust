@@ -371,10 +371,9 @@ impl Options {
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
                 if !success || !ret.is_empty() {
-                    diag.struct_err(&format!("invalid theme: \"{}\"", theme_s))
+                    diag.struct_warn(&format!("invalid theme: \"{}\"", theme_s))
                         .help("check what's wrong with the --theme-checker option")
                         .emit();
-                    return Err(1);
                 }
                 themes.push(theme_file);
             }
