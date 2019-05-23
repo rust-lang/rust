@@ -2,9 +2,8 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::DropInPlaceFnLangItem;
 use rustc::traits;
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, Instance};
 
-pub use rustc::ty::Instance;
 pub use self::item::{MonoItem, MonoItemExt};
 
 pub mod collector;

@@ -1,7 +1,6 @@
 use crate::attributes;
 use crate::llvm;
 use crate::debuginfo;
-use crate::monomorphize::Instance;
 use crate::value::Value;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
@@ -17,7 +16,7 @@ use rustc::session::Session;
 use rustc::ty::layout::{
     LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx, HasParamEnv
 };
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
 use rustc_codegen_ssa::callee::resolve_and_get_fn;

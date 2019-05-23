@@ -1,12 +1,11 @@
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Instance};
 use rustc::ty::print::{Printer, Print};
 use rustc::ty::subst::{Kind, Subst, UnpackedKind};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_mir::monomorphize::Instance;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 

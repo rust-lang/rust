@@ -5,8 +5,7 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc::hir;
-use rustc::ty::TyCtxt;
-use rustc_mir::monomorphize::Instance;
+use rustc::ty::{TyCtxt, Instance};
 use syntax::symbol::{Symbol, sym};
 
 const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;

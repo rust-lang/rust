@@ -1,8 +1,7 @@
 use super::BackendTypes;
 use rustc::hir::def_id::DefId;
 use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty;
-use rustc_mir::monomorphize::Instance;
+use rustc::ty::{self, Instance};
 
 pub trait DeclareMethods<'tcx>: BackendTypes {
     /// Declare a global value.

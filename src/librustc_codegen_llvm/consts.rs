@@ -2,7 +2,6 @@ use crate::llvm::{self, SetUnnamedAddr, True};
 use crate::debuginfo;
 use crate::monomorphize::MonoItem;
 use crate::common::CodegenCx;
-use crate::monomorphize::Instance;
 use crate::base;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -16,7 +15,7 @@ use syntax_pos::Span;
 use rustc_target::abi::HasDataLayout;
 use syntax::symbol::sym;
 use syntax_pos::symbol::LocalInternedString;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, Instance};
 use rustc_codegen_ssa::traits::*;
 
 use rustc::ty::layout::{self, Size, Align, LayoutOf};
