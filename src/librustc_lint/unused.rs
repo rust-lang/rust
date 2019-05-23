@@ -47,42 +47,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             return;
         }
 
-        let t = cx.tables.expr_ty(&expr);
-        let type_permits_lack_of_use = if t.is_unit()
+        let ty = cx.tables.expr_ty(&expr);
+        let type_permits_lack_of_use = if ty.is_unit()
             || cx.tcx.is_ty_uninhabited_from(
-                cx.tcx.hir().get_module_parent_by_hir_id(expr.hir_id), t)
+                cx.tcx.hir().get_module_parent_by_hir_id(expr.hir_id), ty)
         {
             true
         } else {
-            match t.sty {
-                ty::Adt(def, _) => check_must_use(cx, def.did, s.span, "", ""),
-                ty::Opaque(def, _) => {
-                    let mut must_use = false;
-                    for (predicate, _) in &cx.tcx.predicates_of(def).predicates {
-                        if let ty::Predicate::Trait(ref poly_trait_predicate) = predicate {
-                            let trait_ref = poly_trait_predicate.skip_binder().trait_ref;
-                            if check_must_use(cx, trait_ref.def_id, s.span, "implementer of ", "") {
-                                must_use = true;
-                                break;
-                            }
-                        }
-                    }
-                    must_use
-                }
-                ty::Dynamic(binder, _) => {
-                    let mut must_use = false;
-                    for predicate in binder.skip_binder().iter() {
-                        if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
-                            if check_must_use(cx, trait_ref.def_id, s.span, "", " trait object") {
-                                must_use = true;
-                                break;
-                            }
-                        }
-                    }
-                    must_use
-                }
-                _ => false,
-            }
+            check_must_use_ty(cx, ty, s.span)
         };
 
         let mut fn_warned = false;
@@ -108,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             _ => None
         };
         if let Some(def_id) = maybe_def_id {
-            fn_warned = check_must_use(cx, def_id, s.span, "return value of ", "");
+            fn_warned = check_must_use_def(cx, def_id, s.span, "return value of ", "");
         } else if type_permits_lack_of_use {
             // We don't warn about unused unit or uninhabited types.
             // (See https://github.com/rust-lang/rust/issues/43806 for details.)
@@ -162,10 +134,55 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
-        fn check_must_use(
+        // Returns whether an error has been emitted (and thus another does not need to be later).
+        fn check_must_use_ty(
+            cx: &LateContext<'_, '_>,
+            ty: ty::Ty<'_>,
+            span: Span,
+        ) -> bool {
+            match ty.sty {
+                ty::Adt(def, _) => check_must_use_def(cx, def.did, span, "", ""),
+                ty::Opaque(def, _) => {
+                    let mut has_emitted = false;
+                    for (predicate, _) in &cx.tcx.predicates_of(def).predicates {
+                        if let ty::Predicate::Trait(ref poly_trait_predicate) = predicate {
+                            let trait_ref = poly_trait_predicate.skip_binder().trait_ref;
+                            let def_id = trait_ref.def_id;
+                            if check_must_use_def(cx, def_id, span, "implementer of ", "") {
+                                has_emitted = true;
+                                break;
+                            }
+                        }
+                    }
+                    has_emitted
+                }
+                ty::Dynamic(binder, _) => {
+                    let mut has_emitted = false;
+                    for predicate in binder.skip_binder().iter() {
+                        if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
+                            let def_id = trait_ref.def_id;
+                            if check_must_use_def(cx, def_id, span, "", " trait object") {
+                                has_emitted = true;
+                                break;
+                            }
+                        }
+                    }
+                    has_emitted
+                }
+                ty::Tuple(ref tys) => {
+                    tys.iter().map(|k| k.expect_ty()).any(|ty| {
+                        check_must_use_ty(cx, ty, span)
+                    })
+                }
+                _ => false,
+            }
+        }
+
+        // Returns whether an error has been emitted (and thus another does not need to be later).
+        fn check_must_use_def(
             cx: &LateContext<'_, '_>,
             def_id: DefId,
-            sp: Span,
+            span: Span,
             descr_pre_path: &str,
             descr_post_path: &str,
         ) -> bool {
@@ -173,7 +190,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 if attr.check_name(sym::must_use) {
                     let msg = format!("unused {}`{}`{} that must be used",
                         descr_pre_path, cx.tcx.def_path_str(def_id), descr_post_path);
-                    let mut err = cx.struct_span_lint(UNUSED_MUST_USE, sp, &msg);
+                    let mut err = cx.struct_span_lint(UNUSED_MUST_USE, span, &msg);
                     // check for #[must_use = "..."]
                     if let Some(note) = attr.value_str() {
                         err.note(&note.as_str());
