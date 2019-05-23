@@ -1035,11 +1035,6 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
-
-    #[inline]
-    fn last(mut self) -> Option<&'a T> {
-        self.next_back()
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1095,11 +1090,6 @@ impl<T> Iterator for IntoIter<T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
-
-    #[inline]
-    fn last(mut self) -> Option<T> {
-        self.next_back()
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1145,11 +1135,6 @@ impl<T> Iterator for Drain<'_, T> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
-    }
-
-    #[inline]
-    fn last(mut self) -> Option<T> {
-        self.next_back()
     }
 }
 

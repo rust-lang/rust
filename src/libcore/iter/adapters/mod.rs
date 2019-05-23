@@ -73,11 +73,6 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     {
         self.iter.position(predicate)
     }
-
-    #[inline]
-    fn last(mut self) -> Option<Self::Item> {
-        self.next_back()
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
