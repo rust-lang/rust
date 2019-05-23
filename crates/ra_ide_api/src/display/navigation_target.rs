@@ -5,7 +5,7 @@ use ra_syntax::{
     ast::{self, NameOwner, VisibilityOwner, TypeAscriptionOwner},
     algo::visit::{visitor, Visitor},
 };
-use hir::{ModuleSource, FieldSource, ImplItem, Either};
+use hir::{ModuleSource, FieldSource, ImplItem};
 
 use crate::{FileSymbol, db::RootDatabase};
 
@@ -77,18 +77,28 @@ impl NavigationTarget {
     pub(crate) fn from_pat(
         db: &RootDatabase,
         file_id: FileId,
-        pat: Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>,
+        pat: AstPtr<ast::Pat>,
     ) -> NavigationTarget {
         let file = db.parse(file_id);
-        let (name, full_range) = match pat {
-            Either::A(pat) => match pat.to_node(file.syntax()).kind() {
-                ast::PatKind::BindPat(pat) => {
-                    return NavigationTarget::from_bind_pat(file_id, &pat)
-                }
-                _ => ("_".into(), pat.syntax_node_ptr().range()),
-            },
-            Either::B(slf) => ("self".into(), slf.syntax_node_ptr().range()),
+        let (name, full_range) = match pat.to_node(file.syntax()).kind() {
+            ast::PatKind::BindPat(pat) => return NavigationTarget::from_bind_pat(file_id, &pat),
+            _ => ("_".into(), pat.syntax_node_ptr().range()),
         };
+        NavigationTarget {
+            file_id,
+            name,
+            full_range,
+            focus_range: None,
+            kind: NAME,
+            container_name: None,
+        }
+    }
+
+    pub(crate) fn from_self_param(
+        file_id: FileId,
+        par: AstPtr<ast::SelfParam>,
+    ) -> NavigationTarget {
+        let (name, full_range) = ("self".into(), par.syntax_node_ptr().range());
         NavigationTarget {
             file_id,
             name,

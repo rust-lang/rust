@@ -1,12 +1,19 @@
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
     AstNode, ast,
-    algo::{find_node_at_offset, visit::{visitor, Visitor}},
+    algo::{
+        find_node_at_offset,
+        visit::{visitor, Visitor},
+    },
     SyntaxNode,
 };
-use test_utils::tested_by;
 
-use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
+use crate::{
+    FilePosition, NavigationTarget,
+    db::RootDatabase,
+    RangeInfo,
+    name_ref_kind::{NameRefKind::*, classify_name_ref},
+};
 
 pub(crate) fn goto_definition(
     db: &RootDatabase,
@@ -50,85 +57,24 @@ pub(crate) fn reference_definition(
 
     let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
 
-    // Special cases:
-
-    // Check if it is a method
-    if let Some(method_call) = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast) {
-        tested_by!(goto_definition_works_for_methods);
-        if let Some(func) = analyzer.resolve_method_call(method_call) {
-            return Exact(NavigationTarget::from_function(db, func));
-        }
-    }
-
-    //it could be a macro call
-    if let Some(macro_call) = name_ref
-        .syntax()
-        .parent()
-        .and_then(|node| node.parent())
-        .and_then(|node| node.parent())
-        .and_then(ast::MacroCall::cast)
-    {
-        tested_by!(goto_definition_works_for_macros);
-        if let Some(macro_call) = analyzer.resolve_macro_call(macro_call) {
-            return Exact(NavigationTarget::from_macro_def(db, macro_call));
-        }
-    }
-
-    // It could also be a field access
-    if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::FieldExpr::cast) {
-        tested_by!(goto_definition_works_for_fields);
-        if let Some(field) = analyzer.resolve_field(field_expr) {
-            return Exact(NavigationTarget::from_field(db, field));
-        };
-    }
-
-    // It could also be a named field
-    if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::NamedField::cast) {
-        tested_by!(goto_definition_works_for_named_fields);
-
-        let struct_lit = field_expr.syntax().ancestors().find_map(ast::StructLit::cast);
-
-        if let Some(ty) = struct_lit.and_then(|lit| analyzer.type_of(db, lit.into())) {
-            if let Some((hir::AdtDef::Struct(s), _)) = ty.as_adt() {
-                let hir_path = hir::Path::from_name_ref(name_ref);
-                let hir_name = hir_path.as_ident().unwrap();
-
-                if let Some(field) = s.field(db, hir_name) {
-                    return Exact(NavigationTarget::from_field(db, field));
-                }
+    match classify_name_ref(db, &analyzer, name_ref) {
+        Some(Method(func)) => return Exact(NavigationTarget::from_function(db, func)),
+        Some(Macro(mac)) => return Exact(NavigationTarget::from_macro_def(db, mac)),
+        Some(FieldAccess(field)) => return Exact(NavigationTarget::from_field(db, field)),
+        Some(AssocItem(assoc)) => return Exact(NavigationTarget::from_impl_item(db, assoc)),
+        Some(Def(def)) => return Exact(NavigationTarget::from_def(db, def)),
+        Some(SelfType(ty)) => {
+            if let Some((def_id, _)) = ty.as_adt() {
+                return Exact(NavigationTarget::from_adt_def(db, def_id));
             }
         }
-    }
-
-    // General case, a path or a local:
-    if let Some(path) = name_ref.syntax().ancestors().find_map(ast::Path::cast) {
-        if let Some(resolved) = analyzer.resolve_path(db, path) {
-            match resolved {
-                hir::PathResolution::Def(def) => return Exact(NavigationTarget::from_def(db, def)),
-                hir::PathResolution::LocalBinding(pat) => {
-                    let nav = NavigationTarget::from_pat(db, file_id, pat);
-                    return Exact(nav);
-                }
-                hir::PathResolution::GenericParam(..) => {
-                    // FIXME: go to the generic param def
-                }
-                hir::PathResolution::Macro(def) => {
-                    let nav = NavigationTarget::from_macro_def(db, def);
-                    return Exact(nav);
-                }
-                hir::PathResolution::SelfType(impl_block) => {
-                    let ty = impl_block.target_ty(db);
-
-                    if let Some((def_id, _)) = ty.as_adt() {
-                        return Exact(NavigationTarget::from_adt_def(db, def_id));
-                    }
-                }
-                hir::PathResolution::AssocItem(assoc) => {
-                    return Exact(NavigationTarget::from_impl_item(db, assoc));
-                }
-            }
+        Some(Pat(pat)) => return Exact(NavigationTarget::from_pat(db, file_id, pat)),
+        Some(SelfParam(par)) => return Exact(NavigationTarget::from_self_param(file_id, par)),
+        Some(GenericParam(_)) => {
+            // FIXME: go to the generic param def
         }
-    }
+        None => {}
+    };
 
     // Fallback index based approach:
     let navs = crate::symbol_index::index_resolve(db, name_ref)

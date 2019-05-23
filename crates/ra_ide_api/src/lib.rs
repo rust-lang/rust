@@ -18,6 +18,7 @@ mod change;
 mod status;
 mod completion;
 mod runnables;
+mod name_ref_kind;
 mod goto_definition;
 mod goto_type_definition;
 mod extend_selection;
@@ -53,10 +54,7 @@ use ra_db::{
 };
 use relative_path::RelativePathBuf;
 
-use crate::{
-    symbol_index::FileSymbol,
-    db::LineIndexDatabase,
-};
+use crate::{symbol_index::FileSymbol, db::LineIndexDatabase};
 
 pub use crate::{
     change::{AnalysisChange, LibraryData},
@@ -73,10 +71,7 @@ pub use crate::{
     display::{FunctionSignature, NavigationTarget, StructureNode, file_structure},
 };
 
-pub use ra_db::{
-    Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId,
-    Edition
-};
+pub use ra_db::{Canceled, CrateGraph, CrateId, FileId, FilePosition, FileRange, SourceRootId, Edition};
 pub use hir::Documentation;
 
 // We use jemalloc mainly to get heap usage statistics, actual performance
