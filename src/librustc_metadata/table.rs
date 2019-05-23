@@ -76,14 +76,14 @@ impl FixedSizeEncoding for u32 {
 /// `0`. Whenever an index is visited, we fill in the
 /// appropriate spot by calling `record_position`. We should never
 /// visit the same index twice.
-crate struct Index<'tcx> {
+crate struct Table<'tcx> {
     positions: Vec<u8>,
     _marker: PhantomData<&'tcx ()>,
 }
 
-impl Index<'tcx> {
+impl Table<'tcx> {
     crate fn new(max_index: usize) -> Self {
-        Index {
+        Table {
             positions: vec![0; max_index * 4],
             _marker: PhantomData,
         }
@@ -108,7 +108,7 @@ impl Index<'tcx> {
         position.write_to_bytes_at(positions, array_index)
     }
 
-    crate fn write_index(&self, buf: &mut Encoder) -> Lazy<[Self]> {
+    crate fn encode(&self, buf: &mut Encoder) -> Lazy<[Self]> {
         let pos = buf.position();
         buf.emit_raw_bytes(&self.positions);
         Lazy::from_position_and_meta(
@@ -118,18 +118,18 @@ impl Index<'tcx> {
     }
 }
 
-impl Lazy<[Index<'tcx>]> {
+impl Lazy<[Table<'tcx>]> {
     /// Given the metadata, extract out the offset of a particular
     /// DefIndex (if any).
     #[inline(never)]
     crate fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
-        debug!("Index::lookup: index={:?} len={:?}",
+        debug!("Table::lookup: index={:?} len={:?}",
                def_index,
                self.meta);
 
         let bytes = &bytes[self.position.get()..][..self.meta * 4];
         let position = u32::read_from_bytes_at(bytes, def_index.index());
-        debug!("Index::lookup: position={:?}", position);
+        debug!("Table::lookup: position={:?}", position);
         NonZeroUsize::new(position as usize).map(Lazy::from_position)
     }
 }
