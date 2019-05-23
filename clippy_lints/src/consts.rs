@@ -251,7 +251,8 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     if let ExprKind::Path(qpath) = &callee.node;
                     let res = self.tables.qpath_res(qpath, callee.hir_id);
                     if let Some(def_id) = res.opt_def_id();
-                    let def_path = self.lcx.get_def_path(def_id)
+                    let get_def_path = self.lcx.get_def_path(def_id);
+                    let def_path = get_def_path
                         .iter()
                         .map(LocalInternedString::get)
                         .collect::<Vec<_>>();
