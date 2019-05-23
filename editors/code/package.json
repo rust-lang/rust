@@ -371,11 +371,56 @@
             },
             {
                 "id": "ralsp.macro",
-                "description": "Color for DFAF8F",
+                "description": "Color for macros",
                 "defaults": {
                     "dark": "#BFEBBF",
                     "light": "#DD6718",
                     "highContrast": "#ED7718"
+                }
+            },
+            {
+                "id": "ralsp.constant",
+                "description": "Color for constants",
+                "defaults": {
+                    "dark": "#569cd6",
+                    "light": "#267cb6",
+                    "highContrast": "#569cd6"
+                }
+            },
+            {
+                "id": "ralsp.type",
+                "description": "Color for types",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
+                "id": "ralsp.field",
+                "description": "Color for fields",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
+                "id": "ralsp.variable",
+                "description": "Color for variables",
+                "defaults": {
+                    "dark": "#4EC9B0",
+                    "light": "#267F99",
+                    "highContrast": "#4EC9B0"
+                }
+            },
+            {
+                "id": "ralsp.module",
+                "description": "Color for modules",
+                "defaults": {
+                    "dark": "#D4D4D4",
+                    "light": "#000000",
+                    "highContrast": "#FFFFFF"
                 }
             }
         ]
