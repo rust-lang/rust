@@ -21,7 +21,7 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync;
 
 use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
@@ -767,7 +767,7 @@ pub fn maybe_lint_level_root(tcx: TyCtxt<'_, '_, '_>, id: hir::HirId) -> bool {
 }
 
 fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
-    -> Lrc<LintLevelMap>
+    -> &'tcx LintLevelMap
 {
     assert_eq!(cnum, LOCAL_CRATE);
     let mut builder = LintLevelMapBuilder {
@@ -784,7 +784,7 @@ fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
     intravisit::walk_crate(&mut builder, krate);
     builder.levels.pop(push);
 
-    Lrc::new(builder.levels.build_map())
+    tcx.arena.alloc(builder.levels.build_map())
 }
 
 struct LintLevelMapBuilder<'a, 'tcx: 'a> {

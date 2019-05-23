@@ -13,14 +13,13 @@ use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::{self, CrateInherentImpls, TyCtxt};
 
-use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax_pos::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       crate_num: CrateNum)
-                                      -> Lrc<CrateInherentImpls> {
+                                      -> &'tcx CrateInherentImpls {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     let krate = tcx.hir().krate();
@@ -29,13 +28,13 @@ pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         impls_map: Default::default(),
     };
     krate.visit_all_item_likes(&mut collect);
-    Lrc::new(collect.impls_map)
+    tcx.arena.alloc(collect.impls_map)
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
 pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 ty_def_id: DefId)
-                                -> Lrc<Vec<DefId>> {
+                                -> &'tcx [DefId] {
     assert!(ty_def_id.is_local());
 
     // NB. Until we adopt the red-green dep-tracking algorithm (see
@@ -53,15 +52,11 @@ pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //
     // [the plan]: https://github.com/rust-lang/rust-roadmap/issues/4
 
-    thread_local! {
-        static EMPTY_DEF_ID_VEC: Lrc<Vec<DefId>> = Lrc::new(vec![])
-    }
-
     let result = tcx.dep_graph.with_ignore(|| {
         let crate_map = tcx.crate_inherent_impls(ty_def_id.krate);
         match crate_map.inherent_impls.get(&ty_def_id) {
-            Some(v) => v.clone(),
-            None => EMPTY_DEF_ID_VEC.with(|v| v.clone())
+            Some(v) => &v[..],
+            None => &[],
         }
     });
 
@@ -289,13 +284,8 @@ impl<'a, 'tcx> InherentCollect<'a, 'tcx> {
             // type def ID, if there is a base type for this implementation and
             // the implementation does not have any associated traits.
             let impl_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
-            let mut rc_vec = self.impls_map.inherent_impls
-                                           .entry(def_id)
-                                           .or_default();
-
-            // At this point, there should not be any clones of the
-            // `Lrc`, so we can still safely push into it in place:
-            Lrc::get_mut(&mut rc_vec).unwrap().push(impl_def_id);
+            let vec = self.impls_map.inherent_impls.entry(def_id).or_default();
+            vec.push(impl_def_id);
         } else {
             struct_span_err!(self.tcx.sess,
                              item.span,

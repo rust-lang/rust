@@ -673,7 +673,7 @@ impl EncodeContext<'_, 'tcx> {
 
         let data = ModData {
             reexports: match tcx.module_exports(def_id) {
-                Some(ref exports) => self.lazy_seq_ref(&exports[..]),
+                Some(exports) => self.lazy_seq_ref(exports),
                 _ => LazySeq::empty(),
             },
         };

@@ -104,8 +104,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // Instead, we generate `impl !Send for Foo<T>`, which better
                     // expresses the fact that `Foo<T>` never implements `Send`,
                     // regardless of the choice of `T`.
-                    let params = (self.cx.tcx.generics_of(param_env_def_id), &Default::default())
-                        .clean(self.cx).params;
+                    let params = (
+                        self.cx.tcx.generics_of(param_env_def_id),
+                        &&self.cx.tcx.common.empty_predicates,
+                    ).clean(self.cx).params;
 
                     Generics {
                         params,

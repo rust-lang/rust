@@ -24,7 +24,6 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::InternalSubsts;
 use rustc::util::nodemap::HirIdSet;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 use syntax::ast::Ident;
 use syntax::attr;
 use syntax::symbol::{kw, sym};
@@ -67,7 +66,7 @@ trait DefIdVisitor<'a, 'tcx: 'a> {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> bool {
         self.skeleton().visit_trait(trait_ref)
     }
-    fn visit_predicates(&mut self, predicates: Lrc<ty::GenericPredicates<'tcx>>) -> bool {
+    fn visit_predicates(&mut self, predicates: &ty::GenericPredicates<'tcx>) -> bool {
         self.skeleton().visit_predicates(predicates)
     }
 }
@@ -89,8 +88,8 @@ impl<'a, 'tcx, V> DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
         (!self.def_id_visitor.shallow() && substs.visit_with(self))
     }
 
-    fn visit_predicates(&mut self, predicates: Lrc<ty::GenericPredicates<'tcx>>) -> bool {
-        let ty::GenericPredicates { parent: _, predicates } = &*predicates;
+    fn visit_predicates(&mut self, predicates: &ty::GenericPredicates<'tcx>) -> bool {
+        let ty::GenericPredicates { parent: _, predicates } = predicates;
         for (predicate, _span) in predicates {
             match predicate {
                 ty::Predicate::Trait(poly_predicate) => {
@@ -1851,7 +1850,7 @@ fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
 fn privacy_access_levels<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     krate: CrateNum,
-) -> Lrc<AccessLevels> {
+) -> &'tcx AccessLevels {
     assert_eq!(krate, LOCAL_CRATE);
 
     // Build up a set of all exported items in the AST. This is a set of all
@@ -1872,7 +1871,7 @@ fn privacy_access_levels<'tcx>(
     }
     visitor.update(hir::CRATE_HIR_ID, Some(AccessLevel::Public));
 
-    Lrc::new(visitor.access_levels)
+    tcx.arena.alloc(visitor.access_levels)
 }
 
 fn check_private_in_public<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, krate: CrateNum) {

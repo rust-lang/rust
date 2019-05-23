@@ -1,4 +1,3 @@
-use rustc_data_structures::sync::Lrc;
 use std::sync::Arc;
 
 use rustc::ty::Instance;
@@ -49,12 +48,12 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType]) -> SymbolExpor
 
 fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              cnum: CrateNum)
-                                             -> Lrc<DefIdMap<SymbolExportLevel>>
+                                             -> &'tcx DefIdMap<SymbolExportLevel>
 {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
-        return Default::default();
+        return tcx.arena.alloc(Default::default());
     }
 
     // Check to see if this crate is a "special runtime crate". These
@@ -155,7 +154,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         reachable_non_generics.insert(id, SymbolExportLevel::C);
     }
 
-    Lrc::new(reachable_non_generics)
+    tcx.arena.alloc(reachable_non_generics)
 }
 
 fn is_reachable_non_generic_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -282,7 +281,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn upstream_monomorphizations_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cnum: CrateNum)
-    -> Lrc<DefIdMap<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>>
+    -> &'tcx DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>>
 {
     debug_assert!(cnum == LOCAL_CRATE);
 
@@ -326,20 +325,16 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
         }
     }
 
-    Lrc::new(instances.into_iter()
-                      .map(|(key, value)| (key, Lrc::new(value)))
-                      .collect())
+    tcx.arena.alloc(instances)
 }
 
 fn upstream_monomorphizations_for_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId)
-    -> Option<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>
+    -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>>
 {
     debug_assert!(!def_id.is_local());
-    tcx.upstream_monomorphizations(LOCAL_CRATE)
-       .get(&def_id)
-       .cloned()
+    tcx.upstream_monomorphizations(LOCAL_CRATE).get(&def_id)
 }
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> bool {
