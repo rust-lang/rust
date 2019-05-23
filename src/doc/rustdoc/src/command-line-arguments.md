@@ -355,7 +355,27 @@ $ rustdoc src/lib.rs --edition 2018
 $ rustdoc --test src/lib.rs --edition 2018
 ```
 
-This flag allows rustdoc to treat your rust code as the given edition. It will compile doctests with
+This flag allows `rustdoc` to treat your rust code as the given edition. It will compile doctests with
 the given edition as well. As with `rustc`, the default edition that `rustdoc` will use is `2015`
 (the first edition).
 
+## `themes`: add more themes to generated documentation
+
+By default, `rustdoc` only provides the "dark" and light" themes. If you want to add new ones,
+you'll need to this flag as follows:
+
+```bash
+$ rustdoc src/lib.rs --themes /path/to/your/theme/file.css
+```
+
+### `theme-checker`: check if your themes implement all the required rules
+
+This flag allows you to check if your themes implement the necessary CSS rules. To put it more
+simply, when adding a new theme, it needs to implements all the CSS rules present in the `ðark` and
+`light` CSS themes.
+
+You can use this flag like this:
+
+```bash
+$ rustdoc src/lib.rs --theme-checker /path/to/your/theme/file.css
+```
