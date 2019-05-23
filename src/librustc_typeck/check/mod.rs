@@ -5396,17 +5396,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let tcx = self.tcx;
 
-        match def {
-            Def::Local(nid) | Def::Upvar(nid, ..) => {
-                let hid = self.tcx.hir().node_to_hir_id(nid);
-                let ty = self.local_ty(span, hid).decl_ty;
-                let ty = self.normalize_associated_types_in(span, &ty);
-                self.write_ty(hir_id, ty);
-                return (ty, def);
-            }
-            _ => {}
-        }
-
         let (def, def_id, ty) = self.rewrite_self_ctor(def, span);
         let path_segs = AstConv::def_ids_for_path_segments(self, segments, self_ty, def);
 
@@ -5467,6 +5456,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if generics_has_err {
             // Don't try to infer type parameters when prohibited generic arguments were given.
             user_self_ty = None;
+        }
+
+        match def {
+            Def::Local(nid) | Def::Upvar(nid, ..) => {
+                let hid = self.tcx.hir().node_to_hir_id(nid);
+                let ty = self.local_ty(span, hid).decl_ty;
+                let ty = self.normalize_associated_types_in(span, &ty);
+                self.write_ty(hir_id, ty);
+                return (ty, def);
+            }
+            _ => {}
         }
 
         // Now we have to compare the types that the user *actually*
