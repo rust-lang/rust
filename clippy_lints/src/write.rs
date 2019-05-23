@@ -274,10 +274,10 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
     let mut is_raw = false;
     if let TokenStream(Some(tokens)) = &tts {
         for token in tokens.iter() {
-            if let (TokenTree::Token(_, token::Token::Literal(lit, _)), _) = token {
-                match lit {
-                    token::Lit::Str_(_) => break,
-                    token::Lit::StrRaw(_, _) => {
+            if let (TokenTree::Token(_, token::Token::Literal(lit)), _) = token {
+                match lit.kind {
+                    token::Str => break,
+                    token::StrRaw(_) => {
                         is_raw = true;
                         break;
                     },
