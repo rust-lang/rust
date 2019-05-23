@@ -976,14 +976,10 @@ impl Step for Compiletest {
         }
 
         if suite == "debuginfo" {
-            // Skip debuginfo tests on MSVC
-            if builder.config.build.contains("msvc") {
-                return;
-            }
-
+            let msvc = builder.config.build.contains("msvc");
             if mode == "debuginfo" {
                 return builder.ensure(Compiletest {
-                    mode: "debuginfo-both",
+                    mode: if msvc { "debuginfo-cdb" } else { "debuginfo-gdb+lldb" },
                     ..self
                 });
             }

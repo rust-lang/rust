@@ -57,9 +57,9 @@ enum ParsedNameDirective {
     NoMatch,
     /// Match.
     Match,
-    /// Mode was DebugInfoBoth and this matched gdb.
+    /// Mode was DebugInfoGdbLldb and this matched gdb.
     MatchGdb,
-    /// Mode was DebugInfoBoth and this matched lldb.
+    /// Mode was DebugInfoGdbLldb and this matched lldb.
     MatchLldb,
 }
 
@@ -81,12 +81,16 @@ impl EarlyProps {
             revisions: vec![],
         };
 
-        if config.mode == common::DebugInfoBoth {
+        if config.mode == common::DebugInfoGdbLldb {
             if config.lldb_python_dir.is_none() {
                 props.ignore = props.ignore.no_lldb();
             }
             if config.gdb_version.is_none() {
                 props.ignore = props.ignore.no_gdb();
+            }
+        } else if config.mode == common::DebugInfoCdb {
+            if config.cdb.is_none() {
+                props.ignore = Ignore::Ignore;
             }
         }
 
@@ -133,12 +137,12 @@ impl EarlyProps {
                 }
             }
 
-            if (config.mode == common::DebugInfoGdb || config.mode == common::DebugInfoBoth) &&
+            if (config.mode == common::DebugInfoGdb || config.mode == common::DebugInfoGdbLldb) &&
                 props.ignore.can_run_gdb() && ignore_gdb(config, ln) {
                 props.ignore = props.ignore.no_gdb();
             }
 
-            if (config.mode == common::DebugInfoLldb || config.mode == common::DebugInfoBoth) &&
+            if (config.mode == common::DebugInfoLldb || config.mode == common::DebugInfoGdbLldb) &&
                 props.ignore.can_run_lldb() && ignore_lldb(config, ln) {
                 props.ignore = props.ignore.no_lldb();
             }
@@ -804,7 +808,7 @@ impl Config {
                 ParsedNameDirective::Match
             } else {
                 match self.mode {
-                    common::DebugInfoBoth => {
+                    common::DebugInfoGdbLldb => {
                         if name == "gdb" {
                             ParsedNameDirective::MatchGdb
                         } else if name == "lldb" {
@@ -812,6 +816,11 @@ impl Config {
                         } else {
                             ParsedNameDirective::NoMatch
                         }
+                    },
+                    common::DebugInfoCdb => if name == "cdb" {
+                        ParsedNameDirective::Match
+                    } else {
+                        ParsedNameDirective::NoMatch
                     },
                     common::DebugInfoGdb => if name == "gdb" {
                         ParsedNameDirective::Match

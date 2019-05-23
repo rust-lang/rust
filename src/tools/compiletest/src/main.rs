@@ -8,7 +8,7 @@ extern crate test;
 use crate::common::CompareMode;
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{Config, TestPaths};
-use crate::common::{DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
+use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
 use getopts::Options;
 use std::env;
 use std::ffi::OsString;
@@ -166,6 +166,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "host", "the host to build for", "HOST")
         .optopt(
             "",
+            "cdb",
+            "path to CDB to use for CDB debuginfo tests",
+            "PATH",
+        )
+        .optopt(
+            "",
             "gdb",
             "path to GDB to use for GDB debuginfo tests",
             "PATH",
@@ -273,6 +279,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
+    let cdb = analyze_cdb(matches.opt_str("cdb"), &target);
     let (gdb, gdb_version, gdb_native_rust) = analyze_gdb(matches.opt_str("gdb"), &target,
                                                           &android_cross_path);
     let (lldb_version, lldb_native_rust) = extract_lldb_version(matches.opt_str("lldb-version"));
@@ -319,6 +326,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         target_rustcflags: matches.opt_str("target-rustcflags"),
         target: target,
         host: opt_str2(matches.opt_str("host")),
+        cdb,
         gdb,
         gdb_version,
         gdb_native_rust,
@@ -421,7 +429,7 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 
 pub fn run_tests(config: &Config) {
     if config.target.contains("android") {
-        if config.mode == DebugInfoGdb || config.mode == DebugInfoBoth {
+        if config.mode == DebugInfoGdb || config.mode == DebugInfoGdbLldb {
             println!(
                 "{} debug-info test uses tcp 5039 port.\
                  please reserve it",
@@ -440,8 +448,8 @@ pub fn run_tests(config: &Config) {
 
     match config.mode {
         // Note that we don't need to emit the gdb warning when
-        // DebugInfoBoth, so it is ok to list that here.
-        DebugInfoBoth | DebugInfoLldb => {
+        // DebugInfoGdbLldb, so it is ok to list that here.
+        DebugInfoGdbLldb | DebugInfoLldb => {
             if let Some(lldb_version) = config.lldb_version.as_ref() {
                 if is_blacklisted_lldb_version(&lldb_version[..]) {
                     println!(
@@ -470,7 +478,8 @@ pub fn run_tests(config: &Config) {
                 return;
             }
         }
-        _ => { /* proceed */ }
+
+        DebugInfoCdb | _ => { /* proceed */ }
     }
 
     // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
@@ -667,7 +676,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
                     &early_props,
                     revision.map(|s| s.as_str()),
                 )
-                || ((config.mode == DebugInfoBoth ||
+                || ((config.mode == DebugInfoGdbLldb || config.mode == DebugInfoCdb ||
                      config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
                     && config.target.contains("emscripten"))
                 || (config.mode == DebugInfoGdb && !early_props.ignore.can_run_gdb())
@@ -815,7 +824,7 @@ fn make_test_closure(
     revision: Option<&String>,
 ) -> test::TestFn {
     let mut config = config.clone();
-    if config.mode == DebugInfoBoth {
+    if config.mode == DebugInfoGdbLldb {
         // If both gdb and lldb were ignored, then the test as a whole
         // would be ignored.
         if !ignore.can_run_gdb() {
@@ -839,6 +848,47 @@ fn is_android_gdb_target(target: &String) -> bool {
         "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => true,
         _ => false,
     }
+}
+
+/// Returns `true` if the given target is a MSVC target for the purpouses of CDB testing.
+fn is_pc_windows_msvc_target(target: &String) -> bool {
+    target.ends_with("-pc-windows-msvc")
+}
+
+fn find_cdb(target: &String) -> Option<OsString> {
+    if !(cfg!(windows) && is_pc_windows_msvc_target(target)) {
+        return None;
+    }
+
+    let pf86 = env::var_os("ProgramFiles(x86)").or(env::var_os("ProgramFiles"))?;
+    let cdb_arch = if cfg!(target_arch="x86") {
+        "x86"
+    } else if cfg!(target_arch="x86_64") {
+        "x64"
+    } else if cfg!(target_arch="aarch64") {
+        "arm64"
+    } else if cfg!(target_arch="arm") {
+        "arm"
+    } else {
+        return None; // No compatible CDB.exe in the Windows 10 SDK
+    };
+
+    let mut path = PathBuf::new();
+    path.push(pf86);
+    path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
+    path.push(cdb_arch);
+    path.push(r"cdb.exe");
+
+    if !path.exists() {
+        return None;
+    }
+
+    Some(path.into_os_string())
+}
+
+/// Returns Path to CDB
+fn analyze_cdb(cdb: Option<String>, target: &String) -> Option<OsString> {
+    cdb.map(|s| OsString::from(s)).or(find_cdb(target))
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)
