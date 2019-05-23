@@ -7466,7 +7466,6 @@ impl<'a> Parser<'a> {
     /// Parses the part of an enum declaration following the `{`.
     fn parse_enum_def(&mut self, _generics: &ast::Generics) -> PResult<'a, EnumDef> {
         let mut variants = Vec::new();
-        let mut all_nullary = true;
         let mut any_disr = vec![];
         while self.token != token::CloseDelim(token::Brace) {
             let variant_attrs = self.parse_outer_attributes()?;
@@ -7478,11 +7477,9 @@ impl<'a> Parser<'a> {
             let ident = self.parse_ident()?;
             if self.check(&token::OpenDelim(token::Brace)) {
                 // Parse a struct variant.
-                all_nullary = false;
                 let (fields, recovered) = self.parse_record_struct_body()?;
                 struct_def = VariantData::Struct(fields, recovered);
             } else if self.check(&token::OpenDelim(token::Paren)) {
-                all_nullary = false;
                 struct_def = VariantData::Tuple(
                     self.parse_tuple_struct_body()?,
                     ast::DUMMY_NODE_ID,
@@ -7526,16 +7523,7 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect(&token::CloseDelim(token::Brace))?;
-        if !any_disr.is_empty() && !all_nullary {
-            let mut err = self.struct_span_err(
-                any_disr.clone(),
-                "discriminator values can only be used with a field-less enum",
-            );
-            for sp in any_disr {
-                err.span_label(sp, "only valid in field-less enums");
-            }
-            err.emit();
-        }
+        self.maybe_report_invalid_custom_discriminants(any_disr, &variants);
 
         Ok(ast::EnumDef { variants })
     }

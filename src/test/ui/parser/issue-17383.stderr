@@ -1,8 +1,11 @@
-error: discriminator values can only be used with a field-less enum
+error: custom discriminant values are not allowed in enums with fields
   --> $DIR/issue-17383.rs:2:9
    |
 LL |     A = 3,
-   |         ^ only valid in field-less enums
+   |         ^ invalid custom discriminant
+LL |
+LL |     B(usize)
+   |     -------- variant with a field defined here
 
 error: aborting due to previous error
 
