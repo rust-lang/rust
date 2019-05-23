@@ -24,6 +24,7 @@ use rustc::mir::mono::{CodegenUnitNameBuilder, CodegenUnit};
 use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::ty::query::Providers;
+use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, EntryFnType, Lto};
