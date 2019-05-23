@@ -42,7 +42,7 @@ mod docs;
 mod resolve;
 pub mod diagnostics;
 
-mod code_model_api;
+mod code_model;
 
 #[cfg(test)]
 mod marks;
@@ -72,7 +72,7 @@ pub use self::{
     source_binder::{SourceAnalyzer, PathResolution, ScopeEntryWithSyntax,MacroByExampleDef},
 };
 
-pub use self::code_model_api::{
+pub use self::code_model::{
     Crate, CrateDependency,
     DefWithBody,
     Module, ModuleDef, ModuleSource,

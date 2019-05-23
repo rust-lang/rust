@@ -15,7 +15,7 @@ use crate::{
     resolve::Resolver,
     ty::Ty,
     generics::HasGenericParams,
-    code_model_api::{Module, ModuleSource}
+    code_model::{Module, ModuleSource}
 };
 
 #[derive(Debug, Default, PartialEq, Eq)]
