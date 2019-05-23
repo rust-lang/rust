@@ -3946,6 +3946,7 @@ impl<'a> Parser<'a> {
 
     crate fn parse_arm(&mut self) -> PResult<'a, Arm> {
         let attrs = self.parse_outer_attributes()?;
+        let lo = self.span;
         let pats = self.parse_pats()?;
         let guard = if self.eat_keyword(kw::If) {
             Some(Guard::If(self.parse_expr()?))
@@ -3964,6 +3965,8 @@ impl<'a> Parser<'a> {
 
         let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
             && self.token != token::CloseDelim(token::Brace);
+
+        let hi = self.span;
 
         if require_comma {
             let cm = self.sess.source_map();
@@ -4008,6 +4011,7 @@ impl<'a> Parser<'a> {
             pats,
             guard,
             body: expr,
+            span: lo.to(hi),
         })
     }
 

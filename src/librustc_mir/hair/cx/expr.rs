@@ -879,8 +879,12 @@ fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>, arm: &'tcx hir::Arm)
                 _ => None,
             },
         body: arm.body.to_ref(),
-        // BUG: fix this
-        lint_level: LintLevel::Inherited,
+        lint_level: LintLevel::Explicit(arm.hir_id),
+        scope: region::Scope {
+            id: arm.hir_id.local_id,
+            data: region::ScopeData::Node
+        },
+        span: arm.span,
     }
 }
 

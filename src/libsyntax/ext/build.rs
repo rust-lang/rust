@@ -890,12 +890,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.pat_tuple_struct(span, path, vec![pat])
     }
 
-    fn arm(&self, _span: Span, pats: Vec<P<ast::Pat>>, expr: P<ast::Expr>) -> ast::Arm {
+    fn arm(&self, span: Span, pats: Vec<P<ast::Pat>>, expr: P<ast::Expr>) -> ast::Arm {
         ast::Arm {
             attrs: vec![],
             pats,
             guard: None,
             body: expr,
+            span,
         }
     }
 

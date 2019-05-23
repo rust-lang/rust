@@ -1314,6 +1314,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {
         hir::Arm {
+            hir_id: self.next_id(),
             attrs: self.lower_attrs(&arm.attrs),
             pats: arm.pats.iter().map(|x| self.lower_pat(x)).collect(),
             guard: match arm.guard {
@@ -1321,6 +1322,7 @@ impl<'a> LoweringContext<'a> {
                 _ => None,
             },
             body: P(self.lower_expr(&arm.body)),
+            span: arm.span,
         }
     }
 
@@ -5024,9 +5026,11 @@ impl<'a> LoweringContext<'a> {
 
     fn arm(&mut self, pats: hir::HirVec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
         hir::Arm {
+            hir_id: self.next_id(),
             attrs: hir_vec![],
             pats,
             guard: None,
+            span: expr.span,
             body: expr,
         }
     }

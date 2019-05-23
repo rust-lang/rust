@@ -391,11 +391,15 @@ pub fn noop_visit_use_tree<T: MutVisitor>(use_tree: &mut UseTree, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_visit_arm<T: MutVisitor>(Arm { attrs, pats, guard, body }: &mut Arm, vis: &mut T) {
+pub fn noop_visit_arm<T: MutVisitor>(
+    Arm { attrs, pats, guard, body, span }: &mut Arm,
+    vis: &mut T,
+) {
     visit_attrs(attrs, vis);
     visit_vec(pats, |pat| vis.visit_pat(pat));
     visit_opt(guard, |guard| vis.visit_guard(guard));
     vis.visit_expr(body);
+    vis.visit_span(span);
 }
 
 pub fn noop_visit_guard<T: MutVisitor>(g: &mut Guard, vis: &mut T) {

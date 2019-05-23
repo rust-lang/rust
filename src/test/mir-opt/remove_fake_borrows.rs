@@ -19,10 +19,10 @@ fn main() {
 // bb0: {
 //     FakeRead(ForMatchedPlace, _1);
 //     _3 = discriminant(_1);
-//     switchInt(move _3) -> [1isize: bb5, otherwise: bb2];
+//     switchInt(move _3) -> [1isize: bb4, otherwise: bb2];
 // }
 // bb1: {
-//     goto -> bb7;
+//     goto -> bb5;
 // }
 // bb2: {
 //     goto -> bb8;
@@ -31,16 +31,9 @@ fn main() {
 //     unreachable;
 // }
 // bb4: {
-//     goto -> bb2;
-// }
-// bb5: {
 //     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
 // }
-// bb6: {
-//     _0 = const 0i32;
-//     goto -> bb9;
-// }
-// bb7: {
+// bb5: {
 //     _4 = &shallow _1;
 //     _5 = &shallow ((_1 as Some).0: &'<empty> &'<empty> i32);
 //     _6 = &shallow (*((_1 as Some).0: &'<empty> &'<empty> i32));
@@ -51,14 +44,22 @@ fn main() {
 //     FakeRead(ForMatchGuard, _5);
 //     FakeRead(ForMatchGuard, _6);
 //     FakeRead(ForMatchGuard, _7);
-//     switchInt(move _8) -> [false: bb4, otherwise: bb6];
+//     switchInt(move _8) -> [false: bb7, otherwise: bb6];
+// }
+// bb6: {
+//     StorageDead(_8);
+//     _0 = const 0i32;
+//     goto -> bb9;
+// }
+// bb7: {
+//     StorageDead(_8);
+//     goto -> bb2;
 // }
 // bb8: {
 //     _0 = const 1i32;
 //     goto -> bb9;
 // }
 // bb9: {
-//     StorageDead(_8);
 //     return;
 // }
 // bb10 (cleanup): {
@@ -70,10 +71,10 @@ fn main() {
 // bb0: {
 //     nop;
 //     _3 = discriminant(_1);
-//     switchInt(move _3) -> [1isize: bb5, otherwise: bb2];
+//     switchInt(move _3) -> [1isize: bb4, otherwise: bb2];
 // }
 // bb1: {
-//     goto -> bb7;
+//     goto -> bb5;
 // }
 // bb2: {
 //     goto -> bb8;
@@ -82,16 +83,9 @@ fn main() {
 //     unreachable;
 // }
 // bb4: {
-//     goto -> bb2;
-// }
-// bb5: {
 //     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
 // }
-// bb6: {
-//     _0 = const 0i32;
-//     goto -> bb9;
-// }
-// bb7: {
+// bb5: {
 //     nop;
 //     nop;
 //     nop;
@@ -102,14 +96,22 @@ fn main() {
 //     nop;
 //     nop;
 //     nop;
-//     switchInt(move _8) -> [false: bb4, otherwise: bb6];
+//     switchInt(move _8) -> [false: bb7, otherwise: bb6];
+// }
+// bb6: {
+//     StorageDead(_8);
+//     _0 = const 0i32;
+//     goto -> bb9;
+// }
+// bb7: {
+//     StorageDead(_8);
+//     goto -> bb2;
 // }
 // bb8: {
 //     _0 = const 1i32;
 //     goto -> bb9;
 // }
 // bb9: {
-//     StorageDead(_8);
 //     return;
 // }
 // bb10 (cleanup): {

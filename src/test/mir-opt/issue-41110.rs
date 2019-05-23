@@ -29,26 +29,23 @@ impl S {
 // END RUST SOURCE
 // START rustc.main.ElaborateDrops.after.mir
 //    let mut _0: ();
+//    let _1: ();
 //    let mut _2: S;
 //    let mut _3: S;
 //    let mut _4: S;
 //    let mut _5: bool;
 //    scope 1 {
-//        let _1: ();
-//    }
-//    scope 2 {
 //    }
 //    ...
 //    bb0: {
 // END rustc.main.ElaborateDrops.after.mir
 // START rustc.test.ElaborateDrops.after.mir
 //    let mut _0: ();
+//    let _1: S;
 //    let mut _3: ();
 //    let mut _4: S;
 //    let mut _5: S;
 //    let mut _6: bool;
-//    ...
-//    let _1: S;
 //    ...
 //    let mut _2: S;
 //    ...
