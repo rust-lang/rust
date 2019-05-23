@@ -769,8 +769,8 @@ impl Handler {
         }
     }
 
-    pub fn emit_artifact_notification(&self, path: &Path) {
-        self.emitter.borrow_mut().emit_artifact_notification(path);
+    pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
+        self.emitter.borrow_mut().emit_artifact_notification(path, artifact_type);
     }
 }
 
