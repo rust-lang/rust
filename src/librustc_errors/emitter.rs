@@ -1645,7 +1645,7 @@ impl<'a> WritableDst<'a> {
                 }
             }
             Style::Quotation => {}
-            Style::OldSchoolNoteText | Style::MainHeaderMsg => {
+            Style::MainHeaderMsg => {
                 spec.set_bold(true);
                 if cfg!(windows) {
                     spec.set_intense(true)
