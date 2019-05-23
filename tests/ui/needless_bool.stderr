@@ -145,7 +145,7 @@ LL | |         false
 LL | |     } else {
 LL | |         true
 LL | |     };
-   | |_____^ help: you can reduce it to: `{ !returns_bool() }`
+   | |_____^ help: you can reduce it to: `!returns_bool()`
 
 error: aborting due to 16 previous errors
 
