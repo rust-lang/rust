@@ -49,7 +49,7 @@ use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::symbol::{kw, sym, Symbol};
 use crate::parse::diagnostics::Error;
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{Span, BytePos, DUMMY_SP, FileName, hygiene::CompilerDesugaringKind};
 use log::debug;
@@ -58,6 +58,7 @@ use std::borrow::Cow;
 use std::cmp;
 use std::mem;
 use std::path::{self, Path, PathBuf};
+use std::slice;
 
 #[derive(Debug)]
 /// Whether the type alias or associated type is a concrete type or an existential type
@@ -595,23 +596,6 @@ impl<'a> Parser<'a> {
         edible: &[token::Token],
         inedible: &[token::Token],
     ) -> PResult<'a, bool /* recovered */> {
-        fn tokens_to_string(tokens: &[TokenType]) -> String {
-            let mut i = tokens.iter();
-            // This might be a sign we need a connect method on Iterator.
-            let b = i.next()
-                     .map_or(String::new(), |t| t.to_string());
-            i.enumerate().fold(b, |mut b, (i, a)| {
-                if tokens.len() > 2 && i == tokens.len() - 2 {
-                    b.push_str(", or ");
-                } else if tokens.len() == 2 && i == tokens.len() - 2 {
-                    b.push_str(" or ");
-                } else {
-                    b.push_str(", ");
-                }
-                b.push_str(&a.to_string());
-                b
-            })
-        }
         if edible.contains(&self.token) {
             self.bump();
             Ok(false)
@@ -621,120 +605,7 @@ impl<'a> Parser<'a> {
         } else if self.last_unexpected_token_span == Some(self.span) {
             FatalError.raise();
         } else {
-            let mut expected = edible.iter()
-                .map(|x| TokenType::Token(x.clone()))
-                .chain(inedible.iter().map(|x| TokenType::Token(x.clone())))
-                .chain(self.expected_tokens.iter().cloned())
-                .collect::<Vec<_>>();
-            expected.sort_by_cached_key(|x| x.to_string());
-            expected.dedup();
-            let expect = tokens_to_string(&expected[..]);
-            let actual = self.this_token_to_string();
-            let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
-                let short_expect = if expected.len() > 6 {
-                    format!("{} possible tokens", expected.len())
-                } else {
-                    expect.clone()
-                };
-                (format!("expected one of {}, found `{}`", expect, actual),
-                 (self.sess.source_map().next_point(self.prev_span),
-                  format!("expected one of {} here", short_expect)))
-            } else if expected.is_empty() {
-                (format!("unexpected token: `{}`", actual),
-                 (self.prev_span, "unexpected token after this".to_string()))
-            } else {
-                (format!("expected {}, found `{}`", expect, actual),
-                 (self.sess.source_map().next_point(self.prev_span),
-                  format!("expected {} here", expect)))
-            };
-            self.last_unexpected_token_span = Some(self.span);
-            let mut err = self.fatal(&msg_exp);
-            if self.token.is_ident_named("and") {
-                err.span_suggestion_short(
-                    self.span,
-                    "use `&&` instead of `and` for the boolean operator",
-                    "&&".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            }
-            if self.token.is_ident_named("or") {
-                err.span_suggestion_short(
-                    self.span,
-                    "use `||` instead of `or` for the boolean operator",
-                    "||".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            }
-            let sp = if self.token == token::Token::Eof {
-                // This is EOF, don't want to point at the following char, but rather the last token
-                self.prev_span
-            } else {
-                label_sp
-            };
-            match self.recover_closing_delimiter(&expected.iter().filter_map(|tt| match tt {
-                TokenType::Token(t) => Some(t.clone()),
-                _ => None,
-            }).collect::<Vec<_>>(), err) {
-                Err(e) => err = e,
-                Ok(recovered) => {
-                    return Ok(recovered);
-                }
-            }
-
-            let is_semi_suggestable = expected.iter().any(|t| match t {
-                TokenType::Token(token::Semi) => true, // we expect a `;` here
-                _ => false,
-            }) && ( // a `;` would be expected before the current keyword
-                self.token.is_keyword(kw::Break) ||
-                self.token.is_keyword(kw::Continue) ||
-                self.token.is_keyword(kw::For) ||
-                self.token.is_keyword(kw::If) ||
-                self.token.is_keyword(kw::Let) ||
-                self.token.is_keyword(kw::Loop) ||
-                self.token.is_keyword(kw::Match) ||
-                self.token.is_keyword(kw::Return) ||
-                self.token.is_keyword(kw::While)
-            );
-            let cm = self.sess.source_map();
-            match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
-                (Ok(ref a), Ok(ref b)) if a.line != b.line && is_semi_suggestable => {
-                    // The spans are in different lines, expected `;` and found `let` or `return`.
-                    // High likelihood that it is only a missing `;`.
-                    err.span_suggestion_short(
-                        label_sp,
-                        "a semicolon may be missing here",
-                        ";".to_string(),
-                        Applicability::MaybeIncorrect,
-                    );
-                    err.emit();
-                    return Ok(true);
-                }
-                (Ok(ref a), Ok(ref b)) if a.line == b.line => {
-                    // When the spans are in the same line, it means that the only content between
-                    // them is whitespace, point at the found token in that case:
-                    //
-                    // X |     () => { syntax error };
-                    //   |                    ^^^^^ expected one of 8 possible tokens here
-                    //
-                    // instead of having:
-                    //
-                    // X |     () => { syntax error };
-                    //   |                   -^^^^^ unexpected token
-                    //   |                   |
-                    //   |                   expected one of 8 possible tokens here
-                    err.span_label(self.span, label_exp);
-                }
-                _ if self.prev_span == DUMMY_SP => {
-                    // Account for macro context where the previous span might not be
-                    // available to avoid incorrect output (#54841).
-                    err.span_label(self.span, "unexpected token");
-                }
-                _ => {
-                    err.span_label(sp, label_exp);
-                    err.span_label(self.span, "unexpected token");
-                }
-            }
-            Err(err)
+            self.expected_one_of_not_found(edible, inedible)
         }
     }
 
@@ -1186,6 +1057,34 @@ impl<'a> Parser<'a> {
         self.span = span;
         self.token = next;
         self.expected_tokens.clear();
+    }
+
+    pub fn look_ahead<R, F>(&self, dist: usize, f: F) -> R where
+        F: FnOnce(&token::Token) -> R,
+    {
+        if dist == 0 {
+            return f(&self.token)
+        }
+
+        f(&match self.token_cursor.frame.tree_cursor.look_ahead(dist - 1) {
+            Some(tree) => match tree {
+                TokenTree::Token(_, tok) => tok,
+                TokenTree::Delimited(_, delim, _) => token::OpenDelim(delim),
+            },
+            None => token::CloseDelim(self.token_cursor.frame.delim),
+        })
+    }
+
+    crate fn look_ahead_span(&self, dist: usize) -> Span {
+        if dist == 0 {
+            return self.span
+        }
+
+        match self.token_cursor.frame.tree_cursor.look_ahead(dist - 1) {
+            Some(TokenTree::Token(span, _)) => span,
+            Some(TokenTree::Delimited(span, ..)) => span.entire(),
+            None => self.look_ahead_span(dist - 1),
+        }
     }
 
     /// Is the current token one of the keywords that signals a bare function type?

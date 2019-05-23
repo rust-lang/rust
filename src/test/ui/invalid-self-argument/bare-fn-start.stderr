@@ -1,10 +1,10 @@
-error: unexpected `self` argument in function
+error: unexpected `self` parameter in function
   --> $DIR/bare-fn-start.rs:1:6
    |
 LL | fn a(&self) { }
-   |      ^^^^^ not valid as function argument
+   |      ^^^^^ not valid as function parameter
    |
-   = note: `self` is only valid as the first argument of an associated function
+   = note: `self` is only valid as the first parameter of an associated function
 
 error: aborting due to previous error
 
