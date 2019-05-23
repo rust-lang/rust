@@ -2,6 +2,7 @@ use rustc_hash::FxHashSet;
 
 use ra_syntax::{ast, AstNode, TextRange, Direction, SyntaxKind, SyntaxKind::*, SyntaxElement, T};
 use ra_db::SourceDatabase;
+use ra_prof::profile;
 
 use crate::{FileId, db::RootDatabase};
 
@@ -27,6 +28,8 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
 }
 
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
+    let _p = profile("highlight");
+
     let source_file = db.parse(file_id);
 
     // Visited nodes to handle highlighting priorities
