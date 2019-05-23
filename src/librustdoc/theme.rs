@@ -273,6 +273,7 @@ pub fn test_theme_against<P: AsRef<Path>>(
     diag: &Handler,
 ) -> (bool, Vec<String>) {
     let data = try_something!(fs::read(f), diag, (false, vec![]));
+
     let paths = load_css_paths(&data);
     let mut ret = vec![];
     get_differences(against, &paths, &mut ret);
