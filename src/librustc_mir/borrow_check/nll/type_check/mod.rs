@@ -29,7 +29,7 @@ use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionV
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::mir::interpret::{InterpError::BoundsCheck, ConstValue};
 use rustc::mir::tcx::PlaceTy;
-use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
+use rustc::mir::visit::{PlaceContext, Visitor, NonMutatingUseContext};
 use rustc::mir::*;
 use rustc::traits::query::type_op;
 use rustc::traits::query::type_op::custom::CustomTypeOp;
@@ -447,92 +447,95 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         context: PlaceContext,
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
-        let place_ty = match place {
-            Place::Base(PlaceBase::Local(index)) =>
-                PlaceTy::from_ty(self.mir.local_decls[*index].ty),
-            Place::Base(PlaceBase::Static(box Static { kind, ty: sty })) => {
-                let sty = self.sanitize_type(place, sty);
-                let check_err =
-                    |verifier: &mut TypeVerifier<'a, 'b, 'gcx, 'tcx>,
-                     place: &Place<'tcx>,
-                     ty,
-                     sty| {
-                        if let Err(terr) = verifier.cx.eq_types(
-                            sty,
-                            ty,
-                            location.to_locations(),
-                            ConstraintCategory::Boring,
-                        ) {
-                            span_mirbug!(
-                            verifier,
-                            place,
-                            "bad promoted type ({:?}: {:?}): {:?}",
-                            ty,
-                            sty,
-                            terr
-                        );
-                        };
-                    };
-                match kind {
-                    StaticKind::Promoted(promoted) => {
-                        if !self.errors_reported {
-                            let promoted_mir = &self.mir.promoted[*promoted];
-                            self.sanitize_promoted(promoted_mir, location);
 
-                            let promoted_ty = promoted_mir.return_ty();
-                            check_err(self, place, promoted_ty, sty);
+        place.iterate(|place_base, place_projection| {
+            let mut place_ty = match place_base {
+                PlaceBase::Local(index) =>
+                    PlaceTy::from_ty(self.mir.local_decls[*index].ty),
+                PlaceBase::Static(box Static { kind, ty: sty }) => {
+                    let sty = self.sanitize_type(place, sty);
+                    let check_err =
+                        |verifier: &mut TypeVerifier<'a, 'b, 'gcx, 'tcx>,
+                         place: &Place<'tcx>,
+                         ty,
+                         sty| {
+                            if let Err(terr) = verifier.cx.eq_types(
+                                sty,
+                                ty,
+                                location.to_locations(),
+                                ConstraintCategory::Boring,
+                            ) {
+                                span_mirbug!(
+                                verifier,
+                                place,
+                                "bad promoted type ({:?}: {:?}): {:?}",
+                                ty,
+                                sty,
+                                terr
+                            );
+                            };
+                        };
+                    match kind {
+                        StaticKind::Promoted(promoted) => {
+                            if !self.errors_reported {
+                                let promoted_mir = &self.mir.promoted[*promoted];
+                                self.sanitize_promoted(promoted_mir, location);
+
+                                let promoted_ty = promoted_mir.return_ty();
+                                check_err(self, place, promoted_ty, sty);
+                            }
+                        }
+                        StaticKind::Static(def_id) => {
+                            let ty = self.tcx().type_of(*def_id);
+                            let ty = self.cx.normalize(ty, location);
+
+                            check_err(self, place, ty, sty);
                         }
                     }
-                    StaticKind::Static(def_id) => {
-                        let ty = self.tcx().type_of(*def_id);
-                        let ty = self.cx.normalize(ty, location);
-
-                        check_err(self, place, ty, sty);
-                    }
+                    PlaceTy::from_ty(sty)
                 }
-                PlaceTy::from_ty(sty)
+            };
+
+            // FIXME use place_projection.is_empty() when is available
+            if let Place::Base(_) = place {
+                if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
+                    let tcx = self.tcx();
+                    let trait_ref = ty::TraitRef {
+                        def_id: tcx.lang_items().copy_trait().unwrap(),
+                        substs: tcx.mk_substs_trait(place_ty.ty, &[]),
+                    };
+
+                    // In order to have a Copy operand, the type T of the
+                    // value must be Copy. Note that we prove that T: Copy,
+                    // rather than using the `is_copy_modulo_regions`
+                    // test. This is important because
+                    // `is_copy_modulo_regions` ignores the resulting region
+                    // obligations and assumes they pass. This can result in
+                    // bounds from Copy impls being unsoundly ignored (e.g.,
+                    // #29149). Note that we decide to use Copy before knowing
+                    // whether the bounds fully apply: in effect, the rule is
+                    // that if a value of some type could implement Copy, then
+                    // it must.
+                    self.cx.prove_trait_ref(
+                        trait_ref,
+                        location.to_locations(),
+                        ConstraintCategory::CopyBound,
+                    );
+                }
             }
-            Place::Projection(ref proj) => {
-                let base_context = if context.is_mutating_use() {
-                    PlaceContext::MutatingUse(MutatingUseContext::Projection)
-                } else {
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-                };
-                let base_ty = self.sanitize_place(&proj.base, location, base_context);
-                if base_ty.variant_index.is_none() {
-                    if base_ty.ty.references_error() {
+
+            for proj in place_projection {
+                if place_ty.variant_index.is_none() {
+                    if place_ty.ty.references_error() {
                         assert!(self.errors_reported);
                         return PlaceTy::from_ty(self.tcx().types.err);
                     }
                 }
-                self.sanitize_projection(base_ty, &proj.elem, place, location)
+                place_ty = self.sanitize_projection(place_ty, &proj.elem, place, location)
             }
-        };
-        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-            let tcx = self.tcx();
-            let trait_ref = ty::TraitRef {
-                def_id: tcx.lang_items().copy_trait().unwrap(),
-                substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-            };
 
-            // In order to have a Copy operand, the type T of the
-            // value must be Copy. Note that we prove that T: Copy,
-            // rather than using the `is_copy_modulo_regions`
-            // test. This is important because
-            // `is_copy_modulo_regions` ignores the resulting region
-            // obligations and assumes they pass. This can result in
-            // bounds from Copy impls being unsoundly ignored (e.g.,
-            // #29149). Note that we decide to use Copy before knowing
-            // whether the bounds fully apply: in effect, the rule is
-            // that if a value of some type could implement Copy, then
-            // it must.
-            self.cx.prove_trait_ref(
-                trait_ref,
-                location.to_locations(),
-                ConstraintCategory::CopyBound,
-            );
-        }
-        place_ty
+            place_ty
+        })
     }
 
     fn sanitize_promoted(&mut self, promoted_mir: &'b Mir<'tcx>, location: Location) {
