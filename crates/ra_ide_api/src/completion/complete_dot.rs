@@ -66,16 +66,18 @@ mod tests {
                 }
                 ",
         ),
-            @r###"[
-    CompletionItem {
-        label: "the_field",
-        source_range: [94; 94),
-        delete: [94; 94),
-        insert: "the_field",
-        kind: Field,
-        detail: "u32"
-    }
-]"###
+            @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "the_field",
+       ⋮        source_range: [94; 94),
+       ⋮        delete: [94; 94),
+       ⋮        insert: "the_field",
+       ⋮        kind: Field,
+       ⋮        detail: "u32",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
@@ -95,27 +97,29 @@ mod tests {
             }
             ",
         ),
-        @r###"[
-    CompletionItem {
-        label: "foo",
-        source_range: [187; 187),
-        delete: [187; 187),
-        insert: "foo()$0",
-        kind: Method,
-        detail: "fn foo(self)"
-    },
-    CompletionItem {
-        label: "the_field",
-        source_range: [187; 187),
-        delete: [187; 187),
-        insert: "the_field",
-        kind: Field,
-        detail: "(u32,)",
-        documentation: Documentation(
-            "This is the_field"
-        )
-    }
-]"###
+        @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "foo",
+       ⋮        source_range: [187; 187),
+       ⋮        delete: [187; 187),
+       ⋮        insert: "foo()$0",
+       ⋮        kind: Method,
+       ⋮        detail: "fn foo(self)",
+       ⋮    },
+       ⋮    CompletionItem {
+       ⋮        label: "the_field",
+       ⋮        source_range: [187; 187),
+       ⋮        delete: [187; 187),
+       ⋮        insert: "the_field",
+       ⋮        kind: Field,
+       ⋮        detail: "(u32,)",
+       ⋮        documentation: Documentation(
+       ⋮            "This is the_field",
+       ⋮        ),
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
@@ -132,24 +136,26 @@ mod tests {
             }
             ",
         ),
-        @r###"[
-    CompletionItem {
-        label: "foo",
-        source_range: [126; 126),
-        delete: [126; 126),
-        insert: "foo()$0",
-        kind: Method,
-        detail: "fn foo(&self)"
-    },
-    CompletionItem {
-        label: "the_field",
-        source_range: [126; 126),
-        delete: [126; 126),
-        insert: "the_field",
-        kind: Field,
-        detail: "(u32, i32)"
-    }
-]"###
+        @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "foo",
+       ⋮        source_range: [126; 126),
+       ⋮        delete: [126; 126),
+       ⋮        insert: "foo()$0",
+       ⋮        kind: Method,
+       ⋮        detail: "fn foo(&self)",
+       ⋮    },
+       ⋮    CompletionItem {
+       ⋮        label: "the_field",
+       ⋮        source_range: [126; 126),
+       ⋮        delete: [126; 126),
+       ⋮        insert: "the_field",
+       ⋮        kind: Field,
+       ⋮        detail: "(u32, i32)",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
@@ -182,16 +188,18 @@ mod tests {
             }
             ",
         ),
-        @r###"[
-    CompletionItem {
-        label: "the_method",
-        source_range: [144; 144),
-        delete: [144; 144),
-        insert: "the_method()$0",
-        kind: Method,
-        detail: "fn the_method(&self)"
-    }
-]"###
+        @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "the_method",
+       ⋮        source_range: [144; 144),
+       ⋮        delete: [144; 144),
+       ⋮        insert: "the_method()$0",
+       ⋮        kind: Method,
+       ⋮        detail: "fn the_method(&self)",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
@@ -208,16 +216,18 @@ mod tests {
             }
             ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "the_method",
-        source_range: [151; 151),
-        delete: [151; 151),
-        insert: "the_method()$0",
-        kind: Method,
-        detail: "fn the_method(&self)"
-    }
-]"###
+            @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "the_method",
+       ⋮        source_range: [151; 151),
+       ⋮        delete: [151; 151),
+       ⋮        insert: "the_method()$0",
+       ⋮        kind: Method,
+       ⋮        detail: "fn the_method(&self)",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
@@ -257,16 +267,18 @@ mod tests {
             }
             ",
         ),
-        @r###"[
-    CompletionItem {
-        label: "the_method",
-        source_range: [249; 249),
-        delete: [249; 249),
-        insert: "the_method()$0",
-        kind: Method,
-        detail: "fn the_method(&self)"
-    }
-]"###
+        @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "the_method",
+       ⋮        source_range: [249; 249),
+       ⋮        delete: [249; 249),
+       ⋮        insert: "the_method()$0",
+       ⋮        kind: Method,
+       ⋮        detail: "fn the_method(&self)",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
@@ -281,24 +293,26 @@ mod tests {
             }
             ",
         ),
-        @r###"[
-    CompletionItem {
-        label: "0",
-        source_range: [75; 75),
-        delete: [75; 75),
-        insert: "0",
-        kind: Field,
-        detail: "i32"
-    },
-    CompletionItem {
-        label: "1",
-        source_range: [75; 75),
-        delete: [75; 75),
-        insert: "1",
-        kind: Field,
-        detail: "f64"
-    }
-]"###
+        @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "0",
+       ⋮        source_range: [75; 75),
+       ⋮        delete: [75; 75),
+       ⋮        insert: "0",
+       ⋮        kind: Field,
+       ⋮        detail: "i32",
+       ⋮    },
+       ⋮    CompletionItem {
+       ⋮        label: "1",
+       ⋮        source_range: [75; 75),
+       ⋮        delete: [75; 75),
+       ⋮        insert: "1",
+       ⋮        kind: Field,
+       ⋮        detail: "f64",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
@@ -322,16 +336,18 @@ mod tests {
             }
             ",
         ),
-        @r###"[
-    CompletionItem {
-        label: "blah",
-        source_range: [299; 300),
-        delete: [299; 300),
-        insert: "blah()$0",
-        kind: Method,
-        detail: "pub fn blah(&self)"
-    }
-]"###
+        @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "blah",
+       ⋮        source_range: [299; 300),
+       ⋮        delete: [299; 300),
+       ⋮        insert: "blah()$0",
+       ⋮        kind: Method,
+       ⋮        detail: "pub fn blah(&self)",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
@@ -346,16 +362,18 @@ mod tests {
             };
             ",
         ),
-        @r###"[
-    CompletionItem {
-        label: "the_field",
-        source_range: [106; 106),
-        delete: [106; 106),
-        insert: "the_field",
-        kind: Field,
-        detail: "u32"
-    }
-]"###
+        @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "the_field",
+       ⋮        source_range: [106; 106),
+       ⋮        delete: [106; 106),
+       ⋮        insert: "the_field",
+       ⋮        kind: Field,
+       ⋮        detail: "u32",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 }

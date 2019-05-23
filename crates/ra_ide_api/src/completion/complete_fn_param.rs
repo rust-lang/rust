@@ -71,15 +71,17 @@ mod tests {
                 fn baz(file<|>) {}
                 ",
         ),
-            @r###"[
-    CompletionItem {
-        label: "file_id: FileId",
-        source_range: [110; 114),
-        delete: [110; 114),
-        insert: "file_id: FileId",
-        lookup: "file_id"
-    }
-]"###
+            @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "file_id: FileId",
+       ⋮        source_range: [110; 114),
+       ⋮        delete: [110; 114),
+       ⋮        insert: "file_id: FileId",
+       ⋮        lookup: "file_id",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
@@ -93,15 +95,17 @@ mod tests {
                 fn baz(file<|>, x: i32) {}
                 ",
         ),
-            @r###"[
-    CompletionItem {
-        label: "file_id: FileId",
-        source_range: [110; 114),
-        delete: [110; 114),
-        insert: "file_id: FileId",
-        lookup: "file_id"
-    }
-]"###
+            @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "file_id: FileId",
+       ⋮        source_range: [110; 114),
+       ⋮        delete: [110; 114),
+       ⋮        insert: "file_id: FileId",
+       ⋮        lookup: "file_id",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 
@@ -118,15 +122,17 @@ mod tests {
                 }
                 ",
         ),
-            @r###"[
-    CompletionItem {
-        label: "file_id: FileId",
-        source_range: [289; 293),
-        delete: [289; 293),
-        insert: "file_id: FileId",
-        lookup: "file_id"
-    }
-]"###
+            @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "file_id: FileId",
+       ⋮        source_range: [289; 293),
+       ⋮        delete: [289; 293),
+       ⋮        insert: "file_id: FileId",
+       ⋮        lookup: "file_id",
+       ⋮    },
+       ⋮]
+        "###
         );
     }
 }

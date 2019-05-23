@@ -1,6 +1,6 @@
 ---
-created: "2019-02-24T16:33:48.008220694Z"
-creator: insta@0.6.3
+created: "2019-05-23T22:44:10.920136527Z"
+creator: insta@0.8.1
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
@@ -11,6 +11,6 @@ expression: kind_completions
         delete: [67; 69),
         insert: "new",
         kind: Function,
-        detail: "fn new() -> Foo"
-    }
+        detail: "fn new() -> Foo",
+    },
 ]

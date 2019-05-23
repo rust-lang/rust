@@ -53,35 +53,37 @@ mod tests {
             }
             ",
         );
-        assert_debug_snapshot_matches!(completions, @r###"[
-    CompletionItem {
-        label: "E",
-        source_range: [246; 246),
-        delete: [246; 246),
-        insert: "E",
-        kind: Enum
-    },
-    CompletionItem {
-        label: "X",
-        source_range: [246; 246),
-        delete: [246; 246),
-        insert: "X",
-        kind: EnumVariant
-    },
-    CompletionItem {
-        label: "Z",
-        source_range: [246; 246),
-        delete: [246; 246),
-        insert: "Z",
-        kind: Const
-    },
-    CompletionItem {
-        label: "m",
-        source_range: [246; 246),
-        delete: [246; 246),
-        insert: "m",
-        kind: Module
-    }
-]"###);
+        assert_debug_snapshot_matches!(completions, @r###"
+       ⋮[
+       ⋮    CompletionItem {
+       ⋮        label: "E",
+       ⋮        source_range: [246; 246),
+       ⋮        delete: [246; 246),
+       ⋮        insert: "E",
+       ⋮        kind: Enum,
+       ⋮    },
+       ⋮    CompletionItem {
+       ⋮        label: "X",
+       ⋮        source_range: [246; 246),
+       ⋮        delete: [246; 246),
+       ⋮        insert: "X",
+       ⋮        kind: EnumVariant,
+       ⋮    },
+       ⋮    CompletionItem {
+       ⋮        label: "Z",
+       ⋮        source_range: [246; 246),
+       ⋮        delete: [246; 246),
+       ⋮        insert: "Z",
+       ⋮        kind: Const,
+       ⋮    },
+       ⋮    CompletionItem {
+       ⋮        label: "m",
+       ⋮        source_range: [246; 246),
+       ⋮        delete: [246; 246),
+       ⋮        insert: "m",
+       ⋮        kind: Module,
+       ⋮    },
+       ⋮]
+        "###);
     }
 }

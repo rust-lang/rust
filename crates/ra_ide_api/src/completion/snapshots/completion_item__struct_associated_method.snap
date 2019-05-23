@@ -1,6 +1,6 @@
 ---
-created: "2019-02-24T16:33:47.990111169Z"
-creator: insta@0.6.3
+created: "2019-05-23T22:23:35.102351365Z"
+creator: insta@0.8.1
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
@@ -13,7 +13,7 @@ expression: kind_completions
         kind: Function,
         detail: "fn m()",
         documentation: Documentation(
-            "An associated method"
-        )
-    }
+            "An associated method",
+        ),
+    },
 ]

@@ -1,6 +1,6 @@
 ---
-created: "2019-02-18T09:22:24.126809445Z"
-creator: insta@0.6.2
+created: "2019-05-23T22:23:35.122168608Z"
+creator: insta@0.8.1
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
@@ -10,14 +10,14 @@ expression: kind_completions
         source_range: [214; 214),
         delete: [214; 214),
         insert: "a",
-        kind: Binding
+        kind: Binding,
     },
     CompletionItem {
         label: "b",
         source_range: [214; 214),
         delete: [214; 214),
         insert: "b",
-        kind: Binding
+        kind: Binding,
     },
     CompletionItem {
         label: "quux",
@@ -25,6 +25,6 @@ expression: kind_completions
         delete: [214; 214),
         insert: "quux()$0",
         kind: Function,
-        detail: "fn quux()"
-    }
+        detail: "fn quux()",
+    },
 ]
