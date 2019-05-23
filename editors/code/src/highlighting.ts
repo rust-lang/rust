@@ -33,11 +33,16 @@ export class Highlighter {
             colorContrib('keyword.unsafe'),
             colorContrib('function'),
             colorContrib('parameter'),
+            colorContrib('constant'),
+            colorContrib('type'),
             colorContrib('builtin'),
             colorContrib('text'),
             colorContrib('attribute'),
             colorContrib('literal'),
-            colorContrib('macro')
+            colorContrib('macro'),
+            colorContrib('variable'),
+            colorContrib('field'),
+            colorContrib('module')
         ];
 
         return new Map<string, vscode.TextEditorDecorationType>(decorations);

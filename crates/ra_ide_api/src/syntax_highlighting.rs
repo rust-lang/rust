@@ -40,8 +40,41 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             COMMENT => "comment",
             STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => "string",
             ATTR => "attribute",
-            NAME_REF => "text",
+            NAME_REF => {
+                if let Some(name_ref) = node.as_node().and_then(|n| ast::NameRef::cast(n)) {
+                    use crate::name_ref_kind::{classify_name_ref, NameRefKind::*};
+                    use hir::{ModuleDef, ImplItem};
+
+                    // FIXME: try to reuse the SourceAnalyzers
+                    let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
+                    match classify_name_ref(db, &analyzer, name_ref) {
+                        Some(Method(_)) => "function",
+                        Some(Macro(_)) => "macro",
+                        Some(FieldAccess(_)) => "field",
+                        Some(AssocItem(ImplItem::Method(_))) => "function",
+                        Some(AssocItem(ImplItem::Const(_))) => "constant",
+                        Some(AssocItem(ImplItem::TypeAlias(_))) => "type",
+                        Some(Def(ModuleDef::Module(_))) => "module",
+                        Some(Def(ModuleDef::Function(_))) => "function",
+                        Some(Def(ModuleDef::Struct(_))) => "type",
+                        Some(Def(ModuleDef::Enum(_))) => "type",
+                        Some(Def(ModuleDef::EnumVariant(_))) => "constant",
+                        Some(Def(ModuleDef::Const(_))) => "constant",
+                        Some(Def(ModuleDef::Static(_))) => "constant",
+                        Some(Def(ModuleDef::Trait(_))) => "type",
+                        Some(Def(ModuleDef::TypeAlias(_))) => "type",
+                        Some(SelfType(_)) => "type",
+                        Some(Pat(_)) => "text",
+                        Some(SelfParam(_)) => "type",
+                        Some(GenericParam(_)) => "type",
+                        None => "text",
+                    }
+                } else {
+                    "text"
+                }
+            }
             NAME => "function",
+            TYPE_ALIAS_DEF | TYPE_ARG | TYPE_PARAM => "type",
             INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
             LIFETIME => "parameter",
             T![unsafe] => "keyword.unsafe",
@@ -87,9 +120,23 @@ mod tests {
     fn test_highlighting() {
         let (analysis, file_id) = single_file(
             r#"
+#[derive(Clone, Debug)]
+struct Foo {
+    pub x: i32,
+    pub y: i32,
+}
+
+fn foo<T>() -> T {
+    unimplemented!();
+}
+
 // comment
 fn main() {}
     println!("Hello, {}!", 92);
+
+    let mut vec = Vec::new();
+    vec.push(Foo { x: 0, y: 1 });
+    unsafe { vec.set_len(0); }
 "#,
         );
         let result = analysis.highlight(file_id);
