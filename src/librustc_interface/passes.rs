@@ -1050,7 +1050,8 @@ fn encode_and_write_metadata<'tcx>(
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }
         if tcx.sess.opts.debugging_opts.emit_artifact_notifications {
-            tcx.sess.parse_sess.span_diagnostic.emit_artifact_notification(&out_filename);
+            tcx.sess.parse_sess.span_diagnostic
+                .emit_artifact_notification(&out_filename, "metadata");
         }
     }
 

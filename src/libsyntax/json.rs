@@ -92,8 +92,8 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_artifact_notification(&mut self, path: &Path) {
-        let data = ArtifactNotification { artifact: path };
+    fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
+        let data = ArtifactNotification { artifact: path, emit: artifact_type };
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
@@ -185,6 +185,8 @@ struct DiagnosticCode {
 struct ArtifactNotification<'a> {
     /// The path of the artifact.
     artifact: &'a Path,
+    /// What kind of artifact we're emitting.
+    emit: &'a str,
 }
 
 impl Diagnostic {
