@@ -43,7 +43,7 @@ impl<'a> SubtreeWalk<'a> {
                 cached.push(None);
                 continue;
             }
-            
+
             match cursor.token_tree() {
                 Some(tt::TokenTree::Leaf(leaf)) => {
                     cached.push(Some(convert_leaf(&leaf)));
