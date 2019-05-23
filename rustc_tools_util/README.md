@@ -32,7 +32,7 @@ fn main() {
     );
     println!(
         "cargo:rustc-env=RUSTC_RELEASE_CHANNEL={}",
-        rustc_tools_util::get_channel_from_compiler_output().unwrap_or_default()
+        rustc_tools_util::get_channel().unwrap_or_default()
     );
 }
 
