@@ -1,7 +1,7 @@
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::lint;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::ty::adjustment;
 use rustc_data_structures::fx::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
@@ -137,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         // Returns whether an error has been emitted (and thus another does not need to be later).
         fn check_must_use_ty(
             cx: &LateContext<'_, '_>,
-            ty: ty::Ty<'_>,
+            ty: Ty<'_>,
             span: Span,
         ) -> bool {
             match ty.sty {
