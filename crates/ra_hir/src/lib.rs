@@ -43,7 +43,6 @@ mod resolve;
 pub mod diagnostics;
 
 mod code_model_api;
-mod code_model_impl;
 
 #[cfg(test)]
 mod marks;
