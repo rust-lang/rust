@@ -882,6 +882,50 @@ fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+#[inline(never)] // give this a place in the profiler
+fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mono_items: I)
+    where I: Iterator<Item=&'a MonoItem<'tcx>>
+{
+    let mut symbols: Vec<_> = mono_items.map(|mono_item| {
+        (mono_item, mono_item.symbol_name(tcx))
+    }).collect();
+
+    symbols.sort_by_key(|sym| sym.1);
+
+    for pair in symbols.windows(2) {
+        let sym1 = &pair[0].1;
+        let sym2 = &pair[1].1;
+
+        if sym1 == sym2 {
+            let mono_item1 = pair[0].0;
+            let mono_item2 = pair[1].0;
+
+            let span1 = mono_item1.local_span(tcx);
+            let span2 = mono_item2.local_span(tcx);
+
+            // Deterministically select one of the spans for error reporting
+            let span = match (span1, span2) {
+                (Some(span1), Some(span2)) => {
+                    Some(if span1.lo().0 > span2.lo().0 {
+                        span1
+                    } else {
+                        span2
+                    })
+                }
+                (span1, span2) => span1.or(span2),
+            };
+
+            let error_message = format!("symbol `{}` is already defined", sym1);
+
+            if let Some(span) = span {
+                tcx.sess.span_fatal(span, &error_message)
+            } else {
+                tcx.sess.fatal(&error_message)
+            }
+        }
+    }
+}
+
 fn collect_and_partition_mono_items<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cnum: CrateNum,
@@ -922,7 +966,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
 
     tcx.sess.abort_if_errors();
 
-    crate::monomorphize::assert_symbols_are_distinct(tcx, items.iter());
+    assert_symbols_are_distinct(tcx, items.iter());
 
     let strategy = if tcx.sess.opts.incremental.is_some() {
         PartitioningStrategy::PerModule
