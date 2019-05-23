@@ -29,21 +29,21 @@ impl TokenBuffer {
     pub fn new(tokens: &[TokenTree]) -> TokenBuffer {
         let mut buffers = vec![];
 
-        let idx = TokenBuffer::new_inner(tokens.to_vec(), &mut buffers, None);
+        let idx = TokenBuffer::new_inner(tokens, &mut buffers, None);
         assert_eq!(idx, 0);
 
         TokenBuffer { buffers }
     }
 
     fn new_inner(
-        tokens: Vec<TokenTree>,
+        tokens: &[TokenTree],
         buffers: &mut Vec<Box<[Entry]>>,
         next: Option<EntryPtr>,
     ) -> usize {
         let mut entries = vec![];
         let mut children = vec![];
 
-        for (idx, tt) in tokens.into_iter().enumerate() {
+        for (idx, tt) in tokens.iter().cloned().enumerate() {
             match tt {
                 TokenTree::Leaf(leaf) => {
                     entries.push(Entry::Leaf(leaf));
@@ -61,7 +61,7 @@ impl TokenBuffer {
 
         for (child_idx, subtree) in children {
             let idx = TokenBuffer::new_inner(
-                subtree.token_trees.clone(),
+                &subtree.token_trees,
                 buffers,
                 Some(EntryPtr(EntryId(res), child_idx + 1)),
             );
