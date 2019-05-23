@@ -10,7 +10,7 @@ use crate::debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext}
 use crate::traits::*;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
-use syntax::symbol::keywords;
+use syntax::symbol::kw;
 
 use std::iter;
 
@@ -496,7 +496,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 };
                 bx.declare_local(
                     &fx.debug_context,
-                    arg_decl.name.unwrap_or(keywords::Invalid.name()),
+                    arg_decl.name.unwrap_or(kw::Invalid),
                     arg_ty, scope,
                     variable_access,
                     VariableKind::ArgumentVariable(arg_index + 1),
@@ -613,7 +613,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
                 bx.declare_local(
                     &fx.debug_context,
-                    arg_decl.name.unwrap_or(keywords::Invalid.name()),
+                    arg_decl.name.unwrap_or(kw::Invalid),
                     arg.layout.ty,
                     scope,
                     variable_access,

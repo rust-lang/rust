@@ -3,7 +3,7 @@ use crate::attr;
 use crate::source_map::{dummy_spanned, respan, Spanned};
 use crate::ext::base::ExtCtxt;
 use crate::ptr::P;
-use crate::symbol::{Symbol, keywords};
+use crate::symbol::{Symbol, kw};
 use crate::ThinVec;
 
 use rustc_target::spec::abi::Abi;
@@ -628,7 +628,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_path(self.path_ident(span, id))
     }
     fn expr_self(&self, span: Span) -> P<ast::Expr> {
-        self.expr_ident(span, keywords::SelfLower.ident())
+        self.expr_ident(span, Ident::with_empty_ctxt(kw::SelfLower))
     }
 
     fn expr_binary(&self, sp: Span, op: ast::BinOpKind,
@@ -1175,7 +1175,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 vis: ast::Visibility, vp: P<ast::UseTree>) -> P<ast::Item> {
         P(ast::Item {
             id: ast::DUMMY_NODE_ID,
-            ident: keywords::Invalid.ident(),
+            ident: Ident::invalid(),
             attrs: vec![],
             node: ast::ItemKind::Use(vp),
             vis,

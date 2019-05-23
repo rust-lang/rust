@@ -10,7 +10,7 @@ use crate::mut_visit::{self, MutVisitor};
 use crate::parse::{self, parser, DirectoryOwnership};
 use crate::parse::token;
 use crate::ptr::P;
-use crate::symbol::{keywords, Ident, Symbol, sym};
+use crate::symbol::{kw, sym, Ident, Symbol};
 use crate::ThinVec;
 use crate::tokenstream::{self, TokenStream};
 
@@ -971,7 +971,7 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn std_path(&self, components: &[&str]) -> Vec<ast::Ident> {
         let def_site = DUMMY_SP.apply_mark(self.current_expansion.mark);
-        iter::once(Ident::new(keywords::DollarCrate.name(), def_site))
+        iter::once(Ident::new(kw::DollarCrate, def_site))
             .chain(components.iter().map(|s| self.ident_of(s)))
             .collect()
     }

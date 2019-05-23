@@ -191,7 +191,7 @@ use syntax::ext::build::AstBuilder;
 use syntax::source_map::{self, respan};
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax::parse::ParseSess;
 use syntax_pos::{DUMMY_SP, Span};
 
@@ -686,7 +686,7 @@ impl<'a> TraitDef<'a> {
         };
 
         cx.item(self.span,
-                keywords::Invalid.ident(),
+                Ident::invalid(),
                 a,
                 ast::ItemKind::Impl(unsafety,
                                     ast::ImplPolarity::Positive,
@@ -929,8 +929,8 @@ impl<'a> MethodDef<'a> {
 
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
-                ast::Arg::from_self(explicit_self,
-                                    keywords::SelfLower.ident().with_span_pos(trait_.span))
+                let ident = Ident::with_empty_ctxt(kw::SelfLower).with_span_pos(trait_.span);
+                ast::Arg::from_self(explicit_self, ident)
             });
             let nonself_args = arg_types.into_iter()
                 .map(|(name, ty)| cx.arg(trait_.span, name, ty));

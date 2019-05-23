@@ -37,7 +37,7 @@ use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
 use syntax::span_err;
 use syntax::std_inject::injected_crate_name;
-use syntax::symbol::{keywords, sym};
+use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -143,7 +143,7 @@ impl<'a> Resolver<'a> {
             }
             _ => None,
         }.map(|ctxt| Segment::from_ident(Ident::new(
-            keywords::PathRoot.name(), use_tree.prefix.span.shrink_to_lo().with_ctxt(ctxt)
+            kw::PathRoot, use_tree.prefix.span.shrink_to_lo().with_ctxt(ctxt)
         )));
 
         let prefix = crate_root.into_iter().chain(prefix_iter).collect::<Vec<_>>();
@@ -151,7 +151,7 @@ impl<'a> Resolver<'a> {
 
         let empty_for_self = |prefix: &[Segment]| {
             prefix.is_empty() ||
-            prefix.len() == 1 && prefix[0].ident.name == keywords::PathRoot.name()
+            prefix.len() == 1 && prefix[0].ident.name == kw::PathRoot
         };
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
@@ -162,7 +162,7 @@ impl<'a> Resolver<'a> {
 
                 if nested {
                     // Correctly handle `self`
-                    if source.ident.name == keywords::SelfLower.name() {
+                    if source.ident.name == kw::SelfLower {
                         type_ns_only = true;
 
                         if empty_for_self(&module_path) {
@@ -183,14 +183,14 @@ impl<'a> Resolver<'a> {
                     }
                 } else {
                     // Disallow `self`
-                    if source.ident.name == keywords::SelfLower.name() {
+                    if source.ident.name == kw::SelfLower {
                         resolve_error(self,
                                       use_tree.span,
                                       ResolutionError::SelfImportsOnlyAllowedWithin);
                     }
 
                     // Disallow `use $crate;`
-                    if source.ident.name == keywords::DollarCrate.name() && module_path.is_empty() {
+                    if source.ident.name == kw::DollarCrate && module_path.is_empty() {
                         let crate_root = self.resolve_crate_root(source.ident);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(.., name) => name,
@@ -199,11 +199,11 @@ impl<'a> Resolver<'a> {
                         // HACK(eddyb) unclear how good this is, but keeping `$crate`
                         // in `source` breaks `src/test/compile-fail/import-crate-var.rs`,
                         // while the current crate doesn't have a valid `crate_name`.
-                        if crate_name != keywords::Invalid.name() {
+                        if crate_name != kw::Invalid {
                             // `crate_name` should not be interpreted as relative.
                             module_path.push(Segment {
                                 ident: Ident {
-                                    name: keywords::PathRoot.name(),
+                                    name: kw::PathRoot,
                                     span: source.ident.span,
                                 },
                                 id: Some(self.session.next_node_id()),
@@ -221,7 +221,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
-                if ident.name == keywords::Crate.name() {
+                if ident.name == kw::Crate {
                     self.session.span_err(ident.span,
                         "crate root imports need to be explicitly named: \
                          `use crate as name;`");
@@ -276,7 +276,7 @@ impl<'a> Resolver<'a> {
                 // Ensure there is at most one `self` in the list
                 let self_spans = items.iter().filter_map(|&(ref use_tree, _)| {
                     if let ast::UseTreeKind::Simple(..) = use_tree.kind {
-                        if use_tree.ident().name == keywords::SelfLower.name() {
+                        if use_tree.ident().name == kw::SelfLower {
                             return Some(use_tree.span);
                         }
                     }
@@ -311,7 +311,7 @@ impl<'a> Resolver<'a> {
                     let new_span = prefix[prefix.len() - 1].ident.span;
                     let tree = ast::UseTree {
                         prefix: ast::Path::from_ident(
-                            Ident::new(keywords::SelfLower.name(), new_span)
+                            Ident::new(kw::SelfLower, new_span)
                         ),
                         kind: ast::UseTreeKind::Simple(
                             Some(Ident::from_str_and_span("__dummy", new_span).gensym()),
@@ -350,7 +350,7 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::ExternCrate(orig_name) => {
-                let module = if orig_name.is_none() && ident.name == keywords::SelfLower.name() {
+                let module = if orig_name.is_none() && ident.name == kw::SelfLower {
                     self.session
                         .struct_span_err(item.span, "`extern crate self;` requires renaming")
                         .span_suggestion(
@@ -361,7 +361,7 @@ impl<'a> Resolver<'a> {
                         )
                         .emit();
                     return;
-                } else if orig_name == Some(keywords::SelfLower.name()) {
+                } else if orig_name == Some(kw::SelfLower) {
                     self.graph_root
                 } else {
                     let crate_id = self.crate_loader.process_extern_crate(item, &self.definitions);
@@ -420,7 +420,7 @@ impl<'a> Resolver<'a> {
 
             ItemKind::GlobalAsm(..) => {}
 
-            ItemKind::Mod(..) if ident == keywords::Invalid.ident() => {} // Crate root
+            ItemKind::Mod(..) if ident.name == kw::Invalid => {} // Crate root
 
             ItemKind::Mod(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
@@ -831,7 +831,7 @@ impl<'a> Resolver<'a> {
                         "an `extern crate` loading macros must be at the crate root");
                 }
                 if let ItemKind::ExternCrate(Some(orig_name)) = item.node {
-                    if orig_name == keywords::SelfLower.name() {
+                    if orig_name == kw::SelfLower {
                         self.session.span_err(attr.span,
                             "`macro_use` is not supported on `extern crate self`");
                     }

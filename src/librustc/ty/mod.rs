@@ -47,7 +47,7 @@ use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
-use syntax::symbol::{keywords, sym, Symbol, LocalInternedString, InternedString};
+use syntax::symbol::{kw, sym, Symbol, LocalInternedString, InternedString};
 use syntax_pos::Span;
 
 use smallvec;
@@ -835,7 +835,7 @@ impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
-        self.name != keywords::UnderscoreLifetime.name().as_interned_str()
+        self.name != kw::UnderscoreLifetime.as_interned_str()
     }
 }
 

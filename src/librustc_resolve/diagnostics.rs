@@ -7,7 +7,7 @@ use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::session::{Session, config::nightly_options};
 use syntax::ast::{self, Expr, ExprKind, Ident};
 use syntax::ext::base::MacroKind;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::{Symbol, kw};
 use syntax_pos::{BytePos, Span};
 
 type Res = def::Res<ast::NodeId>;
@@ -48,7 +48,7 @@ impl<'a> Resolver<'a> {
             let item_span = path.last().unwrap().ident.span;
             let (mod_prefix, mod_str) = if path.len() == 1 {
                 (String::new(), "this scope".to_string())
-            } else if path.len() == 2 && path[0].ident.name == keywords::PathRoot.name() {
+            } else if path.len() == 2 && path[0].ident.name == kw::PathRoot {
                 (String::new(), "the crate root".to_string())
             } else {
                 let mod_path = &path[..path.len() - 1];
@@ -454,13 +454,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         match (path.get(0), path.get(1)) {
             // `{{root}}::ident::...` on both editions.
             // On 2015 `{{root}}` is usually added implicitly.
-            (Some(fst), Some(snd)) if fst.ident.name == keywords::PathRoot.name() &&
+            (Some(fst), Some(snd)) if fst.ident.name == kw::PathRoot &&
                                       !snd.ident.is_path_segment_keyword() => {}
             // `ident::...` on 2018.
             (Some(fst), _) if fst.ident.span.rust_2018() &&
                               !fst.ident.is_path_segment_keyword() => {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
-                path.insert(0, Segment::from_ident(keywords::Invalid.ident()));
+                path.insert(0, Segment::from_ident(Ident::invalid()));
             }
             _ => return None,
         }
@@ -485,7 +485,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `self` and check if that is valid.
-        path[0].ident.name = keywords::SelfLower.name();
+        path[0].ident.name = kw::SelfLower;
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
@@ -509,7 +509,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
-        path[0].ident.name = keywords::Crate.name();
+        path[0].ident.name = kw::Crate;
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
@@ -540,7 +540,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
-        path[0].ident.name = keywords::Super.name();
+        path[0].ident.name = kw::Super;
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {

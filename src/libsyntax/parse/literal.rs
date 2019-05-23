@@ -6,7 +6,7 @@ use crate::parse::PResult;
 use crate::parse::token::{self, Token};
 use crate::parse::unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
 use crate::print::pprust;
-use crate::symbol::{keywords, Symbol};
+use crate::symbol::{kw, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
 
 use errors::{Applicability, Handler};
@@ -43,8 +43,8 @@ impl LitKind {
 
         Some(match lit {
             token::Bool(i) => {
-                assert!(i == keywords::True.name() || i == keywords::False.name());
-                LitKind::Bool(i == keywords::True.name())
+                assert!(i == kw::True || i == kw::False);
+                LitKind::Bool(i == kw::True)
             }
             token::Byte(i) => {
                 match unescape_byte(&i.as_str()) {
@@ -156,8 +156,8 @@ impl LitKind {
             }
             LitKind::FloatUnsuffixed(symbol) => (token::Lit::Float(symbol), None),
             LitKind::Bool(value) => {
-                let kw = if value { keywords::True } else { keywords::False };
-                (token::Lit::Bool(kw.name()), None)
+                let kw = if value { kw::True } else { kw::False };
+                (token::Lit::Bool(kw), None)
             }
             LitKind::Err(val) => (token::Lit::Err(val), None),
         }
@@ -175,8 +175,7 @@ impl Lit {
         diag: Option<(Span, &Handler)>,
     ) -> Option<Lit> {
         let (token, suffix) = match *token {
-            token::Ident(ident, false) if ident.name == keywords::True.name() ||
-                                          ident.name == keywords::False.name() =>
+            token::Ident(ident, false) if ident.name == kw::True || ident.name == kw::False =>
                 (token::Bool(ident.name), None),
             token::Literal(token, suffix) =>
                 (token, suffix),

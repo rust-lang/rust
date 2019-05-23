@@ -8,7 +8,7 @@ use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::{Kind, Subst, UnpackedKind};
 use crate::mir::interpret::ConstValue;
 use rustc_target::spec::abi::Abi;
-use syntax::symbol::{keywords, InternedString};
+use syntax::symbol::{kw, InternedString};
 
 use std::cell::Cell;
 use std::fmt::{self, Write as _};
@@ -980,7 +980,7 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
             if self.tcx.sess.rust_2018() {
                 // We add the `crate::` keyword on Rust 2018, only when desired.
                 if SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get()) {
-                    write!(self, "{}", keywords::Crate.name())?;
+                    write!(self, "{}", kw::Crate)?;
                     self.empty_path = false;
                 }
             }
@@ -1140,16 +1140,16 @@ impl<F: fmt::Write> PrettyPrinter<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> 
 
         match *region {
             ty::ReEarlyBound(ref data) => {
-                data.name.as_symbol() != keywords::Invalid.name() &&
-                data.name.as_symbol() != keywords::UnderscoreLifetime.name()
+                data.name.as_symbol() != kw::Invalid &&
+                data.name.as_symbol() != kw::UnderscoreLifetime
             }
 
             ty::ReLateBound(_, br) |
             ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
             ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                 if let ty::BrNamed(_, name) = br {
-                    if name.as_symbol() != keywords::Invalid.name() &&
-                       name.as_symbol() != keywords::UnderscoreLifetime.name() {
+                    if name.as_symbol() != kw::Invalid &&
+                       name.as_symbol() != kw::UnderscoreLifetime {
                         return true;
                     }
                 }
@@ -1205,7 +1205,7 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, '_, F> {
         // `explain_region()` or `note_and_explain_region()`.
         match *region {
             ty::ReEarlyBound(ref data) => {
-                if data.name.as_symbol() != keywords::Invalid.name() {
+                if data.name.as_symbol() != kw::Invalid {
                     p!(write("{}", data.name));
                     return Ok(self);
                 }
@@ -1214,8 +1214,8 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, '_, F> {
             ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
             ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                 if let ty::BrNamed(_, name) = br {
-                    if name.as_symbol() != keywords::Invalid.name() &&
-                       name.as_symbol() != keywords::UnderscoreLifetime.name() {
+                    if name.as_symbol() != kw::Invalid &&
+                       name.as_symbol() != kw::UnderscoreLifetime {
                         p!(write("{}", name));
                         return Ok(self);
                     }

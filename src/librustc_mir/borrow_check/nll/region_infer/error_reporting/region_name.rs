@@ -12,7 +12,7 @@ use rustc::ty::subst::{SubstsRef, UnpackedKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
 use rustc::ty::print::RegionHighlightMode;
 use rustc_errors::DiagnosticBuilder;
-use syntax::symbol::keywords;
+use syntax::symbol::kw;
 use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
 
@@ -216,7 +216,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             ty::ReStatic => Some(RegionName {
-                name: keywords::StaticLifetime.name().as_interned_str(),
+                name: kw::StaticLifetime.as_interned_str(),
                 source: RegionNameSource::Static
             }),
 

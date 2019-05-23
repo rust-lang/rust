@@ -15,6 +15,7 @@ use syntax::source_map::{SourceMap, FilePathMapping};
 use syntax::parse::lexer::{self, TokenAndSpan};
 use syntax::parse::token;
 use syntax::parse;
+use syntax::symbol::{kw, sym};
 use syntax_pos::{Span, FileName};
 
 /// Highlights `src`, returning the HTML output.
@@ -325,16 +326,15 @@ impl<'a> Classifier<'a> {
 
             // Keywords are also included in the identifier set.
             token::Ident(ident, is_raw) => {
-                match &*ident.as_str() {
-                    "ref" | "mut" if !is_raw => Class::RefKeyWord,
+                match ident.name {
+                    kw::Ref | kw::Mut if !is_raw => Class::RefKeyWord,
 
-                    "self" | "Self" => Class::Self_,
-                    "false" | "true" if !is_raw => Class::Bool,
+                    kw::SelfLower | kw::SelfUpper => Class::Self_,
+                    kw::False | kw::True if !is_raw => Class::Bool,
 
-                    "Option" | "Result" => Class::PreludeTy,
-                    "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
+                    sym::Option | sym::Result => Class::PreludeTy,
+                    sym::Some | sym::None | sym::Ok | sym::Err => Class::PreludeVal,
 
-                    "$crate" => Class::KeyWord,
                     _ if tas.tok.is_reserved_ident() => Class::KeyWord,
 
                     _ => {

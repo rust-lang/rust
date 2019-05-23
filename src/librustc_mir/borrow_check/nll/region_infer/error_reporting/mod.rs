@@ -15,7 +15,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use std::collections::VecDeque;
 use syntax::errors::Applicability;
-use syntax::symbol::keywords;
+use syntax::symbol::kw;
 use syntax_pos::Span;
 
 mod region_name;
@@ -631,7 +631,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     "add_static_impl_trait_suggestion: has_static_predicate={:?}",
                     has_static_predicate
                 );
-                let static_str = keywords::StaticLifetime.name();
+                let static_str = kw::StaticLifetime;
                 // If there is a static predicate, then the only sensible suggestion is to replace
                 // fr with `'static`.
                 if has_static_predicate {

@@ -5,7 +5,7 @@ use crate::session::CrateDisambiguator;
 use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
 use syntax::visit;
-use syntax::symbol::keywords;
+use syntax::symbol::kw;
 use syntax::symbol::Symbol;
 use syntax::parse::token::{self, Token};
 use syntax_pos::Span;
@@ -138,7 +138,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         // information we encapsulate into, the better
         let def_data = match i.node {
             ItemKind::Impl(..) => DefPathData::Impl,
-            ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
+            ItemKind::Mod(..) if i.ident.name == kw::Invalid => {
                 return visit::walk_item(self, i);
             }
             ItemKind::Mod(..) | ItemKind::Trait(..) | ItemKind::TraitAlias(..) |

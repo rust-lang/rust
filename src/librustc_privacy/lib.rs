@@ -27,7 +27,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::Ident;
 use syntax::attr;
-use syntax::symbol::{keywords, sym};
+use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
 use std::{cmp, fmt, mem};
@@ -844,7 +844,7 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
                    span: Span, // span of the field pattern, e.g., `x: 0`
                    def: &'tcx ty::AdtDef, // definition of the struct or enum
                    field: &'tcx ty::FieldDef) { // definition of the field
-        let ident = Ident::new(keywords::Invalid.name(), use_ctxt);
+        let ident = Ident::new(kw::Invalid, use_ctxt);
         let current_hir = self.current_item;
         let def_id = self.tcx.adjust_ident(ident, def.did, current_hir).1;
         if !def.is_enum() && !field.vis.is_accessible_from(def_id, self.tcx) {

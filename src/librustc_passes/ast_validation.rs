@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::source_map::Spanned;
-use syntax::symbol::{keywords, sym};
+use syntax::symbol::{kw, sym};
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
@@ -177,9 +177,9 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_lifetime(&self, ident: Ident) {
-        let valid_names = [keywords::UnderscoreLifetime.name(),
-                           keywords::StaticLifetime.name(),
-                           keywords::Invalid.name()];
+        let valid_names = [kw::UnderscoreLifetime,
+                           kw::StaticLifetime,
+                           kw::Invalid];
         if !valid_names.contains(&ident.name) && ident.without_first_quote().is_reserved() {
             self.err_handler().span_err(ident.span, "lifetimes cannot use keyword names");
         }

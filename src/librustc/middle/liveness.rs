@@ -112,7 +112,7 @@ use std::io;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId};
 use syntax::ptr::P;
-use syntax::symbol::{keywords, sym};
+use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
 use crate::hir;
@@ -1552,7 +1552,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let sp = ident.span;
                 let var = self.variable(hir_id, sp);
                 // Ignore unused self.
-                if ident.name != keywords::SelfLower.name() {
+                if ident.name != kw::SelfLower {
                     if !self.warn_about_unused(vec![sp], hir_id, entry_ln, var) {
                         if self.live_on_entry(entry_ln, var).is_none() {
                             self.report_dead_assign(hir_id, sp, var, true);

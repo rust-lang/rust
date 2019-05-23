@@ -13,7 +13,7 @@ use syntax::mut_visit::MutVisitor;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
-use syntax::symbol::{keywords, sym};
+use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -378,7 +378,7 @@ fn mk_decls(
     let custom_derive = Ident::from_str("custom_derive");
     let attr = Ident::from_str("attr");
     let bang = Ident::from_str("bang");
-    let crate_kw = Ident::with_empty_ctxt(keywords::Crate.name());
+    let crate_kw = Ident::with_empty_ctxt(kw::Crate);
 
     let decls = {
         let local_path = |sp: Span, name| {

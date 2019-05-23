@@ -22,7 +22,7 @@ use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{
     feature_err, is_builtin_attr_name, AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES,
 };
-use syntax::symbol::{Symbol, keywords, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax::visit::Visitor;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
@@ -137,10 +137,10 @@ impl<'a> base::Resolver for Resolver<'a> {
         }
         impl<'a> Visitor<'a> for ResolveDollarCrates<'a, '_> {
             fn visit_ident(&mut self, ident: Ident) {
-                if ident.name == keywords::DollarCrate.name() {
+                if ident.name == kw::DollarCrate {
                     let name = match self.resolver.resolve_crate_root(ident).kind {
-                        ModuleKind::Def(.., name) if name != keywords::Invalid.name() => name,
-                        _ => keywords::Crate.name(),
+                        ModuleKind::Def(.., name) if name != kw::Invalid => name,
+                        _ => kw::Crate,
                     };
                     ident.span.ctxt().set_dollar_crate_name(name);
                 }
@@ -415,7 +415,7 @@ impl<'a> Resolver<'a> {
         if kind == MacroKind::Bang && path.len() == 1 &&
            path[0].ident.span.ctxt().outer().expn_info()
                .map_or(false, |info| info.local_inner_macros) {
-            let root = Ident::new(keywords::DollarCrate.name(), path[0].ident.span);
+            let root = Ident::new(kw::DollarCrate, path[0].ident.span);
             path.insert(0, Segment::from_ident(root));
         }
 
@@ -613,7 +613,7 @@ impl<'a> Resolver<'a> {
                     _ => Err(Determinacy::Determined),
                 }
                 WhereToResolve::CrateRoot => {
-                    let root_ident = Ident::new(keywords::PathRoot.name(), orig_ident.span);
+                    let root_ident = Ident::new(kw::PathRoot, orig_ident.span);
                     let root_module = self.resolve_crate_root(root_ident);
                     let binding = self.resolve_ident_in_module_ext(
                         ModuleOrUniformRoot::Module(root_module),

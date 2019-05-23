@@ -22,7 +22,7 @@ use crate::parse::parser::Parser;
 use crate::parse::{self, ParseSess, PResult};
 use crate::parse::token::{self, Token};
 use crate::ptr::P;
-use crate::symbol::{keywords, Symbol, sym};
+use crate::symbol::{sym, Symbol};
 use crate::ThinVec;
 use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 use crate::GLOBALS;
@@ -90,7 +90,7 @@ impl NestedMetaItem {
         self.meta_item().and_then(|meta_item| meta_item.ident())
     }
     pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or(keywords::Invalid.ident()).name
+        self.ident().unwrap_or(Ident::invalid()).name
     }
 
     /// Gets the string value if self is a MetaItem and the MetaItem is a
@@ -168,7 +168,7 @@ impl Attribute {
         }
     }
     pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or(keywords::Invalid.ident()).name
+        self.ident().unwrap_or(Ident::invalid()).name
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
@@ -206,7 +206,7 @@ impl MetaItem {
         }
     }
     pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or(keywords::Invalid.ident()).name
+        self.ident().unwrap_or(Ident::invalid()).name
     }
 
     // #[attribute(name = "value")]

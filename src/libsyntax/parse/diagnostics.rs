@@ -6,7 +6,7 @@ use crate::parse::PResult;
 use crate::parse::Parser;
 use crate::print::pprust;
 use crate::ptr::P;
-use crate::symbol::keywords;
+use crate::symbol::kw;
 use crate::ThinVec;
 use errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
@@ -405,7 +405,7 @@ impl<'a> Parser<'a> {
 
     /// Recover from `pub` keyword in places where it seems _reasonable_ but isn't valid.
     crate fn eat_bad_pub(&mut self) {
-        if self.token.is_keyword(keywords::Pub) {
+        if self.token.is_keyword(kw::Pub) {
             match self.parse_visibility(false) {
                 Ok(vis) => {
                     self.diagnostic()

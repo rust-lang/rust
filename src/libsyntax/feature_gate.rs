@@ -22,7 +22,7 @@ use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
 use crate::parse::{token, ParseSess};
-use crate::symbol::{Symbol, keywords, sym};
+use crate::symbol::{Symbol, kw, sym};
 use crate::tokenstream::TokenTree;
 
 use errors::{DiagnosticBuilder, Handler};
@@ -1955,7 +1955,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_item(&mut self, i: &'a ast::Item) {
         match i.node {
             ast::ItemKind::Const(_,_) => {
-                if i.ident.name == keywords::Underscore.name() {
+                if i.ident.name == kw::Underscore {
                     gate_feature_post!(&self, underscore_const_names, i.span,
                                         "naming constants with `_` is unstable");
                 }

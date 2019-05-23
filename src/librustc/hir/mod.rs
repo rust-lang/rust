@@ -24,7 +24,7 @@ use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
 use crate::ty::AdtKind;
@@ -160,7 +160,7 @@ pub struct Lifetime {
     pub span: Span,
 
     /// Either "`'a`", referring to a named lifetime definition,
-    /// or "``" (i.e., `keywords::Invalid`), for elision placeholders.
+    /// or "``" (i.e., `kw::Invalid`), for elision placeholders.
     ///
     /// HIR lowering inserts these placeholders in type paths that
     /// refer to type definitions needing lifetime parameters,
@@ -199,7 +199,8 @@ impl ParamName {
     pub fn ident(&self) -> Ident {
         match *self {
             ParamName::Plain(ident) => ident,
-            ParamName::Error | ParamName::Fresh(_) => keywords::UnderscoreLifetime.ident(),
+            ParamName::Fresh(_) |
+            ParamName::Error => Ident::with_empty_ctxt(kw::UnderscoreLifetime),
         }
     }
 
@@ -233,10 +234,9 @@ pub enum LifetimeName {
 impl LifetimeName {
     pub fn ident(&self) -> Ident {
         match *self {
-            LifetimeName::Implicit => keywords::Invalid.ident(),
-            LifetimeName::Error => keywords::Invalid.ident(),
-            LifetimeName::Underscore => keywords::UnderscoreLifetime.ident(),
-            LifetimeName::Static => keywords::StaticLifetime.ident(),
+            LifetimeName::Implicit | LifetimeName::Error => Ident::invalid(),
+            LifetimeName::Underscore => Ident::with_empty_ctxt(kw::UnderscoreLifetime),
+            LifetimeName::Static => Ident::with_empty_ctxt(kw::StaticLifetime),
             LifetimeName::Param(param_name) => param_name.ident(),
         }
     }
@@ -305,7 +305,7 @@ pub struct Path {
 
 impl Path {
     pub fn is_global(&self) -> bool {
-        !self.segments.is_empty() && self.segments[0].ident.name == keywords::PathRoot.name()
+        !self.segments.is_empty() && self.segments[0].ident.name == kw::PathRoot
     }
 }
 

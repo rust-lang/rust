@@ -31,7 +31,7 @@ use std::u32;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::Spanned;
-use syntax::symbol::{keywords, sym};
+use syntax::symbol::{kw, sym};
 use syntax_pos::{self, FileName, SourceFile, Span};
 use log::{debug, trace};
 
@@ -1016,7 +1016,7 @@ impl EncodeContext<'_, 'tcx> {
             self.lazy_seq(body.arguments.iter().map(|arg| {
                 match arg.pat.node {
                     PatKind::Binding(_, _, ident, _) => ident.name,
-                    _ => keywords::Invalid.name(),
+                    _ => kw::Invalid,
                 }
             }))
         })

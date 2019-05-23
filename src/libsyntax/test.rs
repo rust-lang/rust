@@ -29,7 +29,7 @@ use crate::parse::{token, ParseSess};
 use crate::print::pprust;
 use crate::ast::{self, Ident};
 use crate::ptr::P;
-use crate::symbol::{self, Symbol, keywords, sym};
+use crate::symbol::{self, Symbol, kw, sym};
 use crate::ThinVec;
 
 struct Test {
@@ -100,7 +100,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         let ident = i.ident;
-        if ident.name != keywords::Invalid.name() {
+        if ident.name != kw::Invalid {
             self.cx.path.push(ident);
         }
         debug!("current path: {}", path_name_i(&self.cx.path));
@@ -139,7 +139,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             }
             item.node = ast::ItemKind::Mod(module);
         }
-        if ident.name != keywords::Invalid.name() {
+        if ident.name != kw::Invalid {
             self.cx.path.pop();
         }
         smallvec![P(item)]
@@ -215,7 +215,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
                    tests: Vec<Ident>,
                    tested_submods: Vec<(Ident, Ident)>)
                    -> (P<ast::Item>, Ident) {
-    let super_ = Ident::with_empty_ctxt(keywords::Super.name());
+    let super_ = Ident::with_empty_ctxt(kw::Super);
 
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public),

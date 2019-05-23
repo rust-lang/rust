@@ -14,7 +14,7 @@ use crate::parse::token::{self, Token};
 use crate::parse::parser::Parser;
 use crate::ptr::P;
 use crate::symbol::Symbol;
-use crate::symbol::{keywords, sym};
+use crate::symbol::{kw, sym};
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::visit::{self, Visitor};
 use crate::util::map_in_place::MapInPlace;
@@ -198,7 +198,7 @@ fn macro_bang_format(path: &ast::Path) -> ExpnFormat {
         if i != 0 {
             path_str.push_str("::");
         }
-        if segment.ident.name != keywords::PathRoot.name() {
+        if segment.ident.name != kw::PathRoot {
             path_str.push_str(&segment.ident.as_str())
         }
     }
@@ -271,7 +271,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             attrs: krate.attrs,
             span: krate.span,
             node: ast::ItemKind::Mod(krate.module),
-            ident: keywords::Invalid.ident(),
+            ident: Ident::invalid(),
             id: ast::DUMMY_NODE_ID,
             vis: respan(krate.span.shrink_to_lo(), ast::VisibilityKind::Public),
             tokens: None,
@@ -708,7 +708,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
         let path = &mac.node.path;
 
-        let ident = ident.unwrap_or_else(|| keywords::Invalid.ident());
+        let ident = ident.unwrap_or_else(|| Ident::invalid());
         let validate_and_set_expn_info = |this: &mut Self, // arg instead of capture
                                           def_site_span: Option<Span>,
                                           allow_internal_unstable,
@@ -736,7 +736,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
             }
 
-            if ident.name != keywords::Invalid.name() {
+            if ident.name != kw::Invalid {
                 let msg = format!("macro {}! expects no ident argument, given '{}'", path, ident);
                 this.cx.span_err(path.span, &msg);
                 this.cx.trace_macros_diag();
@@ -792,7 +792,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
 
             IdentTT { ref expander, span: tt_span, ref allow_internal_unstable } => {
-                if ident.name == keywords::Invalid.name() {
+                if ident.name == kw::Invalid {
                     self.cx.span_err(path.span,
                                     &format!("macro {}! expects an ident argument", path));
                     self.cx.trace_macros_diag();
@@ -828,7 +828,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
 
             SyntaxExtension::ProcMacro { ref expander, ref allow_internal_unstable, edition } => {
-                if ident.name != keywords::Invalid.name() {
+                if ident.name != kw::Invalid {
                     let msg =
                         format!("macro {}! expects no ident argument, given '{}'", path, ident);
                     self.cx.span_err(path.span, &msg);
@@ -929,7 +929,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
-                    path: Path::from_ident(keywords::Invalid.ident()),
+                    path: Path::from_ident(Ident::invalid()),
                     span: DUMMY_SP,
                     node: ast::MetaItemKind::Word,
                 };
@@ -1338,7 +1338,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 })
             }
             ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
-                if item.ident == keywords::Invalid.ident() {
+                if item.ident == Ident::invalid() {
                     return noop_flat_map_item(item, self);
                 }
 

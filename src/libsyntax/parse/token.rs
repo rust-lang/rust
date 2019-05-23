@@ -8,7 +8,7 @@ use crate::ast::{self};
 use crate::parse::ParseSess;
 use crate::print::pprust;
 use crate::ptr::P;
-use crate::symbol::keywords;
+use crate::symbol::kw;
 use crate::syntax::parse::parse_stream_from_source_str;
 use crate::tokenstream::{self, DelimSpan, TokenStream, TokenTree};
 
@@ -110,28 +110,28 @@ pub(crate) fn ident_can_begin_expr(ident: ast::Ident, is_raw: bool) -> bool {
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
     [
-        keywords::Async.name(),
+        kw::Async,
 
         // FIXME: remove when `await!(..)` syntax is removed
         // https://github.com/rust-lang/rust/issues/60610
-        keywords::Await.name(),
+        kw::Await,
 
-        keywords::Do.name(),
-        keywords::Box.name(),
-        keywords::Break.name(),
-        keywords::Continue.name(),
-        keywords::False.name(),
-        keywords::For.name(),
-        keywords::If.name(),
-        keywords::Loop.name(),
-        keywords::Match.name(),
-        keywords::Move.name(),
-        keywords::Return.name(),
-        keywords::True.name(),
-        keywords::Unsafe.name(),
-        keywords::While.name(),
-        keywords::Yield.name(),
-        keywords::Static.name(),
+        kw::Do,
+        kw::Box,
+        kw::Break,
+        kw::Continue,
+        kw::False,
+        kw::For,
+        kw::If,
+        kw::Loop,
+        kw::Match,
+        kw::Move,
+        kw::Return,
+        kw::True,
+        kw::Unsafe,
+        kw::While,
+        kw::Yield,
+        kw::Static,
     ].contains(&ident.name)
 }
 
@@ -141,14 +141,14 @@ fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
     [
-        keywords::Underscore.name(),
-        keywords::For.name(),
-        keywords::Impl.name(),
-        keywords::Fn.name(),
-        keywords::Unsafe.name(),
-        keywords::Extern.name(),
-        keywords::Typeof.name(),
-        keywords::Dyn.name(),
+        kw::Underscore,
+        kw::For,
+        kw::Impl,
+        kw::Fn,
+        kw::Unsafe,
+        kw::Extern,
+        kw::Typeof,
+        kw::Dyn,
     ].contains(&ident.name)
 }
 
@@ -306,7 +306,7 @@ impl Token {
 
     /// Returns `true` if the token can appear at the start of a generic bound.
     crate fn can_begin_bound(&self) -> bool {
-        self.is_path_start() || self.is_lifetime() || self.is_keyword(keywords::For) ||
+        self.is_path_start() || self.is_lifetime() || self.is_keyword(kw::For) ||
         self == &Question || self == &OpenDelim(Paren)
     }
 
@@ -324,8 +324,8 @@ impl Token {
         match *self {
             Literal(..)  => true,
             BinOp(Minus) => true,
-            Ident(ident, false) if ident.name == keywords::True.name() => true,
-            Ident(ident, false) if ident.name == keywords::False.name() => true,
+            Ident(ident, false) if ident.name == kw::True => true,
+            Ident(ident, false) if ident.name == kw::False => true,
             Interpolated(ref nt) => match **nt {
                 NtLiteral(..) => true,
                 _             => false,
@@ -386,8 +386,8 @@ impl Token {
 
     /// Returns `true` if the token is either the `mut` or `const` keyword.
     crate fn is_mutability(&self) -> bool {
-        self.is_keyword(keywords::Mut) ||
-        self.is_keyword(keywords::Const)
+        self.is_keyword(kw::Mut) ||
+        self.is_keyword(kw::Const)
     }
 
     crate fn is_qpath_start(&self) -> bool {
@@ -400,8 +400,8 @@ impl Token {
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.
-    pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
-        self.ident().map(|(ident, is_raw)| ident.name == kw.name() && !is_raw).unwrap_or(false)
+    pub fn is_keyword(&self, kw: Symbol) -> bool {
+        self.ident().map(|(ident, is_raw)| ident.name == kw && !is_raw).unwrap_or(false)
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
@@ -566,8 +566,8 @@ impl Token {
 
             (&Lifetime(a), &Lifetime(b)) => a.name == b.name,
             (&Ident(a, b), &Ident(c, d)) => b == d && (a.name == c.name ||
-                                                       a.name == keywords::DollarCrate.name() ||
-                                                       c.name == keywords::DollarCrate.name()),
+                                                       a.name == kw::DollarCrate ||
+                                                       c.name == kw::DollarCrate),
 
             (&Literal(ref a, b), &Literal(ref c, d)) => {
                 b == d && a.probably_equal_for_proc_macro(c)

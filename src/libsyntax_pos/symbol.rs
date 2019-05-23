@@ -642,6 +642,11 @@ impl Ident {
         Ident::new(name, DUMMY_SP)
     }
 
+    #[inline]
+    pub fn invalid() -> Ident {
+        Ident::with_empty_ctxt(kw::Invalid)
+    }
+
     /// Maps an interned string to an identifier with an empty syntax context.
     pub fn from_interned_str(string: InternedString) -> Ident {
         Ident::with_empty_ctxt(string.as_symbol())
@@ -693,7 +698,7 @@ impl Ident {
     /// Transforms an underscore identifier into one with the same name, but
     /// gensymed. Leaves non-underscore identifiers unchanged.
     pub fn gensym_if_underscore(self) -> Ident {
-        if self.name == keywords::Underscore.name() { self.gensym() } else { self }
+        if self.name == kw::Underscore { self.gensym() } else { self }
     }
 
     // WARNING: this function is deprecated and will be removed in the future.
@@ -865,8 +870,8 @@ impl Interner {
         this.strings.reserve(init.len());
 
         // We can't allocate empty strings in the arena, so handle this here.
-        assert!(keywords::Invalid.name().as_u32() == 0 && init[0].is_empty());
-        this.names.insert("", keywords::Invalid.name());
+        assert!(kw::Invalid.as_u32() == 0 && init[0].is_empty());
+        this.names.insert("", kw::Invalid);
         this.strings.push("");
 
         for string in &init[1..] {
@@ -927,26 +932,9 @@ impl Interner {
     }
 }
 
-pub mod keywords {
-    use super::{Symbol, Ident};
-
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    pub struct Keyword {
-        ident: Ident,
-    }
-
-    impl Keyword {
-        #[inline]
-        pub fn ident(self) -> Ident {
-            self.ident
-        }
-
-        #[inline]
-        pub fn name(self) -> Symbol {
-            self.ident.name
-        }
-    }
-
+// This module has a very short name because it's used a lot.
+pub mod kw {
+    use super::Symbol;
     keywords!();
 }
 
@@ -958,11 +946,16 @@ pub mod sym {
 
 impl Symbol {
     fn is_used_keyword_2018(self) -> bool {
-        self == keywords::Dyn.name()
+        self == kw::Dyn
     }
 
     fn is_unused_keyword_2018(self) -> bool {
-        self >= keywords::Async.name() && self <= keywords::Try.name()
+        self >= kw::Async && self <= kw::Try
+    }
+
+    /// Used for sanity checking rustdoc keyword sections.
+    pub fn is_doc_keyword(self) -> bool {
+        self <= kw::Union
     }
 }
 
@@ -970,20 +963,20 @@ impl Ident {
     // Returns `true` for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
-        self.name <= keywords::Underscore.name()
+        self.name <= kw::Underscore
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= keywords::As.name() && self.name <= keywords::While.name() ||
+        self.name >= kw::As && self.name <= kw::While ||
         self.name.is_used_keyword_2018() && self.span.rust_2018()
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= keywords::Abstract.name() && self.name <= keywords::Yield.name() ||
+        self.name >= kw::Abstract && self.name <= kw::Yield ||
         self.name.is_unused_keyword_2018() && self.span.rust_2018()
     }
 
@@ -994,17 +987,17 @@ impl Ident {
 
     /// A keyword or reserved identifier that can be used as a path segment.
     pub fn is_path_segment_keyword(self) -> bool {
-        self.name == keywords::Super.name() ||
-        self.name == keywords::SelfLower.name() ||
-        self.name == keywords::SelfUpper.name() ||
-        self.name == keywords::Crate.name() ||
-        self.name == keywords::PathRoot.name() ||
-        self.name == keywords::DollarCrate.name()
+        self.name == kw::Super ||
+        self.name == kw::SelfLower ||
+        self.name == kw::SelfUpper ||
+        self.name == kw::Crate ||
+        self.name == kw::PathRoot ||
+        self.name == kw::DollarCrate
     }
 
     /// This identifier can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
-        self.name != keywords::Invalid.name() && self.name != keywords::Underscore.name() &&
+        self.name != kw::Invalid && self.name != kw::Underscore &&
         !self.is_path_segment_keyword()
     }
 
@@ -1268,7 +1261,7 @@ mod tests {
     fn without_first_quote_test() {
         GLOBALS.set(&Globals::new(edition::DEFAULT_EDITION), || {
             let i = Ident::from_str("'break");
-            assert_eq!(i.without_first_quote().name, keywords::Break.name());
+            assert_eq!(i.without_first_quote().name, kw::Break);
         });
     }
 }

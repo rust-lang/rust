@@ -11,7 +11,6 @@ use crate::ast::*;
 use crate::source_map::{Spanned, respan};
 use crate::parse::token::{self, Token};
 use crate::ptr::P;
-use crate::symbol::keywords;
 use crate::ThinVec;
 use crate::tokenstream::*;
 use crate::util::map_in_place::MapInPlace;
@@ -977,7 +976,7 @@ pub fn noop_visit_mod<T: MutVisitor>(Mod { inner, items, inline: _ }: &mut Mod, 
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
     visit_clobber(krate, |Crate { module, attrs, span }| {
         let item = P(Item {
-            ident: keywords::Invalid.ident(),
+            ident: Ident::invalid(),
             attrs,
             id: DUMMY_NODE_ID,
             vis: respan(span.shrink_to_lo(), VisibilityKind::Public),

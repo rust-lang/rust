@@ -6,7 +6,7 @@ use crate::parse::{token, ParseSess};
 use crate::print::pprust;
 use crate::tokenstream::{self, DelimSpan};
 use crate::ast;
-use crate::symbol::keywords;
+use crate::symbol::kw;
 
 use syntax_pos::{edition::Edition, BytePos, Span};
 
@@ -228,7 +228,7 @@ pub fn parse(
                 result.push(TokenTree::MetaVarDecl(
                     span,
                     ident,
-                    keywords::Invalid.ident(),
+                    ast::Ident::invalid(),
                 ));
             }
 
@@ -319,8 +319,8 @@ where
             Some(tokenstream::TokenTree::Token(ident_span, ref token)) if token.is_ident() => {
                 let (ident, is_raw) = token.ident().unwrap();
                 let span = ident_span.with_lo(span.lo());
-                if ident.name == keywords::Crate.name() && !is_raw {
-                    let ident = ast::Ident::new(keywords::DollarCrate.name(), ident.span);
+                if ident.name == kw::Crate && !is_raw {
+                    let ident = ast::Ident::new(kw::DollarCrate, ident.span);
                     TokenTree::Token(span, token::Ident(ident, is_raw))
                 } else {
                     TokenTree::MetaVar(span, ident)
@@ -334,7 +334,7 @@ where
                     pprust::token_to_string(&tok)
                 );
                 sess.span_diagnostic.span_err(span, &msg);
-                TokenTree::MetaVar(span, keywords::Invalid.ident())
+                TokenTree::MetaVar(span, ast::Ident::invalid())
             }
 
             // There are no more tokens. Just return the `$` we already have.

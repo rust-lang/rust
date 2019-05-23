@@ -14,7 +14,7 @@ use syntax::parse::lexer::comments;
 use syntax::parse::{self, token, ParseSess};
 use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 use syntax_pos::hygiene::{SyntaxContext, Transparency};
-use syntax_pos::symbol::{keywords, Symbol};
+use syntax_pos::symbol::{kw, Symbol};
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 
 trait FromInternal<T> {
@@ -142,7 +142,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             Question => op!('?'),
             SingleQuote => op!('\''),
 
-            Ident(ident, false) if ident.name == keywords::DollarCrate.name() =>
+            Ident(ident, false) if ident.name == kw::DollarCrate =>
                 tt!(Ident::dollar_crate()),
             Ident(ident, is_raw) => tt!(Ident::new(ident.name, is_raw)),
             Lifetime(ident) => {
@@ -347,7 +347,7 @@ impl Ident {
     }
     fn dollar_crate(span: Span) -> Ident {
         // `$crate` is accepted as an ident only if it comes from the compiler.
-        Ident { sym: keywords::DollarCrate.name(), is_raw: false, span }
+        Ident { sym: kw::DollarCrate, is_raw: false, span }
     }
 }
 

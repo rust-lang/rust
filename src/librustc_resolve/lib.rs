@@ -43,7 +43,7 @@ use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::base::MacroKind;
-use syntax::symbol::{Symbol, keywords, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
@@ -820,7 +820,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
             }
             TyKind::ImplicitSelf => {
-                let self_ty = keywords::SelfUpper.ident();
+                let self_ty = Ident::with_empty_ctxt(kw::SelfUpper);
                 let res = self.resolve_ident_in_lexical_scope(self_ty, TypeNS, Some(ty.id), ty.span)
                               .map_or(Res::Err, |d| d.res());
                 self.record_partial_res(ty.id, PartialRes::new(res));
@@ -1817,17 +1817,16 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         is_value: bool
     ) -> hir::Path {
         let root = if crate_root.is_some() {
-            keywords::PathRoot
+            kw::PathRoot
         } else {
-            keywords::Crate
+            kw::Crate
         };
-        let segments = iter::once(root.ident())
+        let segments = iter::once(Ident::with_empty_ctxt(root))
             .chain(
                 crate_root.into_iter()
                     .chain(components.iter().cloned())
                     .map(Ident::with_empty_ctxt)
             ).map(|i| self.new_ast_path_segment(i)).collect::<Vec<_>>();
-
 
         let path = ast::Path {
             span,
@@ -1866,7 +1865,7 @@ impl<'a> Resolver<'a> {
         let path = if path_str.starts_with("::") {
             ast::Path {
                 span,
-                segments: iter::once(keywords::PathRoot.ident())
+                segments: iter::once(Ident::with_empty_ctxt(kw::PathRoot))
                     .chain({
                         path_str.split("::").skip(1).map(Ident::from_str)
                     })
@@ -1961,7 +1960,7 @@ impl<'a> Resolver<'a> {
         let root_module_kind = ModuleKind::Def(
             DefKind::Mod,
             root_def_id,
-            keywords::Invalid.name(),
+            kw::Invalid,
         );
         let graph_root = arenas.alloc_module(ModuleData {
             no_implicit_prelude: attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
@@ -2187,10 +2186,10 @@ impl<'a> Resolver<'a> {
                                       path_span: Span)
                                       -> Option<LexicalScopeBinding<'a>> {
         assert!(ns == TypeNS  || ns == ValueNS);
-        if ident.name == keywords::Invalid.name() {
+        if ident.name == kw::Invalid {
             return Some(LexicalScopeBinding::Res(Res::Err));
         }
-        ident.span = if ident.name == keywords::SelfUpper.name() {
+        ident.span = if ident.name == kw::SelfUpper {
             // FIXME(jseyfried) improve `Self` hygiene
             ident.span.with_ctxt(SyntaxContext::empty())
         } else if ns == TypeNS {
@@ -2405,7 +2404,7 @@ impl<'a> Resolver<'a> {
 
     fn resolve_crate_root(&mut self, ident: Ident) -> Module<'a> {
         let mut ctxt = ident.span.ctxt();
-        let mark = if ident.name == keywords::DollarCrate.name() {
+        let mark = if ident.name == kw::DollarCrate {
             // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
             // we don't want to pretend that the `macro_rules!` definition is in the `macro`
             // as described in `SyntaxContext::apply_mark`, so we ignore prepended modern marks.
@@ -2851,7 +2850,7 @@ impl<'a> Resolver<'a> {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // Plain insert (no renaming, since types are not currently hygienic)
-        self_type_rib.bindings.insert(keywords::SelfUpper.ident(), self_res);
+        self_type_rib.bindings.insert(Ident::with_empty_ctxt(kw::SelfUpper), self_res);
         self.ribs[TypeNS].push(self_type_rib);
         f(self);
         self.ribs[TypeNS].pop();
@@ -2862,7 +2861,7 @@ impl<'a> Resolver<'a> {
     {
         let self_res = Res::SelfCtor(impl_id);
         let mut self_type_rib = Rib::new(NormalRibKind);
-        self_type_rib.bindings.insert(keywords::SelfUpper.ident(), self_res);
+        self_type_rib.bindings.insert(Ident::with_empty_ctxt(kw::SelfUpper), self_res);
         self.ribs[ValueNS].push(self_type_rib);
         f(self);
         self.ribs[ValueNS].pop();
@@ -3199,7 +3198,7 @@ impl<'a> Resolver<'a> {
             }
             None => {
                 // A completely fresh binding, add to the lists if it's valid.
-                if ident.name != keywords::Invalid.name() {
+                if ident.name != kw::Invalid {
                     bindings.insert(ident, outer_pat_id);
                     self.ribs[ValueNS].last_mut().unwrap().bindings.insert(ident, res);
                 }
@@ -3494,13 +3493,13 @@ impl<'a> Resolver<'a> {
     }
 
     fn self_type_is_available(&mut self, span: Span) -> bool {
-        let binding = self.resolve_ident_in_lexical_scope(keywords::SelfUpper.ident(),
+        let binding = self.resolve_ident_in_lexical_scope(Ident::with_empty_ctxt(kw::SelfUpper),
                                                           TypeNS, None, span);
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
 
     fn self_value_is_available(&mut self, self_span: Span, path_span: Span) -> bool {
-        let ident = Ident::new(keywords::SelfLower.name(), self_span);
+        let ident = Ident::new(kw::SelfLower, self_span);
         let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, path_span);
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
@@ -3657,8 +3656,8 @@ impl<'a> Resolver<'a> {
         };
 
         if path.len() > 1 && !global_by_default && result.base_res() != Res::Err &&
-           path[0].ident.name != keywords::PathRoot.name() &&
-           path[0].ident.name != keywords::DollarCrate.name() {
+           path[0].ident.name != kw::PathRoot &&
+           path[0].ident.name != kw::DollarCrate {
             let unqualified_result = {
                 match self.resolve_path_without_parent_scope(
                     &[*path.last().unwrap()],
@@ -3739,11 +3738,11 @@ impl<'a> Resolver<'a> {
             let name = ident.name;
 
             allow_super &= ns == TypeNS &&
-                (name == keywords::SelfLower.name() ||
-                 name == keywords::Super.name());
+                (name == kw::SelfLower ||
+                 name == kw::Super);
 
             if ns == TypeNS {
-                if allow_super && name == keywords::Super.name() {
+                if allow_super && name == kw::Super {
                     let mut ctxt = ident.span.ctxt().modern();
                     let self_module = match i {
                         0 => Some(self.resolve_self(&mut ctxt, self.current_module)),
@@ -3768,25 +3767,25 @@ impl<'a> Resolver<'a> {
                     };
                 }
                 if i == 0 {
-                    if name == keywords::SelfLower.name() {
+                    if name == kw::SelfLower {
                         let mut ctxt = ident.span.ctxt().modern();
                         module = Some(ModuleOrUniformRoot::Module(
                             self.resolve_self(&mut ctxt, self.current_module)));
                         continue;
                     }
-                    if name == keywords::PathRoot.name() && ident.span.rust_2018() {
+                    if name == kw::PathRoot && ident.span.rust_2018() {
                         module = Some(ModuleOrUniformRoot::ExternPrelude);
                         continue;
                     }
-                    if name == keywords::PathRoot.name() &&
+                    if name == kw::PathRoot &&
                        ident.span.rust_2015() && self.session.rust_2018() {
                         // `::a::b` from 2015 macro on 2018 global edition
                         module = Some(ModuleOrUniformRoot::CrateRootAndExternPrelude);
                         continue;
                     }
-                    if name == keywords::PathRoot.name() ||
-                       name == keywords::Crate.name() ||
-                       name == keywords::DollarCrate.name() {
+                    if name == kw::PathRoot ||
+                       name == kw::Crate ||
+                       name == kw::DollarCrate {
                         // `::a::b`, `crate::a::b` or `$crate::a::b`
                         module = Some(ModuleOrUniformRoot::Module(
                             self.resolve_crate_root(ident)));
@@ -3797,12 +3796,12 @@ impl<'a> Resolver<'a> {
 
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && i != 0 {
-                let name_str = if name == keywords::PathRoot.name() {
+                let name_str = if name == kw::PathRoot {
                     "crate root".to_string()
                 } else {
                     format!("`{}`", name)
                 };
-                let label = if i == 1 && path[0].ident.name == keywords::PathRoot.name() {
+                let label = if i == 1 && path[0].ident.name == kw::PathRoot {
                     format!("global paths cannot start with {}", name_str)
                 } else {
                     format!("{} in paths can only be used in start position", name_str)
@@ -3971,13 +3970,13 @@ impl<'a> Resolver<'a> {
 
         // We're only interested in `use` paths which should start with
         // `{{root}}` currently.
-        if first_name != keywords::PathRoot.name() {
+        if first_name != kw::PathRoot {
             return
         }
 
         match path.get(1) {
             // If this import looks like `crate::...` it's already good
-            Some(Segment { ident, .. }) if ident.name == keywords::Crate.name() => return,
+            Some(Segment { ident, .. }) if ident.name == kw::Crate => return,
             // Otherwise go below to see if it's an extern crate
             Some(_) => {}
             // If the path has length one (and it's `PathRoot` most likely)
@@ -4670,7 +4669,7 @@ impl<'a> Resolver<'a> {
     {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
-        let not_local_module = crate_name != keywords::Crate.ident();
+        let not_local_module = crate_name.name != kw::Crate;
         let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), not_local_module)];
 
         while let Some((in_module,
@@ -4764,7 +4763,8 @@ impl<'a> Resolver<'a> {
         where FilterFn: Fn(Res) -> bool
     {
         let mut suggestions = self.lookup_import_candidates_from_module(
-            lookup_ident, namespace, self.graph_root, keywords::Crate.ident(), &filter_fn);
+            lookup_ident, namespace, self.graph_root, Ident::with_empty_ctxt(kw::Crate), &filter_fn
+        );
 
         if lookup_ident.span.rust_2018() {
             let extern_prelude_names = self.extern_prelude.clone();
@@ -4883,7 +4883,7 @@ impl<'a> Resolver<'a> {
                 } else {
                     let ctxt = ident.span.ctxt();
                     Some(Segment::from_ident(Ident::new(
-                        keywords::PathRoot.name(), path.span.shrink_to_lo().with_ctxt(ctxt)
+                        kw::PathRoot, path.span.shrink_to_lo().with_ctxt(ctxt)
                     )))
                 };
 
@@ -5352,17 +5352,17 @@ impl<'a> Resolver<'a> {
 }
 
 fn is_self_type(path: &[Segment], namespace: Namespace) -> bool {
-    namespace == TypeNS && path.len() == 1 && path[0].ident.name == keywords::SelfUpper.name()
+    namespace == TypeNS && path.len() == 1 && path[0].ident.name == kw::SelfUpper
 }
 
 fn is_self_value(path: &[Segment], namespace: Namespace) -> bool {
-    namespace == ValueNS && path.len() == 1 && path[0].ident.name == keywords::SelfLower.name()
+    namespace == ValueNS && path.len() == 1 && path[0].ident.name == kw::SelfLower
 }
 
 fn names_to_string(idents: &[Ident]) -> String {
     let mut result = String::new();
     for (i, ident) in idents.iter()
-                            .filter(|ident| ident.name != keywords::PathRoot.name())
+                            .filter(|ident| ident.name != kw::PathRoot)
                             .enumerate() {
         if i > 0 {
             result.push_str("::");

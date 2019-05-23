@@ -13,7 +13,7 @@ use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::Parser;
 use crate::parse::token::{self, NtTT};
 use crate::parse::token::Token::*;
-use crate::symbol::{Symbol, keywords, sym};
+use crate::symbol::{Symbol, kw, sym};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use errors::FatalError;
@@ -1046,8 +1046,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 match *tok {
                     TokenTree::Token(_, ref tok) => match *tok {
                         FatArrow | Comma | Eq | BinOp(token::Or) => IsInFollow::Yes,
-                        Ident(i, false) if i.name == keywords::If.name() ||
-                                           i.name == keywords::In.name() => IsInFollow::Yes,
+                        Ident(i, false) if i.name == kw::If ||
+                                           i.name == kw::In => IsInFollow::Yes,
                         _ => IsInFollow::No(tokens),
                     },
                     _ => IsInFollow::No(tokens),
@@ -1064,8 +1064,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                         OpenDelim(token::DelimToken::Bracket) |
                         Comma | FatArrow | Colon | Eq | Gt | BinOp(token::Shr) | Semi |
                         BinOp(token::Or) => IsInFollow::Yes,
-                        Ident(i, false) if i.name == keywords::As.name() ||
-                                           i.name == keywords::Where.name() => IsInFollow::Yes,
+                        Ident(i, false) if i.name == kw::As ||
+                                           i.name == kw::Where => IsInFollow::Yes,
                         _ => IsInFollow::No(tokens),
                     },
                     TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::block =>
@@ -1092,7 +1092,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 match *tok {
                     TokenTree::Token(_, ref tok) => match *tok {
                         Comma => IsInFollow::Yes,
-                        Ident(i, is_raw) if is_raw || i.name != keywords::Priv.name() =>
+                        Ident(i, is_raw) if is_raw || i.name != kw::Priv =>
                             IsInFollow::Yes,
                         ref tok => if tok.can_begin_type() {
                             IsInFollow::Yes
@@ -1107,7 +1107,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(tokens),
                 }
             },
-            "" => IsInFollow::Yes, // keywords::Invalid
+            "" => IsInFollow::Yes, // kw::Invalid
             _ => IsInFollow::Invalid(format!("invalid fragment specifier `{}`", frag),
                                      VALID_FRAGMENT_NAMES_MSG),
         }

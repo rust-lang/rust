@@ -23,7 +23,7 @@ use std::mem::replace;
 use syntax::ast;
 use syntax::attr;
 use syntax::ptr::P;
-use syntax::symbol::{keywords, sym};
+use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -711,7 +711,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         GenericParamKind::Lifetime { .. } => {
                             let (name, reg) = Region::early(&self.tcx.hir(), &mut index, &param);
                             if let hir::ParamName::Plain(param_name) = name {
-                                if param_name.name == keywords::UnderscoreLifetime.name() {
+                                if param_name.name == kw::UnderscoreLifetime {
                                     // Pick the elided lifetime "definition" if one exists
                                     // and use it to make an elision scope.
                                     elision = Some(reg);
@@ -1602,7 +1602,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     } {
                         debug!("id = {:?} span = {:?} name = {:?}", id, span, name);
 
-                        if name == keywords::UnderscoreLifetime.ident() {
+                        if name.name == kw::UnderscoreLifetime {
                             continue;
                         }
 
@@ -2525,8 +2525,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         for (i, (lifetime_i, lifetime_i_name)) in lifetimes.iter().enumerate() {
             if let hir::ParamName::Plain(_) = lifetime_i_name {
                 let name = lifetime_i_name.ident().name;
-                if name == keywords::UnderscoreLifetime.name()
-                    || name == keywords::StaticLifetime.name()
+                if name == kw::UnderscoreLifetime
+                    || name == kw::StaticLifetime
                 {
                     let mut err = struct_span_err!(
                         self.tcx.sess,

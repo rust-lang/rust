@@ -29,7 +29,7 @@ use rustc::{bug, span_bug};
 use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
-use syntax::symbol::{keywords, sym};
+use syntax::symbol::{kw, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{struct_span_err, unwrap_or};
 use syntax_pos::{MultiSpan, Span};
@@ -217,15 +217,15 @@ impl<'a> Resolver<'a> {
                     parent_scope.expect("no parent scope for a single-segment import");
 
                 if ns == TypeNS {
-                    if ident.name == keywords::Crate.name() ||
-                        ident.name == keywords::DollarCrate.name() {
+                    if ident.name == kw::Crate ||
+                        ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
                         let binding = (module, ty::Visibility::Public,
                                         module.span, Mark::root())
                                         .to_name_binding(self.arenas);
                         return Ok(binding);
-                    } else if ident.name == keywords::Super.name() ||
-                                ident.name == keywords::SelfLower.name() {
+                    } else if ident.name == kw::Super ||
+                                ident.name == kw::SelfLower {
                         // FIXME: Implement these with renaming requirements so that e.g.
                         // `use super;` doesn't work, but `use super as name;` does.
                         // Fall through here to get an error from `early_resolve_...`.
@@ -707,7 +707,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 has_errors = true;
 
                 if let SingleImport { source, ref source_bindings, .. } = import.subclass {
-                    if source.name == keywords::SelfLower.name() {
+                    if source.name == kw::SelfLower {
                         // Silence `unresolved import` error if E0429 is already emitted
                         if let Err(Determined) = source_bindings.value_ns.get() {
                             continue;
@@ -992,7 +992,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
                     // 2 segments, so the `resolve_path` above won't trigger it.
                     let mut full_path = directive.module_path.clone();
-                    full_path.push(Segment::from_ident(keywords::Invalid.ident()));
+                    full_path.push(Segment::from_ident(Ident::invalid()));
                     self.lint_if_path_starts_with_module(
                         directive.crate_lint(),
                         &full_path,
@@ -1484,8 +1484,8 @@ fn import_path_to_string(names: &[Ident],
                          subclass: &ImportDirectiveSubclass<'_>,
                          span: Span) -> String {
     let pos = names.iter()
-        .position(|p| span == p.span && p.name != keywords::PathRoot.name());
-    let global = !names.is_empty() && names[0].name == keywords::PathRoot.name();
+        .position(|p| span == p.span && p.name != kw::PathRoot);
+    let global = !names.is_empty() && names[0].name == kw::PathRoot;
     if let Some(pos) = pos {
         let names = if global { &names[1..pos + 1] } else { &names[..pos + 1] };
         names_to_string(names)

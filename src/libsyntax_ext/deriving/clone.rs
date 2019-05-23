@@ -7,7 +7,7 @@ use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
 
 pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
@@ -129,7 +129,8 @@ fn cs_clone_shallow(name: &str,
     let mut stmts = Vec::new();
     if is_union {
         // let _: AssertParamIsCopy<Self>;
-        let self_ty = cx.ty_path(cx.path_ident(trait_span, keywords::SelfUpper.ident()));
+        let self_ty =
+            cx.ty_path(cx.path_ident(trait_span, ast::Ident::with_empty_ctxt(kw::SelfUpper)));
         assert_ty_bounds(cx, &mut stmts, self_ty, trait_span, "AssertParamIsCopy");
     } else {
         match *substr.fields {
