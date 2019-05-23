@@ -181,7 +181,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
+use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind, Instance};
 use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::session::config::EntryFnType;
 use rustc::mir::{self, Location, Place, PlaceBase, Promoted, Static, StaticKind};
@@ -189,7 +189,7 @@ use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
 use rustc::mir::interpret::{Scalar, GlobalId, GlobalAlloc, ErrorHandled};
 
-use crate::monomorphize::{self, Instance};
+use crate::monomorphize;
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use rustc::util::common::time;
 
@@ -580,7 +580,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 );
                 match source_ty.sty {
                     ty::Closure(def_id, substs) => {
-                        let instance = monomorphize::resolve_closure(
+                        let instance = Instance::resolve_closure(
                             self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
                         if should_monomorphize_locally(self.tcx, &instance) {
                             self.output.push(create_fn_mono_item(instance));
@@ -684,7 +684,7 @@ fn visit_drop_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             is_direct_call: bool,
                             output: &mut Vec<MonoItem<'tcx>>)
 {
-    let instance = monomorphize::resolve_drop_in_place(tcx, ty);
+    let instance = Instance::resolve_drop_in_place(tcx, ty);
     visit_instance_use(tcx, instance, is_direct_call, output);
 }
 
