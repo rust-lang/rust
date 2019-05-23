@@ -5330,7 +5330,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Rewrite `SelfCtor` to `Ctor`
-    pub fn rewrite_self_ctor(&self, def: Def, span: Span) -> (Def, DefId, Ty<'tcx>) {
+    pub fn rewrite_self_ctor(&self, def: Def, span: Span) -> Def {
         let tcx = self.tcx;
         if let Def::SelfCtor(impl_def_id) = def {
             let ty = self.impl_self_ty(span, impl_def_id).ty;
@@ -5340,8 +5340,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
                     let ctor_def_id = variant.ctor_def_id.unwrap();
-                    let def = Def::Ctor(ctor_def_id, CtorOf::Struct, variant.ctor_kind);
-                    (def, ctor_def_id, tcx.type_of(ctor_def_id))
+                    Def::Ctor(ctor_def_id, CtorOf::Struct, variant.ctor_kind)
                 }
                 _ => {
                     let mut err = tcx.sess.struct_span_err(span,
@@ -5364,16 +5363,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     err.emit();
 
-                    (def, impl_def_id, tcx.types.err)
+                    def
                 }
             }
         } else {
-            let def_id = def.def_id();
-
-            // The things we are substituting into the type should not contain
-            // escaping late-bound regions, and nor should the base type scheme.
-            let ty = tcx.type_of(def_id);
-            (def, def_id, ty)
+            def
         }
     }
 
@@ -5396,18 +5390,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let tcx = self.tcx;
 
-        match def {
-            Def::Local(nid) | Def::Upvar(nid, ..) => {
-                let hid = self.tcx.hir().node_to_hir_id(nid);
-                let ty = self.local_ty(span, hid).decl_ty;
-                let ty = self.normalize_associated_types_in(span, &ty);
-                self.write_ty(hir_id, ty);
-                return (ty, def);
-            }
-            _ => {}
-        }
-
-        let (def, def_id, ty) = self.rewrite_self_ctor(def, span);
+        let def = self.rewrite_self_ctor(def, span);
         let path_segs = AstConv::def_ids_for_path_segments(self, segments, self_ty, def);
 
         let mut user_self_ty = None;
@@ -5469,6 +5452,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             user_self_ty = None;
         }
 
+        match def {
+            Def::Local(nid) | Def::Upvar(nid, ..) => {
+                let hid = self.tcx.hir().node_to_hir_id(nid);
+                let ty = self.local_ty(span, hid).decl_ty;
+                let ty = self.normalize_associated_types_in(span, &ty);
+                self.write_ty(hir_id, ty);
+                return (ty, def);
+            }
+            _ => {}
+        }
+
         // Now we have to compare the types that the user *actually*
         // provided against the types that were *expected*. If the user
         // did not provide any types, then we want to substitute inference
@@ -5500,6 +5494,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let has_self = path_segs.last().map(|PathSeg(def_id, _)| {
             tcx.generics_of(*def_id).has_self
         }).unwrap_or(false);
+
+        let (def_id, ty) = if let Def::SelfCtor(impl_def_id) = def {
+            // NOTE(eddyb) an error has already been emitted by `rewrite_self_ctor`,
+            // avoid using the wrong type here. This isn't in `rewrite_self_ctor`
+            // itself because that runs too early (see #60989).
+            (impl_def_id, tcx.types.err)
+        } else {
+            let def_id = def.def_id();
+
+            // The things we are substituting into the type should not contain
+            // escaping late-bound regions, and nor should the base type scheme.
+            let ty = tcx.type_of(def_id);
+            (def_id, ty)
+        };
 
         let substs = AstConv::create_substs_for_generic_args(
             tcx,
