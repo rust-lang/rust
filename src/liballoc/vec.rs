@@ -1094,7 +1094,7 @@ impl<T> Vec<T> {
         let count = (*other).len();
         self.reserve(count);
         let len = self.len();
-        ptr::copy_nonoverlapping(other as *const T, self.get_unchecked_mut(len), count);
+        ptr::copy_nonoverlapping(other as *const T, self.as_mut_ptr().add(len), count);
         self.len += count;
     }
 
