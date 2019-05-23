@@ -663,16 +663,10 @@ impl<'a> Iterator for CharIndices<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<(usize, char)> {
-        let pre_len = self.iter.iter.len();
-        match self.iter.next() {
-            None => None,
-            Some(ch) => {
-                let index = self.front_offset;
-                let len = self.iter.iter.len();
-                self.front_offset += pre_len - len;
-                Some((index, ch))
-            }
-        }
+        let ch = self.iter.next()?;
+        let index = self.front_offset;
+        self.front_offset += ch.len_utf8();
+        Some((index, ch))
     }
 
     #[inline]
