@@ -383,7 +383,7 @@ impl<'tcx> Stack {
         // We use that to determine where to put the new item.
         let granting_idx = self.find_granting(access, derived_from)
             .ok_or_else(|| InterpError::MachineError(format!(
-                "no item to reborrow for {:?} from tag {} found in borrow stack", new.perm, derived_from,
+                "trying to reborrow for {:?}, but parent tag {} does not have an appropriate item in the borrow stack", new.perm, derived_from,
             )))?;
 
         // Compute where to put the new item.
