@@ -1,8 +1,8 @@
 error: unexpected `self` argument in function
-  --> $DIR/bare-fn.rs:1:16
+  --> $DIR/self-in-function-arg.rs:1:15
    |
-LL | fn b(foo: u32, &mut self) { }
-   |                ^^^^^^^^^ not valid as function argument
+LL | fn foo(x:i32, self: i32) -> i32 { self }
+   |               ^^^^ not valid as function argument
    |
    = note: `self` is only valid as the first argument of an associated function
 

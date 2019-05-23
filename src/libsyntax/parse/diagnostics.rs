@@ -594,6 +594,51 @@ impl<'a> Parser<'a> {
         }
     }
 
+    crate fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
+        let pat = self.parse_pat(Some("argument name"))?;
+        self.expect(&token::Colon)?;
+        let ty = self.parse_ty()?;
+
+        let mut err = self.diagnostic().struct_span_err_with_code(
+            pat.span,
+            "patterns aren't allowed in methods without bodies",
+            DiagnosticId::Error("E0642".into()),
+        );
+        err.span_suggestion_short(
+            pat.span,
+            "give this argument a name or use an underscore to ignore it",
+            "_".to_owned(),
+            Applicability::MachineApplicable,
+        );
+        err.emit();
+
+        // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
+        let pat = P(Pat {
+            node: PatKind::Wild,
+            span: pat.span,
+            id: ast::DUMMY_NODE_ID
+        });
+        Ok((pat, ty))
+    }
+
+    crate fn recover_bad_self_arg(
+        &mut self,
+        mut arg: ast::Arg,
+        is_trait_item: bool,
+    ) -> PResult<'a, ast::Arg> {
+        let sp = arg.pat.span;
+        arg.ty.node = TyKind::Err;
+        let mut err = self.struct_span_err(sp, "unexpected `self` argument in function");
+        if is_trait_item {
+            err.span_label(sp, "must be the first associated function argument");
+        } else {
+            err.span_label(sp, "not valid as function argument");
+            err.note("`self` is only valid as the first argument of an associated function");
+        }
+        err.emit();
+        Ok(arg)
+    }
+
     crate fn consume_block(&mut self, delim: token::DelimToken) {
         let mut brace_depth = 0;
         loop {

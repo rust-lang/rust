@@ -1805,50 +1805,23 @@ impl<'a> Parser<'a> {
     }
 
     /// This version of parse arg doesn't necessarily require identifier names.
-    fn parse_arg_general(&mut self, require_name: bool, is_trait_item: bool,
-                         allow_c_variadic: bool) -> PResult<'a, Arg> {
-        if let Ok(Some(_)) = self.parse_self_arg() {
-            let mut err = self.struct_span_err(self.prev_span,
-                "unexpected `self` argument in function");
-            err.span_label(self.prev_span,
-                "`self` is only valid as the first argument of an associated function");
-            return Err(err);
+    fn parse_arg_general(
+        &mut self,
+        require_name: bool,
+        is_trait_item: bool,
+        allow_c_variadic: bool,
+    ) -> PResult<'a, Arg> {
+        if let Ok(Some(arg)) = self.parse_self_arg() {
+            return self.recover_bad_self_arg(arg, is_trait_item);
         }
 
         let (pat, ty) = if require_name || self.is_named_argument() {
-            debug!("parse_arg_general parse_pat (require_name:{})",
-                   require_name);
+            debug!("parse_arg_general parse_pat (require_name:{})", require_name);
             self.eat_incorrect_doc_comment("method arguments");
             let pat = self.parse_pat(Some("argument name"))?;
 
             if let Err(mut err) = self.expect(&token::Colon) {
-                // If we find a pattern followed by an identifier, it could be an (incorrect)
-                // C-style parameter declaration.
-                if self.check_ident() && self.look_ahead(1, |t| {
-                    *t == token::Comma || *t == token::CloseDelim(token::Paren)
-                }) {
-                    let ident = self.parse_ident().unwrap();
-                    let span = pat.span.with_hi(ident.span.hi());
-
-                    err.span_suggestion(
-                        span,
-                        "declare the type after the parameter binding",
-                        String::from("<identifier>: <type>"),
-                        Applicability::HasPlaceholders,
-                    );
-                } else if require_name && is_trait_item {
-                    if let PatKind::Ident(_, ident, _) = pat.node {
-                        err.span_suggestion(
-                            pat.span,
-                            "explicitly ignore parameter",
-                            format!("_: {}", ident),
-                            Applicability::MachineApplicable,
-                        );
-                    }
-
-                    err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
-                }
-
+                self.argument_without_type(&mut err, pat, require_name, is_trait_item);
                 return Err(err);
             }
 
