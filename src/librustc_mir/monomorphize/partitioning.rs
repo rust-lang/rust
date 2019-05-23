@@ -101,7 +101,7 @@ use rustc::dep_graph::{WorkProductId, WorkProduct, DepNode, DepConstructor};
 use rustc::hir::{CodegenFnAttrFlags, HirId};
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
-use rustc::mir::mono::{Linkage, Visibility, CodegenUnitNameBuilder};
+use rustc::mir::mono::{Linkage, Visibility, CodegenUnitNameBuilder, CodegenUnit};
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::ty::{self, DefIdTree, TyCtxt, InstanceDef};
 use rustc::ty::print::characteristic_def_id_of_type;
@@ -113,8 +113,6 @@ use rustc::mir::mono::MonoItem;
 use crate::monomorphize::collector::InliningMap;
 use crate::monomorphize::collector::{self, MonoItemCollectionMode};
 use crate::monomorphize::item::{MonoItemExt, InstantiationMode};
-
-pub use rustc::mir::mono::CodegenUnit;
 
 pub enum PartitioningStrategy {
     /// Generates one codegen unit per source-level module.

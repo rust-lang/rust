@@ -10,6 +10,7 @@ use libc::c_uint;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
     Pointer, ErrorHandled, GlobalId};
+use rustc::mir::mono::MonoItem;
 use rustc::hir::Node;
 use syntax_pos::Span;
 use rustc_target::abi::HasDataLayout;

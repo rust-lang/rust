@@ -1,9 +1,9 @@
-use crate::monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::ConstValue;
+use rustc::mir::mono::MonoItem;
 use rustc::session::config::OptLevel;
-use rustc::ty::{self, Ty, TyCtxt, Const, ClosureSubsts, GeneratorSubsts};
+use rustc::ty::{self, Ty, TyCtxt, Const, ClosureSubsts, GeneratorSubsts, Instance};
 use rustc::ty::subst::{SubstsRef, InternalSubsts};
 use syntax::ast;
 use syntax::attr::InlineAttr;
@@ -12,7 +12,6 @@ use std::iter;
 use rustc::mir::mono::Linkage;
 use syntax_pos::symbol::InternedString;
 use syntax::source_map::Span;
-pub use rustc::mir::mono::MonoItem;
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]

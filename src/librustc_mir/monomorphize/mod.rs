@@ -1,8 +1,8 @@
 use rustc::traits;
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::ty::{self, Ty, TyCtxt, Instance};
+use rustc::ty::{self, Ty, TyCtxt};
 
-pub use self::item::{MonoItem, MonoItemExt};
+pub use self::item::MonoItemExt;
 
 pub mod collector;
 pub mod item;

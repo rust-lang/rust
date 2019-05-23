@@ -5,12 +5,12 @@ use crate::value::Value;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
 
-use crate::monomorphize::partitioning::CodegenUnit;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc::mir::mono::CodegenUnit;
 use rustc::session::config::{self, DebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{

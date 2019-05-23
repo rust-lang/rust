@@ -93,7 +93,8 @@ use rustc::hir::CodegenFnAttrFlags;
 use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, Instance};
-use rustc_mir::monomorphize::item::{InstantiationMode, MonoItem, MonoItemExt};
+use rustc::mir::mono::MonoItem;
+use rustc_mir::monomorphize::item::{InstantiationMode, MonoItemExt};
 
 use syntax_pos::symbol::InternedString;
 
