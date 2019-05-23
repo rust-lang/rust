@@ -6,7 +6,7 @@ use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintC
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::source_map::Span;
-use syntax::symbol::keywords;
+use syntax::symbol::kw;
 
 use crate::reexport::*;
 use crate::utils::{last_path_segment, span_lint};
@@ -476,9 +476,7 @@ struct BodyLifetimeChecker {
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        if lifetime.name.ident().name != keywords::Invalid.name()
-            && lifetime.name.ident().name != syntax::symbol::keywords::StaticLifetime.name()
-        {
+        if lifetime.name.ident().name != kw::Invalid && lifetime.name.ident().name != kw::StaticLifetime {
             self.lifetimes_used_in_body = true;
         }
     }
