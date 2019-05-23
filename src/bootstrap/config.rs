@@ -650,7 +650,7 @@ impl Config {
         config.rust_debuginfo_level_rustc = with_defaults(debuginfo_level_rustc);
         config.rust_debuginfo_level_std = with_defaults(debuginfo_level_std);
         config.rust_debuginfo_level_tools = with_defaults(debuginfo_level_tools);
-        config.rust_debuginfo_level_tests = with_defaults(debuginfo_level_tests);
+        config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(0);
 
         let default = config.channel == "dev";
         config.ignore_git = ignore_git.unwrap_or(default);

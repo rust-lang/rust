@@ -301,11 +301,13 @@
 # library.
 #debug-assertions = false
 
-# Debuginfo level for Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
+# Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
 # `1` - line tables only
 # `2` - full debug info with variable and type information
-# Can be overriden for specific subsets of Rust code (rustc, std, tools or tests).
+# Can be overriden for specific subsets of Rust code (rustc, std or tools).
+# Debuginfo for tests run with compiletest is not controlled by this option
+# and needs to be enabled separately with `debuginfo-level-tests`.
 #debuginfo-level = if debug { 2 } else { 0 }
 
 # Debuginfo level for the compiler.
@@ -318,7 +320,7 @@
 #debuginfo-level-tools = debuginfo-level
 
 # Debuginfo level for the test suites run with compiletest.
-#debuginfo-level-tests = debuginfo-level
+#debuginfo-level-tests = 0
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
