@@ -193,14 +193,14 @@ impl LitKind {
             }
             LitKind::Int(n, ty) => {
                 let suffix = match ty {
-                    ast::LitIntType::Unsigned(ty) => Some(Symbol::intern(ty.ty_to_string())),
-                    ast::LitIntType::Signed(ty) => Some(Symbol::intern(ty.ty_to_string())),
+                    ast::LitIntType::Unsigned(ty) => Some(ty.to_symbol()),
+                    ast::LitIntType::Signed(ty) => Some(ty.to_symbol()),
                     ast::LitIntType::Unsuffixed => None,
                 };
                 (token::Integer, sym::integer(n), suffix)
             }
             LitKind::Float(symbol, ty) => {
-                (token::Float, symbol, Some(Symbol::intern(ty.ty_to_string())))
+                (token::Float, symbol, Some(ty.to_symbol()))
             }
             LitKind::FloatUnsuffixed(symbol) => {
                 (token::Float, symbol, None)
