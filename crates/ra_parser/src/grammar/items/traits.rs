@@ -44,7 +44,7 @@ pub(crate) fn trait_item_list(p: &mut Parser) {
 // test impl_block
 // impl Foo {}
 pub(super) fn impl_block(p: &mut Parser) {
-    assert!(p.at(T![impl ]));
+    assert!(p.at(T![impl]));
     p.bump();
     if choose_type_params_over_qpath(p) {
         type_params::opt_type_param_list(p);
@@ -130,7 +130,7 @@ fn choose_type_params_over_qpath(p: &Parser) -> bool {
 // impl impl NotType {}
 // impl Trait2 for impl NotType {}
 pub(crate) fn impl_type(p: &mut Parser) {
-    if p.at(T![impl ]) {
+    if p.at(T![impl]) {
         p.error("expected trait or type");
         return;
     }

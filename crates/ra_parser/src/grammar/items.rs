@@ -103,7 +103,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         p.bump_remap(T![auto]);
         has_mods = true;
     }
-    if p.at(IDENT) && p.at_contextual_kw("default") && p.nth(1) == T![impl ] {
+    if p.at(IDENT) && p.at_contextual_kw("default") && p.nth(1) == T![impl] {
         p.bump_remap(T![default]);
         has_mods = true;
     }
@@ -161,7 +161,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
 
         // test unsafe_default_impl
         // unsafe default impl Foo {}
-        T![impl ] => {
+        T![impl] => {
             traits::impl_block(p);
             m.complete(p, IMPL_BLOCK);
         }

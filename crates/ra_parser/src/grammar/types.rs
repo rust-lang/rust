@@ -25,7 +25,7 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
         T![_] => placeholder_type(p),
         T![fn] | T![unsafe] | T![extern] => fn_pointer_type(p),
         T![for] => for_type(p),
-        T![impl ] => impl_trait_type(p),
+        T![impl] => impl_trait_type(p),
         T![dyn ] => dyn_trait_type(p),
         // Some path types are not allowed to have bounds (no plus)
         T![<] => path_type_(p, allow_bounds),
@@ -221,7 +221,7 @@ pub(super) fn for_type(p: &mut Parser) {
 // test impl_trait_type
 // type A = impl Iterator<Item=Foo<'a>> + 'a;
 fn impl_trait_type(p: &mut Parser) {
-    assert!(p.at(T![impl ]));
+    assert!(p.at(T![impl]));
     let m = p.start();
     p.bump();
     type_params::bounds_without_colon(p);

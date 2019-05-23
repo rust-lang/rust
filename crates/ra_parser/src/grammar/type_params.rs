@@ -150,7 +150,7 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
 fn is_where_predicate(p: &mut Parser) -> bool {
     match p.current() {
         LIFETIME => true,
-        T![impl ] => false,
+        T![impl] => false,
         token => types::TYPE_FIRST.contains(token),
     }
 }
@@ -170,7 +170,7 @@ fn where_predicate(p: &mut Parser) {
                 p.error("expected colon");
             }
         }
-        T![impl ] => {
+        T![impl] => {
             p.error("expected lifetime or type");
         }
         _ => {
