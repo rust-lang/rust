@@ -35,19 +35,19 @@ pub struct CrateDependency {
 }
 
 impl Crate {
-    pub fn crate_id(&self) -> CrateId {
+    pub fn crate_id(self) -> CrateId {
         self.crate_id
     }
 
-    pub fn dependencies(&self, db: &impl DefDatabase) -> Vec<CrateDependency> {
+    pub fn dependencies(self, db: &impl DefDatabase) -> Vec<CrateDependency> {
         self.dependencies_impl(db)
     }
 
-    pub fn root_module(&self, db: &impl DefDatabase) -> Option<Module> {
+    pub fn root_module(self, db: &impl DefDatabase) -> Option<Module> {
         self.root_module_impl(db)
     }
 
-    pub fn edition(&self, db: &impl DefDatabase) -> Edition {
+    pub fn edition(self, db: &impl DefDatabase) -> Edition {
         let crate_graph = db.crate_graph();
         crate_graph.edition(self.crate_id)
     }
