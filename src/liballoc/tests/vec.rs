@@ -1,5 +1,3 @@
-#![cfg(not(miri))]
-
 use std::borrow::Cow;
 use std::mem::size_of;
 use std::{usize, isize};
@@ -763,6 +761,7 @@ fn from_into_inner() {
     it.next().unwrap();
     let vec = it.collect::<Vec<_>>();
     assert_eq!(vec, [2, 3]);
+    #[cfg(not(miri))] // Miri does not support comparing dangling pointers
     assert!(ptr != vec.as_ptr());
 }
 
@@ -971,6 +970,7 @@ fn test_reserve_exact() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support signalling OOM
 fn test_try_reserve() {
 
     // These are the interesting cases:
@@ -1073,6 +1073,7 @@ fn test_try_reserve() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support signalling OOM
 fn test_try_reserve_exact() {
 
     // This is exactly the same as test_try_reserve with the method changed.
