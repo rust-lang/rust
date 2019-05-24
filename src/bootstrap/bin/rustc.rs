@@ -102,6 +102,10 @@ fn main() {
 
     cmd.env("RUSTC_BREAK_ON_ICE", "1");
 
+    if let Ok(debuginfo_level) = env::var("RUSTC_DEBUGINFO_LEVEL") {
+        cmd.arg(format!("-Cdebuginfo={}", debuginfo_level));
+    }
+
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option.
@@ -169,11 +173,6 @@ fn main() {
 
         // Set various options from config.toml to configure how we're building
         // code.
-        if env::var("RUSTC_DEBUGINFO") == Ok("true".to_string()) {
-            cmd.arg("-g");
-        } else if env::var("RUSTC_DEBUGINFO_LINES") == Ok("true".to_string()) {
-            cmd.arg("-Cdebuginfo=1");
-        }
         let debug_assertions = match env::var("RUSTC_DEBUG_ASSERTIONS") {
             Ok(s) => if s == "true" { "y" } else { "n" },
             Err(..) => "n",

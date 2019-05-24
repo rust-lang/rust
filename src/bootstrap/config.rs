@@ -96,15 +96,14 @@ pub struct Config {
     pub rust_codegen_units: Option<u32>,
     pub rust_codegen_units_std: Option<u32>,
     pub rust_debug_assertions: bool,
-    pub rust_debuginfo: bool,
-    pub rust_debuginfo_lines: bool,
-    pub rust_debuginfo_only_std: bool,
-    pub rust_debuginfo_tools: bool,
+    pub rust_debuginfo_level_rustc: u32,
+    pub rust_debuginfo_level_std: u32,
+    pub rust_debuginfo_level_tools: u32,
+    pub rust_debuginfo_level_tests: u32,
     pub rust_rpath: bool,
     pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
     pub rust_optimize_tests: bool,
-    pub rust_debuginfo_tests: bool,
     pub rust_dist_src: bool,
     pub rust_codegen_backends: Vec<Interned<String>>,
     pub rust_codegen_backends_dir: String,
@@ -300,10 +299,11 @@ struct Rust {
     codegen_units: Option<u32>,
     codegen_units_std: Option<u32>,
     debug_assertions: Option<bool>,
-    debuginfo: Option<bool>,
-    debuginfo_lines: Option<bool>,
-    debuginfo_only_std: Option<bool>,
-    debuginfo_tools: Option<bool>,
+    debuginfo_level: Option<u32>,
+    debuginfo_level_rustc: Option<u32>,
+    debuginfo_level_std: Option<u32>,
+    debuginfo_level_tools: Option<u32>,
+    debuginfo_level_tests: Option<u32>,
     parallel_compiler: Option<bool>,
     backtrace: Option<bool>,
     default_linker: Option<String>,
@@ -311,7 +311,6 @@ struct Rust {
     musl_root: Option<String>,
     rpath: Option<bool>,
     optimize_tests: Option<bool>,
-    debuginfo_tests: Option<bool>,
     codegen_tests: Option<bool>,
     ignore_git: Option<bool>,
     debug: Option<bool>,
@@ -495,12 +494,13 @@ impl Config {
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
         let mut llvm_assertions = None;
-        let mut debuginfo_lines = None;
-        let mut debuginfo_only_std = None;
-        let mut debuginfo_tools = None;
         let mut debug = None;
-        let mut debuginfo = None;
         let mut debug_assertions = None;
+        let mut debuginfo_level = None;
+        let mut debuginfo_level_rustc = None;
+        let mut debuginfo_level_std = None;
+        let mut debuginfo_level_tools = None;
+        let mut debuginfo_level_tests = None;
         let mut optimize = None;
         let mut ignore_git = None;
 
@@ -540,14 +540,14 @@ impl Config {
         if let Some(ref rust) = toml.rust {
             debug = rust.debug;
             debug_assertions = rust.debug_assertions;
-            debuginfo = rust.debuginfo;
-            debuginfo_lines = rust.debuginfo_lines;
-            debuginfo_only_std = rust.debuginfo_only_std;
-            debuginfo_tools = rust.debuginfo_tools;
+            debuginfo_level = rust.debuginfo_level;
+            debuginfo_level_rustc = rust.debuginfo_level_rustc;
+            debuginfo_level_std = rust.debuginfo_level_std;
+            debuginfo_level_tools = rust.debuginfo_level_tools;
+            debuginfo_level_tests = rust.debuginfo_level_tests;
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
-            set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.jemalloc, rust.jemalloc);
@@ -639,17 +639,18 @@ impl Config {
         let default = true;
         config.rust_optimize = optimize.unwrap_or(default);
 
-        let default = match &config.channel[..] {
-            "stable" | "beta" | "nightly" => true,
-            _ => false,
-        };
-        config.rust_debuginfo_lines = debuginfo_lines.unwrap_or(default);
-        config.rust_debuginfo_only_std = debuginfo_only_std.unwrap_or(default);
-        config.rust_debuginfo_tools = debuginfo_tools.unwrap_or(false);
-
         let default = debug == Some(true);
-        config.rust_debuginfo = debuginfo.unwrap_or(default);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
+
+        let with_defaults = |debuginfo_level_specific: Option<u32>| {
+            debuginfo_level_specific
+                .or(debuginfo_level)
+                .unwrap_or(if debug == Some(true) { 2 } else { 0 })
+        };
+        config.rust_debuginfo_level_rustc = with_defaults(debuginfo_level_rustc);
+        config.rust_debuginfo_level_std = with_defaults(debuginfo_level_std);
+        config.rust_debuginfo_level_tools = with_defaults(debuginfo_level_tools);
+        config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(0);
 
         let default = config.channel == "dev";
         config.ignore_git = ignore_git.unwrap_or(default);

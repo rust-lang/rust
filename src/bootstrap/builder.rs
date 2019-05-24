@@ -970,22 +970,15 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));
         }
 
-        if mode.is_tool() {
-            // Tools like cargo and rls don't get debuginfo by default right now, but this can be
-            // enabled in the config.  Adding debuginfo makes them several times larger.
-            if self.config.rust_debuginfo_tools {
-                cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
-                cargo.env(
-                    "RUSTC_DEBUGINFO_LINES",
-                    self.config.rust_debuginfo_lines.to_string(),
-                );
-            }
-        } else {
-            cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
-            cargo.env(
-                "RUSTC_DEBUGINFO_LINES",
-                self.config.rust_debuginfo_lines.to_string(),
-            );
+        let debuginfo_level = match mode {
+            Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
+            Mode::Std | Mode::Test => self.config.rust_debuginfo_level_std,
+            Mode::ToolBootstrap | Mode::ToolStd |
+            Mode::ToolTest | Mode::ToolRustc => self.config.rust_debuginfo_level_tools,
+        };
+        cargo.env("RUSTC_DEBUGINFO_LEVEL", debuginfo_level.to_string());
+
+        if !mode.is_tool() {
             cargo.env("RUSTC_FORCE_UNSTABLE", "1");
 
             // Currently the compiler depends on crates from crates.io, and

@@ -301,20 +301,27 @@
 # library.
 #debug-assertions = false
 
-# Whether or not debuginfo is emitted
-#debuginfo = false
+# Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
+# `0` - no debug info
+# `1` - line tables only
+# `2` - full debug info with variable and type information
+# Can be overriden for specific subsets of Rust code (rustc, std or tools).
+# Debuginfo for tests run with compiletest is not controlled by this option
+# and needs to be enabled separately with `debuginfo-level-tests`.
+#debuginfo-level = if debug { 2 } else { 0 }
 
-# Whether or not line number debug information is emitted
-#debuginfo-lines = false
+# Debuginfo level for the compiler.
+#debuginfo-level-rustc = debuginfo-level
 
-# Whether or not to only build debuginfo for the standard library if enabled.
-# If enabled, this will not compile the compiler with debuginfo, just the
-# standard library.
-#debuginfo-only-std = false
+# Debuginfo level for the standard library.
+#debuginfo-level-std = debuginfo-level
 
-# Enable debuginfo for the extended tools: cargo, rls, rustfmt
-# Adding debuginfo makes them several times larger.
-#debuginfo-tools = false
+# Debuginfo level for the tools.
+#debuginfo-level-tools = debuginfo-level
+
+# Debuginfo level for the test suites run with compiletest.
+# FIXME(#61117): Some tests fail when this option is enabled.
+#debuginfo-level-tests = 0
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
@@ -345,10 +352,8 @@
 # harness are debuggable just from logfiles.
 #verbose-tests = false
 
-# Flag indicating whether tests are compiled with optimizations (the -O flag) or
-# with debuginfo (the -g flag)
+# Flag indicating whether tests are compiled with optimizations (the -O flag).
 #optimize-tests = true
-#debuginfo-tests = true
 
 # Flag indicating whether codegen tests will be run or not. If you get an error
 # saying that the FileCheck executable is missing, you may want to disable this.
