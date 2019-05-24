@@ -503,6 +503,61 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
     }
 }
 
+/// Replace `dest` with the default value of `T`, and return the previous `dest` value.
+///
+/// # Examples
+///
+/// A simple example:
+///
+/// ```
+/// use std::mem;
+///
+/// let mut v: Vec<i32> = vec![1, 2];
+///
+/// let old_v = mem::take(&mut v);
+/// assert_eq!(vec![1, 2], old_v);
+/// assert!(v.is_empty());
+/// ```
+///
+/// `take` allows taking ownership of a struct field by replacing it with an "empty" value.
+/// Without `take` you can run into issues like these:
+///
+/// ```compile_fail,E0507
+/// struct Buffer<T> { buf: Vec<T> }
+///
+/// impl<T> Buffer<T> {
+///     fn get_and_reset(&mut self) -> Vec<T> {
+///         // error: cannot move out of dereference of `&mut`-pointer
+///         let buf = self.buf;
+///         self.buf = Vec::new();
+///         buf
+///     }
+/// }
+/// ```
+///
+/// Note that `T` does not necessarily implement [`Clone`], so it can't even clone and reset
+/// `self.buf`. But `take` can be used to disassociate the original value of `self.buf` from
+/// `self`, allowing it to be returned:
+///
+/// ```
+/// # #![allow(dead_code)]
+/// use std::mem;
+///
+/// # struct Buffer<T> { buf: Vec<T> }
+/// impl<T> Buffer<T> {
+///     fn get_and_reset(&mut self) -> Vec<T> {
+///         mem::take(&mut self.buf)
+///     }
+/// }
+/// ```
+///
+/// [`Clone`]: ../../std/clone/trait.Clone.html
+#[inline]
+#[unstable(feature = "mem_take", issue = "61129")]
+pub fn take<T: Default>(dest: &mut T) -> T {
+    replace(dest, T::default())
+}
+
 /// Moves `src` into the referenced `dest`, returning the previous `dest` value.
 ///
 /// Neither value is dropped.
