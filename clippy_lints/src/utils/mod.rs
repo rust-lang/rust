@@ -39,8 +39,8 @@ use rustc::ty::{
     subst::Kind,
     Binder, Ty, TyCtxt,
 };
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::Applicability;
+use smallvec::SmallVec;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::ext::hygiene::ExpnFormat;
@@ -248,7 +248,8 @@ pub fn path_to_res(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<(def::Res)
                 None => return None,
             };
 
-            for item in mem::replace(&mut items, Lrc::new(vec![])).iter() {
+            let result = SmallVec::<[_; 8]>::new();
+            for item in mem::replace(&mut items, cx.tcx.arena.alloc_slice(&result)).iter() {
                 if item.ident.name.as_str() == *segment {
                     if path_it.peek().is_none() {
                         return Some(item.res);
