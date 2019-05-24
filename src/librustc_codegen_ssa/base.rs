@@ -20,11 +20,10 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::weak_lang_items;
-use rustc::mir::mono::{CodegenUnitNameBuilder, CodegenUnit};
+use rustc::mir::mono::{CodegenUnitNameBuilder, CodegenUnit, MonoItem};
 use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::ty::query::Providers;
-use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, EntryFnType, Lto};
@@ -42,7 +41,6 @@ use crate::callee;
 use crate::common::{RealPredicate, TypeKind, IntPredicate};
 use crate::meth;
 use crate::mir;
-use crate::mono_item::MonoItem;
 
 use crate::traits::*;
 

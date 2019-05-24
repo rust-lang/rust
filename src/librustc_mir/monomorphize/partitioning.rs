@@ -108,11 +108,10 @@ use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
 use rustc::util::common::time;
 use rustc::util::nodemap::{DefIdSet, FxHashMap, FxHashSet};
-use rustc::mir::mono::MonoItem;
+use rustc::mir::mono::{MonoItem, InstantiationMode};
 
 use crate::monomorphize::collector::InliningMap;
 use crate::monomorphize::collector::{self, MonoItemCollectionMode};
-use crate::monomorphize::item::{MonoItemExt, InstantiationMode};
 
 pub enum PartitioningStrategy {
     /// Generates one codegen unit per source-level module.

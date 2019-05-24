@@ -1,19 +1,18 @@
 use rustc::hir;
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::layout::HasTyCtxt;
-use std::fmt;
 use crate::base;
 use crate::traits::*;
 
-pub use rustc::mir::mono::MonoItem;
+use rustc::mir::mono::MonoItem;
 
-pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
+pub trait MonoItemExt<'a, 'tcx: 'a> {
+    fn as_mono_item(&self) -> &MonoItem<'tcx>;
 
-pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx(), true),
-               self.to_raw_string(),
+               self.as_mono_item().to_string(cx.tcx(), true),
+               self.as_mono_item().to_raw_string(),
                cx.codegen_unit().name());
 
         match *self.as_mono_item() {
@@ -34,8 +33,8 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
         }
 
         debug!("END IMPLEMENTING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx(), true),
-               self.to_raw_string(),
+               self.as_mono_item().to_string(cx.tcx(), true),
+               self.as_mono_item().to_raw_string(),
                cx.codegen_unit().name());
     }
 
@@ -46,11 +45,11 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
         visibility: Visibility
     ) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx(), true),
-               self.to_raw_string(),
+               self.as_mono_item().to_string(cx.tcx(), true),
+               self.as_mono_item().to_raw_string(),
                cx.codegen_unit().name());
 
-        let symbol_name = self.symbol_name(cx.tcx()).as_str();
+        let symbol_name = self.as_mono_item().symbol_name(cx.tcx()).as_str();
 
         debug!("symbol {}", &symbol_name);
 
@@ -65,8 +64,8 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
         }
 
         debug!("END PREDEFINING '{} ({})' in cgu {}",
-               self.to_string(cx.tcx(), true),
-               self.to_raw_string(),
+               self.as_mono_item().to_string(cx.tcx(), true),
+               self.as_mono_item().to_raw_string(),
                cx.codegen_unit().name());
     }
 
@@ -87,4 +86,8 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {}
+impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
+    fn as_mono_item(&self) -> &MonoItem<'tcx> {
+        self
+    }
+}

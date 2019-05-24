@@ -2,10 +2,7 @@ use rustc::traits;
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::ty::{self, Ty, TyCtxt};
 
-pub use self::item::MonoItemExt;
-
 pub mod collector;
-pub mod item;
 pub mod partitioning;
 
 pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
