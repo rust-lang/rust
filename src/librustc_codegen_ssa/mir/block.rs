@@ -5,7 +5,6 @@ use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
 use rustc::mir::interpret::InterpError;
 use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
 use rustc_target::spec::abi::Abi;
-use rustc_mir::monomorphize;
 use crate::base;
 use crate::MemFlags;
 use crate::common::{self, IntPredicate};

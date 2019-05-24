@@ -22,7 +22,6 @@ use crate::metadata;
 use crate::builder::Builder;
 use crate::common;
 use crate::context::CodegenCx;
-use crate::monomorphize::partitioning::CodegenUnitExt;
 use rustc::dep_graph;
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::middle::cstore::{EncodedMetadata};

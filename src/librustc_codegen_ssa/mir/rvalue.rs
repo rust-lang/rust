@@ -11,7 +11,6 @@ use crate::base;
 use crate::MemFlags;
 use crate::callee;
 use crate::common::{self, RealPredicate, IntPredicate};
-use rustc_mir::monomorphize;
 
 use crate::traits::*;
 

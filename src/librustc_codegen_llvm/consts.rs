@@ -1,6 +1,5 @@
 use crate::llvm::{self, SetUnnamedAddr, True};
 use crate::debuginfo;
-use crate::monomorphize::MonoItem;
 use crate::common::CodegenCx;
 use crate::base;
 use crate::type_::Type;

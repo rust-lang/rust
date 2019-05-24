@@ -1,5 +1,4 @@
 use rustc_target::abi::call::FnType;
-use rustc_mir::monomorphize;
 
 use crate::callee;
 use crate::traits::*;

@@ -63,7 +63,6 @@ use rustc::session::Session;
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest, OptLevel};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
-use rustc_mir::monomorphize;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
