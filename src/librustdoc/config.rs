@@ -370,9 +370,15 @@ impl Options {
                     return Err(1);
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
-                if !success || !ret.is_empty() {
-                    diag.struct_warn(&format!("invalid theme: \"{}\"", theme_s))
-                        .help("check what's wrong with the --theme-checker option")
+                if !success {
+                    diag.struct_warn(&format!("error loading theme file: \"{}\"", theme_s)).emit();
+                    return Err(1);
+                } else if !ret.is_empty() {
+                    diag.struct_warn(&format!("theme file \"{}\" is missing CSS rules from the \
+                                               default theme", theme_s))
+                        .warn("the theme may appear incorrect when loaded")
+                        .help(&format!("to see what rules are missing, call `rustdoc \
+                                        --theme-checker \"{}\"`", theme_s))
                         .emit();
                 }
                 themes.push(theme_file);

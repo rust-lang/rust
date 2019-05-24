@@ -371,8 +371,8 @@ $ rustdoc src/lib.rs --themes /path/to/your/theme/file.css
 ### `theme-checker`: check if your themes implement all the required rules
 
 This flag allows you to check if your themes implement the necessary CSS rules. To put it more
-simply, when adding a new theme, it needs to implements all the CSS rules present in the `ðark` and
-`light` CSS themes.
+simply, when adding a new theme, it needs to implements all the CSS rules present in the "light"
+CSS theme.
 
 You can use this flag like this:
 
