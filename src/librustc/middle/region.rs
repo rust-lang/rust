@@ -658,12 +658,15 @@ impl<'tcx> ScopeTree {
             // The lifetime was defined on node that doesn't own a body,
             // which in practice can only mean a trait or an impl, that
             // is the parent of a method, and that is enforced below.
-            assert_eq!(Some(param_owner_id), self.root_parent,
-                       "free_scope: {:?} not recognized by the \
-                        region scope tree for {:?} / {:?}",
-                       param_owner,
-                       self.root_parent.map(|id| tcx.hir().local_def_id_from_hir_id(id)),
-                       self.root_body.map(|hir_id| DefId::local(hir_id.owner)));
+            if Some(param_owner_id) != self.root_parent {
+                tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    &format!("free_scope: {:?} not recognized by the \
+                              region scope tree for {:?} / {:?}",
+                             param_owner,
+                             self.root_parent.map(|id| tcx.hir().local_def_id_from_hir_id(id)),
+                             self.root_body.map(|hir_id| DefId::local(hir_id.owner))));
+            }
 
             // The trait/impl lifetime is in scope for the method's body.
             self.root_body.unwrap().local_id
