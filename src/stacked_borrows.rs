@@ -497,7 +497,7 @@ impl AllocationExtra<Tag> for Stacks {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        trace!("read access with tag {:?}: {:?}, size {}", ptr.tag, ptr, size.bytes());
+        trace!("read access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
         alloc.extra.for_each(ptr, size, |stack, global| {
             stack.access(AccessKind::Read, ptr.tag, global)?;
             Ok(())
@@ -510,7 +510,7 @@ impl AllocationExtra<Tag> for Stacks {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        trace!("write access with tag {:?}: {:?}, size {}", ptr.tag, ptr, size.bytes());
+        trace!("write access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
         alloc.extra.for_each(ptr, size, |stack, global| {
             stack.access(AccessKind::Write, ptr.tag, global)?;
             Ok(())
@@ -523,7 +523,7 @@ impl AllocationExtra<Tag> for Stacks {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        trace!("deallocation with tag {:?}: {:?}, size {}", ptr.tag, ptr, size.bytes());
+        trace!("deallocation with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
         alloc.extra.for_each(ptr, size, |stack, global| {
             stack.dealloc(ptr.tag, global)
         })
@@ -546,7 +546,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let protector = if protect { Some(this.frame().extra) } else { None };
         let ptr = place.ptr.to_ptr()?;
         trace!("reborrow: {} reference {:?} derived from {:?} (pointee {}): {:?}, size {}",
-            kind, new_tag, ptr.tag, place.layout.ty, ptr, size.bytes());
+            kind, new_tag, ptr.tag, place.layout.ty, ptr.erase_tag(), size.bytes());
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
         let alloc = this.memory().get(ptr.alloc_id)?;
