@@ -506,7 +506,8 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 span,
                 ty,
                 user_ty: None,
-                literal: self.tcx.mk_const(ty::Const::from_scalar(
+                literal: self.tcx.mk_const(*ty::Const::from_scalar(
+                    self.tcx,
                     scalar,
                     ty,
                 ))
