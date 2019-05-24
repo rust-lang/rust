@@ -33,5 +33,4 @@ rustc_data_structures = { path = "../librustc_data_structures"}
 rustc_errors = { path = "../librustc_errors" }
 rustc_fs_util = { path = "../librustc_fs_util" }
 rustc_incremental = { path = "../librustc_incremental" }
-rustc_mir = { path = "../librustc_mir" }
 rustc_target = { path = "../librustc_target" }
