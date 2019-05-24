@@ -3,8 +3,8 @@
 #
 
 pr: none
- trigger:
- - auto
+trigger:
+  - auto
 
 variables:
 - group: prod-credentials
