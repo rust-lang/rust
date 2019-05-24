@@ -1,17 +1,21 @@
-error: discriminator values can only be used with a field-less enum
+error: custom discriminant values are not allowed in enums with fields
   --> $DIR/tag-variant-disr-non-nullary.rs:2:11
    |
 LL |     Red = 0xff0000,
-   |           ^^^^^^^^ only valid in field-less enums
+   |           ^^^^^^^^ invalid custom discriminant
 LL |
 LL |     Green = 0x00ff00,
-   |             ^^^^^^^^ only valid in field-less enums
+   |             ^^^^^^^^ invalid custom discriminant
 LL |     Blue = 0x0000ff,
-   |            ^^^^^^^^ only valid in field-less enums
+   |            ^^^^^^^^ invalid custom discriminant
 LL |     Black = 0x000000,
-   |             ^^^^^^^^ only valid in field-less enums
+   |             ^^^^^^^^ invalid custom discriminant
 LL |     White = 0xffffff,
-   |             ^^^^^^^^ only valid in field-less enums
+   |             ^^^^^^^^ invalid custom discriminant
+LL |     Other(usize),
+   |     ------------ variant with a field defined here
+LL |     Other2(usize, usize),
+   |     -------------------- variant with fields defined here
 
 error: aborting due to previous error
 

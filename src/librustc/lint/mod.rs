@@ -21,7 +21,7 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync;
 
 use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
@@ -35,7 +35,7 @@ use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use std::{hash, ptr};
 use syntax::ast;
-use syntax::source_map::{MultiSpan, ExpnFormat};
+use syntax::source_map::{MultiSpan, ExpnFormat, CompilerDesugaringKind};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
 use syntax::symbol::{Symbol, sym};
@@ -767,7 +767,7 @@ pub fn maybe_lint_level_root(tcx: TyCtxt<'_, '_, '_>, id: hir::HirId) -> bool {
 }
 
 fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
-    -> Lrc<LintLevelMap>
+    -> &'tcx LintLevelMap
 {
     assert_eq!(cnum, LOCAL_CRATE);
     let mut builder = LintLevelMapBuilder {
@@ -784,7 +784,7 @@ fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
     intravisit::walk_crate(&mut builder, krate);
     builder.levels.pop(push);
 
-    Lrc::new(builder.levels.build_map())
+    tcx.arena.alloc(builder.levels.build_map())
 }
 
 struct LintLevelMapBuilder<'a, 'tcx: 'a> {
@@ -887,21 +887,22 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     };
 
     match info.format {
-        ExpnFormat::MacroAttribute(..) => return true, // definitely a plugin
-        ExpnFormat::CompilerDesugaring(_) => return true, // well, it's "external"
-        ExpnFormat::MacroBang(..) => {} // check below
-    }
+        ExpnFormat::MacroAttribute(..) => true, // definitely a plugin
+        ExpnFormat::CompilerDesugaring(CompilerDesugaringKind::ForLoop) => false,
+        ExpnFormat::CompilerDesugaring(_) => true, // well, it's "external"
+        ExpnFormat::MacroBang(..) => {
+            let def_site = match info.def_site {
+                Some(span) => span,
+                // no span for the def_site means it's an external macro
+                None => return true,
+            };
 
-    let def_site = match info.def_site {
-        Some(span) => span,
-        // no span for the def_site means it's an external macro
-        None => return true,
-    };
-
-    match sess.source_map().span_to_snippet(def_site) {
-        Ok(code) => !code.starts_with("macro_rules"),
-        // no snippet = external macro or compiler-builtin expansion
-        Err(_) => true,
+            match sess.source_map().span_to_snippet(def_site) {
+                Ok(code) => !code.starts_with("macro_rules"),
+                // no snippet = external macro or compiler-builtin expansion
+                Err(_) => true,
+            }
+        }
     }
 }
 

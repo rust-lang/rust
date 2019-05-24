@@ -253,15 +253,16 @@ impl<T: ?Sized> Box<T> {
     #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_raw_non_null instead")]
     #[inline]
     #[doc(hidden)]
-    pub fn into_unique(mut b: Box<T>) -> Unique<T> {
+    pub fn into_unique(b: Box<T>) -> Unique<T> {
+        let mut unique = b.0;
+        mem::forget(b);
         // Box is kind-of a library type, but recognized as a "unique pointer" by
         // Stacked Borrows.  This function here corresponds to "reborrowing to
         // a raw pointer", but there is no actual reborrow here -- so
         // without some care, the pointer we are returning here still carries
-        // the `Uniq` tag.  We round-trip through a mutable reference to avoid that.
-        let unique = unsafe { b.0.as_mut() as *mut T };
-        mem::forget(b);
-        unsafe { Unique::new_unchecked(unique) }
+        // the tag of `b`, with `Unique` permission.
+        // We round-trip through a mutable reference to avoid that.
+        unsafe { Unique::new_unchecked(unique.as_mut() as *mut T) }
     }
 
     /// Consumes and leaks the `Box`, returning a mutable reference,

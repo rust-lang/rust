@@ -883,7 +883,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     remaining_lib_features.remove(&Symbol::intern("test"));
 
     let check_features =
-        |remaining_lib_features: &mut FxHashMap<_, _>, defined_features: &Vec<_>| {
+        |remaining_lib_features: &mut FxHashMap<_, _>, defined_features: &[_]| {
             for &(feature, since) in defined_features {
                 if let Some(since) = since {
                     if let Some(span) = remaining_lib_features.get(&feature) {
@@ -908,7 +908,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             if remaining_lib_features.is_empty() {
                 break;
             }
-            check_features(&mut remaining_lib_features, &tcx.defined_lib_features(cnum));
+            check_features(&mut remaining_lib_features, tcx.defined_lib_features(cnum));
         }
     }
 

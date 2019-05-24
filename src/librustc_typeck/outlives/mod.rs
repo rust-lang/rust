@@ -4,7 +4,6 @@ use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, CratePredicatesMap, TyCtxt};
-use rustc_data_structures::sync::Lrc;
 use syntax::symbol::sym;
 
 mod explicit;
@@ -74,7 +73,7 @@ fn inferred_outlives_of<'a, 'tcx>(
 fn inferred_outlives_crate<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     crate_num: CrateNum,
-) -> Lrc<CratePredicatesMap<'tcx>> {
+) -> &'tcx CratePredicatesMap<'tcx> {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     // Compute a map from each struct/enum/union S to the **explicit**
@@ -120,7 +119,7 @@ fn inferred_outlives_crate<'tcx>(
             (def_id, &*predicates)
         }).collect();
 
-    Lrc::new(ty::CratePredicatesMap {
+    tcx.arena.alloc(ty::CratePredicatesMap {
         predicates,
     })
 }

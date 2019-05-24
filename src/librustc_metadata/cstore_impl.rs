@@ -21,6 +21,7 @@ use rustc::hir::map::definitions::DefPathTable;
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::svh::Svh;
 
+use smallvec::SmallVec;
 use std::any::Any;
 use rustc_data_structures::sync::Lrc;
 use std::sync::Arc;
@@ -95,9 +96,11 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     generics_of => {
         tcx.alloc_generics(cdata.get_generics(def_id.index, tcx.sess))
     }
-    predicates_of => { Lrc::new(cdata.get_predicates(def_id.index, tcx)) }
-    predicates_defined_on => { Lrc::new(cdata.get_predicates_defined_on(def_id.index, tcx)) }
-    super_predicates_of => { Lrc::new(cdata.get_super_predicates(def_id.index, tcx)) }
+    predicates_of => { tcx.arena.alloc(cdata.get_predicates(def_id.index, tcx)) }
+    predicates_defined_on => {
+        tcx.arena.alloc(cdata.get_predicates_defined_on(def_id.index, tcx))
+    }
+    super_predicates_of => { tcx.arena.alloc(cdata.get_super_predicates(def_id.index, tcx)) }
     trait_def => {
         tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx.sess))
     }
@@ -108,10 +111,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     variances_of => { tcx.arena.alloc_from_iter(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
-        let mut result = vec![];
+        let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index,
           |child| result.push(child.res.def_id()), tcx.sess);
-        Lrc::new(result)
+        tcx.arena.alloc_slice(&result)
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
@@ -134,7 +137,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         (cdata.mir_const_qualif(def_id.index), tcx.arena.alloc(BitSet::new_empty(0)))
     }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
-    inherent_impls => { Lrc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
+    inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     static_mutability => { cdata.static_mutability(def_id.index) }
@@ -160,7 +163,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
-    dylib_dependency_formats => { Lrc::new(cdata.get_dylib_dependency_formats()) }
+    dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
@@ -169,8 +172,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_profiler_runtime => { cdata.root.profiler_runtime }
     panic_strategy => { cdata.root.panic_strategy }
     extern_crate => {
-        let r = Lrc::new(*cdata.extern_crate.lock());
-        r
+        let r = *cdata.extern_crate.lock();
+        r.map(|c| &*tcx.arena.alloc(c))
     }
     is_no_builtins => { cdata.root.no_builtins }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
@@ -187,10 +190,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             })
             .collect();
 
-        Lrc::new(reachable_non_generics)
+        tcx.arena.alloc(reachable_non_generics)
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
-    foreign_modules => { Lrc::new(cdata.get_foreign_modules(tcx.sess)) }
+    foreign_modules => { cdata.get_foreign_modules(tcx) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
             DefId { krate: def_id.krate, index }
@@ -207,18 +210,12 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
-
     implementations_of_trait => {
-        let mut result = vec![];
-        let filter = Some(other);
-        cdata.get_implementations_for_trait(filter, &mut result);
-        Lrc::new(result)
+        cdata.get_implementations_for_trait(tcx, Some(other))
     }
 
     all_trait_implementations => {
-        let mut result = vec![];
-        cdata.get_implementations_for_trait(None, &mut result);
-        Lrc::new(result)
+        cdata.get_implementations_for_trait(tcx, None)
     }
 
     visibility => { cdata.get_visibility(def_id.index) }
@@ -228,13 +225,13 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     crate_name => { cdata.name }
     item_children => {
-        let mut result = vec![];
+        let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
-        Lrc::new(result)
+        tcx.arena.alloc_slice(&result)
     }
-    defined_lib_features => { Lrc::new(cdata.get_lib_features()) }
-    defined_lang_items => { Lrc::new(cdata.get_lang_items()) }
-    missing_lang_items => { Lrc::new(cdata.get_missing_lang_items()) }
+    defined_lib_features => { cdata.get_lib_features(tcx) }
+    defined_lang_items => { cdata.get_lang_items(tcx) }
+    missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {
         let r = match *cdata.extern_crate.borrow() {
@@ -288,7 +285,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         },
         foreign_modules: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            Lrc::new(foreign_modules::collect(tcx))
+            &tcx.arena.alloc(foreign_modules::collect(tcx))[..]
         },
         link_args: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
@@ -325,7 +322,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             // which is to say, its not deterministic in general. But
             // we believe that libstd is consistently assigned crate
             // num 1, so it should be enough to resolve #46112.
-            let mut crates: Vec<CrateNum> = (*tcx.crates()).clone();
+            let mut crates: Vec<CrateNum> = (*tcx.crates()).to_owned();
             crates.sort();
 
             for &cnum in crates.iter() {
@@ -374,7 +371,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                 }
             }
 
-            Lrc::new(visible_parent_map)
+            tcx.arena.alloc(visible_parent_map)
         },
 
         ..*providers

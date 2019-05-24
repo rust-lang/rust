@@ -6,7 +6,6 @@ use crate::middle::lang_items::FnOnceTraitLangItem;
 use crate::namespace::Namespace;
 use crate::util::nodemap::FxHashSet;
 use errors::{Applicability, DiagnosticBuilder};
-use rustc_data_structures::sync::Lrc;
 use rustc::hir::{self, ExprKind, Node, QPath};
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
@@ -844,7 +843,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.all_traits = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(compute_all_traits(tcx))
+        &tcx.arena.alloc(compute_all_traits(tcx))[..]
     }
 }
 
