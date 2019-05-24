@@ -320,6 +320,7 @@
 #debuginfo-level-tools = debuginfo-level
 
 # Debuginfo level for the test suites run with compiletest.
+# FIXME(#61117): Some tests fail when this option is enabled.
 #debuginfo-level-tests = 0
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
@@ -351,7 +352,7 @@
 # harness are debuggable just from logfiles.
 #verbose-tests = false
 
-# Flag indicating whether tests are compiled with optimizations (the -O flag)
+# Flag indicating whether tests are compiled with optimizations (the -O flag).
 #optimize-tests = true
 
 # Flag indicating whether codegen tests will be run or not. If you get an error
