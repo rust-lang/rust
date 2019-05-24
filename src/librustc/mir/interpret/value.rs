@@ -126,7 +126,7 @@ impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Scalar<Tag, Id> {
                     assert_eq!(truncate(bits, Size::from_bytes(size as u64)), bits,
                             "Scalar value {:#x} exceeds size of {} bytes", bits, size);
                     // Format as hex number wide enough to fit any value of the given `size`.
-                    // So e.g. bits=20, size=1 will be "0x14", but with size=4 it'll be "0x00000014".
+                    // So bits=20, size=1 will be "0x14", but with size=4 it'll be "0x00000014".
                     write!(f, "0x{:>0width$x}", bits, width=(size*2) as usize)
                 }
             }
