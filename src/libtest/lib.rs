@@ -22,7 +22,6 @@
 #![unstable(feature = "test", issue = "27812")]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
 #![feature(asm)]
-#![feature(fnbox)]
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc, rustc_private))]
 #![feature(nll)]
 #![feature(set_stdio)]
@@ -56,7 +55,6 @@ pub use self::TestResult::*;
 
 use std::any::Any;
 use std::borrow::Cow;
-use std::boxed::FnBox;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::env;
@@ -174,7 +172,7 @@ pub trait TDynBenchFn: Send {
 pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
-    DynTestFn(Box<dyn FnBox() + Send>),
+    DynTestFn(Box<dyn FnOnce() + Send>),
     DynBenchFn(Box<dyn TDynBenchFn + 'static>),
 }
 
@@ -1447,7 +1445,7 @@ pub fn run_test(
         desc: TestDesc,
         monitor_ch: Sender<MonitorMsg>,
         nocapture: bool,
-        testfn: Box<dyn FnBox() + Send>,
+        testfn: Box<dyn FnOnce() + Send>,
         concurrency: Concurrent,
     ) {
         // Buffer for capturing standard I/O

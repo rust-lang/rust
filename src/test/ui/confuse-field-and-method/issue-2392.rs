@@ -1,7 +1,3 @@
-#![feature(core, fnbox)]
-
-use std::boxed::FnBox;
-
 struct FuncContainer {
     f1: fn(data: u8),
     f2: extern "C" fn(data: u8),
@@ -18,7 +14,7 @@ struct Obj<F> where F: FnOnce() -> u32 {
 }
 
 struct BoxedObj {
-    boxed_closure: Box<FnBox() -> u32>,
+    boxed_closure: Box<FnOnce() -> u32>,
 }
 
 struct Wrapper<F> where F: FnMut() -> u32 {
@@ -29,8 +25,8 @@ fn func() -> u32 {
     0
 }
 
-fn check_expression() -> Obj<Box<FnBox() -> u32>> {
-    Obj { closure: Box::new(|| 42_u32) as Box<FnBox() -> u32>, not_closure: 42 }
+fn check_expression() -> Obj<Box<FnOnce() -> u32>> {
+    Obj { closure: Box::new(|| 42_u32) as Box<FnOnce() -> u32>, not_closure: 42 }
 }
 
 fn main() {
@@ -48,7 +44,7 @@ fn main() {
     let boxed_fn = BoxedObj { boxed_closure: Box::new(func) };
     boxed_fn.boxed_closure();//~ ERROR no method named `boxed_closure` found
 
-    let boxed_closure = BoxedObj { boxed_closure: Box::new(|| 42_u32) as Box<FnBox() -> u32> };
+    let boxed_closure = BoxedObj { boxed_closure: Box::new(|| 42_u32) as Box<FnOnce() -> u32> };
     boxed_closure.boxed_closure();//~ ERROR no method named `boxed_closure` found
 
     // test expression writing in the notes
