@@ -116,7 +116,8 @@ fn check_and_apply_linkage(
         let llty2 = if let ty::RawPtr(ref mt) = ty.sty {
             cx.layout_of(mt.ty).llvm_type(cx)
         } else {
-            cx.sess().span_fatal(span, "must have type `*const T` or `*mut T`")
+            cx.sess().span_fatal(
+                span, "must have type `*const T` or `*mut T` due to `#[linkage]` attribute")
         };
         unsafe {
             // Declare a symbol `foo` with the desired linkage.
