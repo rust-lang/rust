@@ -317,6 +317,7 @@ Definite bugs found:
 * [`Debug for vec_deque::Iter` accessing uninitialized memory](https://github.com/rust-lang/rust/issues/53566)
 * [`From<&[T]> for Rc` creating a not sufficiently aligned reference](https://github.com/rust-lang/rust/issues/54908)
 * [`BTreeMap` creating a shared reference pointing to a too small allocation](https://github.com/rust-lang/rust/issues/54957)
+* [`Vec::append` creating a dangling reference](https://github.com/rust-lang/rust/pull/61082)
 * [Futures turning a shared reference into a mutable one](https://github.com/rust-lang/rust/pull/56319)
 * [`str` turning a shared reference into a mutable one](https://github.com/rust-lang/rust/pull/58200)
 * [`rand` performing unaligned reads](https://github.com/rust-random/rand/issues/779)
@@ -326,6 +327,7 @@ Violations of Stacked Borrows found that are likely bugs (but Stacked Borrows is
 * [`VecDeque` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/56161)
 * [`BTreeMap` creating mutable references that overlap with shared references](https://github.com/rust-lang/rust/pull/58431)
 * [`LinkedList` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/60072)
+* [`Vec::push` invalidating existing references into the vector](https://github.com/rust-lang/rust/issues/60847)
 
 ## License
 
