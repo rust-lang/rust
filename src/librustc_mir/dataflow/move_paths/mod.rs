@@ -241,21 +241,22 @@ impl MovePathLookup {
     // unknown place, but will rather return the nearest available
     // parent.
     pub fn find(&self, place: &Place<'tcx>) -> LookupResult {
-        match *place {
-            Place::Base(PlaceBase::Local(local)) => LookupResult::Exact(self.locals[local]),
-            Place::Base(PlaceBase::Static(..)) => LookupResult::Parent(None),
-            Place::Projection(ref proj) => {
-                match self.find(&proj.base) {
-                    LookupResult::Exact(base_path) => {
-                        match self.projections.get(&(base_path, proj.elem.lift())) {
-                            Some(&subpath) => LookupResult::Exact(subpath),
-                            None => LookupResult::Parent(Some(base_path))
-                        }
-                    }
-                    inexact => inexact
+        place.iterate(|place_base, place_projection| {
+            let mut result = match place_base {
+                PlaceBase::Local(local) => self.locals[*local],
+                PlaceBase::Static(..) => return LookupResult::Parent(None),
+            };
+
+            for proj in place_projection {
+                if let Some(&subpath) = self.projections.get(&(result, proj.elem.lift())) {
+                    result = subpath;
+                } else {
+                    return LookupResult::Parent(Some(result));
                 }
             }
-        }
+
+            LookupResult::Exact(result)
+        })
     }
 
     pub fn find_local(&self, local: Local) -> MovePathIndex {
