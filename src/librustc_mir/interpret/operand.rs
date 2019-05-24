@@ -472,13 +472,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         let op = match *mir_place {
             Base(PlaceBase::Local(mir::RETURN_PLACE)) => return err!(ReadFromReturnPointer),
             Base(PlaceBase::Local(local)) => self.access_local(self.frame(), local, layout)?,
+            Base(PlaceBase::Static(_)) => self.eval_place_to_mplace(mir_place)?.into(),
 
             Projection(ref proj) => {
                 let op = self.eval_place_to_op(&proj.base, None)?;
                 self.operand_projection(op, &proj.elem)?
             }
-
-            _ => self.eval_place_to_mplace(mir_place)?.into(),
         };
 
         trace!("eval_place_to_op: got {:?}", *op);
