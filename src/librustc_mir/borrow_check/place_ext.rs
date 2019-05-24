@@ -25,40 +25,36 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
         mir: &Mir<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
     ) -> bool {
-        match self {
-            // If a local variable is immutable, then we only need to track borrows to guard
-            // against two kinds of errors:
-            // * The variable being dropped while still borrowed (e.g., because the fn returns
-            //   a reference to a local variable)
-            // * The variable being moved while still borrowed
-            //
-            // In particular, the variable cannot be mutated -- the "access checks" will fail --
-            // so we don't have to worry about mutation while borrowed.
-            Place::Base(PlaceBase::Local(index)) => {
-                match locals_state_at_exit {
-                    LocalsStateAtExit::AllAreInvalidated => false,
-                    LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved } => {
-                        let ignore = !has_storage_dead_or_moved.contains(*index) &&
-                            mir.local_decls[*index].mutability == Mutability::Not;
-                        debug!("ignore_borrow: local {:?} => {:?}", index, ignore);
-                        ignore
+        self.iterate(|place_base, place_projection| {
+            let ignore = match place_base {
+                // If a local variable is immutable, then we only need to track borrows to guard
+                // against two kinds of errors:
+                // * The variable being dropped while still borrowed (e.g., because the fn returns
+                //   a reference to a local variable)
+                // * The variable being moved while still borrowed
+                //
+                // In particular, the variable cannot be mutated -- the "access checks" will fail --
+                // so we don't have to worry about mutation while borrowed.
+                PlaceBase::Local(index) => {
+                    match locals_state_at_exit {
+                        LocalsStateAtExit::AllAreInvalidated => false,
+                        LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved } => {
+                            let ignore = !has_storage_dead_or_moved.contains(*index) &&
+                                mir.local_decls[*index].mutability == Mutability::Not;
+                            debug!("ignore_borrow: local {:?} => {:?}", index, ignore);
+                            ignore
+                        }
                     }
                 }
-            }
-            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) =>
-                false,
-            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })) => {
-                tcx.is_mutable_static(*def_id)
-            }
-            Place::Projection(proj) => match proj.elem {
-                ProjectionElem::Field(..)
-                | ProjectionElem::Downcast(..)
-                | ProjectionElem::Subslice { .. }
-                | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Index(_) => proj.base.ignore_borrow(
-                    tcx, mir, locals_state_at_exit),
+                PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. }) =>
+                    false,
+                PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. }) => {
+                    tcx.is_mutable_static(*def_id)
+                }
+            };
 
-                ProjectionElem::Deref => {
+            for proj in place_projection {
+                if proj.elem == ProjectionElem::Deref {
                     let ty = proj.base.ty(mir, tcx).ty;
                     match ty.sty {
                         // For both derefs of raw pointers and `&T`
@@ -71,11 +67,13 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                         // original path into a new variable and
                         // borrowed *that* one, leaving the original
                         // path unborrowed.
-                        ty::RawPtr(..) | ty::Ref(_, _, hir::MutImmutable) => true,
-                        _ => proj.base.ignore_borrow(tcx, mir, locals_state_at_exit),
+                        ty::RawPtr(..) | ty::Ref(_, _, hir::MutImmutable) => return true,
+                        _ => {}
                     }
                 }
-            },
-        }
+            }
+
+            ignore
+        })
     }
 }
