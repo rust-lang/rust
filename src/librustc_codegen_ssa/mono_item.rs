@@ -7,15 +7,24 @@ use crate::traits::*;
 use rustc::mir::mono::MonoItem;
 
 pub trait MonoItemExt<'a, 'tcx: 'a> {
-    fn as_mono_item(&self) -> &MonoItem<'tcx>;
+    fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx);
+    fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
+        &self,
+        cx: &'a Bx::CodegenCx,
+        linkage: Linkage,
+        visibility: Visibility
+    );
+    fn to_raw_string(&self) -> String;
+}
 
+impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
-               self.as_mono_item().to_string(cx.tcx(), true),
-               self.as_mono_item().to_raw_string(),
+               self.to_string(cx.tcx(), true),
+               self.to_raw_string(),
                cx.codegen_unit().name());
 
-        match *self.as_mono_item() {
+        match *self {
             MonoItem::Static(def_id) => {
                 cx.codegen_static(def_id, cx.tcx().is_mutable_static(def_id));
             }
@@ -33,8 +42,8 @@ pub trait MonoItemExt<'a, 'tcx: 'a> {
         }
 
         debug!("END IMPLEMENTING '{} ({})' in cgu {}",
-               self.as_mono_item().to_string(cx.tcx(), true),
-               self.as_mono_item().to_raw_string(),
+               self.to_string(cx.tcx(), true),
+               self.to_raw_string(),
                cx.codegen_unit().name());
     }
 
@@ -45,15 +54,15 @@ pub trait MonoItemExt<'a, 'tcx: 'a> {
         visibility: Visibility
     ) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
-               self.as_mono_item().to_string(cx.tcx(), true),
-               self.as_mono_item().to_raw_string(),
+               self.to_string(cx.tcx(), true),
+               self.to_raw_string(),
                cx.codegen_unit().name());
 
-        let symbol_name = self.as_mono_item().symbol_name(cx.tcx()).as_str();
+        let symbol_name = self.symbol_name(cx.tcx()).as_str();
 
         debug!("symbol {}", &symbol_name);
 
-        match *self.as_mono_item() {
+        match *self {
             MonoItem::Static(def_id) => {
                 cx.predefine_static(def_id, linkage, visibility, &symbol_name);
             }
@@ -64,13 +73,13 @@ pub trait MonoItemExt<'a, 'tcx: 'a> {
         }
 
         debug!("END PREDEFINING '{} ({})' in cgu {}",
-               self.as_mono_item().to_string(cx.tcx(), true),
-               self.as_mono_item().to_raw_string(),
+               self.to_string(cx.tcx(), true),
+               self.to_raw_string(),
                cx.codegen_unit().name());
     }
 
     fn to_raw_string(&self) -> String {
-        match *self.as_mono_item() {
+        match *self {
             MonoItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
                         instance.def,
@@ -83,11 +92,5 @@ pub trait MonoItemExt<'a, 'tcx: 'a> {
                 format!("GlobalAsm({:?})", id)
             }
         }
-    }
-}
-
-impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
-    fn as_mono_item(&self) -> &MonoItem<'tcx> {
-        self
     }
 }
