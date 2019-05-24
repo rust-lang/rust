@@ -759,13 +759,14 @@ impl<A, F: Fn<A> + ?Sized> Fn<A> for Box<F> {
     }
 }
 
+/// `FnBox` is deprecated and will be removed.
+/// `Box<dyn FnOnce()>` can be called directly, since Rust 1.35.0.
+///
 /// `FnBox` is a version of the `FnOnce` intended for use with boxed
-/// closure objects. The idea is that where one would normally store a
-/// `Box<dyn FnOnce()>` in a data structure, you should use
+/// closure objects. The idea was that where one would normally store a
+/// `Box<dyn FnOnce()>` in a data structure, you whould use
 /// `Box<dyn FnBox()>`. The two traits behave essentially the same, except
-/// that a `FnBox` closure can only be called if it is boxed. (Note
-/// that `FnBox` may be deprecated in the future if `Box<dyn FnOnce()>`
-/// closures become directly usable.)
+/// that a `FnBox` closure can only be called if it is boxed.
 ///
 /// # Examples
 ///
@@ -777,6 +778,7 @@ impl<A, F: Fn<A> + ?Sized> Fn<A> for Box<F> {
 ///
 /// ```
 /// #![feature(fnbox)]
+/// #![allow(deprecated)]
 ///
 /// use std::boxed::FnBox;
 /// use std::collections::HashMap;
@@ -796,16 +798,38 @@ impl<A, F: Fn<A> + ?Sized> Fn<A> for Box<F> {
 ///     }
 /// }
 /// ```
+///
+/// In Rust 1.35.0 or later, use `FnOnce`, `FnMut`, or `Fn` instead:
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// fn make_map() -> HashMap<i32, Box<dyn FnOnce() -> i32>> {
+///     let mut map: HashMap<i32, Box<dyn FnOnce() -> i32>> = HashMap::new();
+///     map.insert(1, Box::new(|| 22));
+///     map.insert(2, Box::new(|| 44));
+///     map
+/// }
+///
+/// fn main() {
+///     let mut map = make_map();
+///     for i in &[1, 2] {
+///         let f = map.remove(&i).unwrap();
+///         assert_eq!(f(), i * 22);
+///     }
+/// }
+/// ```
 #[rustc_paren_sugar]
-#[unstable(feature = "fnbox",
-           reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
+#[unstable(feature = "fnbox", issue = "28796")]
+#[rustc_deprecated(reason = "use `FnOnce`, `FnMut`, or `Fn` instead", since = "1.37.0")]
 pub trait FnBox<A>: FnOnce<A> {
     /// Performs the call operation.
     fn call_box(self: Box<Self>, args: A) -> Self::Output;
 }
 
-#[unstable(feature = "fnbox",
-           reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
+#[unstable(feature = "fnbox", issue = "28796")]
+#[rustc_deprecated(reason = "use `FnOnce`, `FnMut`, or `Fn` instead", since = "1.37.0")]
+#[allow(deprecated, deprecated_in_future)]
 impl<A, F> FnBox<A> for F
     where F: FnOnce<A>
 {
