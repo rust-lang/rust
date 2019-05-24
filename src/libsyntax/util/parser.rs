@@ -45,8 +45,6 @@ pub enum AssocOp {
     GreaterEqual,
     /// `=`
     Assign,
-    /// `<-`
-    ObsoleteInPlace,
     /// `?=` where ? is one of the BinOpToken
     AssignOp(BinOpToken),
     /// `as`
@@ -75,7 +73,6 @@ impl AssocOp {
         use AssocOp::*;
         match *t {
             Token::BinOpEq(k) => Some(AssignOp(k)),
-            Token::LArrow => Some(ObsoleteInPlace),
             Token::Eq => Some(Assign),
             Token::BinOp(BinOpToken::Star) => Some(Multiply),
             Token::BinOp(BinOpToken::Slash) => Some(Divide),
@@ -145,7 +142,6 @@ impl AssocOp {
             LAnd => 6,
             LOr => 5,
             DotDot | DotDotEq => 4,
-            ObsoleteInPlace => 3,
             Assign | AssignOp(_) => 2,
         }
     }
@@ -155,7 +151,7 @@ impl AssocOp {
         use AssocOp::*;
         // NOTE: it is a bug to have an operators that has same precedence but different fixities!
         match *self {
-            ObsoleteInPlace | Assign | AssignOp(_) => Fixity::Right,
+            Assign | AssignOp(_) => Fixity::Right,
             As | Multiply | Divide | Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd |
             BitXor | BitOr | Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual |
             LAnd | LOr | Colon => Fixity::Left,
@@ -167,7 +163,7 @@ impl AssocOp {
         use AssocOp::*;
         match *self {
             Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual => true,
-            ObsoleteInPlace | Assign | AssignOp(_) | As | Multiply | Divide | Modulus | Add |
+            Assign | AssignOp(_) | As | Multiply | Divide | Modulus | Add |
             Subtract | ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd | LOr |
             DotDot | DotDotEq | Colon => false
         }
@@ -176,7 +172,7 @@ impl AssocOp {
     pub fn is_assign_like(&self) -> bool {
         use AssocOp::*;
         match *self {
-            Assign | AssignOp(_) | ObsoleteInPlace => true,
+            Assign | AssignOp(_) => true,
             Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual | As | Multiply | Divide |
             Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd |
             LOr | DotDot | DotDotEq | Colon => false
@@ -204,7 +200,7 @@ impl AssocOp {
             BitOr => Some(BinOpKind::BitOr),
             LAnd => Some(BinOpKind::And),
             LOr => Some(BinOpKind::Or),
-            ObsoleteInPlace | Assign | AssignOp(_) | As | DotDot | DotDotEq | Colon => None
+            Assign | AssignOp(_) | As | DotDot | DotDotEq | Colon => None
         }
     }
 
@@ -256,7 +252,6 @@ pub enum ExprPrecedence {
 
     Binary(BinOpKind),
 
-    ObsoleteInPlace,
     Cast,
     Type,
 
@@ -314,7 +309,6 @@ impl ExprPrecedence {
 
             // Binop-like expr kinds, handled by `AssocOp`.
             ExprPrecedence::Binary(op) => AssocOp::from_ast_binop(op).precedence() as i8,
-            ExprPrecedence::ObsoleteInPlace => AssocOp::ObsoleteInPlace.precedence() as i8,
             ExprPrecedence::Cast => AssocOp::As.precedence() as i8,
             ExprPrecedence::Type => AssocOp::Colon.precedence() as i8,
 

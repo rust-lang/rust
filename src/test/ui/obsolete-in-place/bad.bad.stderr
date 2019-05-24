@@ -1,18 +1,19 @@
-error: emplacement syntax is obsolete (for now, anyway)
-  --> $DIR/bad.rs:9:5
-   |
-LL |     x <- y;
-   |     ^^^^^^
-   |
-   = note: for more information, see <https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>
-
-error: emplacement syntax is obsolete (for now, anyway)
+error: expected expression, found keyword `in`
   --> $DIR/bad.rs:10:5
    |
 LL |     in(foo) { bar };
-   |     ^^^^^^^^^^^^^^^
+   |     ^^ expected expression
+
+error[E0282]: type annotations needed
+  --> $DIR/bad.rs:9:8
    |
-   = note: for more information, see <https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>
+LL |     let (x, y, foo, bar);
+   |         ---------------- consider giving the pattern a type
+LL |     x <- y;
+   |        ^^^ cannot infer type
+   |
+   = note: type must be known at this point
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0282`.

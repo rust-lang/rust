@@ -2005,13 +2005,6 @@ impl<'a> State<'a> {
                 self.word_space("box")?;
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)?;
             }
-            ast::ExprKind::ObsoleteInPlace(ref place, ref expr) => {
-                let prec = AssocOp::ObsoleteInPlace.precedence() as i8;
-                self.print_expr_maybe_paren(place, prec + 1)?;
-                self.s.space()?;
-                self.word_space("<-")?;
-                self.print_expr_maybe_paren(expr, prec)?;
-            }
             ast::ExprKind::Array(ref exprs) => {
                 self.print_expr_vec(&exprs[..], attrs)?;
             }

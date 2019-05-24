@@ -3252,17 +3252,6 @@ impl<'a> Parser<'a> {
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 (lo.to(span), ExprKind::AddrOf(m, e))
             }
-            token::Ident(..) if self.token.is_keyword(kw::In) => {
-                self.bump();
-                let place = self.parse_expr_res(
-                    Restrictions::NO_STRUCT_LITERAL,
-                    None,
-                )?;
-                let blk = self.parse_block()?;
-                let span = blk.span;
-                let blk_expr = self.mk_expr(span, ExprKind::Block(blk, None), ThinVec::new());
-                (lo.to(span), ExprKind::ObsoleteInPlace(place, blk_expr))
-            }
             token::Ident(..) if self.token.is_keyword(kw::Box) => {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
@@ -3500,8 +3489,6 @@ impl<'a> Parser<'a> {
                     self.mk_expr(span, binary, ThinVec::new())
                 }
                 AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs), ThinVec::new()),
-                AssocOp::ObsoleteInPlace =>
-                    self.mk_expr(span, ExprKind::ObsoleteInPlace(lhs, rhs), ThinVec::new()),
                 AssocOp::AssignOp(k) => {
                     let aop = match k {
                         token::Plus =>    BinOpKind::Add,
@@ -3820,9 +3807,6 @@ impl<'a> Parser<'a> {
                 String::new(),
                 Applicability::MachineApplicable,
             );
-            err.note("if you meant to use emplacement syntax, it is obsolete (for now, anyway)");
-            err.note("for more information on the status of emplacement syntax, see <\
-                      https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>");
             err.emit();
         }
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
