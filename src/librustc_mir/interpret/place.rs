@@ -611,38 +611,38 @@ where
         &mut self,
         mir_place: &mir::Place<'tcx>
     ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        use rustc::mir::Place::*;
         use rustc::mir::PlaceBase;
-        let place = match *mir_place {
-            Base(PlaceBase::Local(mir::RETURN_PLACE)) => match self.frame().return_place {
-                Some(return_place) =>
-                    // We use our layout to verify our assumption; caller will validate
-                    // their layout on return.
-                    PlaceTy {
-                        place: *return_place,
-                        layout: self.layout_of(self.monomorphize(self.frame().mir.return_ty())?)?,
-                    },
-                None => return err!(InvalidNullPointerUsage),
-            },
-            Base(PlaceBase::Local(local)) => PlaceTy {
-                // This works even for dead/uninitialized locals; we check further when writing
-                place: Place::Local {
-                    frame: self.cur_frame(),
-                    local,
-                },
-                layout: self.layout_of_local(self.frame(), local, None)?,
-            },
 
-            Projection(ref proj) => {
-                let place = self.eval_place(&proj.base)?;
-                self.place_projection(place, &proj.elem)?
+        mir_place.iterate(|place_base, place_projection| {
+            let mut place = match place_base {
+                PlaceBase::Local(mir::RETURN_PLACE) => match self.frame().return_place {
+                    Some(return_place) =>
+                        // We use our layout to verify our assumption; caller will validate
+                        // their layout on return.
+                        PlaceTy {
+                            place: *return_place,
+                            layout: self.layout_of(self.monomorphize(self.frame().mir.return_ty())?)?,
+                        },
+                    None => return err!(InvalidNullPointerUsage),
+                },
+                PlaceBase::Local(local) => PlaceTy {
+                    // This works even for dead/uninitialized locals; we check further when writing
+                    place: Place::Local {
+                        frame: self.cur_frame(),
+                        local: *local,
+                    },
+                    layout: self.layout_of_local(self.frame(), *local, None)?,
+                },
+                _ => self.eval_place_to_mplace(mir_place)?.into(),
+            };
+
+            for proj in place_projection {
+                place = self.place_projection(place, &proj.elem)?
             }
 
-            _ => self.eval_place_to_mplace(mir_place)?.into(),
-        };
-
-        self.dump_place(place.place);
-        Ok(place)
+            self.dump_place(place.place);
+            Ok(place)
+        })
     }
 
     /// Write a scalar to a place
