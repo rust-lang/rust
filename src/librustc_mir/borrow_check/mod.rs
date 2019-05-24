@@ -54,6 +54,7 @@ crate mod borrow_set;
 mod error_reporting;
 mod flows;
 mod location;
+mod conflict_errors;
 mod move_errors;
 mod mutability_errors;
 mod path_utils;

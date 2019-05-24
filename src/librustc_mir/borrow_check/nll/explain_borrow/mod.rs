@@ -112,7 +112,7 @@ impl BorrowExplanation {
                 };
 
                 match local_decl.name {
-                    Some(local_name) => {
+                    Some(local_name) if !local_decl.from_compiler_desugaring() => {
                         let message = format!(
                             "{B}borrow might be used here, when `{LOC}` is dropped \
                              and runs the {DTOR} for {TYPE}",
@@ -130,7 +130,7 @@ impl BorrowExplanation {
                             );
                         }
                     }
-                    None => {
+                    _ => {
                         err.span_label(
                             local_decl.source_info.span,
                             format!(
