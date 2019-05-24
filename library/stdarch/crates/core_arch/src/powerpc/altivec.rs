@@ -1355,6 +1355,23 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector cmplt.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_cmplt<T, U>(a: U, b: T) -> <T as sealed::VectorCmpGt<U>>::Result
+where
+    T: sealed::VectorCmpGt<U>,
+{
+    vec_cmpgt(b, a)
+}
+
+/// Vector cmple.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_cmple(a: vector_float, b: vector_float) -> vector_bool_int {
+    vec_cmpge(b, a)
+}
+
 /// Vector cmpgt.
 #[inline]
 #[target_feature(enable = "altivec")]
