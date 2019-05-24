@@ -7,7 +7,7 @@ use syntax::source_map::Span;
 use syntax::visit::FnKind;
 use syntax_pos::BytePos;
 
-use crate::utils::{in_macro_or_desugar, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
+use crate::utils::{in_macro_or_desugar, match_path_ast, snippet_opt, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for return statements at the end of a block.
@@ -164,13 +164,28 @@ impl Return {
             if match_path_ast(path, &[&*ident.name.as_str()]);
             if !in_external_macro(cx.sess(), initexpr.span);
             then {
-                    span_note_and_lint(cx,
-                                       LET_AND_RETURN,
-                                       retexpr.span,
-                                       "returning the result of a let binding from a block. \
-                                       Consider returning the expression directly.",
-                                       initexpr.span,
-                                       "this expression can be directly returned");
+                span_lint_and_then(
+                    cx,
+                    LET_AND_RETURN,
+                    retexpr.span,
+                    "returning the result of a let binding from a block",
+                    |err| {
+                        err.span_label(local.span, "unnecessary let binding");
+
+                        if let Some(snippet) = snippet_opt(cx, initexpr.span) {
+                            err.multipart_suggestion(
+                                "return the expression directly",
+                                vec![
+                                    (local.span, String::new()),
+                                    (retexpr.span, snippet),
+                                ],
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            err.span_help(initexpr.span, "this expression can be directly returned");
+                        }
+                    },
+                );
             }
         }
     }
