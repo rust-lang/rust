@@ -618,7 +618,7 @@ impl<'a> Parser<'a> {
         let (span, msg) = match (&self.token, self.subparser_name) {
             (&token::Token::Eof, Some(origin)) => {
                 let sp = self.sess.source_map().next_point(self.span);
-                (sp, format!( "expected expression, found end of {}", origin))
+                (sp, format!("expected expression, found end of {}", origin))
             }
             _ => (self.span, format!(
                 "expected expression, found {}",

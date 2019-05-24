@@ -1,13 +1,13 @@
-#[cfg_attr] //~ ERROR bad `cfg_attr` attribute
+#[cfg_attr] //~ ERROR expected `(`, found end of attribute
 struct S1;
 
 #[cfg_attr = ""] //~ ERROR expected `(`, found `=`
 struct S2;
 
-#[derive] //~ ERROR bad `derive` attribute
+#[derive] //~ ERROR attribute must be of the form
 struct S3;
 
-#[derive = ""] //~ ERROR bad `derive` attribute
+#[derive = ""] //~ ERROR attribute must be of the form
 struct S4;
 
 fn main() {}

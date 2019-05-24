@@ -16,13 +16,11 @@ warning: empty trait list in `derive`
 LL | #[derive()]
    | ^^^^^^^^^^^
 
-error: bad `derive` attribute
+error: attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
   --> $DIR/malformed-derive-entry.rs:10:1
    |
 LL | #[derive]
-   | ^^^^^^^^^ missing traits to be derived
-   |
-   = note: `derive` must be of the form: `#[derive(Trait1, Trait2, ...)]`
+   | ^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
