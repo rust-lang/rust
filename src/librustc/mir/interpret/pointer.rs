@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::mir;
 use crate::ty::layout::{self, HasDataLayout, Size};
 use rustc_macros::HashStable;
@@ -70,7 +72,7 @@ impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 ///
 /// Pointer is also generic over the `Tag` associated with each pointer,
 /// which is used to do provenance tracking during execution.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd,
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub struct Pointer<Tag=(),Id=AllocId> {
     pub alloc_id: Id,
@@ -79,6 +81,18 @@ pub struct Pointer<Tag=(),Id=AllocId> {
 }
 
 static_assert_size!(Pointer, 16);
+
+impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Pointer<Tag, Id> {
+    default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}.{:#x}[{:?}]", self.alloc_id, self.offset.bytes(), self.tag)
+    }
+}
+// Specialization for no tag
+impl<Id: fmt::Debug> fmt::Debug for Pointer<(), Id> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}.{:#x}", self.alloc_id, self.offset.bytes())
+    }
+}
 
 /// Produces a `Pointer` which points to the beginning of the Allocation
 impl From<AllocId> for Pointer {
