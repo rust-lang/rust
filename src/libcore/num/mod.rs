@@ -472,6 +472,7 @@ assert_eq!(m, ", $reversed, ");
             #[unstable(feature = "reverse_bits", issue = "48763")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
             #[inline]
+            #[must_use]
             pub const fn reverse_bits(self) -> Self {
                 (self as $UnsignedT).reverse_bits() as Self
             }
@@ -2521,6 +2522,7 @@ assert_eq!(m, ", $reversed, ");
 ```"),
             #[unstable(feature = "reverse_bits", issue = "48763")]
             #[inline]
+            #[must_use]
             pub const fn reverse_bits(self) -> Self {
                 intrinsics::bitreverse(self as $ActualT) as Self
             }

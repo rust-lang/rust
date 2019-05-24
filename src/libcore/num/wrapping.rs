@@ -524,6 +524,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// ```
             #[unstable(feature = "reverse_bits", issue = "48763")]
             #[inline]
+            #[must_use]
             pub const fn reverse_bits(self) -> Self {
                 Wrapping(self.0.reverse_bits())
             }
