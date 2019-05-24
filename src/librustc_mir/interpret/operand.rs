@@ -469,12 +469,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
         use rustc::mir::PlaceBase;
-        let op = match *mir_place {
+        let op = match mir_place {
             Base(PlaceBase::Local(mir::RETURN_PLACE)) => return err!(ReadFromReturnPointer),
-            Base(PlaceBase::Local(local)) => self.access_local(self.frame(), local, layout)?,
-            Base(PlaceBase::Static(_)) => self.eval_place_to_mplace(mir_place)?.into(),
+            Base(PlaceBase::Local(local)) => self.access_local(self.frame(), *local, layout)?,
+            Base(PlaceBase::Static(place_static)) => {
+                self.eval_static_to_mplace(place_static)?.into()
+            }
 
-            Projection(ref proj) => {
+            Projection(proj) => {
                 let op = self.eval_place_to_op(&proj.base, None)?;
                 self.operand_projection(op, &proj.elem)?
             }
