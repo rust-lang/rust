@@ -467,22 +467,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         mir_place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        use rustc::mir::Place::*;
         use rustc::mir::PlaceBase;
-        let op = match *mir_place {
-            Base(PlaceBase::Local(mir::RETURN_PLACE)) => return err!(ReadFromReturnPointer),
-            Base(PlaceBase::Local(local)) => self.access_local(self.frame(), local, layout)?,
 
-            Projection(ref proj) => {
-                let op = self.eval_place_to_op(&proj.base, None)?;
-                self.operand_projection(op, &proj.elem)?
+        mir_place.iterate(|place_base, place_projection| {
+            let mut op = match place_base {
+                PlaceBase::Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
+                PlaceBase::Local(local) => self.access_local(self.frame(), *local, layout)?,
+                _ => self.eval_place_to_mplace(mir_place)?.into(),
+            };
+
+            for proj in place_projection {
+                op = self.operand_projection(op, &proj.elem)?
             }
 
-            _ => self.eval_place_to_mplace(mir_place)?.into(),
-        };
-
-        trace!("eval_place_to_op: got {:?}", *op);
-        Ok(op)
+            trace!("eval_place_to_op: got {:?}", op);
+            Ok(op)
+        })
     }
 
     /// Evaluate the operand, returning a place where you can then find the data.
