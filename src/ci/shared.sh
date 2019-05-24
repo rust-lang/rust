@@ -24,6 +24,22 @@ function retry {
   done
 }
 
+function isCI {
+  [ "$CI" = "true" ] || [ "$TRAVIS" = "true" ] || [ "$TF_BUILD" = "True" ]
+}
+
+function isOSX {
+  [ "$TRAVIS_OS_NAME" = "osx" ] || [ "$AGENT_OS" = "Darwin" ]
+}
+
+function getCIBranch {
+  if [ "$TRAVIS" = "true" ]; then
+    echo "$TRAVIS_BRANCH"
+  else
+    echo "$BUILD_SOURCEBRANCHNAME"
+  fi;
+}
+
 if ! declare -F travis_fold; then
   if [ "${TRAVIS-false}" = 'true' ]; then
     # This is a trimmed down copy of

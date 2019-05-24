@@ -80,9 +80,9 @@ TESTS_IN_2 := \
 	src/test/run-pass-fulldeps \
 	src/tools/linkchecker
 
-appveyor-subset-1:
+ci-subset-1:
 	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2:%=--exclude %)
-appveyor-subset-2:
+ci-subset-2:
 	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2)
 
 

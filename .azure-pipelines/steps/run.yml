@@ -1,0 +1,137 @@
+# FIXME(linux): need to configure core dumps, enable them, and then dump
+# backtraces on failure from all core dumps:
+#
+# - bash: sudo apt install gdb
+# - bash: sudo sh -c 'echo "/checkout/obj/cores/core.%p.%E" > /proc/sys/kernel/core_pattern'
+#
+# Check travis config for `gdb --batch` command to print all crash logs
+
+steps:
+
+- checkout: self
+  fetchDepth: 2
+
+- bash: printenv | sort
+  displayName: Show environment variables
+
+- bash: |
+    set -e
+    df -h
+    du . | sort -nr | head -n100
+  displayName: Show disk usage
+  # FIXME: this hasn't been tested, but maybe it works on Windows? Should test!
+  condition: and(succeeded(), ne(variables['Agent.OS'], 'Windows_NT'))
+
+- template: install-sccache.yml
+- template: install-clang.yml
+
+# Install some dependencies needed to build LLDB/Clang, currently only needed
+# during the `dist` target
+- bash: |
+    set -e
+    brew update
+    brew install xz
+    brew install swig
+  displayName: Install build dependencies (OSX)
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'), eq(variables['RUST_CHECK_TARGET'],'dist'))
+
+# Switch to XCode 9.3 on OSX since it seems to be the last version that supports
+# i686-apple-darwin. We'll eventually want to upgrade this and it will probably
+# force us to drop i686-apple-darwin, but let's keep the wheels turning for now.
+- bash: |
+    set -e
+    sudo xcode-select --switch /Applications/Xcode_9.3.app
+  displayName: Switch to Xcode 9.3 (OSX)
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+
+- template: install-windows-build-deps.yml
+
+# Looks like docker containers have IPv6 disabled by default, so let's turn it
+# on since libstd tests require it
+- bash: |
+    set -e
+    echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json
+    sudo service docker restart
+  displayName: Enable IPv6
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+
+# Check out all our submodules, but more quickly than using git by using one of
+# our custom scripts
+- bash: |
+    set -e
+    mkdir -p $HOME/rustsrc
+    $BUILD_SOURCESDIRECTORY/src/ci/init_repo.sh . $HOME/rustsrc
+  condition: and(succeeded(), ne(variables['Agent.OS'], 'Windows_NT'))
+  displayName: Check out submodules (Unix)
+- script: |
+    if not exist D:\cache\rustsrc\NUL mkdir D:\cache\rustsrc
+    sh src/ci/init_repo.sh . /d/cache/rustsrc
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+  displayName: Check out submodules (Windows)
+
+# Ensure the `aws` CLI is installed so we can deploy later on, cache docker
+# images, etc.
+- bash: |
+    set -e
+    sudo apt-get install -y python3-setuptools
+    pip3 install awscli --upgrade --user
+    echo "##vso[task.prependpath]$HOME/.local/bin"
+  displayName: Install awscli (Linux)
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+- script: pip install awscli
+  displayName: Install awscli (non-Linux)
+  condition: and(succeeded(), ne(variables['Agent.OS'], 'Linux'))
+
+# Configure our CI_JOB_NAME variable which log analyzers can use for the main
+# step to see what's going on.
+- bash: echo "##vso[task.setvariable variable=CI_JOB_NAME]$SYSTEM_JOBNAME"
+  displayName: Configure Job Name
+
+# As a quick smoke check on the otherwise very fast mingw-check linux builder
+# check our own internal scripts.
+- bash: |
+    set -e
+    git clone --depth=1 https://github.com/rust-lang-nursery/rust-toolstate.git
+    cd rust-toolstate
+    python2.7 "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "" ""
+    cd ..
+    rm -rf rust-toolstate
+  condition: and(succeeded(), eq(variables['IMAGE'], 'mingw-check'))
+  displayName: Verify the publish_toolstate script works
+
+- bash: |
+    set -e
+    if [ "$IMAGE" = "" ]; then
+      src/ci/run.sh
+    else
+      src/ci/docker/run.sh $IMAGE
+    fi
+  #timeoutInMinutes: 180
+  timeoutInMinutes: 600
+  env:
+    CI: true
+    SRC: .
+    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+  displayName: Run build
+
+# If we're a deploy builder, use the `aws` command to publish everything to our
+# bucket.
+- bash: |
+    set -e
+    if [ "$AGENT_OS" = "Linux" ]; then
+        rm -rf obj/build/dist/doc
+        upload_dir=obj/build/dist
+    else
+        rm -rf build/dist/doc
+        upload_dir=build/dist
+    fi
+    ls -la $upload_dir
+    deploy_dir=rustc-builds
+    if [ "$DEPLOY_ALT" == "1" ]; then
+        deploy_dir=rustc-builds-alt
+    fi
+    aws s3 cp --no-progress --recursive --acl public-read ./$upload_dir s3://$DEPLOY_BUCKET/$deploy_dir/$BUILD_SOURCEVERSION
+  env:
+    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+  condition: and(succeeded(), or(eq(variables.DEPLOY, '1'), eq(variables.DEPLOY_ALT, '1')))
+  displayName: Upload artifacts

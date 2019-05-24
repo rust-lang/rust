@@ -20,11 +20,11 @@ environment:
   - CI_JOB_NAME: i686-msvc-1
     MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
-    SCRIPT: make appveyor-subset-1
+    SCRIPT: make ci-subset-1
   - CI_JOB_NAME: i686-msvc-2
     MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
-    SCRIPT: make appveyor-subset-2
+    SCRIPT: make ci-subset-2
 
   # MSVC aux tests
   - CI_JOB_NAME: x86_64-msvc-aux
@@ -58,7 +58,7 @@ environment:
   - CI_JOB_NAME: i686-mingw-1
     MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
-    SCRIPT: make appveyor-subset-1
+    SCRIPT: make ci-subset-1
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
@@ -68,7 +68,7 @@ environment:
   - CI_JOB_NAME: i686-mingw-2
     MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
-    SCRIPT: make appveyor-subset-2
+    SCRIPT: make ci-subset-2
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32

@@ -1,0 +1,22 @@
+#
+# Azure Pipelines pull request build for Rust
+#
+
+trigger: none
+pr:
+- master # FIXME: really just want any branch, but want an explicit "pr" property set so it's clear
+
+jobs:
+- job: Linux
+  pool:
+    vmImage: ubuntu-16.04
+  steps:
+    - template: steps/run.yml
+  strategy:
+    matrix:
+      x86_64-gnu-llvm-6.0:
+        RUST_BACKTRACE: 1
+
+#      x86_64-gnu-tools: {}
+#      # if: branch = auto OR (type = pull_request AND commit_message =~ /(?i:^update.*\b(rls|rustfmt|clippy|miri|cargo)\b)/)
+#      mingw-check: {}

@@ -326,6 +326,8 @@ pub enum CiEnv {
     Travis,
     /// The AppVeyor environment, for Windows builds.
     AppVeyor,
+    /// The Azure Pipelines environment, for Linux (including Docker), Windows, and macOS builds.
+    AzurePipelines,
 }
 
 impl CiEnv {
@@ -335,6 +337,8 @@ impl CiEnv {
             CiEnv::Travis
         } else if env::var("APPVEYOR").ok().map_or(false, |e| &*e == "True") {
             CiEnv::AppVeyor
+        } else if env::var("TF_BUILD").ok().map_or(false, |e| &*e == "True") {
+            CiEnv::AzurePipelines
         } else {
             CiEnv::None
         }

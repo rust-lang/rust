@@ -1,0 +1,40 @@
+steps:
+
+- bash: |
+    set -e
+    curl -f http://releases.llvm.org/7.0.0/clang+llvm-7.0.0-x86_64-apple-darwin.tar.xz | tar xJf -
+
+    export CC=`pwd`/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang
+    echo "##vso[task.setvariable variable=CC]$CC"
+
+    export CXX=`pwd`/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang++
+    echo "##vso[task.setvariable variable=CXX]$CXX"
+
+    # Configure `AR` specifically so rustbuild doesn't try to infer it as
+    # `clang-ar` by accident.
+    echo "##vso[task.setvariable variable=AR]ar"
+  displayName: Install clang (OSX)
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+
+# If we're compiling for MSVC then we, like most other distribution builders,
+# switch to clang as the compiler. This'll allow us eventually to enable LTO
+# amongst LLVM and rustc. Note that we only do this on MSVC as I don't think
+# clang has an output mode compatible with MinGW that we need. If it does we
+# should switch to clang for MinGW as well!
+#
+# Note that the LLVM installer is an NSIS installer
+#
+# Original downloaded here came from
+# http://releases.llvm.org/7.0.0/LLVM-7.0.0-win64.exe
+- script: |
+    powershell -Command "iwr -outf %TEMP%\LLVM-7.0.0-win64.exe https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-7.0.0-win64.exe"
+    set CLANG_DIR=%CD%\citools\clang-rust
+    %TEMP%\LLVM-7.0.0-win64.exe /S /NCRC /D=%CLANG_DIR%
+    set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=%CLANG_DIR%\bin\clang-cl.exe
+    echo ##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]%RUST_CONFIGURE_ARGS%
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['MINGW_URL'],''))
+  displayName: Install clang (Windows)
+
+# Note that we don't install clang on Linux since its compiler story is just so
+# different. Each container has its own toolchain configured appropriately
+# already.

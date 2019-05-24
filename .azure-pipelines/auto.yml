@@ -1,0 +1,350 @@
+#
+# Azure Pipelines "auto" branch build for Rust on Linux, macOS, and Windows.
+#
+
+pr: none
+trigger:
+  - auto
+
+variables:
+- group: prod-credentials
+
+jobs:
+- job: Linux
+  pool:
+    vmImage: ubuntu-16.04
+  steps:
+  - template: steps/run.yml
+  strategy:
+    matrix:
+      x86_64-gnu-llvm-6.0:
+        IMAGE: x86_64-gnu-llvm-6.0
+        RUST_BACKTRACE: 1
+
+      dist-x86_64-linux:
+        IMAGE: dist-x86_64-linux
+        DEPLOY: 1
+
+      # "alternate" deployments, these are "nightlies" but have LLVM assertions
+      # turned on, they're deployed to a different location primarily for
+      # additional testing.
+      dist-x86_64-linux-alt:
+        IMAGE: dist-x86_64-linux
+        DEPLOY_ALT: 1
+
+      # Linux builders, remaining docker images
+      arm-android:
+        IMAGE: arm-android
+
+      armhf-gnu:
+        IMAGE: armhf-gnu
+
+      dist-various-1:
+        IMAGE: dist-various-1
+        DEPLOY: 1
+
+      dist-various-2:
+        IMAGE: dist-various-2
+        DEPLOY: 1
+
+      dist-aarch64-linux:
+        IMAGE: dist-aarch64-linux
+        DEPLOY: 1
+
+      dist-android:
+        IMAGE: dist-android
+        DEPLOY: 1
+
+      dist-arm-linux:
+        IMAGE: dist-arm-linux
+        DEPLOY: 1
+
+      dist-armhf-linux:
+        IMAGE: dist-armhf-linux
+        DEPLOY: 1
+
+      dist-armv7-linux:
+        IMAGE: dist-armv7-linux
+        DEPLOY: 1
+
+      dist-i586-gnu-i586-i686-musl:
+        IMAGE: dist-i586-gnu-i586-i686-musl
+        DEPLOY: 1
+
+      dist-i686-freebsd:
+        IMAGE: dist-i686-freebsd
+        DEPLOY: 1
+
+      dist-i686-linux:
+        IMAGE: dist-i686-linux
+        DEPLOY: 1
+
+      dist-mips-linux:
+        IMAGE: dist-mips-linux
+        DEPLOY: 1
+
+      dist-mips64-linux:
+        IMAGE: dist-mips64-linux
+        DEPLOY: 1
+
+      dist-mips64el-linux:
+        IMAGE: dist-mips64el-linux
+        DEPLOY: 1
+
+      dist-mipsel-linux:
+        IMAGE: dist-mipsel-linux
+        DEPLOY: 1
+
+      dist-powerpc-linux:
+        IMAGE: dist-powerpc-linux
+        DEPLOY: 1
+
+      dist-powerpc64-linux:
+        IMAGE: dist-powerpc64-linux
+        DEPLOY: 1
+
+      dist-powerpc64le-linux:
+        IMAGE: dist-powerpc64le-linux
+        DEPLOY: 1
+
+      dist-s390x-linux:
+        IMAGE: dist-s390x-linux
+        DEPLOY: 1
+
+      dist-x86_64-freebsd:
+        IMAGE: dist-x86_64-freebsd
+        DEPLOY: 1
+
+      dist-x86_64-musl:
+        IMAGE: dist-x86_64-musl
+        DEPLOY: 1
+
+      dist-x86_64-netbsd:
+        IMAGE: dist-x86_64-netbsd
+        DEPLOY: 1
+
+      asmjs:
+        IMAGE: asmjs
+      i686-gnu:
+        IMAGE: i686-gnu
+      i686-gnu-nopt:
+        IMAGE: i686-gnu-nopt
+      test-various:
+        IMAGE: test-various
+      x86_64-gnu:
+        IMAGE: x86_64-gnu
+      x86_64-gnu-full-bootstrap:
+        IMAGE: x86_64-gnu-full-bootstrap
+      x86_64-gnu-aux:
+        IMAGE: x86_64-gnu-aux
+      x86_64-gnu-tools:
+        IMAGE: x86_64-gnu-tools
+      # FIXME if: branch = auto OR (type = pull_request AND commit_message =~ /(?i:^update.*\b(rls|rustfmt|clippy|miri|cargo)\b)/)
+      x86_64-gnu-debug:
+        IMAGE: x86_64-gnu-debug
+      x86_64-gnu-nopt:
+        IMAGE: x86_64-gnu-nopt
+      x86_64-gnu-distcheck:
+        IMAGE: x86_64-gnu-distcheck
+      mingw-check:
+        IMAGE: mingw-check
+
+- job: macOS
+  pool:
+    vmImage: macos-10.13
+  steps:
+  - checkout: self
+    fetchDepth: 2
+  - template: steps/run.yml
+  strategy:
+    matrix:
+      # OSX builders running tests, these run the full test suite.
+      # NO_DEBUG_ASSERTIONS=1 to make them go faster, but also do have some
+      # runners that run `//ignore-debug` tests.
+      #
+      # Note that the compiler is compiled to target 10.8 here because the Xcode
+      # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
+      x86_64-apple:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+
+      dist-x86_64-apple:
+        RUST_CHECK_TARGET: dist
+        RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --enable-lldb --set rust.jemalloc
+        DEPLOY: 1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        DIST_REQUIRE_ALL_TOOLS: 1
+
+      dist-x86_64-apple-alt:
+        RUST_CHECK_TARGET: dist
+        RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --enable-lldb --set rust.jemalloc
+        DEPLOY_ALT: 1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+
+      i686-apple:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=i686-apple-darwin --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+
+      dist-i686-apple:
+        RUST_CHECK_TARGET: dist
+        RUST_CONFIGURE_ARGS: --build=i686-apple-darwin --enable-full-tools --enable-profiler --enable-lldb --set rust.jemalloc
+        DEPLOY: 1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        DIST_REQUIRE_ALL_TOOLS: 1
+
+
+
+- job: Windows
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - template: steps/run.yml
+  strategy:
+    matrix:
+      # 32/64 bit MSVC tests
+      x86_64-msvc-1:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        SCRIPT: make ci-subset-1
+        # FIXME(#59637)
+        NO_DEBUG_ASSERTIONS: 1
+        NO_LLVM_ASSERTIONS: 1
+      x86_64-msvc-2:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        SCRIPT: make ci-subset-2
+      i686-msvc-1:
+        MSYS_BITS: 32
+        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+        SCRIPT: make ci-subset-1
+      i686-msvc-2:
+        MSYS_BITS: 32
+        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+        SCRIPT: make ci-subset-2
+      # MSVC aux tests
+      x86_64-msvc-aux:
+        MSYS_BITS: 64
+        RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+      x86_64-msvc-cargo:
+        MSYS_BITS: 64
+        SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+        VCVARS_BAT: vcvars64.bat
+      # MSVC tools tests
+      x86_64-msvc-tools:
+        MSYS_BITS: 64
+        SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstates.json windows
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json --enable-test-miri
+
+      # 32/64-bit MinGW builds.
+      #
+      # We are using MinGW with posix threads since LLVM does not compile with
+      # the win32 threads version due to missing support for C++'s std::thread.
+      #
+      # Instead of relying on the MinGW version installed on appveryor we download
+      # and install one ourselves so we won't be surprised by changes to appveyor's
+      # build image.
+      #
+      # Finally, note that the downloads below are all in the `rust-lang-ci` S3
+      # bucket, but they cleraly didn't originate there! The downloads originally
+      # came from the mingw-w64 SourceForge download site. Unfortunately
+      # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
+      i686-mingw-1:
+        MSYS_BITS: 32
+        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+        SCRIPT: make ci-subset-1
+        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+        MINGW_DIR: mingw32
+        # FIXME(#59637)
+        NO_DEBUG_ASSERTIONS: 1
+        NO_LLVM_ASSERTIONS: 1
+      i686-mingw-2:
+        MSYS_BITS: 32
+        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+        SCRIPT: make ci-subset-2
+        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+        MINGW_DIR: mingw32
+      x86_64-mingw-1:
+        MSYS_BITS: 64
+        SCRIPT: make ci-subset-1
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
+        MINGW_DIR: mingw64
+        # FIXME(#59637)
+        NO_DEBUG_ASSERTIONS: 1
+        NO_LLVM_ASSERTIONS: 1
+      x86_64-mingw-2:
+        MSYS_BITS: 64
+        SCRIPT: make ci-subset-2
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
+        MINGW_DIR: mingw64
+
+      # 32/64 bit MSVC and GNU deployment
+      dist-x86_64-msvc:
+        RUST_CONFIGURE_ARGS: >
+          --build=x86_64-pc-windows-msvc
+          --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
+          --enable-full-tools
+          --enable-profiler
+        SCRIPT: python x.py dist
+        DIST_REQUIRE_ALL_TOOLS: 1
+        DEPLOY: 1
+      dist-i686-msvc:
+        RUST_CONFIGURE_ARGS: >
+          --build=i686-pc-windows-msvc
+          --target=i586-pc-windows-msvc
+          --enable-full-tools
+          --enable-profiler
+        SCRIPT: python x.py dist
+        DIST_REQUIRE_ALL_TOOLS: 1
+        DEPLOY: 1
+      dist-i686-mingw:
+        MSYS_BITS: 32
+        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools
+        SCRIPT: python x.py dist
+        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
+        MINGW_DIR: mingw32
+        DIST_REQUIRE_ALL_TOOLS: 1
+        DEPLOY: 1
+      dist-x86_64-mingw:
+        MSYS_BITS: 64
+        SCRIPT: python x.py dist
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools
+        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
+        MINGW_DIR: mingw64
+        DIST_REQUIRE_ALL_TOOLS: 1
+        DEPLOY: 1
+
+      # "alternate" deployment, see .travis.yml for more info
+      dist-x86_64-msvc-alt:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
+        SCRIPT: python x.py dist
+        DEPLOY_ALT: 1

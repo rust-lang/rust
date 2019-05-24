@@ -40,9 +40,12 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       docker --version >> $hash_key
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
+
       s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
-      url="https://s3-us-west-1.amazonaws.com/$SCCACHE_BUCKET/docker/$cksum"
-      echo "Attempting to download $s3url"
+      url="https://$SCCACHE_BUCKET.s3.amazonaws.com/docker/$cksum"
+      upload="aws s3 cp - $s3url"
+
+      echo "Attempting to download $url"
       rm -f /tmp/rustci_docker_cache
       set +e
       retry curl -y 30 -Y 10 --connect-timeout 30 -f -L -C - -o /tmp/rustci_docker_cache "$url"
@@ -65,17 +68,17 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       -f "$dockerfile" \
       "$context"
 
-    if [ "$s3url" != "" ]; then
+    if [ "$upload" != "" ]; then
       digest=$(docker inspect rust-ci --format '{{.Id}}')
       echo "Built container $digest"
       if ! grep -q "$digest" <(echo "$loaded_images"); then
-        echo "Uploading finished image to $s3url"
+        echo "Uploading finished image to $url"
         set +e
         docker history -q rust-ci | \
           grep -v missing | \
           xargs docker save | \
           gzip | \
-          aws s3 cp - $s3url
+          $upload
         set -e
       else
         echo "Looks like docker image is the same as before, not uploading"
@@ -87,8 +90,8 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       echo "$digest" >>"$info"
     fi
 elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
-    if [ -n "$TRAVIS_OS_NAME" ]; then
-        echo Cannot run disabled images on travis!
+    if isCI; then
+        echo Cannot run disabled images on CI!
         exit 1
     fi
     # retry messes with the pipe from tar to docker. Not needed on non-travis
@@ -140,8 +143,11 @@ exec docker \
   --env DEPLOY \
   --env DEPLOY_ALT \
   --env LOCAL_USER_ID=`id -u` \
+  --env CI \
   --env TRAVIS \
   --env TRAVIS_BRANCH \
+  --env TF_BUILD \
+  --env BUILD_SOURCEBRANCHNAME \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
   --volume "$HOME/.cargo:/cargo" \
