@@ -4,6 +4,7 @@ use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use crate::ty::subst::SubstsRef;
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
+use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::traits;
 use crate::traits::query::{
@@ -430,6 +431,15 @@ rustc_queries! {
             load_cached(tcx, id) {
                 tcx.queries.on_disk_cache.try_load_query_result(tcx, id).map(Ok)
             }
+        }
+
+        /// Extracts a field of a (variant of a) const.
+        query const_field(
+            key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field)>
+        ) -> &'tcx ty::Const<'tcx> {
+            eval_always
+            no_force
+            desc { "extract field of const" }
         }
     }
 

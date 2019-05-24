@@ -49,6 +49,7 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
+use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::map::DefPathHash;

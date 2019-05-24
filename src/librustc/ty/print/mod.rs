@@ -7,8 +7,9 @@ use rustc_data_structures::fx::FxHashSet;
 
 // `pretty` is a separate module only for organization.
 mod pretty;
-pub mod obsolete;
 pub use self::pretty::*;
+
+pub mod obsolete;
 
 pub trait Print<'gcx, 'tcx, P> {
     type Output;
