@@ -134,9 +134,8 @@ MSVC builds of Rust additionally require an installation of Visual Studio 2017
 
 [Visual Studio Build Tools]: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019
 
-At last check (cmake 3.14.3 and msvc 16.0.3) using the 2019 tools fails to
-build the in-tree LLVM build with a CMake error, so use 2017 instead by
-including the “MSVC v141 – VS 2017 C++ x64/x86 build tools (v14.16)” component.
+(If you're installing cmake yourself, be careful that “C++ CMake tools for
+Windows” doesn't get included under “Individual components”.)
 
 With these dependencies installed, you can build the compiler in a `cmd.exe`
 shell with:
@@ -151,7 +150,7 @@ then you may need to force rustbuild to use an older version. This can be done
 by manually calling the appropriate vcvars file before running the bootstrap.
 
 ```batch
-> CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
+> CALL "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 > python x.py build
 ```
 
