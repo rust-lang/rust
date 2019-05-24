@@ -28,7 +28,6 @@ use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, EntryFnType, Lto};
 use rustc::session::Session;
-use rustc_mir::monomorphize::partitioning::CodegenUnitExt;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_codegen_utils::{symbol_names_test, check_for_rustc_errors_attr};

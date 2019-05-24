@@ -3,9 +3,10 @@ use crate::hir::HirId;
 use syntax::symbol::InternedString;
 use syntax::attr::InlineAttr;
 use syntax::source_map::Span;
-use crate::ty::{Instance, TyCtxt, SymbolName, subst::InternalSubsts};
+use crate::ty::{Instance, InstanceDef, TyCtxt, SymbolName, subst::InternalSubsts};
 use crate::util::nodemap::FxHashMap;
 use crate::ty::print::obsolete::DefPathBasedNames;
+use crate::dep_graph::{WorkProductId, DepNode, WorkProduct, DepConstructor};
 use rustc_data_structures::base_n;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasherResult,
                                            StableHasher};
@@ -349,6 +350,73 @@ impl<'tcx> CodegenUnit<'tcx> {
         if let Some(size_estimate) = self.size_estimate {
             self.size_estimate = Some(size_estimate + delta);
         }
+    }
+
+    pub fn contains_item(&self, item: &MonoItem<'tcx>) -> bool {
+        self.items().contains_key(item)
+    }
+
+    pub fn work_product_id(&self) -> WorkProductId {
+        WorkProductId::from_cgu_name(&self.name().as_str())
+    }
+
+    pub fn work_product(&self, tcx: TyCtxt<'_, '_, '_>) -> WorkProduct {
+        let work_product_id = self.work_product_id();
+        tcx.dep_graph
+           .previous_work_product(&work_product_id)
+           .unwrap_or_else(|| {
+                panic!("Could not find work-product for CGU `{}`", self.name())
+            })
+    }
+
+    pub fn items_in_deterministic_order<'a>(&self,
+                                        tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                        -> Vec<(MonoItem<'tcx>,
+                                                (Linkage, Visibility))> {
+        // The codegen tests rely on items being process in the same order as
+        // they appear in the file, so for local items, we sort by node_id first
+        #[derive(PartialEq, Eq, PartialOrd, Ord)]
+        pub struct ItemSortKey(Option<HirId>, SymbolName);
+
+        fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   item: MonoItem<'tcx>) -> ItemSortKey {
+            ItemSortKey(match item {
+                MonoItem::Fn(ref instance) => {
+                    match instance.def {
+                        // We only want to take HirIds of user-defined
+                        // instances into account. The others don't matter for
+                        // the codegen tests and can even make item order
+                        // unstable.
+                        InstanceDef::Item(def_id) => {
+                            tcx.hir().as_local_hir_id(def_id)
+                        }
+                        InstanceDef::VtableShim(..) |
+                        InstanceDef::Intrinsic(..) |
+                        InstanceDef::FnPtrShim(..) |
+                        InstanceDef::Virtual(..) |
+                        InstanceDef::ClosureOnceShim { .. } |
+                        InstanceDef::DropGlue(..) |
+                        InstanceDef::CloneShim(..) => {
+                            None
+                        }
+                    }
+                }
+                MonoItem::Static(def_id) => {
+                    tcx.hir().as_local_hir_id(def_id)
+                }
+                MonoItem::GlobalAsm(hir_id) => {
+                    Some(hir_id)
+                }
+            }, item.symbol_name(tcx))
+        }
+
+        let mut items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
+        items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
+        items
+    }
+
+    pub fn codegen_dep_node(&self, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> DepNode {
+        DepNode::new(tcx, DepConstructor::CompileCodegenUnit(self.name().clone()))
     }
 }
 

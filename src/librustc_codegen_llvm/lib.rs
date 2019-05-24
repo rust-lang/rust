@@ -32,7 +32,6 @@ extern crate flate2;
 #[macro_use] extern crate bitflags;
 extern crate libc;
 #[macro_use] extern crate rustc;
-extern crate rustc_mir;
 extern crate rustc_allocator;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
