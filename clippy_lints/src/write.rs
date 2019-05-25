@@ -286,7 +286,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
             }
         }
     }
-    let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, None, false, false);
+    let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, None, false, false, None);
     let mut expr: Option<Expr> = None;
     if is_write {
         expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
