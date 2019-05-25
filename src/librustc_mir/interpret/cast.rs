@@ -137,22 +137,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
 
         match val {
             Scalar::Ptr(ptr) => self.cast_from_ptr(ptr, dest_layout.ty),
-            Scalar::Bits { bits, size } => {
+            Scalar::Raw { data, size } => {
                 debug_assert_eq!(size as u64, src_layout.size.bytes());
-                debug_assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
+                debug_assert_eq!(truncate(data, Size::from_bytes(size.into())), data,
                     "Unexpected value of size {} before casting", size);
 
                 let res = match src_layout.ty.sty {
-                    Float(fty) => self.cast_from_float(bits, fty, dest_layout.ty)?,
-                    _ => self.cast_from_int(bits, src_layout, dest_layout)?,
+                    Float(fty) => self.cast_from_float(data, fty, dest_layout.ty)?,
+                    _ => self.cast_from_int(data, src_layout, dest_layout)?,
                 };
 
                 // Sanity check
                 match res {
                     Scalar::Ptr(_) => bug!("Fabricated a ptr value from an int...?"),
-                    Scalar::Bits { bits, size } => {
+                    Scalar::Raw { data, size } => {
                         debug_assert_eq!(size as u64, dest_layout.size.bytes());
-                        debug_assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
+                        debug_assert_eq!(truncate(data, Size::from_bytes(size.into())), data,
                             "Unexpected value of size {} after casting", size);
                     }
                 }

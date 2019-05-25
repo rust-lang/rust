@@ -388,11 +388,11 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
                 val.offset.bytes() as u128
             }
 
-            Scalar::Bits { bits, size } => {
+            Scalar::Raw { data, size } => {
                 assert_eq!(size as u64, type_size.bytes());
-                debug_assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
+                debug_assert_eq!(truncate(data, Size::from_bytes(size.into())), data,
                     "Unexpected value of size {} when writing to memory", size);
-                bits
+                data
             },
         };
 

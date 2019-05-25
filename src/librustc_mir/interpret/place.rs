@@ -686,7 +686,7 @@ where
                 Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Ptr(_))) =>
                     assert_eq!(self.pointer_size(), dest.layout.size,
                         "Size mismatch when writing pointer"),
-                Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { size, .. })) =>
+                Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Raw { size, .. })) =>
                     assert_eq!(Size::from_bytes(size.into()), dest.layout.size,
                         "Size mismatch when writing bits"),
                 Immediate::Scalar(ScalarMaybeUndef::Undef) => {}, // undef can have any size

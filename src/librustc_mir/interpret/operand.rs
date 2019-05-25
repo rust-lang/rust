@@ -649,7 +649,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                         }
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
-                    ScalarMaybeUndef::Scalar(Scalar::Bits { bits: raw_discr, size }) => {
+                    ScalarMaybeUndef::Scalar(Scalar::Raw { data: raw_discr, size }) => {
                         assert_eq!(size as u64, discr_val.layout.size.bytes());
                         let adjusted_discr = raw_discr.wrapping_sub(niche_start)
                             .wrapping_add(variants_start);

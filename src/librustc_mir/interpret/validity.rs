@@ -509,9 +509,9 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     );
                 }
             }
-            Scalar::Bits { bits, size } => {
+            Scalar::Raw { data, size } => {
                 assert_eq!(size as u64, op.layout.size.bytes());
-                bits
+                data
             }
         };
         // Now compare. This is slightly subtle because this is a special "wrap-around" range.

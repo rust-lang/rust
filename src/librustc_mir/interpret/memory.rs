@@ -12,7 +12,6 @@ use std::borrow::Cow;
 
 use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
 use rustc::ty::layout::{Align, TargetDataLayout, Size, HasDataLayout};
-pub use rustc::mir::interpret::{truncate, write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use syntax::ast::Mutability;
@@ -255,15 +254,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 let align = self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead)?;
                 (ptr.offset.bytes(), align)
             }
-            Scalar::Bits { bits, size } => {
+            Scalar::Raw { data, size } => {
                 assert_eq!(size as u64, self.pointer_size().bytes());
-                assert!(bits < (1u128 << self.pointer_size().bits()));
+                assert!(data < (1u128 << self.pointer_size().bits()));
                 // check this is not NULL
-                if bits == 0 {
+                if data == 0 {
                     return err!(InvalidNullPointerUsage);
                 }
                 // the "base address" is 0 and hence always aligned
-                (bits as u64, required_align)
+                (data as u64, required_align)
             }
         };
         // Check alignment

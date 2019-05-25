@@ -1669,10 +1669,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                         .map(|&u| {
                             tcx.mk_const(ty::Const {
                                 val: ConstValue::Scalar(
-                                    Scalar::Bits {
-                                        bits: u,
-                                        size: size.bytes() as u8,
-                                    }.into(),
+                                    Scalar::from_uint(u, size).into(),
                                 ),
                                 ty: switch_ty,
                             }).to_string().into()
