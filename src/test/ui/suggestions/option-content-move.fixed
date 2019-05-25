@@ -1,0 +1,21 @@
+//run-rustfix
+
+pub struct LipogramCorpora {
+    selections: Vec<(char, Option<String>)>,
+}
+
+impl LipogramCorpora {
+    pub fn validate_all(&mut self) -> Result<(), char> {
+        for selection in &self.selections {
+            if selection.1.is_some() {
+                if selection.1.as_ref().unwrap().contains(selection.0) {
+                //~^ ERROR cannot move out of borrowed content
+                    return Err(selection.0);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+fn main() {}
