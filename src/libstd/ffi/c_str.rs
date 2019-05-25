@@ -1308,9 +1308,7 @@ impl AsRef<CStr> for CString {
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",
            issue = "27747")]
-impl<S: Borrow<CStr>> SliceConcatExt<CStr> for [S] {
-    type Output = CString;
-
+impl<S: Borrow<CStr>> [S] {
     fn concat(&self) -> CString {
         self.join(unsafe { CStr::from_bytes_with_nul_unchecked(&[0]) })
     }

@@ -971,7 +971,7 @@ impl AsInner<Slice> for OsStr {
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",
            issue = "27747")]
-impl<S: Borrow<OsStr>> SliceConcatExt<OsStr> for [S] {
+impl<S: Borrow<OsStr>> [S] {
     type Output = OsString;
 
     fn concat(&self) -> OsString {
