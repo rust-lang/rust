@@ -1,5 +1,5 @@
 ---
-created: "2019-05-25T10:25:13.898113Z"
+created: "2019-05-25T11:21:56.117898Z"
 creator: insta@0.8.1
 source: crates/ra_ide_api/src/syntax_highlighting.rs
 expression: result
@@ -15,7 +15,7 @@ Ok(
             range: [4; 8),
             tag: "variable",
             id: Some(
-                17119830160611610240,
+                5766414492220109266,
             ),
         },
         HighlightedRange {
@@ -27,7 +27,7 @@ Ok(
             range: [21; 26),
             tag: "variable",
             id: Some(
-                2744494144922727377,
+                15975256018338854530,
             ),
         },
         HighlightedRange {
@@ -44,14 +44,14 @@ Ok(
             range: [46; 47),
             tag: "variable",
             id: Some(
-                10375904121795371996,
+                176272420896316891,
             ),
         },
         HighlightedRange {
             range: [50; 55),
             tag: "variable",
             id: Some(
-                2744494144922727377,
+                15975256018338854530,
             ),
         },
         HighlightedRange {
@@ -68,18 +68,59 @@ Ok(
             range: [77; 78),
             tag: "variable",
             id: Some(
-                8228548264153724449,
+                15061637676198917049,
             ),
         },
         HighlightedRange {
             range: [81; 86),
             tag: "variable",
             id: Some(
-                2744494144922727377,
+                15975256018338854530,
             ),
         },
         HighlightedRange {
             range: [87; 96),
+            tag: "text",
+            id: None,
+        },
+        HighlightedRange {
+            range: [105; 108),
+            tag: "keyword",
+            id: None,
+        },
+        HighlightedRange {
+            range: [109; 110),
+            tag: "variable",
+            id: Some(
+                1714508680417729339,
+            ),
+        },
+        HighlightedRange {
+            range: [113; 134),
+            tag: "string",
+            id: None,
+        },
+        HighlightedRange {
+            range: [140; 143),
+            tag: "keyword",
+            id: None,
+        },
+        HighlightedRange {
+            range: [144; 145),
+            tag: "variable",
+            id: Some(
+                15953336624848413466,
+            ),
+        },
+        HighlightedRange {
+            range: [148; 149),
+            tag: "variable",
+            id: Some(
+                1714508680417729339,
+            ),
+        },
+        HighlightedRange {
+            range: [150; 159),
             tag: "text",
             id: None,
         },

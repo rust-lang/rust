@@ -1,5 +1,5 @@
 ---
-created: "2019-05-25T10:53:54.439877Z"
+created: "2019-05-25T11:24:53.486036Z"
 creator: insta@0.8.1
 source: crates/ra_ide_api/src/syntax_highlighting.rs
 expression: result
@@ -20,7 +20,7 @@ Ok(
             range: [32; 35),
             tag: "variable",
             id: Some(
-                461893210254723387,
+                8465336196764640996,
             ),
         },
         HighlightedRange {
@@ -32,7 +32,7 @@ Ok(
             range: [46; 47),
             tag: "variable",
             id: Some(
-                8312289520117458465,
+                176272420896316891,
             ),
         },
         HighlightedRange {
@@ -49,7 +49,7 @@ Ok(
             range: [62; 63),
             tag: "variable",
             id: Some(
-                4497542318236667727,
+                15061637676198917049,
             ),
         },
         HighlightedRange {
@@ -66,7 +66,7 @@ Ok(
             range: [76; 79),
             tag: "variable",
             id: Some(
-                4506850079084802999,
+                14077410872302487760,
             ),
         },
         HighlightedRange {
@@ -78,7 +78,7 @@ Ok(
             range: [80; 81),
             tag: "variable",
             id: Some(
-                16968185728268100018,
+                8379786015941272633,
             ),
         },
         HighlightedRange {
@@ -105,7 +105,7 @@ Ok(
             range: [131; 135),
             tag: "variable",
             id: Some(
-                14467718814232352107,
+                5766414492220109266,
             ),
         },
         HighlightedRange {

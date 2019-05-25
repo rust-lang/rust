@@ -1,6 +1,6 @@
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashSet, FxHashMap};
 
-use ra_syntax::{ast, AstNode, TextRange, Direction, SyntaxKind, SyntaxKind::*, SyntaxElement, T};
+use ra_syntax::{ast, AstNode, TextRange, Direction, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxElement, T};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 
@@ -43,6 +43,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
 
     // Visited nodes to handle highlighting priorities
     let mut highlighted: FxHashSet<SyntaxElement> = FxHashSet::default();
+    let mut bindings_shadow_count: FxHashMap<SmolStr, u32> = FxHashMap::default();
+
     let mut res = Vec::new();
     for node in source_file.syntax().descendants_with_tokens() {
         if highlighted.contains(&node) {
@@ -77,7 +79,11 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         Some(Def(ModuleDef::Trait(_))) => ("type", None),
                         Some(Def(ModuleDef::TypeAlias(_))) => ("type", None),
                         Some(SelfType(_)) => ("type", None),
-                        Some(Pat(ptr)) => ("variable", Some(hash(ptr.syntax_node_ptr().range()))),
+                        Some(Pat(ptr)) => ("variable", Some(hash({
+                            let text = ptr.syntax_node_ptr().to_node(&source_file.syntax()).text().to_smol_string();
+                            let shadow_count = bindings_shadow_count.entry(text.clone()).or_default();
+                            (text, shadow_count)
+                        }))),
                         Some(SelfParam(_)) => ("type", None),
                         Some(GenericParam(_)) => ("type", None),
                         None => ("text", None),
@@ -88,7 +94,12 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             }
             NAME => {
                 if let Some(name) = node.as_ast_node::<ast::Name>() {
-                    ("variable", Some(hash(name.syntax().range())))
+                    ("variable", Some(hash({
+                        let text = name.syntax().text().to_smol_string();
+                        let shadow_count = bindings_shadow_count.entry(text.clone()).or_insert(1);
+                        *shadow_count += 1;
+                        (text, shadow_count)
+                    })))
                 } else {
                     ("text", None)
                 }
@@ -240,16 +251,19 @@ fn main() {
     }
 
     #[test]
-    fn test_sematic_highlighting() {
+    fn test_rainbow_highlighting() {
         let (analysis, file_id) = single_file(
             r#"
 fn main() {
     let hello = "hello";
     let x = hello.to_string();
     let y = hello.to_string();
+
+    let x = "other color please!";
+    let y = x.to_string();
 }"#,
         );
         let result = analysis.highlight(file_id);
-        assert_debug_snapshot_matches!("sematic_highlighting", result);
+        assert_debug_snapshot_matches!("rainbow_highlighting", result);
     }
 }
