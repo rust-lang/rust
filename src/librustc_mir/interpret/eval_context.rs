@@ -15,7 +15,7 @@ use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
     ErrorHandled,
-    GlobalId, Scalar, FrameInfo, AllocId,
+    GlobalId, Scalar, Pointer, FrameInfo, AllocId,
     EvalResult, InterpError,
     truncate, sign_extend,
 };
@@ -43,7 +43,10 @@ pub struct InterpretCx<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>>,
 
     /// A cache for deduplicating vtables
-    pub(super) vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), AllocId>,
+    pub(super) vtables: FxHashMap<
+            (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
+            Pointer<M::PointerTag>
+        >,
 }
 
 /// A stack frame.

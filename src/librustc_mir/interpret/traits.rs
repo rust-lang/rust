@@ -25,7 +25,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             // always use the same vtable for the same (Type, Trait) combination.
             // That's not what happens in rustc, but emulating per-crate deduplication
             // does not sound like it actually makes anything any better.
-            return Ok(Pointer::from(vtable).with_default_tag());
+            return Ok(vtable);
         }
 
         let methods = if let Some(poly_trait_ref) = poly_trait_ref {
@@ -56,7 +56,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         let tcx = &*self.tcx;
 
         let drop = crate::monomorphize::resolve_drop_in_place(*tcx, ty);
-        let drop = self.memory.create_fn_alloc(drop).with_default_tag();
+        let drop = self.memory.create_fn_alloc(drop);
         // no need to do any alignment checks on the memory accesses below, because we know the
         // allocation is correctly aligned as we created it above. Also we're only offsetting by
         // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
@@ -83,7 +83,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     def_id,
                     substs,
                 ).ok_or_else(|| InterpError::TooGeneric)?;
-                let fn_ptr = self.memory.create_fn_alloc(instance).with_default_tag();
+                let fn_ptr = self.memory.create_fn_alloc(instance);
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), self)?;
                 self.memory
                     .get_mut(method_ptr.alloc_id)?
@@ -92,7 +92,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         }
 
         self.memory.mark_immutable(vtable.alloc_id)?;
-        assert!(self.vtables.insert((ty, poly_trait_ref), vtable.alloc_id).is_none());
+        assert!(self.vtables.insert((ty, poly_trait_ref), vtable).is_none());
 
         Ok(vtable)
     }

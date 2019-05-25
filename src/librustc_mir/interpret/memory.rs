@@ -108,8 +108,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> Pointer {
-        Pointer::from(self.tcx.alloc_map.lock().create_fn_alloc(instance))
+    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> Pointer<M::PointerTag> {
+        // Default tag is okay because anyway you cannot access memory with this.
+        Pointer::from(self.tcx.alloc_map.lock().create_fn_alloc(instance)).with_default_tag()
     }
 
     pub fn allocate_static_bytes(&mut self, bytes: &[u8]) -> Pointer {
