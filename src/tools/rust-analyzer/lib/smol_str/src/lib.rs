@@ -182,26 +182,34 @@ impl iter::FromIterator<char> for SmolStr {
     }
 }
 
+fn build_from_str_iter<T>(mut iter: impl Iterator<Item=T>) -> SmolStr
+where
+    T: AsRef<str>,
+    std::string::String: std::iter::Extend<T>,
+{
+    use std::io::prelude::*;
+
+    let mut len = 0;
+    let mut buf = [0u8; INLINE_CAP];
+    while let Some(slice) = iter.next() {
+        let slice = slice.as_ref();
+        let size = slice.len();
+        if size + len > INLINE_CAP {
+            let mut heap = String::with_capacity(size + len);
+            heap.push_str(std::str::from_utf8(&buf[..len]).unwrap());
+            heap.push_str(&slice);
+            heap.extend(iter);
+            return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
+        }
+        (&mut buf[len..]).write_all(slice.as_bytes()).unwrap();
+        len += size;
+    }
+    SmolStr(Repr::Inline { len: len as u8, buf })
+}
+
 impl iter::FromIterator<String> for SmolStr {
     fn from_iter<I: iter::IntoIterator<Item = String>>(iter: I) -> SmolStr {
-        use std::io::prelude::*;
-
-        let mut len = 0;
-        let mut buf = [0u8; INLINE_CAP];
-        let mut iter = iter.into_iter();
-        while let Some(slice) = iter.next() {
-            let size = slice.len();
-            if size + len > INLINE_CAP {
-                let mut heap = String::with_capacity(size + len);
-                heap.push_str(std::str::from_utf8(&buf[..len]).unwrap());
-                heap.push_str(&slice);
-                heap.extend(iter);
-                return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
-            }
-            (&mut buf[len..]).write_all(slice.as_bytes()).unwrap();
-            len += size;
-        }
-        SmolStr(Repr::Inline { len: len as u8, buf })
+        build_from_str_iter(iter.into_iter())
     }
 }
 
@@ -213,24 +221,7 @@ impl<'a> iter::FromIterator<&'a String> for SmolStr {
 
 impl<'a> iter::FromIterator<&'a str> for SmolStr {
     fn from_iter<I: iter::IntoIterator<Item = &'a str>>(iter: I) -> SmolStr {
-        use std::io::prelude::*;
-
-        let mut len = 0;
-        let mut buf = [0u8; INLINE_CAP];
-        let mut iter = iter.into_iter();
-        while let Some(slice) = iter.next() {
-            let size = slice.len();
-            if size + len > INLINE_CAP {
-                let mut heap = String::with_capacity(size + len);
-                heap.push_str(std::str::from_utf8(&buf[..len]).unwrap());
-                heap.push_str(slice);
-                heap.extend(iter);
-                return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
-            }
-            (&mut buf[len..]).write_all(slice.as_bytes()).unwrap();
-            len += size;
-        }
-        SmolStr(Repr::Inline { len: len as u8, buf })
+        build_from_str_iter(iter.into_iter())
     }
 }
 
