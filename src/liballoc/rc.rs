@@ -588,7 +588,7 @@ impl<T: Clone> Rc<T> {
     /// [`clone`] the inner value to ensure unique ownership.  This is also
     /// referred to as clone-on-write.
     ///
-    /// If there are not other `Rc` pointers to this value, then [`Weak`]
+    /// If there are no other `Rc` pointers to this value, then [`Weak`]
     /// pointers to this value will be dissassociated.
     ///
     /// See also [`get_mut`], which will fail rather than cloning.
