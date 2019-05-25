@@ -1,3 +1,5 @@
+// run-pass
+
 // compile-flags: --edition=2018
 
 #![feature(async_await, await_macro)]
