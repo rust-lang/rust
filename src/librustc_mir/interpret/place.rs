@@ -562,15 +562,14 @@ where
 
     /// Evaluate statics and promoteds to an `MPlace`. Used to share some code between
     /// `eval_place` and `eval_place_to_op`.
-    pub(super) fn eval_place_to_mplace(
+    pub(super) fn eval_static_to_mplace(
         &self,
-        mir_place: &mir::Place<'tcx>
+        place_static: &mir::Static<'tcx>
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        use rustc::mir::Place::*;
-        use rustc::mir::PlaceBase;
-        use rustc::mir::{Static, StaticKind};
-        Ok(match *mir_place {
-            Base(PlaceBase::Static(box Static { kind: StaticKind::Promoted(promoted), .. })) => {
+        use rustc::mir::StaticKind;
+
+        Ok(match place_static.kind {
+            StaticKind::Promoted(promoted) => {
                 let instance = self.frame().instance;
                 self.const_eval_raw(GlobalId {
                     instance,
@@ -578,7 +577,8 @@ where
                 })?
             }
 
-            Base(PlaceBase::Static(box Static { kind: StaticKind::Static(def_id), ty })) => {
+            StaticKind::Static(def_id) => {
+                let ty = place_static.ty;
                 assert!(!ty.needs_subst());
                 let layout = self.layout_of(ty)?;
                 let instance = ty::Instance::mono(*self.tcx, def_id);
@@ -600,8 +600,6 @@ where
                 let alloc = self.tcx.alloc_map.lock().intern_static(cid.instance.def_id());
                 MPlaceTy::from_aligned_ptr(Pointer::from(alloc).with_default_tag(), layout)
             }
-
-            _ => bug!("eval_place_to_mplace called on {:?}", mir_place),
         })
     }
 
@@ -613,7 +611,7 @@ where
     ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
         use rustc::mir::PlaceBase;
-        let place = match *mir_place {
+        let place = match mir_place {
             Base(PlaceBase::Local(mir::RETURN_PLACE)) => match self.frame().return_place {
                 Some(return_place) =>
                     // We use our layout to verify our assumption; caller will validate
@@ -628,17 +626,19 @@ where
                 // This works even for dead/uninitialized locals; we check further when writing
                 place: Place::Local {
                     frame: self.cur_frame(),
-                    local,
+                    local: *local,
                 },
-                layout: self.layout_of_local(self.frame(), local, None)?,
+                layout: self.layout_of_local(self.frame(), *local, None)?,
             },
 
-            Projection(ref proj) => {
+            Projection(proj) => {
                 let place = self.eval_place(&proj.base)?;
                 self.place_projection(place, &proj.elem)?
             }
 
-            _ => self.eval_place_to_mplace(mir_place)?.into(),
+            Base(PlaceBase::Static(place_static)) => {
+                self.eval_static_to_mplace(place_static)?.into()
+            }
         };
 
         self.dump_place(place.place);
