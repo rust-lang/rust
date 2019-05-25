@@ -1727,8 +1727,8 @@ impl<'a> LoweringContext<'a> {
                 generics: hir::Generics {
                     params: lifetime_defs,
                     where_clause: hir::WhereClause {
-                        hir_id: lctx.next_id(),
                         predicates: hir_vec![],
+                        span,
                     },
                     span,
                 },
@@ -2619,8 +2619,8 @@ impl<'a> LoweringContext<'a> {
                 generics: hir::Generics {
                     params: generic_params,
                     where_clause: hir::WhereClause {
-                        hir_id: this.next_id(),
                         predicates: hir_vec![],
+                        span,
                     },
                     span,
                 },
@@ -2973,11 +2973,11 @@ impl<'a> LoweringContext<'a> {
             AnonymousLifetimeMode::ReportError,
             |this| {
                 hir::WhereClause {
-                    hir_id: this.lower_node_id(wc.id),
                     predicates: wc.predicates
                         .iter()
                         .map(|predicate| this.lower_where_predicate(predicate))
                         .collect(),
+                    span: wc.span,
                 }
             },
         )

@@ -773,7 +773,6 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics) {
     walk_list!(visitor, visit_generic_param, &generics.params);
-    visitor.visit_id(generics.where_clause.hir_id);
     walk_list!(visitor, visit_where_predicate, &generics.where_clause.predicates);
 }
 

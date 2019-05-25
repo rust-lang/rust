@@ -3042,7 +3042,6 @@ impl<'a> State<'a> {
         let generics = ast::Generics {
             params: Vec::new(),
             where_clause: ast::WhereClause {
-                id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),
                 span: syntax_pos::DUMMY_SP,
             },
