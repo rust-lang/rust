@@ -234,8 +234,18 @@ fn detect_features() -> cache::Initializer {
         // The `is_x86_feature_detected!("lzcnt")` macro then
         // internally maps to Feature::abm.
         enable(extended_proc_info_ecx, 5, Feature::abm);
-        if vendor_id == *b"AuthenticAMD" {
-            // These features are only available on AMD CPUs:
+        // As Hygon Dhyana originates from AMD technology and shares most of the architecture with
+        // AMD's family 17h, but with different CPU Vendor ID("HygonGenuine")/Family series
+        // number(Family 18h).
+        //
+        // For CPUID feature bits, Hygon Dhyana(family 18h) share the same definition with AMD
+        // family 17h.
+        //
+        // Related AMD CPUID specification is https://www.amd.com/system/files/TechDocs/25481.pdf.
+        // Related Hygon kernel patch can be found on
+        // http://lkml.kernel.org/r/5ce86123a7b9dad925ac583d88d2f921040e859b.1538583282.git.puwen@hygon.cn
+        if vendor_id == *b"AuthenticAMD" || vendor_id == *b"HygonGenuine" {
+            // These features are available on AMD arch CPUs:
             enable(extended_proc_info_ecx, 6, Feature::sse4a);
             enable(extended_proc_info_ecx, 21, Feature::tbm);
         }
