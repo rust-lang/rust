@@ -16,7 +16,10 @@ fn main() -> Result<()> {
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
         .subcommand(SubCommand::with_name("parse").arg(Arg::with_name("no-dump").long("--no-dump")))
         .subcommand(SubCommand::with_name("symbols"))
-        .subcommand(SubCommand::with_name("highlight"))
+        .subcommand(
+            SubCommand::with_name("highlight")
+                .arg(Arg::with_name("rainbow").short("r").long("rainbow"))
+        )
         .subcommand(
             SubCommand::with_name("analysis-stats")
                 .arg(Arg::with_name("verbose").short("v").long("verbose"))
@@ -39,9 +42,9 @@ fn main() -> Result<()> {
                 println!("{:?}", s);
             }
         }
-        ("highlight", _) => {
+        ("highlight", Some(matches)) => {
             let (analysis, file_id) = Analysis::from_single_file(read_stdin()?);
-            let html = analysis.highlight_as_html(file_id).unwrap();
+            let html = analysis.highlight_as_html(file_id, matches.is_present("rainbow")).unwrap();
             println!("{}", html);
         }
         ("analysis-stats", Some(matches)) => {

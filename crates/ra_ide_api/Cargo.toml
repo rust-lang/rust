@@ -15,6 +15,7 @@ rustc-hash = "1.0"
 parking_lot = "0.7.0"
 unicase = "2.2.0"
 superslice = "1.0.0"
+rand = "0.6.5"
 
 jemallocator = { version = "0.1.9", optional = true }
 jemalloc-ctl = { version = "0.2.0", optional = true }

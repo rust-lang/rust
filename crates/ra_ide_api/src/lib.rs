@@ -464,7 +464,7 @@ impl Analysis {
 
     /// Computes syntax highlighting for the given file.
     pub fn highlight_as_html(&self, file_id: FileId) -> Cancelable<String> {
-        self.with_db(|db| syntax_highlighting::highlight_as_html(db, file_id))
+        self.with_db(|db| syntax_highlighting::highlight_as_html(db, file_id, true))
     }
 
     /// Computes completions at the given position.

@@ -1,10 +1,7 @@
 
 <style>
-pre {
-    color: #DCDCCC;
-    background-color: #3F3F3F;
-    font-size: 22px;
-}
+body       { margin: 0; }
+pre        { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
 
 .comment   { color: #7F9F7F; }
 .string    { color: #CC9393; }
@@ -19,13 +16,11 @@ pre {
 .keyword           { color: #F0DFAF; }
 .keyword\.unsafe  { color: #F0DFAF; font-weight: bold; }
 .keyword\.control { color: #DC8CC3; }
-
 </style>
-<pre><code>
-<span class="attribute">#</span><span class="attribute">[</span><span class="attribute">derive</span><span class="attribute">(</span><span class="attribute">Clone</span><span class="attribute">,</span><span class="attribute"> </span><span class="attribute">Debug</span><span class="attribute">)</span><span class="attribute">]</span>
+<pre><code><span class="attribute">#</span><span class="attribute">[</span><span class="attribute">derive</span><span class="attribute">(</span><span class="attribute">Clone</span><span class="attribute">,</span><span class="attribute"> </span><span class="attribute">Debug</span><span class="attribute">)</span><span class="attribute">]</span>
 <span class="keyword">struct</span> <span class="function">Foo</span> {
-    <span class="keyword">pub</span> <span class="function">x</span>: <span class="text">i32</span>,
-    <span class="keyword">pub</span> <span class="function">y</span>: <span class="text">i32</span>,
+    <span class="keyword">pub</span> <span class="variable" data-binding-hash="12067179602561426350" style="color: hsl(78,84%,47%);">x</span>: <span class="text">i32</span>,
+    <span class="keyword">pub</span> <span class="variable" data-binding-hash="15562018766631452210" style="color: hsl(318,95%,78%);">y</span>: <span class="text">i32</span>,
 }
 
 <span class="keyword">fn</span> <span class="function">foo</span>&lt;<span class="type function">T</span>&gt;() -&gt; <span class="type">T</span> {
@@ -36,10 +31,9 @@ pre {
 <span class="keyword">fn</span> <span class="function">main</span>() {
     <span class="macro">println</span><span class="macro">!</span>(<span class="string">"Hello, {}!"</span>, <span class="literal">92</span>);
 
-    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="function">vec</span> = <span class="text">Vec</span>::<span class="text">new</span>();
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable" data-binding-hash="9636295041291189729" style="color: hsl(51,57%,74%);">vec</span> = <span class="text">Vec</span>::<span class="text">new</span>();
     <span class="keyword.control">if</span> <span class="keyword">true</span> {
-        <span class="text">vec</span>.<span class="text">push</span>(<span class="type">Foo</span> { <span class="field">x</span>: <span class="literal">0</span>, <span class="field">y</span>: <span class="literal">1</span> });
+        <span class="variable" data-binding-hash="8496027264380925433" style="color: hsl(18,48%,55%);">vec</span>.<span class="text">push</span>(<span class="type">Foo</span> { <span class="field" data-binding-hash="17368948500121423555" style="color: hsl(49,97%,70%);">x</span>: <span class="literal">0</span>, <span class="field" data-binding-hash="13663097548341495469" style="color: hsl(26,51%,46%);">y</span>: <span class="literal">1</span> });
     }
-    <span class="keyword.unsafe">unsafe</span> { <span class="text">vec</span>.<span class="text">set_len</span>(<span class="literal">0</span>); }
-}
-</code></pre>
+    <span class="keyword.unsafe">unsafe</span> { <span class="variable" data-binding-hash="8496027264380925433" style="color: hsl(18,48%,55%);">vec</span>.<span class="text">set_len</span>(<span class="literal">0</span>); }
+}</code></pre>
