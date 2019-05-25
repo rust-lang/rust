@@ -982,7 +982,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 ///     out.write(vec![1, 2, 3]);
 /// }
 ///
-/// let mut v: MaybeUninit<Vec<i32>> = MaybeUninit::uninit();
+/// let mut v = MaybeUninit::uninit();
 /// unsafe { make_vec(v.as_mut_ptr()); }
 /// // Now we know `v` is initialized! This also makes sure the vector gets
 /// // properly dropped.
@@ -1071,7 +1071,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// optimizations, potentially resulting in a larger size:
 ///
 /// ```rust
-/// # use std::mem::{MaybeUninit, size_of, align_of};
+/// # use std::mem::{MaybeUninit, size_of};
 /// assert_eq!(size_of::<Option<bool>>(), 1);
 /// assert_eq!(size_of::<Option<MaybeUninit<bool>>>(), 2);
 /// ```
