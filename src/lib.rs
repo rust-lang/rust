@@ -184,7 +184,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         rustc_codegen_utils::symbol_names::provide(providers);
         rustc_codegen_ssa::back::symbol_export::provide(providers);
 
-        providers.target_features_whitelist = |_tcx, _cnum| Lrc::new(Default::default());
+        providers.target_features_whitelist = |tcx, _cnum| tcx.arena.alloc(FxHashMap::default());
     }
     fn provide_extern(&self, providers: &mut Providers) {
         rustc_codegen_ssa::back::symbol_export::provide_extern(providers);
@@ -226,6 +226,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 }
 
+fn target_triple(sess: &Session) -> target_lexicon::Triple {
+    let mut target = &*sess.target.target.llvm_target;
+
+    // FIXME add support for x86_64-apple-macosx10.7.0 to target-lexicon
+    if target.starts_with("x86_64-apple-macosx") {
+        target = "x86_64-apple-darwin";
+    }
+
+    target.parse().unwrap()
+}
+
 fn build_isa(sess: &Session) -> Box<isa::TargetIsa + 'static> {
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
@@ -252,8 +263,9 @@ fn build_isa(sess: &Session) -> Box<isa::TargetIsa + 'static> {
         }
     }*/
 
+    let target_triple = target_triple(sess);
     let flags = settings::Flags::new(flags_builder);
-    cranelift::codegen::isa::lookup(sess.target.target.llvm_target.parse().unwrap())
+    cranelift::codegen::isa::lookup(target_triple)
         .unwrap()
         .finish(flags)
 }

@@ -226,8 +226,7 @@ pub fn write_clif_file<'a, 'tcx: 'a>(
 
     match ::std::fs::File::create(clif_file_name) {
         Ok(mut file) => {
-            let target_triple: ::target_lexicon::Triple =
-                tcx.sess.target.target.llvm_target.parse().unwrap();
+            let target_triple = crate::target_triple(tcx.sess);
             writeln!(file, "test compile").unwrap();
             writeln!(file, "set is_pic").unwrap();
             writeln!(file, "target {}", target_triple).unwrap();
