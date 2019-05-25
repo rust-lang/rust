@@ -425,6 +425,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 }
                             }
                         }
+                        // If this expression had a clone call, when suggesting borrowing, we
+                        // want to suggest removing it
+                        let sugg_expr = sugg_expr.trim_end_matches(".clone()");
                         return Some(match mutability {
                             hir::Mutability::MutMutable => (
                                 sp,
