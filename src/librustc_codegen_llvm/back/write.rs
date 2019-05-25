@@ -721,11 +721,9 @@ pub unsafe fn with_llvm_pmb(llmod: &llvm::Module,
         }
     };
 
-    let pgo_use_path = if config.pgo_use.is_empty() {
-        None
-    } else {
-        Some(CString::new(config.pgo_use.as_bytes()).unwrap())
-    };
+    let pgo_use_path = config.pgo_use.as_ref().map(|path_buf| {
+        CString::new(path_buf.to_string_lossy().as_bytes()).unwrap()
+    });
 
     llvm::LLVMRustConfigurePassManagerBuilder(
         builder,
