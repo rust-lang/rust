@@ -1914,7 +1914,7 @@ pub enum Place<'tcx> {
     Base(PlaceBase<'tcx>),
 
     /// projection out of a place (access a field, deref a pointer, etc)
-    Projection(Box<PlaceProjection<'tcx>>),
+    Projection(Box<Projection<'tcx>>),
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable)]
@@ -1944,16 +1944,13 @@ impl_stable_hash_for!(struct Static<'tcx> {
     kind
 });
 
-/// The `Projection` data structure defines things of the form `B.x`
-/// or `*B` or `B[index]`. Note that it is parameterized because it is
-/// shared between `Constant` and `Place`. See the aliases
-/// `PlaceProjection` etc below.
+/// The `Projection` data structure defines things of the form `base.x`, `*b` or `b[index]`.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord,
          Hash, RustcEncodable, RustcDecodable, HashStable)]
-pub struct Projection<B, V, T> {
-    pub base: B,
-    pub elem: ProjectionElem<V, T>,
-}
+pub struct Projection<'tcx> {
+    pub base: Place<'tcx>,
+    pub elem: PlaceElem<'tcx>,
+ }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord,
          Hash, RustcEncodable, RustcDecodable, HashStable)]
@@ -1995,10 +1992,6 @@ pub enum ProjectionElem<V, T> {
     /// The included Symbol is the name of the variant, used for printing MIR.
     Downcast(Option<Symbol>, VariantIdx),
 }
-
-/// Alias for projections as they appear in places, where the base is a place
-/// and the index is a local.
-pub type PlaceProjection<'tcx> = Projection<Place<'tcx>, Local, Ty<'tcx>>;
 
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
@@ -2045,7 +2038,7 @@ impl<'tcx> Place<'tcx> {
     }
 
     pub fn elem(self, elem: PlaceElem<'tcx>) -> Place<'tcx> {
-        Place::Projection(Box::new(PlaceProjection { base: self, elem }))
+        Place::Projection(Box::new(Projection { base: self, elem }))
     }
 
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
@@ -2076,22 +2069,22 @@ impl<'tcx> Place<'tcx> {
     }
 
     /// Recursively "iterates" over place components, generating a `PlaceBase` and
-    /// `PlaceProjections` list and invoking `op` with a `PlaceProjectionsIter`.
+    /// `Projections` list and invoking `op` with a `ProjectionsIter`.
     pub fn iterate<R>(
         &self,
-        op: impl FnOnce(&PlaceBase<'tcx>, PlaceProjectionsIter<'_, 'tcx>) -> R,
+        op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
-        self.iterate2(&PlaceProjections::Empty, op)
+        self.iterate2(&Projections::Empty, op)
     }
 
     fn iterate2<R>(
         &self,
-        next: &PlaceProjections<'_, 'tcx>,
-        op: impl FnOnce(&PlaceBase<'tcx>, PlaceProjectionsIter<'_, 'tcx>) -> R,
+        next: &Projections<'_, 'tcx>,
+        op: impl FnOnce(&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>) -> R,
     ) -> R {
         match self {
             Place::Projection(interior) => interior.base.iterate2(
-                &PlaceProjections::List {
+                &Projections::List {
                     projection: interior,
                     next,
                 },
@@ -2111,26 +2104,26 @@ impl<'tcx> Place<'tcx> {
 /// N.B., this particular impl strategy is not the most obvious. It was
 /// chosen because it makes a measurable difference to NLL
 /// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
-pub enum PlaceProjections<'p, 'tcx: 'p> {
+pub enum Projections<'p, 'tcx: 'p> {
     Empty,
 
     List {
-        projection: &'p PlaceProjection<'tcx>,
-        next: &'p PlaceProjections<'p, 'tcx>,
+        projection: &'p Projection<'tcx>,
+        next: &'p Projections<'p, 'tcx>,
     }
 }
 
-impl<'p, 'tcx> PlaceProjections<'p, 'tcx> {
-    fn iter(&self) -> PlaceProjectionsIter<'_, 'tcx> {
-        PlaceProjectionsIter { value: self }
+impl<'p, 'tcx> Projections<'p, 'tcx> {
+    fn iter(&self) -> ProjectionsIter<'_, 'tcx> {
+        ProjectionsIter { value: self }
     }
 }
 
-impl<'p, 'tcx> IntoIterator for &'p PlaceProjections<'p, 'tcx> {
-    type Item = &'p PlaceProjection<'tcx>;
-    type IntoIter = PlaceProjectionsIter<'p, 'tcx>;
+impl<'p, 'tcx> IntoIterator for &'p Projections<'p, 'tcx> {
+    type Item = &'p Projection<'tcx>;
+    type IntoIter = ProjectionsIter<'p, 'tcx>;
 
-    /// Converts a list of `PlaceProjection` components into an iterator;
+    /// Converts a list of `Projection` components into an iterator;
     /// this iterator yields up a never-ending stream of `Option<&Place>`.
     /// These begin with the "innermost" projection and then with each
     /// projection therefrom. So given a place like `a.b.c` it would
@@ -2144,21 +2137,21 @@ impl<'p, 'tcx> IntoIterator for &'p PlaceProjections<'p, 'tcx> {
     }
 }
 
-/// Iterator over components; see `PlaceProjections::iter` for more
+/// Iterator over components; see `Projections::iter` for more
 /// information.
 ///
 /// N.B., this is not a *true* Rust iterator -- the code above just
 /// manually invokes `next`. This is because we (sometimes) want to
 /// keep executing even after `None` has been returned.
-pub struct PlaceProjectionsIter<'p, 'tcx: 'p> {
-    pub value: &'p PlaceProjections<'p, 'tcx>,
+pub struct ProjectionsIter<'p, 'tcx: 'p> {
+    pub value: &'p Projections<'p, 'tcx>,
 }
 
-impl<'p, 'tcx> Iterator for PlaceProjectionsIter<'p, 'tcx> {
-    type Item = &'p PlaceProjection<'tcx>;
+impl<'p, 'tcx> Iterator for ProjectionsIter<'p, 'tcx> {
+    type Item = &'p Projection<'tcx>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let &PlaceProjections::List { projection, next } = self.value {
+        if let &Projections::List { projection, next } = self.value {
             self.value = next;
             Some(projection)
         } else {
@@ -2167,7 +2160,7 @@ impl<'p, 'tcx> Iterator for PlaceProjectionsIter<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> FusedIterator for PlaceProjectionsIter<'p, 'tcx> {}
+impl<'p, 'tcx> FusedIterator for ProjectionsIter<'p, 'tcx> {}
 
 impl<'tcx> Debug for Place<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
@@ -2758,7 +2751,7 @@ impl<'tcx> UserTypeProjections {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
-    pub projs: Vec<ProjectionElem<(), ()>>,
+    pub projs: Vec<ProjectionKind>,
 }
 
 impl Copy for ProjectionKind { }
@@ -3587,12 +3580,7 @@ impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
     }
 }
 
-impl<'tcx, B, V, T> TypeFoldable<'tcx> for Projection<B, V, T>
-where
-    B: TypeFoldable<'tcx>,
-    V: TypeFoldable<'tcx>,
-    T: TypeFoldable<'tcx>,
-{
+impl<'tcx> TypeFoldable<'tcx> for Projection<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         use crate::mir::ProjectionElem::*;
 

@@ -2370,7 +2370,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             "add_reborrow_constraint({:?}, {:?}, {:?})",
             location, borrow_region, borrowed_place
         );
-        while let Place::Projection(box PlaceProjection { base, elem }) = borrowed_place {
+        while let Place::Projection(box Projection { base, elem }) = borrowed_place {
             debug!("add_reborrow_constraint - iteration {:?}", borrowed_place);
 
             match *elem {

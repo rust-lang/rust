@@ -352,7 +352,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 ..
             } => {
                 let try_remove_deref = match move_from {
-                    Place::Projection(box PlaceProjection {
+                    Place::Projection(box Projection {
                         elem: ProjectionElem::Deref,
                         ..
                     }) => true,

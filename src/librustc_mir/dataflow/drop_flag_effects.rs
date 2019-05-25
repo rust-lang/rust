@@ -10,7 +10,7 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
                                         path: MovePathIndex,
                                         mut cond: F)
                                         -> Option<MovePathIndex>
-    where F: FnMut(&mir::PlaceProjection<'tcx>) -> bool
+    where F: FnMut(&mir::Projection<'tcx>) -> bool
 {
     let mut next_child = move_data.move_paths[path].first_child;
     while let Some(child_index) = next_child {

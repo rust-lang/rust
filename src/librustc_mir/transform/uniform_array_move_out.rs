@@ -89,7 +89,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
     fn uniform(&mut self,
                location: Location,
                dst_place: &Place<'tcx>,
-               proj: &PlaceProjection<'tcx>,
+               proj: &Projection<'tcx>,
                item_ty: &'tcx ty::TyS<'tcx>,
                size: u32) {
         match proj.elem {
@@ -103,7 +103,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                                           Place::Base(PlaceBase::Local(temp)),
                                           Rvalue::Use(
                                               Operand::Move(
-                                                  Place::Projection(box PlaceProjection{
+                                                  Place::Projection(box Projection{
                                                       base: proj.base.clone(),
                                                       elem: ProjectionElem::ConstantIndex{
                                                           offset: i,
@@ -133,7 +133,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                                       dst_place.clone(),
                                       Rvalue::Use(
                                           Operand::Move(
-                                              Place::Projection(box PlaceProjection{
+                                              Place::Projection(box Projection{
                                                   base: proj.base.clone(),
                                                   elem: ProjectionElem::ConstantIndex{
                                                       offset: size - offset,
@@ -246,7 +246,7 @@ impl RestoreSubsliceArrayMoveOut {
                              dst_place.clone(),
                              Rvalue::Use(
                                  Operand::Move(
-                                     Place::Projection(box PlaceProjection{
+                                     Place::Projection(box Projection{
                                          base: opt_src_place.unwrap().clone(),
                                          elem: ProjectionElem::Subslice{
                                              from: min, to: size - max - 1}}))));
@@ -261,7 +261,7 @@ impl RestoreSubsliceArrayMoveOut {
                 let statement = &block.statements[location.statement_index];
                 if let StatementKind::Assign(
                     Place::Base(PlaceBase::Local(_)),
-                    box Rvalue::Use(Operand::Move(Place::Projection(box PlaceProjection{
+                    box Rvalue::Use(Operand::Move(Place::Projection(box Projection{
                         ref base, elem: ProjectionElem::ConstantIndex{
                             offset, min_length: _, from_end: false}})))) = statement.kind {
                     return Some((offset, base))

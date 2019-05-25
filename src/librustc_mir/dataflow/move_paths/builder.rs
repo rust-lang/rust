@@ -114,7 +114,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
 
     fn move_path_for_projection(&mut self,
                                 place: &Place<'tcx>,
-                                proj: &PlaceProjection<'tcx>)
+                                proj: &Projection<'tcx>)
                                 -> Result<MovePathIndex, MoveError<'tcx>>
     {
         let base = self.move_path_for(&proj.base)?;

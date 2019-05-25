@@ -2,7 +2,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory, Local,
-    LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, PlaceProjection,
+    LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, Projection,
     ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, Ty};
@@ -619,7 +619,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // union being accessed and the field that was being accessed so we can check the
                 // second borrowed place for the same union and a access to a different field.
                 let mut current = first_borrowed_place;
-                while let Place::Projection(box PlaceProjection { base, elem }) = current {
+                while let Place::Projection(box Projection { base, elem }) = current {
                     match elem {
                         ProjectionElem::Field(field, _) if is_union(base) => {
                             return Some((base, field));
@@ -633,7 +633,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // With the place of a union and a field access into it, we traverse the second
                 // borrowed place and look for a access to a different field of the same union.
                 let mut current = second_borrowed_place;
-                while let Place::Projection(box PlaceProjection { base, elem }) = current {
+                while let Place::Projection(box Projection { base, elem }) = current {
                     match elem {
                         ProjectionElem::Field(field, _) if {
                             is_union(base) && field != target_field && base == target_base
@@ -1495,7 +1495,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Place::Base(PlaceBase::Static(_)) => {
                 StorageDeadOrDrop::LocalStorageDead
             }
-            Place::Projection(box PlaceProjection { base, elem }) => {
+            Place::Projection(box Projection { base, elem }) => {
                 let base_access = self.classify_drop_access_kind(base);
                 match elem {
                     ProjectionElem::Deref => match base_access {
