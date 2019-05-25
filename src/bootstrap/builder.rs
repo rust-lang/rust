@@ -318,6 +318,8 @@ impl<'a> ShouldRun<'a> {
 pub enum Kind {
     Build,
     Check,
+    Clippy,
+    Fix,
     Test,
     Bench,
     Dist,
@@ -359,7 +361,7 @@ impl<'a> Builder<'a> {
                 tool::Miri,
                 native::Lld
             ),
-            Kind::Check => describe!(
+            Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
                 check::Test,
                 check::Rustc,
@@ -520,6 +522,8 @@ impl<'a> Builder<'a> {
         let (kind, paths) = match build.config.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
             Subcommand::Check { ref paths } => (Kind::Check, &paths[..]),
+            Subcommand::Clippy { ref paths } => (Kind::Clippy, &paths[..]),
+            Subcommand::Fix { ref paths } => (Kind::Fix, &paths[..]),
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
             Subcommand::Test { ref paths, .. } => (Kind::Test, &paths[..]),
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
@@ -757,17 +761,17 @@ impl<'a> Builder<'a> {
         };
 
         let libstd_stamp = match cmd {
-            "check" => check::libstd_stamp(self, cmp, target),
+            "check" | "clippy" | "fix" => check::libstd_stamp(self, cmp, target),
             _ => compile::libstd_stamp(self, cmp, target),
         };
 
         let libtest_stamp = match cmd {
-            "check" => check::libtest_stamp(self, cmp, target),
+            "check" | "clippy" | "fix" => check::libtest_stamp(self, cmp, target),
             _ => compile::libstd_stamp(self, cmp, target),
         };
 
         let librustc_stamp = match cmd {
-            "check" => check::librustc_stamp(self, cmp, target),
+            "check" | "clippy" | "fix" => check::librustc_stamp(self, cmp, target),
             _ => compile::librustc_stamp(self, cmp, target),
         };
 
@@ -831,9 +835,9 @@ impl<'a> Builder<'a> {
             assert_eq!(target, compiler.host);
         }
 
-        // Set a flag for `check` so that certain build scripts can do less work
-        // (e.g., not building/requiring LLVM).
-        if cmd == "check" {
+        // Set a flag for `check`/`clippy`/`fix`, so that certain build
+        // scripts can do less work (e.g. not building/requiring LLVM).
+        if cmd == "check" || cmd == "clippy" || cmd == "fix" {
             cargo.env("RUST_CHECK", "1");
         }
 
@@ -896,6 +900,11 @@ impl<'a> Builder<'a> {
                 extra_args.push_str(" ");
             }
             extra_args.push_str(&s);
+        }
+
+        if cmd == "clippy" {
+            extra_args.push_str("-Zforce-unstable-if-unmarked -Zunstable-options \
+                --json-rendered=termcolor");
         }
 
         if !extra_args.is_empty() {
@@ -966,7 +975,7 @@ impl<'a> Builder<'a> {
         if let Some(ref error_format) = self.config.rustc_error_format {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
-        if cmd != "build" && cmd != "check" && cmd != "rustc" && want_rustdoc {
+        if !(["build", "check", "clippy", "fix", "rustc"].contains(&cmd)) && want_rustdoc {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));
         }
 
