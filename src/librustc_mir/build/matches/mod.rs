@@ -715,29 +715,46 @@ pub struct MatchPair<'pat, 'tcx: 'pat> {
 
 #[derive(Clone, Debug, PartialEq)]
 enum TestKind<'tcx> {
-    // test the branches of enum
+    /// Test the branches of enum.
     Switch {
+        /// The enum being tested
         adt_def: &'tcx ty::AdtDef,
+        /// The set of variants that we should create a branch for. We also
+        /// create an additional "otherwise" case.
         variants: BitSet<VariantIdx>,
     },
 
-    // test the branches of enum
+    /// Test what value an `integer`, `bool` or `char` has.
     SwitchInt {
+        /// The type of the value that we're testing.
         switch_ty: Ty<'tcx>,
+        /// The (ordered) set of values that we test for.
+        ///
+        /// For integers and `char`s we create a branch to each of the values in
+        /// `options`, as well as an "otherwise" branch for all other values, even
+        /// in the (rare) case that options is exhaustive.
+        ///
+        /// For `bool` we always generate two edges, one for `true` and one for
+        /// `false`.
         options: Vec<u128>,
+        /// Reverse map used to ensure that the values in `options` are unique.
         indices: FxHashMap<&'tcx ty::Const<'tcx>, usize>,
     },
 
-    // test for equality
+    /// Test for equality with value, possibly after an unsizing coercion to
+    /// `ty`,
     Eq {
         value: &'tcx ty::Const<'tcx>,
+        // Integer types are handled by `SwitchInt`, and constants with ADT
+        // types are converted back into patterns, so this can only be `&str`,
+        // `&[T]`, `f32` or `f64`.
         ty: Ty<'tcx>,
     },
 
-    // test whether the value falls within an inclusive or exclusive range
+    /// Test whether the value falls within an inclusive or exclusive range
     Range(PatternRange<'tcx>),
 
-    // test length of the slice is equal to len
+    /// Test length of the slice is equal to len
     Len {
         len: u64,
         op: BinOp,

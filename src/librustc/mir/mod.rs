@@ -1196,8 +1196,8 @@ pub enum TerminatorKind<'tcx> {
     FalseEdges {
         /// The target normal control flow will take
         real_target: BasicBlock,
-        /// A block control flow could conceptually take, but won't
-        /// in practice
+        /// A block control flow could conceptually jump to, but won't in
+        /// practice
         imaginary_target: BasicBlock,
     },
     /// A terminator for blocks that only take one path in reality, but where we

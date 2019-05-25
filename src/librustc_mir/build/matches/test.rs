@@ -807,10 +807,16 @@ impl Test<'_> {
                 2
             }
             TestKind::Switch { adt_def, .. } => {
+                // While the switch that we generate doesn't test for all
+                // variants, we have a target for each variant and the
+                // otherwise case, and we make sure that all of the cases not
+                // specified have the same block.
                 adt_def.variants.len() + 1
             }
             TestKind::SwitchInt { switch_ty, ref options, .. } => {
                 if switch_ty.is_bool() {
+                    // `bool` is special cased in `perform_test` to always
+                    // branch to two blocks.
                     2
                 } else {
                     options.len() + 1
