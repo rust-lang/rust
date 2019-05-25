@@ -618,7 +618,7 @@ impl<T: Clone> Rc<T> {
     /// [`Weak`] pointers will be dissassociated:
     ///
     /// ```
-    /// use std::rc::{Rc, Weak};
+    /// use std::rc::Rc;
     ///
     /// let mut data = Rc::new(75);
     /// let weak = Rc::downgrade(&data);
