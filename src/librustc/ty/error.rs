@@ -159,7 +159,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                                        &format!("trait `{}`", values.found))
             }
             ConstMismatch(ref values) => {
-                write!(f, "expected `{:?}`, found `{:?}`", values.expected, values.found)
+                write!(f, "expected `{}`, found `{}`", values.expected, values.found)
             }
         }
     }
