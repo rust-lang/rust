@@ -114,7 +114,7 @@ dependencies = [
 [[package]]
 name = "cranelift"
 version = "0.30.0"
-source = "git+https://github.com/CraneStation/cranelift.git#dcce8792b18888228759122356683215f802d6a7"
+source = "git+https://github.com/CraneStation/cranelift.git#be02e945613270d17a316a23a58e0791d5712cee"
 dependencies = [
  "cranelift-codegen 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-frontend 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
@@ -123,7 +123,7 @@ dependencies = [
 [[package]]
 name = "cranelift-bforest"
 version = "0.30.0"
-source = "git+https://github.com/CraneStation/cranelift.git#dcce8792b18888228759122356683215f802d6a7"
+source = "git+https://github.com/CraneStation/cranelift.git#be02e945613270d17a316a23a58e0791d5712cee"
 dependencies = [
  "cranelift-entity 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
 ]
@@ -131,7 +131,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen"
 version = "0.30.0"
-source = "git+https://github.com/CraneStation/cranelift.git#dcce8792b18888228759122356683215f802d6a7"
+source = "git+https://github.com/CraneStation/cranelift.git#be02e945613270d17a316a23a58e0791d5712cee"
 dependencies = [
  "cranelift-bforest 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-codegen-meta 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
@@ -145,7 +145,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen-meta"
 version = "0.30.0"
-source = "git+https://github.com/CraneStation/cranelift.git#dcce8792b18888228759122356683215f802d6a7"
+source = "git+https://github.com/CraneStation/cranelift.git#be02e945613270d17a316a23a58e0791d5712cee"
 dependencies = [
  "cranelift-entity 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
 ]
@@ -153,12 +153,12 @@ dependencies = [
 [[package]]
 name = "cranelift-entity"
 version = "0.30.0"
-source = "git+https://github.com/CraneStation/cranelift.git#dcce8792b18888228759122356683215f802d6a7"
+source = "git+https://github.com/CraneStation/cranelift.git#be02e945613270d17a316a23a58e0791d5712cee"
 
 [[package]]
 name = "cranelift-faerie"
 version = "0.30.0"
-source = "git+https://github.com/CraneStation/cranelift.git#dcce8792b18888228759122356683215f802d6a7"
+source = "git+https://github.com/CraneStation/cranelift.git#be02e945613270d17a316a23a58e0791d5712cee"
 dependencies = [
  "cranelift-codegen 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
@@ -171,7 +171,7 @@ dependencies = [
 [[package]]
 name = "cranelift-frontend"
 version = "0.30.0"
-source = "git+https://github.com/CraneStation/cranelift.git#dcce8792b18888228759122356683215f802d6a7"
+source = "git+https://github.com/CraneStation/cranelift.git#be02e945613270d17a316a23a58e0791d5712cee"
 dependencies = [
  "cranelift-codegen 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -181,7 +181,7 @@ dependencies = [
 [[package]]
 name = "cranelift-module"
 version = "0.30.0"
-source = "git+https://github.com/CraneStation/cranelift.git#dcce8792b18888228759122356683215f802d6a7"
+source = "git+https://github.com/CraneStation/cranelift.git#be02e945613270d17a316a23a58e0791d5712cee"
 dependencies = [
  "cranelift-codegen 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-entity 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
@@ -192,7 +192,7 @@ dependencies = [
 [[package]]
 name = "cranelift-native"
 version = "0.30.0"
-source = "git+https://github.com/CraneStation/cranelift.git#dcce8792b18888228759122356683215f802d6a7"
+source = "git+https://github.com/CraneStation/cranelift.git#be02e945613270d17a316a23a58e0791d5712cee"
 dependencies = [
  "cranelift-codegen 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "raw-cpuid 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -202,7 +202,7 @@ dependencies = [
 [[package]]
 name = "cranelift-simplejit"
 version = "0.30.0"
-source = "git+https://github.com/CraneStation/cranelift.git#dcce8792b18888228759122356683215f802d6a7"
+source = "git+https://github.com/CraneStation/cranelift.git#be02e945613270d17a316a23a58e0791d5712cee"
 dependencies = [
  "cranelift-codegen 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
