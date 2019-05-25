@@ -465,7 +465,7 @@ pub struct JoinPathsError {
 /// # }
 /// ```
 ///
-/// Using `env::join_paths` with `env::spit_paths` to append an item to the `PATH` environment
+/// Using `env::join_paths` with [`env::split_paths`] to append an item to the `PATH` environment
 /// variable:
 ///
 /// ```
@@ -483,6 +483,8 @@ pub struct JoinPathsError {
 ///     Ok(())
 /// }
 /// ```
+///
+/// [`env::split_paths`]: fn.split_paths.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
     where I: IntoIterator<Item=T>, T: AsRef<OsStr>

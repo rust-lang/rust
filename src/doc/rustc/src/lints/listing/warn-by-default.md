@@ -529,18 +529,21 @@ This lint detects bounds in type aliases. These are not currently enforced.
 Some example code that triggers this lint:
 
 ```rust
+#[allow(dead_code)]
 type SendVec<T: Send> = Vec<T>;
 ```
 
 This will produce:
 
 ```text
-warning: type alias is never used: `SendVec`
- --> src/main.rs:1:1
+warning: bounds on generic parameters are not enforced in type aliases
+ --> src/lib.rs:2:17
   |
-1 | type SendVec<T: Send> = Vec<T>;
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2 | type SendVec<T: Send> = Vec<T>;
+  |                 ^^^^
   |
+  = note: #[warn(type_alias_bounds)] on by default
+  = help: the bound will not be checked when the type alias is used, and should be removed
 ```
 
 ## tyvar-behind-raw-pointer
