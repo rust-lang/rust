@@ -9,7 +9,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
 use rustc::infer::NLLRegionVariableOrigin;
-use rustc::mir::{ConstraintCategory, Location, Mir};
+use rustc::mir::{ConstraintCategory, Location, Body};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
@@ -62,7 +62,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// path to blame.
     fn best_blame_constraint(
         &self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         from_region: RegionVid,
         target_test: impl Fn(RegionVid) -> bool,
     ) -> (ConstraintCategory, bool, Span) {
@@ -237,7 +237,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Here we would be invoked with `fr = 'a` and `outlived_fr = `'b`.
     pub(super) fn report_error(
         &self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         upvars: &[Upvar],
         infcx: &InferCtxt<'_, '_, 'tcx>,
         mir_def_id: DefId,
@@ -357,7 +357,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn report_fnmut_error(
         &self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         upvars: &[Upvar],
         infcx: &InferCtxt<'_, '_, 'tcx>,
         mir_def_id: DefId,
@@ -422,7 +422,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn report_escaping_data_error(
         &self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         upvars: &[Upvar],
         infcx: &InferCtxt<'_, '_, 'tcx>,
         mir_def_id: DefId,
@@ -514,7 +514,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn report_general_error(
         &self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         upvars: &[Upvar],
         infcx: &InferCtxt<'_, '_, 'tcx>,
         mir_def_id: DefId,
@@ -667,7 +667,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     crate fn free_region_constraint_info(
         &self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         upvars: &[Upvar],
         mir_def_id: DefId,
         infcx: &InferCtxt<'_, '_, 'tcx>,
@@ -724,7 +724,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     // Finds a good span to blame for the fact that `fr1` outlives `fr2`.
     crate fn find_outlives_blame_span(
         &self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         fr1: RegionVid,
         fr2: RegionVid,
     ) -> (ConstraintCategory, Span) {
@@ -735,7 +735,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     fn retrieve_closure_constraint_info(
         &self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         constraint: &OutlivesConstraint,
     ) -> (ConstraintCategory, bool, Span) {
         let loc = match constraint.locations {

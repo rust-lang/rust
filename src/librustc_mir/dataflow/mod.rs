@@ -7,7 +7,7 @@ use rustc_data_structures::work_queue::WorkQueue;
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt};
-use rustc::mir::{self, Mir, BasicBlock, BasicBlockData, Location, Statement, Terminator};
+use rustc::mir::{self, Body, BasicBlock, BasicBlockData, Location, Statement, Terminator};
 use rustc::mir::traversal;
 use rustc::session::Session;
 
@@ -122,7 +122,7 @@ pub struct MoveDataParamEnv<'gcx, 'tcx> {
 }
 
 pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                 mir: &'a Mir<'tcx>,
+                                                 mir: &'a Body<'tcx>,
                                                  def_id: DefId,
                                                  attributes: &[ast::Attribute],
                                                  dead_unwinds: &BitSet<BasicBlock>,
@@ -343,13 +343,13 @@ pub(crate) trait DataflowResultsConsumer<'a, 'tcx: 'a> {
 
     // Delegated Hooks: Provide access to the MIR and process the flow state.
 
-    fn mir(&self) -> &'a Mir<'tcx>;
+    fn mir(&self) -> &'a Body<'tcx>;
 }
 
 pub fn state_for_location<'tcx, T: BitDenotation<'tcx>>(loc: Location,
                                                         analysis: &T,
                                                         result: &DataflowResults<'tcx, T>,
-                                                        mir: &Mir<'tcx>)
+                                                        mir: &Body<'tcx>)
     -> BitSet<T::Idx> {
     let mut on_entry = result.sets().on_entry_set_for(loc.block.index()).to_owned();
     let mut kill_set = on_entry.to_hybrid();
@@ -384,7 +384,7 @@ pub struct DataflowAnalysis<'a, 'tcx: 'a, O> where O: BitDenotation<'tcx>
 {
     flow_state: DataflowState<'tcx, O>,
     dead_unwinds: &'a BitSet<mir::BasicBlock>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
 }
 
 impl<'a, 'tcx: 'a, O> DataflowAnalysis<'a, 'tcx, O> where O: BitDenotation<'tcx>
@@ -393,7 +393,7 @@ impl<'a, 'tcx: 'a, O> DataflowAnalysis<'a, 'tcx, O> where O: BitDenotation<'tcx>
         DataflowResults(self.flow_state)
     }
 
-    pub fn mir(&self) -> &'a Mir<'tcx> { self.mir }
+    pub fn mir(&self) -> &'a Body<'tcx> { self.mir }
 }
 
 pub struct DataflowResults<'tcx, O>(pub(crate) DataflowState<'tcx, O>) where O: BitDenotation<'tcx>;
@@ -697,7 +697,7 @@ pub trait BitDenotation<'tcx>: BitSetOperator {
 
 impl<'a, 'tcx, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation<'tcx>
 {
-    pub fn new(mir: &'a Mir<'tcx>,
+    pub fn new(mir: &'a Body<'tcx>,
                dead_unwinds: &'a BitSet<mir::BasicBlock>,
                denotation: D) -> Self where D: InitialFlow {
         let bits_per_block = denotation.bits_per_block();

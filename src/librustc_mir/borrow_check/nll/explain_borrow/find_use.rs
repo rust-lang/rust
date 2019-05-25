@@ -5,12 +5,12 @@ use crate::borrow_check::nll::region_infer::{Cause, RegionInferenceContext};
 use crate::borrow_check::nll::ToRegionVid;
 use crate::util::liveness::{self, DefUse};
 use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Mir};
+use rustc::mir::{Local, Location, Body};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
 crate fn find<'tcx>(
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
     tcx: TyCtxt<'_, '_, 'tcx>,
     region_vid: RegionVid,
@@ -28,7 +28,7 @@ crate fn find<'tcx>(
 }
 
 struct UseFinder<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    mir: &'cx Mir<'tcx>,
+    mir: &'cx Body<'tcx>,
     regioncx: &'cx Rc<RegionInferenceContext<'tcx>>,
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     region_vid: RegionVid,
@@ -100,7 +100,7 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
 }
 
 struct DefUseVisitor<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    mir: &'cx Mir<'tcx>,
+    mir: &'cx Body<'tcx>,
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     region_vid: RegionVid,
     def_use_result: Option<DefUseResult>,

@@ -34,7 +34,7 @@ pub fn graphviz_safe_def_name(def_id: DefId) -> String {
 /// Write a graphviz DOT graph of the MIR.
 pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
                                       def_id: DefId,
-                                      mir: &Mir<'_>,
+                                      mir: &Body<'_>,
                                       w: &mut W) -> io::Result<()>
     where W: Write
 {
@@ -68,7 +68,7 @@ pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
 /// `init` and `fini` are callbacks for emitting additional rows of
 /// data (using HTML enclosed with `<tr>` in the emitted text).
 pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
-                                              mir: &Mir<'_>,
+                                              mir: &Body<'_>,
                                               w: &mut W,
                                               num_cols: u32,
                                               init: INIT,
@@ -110,7 +110,7 @@ pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
 }
 
 /// Write a graphviz DOT node for the given basic block.
-fn write_node<W: Write>(block: BasicBlock, mir: &Mir<'_>, w: &mut W) -> io::Result<()> {
+fn write_node<W: Write>(block: BasicBlock, mir: &Body<'_>, w: &mut W) -> io::Result<()> {
     // Start a new node with the label to follow, in one of DOT's pseudo-HTML tables.
     write!(w, r#"    {} [shape="none", label=<"#, node(block))?;
     write_node_label(block, mir, w, 1, |_| Ok(()), |_| Ok(()))?;
@@ -119,7 +119,7 @@ fn write_node<W: Write>(block: BasicBlock, mir: &Mir<'_>, w: &mut W) -> io::Resu
 }
 
 /// Write graphviz DOT edges with labels between the given basic block and all of its successors.
-fn write_edges<W: Write>(source: BasicBlock, mir: &Mir<'_>, w: &mut W) -> io::Result<()> {
+fn write_edges<W: Write>(source: BasicBlock, mir: &Body<'_>, w: &mut W) -> io::Result<()> {
     let terminator = mir[source].terminator();
     let labels = terminator.kind.fmt_successor_labels();
 
@@ -135,7 +135,7 @@ fn write_edges<W: Write>(source: BasicBlock, mir: &Mir<'_>, w: &mut W) -> io::Re
 /// all the variables and temporaries.
 fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                def_id: DefId,
-                                               mir: &Mir<'_>,
+                                               mir: &Body<'_>,
                                                w: &mut W)
                                                -> io::Result<()> {
     write!(w, "    label=<fn {}(", dot::escape_html(&tcx.def_path_str(def_id)))?;
