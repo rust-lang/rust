@@ -1162,6 +1162,7 @@ mod tests {
         assert_eq!(reader.get_ref().pos, expected);
     }
 
+    #[test]
     fn test_buffered_reader_seek_underflow_discard_buffer_between_seeks() {
         // gimmick reader that returns Err after first seek
         struct ErrAfterFirstSeekReader {
