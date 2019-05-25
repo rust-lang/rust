@@ -32,7 +32,7 @@ use syntax_pos::Span;
 
 #[derive(Clone, Debug)]
 pub enum PatternError {
-    AssociatedConstInPattern(Span),
+    AssocConstInPattern(Span),
     StaticInPattern(Span),
     FloatBug,
     NonConstPath(Span),
@@ -769,7 +769,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             | Res::Def(DefKind::Ctor(CtorOf::Struct, ..), _)
             | Res::Def(DefKind::Union, _)
             | Res::Def(DefKind::TyAlias, _)
-            | Res::Def(DefKind::AssociatedTy, _)
+            | Res::Def(DefKind::AssocTy, _)
             | Res::SelfTy(..)
             | Res::SelfCtor(..) => {
                 PatternKind::Leaf { subpatterns }
@@ -811,11 +811,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let ty = self.tables.node_type(id);
         let res = self.tables.qpath_res(qpath, id);
         let is_associated_const = match res {
-            Res::Def(DefKind::AssociatedConst, _) => true,
+            Res::Def(DefKind::AssocConst, _) => true,
             _ => false,
         };
         let kind = match res {
-            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssociatedConst, def_id) => {
+            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let substs = self.tables.node_substs(id);
                 match ty::Instance::resolve(
                     self.tcx,
@@ -869,7 +869,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     },
                     None => {
                         self.errors.push(if is_associated_const {
-                            PatternError::AssociatedConstInPattern(span)
+                            PatternError::AssocConstInPattern(span)
                         } else {
                             PatternError::StaticInPattern(span)
                         });

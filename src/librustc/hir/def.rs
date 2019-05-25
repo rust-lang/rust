@@ -61,9 +61,9 @@ pub enum DefKind {
     TyAlias,
     ForeignTy,
     TraitAlias,
-    AssociatedTy,
+    AssocTy,
     /// `existential type Foo: Bar;`
-    AssociatedExistential,
+    AssocExistential,
     TyParam,
 
     // Value namespace
@@ -74,7 +74,7 @@ pub enum DefKind {
     /// Refers to the struct or enum variant's constructor.
     Ctor(CtorOf, CtorKind),
     Method,
-    AssociatedConst,
+    AssocConst,
 
     // Macro namespace
     Macro(MacroKind),
@@ -99,14 +99,14 @@ impl DefKind {
             DefKind::Existential => "existential type",
             DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
-            DefKind::AssociatedTy => "associated type",
-            DefKind::AssociatedExistential => "associated existential type",
+            DefKind::AssocTy => "associated type",
+            DefKind::AssocExistential => "associated existential type",
             DefKind::Union => "union",
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
             DefKind::Method => "method",
             DefKind::Const => "constant",
-            DefKind::AssociatedConst => "associated constant",
+            DefKind::AssocConst => "associated constant",
             DefKind::TyParam => "type parameter",
             DefKind::ConstParam => "const parameter",
             DefKind::Macro(macro_kind) => macro_kind.descr(),
@@ -116,9 +116,9 @@ impl DefKind {
     /// An English article for the def.
     pub fn article(&self) -> &'static str {
         match *self {
-            DefKind::AssociatedTy
-            | DefKind::AssociatedConst
-            | DefKind::AssociatedExistential
+            DefKind::AssocTy
+            | DefKind::AssocConst
+            | DefKind::AssocExistential
             | DefKind::Enum
             | DefKind::Existential => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),

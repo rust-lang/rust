@@ -71,7 +71,7 @@ pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
     pub unsatisfied_predicates: Vec<TraitRef<'tcx>>,
     pub out_of_scope_traits: Vec<DefId>,
-    pub lev_candidate: Option<ty::AssociatedItem>,
+    pub lev_candidate: Option<ty::AssocItem>,
     pub mode: probe::Mode,
 }
 
@@ -79,7 +79,7 @@ impl<'tcx> NoMatchData<'tcx> {
     pub fn new(static_candidates: Vec<CandidateSource>,
                unsatisfied_predicates: Vec<TraitRef<'tcx>>,
                out_of_scope_traits: Vec<DefId>,
-               lev_candidate: Option<ty::AssociatedItem>,
+               lev_candidate: Option<ty::AssocItem>,
                mode: probe::Mode)
                -> Self {
         NoMatchData {
@@ -450,7 +450,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Finds item with name `item_name` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
     pub fn associated_item(&self, def_id: DefId, item_name: ast::Ident, ns: Namespace)
-                           -> Option<ty::AssociatedItem> {
+                           -> Option<ty::AssocItem> {
         self.tcx.associated_items(def_id).find(|item| {
             Namespace::from(item.kind) == ns &&
             self.tcx.hygienic_eq(item_name, item.ident, def_id)

@@ -401,7 +401,7 @@ impl<'tcx> EntryKind<'tcx> {
     fn def_kind(&self) -> Option<DefKind> {
         Some(match *self {
             EntryKind::Const(..) => DefKind::Const,
-            EntryKind::AssociatedConst(..) => DefKind::AssociatedConst,
+            EntryKind::AssocConst(..) => DefKind::AssocConst,
             EntryKind::ImmStatic |
             EntryKind::MutStatic |
             EntryKind::ForeignImmStatic |
@@ -415,8 +415,8 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::TypeParam => DefKind::TyParam,
             EntryKind::ConstParam => DefKind::ConstParam,
             EntryKind::Existential => DefKind::Existential,
-            EntryKind::AssociatedType(_) => DefKind::AssociatedTy,
-            EntryKind::AssociatedExistential(_) => DefKind::AssociatedExistential,
+            EntryKind::AssocType(_) => DefKind::AssocTy,
+            EntryKind::AssocExistential(_) => DefKind::AssocExistential,
             EntryKind::Mod(_) => DefKind::Mod,
             EntryKind::Variant(_) => DefKind::Variant,
             EntryKind::Trait(_) => DefKind::Trait,
@@ -873,7 +873,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn const_is_rvalue_promotable_to_static(&self, id: DefIndex) -> bool {
         match self.entry(id).kind {
-            EntryKind::AssociatedConst(_, data, _) |
+            EntryKind::AssocConst(_, data, _) |
             EntryKind::Const(data, _) => data.ast_promotable,
             _ => bug!(),
         }
@@ -897,38 +897,38 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn mir_const_qualif(&self, id: DefIndex) -> u8 {
         match self.entry(id).kind {
             EntryKind::Const(qualif, _) |
-            EntryKind::AssociatedConst(AssociatedContainer::ImplDefault, qualif, _) |
-            EntryKind::AssociatedConst(AssociatedContainer::ImplFinal, qualif, _) => {
+            EntryKind::AssocConst(AssocContainer::ImplDefault, qualif, _) |
+            EntryKind::AssocConst(AssocContainer::ImplFinal, qualif, _) => {
                 qualif.mir
             }
             _ => bug!(),
         }
     }
 
-    pub fn get_associated_item(&self, id: DefIndex) -> ty::AssociatedItem {
+    pub fn get_associated_item(&self, id: DefIndex) -> ty::AssocItem {
         let item = self.entry(id);
         let def_key = self.def_key(id);
         let parent = self.local_def_id(def_key.parent.unwrap());
         let name = def_key.disambiguated_data.data.get_opt_name().unwrap();
 
         let (kind, container, has_self) = match item.kind {
-            EntryKind::AssociatedConst(container, _, _) => {
-                (ty::AssociatedKind::Const, container, false)
+            EntryKind::AssocConst(container, _, _) => {
+                (ty::AssocKind::Const, container, false)
             }
             EntryKind::Method(data) => {
                 let data = data.decode(self);
-                (ty::AssociatedKind::Method, data.container, data.has_self)
+                (ty::AssocKind::Method, data.container, data.has_self)
             }
-            EntryKind::AssociatedType(container) => {
-                (ty::AssociatedKind::Type, container, false)
+            EntryKind::AssocType(container) => {
+                (ty::AssocKind::Type, container, false)
             }
-            EntryKind::AssociatedExistential(container) => {
-                (ty::AssociatedKind::Existential, container, false)
+            EntryKind::AssocExistential(container) => {
+                (ty::AssocKind::Existential, container, false)
             }
             _ => bug!("cannot get associated-item of `{:?}`", def_key)
         };
 
-        ty::AssociatedItem {
+        ty::AssocItem {
             ident: Ident::from_interned_str(name),
             kind,
             vis: item.visibility.decode(self),
@@ -1150,7 +1150,7 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn get_rendered_const(&self, id: DefIndex) -> String {
         match self.entry(id).kind {
             EntryKind::Const(_, data) |
-            EntryKind::AssociatedConst(_, _, data) => data.decode(self).0,
+            EntryKind::AssocConst(_, _, data) => data.decode(self).0,
             _ => bug!(),
         }
     }

@@ -787,7 +787,7 @@ fn user_substs_applied_to_res(
         Res::Def(DefKind::Method, _) |
         Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) |
         Res::Def(DefKind::Const, _) |
-        Res::Def(DefKind::AssociatedConst, _) =>
+        Res::Def(DefKind::AssocConst, _) =>
             cx.tables().user_provided_types().get(hir_id).map(|u_ty| *u_ty),
 
         // A unit struct/variant which is used as a value (e.g.,
@@ -924,7 +924,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         Res::Def(DefKind::Const, def_id) |
-        Res::Def(DefKind::AssociatedConst, def_id) => {
+        Res::Def(DefKind::AssocConst, def_id) => {
             let user_ty = user_substs_applied_to_res(cx, expr.hir_id, res);
             debug!("convert_path_expr: (const) user_ty={:?}", user_ty);
             ExprKind::Literal {

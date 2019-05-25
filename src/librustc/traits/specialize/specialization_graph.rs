@@ -426,7 +426,7 @@ impl<'a, 'gcx, 'tcx> Node {
     pub fn items(
         &self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    ) -> ty::AssociatedItemsIterator<'a, 'gcx, 'tcx> {
+    ) -> ty::AssocItemsIterator<'a, 'gcx, 'tcx> {
         tcx.associated_items(self.def_id())
     }
 
@@ -484,11 +484,11 @@ impl<'a, 'gcx, 'tcx> Ancestors<'gcx> {
         self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         trait_item_name: Ident,
-        trait_item_kind: ty::AssociatedKind,
+        trait_item_kind: ty::AssocKind,
         trait_def_id: DefId,
-    ) -> impl Iterator<Item = NodeItem<ty::AssociatedItem>> + Captures<'gcx> + Captures<'tcx> + 'a {
+    ) -> impl Iterator<Item = NodeItem<ty::AssocItem>> + Captures<'gcx> + Captures<'tcx> + 'a {
         self.flat_map(move |node| {
-            use crate::ty::AssociatedKind::*;
+            use crate::ty::AssocKind::*;
             node.items(tcx).filter(move |impl_item| match (trait_item_kind, impl_item.kind) {
                 | (Const, Const)
                 | (Method, Method)

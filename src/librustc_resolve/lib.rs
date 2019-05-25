@@ -589,7 +589,7 @@ impl<'a> PathSource<'a> {
                 | Res::Def(DefKind::Trait, _)
                 | Res::Def(DefKind::TraitAlias, _)
                 | Res::Def(DefKind::TyAlias, _)
-                | Res::Def(DefKind::AssociatedTy, _)
+                | Res::Def(DefKind::AssocTy, _)
                 | Res::PrimTy(..)
                 | Res::Def(DefKind::TyParam, _)
                 | Res::SelfTy(..)
@@ -615,14 +615,14 @@ impl<'a> PathSource<'a> {
                 | Res::Upvar(..)
                 | Res::Def(DefKind::Fn, _)
                 | Res::Def(DefKind::Method, _)
-                | Res::Def(DefKind::AssociatedConst, _)
+                | Res::Def(DefKind::AssocConst, _)
                 | Res::SelfCtor(..)
                 | Res::Def(DefKind::ConstParam, _) => true,
                 _ => false,
             },
             PathSource::Pat => match res {
                 Res::Def(DefKind::Ctor(_, CtorKind::Const), _) |
-                Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssociatedConst, _) |
+                Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) |
                 Res::SelfCtor(..) => true,
                 _ => false,
             },
@@ -635,14 +635,14 @@ impl<'a> PathSource<'a> {
                 | Res::Def(DefKind::Union, _)
                 | Res::Def(DefKind::Variant, _)
                 | Res::Def(DefKind::TyAlias, _)
-                | Res::Def(DefKind::AssociatedTy, _)
+                | Res::Def(DefKind::AssocTy, _)
                 | Res::SelfTy(..) => true,
                 _ => false,
             },
             PathSource::TraitItem(ns) => match res {
-                Res::Def(DefKind::AssociatedConst, _)
+                Res::Def(DefKind::AssocConst, _)
                 | Res::Def(DefKind::Method, _) if ns == ValueNS => true,
-                Res::Def(DefKind::AssociatedTy, _) if ns == TypeNS => true,
+                Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
                 _ => false,
             },
             PathSource::Visibility => match res {
@@ -1511,9 +1511,9 @@ impl<'a> NameBinding<'a> {
 
     fn is_importable(&self) -> bool {
         match self.res() {
-            Res::Def(DefKind::AssociatedConst, _)
+            Res::Def(DefKind::AssocConst, _)
             | Res::Def(DefKind::Method, _)
-            | Res::Def(DefKind::AssociatedTy, _) => false,
+            | Res::Def(DefKind::AssocTy, _) => false,
             _ => true,
         }
     }

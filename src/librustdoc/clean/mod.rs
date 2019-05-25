@@ -428,10 +428,10 @@ impl Item {
         self.type_() == ItemType::Variant
     }
     pub fn is_associated_type(&self) -> bool {
-        self.type_() == ItemType::AssociatedType
+        self.type_() == ItemType::AssocType
     }
     pub fn is_associated_const(&self) -> bool {
-        self.type_() == ItemType::AssociatedConst
+        self.type_() == ItemType::AssocConst
     }
     pub fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -560,8 +560,8 @@ pub enum ItemEnum {
     MacroItem(Macro),
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
-    AssociatedConstItem(Type, Option<String>),
-    AssociatedTypeItem(Vec<GenericBound>, Option<Type>),
+    AssocConstItem(Type, Option<String>),
+    AssocTypeItem(Vec<GenericBound>, Option<Type>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemEnum>),
     KeywordItem(String),
@@ -588,7 +588,7 @@ impl ItemEnum {
     pub fn is_associated(&self) -> bool {
         match *self {
             ItemEnum::TypedefItem(_, _) |
-            ItemEnum::AssociatedTypeItem(_, _) => true,
+            ItemEnum::AssocTypeItem(_, _) => true,
             _ => false,
         }
     }
@@ -2206,7 +2206,7 @@ impl Clean<Item> for hir::TraitItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let inner = match self.node {
             hir::TraitItemKind::Const(ref ty, default) => {
-                AssociatedConstItem(ty.clean(cx),
+                AssocConstItem(ty.clean(cx),
                                     default.map(|e| print_const_expr(cx, e)))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
@@ -2226,7 +2226,7 @@ impl Clean<Item> for hir::TraitItem {
                 })
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
-                AssociatedTypeItem(bounds.clean(cx), default.clean(cx))
+                AssocTypeItem(bounds.clean(cx), default.clean(cx))
             }
         };
         let local_did = cx.tcx.hir().local_def_id_from_hir_id(self.hir_id);
@@ -2247,7 +2247,7 @@ impl Clean<Item> for hir::ImplItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let inner = match self.node {
             hir::ImplItemKind::Const(ref ty, expr) => {
-                AssociatedConstItem(ty.clean(cx),
+                AssocConstItem(ty.clean(cx),
                                     Some(print_const_expr(cx, expr)))
             }
             hir::ImplItemKind::Method(ref sig, body) => {
@@ -2276,19 +2276,19 @@ impl Clean<Item> for hir::ImplItem {
     }
 }
 
-impl<'tcx> Clean<Item> for ty::AssociatedItem {
+impl<'tcx> Clean<Item> for ty::AssocItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let inner = match self.kind {
-            ty::AssociatedKind::Const => {
+            ty::AssocKind::Const => {
                 let ty = cx.tcx.type_of(self.def_id);
                 let default = if self.defaultness.has_value() {
                     Some(inline::print_inlined_const(cx, self.def_id))
                 } else {
                     None
                 };
-                AssociatedConstItem(ty.clean(cx), default)
+                AssocConstItem(ty.clean(cx), default)
             }
-            ty::AssociatedKind::Method => {
+            ty::AssocKind::Method => {
                 let generics = (cx.tcx.generics_of(self.def_id),
                                 &cx.tcx.explicit_predicates_of(self.def_id)).clean(cx);
                 let sig = cx.tcx.fn_sig(self.def_id);
@@ -2359,7 +2359,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     })
                 }
             }
-            ty::AssociatedKind::Type => {
+            ty::AssocKind::Type => {
                 let my_name = self.ident.name.clean(cx);
 
                 if let ty::TraitContainer(did) = self.container {
@@ -2404,7 +2404,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                         None
                     };
 
-                    AssociatedTypeItem(bounds, ty.clean(cx))
+                    AssocTypeItem(bounds, ty.clean(cx))
                 } else {
                     TypedefItem(Typedef {
                         type_: cx.tcx.type_of(self.def_id).clean(cx),
@@ -2415,7 +2415,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     }, true)
                 }
             }
-            ty::AssociatedKind::Existential => unimplemented!(),
+            ty::AssocKind::Existential => unimplemented!(),
         };
 
         let visibility = match self.container {
@@ -4182,7 +4182,7 @@ fn resolve_type(cx: &DocContext<'_>,
         }
         Res::SelfTy(..)
         | Res::Def(DefKind::TyParam, _)
-        | Res::Def(DefKind::AssociatedTy, _) => true,
+        | Res::Def(DefKind::AssocTy, _) => true,
         _ => false,
     };
     let did = register_res(&*cx, path.res);

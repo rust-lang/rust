@@ -111,7 +111,7 @@ impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
             hir::MutMutable => tcx.lang_items().deref_mut_trait()
         };
         let method_def_id = tcx.associated_items(trait_def_id.unwrap())
-            .find(|m| m.kind == ty::AssociatedKind::Method).unwrap().def_id;
+            .find(|m| m.kind == ty::AssocKind::Method).unwrap().def_id;
         (method_def_id, tcx.mk_substs_trait(source, &[]))
     }
 }

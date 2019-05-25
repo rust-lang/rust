@@ -8,7 +8,7 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::{print, lowering::is_range_literal};
-use rustc::ty::{self, Ty, AssociatedItem};
+use rustc::ty::{self, Ty, AssocItem};
 use rustc::ty::adjustment::AllowTwoPhase;
 use errors::{Applicability, DiagnosticBuilder};
 
@@ -179,7 +179,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn get_conversion_methods(&self, span: Span, expected: Ty<'tcx>, checked_ty: Ty<'tcx>)
-                              -> Vec<AssociatedItem> {
+                              -> Vec<AssocItem> {
         let mut methods = self.probe_for_return_type(span,
                                                      probe::Mode::MethodCall,
                                                      expected,
@@ -205,9 +205,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // This function checks if the method isn't static and takes other arguments than `self`.
-    fn has_no_input_arg(&self, method: &AssociatedItem) -> bool {
+    fn has_no_input_arg(&self, method: &AssocItem) -> bool {
         match method.kind {
-            ty::AssociatedKind::Method => {
+            ty::AssocKind::Method => {
                 self.tcx.fn_sig(method.def_id).inputs().skip_binder().len() == 1
             }
             _ => false,

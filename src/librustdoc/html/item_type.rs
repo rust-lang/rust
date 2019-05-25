@@ -33,9 +33,9 @@ pub enum ItemType {
     Variant         = 13,
     Macro           = 14,
     Primitive       = 15,
-    AssociatedType  = 16,
+    AssocType       = 16,
     Constant        = 17,
-    AssociatedConst = 18,
+    AssocConst      = 18,
     Union           = 19,
     ForeignType     = 20,
     Keyword         = 21,
@@ -83,8 +83,8 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::ForeignStaticItem(..)   => ItemType::Static, // no ForeignStatic
             clean::MacroItem(..)           => ItemType::Macro,
             clean::PrimitiveItem(..)       => ItemType::Primitive,
-            clean::AssociatedConstItem(..) => ItemType::AssociatedConst,
-            clean::AssociatedTypeItem(..)  => ItemType::AssociatedType,
+            clean::AssocConstItem(..)      => ItemType::AssocConst,
+            clean::AssocTypeItem(..)       => ItemType::AssocType,
             clean::ForeignTypeItem         => ItemType::ForeignType,
             clean::KeywordItem(..)         => ItemType::Keyword,
             clean::TraitAliasItem(..)      => ItemType::TraitAlias,
@@ -141,9 +141,9 @@ impl ItemType {
             ItemType::Variant         => "variant",
             ItemType::Macro           => "macro",
             ItemType::Primitive       => "primitive",
-            ItemType::AssociatedType  => "associatedtype",
+            ItemType::AssocType       => "associatedtype",
             ItemType::Constant        => "constant",
-            ItemType::AssociatedConst => "associatedconstant",
+            ItemType::AssocConst      => "associatedconstant",
             ItemType::ForeignType     => "foreigntype",
             ItemType::Keyword         => "keyword",
             ItemType::Existential     => "existential",
@@ -162,7 +162,7 @@ impl ItemType {
             ItemType::Typedef |
             ItemType::Trait |
             ItemType::Primitive |
-            ItemType::AssociatedType |
+            ItemType::AssocType |
             ItemType::Existential |
             ItemType::TraitAlias |
             ItemType::ForeignType => NameSpace::Type,
@@ -177,7 +177,7 @@ impl ItemType {
             ItemType::StructField |
             ItemType::Variant |
             ItemType::Constant |
-            ItemType::AssociatedConst => NameSpace::Value,
+            ItemType::AssocConst => NameSpace::Value,
 
             ItemType::Macro |
             ItemType::ProcAttribute |
