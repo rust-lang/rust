@@ -658,7 +658,14 @@ pub fn parse(
     recurse_into_modules: bool,
 ) -> NamedParseResult {
     // Create a parser that can be used for the "black box" parts.
-    let mut parser = Parser::new(sess, tts, directory, recurse_into_modules, true);
+    let mut parser = Parser::new(
+        sess,
+        tts,
+        directory,
+        recurse_into_modules,
+        true,
+        crate::MACRO_ARGUMENTS,
+    );
 
     // A queue of possible matcher positions. We initialize it with the matcher position in which
     // the "dot" is before the first token of the first token tree in `ms`. `inner_parse_loop` then

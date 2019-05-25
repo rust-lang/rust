@@ -1,4 +1,4 @@
-error: expected expression, found `<eof>`
+error: expected expression, found end of macro arguments
   --> $DIR/attr-invalid-exprs.rs:11:13
    |
 LL |     let _ = #[no_output] "Hello, world!";

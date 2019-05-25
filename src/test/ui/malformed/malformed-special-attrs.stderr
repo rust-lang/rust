@@ -1,13 +1,14 @@
-error: expected `(`, found `<eof>`
+error: expected `(`, found end of attribute
+  --> $DIR/malformed-special-attrs.rs:1:1
+   |
+LL | #[cfg_attr]
+   | ^ expected `(`
 
 error: expected `(`, found `=`
   --> $DIR/malformed-special-attrs.rs:4:12
    |
-LL | #[cfg_attr]
-   | - expected `(`
-...
 LL | #[cfg_attr = ""]
-   |            ^ unexpected token
+   |            ^ expected `(`
 
 error: attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
   --> $DIR/malformed-special-attrs.rs:7:1

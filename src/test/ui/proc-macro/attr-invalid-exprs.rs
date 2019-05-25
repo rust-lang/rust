@@ -9,7 +9,7 @@ use attr_stmt_expr::{duplicate, no_output};
 
 fn main() {
     let _ = #[no_output] "Hello, world!";
-    //~^ ERROR expected expression, found `<eof>`
+    //~^ ERROR expected expression, found end of macro arguments
 
     let _ = #[duplicate] "Hello, world!";
     //~^ ERROR macro expansion ignores token `,` and any following

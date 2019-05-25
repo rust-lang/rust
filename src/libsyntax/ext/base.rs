@@ -11,7 +11,7 @@ use crate::parse::{self, parser, DirectoryOwnership};
 use crate::parse::token;
 use crate::ptr::P;
 use crate::symbol::{kw, sym, Ident, Symbol};
-use crate::ThinVec;
+use crate::{ThinVec, MACRO_ARGUMENTS};
 use crate::tokenstream::{self, TokenStream};
 
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -850,7 +850,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree]) -> parser::Parser<'a> {
-        parse::stream_to_parser(self.parse_sess, tts.iter().cloned().collect())
+        parse::stream_to_parser(self.parse_sess, tts.iter().cloned().collect(), MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap { self.parse_sess.source_map() }
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }

@@ -5,19 +5,19 @@ LL | #[derive(Copy(Bad))]
    |              ^ expected one of `)`, `,`, or `::` here
 
 error: expected one of `)`, `,`, or `::`, found `=`
-  --> $DIR/malformed-derive-entry.rs:5:14
+  --> $DIR/malformed-derive-entry.rs:4:14
    |
 LL | #[derive(Copy="bad")]
    |              ^ expected one of `)`, `,`, or `::` here
 
 warning: empty trait list in `derive`
-  --> $DIR/malformed-derive-entry.rs:9:1
+  --> $DIR/malformed-derive-entry.rs:7:1
    |
 LL | #[derive()]
    | ^^^^^^^^^^^
 
 error: attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
-  --> $DIR/malformed-derive-entry.rs:13:1
+  --> $DIR/malformed-derive-entry.rs:10:1
    |
 LL | #[derive]
    | ^^^^^^^^^
