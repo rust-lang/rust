@@ -86,10 +86,6 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
             String::from_utf8_unchecked( join_generic_copy(self, sep.as_bytes()) )
         }
     }
-
-    fn connect(&self, sep: &str) -> String {
-        self.join(sep)
-    }
 }
 
 macro_rules! spezialize_for_lengths {
