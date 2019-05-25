@@ -7,6 +7,7 @@ use std::fmt;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use syntax_pos::symbol::{sym, Symbol};
 
 pub mod call;
 
@@ -549,6 +550,13 @@ impl FloatTy {
         match self {
             FloatTy::F32 => "f32",
             FloatTy::F64 => "f64",
+        }
+    }
+
+    pub fn to_symbol(self) -> Symbol {
+        match self {
+            FloatTy::F32 => sym::f32,
+            FloatTy::F64 => sym::f64,
         }
     }
 

@@ -938,7 +938,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             BuiltinDerive(func) => {
                 expn_info.allow_internal_unstable = Some(vec![
-                    Symbol::intern("rustc_attrs"),
+                    sym::rustc_attrs,
                     Symbol::intern("derive_clone_copy"),
                     Symbol::intern("derive_eq"),
                     Symbol::intern("libstd_sys_internals"), // RustcDeserialize and RustcSerialize

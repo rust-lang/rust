@@ -5,8 +5,7 @@ use crate::session::CrateDisambiguator;
 use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
 use syntax::visit;
-use syntax::symbol::kw;
-use syntax::symbol::Symbol;
+use syntax::symbol::{kw, sym};
 use syntax::parse::token::{self, Token};
 use syntax_pos::Span;
 
@@ -221,7 +220,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                           _: &'a Generics, _: NodeId, _: Span) {
         for (index, field) in data.fields().iter().enumerate() {
             let name = field.ident.map(|ident| ident.name)
-                .unwrap_or_else(|| Symbol::intern(&index.to_string()));
+                .unwrap_or_else(|| sym::integer(index));
             let def = self.create_def(field.id,
                                       DefPathData::ValueNs(name.as_interned_str()),
                                       field.span);

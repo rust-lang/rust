@@ -391,9 +391,9 @@ impl Token {
 
     /// Returns `true` if the token is a identifier whose name is the given
     /// string slice.
-    crate fn is_ident_named(&self, name: &str) -> bool {
+    crate fn is_ident_named(&self, name: Symbol) -> bool {
         match self.ident() {
-            Some((ident, _)) => ident.as_str() == name,
+            Some((ident, _)) => ident.name == name,
             None => false
         }
     }

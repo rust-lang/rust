@@ -6,6 +6,7 @@ use syntax::ast::{Expr, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 pub fn expand_deriving_hash(cx: &mut ExtCtxt<'_>,
@@ -60,7 +61,7 @@ fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructu
     };
     let call_hash = |span, thing_expr| {
         let hash_path = {
-            let strs = cx.std_path(&["hash", "Hash", "hash"]);
+            let strs = cx.std_path(&[sym::hash, sym::Hash, sym::hash]);
 
             cx.expr_path(cx.path_global(span, strs))
         };

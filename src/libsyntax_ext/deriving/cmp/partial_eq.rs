@@ -6,7 +6,7 @@ use syntax::ast::{BinOpKind, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
@@ -62,7 +62,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
 
     macro_rules! md {
         ($name:expr, $f:ident) => { {
-            let inline = cx.meta_word(span, Symbol::intern("inline"));
+            let inline = cx.meta_word(span, sym::inline);
             let attrs = vec![cx.attribute(span, inline)];
             MethodDef {
                 name: $name,
