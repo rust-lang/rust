@@ -282,7 +282,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         c: &Constant<'tcx>,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = c.span;
-        match self.ecx.eval_const_to_op(*c.literal, None) {
+        match self.ecx.eval_const_to_op(c.literal, None) {
             Ok(op) => {
                 Some(op)
             },
@@ -506,7 +506,8 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 span,
                 ty,
                 user_ty: None,
-                literal: self.tcx.mk_const(ty::Const::from_scalar(
+                literal: self.tcx.mk_const(*ty::Const::from_scalar(
+                    self.tcx,
                     scalar,
                     ty,
                 ))

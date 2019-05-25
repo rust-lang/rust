@@ -9,8 +9,6 @@ use crate::hir::def_id::DefId;
 use crate::hir::{self, InlineAsm as HirInlineAsm};
 use crate::mir::interpret::{ConstValue, InterpError, Scalar};
 use crate::mir::visit::MirVisitable;
-use rustc_apfloat::ieee::{Double, Single};
-use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
@@ -21,13 +19,13 @@ use rustc_macros::HashStable;
 use crate::rustc_serialize::{self as serialize};
 use smallvec::SmallVec;
 use std::borrow::Cow;
-use std::fmt::{self, Debug, Formatter, Write};
+use std::fmt::{self, Debug, Formatter, Write, Display};
 use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
 use std::slice;
 use std::vec::IntoIter;
 use std::{iter, mem, option, u32};
-use syntax::ast::{self, Name};
+use syntax::ast::Name;
 use syntax::symbol::{InternedString, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -1662,28 +1660,25 @@ impl<'tcx> TerminatorKind<'tcx> {
                 switch_ty,
                 ..
             } => {
-                let size = ty::tls::with(|tcx| {
+                ty::tls::with(|tcx| {
                     let param_env = ty::ParamEnv::empty();
                     let switch_ty = tcx.lift_to_global(&switch_ty).unwrap();
-                    tcx.layout_of(param_env.and(switch_ty)).unwrap().size
-                });
-                values
-                    .iter()
-                    .map(|&u| {
-                        let mut s = String::new();
-                        let c = ty::Const {
-                            val: ConstValue::Scalar(
-                                Scalar::Bits {
-                                    bits: u,
-                                    size: size.bytes() as u8,
-                                }.into(),
-                            ),
-                            ty: switch_ty,
-                        };
-                        fmt_const_val(&mut s, c).unwrap();
-                        s.into()
-                    }).chain(iter::once("otherwise".into()))
-                    .collect()
+                    let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
+                    values
+                        .iter()
+                        .map(|&u| {
+                            tcx.mk_const(ty::Const {
+                                val: ConstValue::Scalar(
+                                    Scalar::Bits {
+                                        bits: u,
+                                        size: size.bytes() as u8,
+                                    }.into(),
+                                ),
+                                ty: switch_ty,
+                            }).to_string().into()
+                        }).chain(iter::once("otherwise".into()))
+                        .collect()
+                })
             }
             Call {
                 destination: Some(_),
@@ -2331,9 +2326,7 @@ impl<'tcx> Operand<'tcx> {
             span,
             ty,
             user_ty: None,
-            literal: tcx.mk_const(
-                ty::Const::zero_sized(ty),
-            ),
+            literal: ty::Const::zero_sized(tcx, ty),
         })
     }
 
@@ -2827,67 +2820,15 @@ newtype_index! {
 
 impl<'tcx> Debug for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "const ")?;
-        fmt_const_val(fmt, *self.literal)
+        write!(fmt, "{}", self)
     }
-}
-/// Write a `ConstValue` in a way closer to the original source code than the `Debug` output.
-pub fn fmt_const_val(f: &mut impl Write, const_val: ty::Const<'_>) -> fmt::Result {
-    use crate::ty::TyKind::*;
-    let value = const_val.val;
-    let ty = const_val.ty;
-    // print some primitives
-    if let ConstValue::Scalar(Scalar::Bits { bits, .. }) = value {
-        match ty.sty {
-            Bool if bits == 0 => return write!(f, "false"),
-            Bool if bits == 1 => return write!(f, "true"),
-            Float(ast::FloatTy::F32) => return write!(f, "{}f32", Single::from_bits(bits)),
-            Float(ast::FloatTy::F64) => return write!(f, "{}f64", Double::from_bits(bits)),
-            Uint(ui) => return write!(f, "{:?}{}", bits, ui),
-            Int(i) => {
-                let bit_width = ty::tls::with(|tcx| {
-                    let ty = tcx.lift_to_global(&ty).unwrap();
-                    tcx.layout_of(ty::ParamEnv::empty().and(ty))
-                        .unwrap()
-                        .size
-                        .bits()
-                });
-                let shift = 128 - bit_width;
-                return write!(f, "{:?}{}", ((bits as i128) << shift) >> shift, i);
-            }
-            Char => return write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap()),
-            _ => {}
-        }
-    }
-    // print function definitions
-    if let FnDef(did, _) = ty.sty {
-        return write!(f, "{}", def_path_str(did));
-    }
-    // print string literals
-    if let ConstValue::Slice(ptr, len) = value {
-        if let Scalar::Ptr(ptr) = ptr {
-            if let Ref(_, &ty::TyS { sty: Str, .. }, _) = ty.sty {
-                return ty::tls::with(|tcx| {
-                    let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
-                    if let Some(interpret::AllocKind::Memory(alloc)) = alloc {
-                        assert_eq!(len as usize as u64, len);
-                        let slice =
-                            &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
-                        let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
-                        write!(f, "{:?}", s)
-                    } else {
-                        write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
-                    }
-                });
-            }
-        }
-    }
-    // just raw dump everything else
-    write!(f, "{:?} : {}", value, ty)
 }
 
-fn def_path_str(def_id: DefId) -> String {
-    ty::tls::with(|tcx| tcx.def_path_str(def_id))
+impl<'tcx> Display for Constant<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        write!(fmt, "const ")?;
+        write!(fmt, "{}", self.literal)
+    }
 }
 
 impl<'tcx> graph::DirectedGraph for Mir<'tcx> {

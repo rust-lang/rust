@@ -27,13 +27,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn literal_operand(&mut self,
                            span: Span,
                            ty: Ty<'tcx>,
-                           literal: ty::Const<'tcx>)
+                           literal: &'tcx ty::Const<'tcx>)
                            -> Operand<'tcx> {
         let constant = box Constant {
             span,
             ty,
             user_ty: None,
-            literal: self.hir.tcx().mk_const(literal),
+            literal,
         };
         Operand::Constant(constant)
     }

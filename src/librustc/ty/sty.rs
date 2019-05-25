@@ -2207,18 +2207,19 @@ pub struct Const<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Const<'_>, 48);
+static_assert_size!(Const<'_>, 40);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn from_scalar(
+        tcx: TyCtxt<'_, '_, 'tcx>,
         val: Scalar,
         ty: Ty<'tcx>,
-    ) -> Self {
-        Self {
+    ) -> &'tcx Self {
+        tcx.mk_const(Self {
             val: ConstValue::Scalar(val),
             ty,
-        }
+        })
     }
 
     #[inline]
@@ -2226,28 +2227,28 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'_, '_, 'tcx>,
         bits: u128,
         ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Self {
+    ) -> &'tcx Self {
         let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).unwrap_or_else(|e| {
             panic!("could not compute layout for {:?}: {:?}", ty, e)
         }).size;
         let truncated = truncate(bits, size);
         assert_eq!(truncated, bits, "from_bits called with untruncated value");
-        Self::from_scalar(Scalar::Bits { bits, size: size.bytes() as u8 }, ty.value)
+        Self::from_scalar(tcx, Scalar::Bits { bits, size: size.bytes() as u8 }, ty.value)
     }
 
     #[inline]
-    pub fn zero_sized(ty: Ty<'tcx>) -> Self {
-        Self::from_scalar(Scalar::Bits { bits: 0, size: 0 }, ty)
+    pub fn zero_sized(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
+        Self::from_scalar(tcx, Scalar::Bits { bits: 0, size: 0 }, ty)
     }
 
     #[inline]
-    pub fn from_bool(tcx: TyCtxt<'_, '_, 'tcx>, v: bool) -> Self {
+    pub fn from_bool(tcx: TyCtxt<'_, '_, 'tcx>, v: bool) -> &'tcx Self {
         Self::from_bits(tcx, v as u128, ParamEnv::empty().and(tcx.types.bool))
     }
 
     #[inline]
-    pub fn from_usize(tcx: TyCtxt<'_, '_, 'tcx>, n: u64) -> Self {
+    pub fn from_usize(tcx: TyCtxt<'_, '_, 'tcx>, n: u64) -> &'tcx Self {
         Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
     }
 

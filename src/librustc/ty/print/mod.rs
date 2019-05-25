@@ -31,6 +31,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     type Region;
     type Type;
     type DynExistential;
+    type Const;
 
     fn tcx(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
 
@@ -65,6 +66,11 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
         self,
         predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error>;
+
+    fn print_const(
+        self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<Self::Const, Self::Error>;
 
     fn path_crate(
         self,
@@ -323,5 +329,13 @@ impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P>
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
         cx.print_dyn_existential(self)
+    }
+}
+
+impl<'gcx: 'tcx, 'tcx, P: Printer<'gcx, 'tcx>> Print<'gcx, 'tcx, P> for &'tcx ty::Const<'tcx> {
+    type Output = P::Const;
+    type Error = P::Error;
+    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
+        cx.print_const(self)
     }
 }

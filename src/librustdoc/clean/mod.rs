@@ -2956,7 +2956,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Str => Primitive(PrimitiveType::Str),
             ty::Slice(ty) => Slice(box ty.clean(cx)),
             ty::Array(ty, n) => {
-                let mut n = *cx.tcx.lift(&n).expect("array lift failed");
+                let mut n = cx.tcx.lift(&n).expect("array lift failed");
                 if let ConstValue::Unevaluated(def_id, substs) = n.val {
                     let param_env = cx.tcx.param_env(def_id);
                     let cid = GlobalId {
@@ -4126,7 +4126,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
     }
 }
 
-fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
+fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
     match n.val {
         ConstValue::Unevaluated(def_id, _) => {
             if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
@@ -4136,12 +4136,15 @@ fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
             }
         },
         _ => {
-            let mut s = String::new();
-            ::rustc::mir::fmt_const_val(&mut s, n).expect("fmt_const_val failed");
+            let mut s = n.to_string();
             // array lengths are obviously usize
             if s.ends_with("usize") {
                 let n = s.len() - "usize".len();
                 s.truncate(n);
+                if s.ends_with(": ") {
+                    let n = s.len() - ": ".len();
+                    s.truncate(n);
+                }
             }
             s
         },

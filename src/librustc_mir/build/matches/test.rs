@@ -98,7 +98,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
                                      options: &mut Vec<u128>,
-                                     indices: &mut FxHashMap<ty::Const<'tcx>, usize>)
+                                     indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>)
                                      -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
@@ -305,7 +305,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                     let eq_def_id = self.hir.tcx().lang_items().eq_trait().unwrap();
                     let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
-                    let method = self.hir.tcx().mk_const(method);
 
                     let re_erased = self.hir.tcx().lifetimes.re_erased;
                     // take the argument by reference
@@ -371,8 +370,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             TestKind::Range(PatternRange { ref lo, ref hi, ty, ref end }) => {
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
-                let lo = self.literal_operand(test.span, ty.clone(), lo.clone());
-                let hi = self.literal_operand(test.span, ty.clone(), hi.clone());
+                let lo = self.literal_operand(test.span, ty, lo);
+                let hi = self.literal_operand(test.span, ty, hi);
                 let val = Operand::Copy(place.clone());
 
                 let fail = self.cfg.start_new_block();
@@ -724,7 +723,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn const_range_contains(
         &self,
         range: PatternRange<'tcx>,
-        value: ty::Const<'tcx>,
+        value: &'tcx ty::Const<'tcx>,
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
@@ -744,7 +743,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn values_not_contained_in_range(
         &self,
         range: PatternRange<'tcx>,
-        indices: &FxHashMap<ty::Const<'tcx>, usize>,
+        indices: &FxHashMap<&'tcx ty::Const<'tcx>, usize>,
     ) -> Option<bool> {
         for &val in indices.keys() {
             if self.const_range_contains(range, val)? {

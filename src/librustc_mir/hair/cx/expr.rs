@@ -329,9 +329,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprKind::Lit(ref lit) => ExprKind::Literal {
-            literal: cx.tcx.mk_const(
-                cx.const_eval_literal(&lit.node, expr_ty, lit.span, false)
-            ),
+            literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, false),
             user_ty: None,
         },
 
@@ -429,9 +427,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             } else {
                 if let hir::ExprKind::Lit(ref lit) = arg.node {
                     ExprKind::Literal {
-                        literal: cx.tcx.mk_const(
-                            cx.const_eval_literal(&lit.node, expr_ty, lit.span, true)
-                        ),
+                        literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, true),
                         user_ty: None,
                     }
                 } else {
@@ -680,7 +676,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         ty: var_ty,
                         span: expr.span,
                         kind: ExprKind::Literal {
-                            literal: cx.tcx.mk_const(literal),
+                            literal,
                             user_ty: None
                         },
                     }.to_ref();
@@ -694,10 +690,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             // in case we are offsetting from a computed discriminant
                             // and not the beginning of discriminants (which is always `0`)
                             let substs = InternalSubsts::identity_for_item(cx.tcx(), did);
-                            let lhs = mk_const(ty::Const {
+                            let lhs = mk_const(cx.tcx().mk_const(ty::Const {
                                 val: ConstValue::Unevaluated(did, substs),
                                 ty: var_ty,
-                            });
+                            }));
                             let bin = ExprKind::Binary {
                                 op: BinOp::Add,
                                 lhs,
@@ -837,9 +833,7 @@ fn method_callee<'a, 'gcx, 'tcx>(
         ty,
         span,
         kind: ExprKind::Literal {
-            literal: cx.tcx().mk_const(
-                ty::Const::zero_sized(ty)
-            ),
+            literal: ty::Const::zero_sized(cx.tcx(), ty),
             user_ty,
         },
     }
@@ -902,9 +896,10 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let user_ty = user_substs_applied_to_res(cx, expr.hir_id, res);
             debug!("convert_path_expr: user_ty={:?}", user_ty);
             ExprKind::Literal {
-                literal: cx.tcx.mk_const(ty::Const::zero_sized(
+                literal: ty::Const::zero_sized(
+                    cx.tcx,
                     cx.tables().node_type(expr.hir_id),
-                )),
+                ),
                 user_ty,
             }
         }

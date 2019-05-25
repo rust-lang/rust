@@ -512,7 +512,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             Move(ref place) =>
                 self.eval_place_to_op(place, layout)?,
 
-            Constant(ref constant) => self.eval_const_to_op(*constant.literal, layout)?,
+            Constant(ref constant) => self.eval_const_to_op(constant.literal, layout)?,
         };
         trace!("{:?}: {:?}", mir_op, *op);
         Ok(op)
@@ -532,7 +532,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     // in patterns via the `const_eval` module
     crate fn eval_const_to_op(
         &self,
-        val: ty::Const<'tcx>,
+        val: &'tcx ty::Const<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let op = match val.val {
@@ -545,11 +545,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     MemPlace::from_ptr(ptr.with_default_tag(), alloc.align)
                 )
             },
-            ConstValue::Slice(a, b) =>
+            ConstValue::Slice { data, start, end } =>
                 Operand::Immediate(Immediate::ScalarPair(
-                    a.with_default_tag().into(),
-                    Scalar::from_uint(b, self.tcx.data_layout.pointer_size)
-                        .with_default_tag().into(),
+                    Scalar::from(Pointer::new(
+                        self.tcx.alloc_map.lock().allocate(data),
+                        Size::from_bytes(start as u64),
+                    )).with_default_tag().into(),
+                    Scalar::from_uint(
+                        (end - start) as u64,
+                        self.tcx.data_layout.pointer_size,
+                    ).with_default_tag().into(),
                 )),
             ConstValue::Scalar(x) =>
                 Operand::Immediate(Immediate::Scalar(x.with_default_tag().into())),

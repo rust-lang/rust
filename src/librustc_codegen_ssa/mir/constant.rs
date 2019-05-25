@@ -13,7 +13,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant(
         &mut self,
         constant: &mir::Constant<'tcx>,
-    ) -> Result<ty::Const<'tcx>, ErrorHandled> {
+    ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
         match constant.literal.val {
             mir::interpret::ConstValue::Unevaluated(def_id, ref substs) => {
                 let substs = self.monomorphize(substs);
@@ -26,7 +26,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 self.cx.tcx().const_eval(ty::ParamEnv::reveal_all().and(cid))
             },
-            _ => Ok(*self.monomorphize(&constant.literal)),
+            _ => Ok(self.monomorphize(&constant.literal)),
         }
     }
 
@@ -36,7 +36,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &Bx,
         span: Span,
         ty: Ty<'tcx>,
-        constant: Result<ty::Const<'tcx>, ErrorHandled>,
+        constant: Result<&'tcx ty::Const<'tcx>, ErrorHandled>,
     ) -> (Bx::Value, Ty<'tcx>) {
         constant
             .map(|c| {

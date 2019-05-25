@@ -35,14 +35,12 @@ pub enum ConstValue<'tcx> {
     /// Not using the enum `Value` to encode that this must not be `Undef`.
     Scalar(Scalar),
 
-    /// Used only for slices and strings (`&[T]`, `&str`, `*const [T]`, `*mut str`, `Box<str>`,
-    /// etc.).
-    ///
-    /// Empty slices don't necessarily have an address backed by an `AllocId`, thus we also need to
-    /// enable integer pointers. The `Scalar` type covers exactly those two cases. While we could
-    /// create dummy-`AllocId`s, the additional code effort for the conversions doesn't seem worth
-    /// it.
-    Slice(Scalar, u64),
+    /// Used only for `&[u8]` and `&str`
+    Slice {
+        data: &'tcx Allocation,
+        start: usize,
+        end: usize,
+    },
 
     /// An allocation together with a pointer into the allocation.
     /// Invariant: the pointer's `AllocId` resolves to the allocation.
@@ -54,7 +52,7 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(ConstValue<'_>, 40);
+static_assert_size!(ConstValue<'_>, 32);
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
@@ -65,7 +63,7 @@ impl<'tcx> ConstValue<'tcx> {
             ConstValue::Placeholder(_) |
             ConstValue::ByRef(..) |
             ConstValue::Unevaluated(..) |
-            ConstValue::Slice(..) => None,
+            ConstValue::Slice { .. } => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }
@@ -78,14 +76,6 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_ptr(&self) -> Option<Pointer> {
         self.try_to_scalar()?.to_ptr().ok()
-    }
-
-    #[inline]
-    pub fn new_slice(
-        val: Scalar,
-        len: u64,
-    ) -> Self {
-        ConstValue::Slice(val, len)
     }
 }
 
