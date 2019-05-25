@@ -1316,7 +1316,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
                 for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
                     let subpat_ty = self.pat_ty_adjusted(&subpat)?; // see (*2)
-                    let interior = InteriorField(FieldIndex(i, Name::intern(&i.to_string())));
+                    let interior = InteriorField(FieldIndex(i, sym::integer(i)));
                     let subcmt = Rc::new(
                         self.cat_imm_interior(pat, cmt.clone(), subpat_ty, interior));
                     self.cat_pattern_(subcmt, &subpat, op)?;
@@ -1363,7 +1363,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 };
                 for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
                     let subpat_ty = self.pat_ty_adjusted(&subpat)?; // see (*2)
-                    let interior = InteriorField(FieldIndex(i, Name::intern(&i.to_string())));
+                    let interior = InteriorField(FieldIndex(i, sym::integer(i)));
                     let subcmt = Rc::new(
                         self.cat_imm_interior(pat, cmt.clone(), subpat_ty, interior));
                     self.cat_pattern_(subcmt, &subpat, op)?;

@@ -1026,7 +1026,7 @@ impl EncodeContext<'_, 'tcx> {
         self.lazy_seq(param_names.iter().map(|ident| ident.name))
     }
 
-    fn encode_optimized_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Mir<'tcx>>> {
+    fn encode_optimized_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Body<'tcx>>> {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
             let mir = self.tcx.optimized_mir(def_id);

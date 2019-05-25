@@ -42,8 +42,8 @@ pub mod proc_macro_impl;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension, MultiModifier};
-use syntax::symbol::Symbol;
 use syntax::edition::Edition;
+use syntax::symbol::{sym, Symbol};
 
 pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                          user_exts: Vec<NamedSyntaxExtension>,
@@ -93,30 +93,26 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         assert: assert::expand_assert,
     }
 
-    register(Symbol::intern("test_case"), MultiModifier(Box::new(test_case::expand)));
-    register(Symbol::intern("test"), MultiModifier(Box::new(test::expand_test)));
-    register(Symbol::intern("bench"), MultiModifier(Box::new(test::expand_bench)));
+    register(sym::test_case, MultiModifier(Box::new(test_case::expand)));
+    register(sym::test, MultiModifier(Box::new(test::expand_test)));
+    register(sym::bench, MultiModifier(Box::new(test::expand_bench)));
 
     // format_args uses `unstable` things internally.
     register(Symbol::intern("format_args"),
              NormalTT {
                 expander: Box::new(format::expand_format_args),
                 def_info: None,
-                allow_internal_unstable: Some(vec![
-                    Symbol::intern("fmt_internals"),
-                ].into()),
+                allow_internal_unstable: Some(vec![sym::fmt_internals].into()),
                 allow_internal_unsafe: false,
                 local_inner_macros: false,
                 unstable_feature: None,
                 edition,
             });
-    register(Symbol::intern("format_args_nl"),
+    register(sym::format_args_nl,
              NormalTT {
                  expander: Box::new(format::expand_format_args_nl),
                  def_info: None,
-                 allow_internal_unstable: Some(vec![
-                     Symbol::intern("fmt_internals"),
-                 ].into()),
+                 allow_internal_unstable: Some(vec![sym::fmt_internals].into()),
                  allow_internal_unsafe: false,
                  local_inner_macros: false,
                  unstable_feature: None,

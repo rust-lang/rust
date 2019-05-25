@@ -1,6 +1,6 @@
 use rustc::hir;
 use rustc::mir::ProjectionElem;
-use rustc::mir::{Mir, Place, PlaceBase, Mutability, Static, StaticKind};
+use rustc::mir::{Body, Place, PlaceBase, Mutability, Static, StaticKind};
 use rustc::ty::{self, TyCtxt};
 use crate::borrow_check::borrow_set::LocalsStateAtExit;
 
@@ -13,7 +13,7 @@ crate trait PlaceExt<'tcx> {
     fn ignore_borrow(
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
         ) -> bool;
 }
@@ -22,7 +22,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
     fn ignore_borrow(
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
     ) -> bool {
         self.iterate(|place_base, place_projection| {

@@ -1145,9 +1145,7 @@ impl<'a> LoweringContext<'a> {
         let unstable_span = self.sess.source_map().mark_span_with_reason(
             CompilerDesugaringKind::Async,
             span,
-            Some(vec![
-                Symbol::intern("gen_future"),
-            ].into()),
+            Some(vec![sym::gen_future].into()),
         );
         let gen_future = self.expr_std_path(
             unstable_span, &[sym::future, sym::from_generator], None, ThinVec::new());
@@ -2958,7 +2956,7 @@ impl<'a> LoweringContext<'a> {
             ident: match f.ident {
                 Some(ident) => ident,
                 // FIXME(jseyfried): positional field hygiene
-                None => Ident::new(Symbol::intern(&index.to_string()), f.span),
+                None => Ident::new(sym::integer(index), f.span),
             },
             vis: self.lower_visibility(&f.vis, None),
             ty: self.lower_ty(&f.ty, ImplTraitContext::disallowed()),
@@ -4177,9 +4175,7 @@ impl<'a> LoweringContext<'a> {
                     let unstable_span = this.sess.source_map().mark_span_with_reason(
                         CompilerDesugaringKind::TryBlock,
                         body.span,
-                        Some(vec![
-                            Symbol::intern("try_trait"),
-                        ].into()),
+                        Some(vec![sym::try_trait].into()),
                     );
                     let mut block = this.lower_block(body, true).into_inner();
                     let tail = block.expr.take().map_or_else(

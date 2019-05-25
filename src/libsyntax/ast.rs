@@ -10,7 +10,7 @@ use crate::parse::token;
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
-use crate::symbol::{kw, Symbol};
+use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::TokenStream;
 use crate::ThinVec;
 
@@ -1531,6 +1531,17 @@ impl IntTy {
         }
     }
 
+    pub fn to_symbol(&self) -> Symbol {
+        match *self {
+            IntTy::Isize => sym::isize,
+            IntTy::I8 => sym::i8,
+            IntTy::I16 => sym::i16,
+            IntTy::I32 => sym::i32,
+            IntTy::I64 => sym::i64,
+            IntTy::I128 => sym::i128,
+        }
+    }
+
     pub fn val_to_string(&self, val: i128) -> String {
         // Cast to a `u128` so we can correctly print `INT128_MIN`. All integral types
         // are parsed as `u128`, so we wouldn't want to print an extra negative
@@ -1569,6 +1580,17 @@ impl UintTy {
             UintTy::U32 => "u32",
             UintTy::U64 => "u64",
             UintTy::U128 => "u128",
+        }
+    }
+
+    pub fn to_symbol(&self) -> Symbol {
+        match *self {
+            UintTy::Usize => sym::usize,
+            UintTy::U8 => sym::u8,
+            UintTy::U16 => sym::u16,
+            UintTy::U32 => sym::u32,
+            UintTy::U64 => sym::u64,
+            UintTy::U128 => sym::u128,
         }
     }
 

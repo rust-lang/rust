@@ -41,7 +41,11 @@ fn main() {
         cfg.flag("-fomit-frame-pointer");
         cfg.flag("-ffreestanding");
         cfg.define("VISIBILITY_HIDDEN", None);
-        cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
+        if !target.contains("windows") {
+            cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
+        } else {
+            profile_sources.push("WindowsMMap.c");
+        }
     }
 
     // Assume that the Unixes we are building this for have fnctl() available

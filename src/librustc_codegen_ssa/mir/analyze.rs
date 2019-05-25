@@ -18,7 +18,7 @@ pub fn non_ssa_locals<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
-    analyzer.visit_mir(mir);
+    analyzer.visit_body(mir);
 
     for (index, ty) in mir.local_decls.iter().map(|l| l.ty).enumerate() {
         let ty = fx.monomorphize(&ty);
@@ -272,9 +272,9 @@ impl CleanupKind {
     }
 }
 
-pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock, CleanupKind> {
+pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Body<'tcx>) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
-                              mir: &mir::Mir<'tcx>) {
+                              mir: &mir::Body<'tcx>) {
         for (bb, data) in mir.basic_blocks().iter_enumerated() {
             match data.terminator().kind {
                 TerminatorKind::Goto { .. } |
@@ -304,7 +304,7 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
     }
 
     fn propagate<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
-                       mir: &mir::Mir<'tcx>) {
+                       mir: &mir::Body<'tcx>) {
         let mut funclet_succs = IndexVec::from_elem(None, mir.basic_blocks());
 
         let mut set_successor = |funclet: mir::BasicBlock, succ| {
