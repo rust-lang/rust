@@ -1,0 +1,45 @@
+
+<style>
+pre {
+    color: #DCDCCC;
+    background-color: #3F3F3F;
+    font-size: 22px;
+}
+
+.comment   { color: #7F9F7F; }
+.string    { color: #CC9393; }
+.function  { color: #93E0E3; }
+.parameter { color: #94BFF3; }
+.builtin   { color: #DD6718; }
+.text      { color: #DCDCCC; }
+.attribute { color: #BFEBBF; }
+.literal   { color: #DFAF8F; }
+.macro     { color: #DFAF8F; }
+
+.keyword           { color: #F0DFAF; }
+.keyword\.unsafe  { color: #F0DFAF; font-weight: bold; }
+.keyword\.control { color: #DC8CC3; }
+
+</style>
+<pre><code>
+<span class="attribute">#</span><span class="attribute">[</span><span class="attribute">derive</span><span class="attribute">(</span><span class="attribute">Clone</span><span class="attribute">,</span><span class="attribute"> </span><span class="attribute">Debug</span><span class="attribute">)</span><span class="attribute">]</span>
+<span class="keyword">struct</span> <span class="function">Foo</span> {
+    <span class="keyword">pub</span> <span class="function">x</span>: <span class="text">i32</span>,
+    <span class="keyword">pub</span> <span class="function">y</span>: <span class="text">i32</span>,
+}
+
+<span class="keyword">fn</span> <span class="function">foo</span>&lt;<span class="type function">T</span>&gt;() -&gt; <span class="type">T</span> {
+    <span class="macro">unimplemented</span><span class="macro">!</span>();
+}
+
+<span class="comment">// comment</span>
+<span class="keyword">fn</span> <span class="function">main</span>() {
+    <span class="macro">println</span><span class="macro">!</span>(<span class="string">"Hello, {}!"</span>, <span class="literal">92</span>);
+
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="function">vec</span> = <span class="text">Vec</span>::<span class="text">new</span>();
+    <span class="keyword.control">if</span> <span class="keyword">true</span> {
+        <span class="text">vec</span>.<span class="text">push</span>(<span class="type">Foo</span> { <span class="field">x</span>: <span class="literal">0</span>, <span class="field">y</span>: <span class="literal">1</span> });
+    }
+    <span class="keyword.unsafe">unsafe</span> { <span class="text">vec</span>.<span class="text">set_len</span>(<span class="literal">0</span>); }
+}
+</code></pre>
