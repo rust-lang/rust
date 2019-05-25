@@ -1381,7 +1381,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
                      "insert profiling code"),
     pgo_gen: PgoGenerate = (PgoGenerate::Disabled, parse_pgo_generate, [TRACKED],
         "Generate PGO profile data, to a given file, or to the default location if it's empty."),
-    pgo_use: String = (String::new(), parse_string, [TRACKED],
+    pgo_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "Use PGO profile data from the given profile file."),
     disable_instrumentation_preinliner: bool = (false, parse_bool, [TRACKED],
         "Disable the instrumentation pre-inliner, useful for profiling / PGO."),
@@ -2021,7 +2021,7 @@ pub fn build_session_options_and_crate_config(
         }
     }
 
-    if debugging_opts.pgo_gen.enabled() && !debugging_opts.pgo_use.is_empty() {
+    if debugging_opts.pgo_gen.enabled() && debugging_opts.pgo_use.is_some() {
         early_error(
             error_format,
             "options `-Z pgo-gen` and `-Z pgo-use` are exclusive",
@@ -3211,7 +3211,7 @@ mod tests {
         assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.pgo_use = String::from("abc");
+        opts.debugging_opts.pgo_use = Some(PathBuf::from("abc"));
         assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts = reference.clone();
