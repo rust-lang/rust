@@ -204,7 +204,7 @@ impl Step for Llvm {
         }
 
         if want_lldb {
-            cfg.define("LLVM_ENABLE_PROJECTS", "clang;lldb");
+            cfg.define("LLVM_ENABLE_PROJECTS", "clang;lldb;compiler-rt");
             // For the time being, disable code signing.
             cfg.define("LLDB_CODESIGN_IDENTITY", "");
             cfg.define("LLDB_NO_DEBUGSERVER", "ON");
