@@ -319,10 +319,16 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         original_path.ty(self.mir, self.infcx.tcx).ty,
                     );
                     let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
-                    if orig_path_ty.starts_with("std::option::Option") {
+                    let is_option = orig_path_ty.starts_with("std::option::Option");
+                    let is_result = orig_path_ty.starts_with("std::result::Result");
+                    if  is_option || is_result {
                         err.span_suggestion(
                             span,
-                            "consider borrowing the `Option`'s content",
+                            &format!("consider borrowing the `{}`'s content", if is_option {
+                                "Option"
+                            } else {
+                                "Result"
+                            }),
                             format!("{}.as_ref()", snippet),
                             Applicability::MaybeIncorrect,
                         );
