@@ -138,7 +138,11 @@ fn parse_inline_asm<'a>(
                 if p2.token != token::Eof {
                     let mut extra_tts = p2.parse_all_token_trees()?;
                     extra_tts.extend(tts[first_colon..].iter().cloned());
-                    p = parse::stream_to_parser(cx.parse_sess, extra_tts.into_iter().collect());
+                    p = parse::stream_to_parser(
+                        cx.parse_sess,
+                        extra_tts.into_iter().collect(),
+                        Some("inline assembly"),
+                    );
                 }
 
                 asm = s;

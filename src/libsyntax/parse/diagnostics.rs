@@ -13,7 +13,7 @@ use crate::symbol::kw;
 use crate::ThinVec;
 use errors::{Applicability, DiagnosticBuilder};
 use log::debug;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 pub trait RecoverQPath: Sized + 'static {
     const PATH_STYLE: PathStyle = PathStyle::Expr;
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
 
         let mut path = ast::Path {
             segments: Vec::new(),
-            span: syntax_pos::DUMMY_SP,
+            span: DUMMY_SP,
         };
         self.parse_path_segments(&mut path.segments, T::PATH_STYLE)?;
         path.span = ty_span.to(self.prev_span);
@@ -265,6 +265,58 @@ impl<'a> Parser<'a> {
         } else {
             false
         }
+    }
+
+    /// Create a `DiagnosticBuilder` for an unexpected token `t` and try to recover if it is a
+    /// closing delimiter.
+    pub fn unexpected_try_recover(
+        &mut self,
+        t: &token::Token,
+    ) -> PResult<'a, bool /* recovered */> {
+        let token_str = pprust::token_to_string(t);
+        let this_token_str = self.this_token_descr();
+        let (prev_sp, sp) = match (&self.token, self.subparser_name) {
+            // Point at the end of the macro call when reaching end of macro arguments.
+            (token::Token::Eof, Some(_)) => {
+                let sp = self.sess.source_map().next_point(self.span);
+                (sp, sp)
+            }
+            // We don't want to point at the following span after DUMMY_SP.
+            // This happens when the parser finds an empty TokenStream.
+            _ if self.prev_span == DUMMY_SP => (self.span, self.span),
+            // EOF, don't want to point at the following char, but rather the last token.
+            (token::Token::Eof, None) => (self.prev_span, self.span),
+            _ => (self.sess.source_map().next_point(self.prev_span), self.span),
+        };
+        let msg = format!(
+            "expected `{}`, found {}",
+            token_str,
+            match (&self.token, self.subparser_name) {
+                (token::Token::Eof, Some(origin)) => format!("end of {}", origin),
+                _ => this_token_str,
+            },
+        );
+        let mut err = self.struct_span_err(sp, &msg);
+        let label_exp = format!("expected `{}`", token_str);
+        match self.recover_closing_delimiter(&[t.clone()], err) {
+            Err(e) => err = e,
+            Ok(recovered) => {
+                return Ok(recovered);
+            }
+        }
+        let cm = self.sess.source_map();
+        match (cm.lookup_line(prev_sp.lo()), cm.lookup_line(sp.lo())) {
+            (Ok(ref a), Ok(ref b)) if a.line == b.line => {
+                // When the spans are in the same line, it means that the only content
+                // between them is whitespace, point only at the found token.
+                err.span_label(sp, label_exp);
+            }
+            _ => {
+                err.span_label(prev_sp, label_exp);
+                err.span_label(sp, "unexpected token");
+            }
+        }
+        Err(err)
     }
 
     /// Consume alternative await syntaxes like `await <expr>`, `await? <expr>`, `await(<expr>)`
@@ -562,4 +614,23 @@ impl<'a> Parser<'a> {
         }
     }
 
+    crate fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
+        let (span, msg) = match (&self.token, self.subparser_name) {
+            (&token::Token::Eof, Some(origin)) => {
+                let sp = self.sess.source_map().next_point(self.span);
+                (sp, format!("expected expression, found end of {}", origin))
+            }
+            _ => (self.span, format!(
+                "expected expression, found {}",
+                self.this_token_descr(),
+            )),
+        };
+        let mut err = self.struct_span_err(span, &msg);
+        let sp = self.sess.source_map().start_point(self.span);
+        if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
+            self.sess.expr_parentheses_needed(&mut err, *sp, None);
+        }
+        err.span_label(span, "expected expression");
+        err
+    }
 }

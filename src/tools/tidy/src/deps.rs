@@ -47,6 +47,9 @@ const EXCEPTIONS: &[&str] = &[
     "adler32",            // BSD-3-Clause AND Zlib, cargo dep that isn't used
     "fortanix-sgx-abi",   // MPL-2.0+, libstd but only for `sgx` target
     "constant_time_eq",   // CC0-1.0, rustfmt
+    "utf8parse",          // Apache-2.0 OR MIT, cargo via strip-ansi-escapes
+    "vte",                // Apache-2.0 OR MIT, cargo via strip-ansi-escapes
+    "sized-chunks",       // MPL-2.0+, cargo via im-rc
 ];
 
 /// Which crates to check against the whitelist?
@@ -241,7 +244,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
 
         let toml = dir.path().join("Cargo.toml");
-        *bad = *bad || !check_license(&toml);
+        *bad = !check_license(&toml) || *bad;
     }
     assert!(saw_dir, "no vendored source");
 }

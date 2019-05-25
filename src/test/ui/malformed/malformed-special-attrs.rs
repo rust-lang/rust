@@ -1,4 +1,4 @@
-#[cfg_attr] //~ ERROR expected `(`, found `<eof>`
+#[cfg_attr] //~ ERROR expected `(`, found end of attribute
 struct S1;
 
 #[cfg_attr = ""] //~ ERROR expected `(`, found `=`

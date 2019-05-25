@@ -226,12 +226,12 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         Ok(result)
     }
 
-    fn verify(&self,
-              tcx: TyCtxt<'a, 'gcx, 'tcx>,
-              trait_def_id: DefId,
-              span: Span)
-              -> Result<(), ErrorReported>
-    {
+    fn verify(
+        &self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        trait_def_id: DefId,
+        span: Span,
+    ) -> Result<(), ErrorReported> {
         let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
         let parser = Parser::new(&self.0, None, vec![], false);
@@ -272,12 +272,12 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         result
     }
 
-    pub fn format(&self,
-                  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                  trait_ref: ty::TraitRef<'tcx>,
-                  options: &FxHashMap<String, String>)
-                  -> String
-    {
+    pub fn format(
+        &self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        trait_ref: ty::TraitRef<'tcx>,
+        options: &FxHashMap<String, String>,
+    ) -> String {
         let name = tcx.item_name(trait_ref.def_id);
         let trait_str = tcx.def_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);

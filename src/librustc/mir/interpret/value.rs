@@ -93,7 +93,7 @@ impl<'tcx> ConstValue<'tcx> {
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd,
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub enum Scalar<Tag=(), Id=AllocId> {
     /// The raw bytes of a simple value.
@@ -112,6 +112,27 @@ pub enum Scalar<Tag=(), Id=AllocId> {
 
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(Scalar, 24);
+
+impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Scalar<Tag, Id> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Scalar::Ptr(ptr) =>
+                write!(f, "{:?}", ptr),
+            &Scalar::Bits { bits, size } => {
+                if size == 0 {
+                    assert_eq!(bits, 0, "ZST value must be 0");
+                    write!(f, "<ZST>")
+                } else {
+                    assert_eq!(truncate(bits, Size::from_bytes(size as u64)), bits,
+                            "Scalar value {:#x} exceeds size of {} bytes", bits, size);
+                    // Format as hex number wide enough to fit any value of the given `size`.
+                    // So bits=20, size=1 will be "0x14", but with size=4 it'll be "0x00000014".
+                    write!(f, "0x{:>0width$x}", bits, width=(size*2) as usize)
+                }
+            }
+        }
+    }
+}
 
 impl<Tag> fmt::Display for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -412,7 +433,7 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 pub enum ScalarMaybeUndef<Tag=(), Id=AllocId> {
     Scalar(Scalar<Tag, Id>),
     Undef,
@@ -422,6 +443,15 @@ impl<Tag> From<Scalar<Tag>> for ScalarMaybeUndef<Tag> {
     #[inline(always)]
     fn from(s: Scalar<Tag>) -> Self {
         ScalarMaybeUndef::Scalar(s)
+    }
+}
+
+impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for ScalarMaybeUndef<Tag, Id> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ScalarMaybeUndef::Undef => write!(f, "Undef"),
+            ScalarMaybeUndef::Scalar(s) => write!(f, "{:?}", s),
+        }
     }
 }
 
