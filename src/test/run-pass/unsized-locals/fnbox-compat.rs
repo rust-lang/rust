@@ -1,4 +1,5 @@
 #![feature(fnbox)]
+#![allow(deprecated, deprecated_in_future)]
 
 use std::boxed::FnBox;
 
