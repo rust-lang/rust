@@ -110,7 +110,7 @@ fn load_css_events(v: &[u8]) -> Vec<Events> {
     let mut pos = 0;
     let mut events = Vec::with_capacity(100);
 
-    while pos < v.len() - 1 {
+    while pos + 1 < v.len() {
         match v[pos] {
             b'/' if pos + 1 < v.len() && v[pos + 1] == b'*' => {
                 events.push(Events::StartComment(pos));
