@@ -19,15 +19,14 @@ use crate::{
 /// "start expression, consume number literal,
 /// finish expression". See `Event` docs for more.
 pub(crate) struct Parser<'t> {
-    token_source: &'t dyn TokenSource,
-    token_pos: usize,
+    token_source: &'t mut dyn TokenSource,
     events: Vec<Event>,
     steps: Cell<u32>,
 }
 
 impl<'t> Parser<'t> {
-    pub(super) fn new(token_source: &'t dyn TokenSource) -> Parser<'t> {
-        Parser { token_source, token_pos: 0, events: Vec::new(), steps: Cell::new(0) }
+    pub(super) fn new(token_source: &'t mut dyn TokenSource) -> Parser<'t> {
+        Parser { token_source, events: Vec::new(), steps: Cell::new(0) }
     }
 
     pub(crate) fn finish(self) -> Vec<Event> {
@@ -49,7 +48,7 @@ impl<'t> Parser<'t> {
         let c1 = self.nth(0);
         let c2 = self.nth(1);
 
-        if self.token_source.is_token_joint_to_next(self.token_pos) {
+        if self.token_source.current().is_jointed_to_next {
             Some((c1, c2))
         } else {
             None
@@ -64,8 +63,8 @@ impl<'t> Parser<'t> {
         let c1 = self.nth(0);
         let c2 = self.nth(1);
         let c3 = self.nth(2);
-        if self.token_source.is_token_joint_to_next(self.token_pos)
-            && self.token_source.is_token_joint_to_next(self.token_pos + 1)
+        if self.token_source.current().is_jointed_to_next
+            && self.token_source.lookahead_nth(1).is_jointed_to_next
         {
             Some((c1, c2, c3))
         } else {
@@ -76,6 +75,8 @@ impl<'t> Parser<'t> {
     /// Lookahead operation: returns the kind of the next nth
     /// token.
     pub(crate) fn nth(&self, n: usize) -> SyntaxKind {
+        assert!(n <= 3);
+
         let steps = self.steps.get();
         assert!(steps <= 10_000_000, "the parser seems stuck");
         self.steps.set(steps + 1);
@@ -86,7 +87,7 @@ impl<'t> Parser<'t> {
         let mut i = 0;
 
         loop {
-            let mut kind = self.token_source.token_kind(self.token_pos + i);
+            let mut kind = self.token_source.lookahead_nth(i).kind;
             if let Some((composited, step)) = self.is_composite(kind, i) {
                 kind = composited;
                 i += step;
@@ -115,7 +116,7 @@ impl<'t> Parser<'t> {
 
     /// Checks if the current token is contextual keyword with text `t`.
     pub(crate) fn at_contextual_kw(&self, kw: &str) -> bool {
-        self.token_source.is_keyword(self.token_pos, kw)
+        self.token_source.is_keyword(kw)
     }
 
     /// Starts a new node in the syntax tree. All nodes and tokens
@@ -130,12 +131,12 @@ impl<'t> Parser<'t> {
     /// Advances the parser by one token unconditionally
     /// Mainly use in `token_tree` parsing
     pub(crate) fn bump_raw(&mut self) {
-        let mut kind = self.token_source.token_kind(self.token_pos);
+        let mut kind = self.token_source.current().kind;
 
         // Skip dollars, do_bump will eat these later
         let mut i = 0;
         while kind == SyntaxKind::L_DOLLAR || kind == SyntaxKind::R_DOLLAR {
-            kind = self.token_source.token_kind(self.token_pos + i);
+            kind = self.token_source.lookahead_nth(i).kind;
             i += 1;
         }
 
@@ -236,7 +237,11 @@ impl<'t> Parser<'t> {
 
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
         self.eat_dollars();
-        self.token_pos += usize::from(n_raw_tokens);
+
+        for _ in 0..n_raw_tokens {
+            self.token_source.bump();
+        }
+
         self.push_event(Event::Token { kind, n_raw_tokens });
     }
 
@@ -249,10 +254,14 @@ impl<'t> Parser<'t> {
         // We assume the dollars will not occuried between
         // mult-byte tokens
 
-        let jn1 = self.token_source.is_token_joint_to_next(self.token_pos + n);
-        let la2 = self.token_source.token_kind(self.token_pos + n + 1);
-        let jn2 = self.token_source.is_token_joint_to_next(self.token_pos + n + 1);
-        let la3 = self.token_source.token_kind(self.token_pos + n + 2);
+        let first = self.token_source.lookahead_nth(n);
+        let second = self.token_source.lookahead_nth(n + 1);
+        let third = self.token_source.lookahead_nth(n + 2);
+
+        let jn1 = first.is_jointed_to_next;
+        let la2 = second.kind;
+        let jn2 = second.is_jointed_to_next;
+        let la3 = third.kind;
 
         match kind {
             T![.] if jn1 && la2 == T![.] && jn2 && la3 == T![.] => Some((T![...], 3)),
@@ -271,9 +280,9 @@ impl<'t> Parser<'t> {
 
     fn eat_dollars(&mut self) {
         loop {
-            match self.token_source.token_kind(self.token_pos) {
+            match self.token_source.current().kind {
                 k @ SyntaxKind::L_DOLLAR | k @ SyntaxKind::R_DOLLAR => {
-                    self.token_pos += 1;
+                    self.token_source.bump();
                     self.push_event(Event::Token { kind: k, n_raw_tokens: 1 });
                 }
                 _ => {
@@ -286,9 +295,9 @@ impl<'t> Parser<'t> {
     pub(crate) fn eat_l_dollars(&mut self) -> usize {
         let mut ate_count = 0;
         loop {
-            match self.token_source.token_kind(self.token_pos) {
+            match self.token_source.current().kind {
                 k @ SyntaxKind::L_DOLLAR => {
-                    self.token_pos += 1;
+                    self.token_source.bump();
                     self.push_event(Event::Token { kind: k, n_raw_tokens: 1 });
                     ate_count += 1;
                 }
@@ -302,9 +311,9 @@ impl<'t> Parser<'t> {
     pub(crate) fn eat_r_dollars(&mut self, max_count: usize) -> usize {
         let mut ate_count = 0;
         loop {
-            match self.token_source.token_kind(self.token_pos) {
+            match self.token_source.current().kind {
                 k @ SyntaxKind::R_DOLLAR => {
-                    self.token_pos += 1;
+                    self.token_source.bump();
                     self.push_event(Event::Token { kind: k, n_raw_tokens: 1 });
                     ate_count += 1;
 
@@ -320,12 +329,12 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn at_l_dollar(&self) -> bool {
-        let kind = self.token_source.token_kind(self.token_pos);
+        let kind = self.token_source.current().kind;
         (kind == SyntaxKind::L_DOLLAR)
     }
 
     pub(crate) fn at_r_dollar(&self) -> bool {
-        let kind = self.token_source.token_kind(self.token_pos);
+        let kind = self.token_source.current().kind;
         (kind == SyntaxKind::R_DOLLAR)
     }
 }

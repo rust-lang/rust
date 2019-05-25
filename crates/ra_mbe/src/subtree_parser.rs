@@ -68,13 +68,13 @@ impl<'a> Parser<'a> {
 
     fn parse<F>(self, f: F) -> Option<tt::TokenTree>
     where
-        F: FnOnce(&dyn TokenSource, &mut dyn TreeSink),
+        F: FnOnce(&mut dyn TokenSource, &mut dyn TreeSink),
     {
         let buffer = TokenBuffer::new(&self.subtree.token_trees[*self.cur_pos..]);
         let mut src = SubtreeTokenSource::new(&buffer);
         let mut sink = OffsetTokenSink { token_pos: 0, error: false };
 
-        f(&src, &mut sink);
+        f(&mut src, &mut sink);
 
         let r = self.finish(sink.token_pos, &mut src);
         if sink.error {
