@@ -462,6 +462,11 @@ impl Analysis {
         self.with_db(|db| syntax_highlighting::highlight(db, file_id))
     }
 
+    /// Computes syntax highlighting for the given file.
+    pub fn highlight_as_html(&self, file_id: FileId) -> Cancelable<String> {
+        self.with_db(|db| syntax_highlighting::highlight_as_html(db, file_id))
+    }
+
     /// Computes completions at the given position.
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
         self.with_db(|db| completion::completions(db, position).map(Into::into))

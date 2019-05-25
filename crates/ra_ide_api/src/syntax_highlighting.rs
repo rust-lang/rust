@@ -114,10 +114,79 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
     res
 }
 
+pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId) -> String {
+    let source_file = db.parse(file_id);
+
+    let mut ranges = highlight(db, file_id);
+    ranges.sort_by_key(|it| it.range.start());
+    // quick non-optimal heuristic to intersect token ranges and highlighted ranges
+    let mut frontier = 0;
+    let mut could_intersect: Vec<&HighlightedRange> = Vec::new();
+
+    let mut buf = String::new();
+    buf.push_str(&STYLE);
+    buf.push_str("<pre><code>");
+    let tokens = source_file.syntax().descendants_with_tokens().filter_map(|it| it.as_token());
+    for token in tokens {
+        could_intersect.retain(|it| token.range().start() <= it.range.end());
+        while let Some(r) = ranges.get(frontier) {
+            if r.range.start() <= token.range().end() {
+                could_intersect.push(r);
+                frontier += 1;
+            } else {
+                break;
+            }
+        }
+        let text = html_escape(&token.text());
+        let classes = could_intersect
+            .iter()
+            .filter(|it| token.range().is_subrange(&it.range))
+            .map(|it| it.tag)
+            .collect::<Vec<_>>();
+        if classes.is_empty() {
+            buf.push_str(&text);
+        } else {
+            let classes = classes.join(" ");
+            buf.push_str(&format!("<span class=\"{}\">{}</span>", classes, text));
+        }
+    }
+    buf.push_str("</code></pre>");
+    buf
+}
+
+//FIXME: like, real html escaping
+fn html_escape(text: &str) -> String {
+    text.replace("<", "&lt;").replace(">", "&gt;")
+}
+
+const STYLE: &str = "
+<style>
+pre {
+    color: #DCDCCC;
+    background-color: #3F3F3F;
+    font-size: 22px;
+}
+
+.comment   { color: #7F9F7F; }
+.string    { color: #CC9393; }
+.function  { color: #93E0E3; }
+.parameter { color: #94BFF3; }
+.builtin   { color: #DD6718; }
+.text      { color: #DCDCCC; }
+.attribute { color: #BFEBBF; }
+.literal   { color: #DFAF8F; }
+.macro     { color: #DFAF8F; }
+
+.keyword           { color: #F0DFAF; }
+.keyword\\.unsafe  { color: #F0DFAF; font-weight: bold; }
+.keyword\\.control { color: #DC8CC3; }
+
+</style>
+";
+
 #[cfg(test)]
 mod tests {
-    use insta::assert_debug_snapshot_matches;
-
+    use test_utils::{project_dir, read_text, assert_eq_text};
     use crate::mock_analysis::single_file;
 
     #[test]
@@ -135,15 +204,21 @@ fn foo<T>() -> T {
 }
 
 // comment
-fn main() {}
+fn main() {
     println!("Hello, {}!", 92);
 
     let mut vec = Vec::new();
-    vec.push(Foo { x: 0, y: 1 });
+    if true {
+        vec.push(Foo { x: 0, y: 1 });
+    }
     unsafe { vec.set_len(0); }
+}
 "#,
         );
-        let result = analysis.highlight(file_id);
-        assert_debug_snapshot_matches!("highlighting", result);
+        let dst_file = project_dir().join("crates/ra_ide_api/src/snapshots/highlighting.html");
+        let actual_html = &analysis.highlight_as_html(file_id).unwrap();
+        let expected_html = &read_text(&dst_file);
+        // std::fs::write(dst_file, &actual_html).unwrap();
+        assert_eq_text!(expected_html, actual_html);
     }
 }

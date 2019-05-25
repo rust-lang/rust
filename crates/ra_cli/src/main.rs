@@ -3,7 +3,7 @@ mod analysis_stats;
 use std::io::Read;
 
 use clap::{App, Arg, SubCommand};
-use ra_ide_api::file_structure;
+use ra_ide_api::{file_structure, Analysis};
 use ra_syntax::{SourceFile, TreeArc, AstNode};
 use flexi_logger::Logger;
 use ra_prof::profile;
@@ -16,6 +16,7 @@ fn main() -> Result<()> {
         .setting(clap::AppSettings::SubcommandRequiredElseHelp)
         .subcommand(SubCommand::with_name("parse").arg(Arg::with_name("no-dump").long("--no-dump")))
         .subcommand(SubCommand::with_name("symbols"))
+        .subcommand(SubCommand::with_name("highlight"))
         .subcommand(
             SubCommand::with_name("analysis-stats")
                 .arg(Arg::with_name("verbose").short("v").long("verbose"))
@@ -37,6 +38,11 @@ fn main() -> Result<()> {
             for s in file_structure(&file) {
                 println!("{:?}", s);
             }
+        }
+        ("highlight", _) => {
+            let (analysis, file_id) = Analysis::from_single_file(read_stdin()?);
+            let html = analysis.highlight_as_html(file_id).unwrap();
+            println!("{}", html);
         }
         ("analysis-stats", Some(matches)) => {
             let verbose = matches.is_present("verbose");
