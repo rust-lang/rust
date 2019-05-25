@@ -168,7 +168,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         block: BasicBlock,
         place: &Place<'tcx>,
         test: &Test<'tcx>,
-        target_blocks: Vec<BasicBlock>,
+        make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
     ) {
         debug!("perform_test({:?}, {:?}: {:?}, {:?})",
                block,
@@ -179,6 +179,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
+                let target_blocks = make_target_blocks(self);
                 // Variants is a BitVec of indexes into adt_def.variants.
                 let num_enum_variants = adt_def.variants.len();
                 let used_variants = variants.count();
@@ -223,6 +224,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
+                let target_blocks = make_target_blocks(self);
                 let terminator = if switch_ty.sty == ty::Bool {
                     assert!(options.len() > 0 && options.len() <= 2);
                     if let [first_bb, second_bb] = *target_blocks {
@@ -254,38 +256,38 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             TestKind::Eq { value, ty } => {
-                if let [success, fail] = *target_blocks {
-                    if !ty.is_scalar() {
-                        // Use `PartialEq::eq` instead of `BinOp::Eq`
-                        // (the binop can only handle primitives)
-                        self.non_scalar_compare(
-                            block,
-                            success,
-                            fail,
-                            source_info,
-                            value,
-                            place,
-                            ty,
-                        );
-                    } else {
+                if !ty.is_scalar() {
+                    // Use `PartialEq::eq` instead of `BinOp::Eq`
+                    // (the binop can only handle primitives)
+                    self.non_scalar_compare(
+                        block,
+                        make_target_blocks,
+                        source_info,
+                        value,
+                        place,
+                        ty,
+                    );
+                } else {
+                    if let [success, fail] = *make_target_blocks(self) {
                         let val = Operand::Copy(place.clone());
                         let expect = self.literal_operand(test.span, ty, value);
                         self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
+                    } else {
+                        bug!("`TestKind::Eq` should have two target blocks");
                     }
-                } else {
-                    bug!("`TestKind::Eq` should have two target blocks")
-                };
+                }
             }
 
             TestKind::Range(PatternRange { ref lo, ref hi, ty, ref end }) => {
+                let lower_bound_success = self.cfg.start_new_block();
+                let target_blocks = make_target_blocks(self);
+
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let lo = self.literal_operand(test.span, ty, lo);
                 let hi = self.literal_operand(test.span, ty, hi);
                 let val = Operand::Copy(place.clone());
 
                 if let [success, fail] = *target_blocks {
-                    let lower_bound_success = self.cfg.start_new_block();
-
                     self.compare(
                         block,
                         lower_bound_success,
@@ -306,6 +308,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             TestKind::Len { len, op } => {
+                let target_blocks = make_target_blocks(self);
+
                 let usize_ty = self.hir.usize_ty();
                 let actual = self.temp(usize_ty, test.span);
 
@@ -374,8 +378,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn non_scalar_compare(
         &mut self,
         block: BasicBlock,
-        success_block: BasicBlock,
-        fail_block: BasicBlock,
+        make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
         source_info: SourceInfo,
         value: &'tcx ty::Const<'tcx>,
         place: &Place<'tcx>,
@@ -461,17 +464,21 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             from_hir_call: false,
         });
 
-        // check the result
-        self.cfg.terminate(
-            eq_block,
-            source_info,
-            TerminatorKind::if_(
-                self.hir.tcx(),
-                Operand::Move(eq_result),
-                success_block,
-                fail_block,
-            ),
-        );
+        if let [success_block, fail_block] = *make_target_blocks(self) {
+            // check the result
+            self.cfg.terminate(
+                eq_block,
+                source_info,
+                TerminatorKind::if_(
+                    self.hir.tcx(),
+                    Operand::Move(eq_result),
+                    success_block,
+                    fail_block,
+                ),
+            );
+        } else {
+            bug!("`TestKind::Eq` should have two target blocks")
+        }
     }
 
     /// Given that we are performing `test` against `test_place`, this job

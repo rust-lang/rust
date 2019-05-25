@@ -1198,51 +1198,58 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("tested_candidates: {}", total_candidate_count - candidates.len());
         debug!("untested_candidates: {}", candidates.len());
 
-        // For each outcome of test, process the candidates that still
-        // apply. Collect a list of blocks where control flow will
-        // branch if one of the `target_candidate` sets is not
-        // exhaustive.
-        if !candidates.is_empty() {
-            let remainder_start = &mut None;
-            self.match_candidates(
-                span,
-                remainder_start,
-                otherwise_block,
-                candidates,
-                fake_borrows,
-            );
-            otherwise_block = Some(remainder_start.unwrap());
-        };
-        let target_blocks: Vec<_> = target_candidates.into_iter().map(|mut candidates| {
-            if candidates.len() != 0 {
-                let candidate_start = &mut None;
-                self.match_candidates(
+        // HACK(matthewjasper) This is a closure so that we can let the test
+        // create its blocks before the rest of the match. This currently
+        // improves the speed of llvm when optimizing long string literal
+        // matches
+        let make_target_blocks = move |this: &mut Self| -> Vec<BasicBlock> {
+            // For each outcome of test, process the candidates that still
+            // apply. Collect a list of blocks where control flow will
+            // branch if one of the `target_candidate` sets is not
+            // exhaustive.
+            if !candidates.is_empty() {
+                let remainder_start = &mut None;
+                this.match_candidates(
                     span,
-                    candidate_start,
+                    remainder_start,
                     otherwise_block,
-                    &mut *candidates,
+                    candidates,
                     fake_borrows,
                 );
-                candidate_start.unwrap()
-            } else {
-                *otherwise_block.get_or_insert_with(|| {
-                    let unreachable = self.cfg.start_new_block();
-                    let source_info = self.source_info(span);
-                    self.cfg.terminate(
-                        unreachable,
-                        source_info,
-                        TerminatorKind::Unreachable,
+                otherwise_block = Some(remainder_start.unwrap());
+            };
+
+            target_candidates.into_iter().map(|mut candidates| {
+                if candidates.len() != 0 {
+                    let candidate_start = &mut None;
+                    this.match_candidates(
+                        span,
+                        candidate_start,
+                        otherwise_block,
+                        &mut *candidates,
+                        fake_borrows,
                     );
-                    unreachable
-                })
-            }
-        }).collect();
+                    candidate_start.unwrap()
+                } else {
+                    *otherwise_block.get_or_insert_with(|| {
+                        let unreachable = this.cfg.start_new_block();
+                        let source_info = this.source_info(span);
+                        this.cfg.terminate(
+                            unreachable,
+                            source_info,
+                            TerminatorKind::Unreachable,
+                        );
+                        unreachable
+                    })
+                }
+            }).collect()
+        };
 
         self.perform_test(
             block,
             &match_place,
             &test,
-            target_blocks,
+            make_target_blocks,
         );
     }
 
