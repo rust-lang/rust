@@ -157,7 +157,7 @@ Libraries
   produce a warning if their returning type is unused.
 - [The methods `checked_pow`, `saturating_pow`, `wrapping_pow`, and
   `overflowing_pow` are now available for all numeric types.][57873] These are
-  equivalvent to methods such as `wrapping_add` for the `pow` operation.
+  equivalent to methods such as `wrapping_add` for the `pow` operation.
 
 
 Stabilized APIs
