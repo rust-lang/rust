@@ -3,7 +3,7 @@
 //! zero-sized structure.
 
 use rustc::ty::TyCtxt;
-use rustc::mir::{self, Mir, Location};
+use rustc::mir::{self, Body, Location};
 use rustc_data_structures::bit_set::{BitSet, BitSetOperator};
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -65,13 +65,13 @@ pub(super) mod borrows;
 /// places that would require a dynamic drop-flag at that statement.
 pub struct MaybeInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
+               mir: &'a Body<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
@@ -120,13 +120,13 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 'tcx
 /// places that would require a dynamic drop-flag at that statement.
 pub struct MaybeUninitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
+               mir: &'a Body<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
@@ -174,13 +174,13 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 't
 /// that would require a dynamic drop-flag at that statement.
 pub struct DefinitelyInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
+               mir: &'a Body<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
@@ -223,13 +223,13 @@ impl<'a, 'gcx, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, '
 /// ```
 pub struct EverInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx: 'a> EverInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
+               mir: &'a Body<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {

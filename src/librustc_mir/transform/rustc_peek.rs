@@ -5,7 +5,7 @@ use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::hir::def_id::DefId;
-use rustc::mir::{self, Mir, Location};
+use rustc::mir::{self, Body, Location};
 use rustc_data_structures::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
 
@@ -26,7 +26,7 @@ pub struct SanityCheck;
 
 impl MirPass for SanityCheck {
     fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource<'tcx>, mir: &mut Mir<'tcx>) {
+                          src: MirSource<'tcx>, mir: &mut Body<'tcx>) {
         let def_id = src.def_id();
         if !tcx.has_attr(def_id, sym::rustc_mir) {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
@@ -85,7 +85,7 @@ impl MirPass for SanityCheck {
 /// expression form above, then that emits an error as well, but those
 /// errors are not intended to be used for unit tests.)
 pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                mir: &Mir<'tcx>,
+                                                mir: &Body<'tcx>,
                                                 def_id: DefId,
                                                 _attributes: &[ast::Attribute],
                                                 results: &DataflowResults<'tcx, O>)
@@ -102,7 +102,7 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           mir: &Mir<'tcx>,
+                           mir: &Body<'tcx>,
                            results: &DataflowResults<'tcx, O>,
                            bb: mir::BasicBlock) where
     O: BitDenotation<'tcx, Idx=MovePathIndex> + HasMoveData<'tcx>

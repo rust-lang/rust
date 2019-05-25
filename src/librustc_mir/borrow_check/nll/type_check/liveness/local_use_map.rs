@@ -1,7 +1,7 @@
 use crate::borrow_check::nll::region_infer::values::{PointIndex, RegionValueElements};
 use crate::util::liveness::{categorize, DefUse};
 use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Mir};
+use rustc::mir::{Local, Location, Body};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::vec_linked_list as vll;
 
@@ -60,7 +60,7 @@ impl LocalUseMap {
     crate fn build(
         live_locals: &Vec<Local>,
         elements: &RegionValueElements,
-        mir: &Mir<'_>,
+        mir: &Body<'_>,
     ) -> Self {
         let nones = IndexVec::from_elem_n(None, mir.local_decls.len());
         let mut local_use_map = LocalUseMap {
@@ -81,7 +81,7 @@ impl LocalUseMap {
             elements,
             locals_with_use_data,
         }
-        .visit_mir(mir);
+        .visit_body(mir);
 
         local_use_map
     }

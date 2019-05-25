@@ -22,12 +22,12 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         instance: Instance<'tcx>,
         sig: ty::FnSig<'tcx>,
         llfn: Self::Value,
-        mir: &mir::Mir<'_>,
+        mir: &mir::Body<'_>,
     ) -> FunctionDebugContext<Self::DIScope>;
 
     fn create_mir_scopes(
         &self,
-        mir: &mir::Mir<'_>,
+        mir: &mir::Body<'_>,
         debug_context: &mut FunctionDebugContext<Self::DIScope>,
     ) -> IndexVec<mir::SourceScope, MirDebugScope<Self::DIScope>>;
     fn extend_scope_to_file(

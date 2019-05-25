@@ -11,7 +11,7 @@ use crate::transform::MirSource;
 use crate::borrow_check::Upvar;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
+use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Body};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_errors::Diagnostic;
 use std::fmt::Debug;
@@ -50,7 +50,7 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    mir: &mut Mir<'tcx>,
+    mir: &mut Body<'tcx>,
 ) -> UniversalRegions<'tcx> {
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
@@ -73,7 +73,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     upvars: &[Upvar],
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'gcx>,
@@ -213,7 +213,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     source: MirSource<'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'_>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
 ) {
@@ -273,7 +273,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
 
 fn dump_annotation<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     mir_def_id: DefId,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,

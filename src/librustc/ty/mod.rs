@@ -19,7 +19,7 @@ use crate::ich::StableHashingContext;
 use crate::infer::canonical::Canonical;
 use crate::middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
-use crate::mir::Mir;
+use crate::mir::Body;
 use crate::mir::interpret::{GlobalId, ErrorHandled};
 use crate::mir::GeneratorLayout;
 use crate::session::CrateDisambiguator;
@@ -3002,7 +3002,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
     pub fn instance_mir(self, instance: ty::InstanceDef<'gcx>)
-                        -> &'gcx Mir<'gcx>
+                        -> &'gcx Body<'gcx>
     {
         match instance {
             ty::InstanceDef::Item(did) => {
