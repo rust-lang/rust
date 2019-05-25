@@ -968,6 +968,36 @@ impl AsInner<Slice> for OsStr {
     }
 }
 
+#[unstable(feature = "slice_concat_ext",
+           reason = "trait should not have to exist",
+           issue = "27747")]
+impl<S: Borrow<OsStr>> SliceConcatExt<OsStr> for [S] {
+    type Output = OsString;
+
+    fn concat(&self) -> OsString {
+        self.join("".as_ref())
+    }
+
+    fn join(&self, sep: &OsStr) -> OsString {
+        let mut res = OsString::new();
+        let mut iter = self.iter();
+        let first = match iter.next() {
+            Some(first) => first,
+            None => return res,
+        };
+        res.push(first.borrow());
+        for s in iter {
+            res.push(sep);
+            res.push(s.borrow());
+        }
+        res
+    }
+
+    fn connect(&self, sep: &OsStr) -> OsString {
+        self.join(sep)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1134,5 +1164,23 @@ mod tests {
 
         assert_eq!(&*rc2, os_str);
         assert_eq!(&*arc2, os_str);
+    }
+
+    #[test]
+    fn test_join_empty() {
+        assert_eq!(OsString::from(""), (&[] as &[&OsStr]).join("-".as_ref()));
+    }
+
+    #[test]
+    fn test_join_one() {
+        assert_eq!(OsString::from("a"), [OsStr::new("a")].join("-".as_ref()));
+    }
+
+    #[test]
+    fn test_join_two() {
+        assert_eq!(
+            OsString::from("a-b"),
+            [OsStr::new("a"), OsStr::new("b")].join("-".as_ref())
+        );
     }
 }

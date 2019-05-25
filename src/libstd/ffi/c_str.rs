@@ -1305,6 +1305,36 @@ impl AsRef<CStr> for CString {
     }
 }
 
+#[unstable(feature = "slice_concat_ext",
+           reason = "trait should not have to exist",
+           issue = "27747")]
+impl<S: Borrow<CStr>> SliceConcatExt<OsStr> for [S] {
+    type Output = CString;
+
+    fn concat(&self) -> CString {
+        self.join(unsafe { CStr::from_bytes_with_nul_unchecked(&[0]) })
+    }
+
+    fn join(&self, sep: &CStr) -> CString {
+        let mut res = Vec::new();
+        let mut iter = self.iter();
+        let first = match iter.next() {
+            Some(first) => first,
+            None => return CString::new(res).unwrap(),
+        };
+        res.extend_from_slice(first.borrow().to_bytes());
+        for s in iter {
+            res.extend_from_slice(sep.to_bytes());
+            res.extend_from_slice(s.borrow().to_bytes());
+        }
+        CString::new(res).unwrap()
+    }
+
+    fn connect(&self, sep: &CStr) -> CString {
+        self.join(sep)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
