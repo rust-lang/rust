@@ -866,20 +866,13 @@ pub struct Interner {
 }
 
 impl Interner {
-    fn prefill(init: &[&str]) -> Self {
-        let mut this = Interner::default();
-        this.names.reserve(init.len());
-        this.strings.reserve(init.len());
-
-        // We can't allocate empty strings in the arena, so handle this here.
-        assert!(kw::Invalid.as_u32() == 0 && init[0].is_empty());
-        this.names.insert("", kw::Invalid);
-        this.strings.push("");
-
-        for string in &init[1..] {
-            this.intern(string);
+    fn prefill(init: &[&'static str]) -> Self {
+        let symbols = (0 .. init.len() as u32).map(Symbol::new);
+        Interner {
+            strings: init.to_vec(),
+            names: init.iter().copied().zip(symbols).collect(),
+            ..Default::default()
         }
-        this
     }
 
     pub fn intern(&mut self, string: &str) -> Symbol {
