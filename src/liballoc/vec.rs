@@ -735,6 +735,75 @@ impl<T> Vec<T> {
         self
     }
 
+    /// Returns a raw pointer to the vector's buffer.
+    ///
+    /// The caller must ensure that the vector outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    /// Modifying the vector may cause its buffer to be reallocated,
+    /// which would also make any pointers to it invalid.
+    ///
+    /// The caller must also ensure that the memory the pointer (non-transitively) points to
+    /// is never written to (except inside an `UnsafeCell`) using this pointer or any pointer
+    /// derived from it. If you need to mutate the contents of the slice, use [`as_mut_ptr`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = vec![1, 2, 4];
+    /// let x_ptr = x.as_ptr();
+    ///
+    /// unsafe {
+    ///     for i in 0..x.len() {
+    ///         assert_eq!(*x_ptr.add(i), 1 << i);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// [`as_mut_ptr`]: #method.as_mut_ptr
+    #[stable(feature = "vec_as_ptr", since = "1.37.0")]
+    #[inline]
+    pub fn as_ptr(&self) -> *const T {
+        // We shadow the slice method of the same name to avoid going through
+        // `deref`, which creates an intermediate reference.
+        let ptr = self.buf.ptr();
+        unsafe { assume(!ptr.is_null()); }
+        ptr
+    }
+
+    /// Returns an unsafe mutable pointer to the vector's buffer.
+    ///
+    /// The caller must ensure that the vector outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    /// Modifying the vector may cause its buffer to be reallocated,
+    /// which would also make any pointers to it invalid.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Allocate vector big enough for 4 elements.
+    /// let size = 4;
+    /// let mut x: Vec<i32> = Vec::with_capacity(size);
+    /// let x_ptr = x.as_mut_ptr();
+    ///
+    /// // Initialize elements via raw pointer writes, then set length.
+    /// unsafe {
+    ///     for i in 0..size {
+    ///         *x_ptr.add(i) = i as i32;
+    ///     }
+    ///     x.set_len(size);
+    /// }
+    /// assert_eq!(&*x, &[0,1,2,3]);
+    /// ```
+    #[stable(feature = "vec_as_ptr", since = "1.37.0")]
+    #[inline]
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+        // We shadow the slice method of the same name to avoid going through
+        // `deref_mut`, which creates an intermediate reference.
+        let ptr = self.buf.ptr();
+        unsafe { assume(!ptr.is_null()); }
+        ptr
+    }
+
     /// Forces the length of the vector to `new_len`.
     ///
     /// This is a low-level operation that maintains none of the normal
@@ -1706,9 +1775,7 @@ impl<T> ops::Deref for Vec<T> {
 
     fn deref(&self) -> &[T] {
         unsafe {
-            let p = self.buf.ptr();
-            assume(!p.is_null());
-            slice::from_raw_parts(p, self.len)
+            slice::from_raw_parts(self.as_ptr(), self.len)
         }
     }
 }
@@ -1717,9 +1784,7 @@ impl<T> ops::Deref for Vec<T> {
 impl<T> ops::DerefMut for Vec<T> {
     fn deref_mut(&mut self) -> &mut [T] {
         unsafe {
-            let ptr = self.buf.ptr();
-            assume(!ptr.is_null());
-            slice::from_raw_parts_mut(ptr, self.len)
+            slice::from_raw_parts_mut(self.as_mut_ptr(), self.len)
         }
     }
 }
@@ -1754,7 +1819,6 @@ impl<T> IntoIterator for Vec<T> {
     fn into_iter(mut self) -> IntoIter<T> {
         unsafe {
             let begin = self.as_mut_ptr();
-            assume(!begin.is_null());
             let end = if mem::size_of::<T>() == 0 {
                 arith_offset(begin as *const i8, self.len() as isize) as *const T
             } else {
