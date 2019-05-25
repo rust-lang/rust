@@ -437,7 +437,7 @@ impl<'a, 'tcx> Index<'tcx> {
                         reason: Some(Symbol::intern(reason)),
                         issue: 27812,
                     },
-                    feature: Symbol::intern("rustc_private"),
+                    feature: sym::rustc_private,
                     rustc_depr: None,
                     const_stability: None,
                     promotable: false,
@@ -880,7 +880,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // FIXME: only remove `libc` when `stdbuild` is active.
     // FIXME: remove special casing for `test`.
     remaining_lib_features.remove(&Symbol::intern("libc"));
-    remaining_lib_features.remove(&Symbol::intern("test"));
+    remaining_lib_features.remove(&sym::test);
 
     let check_features =
         |remaining_lib_features: &mut FxHashMap<_, _>, defined_features: &[_]| {

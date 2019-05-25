@@ -58,10 +58,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::P
         call_site: span,
         def_site: None,
         format: ExpnFormat::MacroAttribute(Symbol::intern(&pretty_name)),
-        allow_internal_unstable: Some(vec![
-            Symbol::intern("rustc_attrs"),
-            Symbol::intern("structural_match"),
-        ].into()),
+        allow_internal_unstable: Some(vec![sym::rustc_attrs, sym::structural_match].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
         edition: cx.parse_sess.edition,
@@ -74,7 +71,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::P
             attrs.push(cx.attribute(span, meta));
         }
         if names.contains(&Symbol::intern("Copy")) {
-            let meta = cx.meta_word(span, Symbol::intern("rustc_copy_clone_marker"));
+            let meta = cx.meta_word(span, sym::rustc_copy_clone_marker);
             attrs.push(cx.attribute(span, meta));
         }
     });

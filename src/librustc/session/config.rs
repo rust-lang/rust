@@ -19,7 +19,7 @@ use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax::parse::token;
 use syntax::parse;
-use syntax::symbol::Symbol;
+use syntax::symbol::{sym, Symbol};
 use syntax::feature_gate::UnstableFeatures;
 use errors::emitter::HumanReadableErrorType;
 
@@ -1503,31 +1503,31 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         Some(Symbol::intern(vendor)),
     ));
     if sess.target.target.options.has_elf_tls {
-        ret.insert((Symbol::intern("target_thread_local"), None));
+        ret.insert((sym::target_thread_local, None));
     }
     for &i in &[8, 16, 32, 64, 128] {
         if i >= min_atomic_width && i <= max_atomic_width {
             let s = i.to_string();
             ret.insert((
-                Symbol::intern("target_has_atomic"),
+                sym::target_has_atomic,
                 Some(Symbol::intern(&s)),
             ));
             if &s == wordsz {
                 ret.insert((
-                    Symbol::intern("target_has_atomic"),
+                    sym::target_has_atomic,
                     Some(Symbol::intern("ptr")),
                 ));
             }
         }
     }
     if atomic_cas {
-        ret.insert((Symbol::intern("target_has_atomic"), Some(Symbol::intern("cas"))));
+        ret.insert((sym::target_has_atomic, Some(Symbol::intern("cas"))));
     }
     if sess.opts.debug_assertions {
         ret.insert((Symbol::intern("debug_assertions"), None));
     }
     if sess.opts.crate_types.contains(&CrateType::ProcMacro) {
-        ret.insert((Symbol::intern("proc_macro"), None));
+        ret.insert((sym::proc_macro, None));
     }
     ret
 }
@@ -1547,7 +1547,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: ast::CrateConfig) -> as
     let default_cfg = default_configuration(sess);
     // If the user wants a test runner, then add the test cfg
     if sess.opts.test {
-        user_cfg.insert((Symbol::intern("test"), None));
+        user_cfg.insert((sym::test, None));
     }
     user_cfg.extend(default_cfg.iter().cloned());
     user_cfg
@@ -2702,7 +2702,7 @@ mod tests {
     use std::path::PathBuf;
     use super::{Externs, OutputType, OutputTypes};
     use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
-    use syntax::symbol::Symbol;
+    use syntax::symbol::sym;
     use syntax::edition::{Edition, DEFAULT_EDITION};
     use syntax;
     use super::Options;
@@ -2744,7 +2744,7 @@ mod tests {
             let (sessopts, cfg) = build_session_options_and_crate_config(matches);
             let sess = build_session(sessopts, None, registry);
             let cfg = build_configuration(&sess, to_crate_config(cfg));
-            assert!(cfg.contains(&(Symbol::intern("test"), None)));
+            assert!(cfg.contains(&(sym::test, None)));
         });
     }
 
@@ -2752,7 +2752,6 @@ mod tests {
     // another --cfg test
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
-        use syntax::symbol::sym;
         syntax::with_default_globals(|| {
             let matches = &match optgroups().parse(&["--test".to_string(),
                                                      "--cfg=test".to_string()]) {

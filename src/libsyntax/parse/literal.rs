@@ -171,12 +171,15 @@ impl LitKind {
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
     pub fn to_lit_token(&self) -> token::Lit {
         let (kind, symbol, suffix) = match *self {
-            LitKind::Str(string, ast::StrStyle::Cooked) => {
-                let escaped = string.as_str().escape_default().to_string();
-                (token::Str, Symbol::intern(&escaped), None)
+            LitKind::Str(symbol, ast::StrStyle::Cooked) => {
+                // Don't re-intern unless the escaped string is different.
+                let s = &symbol.as_str();
+                let escaped = s.escape_default().to_string();
+                let symbol = if escaped == *s { symbol } else { Symbol::intern(&escaped) };
+                (token::Str, symbol, None)
             }
-            LitKind::Str(string, ast::StrStyle::Raw(n)) => {
-                (token::StrRaw(n), string, None)
+            LitKind::Str(symbol, ast::StrStyle::Raw(n)) => {
+                (token::StrRaw(n), symbol, None)
             }
             LitKind::ByteStr(ref bytes) => {
                 let string = bytes.iter().cloned().flat_map(ascii::escape_default)
@@ -193,14 +196,14 @@ impl LitKind {
             }
             LitKind::Int(n, ty) => {
                 let suffix = match ty {
-                    ast::LitIntType::Unsigned(ty) => Some(Symbol::intern(ty.ty_to_string())),
-                    ast::LitIntType::Signed(ty) => Some(Symbol::intern(ty.ty_to_string())),
+                    ast::LitIntType::Unsigned(ty) => Some(ty.to_symbol()),
+                    ast::LitIntType::Signed(ty) => Some(ty.to_symbol()),
                     ast::LitIntType::Unsuffixed => None,
                 };
-                (token::Integer, Symbol::intern(&n.to_string()), suffix)
+                (token::Integer, sym::integer(n), suffix)
             }
             LitKind::Float(symbol, ty) => {
-                (token::Float, symbol, Some(Symbol::intern(ty.ty_to_string())))
+                (token::Float, symbol, Some(ty.to_symbol()))
             }
             LitKind::FloatUnsuffixed(symbol) => {
                 (token::Float, symbol, None)

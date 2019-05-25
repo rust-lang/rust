@@ -969,10 +969,10 @@ impl<'a> ExtCtxt<'a> {
     pub fn ident_of(&self, st: &str) -> ast::Ident {
         ast::Ident::from_str(st)
     }
-    pub fn std_path(&self, components: &[&str]) -> Vec<ast::Ident> {
+    pub fn std_path(&self, components: &[Symbol]) -> Vec<ast::Ident> {
         let def_site = DUMMY_SP.apply_mark(self.current_expansion.mark);
         iter::once(Ident::new(kw::DollarCrate, def_site))
-            .chain(components.iter().map(|s| self.ident_of(s)))
+            .chain(components.iter().map(|&s| Ident::with_empty_ctxt(s)))
             .collect()
     }
     pub fn name_of(&self, st: &str) -> ast::Name {

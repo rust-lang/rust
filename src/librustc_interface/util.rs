@@ -68,7 +68,7 @@ pub fn add_configuration(
     sess: &Session,
     codegen_backend: &dyn CodegenBackend,
 ) {
-    let tf = Symbol::intern("target_feature");
+    let tf = sym::target_feature;
 
     cfg.extend(
         codegen_backend

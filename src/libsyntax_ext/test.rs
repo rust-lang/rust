@@ -65,11 +65,8 @@ pub fn expand_test_or_bench(
         mark.set_expn_info(ExpnInfo {
             call_site: DUMMY_SP,
             def_site: None,
-            format: MacroAttribute(Symbol::intern("test")),
-            allow_internal_unstable: Some(vec![
-                Symbol::intern("rustc_attrs"),
-                Symbol::intern("test"),
-            ].into()),
+            format: MacroAttribute(sym::test),
+            allow_internal_unstable: Some(vec![sym::rustc_attrs, sym::test].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: cx.parse_sess.edition,
@@ -130,11 +127,11 @@ pub fn expand_test_or_bench(
     let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name, sp).gensym(),
         vec![
             // #[cfg(test)]
-            cx.attribute(attr_sp, cx.meta_list(attr_sp, Symbol::intern("cfg"), vec![
-                cx.meta_list_item_word(attr_sp, Symbol::intern("test"))
+            cx.attribute(attr_sp, cx.meta_list(attr_sp, sym::cfg, vec![
+                cx.meta_list_item_word(attr_sp, sym::test)
             ])),
             // #[rustc_test_marker]
-            cx.attribute(attr_sp, cx.meta_word(attr_sp, Symbol::intern("rustc_test_marker"))),
+            cx.attribute(attr_sp, cx.meta_word(attr_sp, sym::rustc_test_marker)),
         ],
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
@@ -180,7 +177,7 @@ pub fn expand_test_or_bench(
     let test_extern = cx.item(sp,
         test_id,
         vec![],
-        ast::ItemKind::ExternCrate(Some(Symbol::intern("test")))
+        ast::ItemKind::ExternCrate(Some(sym::test))
     );
 
     log::debug!("Synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
