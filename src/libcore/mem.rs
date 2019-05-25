@@ -1071,7 +1071,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// optimizations, potentially resulting in a larger size:
 ///
 /// ```rust
-/// # use std::mem::{MaybeUninit, size_of, align_of};
+/// # use std::mem::{MaybeUninit, size_of};
 /// assert_eq!(size_of::<Option<bool>>(), 1);
 /// assert_eq!(size_of::<Option<MaybeUninit<bool>>>(), 2);
 /// ```
