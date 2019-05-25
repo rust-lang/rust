@@ -195,7 +195,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
 
             // Make sure it is a const item.
             match cx.tables.qpath_res(qpath, expr.hir_id) {
-                Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssociatedConst, _) => {},
+                Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {},
                 _ => return,
             };
 

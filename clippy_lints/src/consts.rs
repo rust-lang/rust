@@ -326,7 +326,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 
         let res = self.tables.qpath_res(qpath, id);
         match res {
-            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssociatedConst, def_id) => {
+            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let substs = self.tables.node_substs(id);
                 let substs = if self.substs.is_empty() {
                     substs

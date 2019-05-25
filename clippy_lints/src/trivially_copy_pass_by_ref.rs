@@ -130,7 +130,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
 
     fn check_trait_items(&mut self, cx: &LateContext<'_, '_>, trait_items: &[TraitItemRef]) {
         for item in trait_items {
-            if let AssociatedItemKind::Method { .. } = item.kind {
+            if let AssocItemKind::Method { .. } = item.kind {
                 self.check_trait_method(cx, item);
             }
         }
