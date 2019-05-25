@@ -68,16 +68,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                     match classify_name_ref(db, &analyzer, name_ref) {
                         Some(Method(_)) => "function",
                         Some(Macro(_)) => "macro",
-                        Some(FieldAccess(field)) => {
-                            let (hir_file_id, src) = field.source(db);
-                            if let hir::FieldSource::Named(name) = src {
-                                let text = name.syntax().text().to_smol_string();
-                                let shadow_count = 0; // potentially even from different file
-                                binding_hash = Some(calc_binding_hash(hir_file_id.original_file(db), &text, shadow_count));
-                            }
-
-                            "field"
-                        },
+                        Some(FieldAccess(_)) => "field",
                         Some(AssocItem(ImplItem::Method(_))) => "function",
                         Some(AssocItem(ImplItem::Const(_))) => "constant",
                         Some(AssocItem(ImplItem::TypeAlias(_))) => "type",
@@ -117,13 +108,6 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                             let shadow_count = bindings_shadow_count.entry(text.clone()).or_insert(0);
                             *shadow_count += 1;
                             calc_binding_hash(file_id, &text, *shadow_count)
-                        });
-                        "variable"
-                    } else if name.syntax().ancestors().any(|x| ast::NamedFieldDef::cast(x).is_some()) {
-                        binding_hash = Some({
-                            let text = name.syntax().text().to_smol_string();
-                            let shadow_count = 0;
-                            calc_binding_hash(file_id, &text, shadow_count)
                         });
                         "variable"
                     } else {
