@@ -158,18 +158,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         span,
                         format!("value moved{} here, in previous iteration of loop", move_msg),
                     );
-                    if Some(CompilerDesugaringKind::ForLoop) == span.compiler_desugaring_kind() {
-                        if let Ok(snippet) = self.infcx.tcx.sess.source_map()
-                            .span_to_snippet(span)
-                        {
-                            err.span_suggestion(
-                                move_span,
-                                "consider borrowing this to avoid moving it into the for loop",
-                                format!("&{}", snippet),
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                    }
                     is_loop_move = true;
                 } else if move_site.traversed_back_edge {
                     err.span_label(
@@ -185,7 +173,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         &mut err,
                         format!("variable moved due to use{}", move_spans.describe()),
                     );
-                };
+                }
+                if Some(CompilerDesugaringKind::ForLoop) == move_span.compiler_desugaring_kind() {
+                    if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+                        err.span_suggestion(
+                            move_span,
+                            "consider borrowing to avoid moving into the for loop",
+                            format!("&{}", snippet),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
             }
 
             use_spans.var_span_label(
