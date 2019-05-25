@@ -972,8 +972,6 @@ impl AsInner<Slice> for OsStr {
            reason = "trait should not have to exist",
            issue = "27747")]
 impl<S: Borrow<OsStr>> [S] {
-    type Output = OsString;
-
     fn concat(&self) -> OsString {
         self.join("".as_ref())
     }
