@@ -1115,7 +1115,7 @@ pub enum ExprKind {
     Cast(P<Expr>, P<Ty>),
     /// A type ascription (e.g., `42: usize`).
     Type(P<Expr>, P<Ty>),
-    /// A `let pats = expr` pseudo-expression that only occurs in the scrutinee
+    /// A `let pats = expr` pseudo-expression that only occurs in the condition
     /// of `if` / `while` expressions. (e.g., `if let 0 = x { .. }`).
     ///
     /// The `Vec<P<Pat>>` is for or-patterns at the top level.
