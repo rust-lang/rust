@@ -27,33 +27,46 @@ fn conversions() {
     assert_eq!(s, "Hello, World!")
 }
 
-fn check_props(s: &str) -> Result<(), proptest::test_runner::TestCaseError> {
-    let smol = SmolStr::new(s);
-    prop_assert_eq!(smol.as_str(), s);
-    prop_assert_eq!(smol.len(), s.len());
-    prop_assert_eq!(smol.is_empty(), s.is_empty());
+fn check_props(std_str: &str, smol: SmolStr) -> Result<(), proptest::test_runner::TestCaseError> {
+    prop_assert_eq!(smol.as_str(), std_str);
+    prop_assert_eq!(smol.len(), std_str.len());
+    prop_assert_eq!(smol.is_empty(), std_str.is_empty());
     Ok(())
 }
 
 proptest! {
     #[test]
     fn roundtrip(s: String) {
-        check_props(s.as_str())?;
+        check_props(s.as_str(), SmolStr::new(s.clone()))?;
     }
 
     #[test]
     fn roundtrip_spaces(s in r"( )*") {
-        check_props(s.as_str())?;
+        check_props(s.as_str(), SmolStr::new(s.clone()))?;
     }
 
     #[test]
     fn roundtrip_newlines(s in r"\n*") {
-        check_props(s.as_str())?;
+        check_props(s.as_str(), SmolStr::new(s.clone()))?;
     }
 
     #[test]
     fn roundtrip_ws(s in r"( |\n)*") {
-        check_props(s.as_str())?;
+        check_props(s.as_str(), SmolStr::new(s.clone()))?;
+    }
+
+    #[test]
+    fn from_string_iter(slices in proptest::collection::vec(".*", 1..100)) {
+        let string: String = slices.iter().map(|x| x.as_str()).collect();
+        let smol: SmolStr = slices.into_iter().collect();
+        check_props(string.as_str(), smol)?;
+    }
+
+    #[test]
+    fn from_str_iter(slices in proptest::collection::vec(".*", 1..100)) {
+        let string: String = slices.iter().map(|x| x.as_str()).collect();
+        let smol: SmolStr = slices.iter().collect();
+        check_props(string.as_str(), smol)?;
     }
 }
 
@@ -75,7 +88,7 @@ fn test_search_in_hashmap() {
 }
 
 #[test]
-fn test_from_iterator() {
+fn test_from_char_iterator() {
     let examples = [
         // Simple keyword-like strings
         ("if", false),
@@ -90,7 +103,7 @@ fn test_from_iterator() {
         ("部落格", false),
         ("사회과학원 어학연구소", true),
 
-        // String containin diverse characters
+        // String containing diverse characters
         ("表ポあA鷗ŒéＢ逍Üßªąñ丂㐀𠀀", true),
     ];
     for (raw, is_heap) in &examples {
