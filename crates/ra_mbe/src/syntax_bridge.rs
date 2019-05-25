@@ -58,10 +58,6 @@ where
         return Err(ExpandError::ConversionError);
     }
 
-    if tree_sink.roots.len() != 1 {
-        return Err(ExpandError::ConversionError);
-    }
-
     Ok(tree_sink.inner.finish())
 }
 
