@@ -168,11 +168,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn trait_method(&mut self,
                         trait_def_id: DefId,
-                        method_name: &str,
+                        method_name: Symbol,
                         self_ty: Ty<'tcx>,
                         params: &[Kind<'tcx>])
                         -> (Ty<'tcx>, &'tcx ty::Const<'tcx>) {
-        let method_name = Symbol::intern(method_name);
         let substs = self.tcx.mk_substs_trait(self_ty, params);
         for item in self.tcx.associated_items(trait_def_id) {
             if item.kind == ty::AssocKind::Method && item.ident.name == method_name {

@@ -15,7 +15,9 @@ use rustc::ty::{self, Ty, adjustment::{PointerCast}};
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::layout::VariantIdx;
 use rustc::mir::*;
-use rustc::hir::{RangeEnd, Mutability};
+use rustc::hir::RangeEnd;
+use syntax_pos::symbol::sym;
+
 use std::cmp::Ordering;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -252,10 +254,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             TestKind::Eq { value, ty } => {
-                // Use `PartialEq::eq` instead of `BinOp::Eq`
-                // (the binop can only handle primitives)
                 if let [success, fail] = *target_blocks {
                     if !ty.is_scalar() {
+                        // Use `PartialEq::eq` instead of `BinOp::Eq`
+                        // (the binop can only handle primitives)
                         self.non_scalar_compare(
                             block,
                             success,
@@ -368,7 +370,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         );
     }
 
-    /// Compare using `std::compare::PartialEq::eq`
+    /// Compare two `&T` values using `<T as std::compare::PartialEq>::eq`
     fn non_scalar_compare(
         &mut self,
         block: BasicBlock,
@@ -381,8 +383,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ) {
         use rustc::middle::lang_items::EqTraitLangItem;
 
-        let mut expect = self.literal_operand(source_info.span, ty, value);
-        let val = Operand::Copy(place.clone());
+        let mut expect = self.literal_operand(source_info.span, value.ty, value);
+        let mut val = Operand::Copy(place.clone());
 
         // If we're using `b"..."` as a pattern, we need to insert an
         // unsizing coercion, as the byte string has the type `&[u8; N]`.
@@ -399,7 +401,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
         let opt_ref_ty = unsize(ty);
         let opt_ref_test_ty = unsize(value.ty);
-        let mut place = place.clone();
         match (opt_ref_ty, opt_ref_test_ty) {
             // nothing to do, neither is an array
             (None, None) => {},
@@ -409,56 +410,33 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // make both a slice
                 ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
                 if opt_ref_ty.is_some() {
-                    place = self.temp(ty, source_info.span);
+                    let temp = self.temp(ty, source_info.span);
                     self.cfg.push_assign(
-                        block, source_info, &place, Rvalue::Cast(
+                        block, source_info, &temp, Rvalue::Cast(
                             CastKind::Pointer(PointerCast::Unsize), val, ty
                         )
                     );
+                    val = Operand::Move(temp);
                 }
                 if opt_ref_test_ty.is_some() {
-                    let array = self.literal_operand(
-                        source_info.span,
-                        value.ty,
-                        value,
-                    );
-
                     let slice = self.temp(ty, source_info.span);
                     self.cfg.push_assign(
                         block, source_info, &slice, Rvalue::Cast(
-                            CastKind::Pointer(PointerCast::Unsize), array, ty
+                            CastKind::Pointer(PointerCast::Unsize), expect, ty
                         )
                     );
                     expect = Operand::Move(slice);
                 }
             },
         }
-        let eq_def_id = self.hir.tcx().require_lang_item(EqTraitLangItem);
-        let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
 
-        let re_erased = self.hir.tcx().lifetimes.re_erased;
-        // take the argument by reference
-        let tam = ty::TypeAndMut {
-            ty,
-            mutbl: Mutability::MutImmutable,
+        let deref_ty = match ty.sty {
+            ty::Ref(_, deref_ty, _) => deref_ty,
+            _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
         };
-        let ref_ty = self.hir.tcx().mk_ref(re_erased, tam);
 
-        // let lhs_ref_place = &lhs;
-        let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, place);
-        let lhs_ref_place = self.temp(ref_ty, source_info.span);
-        self.cfg.push_assign(block, source_info, &lhs_ref_place, ref_rvalue);
-        let val = Operand::Move(lhs_ref_place);
-
-        // let rhs_place = rhs;
-        let rhs_place = self.temp(ty, source_info.span);
-        self.cfg.push_assign(block, source_info, &rhs_place, Rvalue::Use(expect));
-
-        // let rhs_ref_place = &rhs_place;
-        let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, rhs_place);
-        let rhs_ref_place = self.temp(ref_ty, source_info.span);
-        self.cfg.push_assign(block, source_info, &rhs_ref_place, ref_rvalue);
-        let expect = Operand::Move(rhs_ref_place);
+        let eq_def_id = self.hir.tcx().require_lang_item(EqTraitLangItem);
+        let (mty, method) = self.hir.trait_method(eq_def_id, sym::eq, deref_ty, &[deref_ty.into()]);
 
         let bool_ty = self.hir.bool_ty();
         let eq_result = self.temp(bool_ty, source_info.span);
@@ -469,12 +447,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 span: source_info.span,
                 ty: mty,
 
-                // FIXME(#54571): This constant comes from user
-                // input (a constant in a pattern).  Are
-                // there forms where users can add type
-                // annotations here?  For example, an
-                // associated constant? Need to
-                // experiment.
+                // FIXME(#54571): This constant comes from user input (a
+                // constant in a pattern).  Are there forms where users can add
+                // type annotations here?  For example, an associated constant?
+                // Need to experiment.
                 user_ty: None,
 
                 literal: method,
