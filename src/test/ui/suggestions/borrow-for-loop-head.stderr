@@ -13,11 +13,10 @@ LL |     let a = vec![1, 2, 3];
    |         - move occurs because `a` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 LL |     for i in &a {
 LL |         for j in a {
-   |                  ^ value moved here, in previous iteration of loop
-help: consider borrowing this to avoid moving it into the for loop
-   |
-LL |         for j in &a {
-   |                  ^^
+   |                  ^
+   |                  |
+   |                  value moved here, in previous iteration of loop
+   |                  help: consider borrowing to avoid moving into the for loop: `&a`
 
 error: aborting due to 2 previous errors
 
