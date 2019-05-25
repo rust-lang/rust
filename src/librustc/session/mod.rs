@@ -1272,6 +1272,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.err("Linker plugin based LTO is not supported together with \
                   `-C prefer-dynamic` when targeting MSVC");
     }
+
+    // Make sure that any given profiling data actually exists so LLVM can't
+    // decide to silently skip PGO.
+    if let Some(ref path) = sess.opts.debugging_opts.pgo_use {
+        if !path.exists() {
+            sess.err(&format!("File `{}` passed to `-Zpgo-use` does not exist.",
+                              path.display()));
+        }
+    }
 }
 
 /// Hash value constructed out of all the `-C metadata` arguments passed to the

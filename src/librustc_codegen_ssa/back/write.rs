@@ -57,7 +57,7 @@ pub struct ModuleConfig {
     pub opt_size: Option<config::OptLevel>,
 
     pub pgo_gen: PgoGenerate,
-    pub pgo_use: String,
+    pub pgo_use: Option<PathBuf>,
 
     // Flags indicating which outputs to produce.
     pub emit_pre_lto_bc: bool,
@@ -95,7 +95,7 @@ impl ModuleConfig {
             opt_size: None,
 
             pgo_gen: PgoGenerate::Disabled,
-            pgo_use: String::new(),
+            pgo_use: None,
 
             emit_no_opt_bc: false,
             emit_pre_lto_bc: false,
