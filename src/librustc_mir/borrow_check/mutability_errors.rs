@@ -41,14 +41,17 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         );
 
         let mut err;
-        let item_msg;
+        let mut item_msg;
         let reason;
         let access_place_desc = self.describe_place(access_place);
         debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
 
+        item_msg = match &access_place_desc {
+            Some(desc) => format!("`{}`", desc),
+            None => "temporary place".to_string(),
+        };
         match the_place_err {
             Place::Base(PlaceBase::Local(local)) => {
-                item_msg = format!("`{}`", access_place_desc.unwrap());
                 if let Place::Base(PlaceBase::Local(_)) = access_place {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
@@ -67,7 +70,6 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     base.ty(self.mir, self.infcx.tcx).ty
                 ));
 
-                item_msg = format!("`{}`", access_place_desc.unwrap());
                 if self.is_upvar_field_projection(access_place).is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
@@ -82,7 +84,6 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }) => {
                 if *base == Place::Base(PlaceBase::Local(Local::new(1))) &&
                     !self.upvars.is_empty() {
-                    item_msg = format!("`{}`", access_place_desc.unwrap());
                     debug_assert!(self.mir.local_decls[Local::new(1)].ty.is_region_ptr());
                     debug_assert!(is_closure_or_generator(
                         the_place_err.ty(self.mir, self.infcx.tcx).ty
@@ -105,7 +106,6 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         false
                     }
                 } {
-                    item_msg = format!("`{}`", access_place_desc.unwrap());
                     reason = ", as it is immutable for the pattern guard".to_string();
                 } else {
                     let pointer_type =
@@ -114,8 +114,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         } else {
                             "`*const` pointer"
                         };
-                    if let Some(desc) = access_place_desc {
-                        item_msg = format!("`{}`", desc);
+                    if access_place_desc.is_some() {
                         reason = match error_access {
                             AccessKind::Move |
                             AccessKind::Mutate => format!(" which is behind a {}", pointer_type),
@@ -135,10 +134,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
             Place::Base(PlaceBase::Static(box Static { kind: StaticKind::Static(def_id), .. })) => {
                 if let Place::Base(PlaceBase::Static(_)) = access_place {
-                    item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
+                    item_msg = format!("immutable static item {}", item_msg);
                     reason = String::new();
                 } else {
-                    item_msg = format!("`{}`", access_place_desc.unwrap());
                     let static_name = &self.infcx.tcx.item_name(*def_id);
                     reason = format!(", as `{}` is an immutable static item", static_name);
                 }
