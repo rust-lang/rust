@@ -295,6 +295,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
     }
 
     fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
+        trace!("eval_place(place={:?})", place);
         match *place {
             Place::Base(PlaceBase::Local(loc)) => self.places[loc].clone(),
             Place::Projection(ref proj) => match proj.elem {
@@ -516,6 +517,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
     }
 
     fn replace_with_const(&self, rval: &mut Rvalue<'tcx>, value: Const<'tcx>, span: Span) {
+        trace!("attepting to replace {:?} with {:?}", rval, value);
         self.ecx.validate_operand(
             value,
             vec![],
@@ -579,6 +581,10 @@ impl CanConstProp {
             // FIXME(oli-obk): lint variables until they are used in a condition
             // FIXME(oli-obk): lint if return value is constant
             *val = mir.local_kind(local) == LocalKind::Temp;
+
+            if !*val {
+                trace!("local {:?} can't be propagated because it's not a temporary", local);
+            }
         }
         cpv.visit_mir(mir);
         cpv.can_const_prop
@@ -598,6 +604,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // FIXME(oli-obk): we could be more powerful here, if the multiple writes
             // only occur in independent execution paths
             MutatingUse(MutatingUseContext::Store) => if self.found_assignment[local] {
+                trace!("local {:?} can't be propagated because of multiple assignments", local);
                 self.can_const_prop[local] = false;
             } else {
                 self.found_assignment[local] = true
@@ -609,7 +616,10 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             NonMutatingUse(NonMutatingUseContext::Projection) |
             MutatingUse(MutatingUseContext::Projection) |
             NonUse(_) => {},
-            _ => self.can_const_prop[local] = false,
+            _ => {
+                trace!("local {:?} can't be propagaged because it's used: {:?}", local, context);
+                self.can_const_prop[local] = false;
+            },
         }
     }
 }
