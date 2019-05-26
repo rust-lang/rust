@@ -2,7 +2,6 @@ use crate::build;
 use crate::build::scope::DropKind;
 use crate::hair::cx::Cx;
 use crate::hair::{LintLevel, BindingMode, PatternKind};
-use crate::shim;
 use crate::transform::MirSource;
 use crate::util as mir_util;
 use rustc::hir;
@@ -31,8 +30,6 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span) = match tcx.hir().get_by_hir_id(id) {
-        Node::Ctor(ctor) => return create_constructor_shim(tcx, id, ctor),
-
         Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, decl, body_id, _, _), .. })
         | Node::Item(hir::Item { node: hir::ItemKind::Fn(decl, _, _, body_id), .. })
         | Node::ImplItem(
@@ -231,38 +228,6 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
                       "found substs `{:?}` with inference types/regions in MIR",
                       substs);
         }
-    }
-}
-
-fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     ctor_id: hir::HirId,
-                                     v: &'tcx hir::VariantData)
-                                     -> Body<'tcx>
-{
-    let span = tcx.hir().span_by_hir_id(ctor_id);
-    if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
-        tcx.infer_ctxt().enter(|infcx| {
-            let mut mir = shim::build_adt_ctor(&infcx, ctor_id, fields, span);
-
-            // Convert the `mir::Body` to global types.
-            let tcx = infcx.tcx.global_tcx();
-            let mut globalizer = GlobalizeMir {
-                tcx,
-                span: mir.span
-            };
-            globalizer.visit_body(&mut mir);
-            let mir = unsafe {
-                mem::transmute::<Body<'_>, Body<'tcx>>(mir)
-            };
-
-            mir_util::dump_mir(tcx, None, "mir_map", &0,
-                               MirSource::item(tcx.hir().local_def_id_from_hir_id(ctor_id)),
-                               &mir, |_, _| Ok(()) );
-
-            mir
-        })
-    } else {
-        span_bug!(span, "attempting to create MIR for non-tuple variant {:?}", v);
     }
 }
 

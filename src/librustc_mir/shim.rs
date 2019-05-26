@@ -1,6 +1,5 @@
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::infer;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::VariantIdx;
@@ -21,6 +20,7 @@ use crate::transform::{
 };
 use crate::util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
 use crate::util::patch::MirPatch;
+use crate::util::expand_aggregate;
 
 pub fn provide(providers: &mut Providers<'_>) {
     providers.mir_shims = make_shim;
@@ -842,29 +842,26 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir
 }
 
-pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
-                                      ctor_id: hir::HirId,
-                                      fields: &[hir::StructField],
-                                      span: Span)
-                                      -> Body<'tcx>
-{
-    let tcx = infcx.tcx;
-    let gcx = tcx.global_tcx();
-    let def_id = tcx.hir().local_def_id_from_hir_id(ctor_id);
-    let param_env = gcx.param_env(def_id);
+pub fn build_adt_ctor<'gcx>(tcx: TyCtxt<'_, 'gcx, 'gcx>, ctor_id: DefId) -> &'gcx Body<'gcx> {
+    debug_assert!(tcx.is_constructor(ctor_id));
+
+    let span = tcx.hir().span_if_local(ctor_id)
+        .unwrap_or_else(|| bug!("no span for ctor {:?}", ctor_id));
+
+    let param_env = tcx.param_env(ctor_id);
 
     // Normalize the sig.
-    let sig = gcx.fn_sig(def_id)
+    let sig = tcx.fn_sig(ctor_id)
         .no_bound_vars()
         .expect("LBR in ADT constructor signature");
-    let sig = gcx.normalize_erasing_regions(param_env, sig);
+    let sig = tcx.normalize_erasing_regions(param_env, sig);
 
     let (adt_def, substs) = match sig.output().sty {
         ty::Adt(adt_def, substs) => (adt_def, substs),
         _ => bug!("unexpected type for ADT ctor {:?}", sig.output())
     };
 
-    debug!("build_ctor: def_id={:?} sig={:?} fields={:?}", def_id, sig, fields);
+    debug!("build_ctor: ctor_id={:?} sig={:?}", ctor_id, sig);
 
     let local_decls = local_decls_for_sig(&sig, span);
 
@@ -873,26 +870,37 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         scope: OUTERMOST_SOURCE_SCOPE
     };
 
-    let variant_no = if adt_def.is_enum() {
-        adt_def.variant_index_with_ctor_id(def_id)
+    let variant_index = if adt_def.is_enum() {
+        adt_def.variant_index_with_ctor_id(ctor_id)
     } else {
         VariantIdx::new(0)
     };
 
-    // return = ADT(arg0, arg1, ...); return
+    // Generate the following MIR:
+    //
+    // (return as Variant).field0 = arg0;
+    // (return as Variant).field1 = arg1;
+    //
+    // return;
+    debug!("build_ctor: variant_index={:?}", variant_index);
+
+    let statements = expand_aggregate(
+        Place::RETURN_PLACE,
+        adt_def
+            .variants[variant_index]
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(idx, field_def)| (
+                Operand::Move(Place::Base(PlaceBase::Local(Local::new(idx + 1)))),
+                field_def.ty(tcx, substs),
+            )),
+        AggregateKind::Adt(adt_def, variant_index, substs, None, None),
+        source_info,
+    ).collect();
+
     let start_block = BasicBlockData {
-        statements: vec![Statement {
-            source_info,
-            kind: StatementKind::Assign(
-                Place::RETURN_PLACE,
-                box Rvalue::Aggregate(
-                    box AggregateKind::Adt(adt_def, variant_no, substs, None, None),
-                    (1..sig.inputs().len()+1).map(|i| {
-                        Operand::Move(Place::Base(PlaceBase::Local(Local::new(i))))
-                    }).collect()
-                )
-            )
-        }],
+        statements,
         terminator: Some(Terminator {
             source_info,
             kind: TerminatorKind::Return,
@@ -900,7 +908,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         is_cleanup: false
     };
 
-    Body::new(
+    let body = Body::new(
         IndexVec::from_elem_n(start_block, 1),
         IndexVec::from_elem_n(
             SourceScopeData { span: span, parent_scope: None }, 1
@@ -914,5 +922,17 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         vec![],
         span,
         vec![],
-    )
+    );
+
+    crate::util::dump_mir(
+        tcx,
+        None,
+        "mir_map",
+        &0,
+        crate::transform::MirSource::item(ctor_id),
+        &body,
+        |_, _| Ok(()),
+    );
+
+    tcx.arena.alloc(body)
 }
