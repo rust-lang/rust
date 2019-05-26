@@ -38,7 +38,7 @@ impl Display for CheckInAllocMsg {
         write!(f, "{}", match *self {
             CheckInAllocMsg::MemoryAccessTest => "Memory access",
             CheckInAllocMsg::NullPointerTest => "Null pointer test",
-            CheckInAllocMsg::PointerArithmeticTest => "Pointer arithmetic test",
+            CheckInAllocMsg::PointerArithmeticTest => "Pointer arithmetic",
             CheckInAllocMsg::InboundsTest => "Inbounds test",
         })
     }
