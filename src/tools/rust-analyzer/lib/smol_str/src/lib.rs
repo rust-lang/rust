@@ -185,7 +185,7 @@ impl iter::FromIterator<char> for SmolStr {
 fn build_from_str_iter<T>(mut iter: impl Iterator<Item=T>) -> SmolStr
 where
     T: AsRef<str>,
-    std::string::String: std::iter::Extend<T>,
+    String: iter::Extend<T>,
 {
     let mut len = 0;
     let mut buf = [0u8; INLINE_CAP];
