@@ -247,16 +247,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         required_align: Align
     ) -> EvalResult<'tcx> {
         // Check non-NULL/Undef, extract offset
-        let (offset, alloc_align) = match ptr {
-            Scalar::Ptr(ptr) => {
+        let (offset, alloc_align) = match ptr.to_bits_or_ptr(self.pointer_size(), self) {
+            Err(ptr) => {
                 // check this is not NULL -- which we can ensure only if this is in-bounds
                 // of some (potentially dead) allocation.
                 let align = self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead)?;
                 (ptr.offset.bytes(), align)
             }
-            Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, self.pointer_size().bytes());
-                assert!(data < (1u128 << self.pointer_size().bits()));
+            Ok(data) => {
                 // check this is not NULL
                 if data == 0 {
                     return err!(InvalidNullPointerUsage);

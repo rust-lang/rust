@@ -232,7 +232,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
-    /// Returns this pointers offset from the allocation base, or from NULL (for
+    /// Returns this pointer's offset from the allocation base, or from NULL (for
     /// integer pointers).
     #[inline]
     pub fn get_ptr_offset(self, cx: &impl HasDataLayout) -> Size {
@@ -269,7 +269,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
         let i = i.into();
-        debug_assert_eq!(truncate(i, size), i,
+        assert_eq!(truncate(i, size), i,
                          "Unsigned value {} does not fit in {} bits", i, size.bits());
         Scalar::Raw { data: i, size: size.bytes() as u8 }
     }
@@ -279,7 +279,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         let i = i.into();
         // `into` performed sign extension, we have to truncate
         let truncated = truncate(i as u128, size);
-        debug_assert_eq!(sign_extend(truncated, size) as i128, i,
+        assert_eq!(sign_extend(truncated, size) as i128, i,
                          "Signed value {} does not fit in {} bits", i, size.bits());
         Scalar::Raw { data: truncated, size: size.bytes() as u8 }
     }
@@ -295,11 +295,34 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
+    pub fn to_bits_or_ptr(
+        self,
+        target_size: Size,
+        cx: &impl HasDataLayout,
+    ) -> Result<u128, Pointer<Tag>> {
+        match self {
+            Scalar::Raw { data, size } => {
+                assert_eq!(target_size.bytes(), size as u64);
+                assert_ne!(size, 0, "to_bits cannot be used with zsts");
+                assert_eq!(truncate(data, target_size), data,
+                            "Scalar value {:#x} exceeds size of {} bytes", data, size);
+                Ok(data)
+            }
+            Scalar::Ptr(ptr) => {
+                assert_eq!(target_size, cx.data_layout().pointer_size);
+                Err(ptr)
+            }
+        }
+    }
+
+    #[inline]
     pub fn to_bits(self, target_size: Size) -> EvalResult<'tcx, u128> {
         match self {
             Scalar::Raw { data, size } => {
                 assert_eq!(target_size.bytes(), size as u64);
                 assert_ne!(size, 0, "to_bits cannot be used with zsts");
+                assert_eq!(truncate(data, target_size), data,
+                            "Scalar value {:#x} exceeds size of {} bytes", data, size);
                 Ok(data)
             }
             Scalar::Ptr(_) => err!(ReadPointerAsBytes),
@@ -350,27 +373,23 @@ impl<'tcx, Tag> Scalar<Tag> {
     pub fn to_u8(self) -> EvalResult<'static, u8> {
         let sz = Size::from_bits(8);
         let b = self.to_bits(sz)?;
-        assert_eq!(b as u8 as u128, b);
         Ok(b as u8)
     }
 
     pub fn to_u32(self) -> EvalResult<'static, u32> {
         let sz = Size::from_bits(32);
         let b = self.to_bits(sz)?;
-        assert_eq!(b as u32 as u128, b);
         Ok(b as u32)
     }
 
     pub fn to_u64(self) -> EvalResult<'static, u64> {
         let sz = Size::from_bits(64);
         let b = self.to_bits(sz)?;
-        assert_eq!(b as u64 as u128, b);
         Ok(b as u64)
     }
 
     pub fn to_usize(self, cx: &impl HasDataLayout) -> EvalResult<'static, u64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
-        assert_eq!(b as u64 as u128, b);
         Ok(b as u64)
     }
 
@@ -378,7 +397,6 @@ impl<'tcx, Tag> Scalar<Tag> {
         let sz = Size::from_bits(8);
         let b = self.to_bits(sz)?;
         let b = sign_extend(b, sz) as i128;
-        assert_eq!(b as i8 as i128, b);
         Ok(b as i8)
     }
 
@@ -386,7 +404,6 @@ impl<'tcx, Tag> Scalar<Tag> {
         let sz = Size::from_bits(32);
         let b = self.to_bits(sz)?;
         let b = sign_extend(b, sz) as i128;
-        assert_eq!(b as i32 as i128, b);
         Ok(b as i32)
     }
 
@@ -394,14 +411,13 @@ impl<'tcx, Tag> Scalar<Tag> {
         let sz = Size::from_bits(64);
         let b = self.to_bits(sz)?;
         let b = sign_extend(b, sz) as i128;
-        assert_eq!(b as i64 as i128, b);
         Ok(b as i64)
     }
 
     pub fn to_isize(self, cx: &impl HasDataLayout) -> EvalResult<'static, i64> {
-        let b = self.to_bits(cx.data_layout().pointer_size)?;
-        let b = sign_extend(b, cx.data_layout().pointer_size) as i128;
-        assert_eq!(b as i64 as i128, b);
+        let sz = cx.data_layout().pointer_size;
+        let b = self.to_bits(sz)?;
+        let b = sign_extend(b, sz) as i128;
         Ok(b as i64)
     }
 

@@ -2,7 +2,6 @@
 
 use super::{
     Pointer, EvalResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
-    truncate,
 };
 
 use crate::ty::layout::{Size, Align};
@@ -382,18 +381,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             ScalarMaybeUndef::Undef => return self.mark_definedness(ptr, type_size, false),
         };
 
-        let bytes = match val {
-            Scalar::Ptr(val) => {
-                assert_eq!(type_size, cx.data_layout().pointer_size);
-                val.offset.bytes() as u128
-            }
-
-            Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, type_size.bytes());
-                debug_assert_eq!(truncate(data, Size::from_bytes(size.into())), data,
-                    "Unexpected value of size {} when writing to memory", size);
-                data
-            },
+        let bytes = match val.to_bits_or_ptr(type_size, cx) {
+            Err(val) => val.offset.bytes() as u128,
+            Ok(data) => data,
         };
 
         let endian = cx.data_layout().endian;

@@ -101,6 +101,5 @@ fn parse_float<'tcx>(
         }
     };
 
-    // We trust that `data` is properly truncated.
-    Ok(ConstValue::Scalar(Scalar::Raw { data, size }))
+    Ok(ConstValue::Scalar(Scalar::from_uint(data, Size::from_bytes(size))))
 }
