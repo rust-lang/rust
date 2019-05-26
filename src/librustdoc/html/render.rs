@@ -61,7 +61,7 @@ use rustc_data_structures::flock;
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, Mutability};
 use crate::config::RenderOptions;
-use crate::docfs::{DocFS, PathError};
+use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
 use crate::fold::DocFolder;
 use crate::html::escape::Escape;
@@ -104,7 +104,12 @@ impl error::Error for Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "\"{}\": {}", self.file.display(), self.error)
+        let file = self.file.display().to_string();
+        if file.is_empty() {
+            write!(f, "{}", self.error)
+        } else {
+            write!(f, "\"{}\": {}", self.file.display(), self.error)
+        }
     }
 }
 
@@ -547,6 +552,7 @@ pub fn run(mut krate: clean::Crate,
         },
         _ => PathBuf::new(),
     };
+    let errors = Arc::new(ErrorStorage::new());
     let mut scx = SharedContext {
         src_root,
         passes,
@@ -567,7 +573,7 @@ pub fn run(mut krate: clean::Crate,
         static_root_path,
         generate_search_filter,
         generate_redirect_pages,
-        fs: DocFS::new(),
+        fs: DocFS::new(&errors),
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -715,7 +721,15 @@ pub fn run(mut krate: clean::Crate,
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
 
     // And finally render the whole crate's documentation
-    cx.krate(krate)
+    let ret = cx.krate(krate);
+    let nb_errors = errors.write_errors(diag);
+    if ret.is_err() {
+        ret
+    } else if nb_errors > 0 {
+        Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
+    } else {
+        Ok(())
+    }
 }
 
 /// Builds the search index from the collected metadata

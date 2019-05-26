@@ -9,9 +9,14 @@
 //! needs to read-after-write from a file, then it would be added to this
 //! abstraction.
 
+use errors;
+
+use std::cell::RefCell;
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::sync::Arc;
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 macro_rules! try_err {
     ($e:expr, $file:expr) => {{
@@ -26,14 +31,45 @@ pub trait PathError {
     fn new<P: AsRef<Path>>(e: io::Error, path: P) -> Self;
 }
 
+pub struct ErrorStorage {
+    sender: Sender<Option<String>>,
+    receiver: Receiver<Option<String>>,
+}
+
+impl ErrorStorage {
+    pub fn new() -> ErrorStorage {
+        let (sender, receiver) = channel();
+        ErrorStorage {
+            sender,
+            receiver,
+        }
+    }
+
+    /// Prints all stored errors. Returns the number of printed errors.
+    pub fn write_errors(&self, diag: &errors::Handler) -> usize {
+        let mut printed = 0;
+        drop(self.sender);
+
+        for msg in self.receiver.iter() {
+            if let Some(ref error) = msg {
+                diag.struct_err(&error).emit();
+                printed += 1;
+            }
+        }
+        printed
+    }
+}
+
 pub struct DocFS {
     sync_only: bool,
+    errors: Arc<ErrorStorage>,
 }
 
 impl DocFS {
-    pub fn new() -> DocFS {
+    pub fn new(errors: &Arc<ErrorStorage>) -> DocFS {
         DocFS {
             sync_only: false,
+            errors: Arc::clone(errors),
         }
     }
 
@@ -59,16 +95,19 @@ impl DocFS {
             // be to create the file sync so errors are reported eagerly.
             let contents = contents.as_ref().to_vec();
             let path = path.as_ref().to_path_buf();
-            rayon::spawn(move ||
+            let sender = self.errors.sender.clone();
+            rayon::spawn(move || {
                 match fs::write(&path, &contents) {
-                    Ok(_) => (),
-                    Err(e) => {
-                        // In principle these should get displayed at the top
-                        // level, but just in case, send to stderr as well.
-                        eprintln!("\"{}\": {}", path.display(), e);
-                        panic!("\"{}\": {}", path.display(), e);
+                    Ok(_) => {
+                        sender.send(None)
+                            .expect(&format!("failed to send error on \"{}\"", path.display()));
                     }
-                });
+                    Err(e) => {
+                        sender.send(Some(format!("\"{}\": {}", path.display(), e)))
+                            .expect(&format!("failed to send non-error on \"{}\"", path.display()));
+                    }
+                }
+            });
             Ok(())
         } else {
             Ok(try_err!(fs::write(&path, contents), path))
