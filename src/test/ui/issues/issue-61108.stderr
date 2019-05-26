@@ -1,0 +1,17 @@
+error[E0382]: borrow of moved value: `bad_letters`
+  --> $DIR/issue-61108.rs:6:5
+   |
+LL |     let mut bad_letters = vec!['e', 't', 'o', 'i'];
+   |         --------------- move occurs because `bad_letters` has type `std::vec::Vec<char>`, which does not implement the `Copy` trait
+LL |     for l in bad_letters {
+   |              -----------
+   |              |
+   |              value moved here
+   |              help: consider borrowing to avoid moving into the for loop: `&bad_letters`
+...
+LL |     bad_letters.push('s');
+   |     ^^^^^^^^^^^ value borrowed here after move
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.
