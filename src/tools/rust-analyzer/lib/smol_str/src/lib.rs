@@ -187,8 +187,6 @@ where
     T: AsRef<str>,
     std::string::String: std::iter::Extend<T>,
 {
-    use std::io::prelude::*;
-
     let mut len = 0;
     let mut buf = [0u8; INLINE_CAP];
     while let Some(slice) = iter.next() {
@@ -201,7 +199,7 @@ where
             heap.extend(iter);
             return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
         }
-        (&mut buf[len..]).write_all(slice.as_bytes()).unwrap();
+        (&mut buf[len..len + size]).copy_from_slice(slice.as_bytes());
         len += size;
     }
     SmolStr(Repr::Inline { len: len as u8, buf })
