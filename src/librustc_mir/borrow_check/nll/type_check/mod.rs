@@ -501,28 +501,38 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             // FIXME use place_projection.is_empty() when is available
             if let Place::Base(_) = place {
                 if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-                    let tcx = self.tcx();
-                    let trait_ref = ty::TraitRef {
-                        def_id: tcx.lang_items().copy_trait().unwrap(),
-                        substs: tcx.mk_substs_trait(place_ty.ty, &[]),
+                    let is_promoted = match place {
+                        Place::Base(PlaceBase::Static(box Static {
+                            kind: StaticKind::Promoted(_),
+                            ..
+                        })) => true,
+                        _ => false,
                     };
 
-                    // In order to have a Copy operand, the type T of the
-                    // value must be Copy. Note that we prove that T: Copy,
-                    // rather than using the `is_copy_modulo_regions`
-                    // test. This is important because
-                    // `is_copy_modulo_regions` ignores the resulting region
-                    // obligations and assumes they pass. This can result in
-                    // bounds from Copy impls being unsoundly ignored (e.g.,
-                    // #29149). Note that we decide to use Copy before knowing
-                    // whether the bounds fully apply: in effect, the rule is
-                    // that if a value of some type could implement Copy, then
-                    // it must.
-                    self.cx.prove_trait_ref(
-                        trait_ref,
-                        location.to_locations(),
-                        ConstraintCategory::CopyBound,
-                    );
+                    if !is_promoted {
+                        let tcx = self.tcx();
+                        let trait_ref = ty::TraitRef {
+                            def_id: tcx.lang_items().copy_trait().unwrap(),
+                            substs: tcx.mk_substs_trait(place_ty.ty, &[]),
+                        };
+
+                        // In order to have a Copy operand, the type T of the
+                        // value must be Copy. Note that we prove that T: Copy,
+                        // rather than using the `is_copy_modulo_regions`
+                        // test. This is important because
+                        // `is_copy_modulo_regions` ignores the resulting region
+                        // obligations and assumes they pass. This can result in
+                        // bounds from Copy impls being unsoundly ignored (e.g.,
+                        // #29149). Note that we decide to use Copy before knowing
+                        // whether the bounds fully apply: in effect, the rule is
+                        // that if a value of some type could implement Copy, then
+                        // it must.
+                        self.cx.prove_trait_ref(
+                            trait_ref,
+                            location.to_locations(),
+                            ConstraintCategory::CopyBound,
+                        );
+                    }
                 }
             }
 
@@ -1953,18 +1963,32 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             Rvalue::Repeat(operand, len) => if *len > 1 {
-                let operand_ty = operand.ty(body, tcx);
-
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.lang_items().copy_trait().unwrap(),
-                    substs: tcx.mk_substs_trait(operand_ty, &[]),
-                };
-
-                self.prove_trait_ref(
-                    trait_ref,
-                    location.to_locations(),
-                    ConstraintCategory::CopyBound,
-                );
+                if let Operand::Move(_) = operand {
+                    // While this is located in `nll::typeck` this error is not an NLL error, it's
+                    // a required check to make sure that repeated elements implement `Copy`.
+                    let span = body.source_info(location).span;
+                    let ty = operand.ty(body, tcx);
+                    let is_copy = self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span);
+                    if !is_copy {
+                        let copy_path = self.tcx().def_path_str(
+                            self.tcx().lang_items().copy_trait().unwrap());
+                        self.tcx().sess
+                            .struct_span_err(
+                                span,
+                                &format!("repeated expression does not implement `{}`", copy_path),
+                            )
+                            .span_label(span, &format!(
+                                "the trait `{}` is not implemented for `{}`",
+                                copy_path, ty,
+                            ))
+                            .note(&format!(
+                                "the `{}` trait is required because the repeated element will be \
+                                 copied",
+                                 copy_path,
+                            ))
+                            .emit();
+                    }
+                }
             },
 
             Rvalue::NullaryOp(_, ty) => {

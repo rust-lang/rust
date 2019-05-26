@@ -15,5 +15,5 @@ impl Drop for Foo {
 fn main() {
     let a = Foo { x: 3 };
     let _ = [ a; 5 ];
-    //~^ ERROR `Foo: std::marker::Copy` is not satisfied
+    //~^ ERROR repeated expression does not implement `std::marker::Copy`
 }

@@ -488,7 +488,6 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::SizedArgumentType => Some(super::SizedArgumentType),
             super::SizedReturnType => Some(super::SizedReturnType),
             super::SizedYieldType => Some(super::SizedYieldType),
-            super::RepeatVec => Some(super::RepeatVec),
             super::FieldSized { adt_kind, last } => Some(super::FieldSized { adt_kind, last }),
             super::ConstSized => Some(super::ConstSized),
             super::SharedStatic => Some(super::SharedStatic),

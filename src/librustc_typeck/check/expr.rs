@@ -13,7 +13,6 @@ use crate::check::report_unexpected_variant_res;
 use crate::check::Needs;
 use crate::check::TupleArgumentsFlag::DontTupleArguments;
 use crate::check::method::SelfSource;
-use crate::middle::lang_items;
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 use crate::astconv::AstConv as _;
@@ -863,7 +862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         element: &'tcx hir::Expr,
         count: &'tcx hir::AnonConst,
         expected: Expectation<'tcx>,
-        expr: &'tcx hir::Expr,
+        _expr: &'tcx hir::Expr,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let count_def_id = tcx.hir().local_def_id(count.hir_id);
@@ -910,16 +909,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (element_ty, ty)
             }
         };
-
-        if let Ok(count) = count {
-            let zero_or_one = count.assert_usize(tcx).map_or(false, |count| count <= 1);
-            if !zero_or_one {
-                // For [foo, ..n] where n > 1, `foo` must have
-                // Copy type:
-                let lang_item = tcx.require_lang_item(lang_items::CopyTraitLangItem);
-                self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
-            }
-        }
 
         if element_ty.references_error() {
             tcx.types.err

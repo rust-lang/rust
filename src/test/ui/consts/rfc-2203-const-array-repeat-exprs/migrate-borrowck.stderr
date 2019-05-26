@@ -1,0 +1,18 @@
+error: repeated expression does not implement `std::marker::Copy`
+  --> $DIR/migrate-borrowck.rs:87:37
+   |
+LL |         let arr: [Option<Bar>; 2] = [x; 2];
+   |                                     ^^^^^^ the trait `std::marker::Copy` is not implemented for `std::option::Option<Bar>`
+   |
+   = note: the `std::marker::Copy` trait is required because the repeated element will be copied
+
+error: repeated expression does not implement `std::marker::Copy`
+  --> $DIR/migrate-borrowck.rs:103:37
+   |
+LL |         let arr: [Option<Bar>; 2] = [x; 2];
+   |                                     ^^^^^^ the trait `std::marker::Copy` is not implemented for `std::option::Option<Bar>`
+   |
+   = note: the `std::marker::Copy` trait is required because the repeated element will be copied
+
+error: aborting due to 2 previous errors
+
