@@ -109,12 +109,10 @@ impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Scalar<Tag, Id> {
             Scalar::Ptr(ptr) =>
                 write!(f, "{:?}", ptr),
             &Scalar::Raw { data, size } => {
+                Scalar::check_data(data, size);
                 if size == 0 {
-                    assert_eq!(data, 0, "ZST value must be 0");
                     write!(f, "<ZST>")
                 } else {
-                    assert_eq!(truncate(data, Size::from_bytes(size as u64)), data,
-                            "Scalar value {:#x} exceeds size of {} bytes", data, size);
                     // Format as hex number wide enough to fit any value of the given `size`.
                     // So data=20, size=1 will be "0x14", but with size=4 it'll be "0x00000014".
                     write!(f, "0x{:>0width$x}", data, width=(size*2) as usize)
@@ -134,6 +132,12 @@ impl<Tag> fmt::Display for Scalar<Tag> {
 }
 
 impl<'tcx> Scalar<()> {
+    #[inline(always)]
+    fn check_data(data: u128, size: u8) {
+        debug_assert_eq!(truncate(data, Size::from_bytes(size as u64)), data,
+                         "Scalar value {:#x} exceeds size of {} bytes", data, size);
+    }
+
     #[inline]
     pub fn with_tag<Tag>(self, new_tag: Tag) -> Scalar<Tag> {
         match self {
@@ -269,8 +273,10 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
         let i = i.into();
-        assert_eq!(truncate(i, size), i,
-                         "Unsigned value {} does not fit in {} bits", i, size.bits());
+        assert_eq!(
+            truncate(i, size), i,
+            "Unsigned value {:#x} does not fit in {} bits", i, size.bits()
+        );
         Scalar::Raw { data: i, size: size.bytes() as u8 }
     }
 
@@ -279,8 +285,10 @@ impl<'tcx, Tag> Scalar<Tag> {
         let i = i.into();
         // `into` performed sign extension, we have to truncate
         let truncated = truncate(i as u128, size);
-        assert_eq!(sign_extend(truncated, size) as i128, i,
-                         "Signed value {} does not fit in {} bits", i, size.bits());
+        assert_eq!(
+            sign_extend(truncated, size) as i128, i,
+            "Signed value {:#x} does not fit in {} bits", i, size.bits()
+        );
         Scalar::Raw { data: truncated, size: size.bytes() as u8 }
     }
 
@@ -303,9 +311,8 @@ impl<'tcx, Tag> Scalar<Tag> {
         match self {
             Scalar::Raw { data, size } => {
                 assert_eq!(target_size.bytes(), size as u64);
-                assert_ne!(size, 0, "to_bits cannot be used with zsts");
-                assert_eq!(truncate(data, target_size), data,
-                            "Scalar value {:#x} exceeds size of {} bytes", data, size);
+                assert_ne!(size, 0, "you should never look at the bits of a ZST");
+                Scalar::check_data(data, size);
                 Ok(data)
             }
             Scalar::Ptr(ptr) => {
@@ -320,9 +327,8 @@ impl<'tcx, Tag> Scalar<Tag> {
         match self {
             Scalar::Raw { data, size } => {
                 assert_eq!(target_size.bytes(), size as u64);
-                assert_ne!(size, 0, "to_bits cannot be used with zsts");
-                assert_eq!(truncate(data, target_size), data,
-                            "Scalar value {:#x} exceeds size of {} bytes", data, size);
+                assert_ne!(size, 0, "you should never look at the bits of a ZST");
+                Scalar::check_data(data, size);
                 Ok(data)
             }
             Scalar::Ptr(_) => err!(ReadPointerAsBytes),
