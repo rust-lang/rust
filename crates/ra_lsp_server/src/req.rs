@@ -129,7 +129,7 @@ pub struct PublishDecorationsParams {
 pub struct Decoration {
     pub range: Range,
     pub tag: &'static str,
-    pub id: Option<String>,
+    pub binding_hash: Option<String>,
 }
 
 pub enum ParentModule {}
