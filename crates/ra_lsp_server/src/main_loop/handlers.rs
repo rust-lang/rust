@@ -875,7 +875,7 @@ fn highlight(world: &ServerWorld, file_id: FileId) -> Result<Vec<Decoration>> {
         .map(|h| Decoration {
             range: h.range.conv_with(&line_index),
             tag: h.tag,
-            id: h.id.map(|x| x.to_string()),
+            id: h.binding_hash.map(|x| x.to_string()),
         })
         .collect();
     Ok(res)

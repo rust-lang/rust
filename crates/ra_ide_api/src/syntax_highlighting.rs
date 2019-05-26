@@ -85,13 +85,18 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         Some(SelfType(_)) => "type",
                         Some(Pat(ptr)) => {
                             binding_hash = Some({
-                                let text = ptr.syntax_node_ptr().to_node(&source_file.syntax()).text().to_smol_string();
-                                let shadow_count = bindings_shadow_count.entry(text.clone()).or_default();
+                                let text = ptr
+                                    .syntax_node_ptr()
+                                    .to_node(&source_file.syntax())
+                                    .text()
+                                    .to_smol_string();
+                                let shadow_count =
+                                    bindings_shadow_count.entry(text.clone()).or_default();
                                 calc_binding_hash(file_id, &text, *shadow_count)
                             });
 
                             "variable"
-                        },
+                        }
                         Some(SelfParam(_)) => "type",
                         Some(GenericParam(_)) => "type",
                         None => "text",
@@ -105,7 +110,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                     if name.syntax().ancestors().any(|x| ast::BindPat::cast(x).is_some()) {
                         binding_hash = Some({
                             let text = name.syntax().text().to_smol_string();
-                            let shadow_count = bindings_shadow_count.entry(text.clone()).or_insert(0);
+                            let shadow_count =
+                                bindings_shadow_count.entry(text.clone()).or_insert(0);
                             *shadow_count += 1;
                             calc_binding_hash(file_id, &text, *shadow_count)
                         });
@@ -161,7 +167,8 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     fn rainbowify(seed: u64) -> String {
         use rand::prelude::*;
         let mut rng = SmallRng::seed_from_u64(seed);
-        format!("hsl({h},{s}%,{l}%)",
+        format!(
+            "hsl({h},{s}%,{l}%)",
             h = rng.gen_range::<u16, _, _>(0, 361),
             s = rng.gen_range::<u16, _, _>(42, 99),
             l = rng.gen_range::<u16, _, _>(40, 91),
@@ -199,8 +206,12 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
             let classes = ranges.iter().map(|x| x.tag).collect::<Vec<_>>().join(" ");
             let binding_hash = ranges.first().and_then(|x| x.binding_hash);
             let color = match (rainbow, binding_hash) {
-                (true, Some(hash)) => format!(" data-binding-hash=\"{}\" style=\"color: {};\"", hash, rainbowify(hash)),
-                _ => "".into()
+                (true, Some(hash)) => format!(
+                    " data-binding-hash=\"{}\" style=\"color: {};\"",
+                    hash,
+                    rainbowify(hash)
+                ),
+                _ => "".into(),
             };
             buf.push_str(&format!("<span class=\"{}\"{}>{}</span>", classes, color, text));
         }
@@ -264,10 +275,11 @@ fn main() {
     }
     unsafe { vec.set_len(0); }
 }
-"#.trim(),
+"#
+            .trim(),
         );
         let dst_file = project_dir().join("crates/ra_ide_api/src/snapshots/highlighting.html");
-        let actual_html = &analysis.highlight_as_html(file_id).unwrap();
+        let actual_html = &analysis.highlight_as_html(file_id, true).unwrap();
         let expected_html = &read_text(&dst_file);
         std::fs::write(dst_file, &actual_html).unwrap();
         assert_eq_text!(expected_html, actual_html);
@@ -285,10 +297,12 @@ fn main() {
     let x = "other color please!";
     let y = x.to_string();
 }
-"#.trim(),
+"#
+            .trim(),
         );
-        let dst_file = project_dir().join("crates/ra_ide_api/src/snapshots/rainbow_highlighting.html");
-        let actual_html = &analysis.highlight_as_html(file_id).unwrap();
+        let dst_file =
+            project_dir().join("crates/ra_ide_api/src/snapshots/rainbow_highlighting.html");
+        let actual_html = &analysis.highlight_as_html(file_id, true).unwrap();
         let expected_html = &read_text(&dst_file);
         std::fs::write(dst_file, &actual_html).unwrap();
         assert_eq_text!(expected_html, actual_html);

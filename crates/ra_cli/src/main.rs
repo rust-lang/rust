@@ -18,7 +18,7 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("symbols"))
         .subcommand(
             SubCommand::with_name("highlight")
-                .arg(Arg::with_name("rainbow").short("r").long("rainbow"))
+                .arg(Arg::with_name("rainbow").short("r").long("rainbow")),
         )
         .subcommand(
             SubCommand::with_name("analysis-stats")
