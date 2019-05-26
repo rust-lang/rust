@@ -7,7 +7,7 @@ use rustc::mir::{
 use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::{self, Const, DefIdTree, Ty, TyS, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
-use syntax_pos::Span;
+use syntax_pos::{Span, CompilerDesugaringKind};
 use syntax_pos::symbol::kw;
 
 use crate::dataflow::move_paths::InitLocation;
@@ -41,14 +41,16 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         );
 
         let mut err;
-        let mut item_msg;
         let reason;
         let access_place_desc = self.describe_place(access_place);
         debug!("report_mutability_error: access_place_desc={:?}", access_place_desc);
 
-        item_msg = match &access_place_desc {
-            Some(desc) => format!("`{}`", desc),
-            None => "temporary place".to_string(),
+        let mut item_msg = match (&access_place_desc, &the_place_err) {
+            (Some(desc), _) => format!("`{}`", desc),
+            (None, Place::Base(PlaceBase::Local(local))) if self.mir.local_decls[*local]
+                .source_info.span.is_compiler_desugaring(CompilerDesugaringKind::Async)
+            => "async `fn` parameter".to_string(),
+            (None, _) => "temporary place".to_string(),
         };
         match the_place_err {
             Place::Base(PlaceBase::Local(local)) => {
