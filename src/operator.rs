@@ -141,7 +141,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
     ) -> EvalResult<'tcx, bool> {
         let size = self.pointer_size();
         Ok(match (left, right) {
-            (Scalar::Bits { .. }, Scalar::Bits { .. }) =>
+            (Scalar::Raw { .. }, Scalar::Raw { .. }) =>
                 left.to_bits(size)? == right.to_bits(size)?,
             (Scalar::Ptr(left), Scalar::Ptr(right)) => {
                 // Comparison illegal if one of them is out-of-bounds, *unless* they
@@ -165,10 +165,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 }
             }
             // Comparing ptr and integer.
-            (Scalar::Ptr(ptr), Scalar::Bits { bits, size }) |
-            (Scalar::Bits { bits, size }, Scalar::Ptr(ptr)) => {
+            (Scalar::Ptr(ptr), Scalar::Raw { data, size }) |
+            (Scalar::Raw { data, size }, Scalar::Ptr(ptr)) => {
                 assert_eq!(size as u64, self.pointer_size().bytes());
-                let bits = bits as u64;
+                let bits = data as u64;
 
                 // Case I: Comparing real pointers with "small" integers.
                 // Really we should only do this for NULL, but pragmatically speaking on non-bare-metal systems,
@@ -262,7 +262,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     // Truncate (shift left to drop out leftover values, shift right to fill with zeroes).
                     (value << shift) >> shift
                 };
-                let ptr_size = self.memory().pointer_size().bytes() as u8;
+                let ptr_size = self.memory().pointer_size();
                 trace!("ptr BitAnd, align {}, operand {:#010x}, base_mask {:#010x}",
                     ptr_base_align, right, base_mask);
                 if right & base_mask == base_mask {
@@ -278,7 +278,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     )
                 } else if right & base_mask == 0 {
                     // Case 2: the base address bits are all taken away, i.e., right is all-0 there.
-                    (Scalar::Bits { bits: (left.offset.bytes() as u128) & right, size: ptr_size }, false)
+                    let v = Scalar::from_uint((left.offset.bytes() as u128) & right, ptr_size);
+                    (v, false)
                 } else {
                     return err!(ReadPointerAsBytes);
                 }
@@ -289,18 +290,15 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 // (Intuition: modulo a divisor leaks less information.)
                 let ptr_base_align = self.memory().get(left.alloc_id)?.align.bytes();
                 let right = right as u64;
-                let ptr_size = self.memory().pointer_size().bytes() as u8;
+                let ptr_size = self.memory().pointer_size();
                 if right == 1 {
                     // Modulo 1 is always 0.
-                    (Scalar::Bits { bits: 0, size: ptr_size }, false)
+                    (Scalar::from_uint(0u32, ptr_size), false)
                 } else if ptr_base_align % right == 0 {
                     // The base address would be cancelled out by the modulo operation, so we can
                     // just take the modulo of the offset.
                     (
-                        Scalar::Bits {
-                            bits: (left.offset.bytes() % right) as u128,
-                            size: ptr_size
-                        },
+                        Scalar::from_uint((left.offset.bytes() % right) as u128, ptr_size),
                         false,
                     )
                 } else {
