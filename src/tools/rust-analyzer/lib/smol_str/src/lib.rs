@@ -199,7 +199,7 @@ where
             heap.extend(iter);
             return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
         }
-        (&mut buf[len..len + size]).copy_from_slice(slice.as_bytes());
+        (&mut buf[len..][..size]).copy_from_slice(slice.as_bytes());
         len += size;
     }
     SmolStr(Repr::Inline { len: len as u8, buf })
