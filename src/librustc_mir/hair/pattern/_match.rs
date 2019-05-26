@@ -228,7 +228,7 @@ impl LiteralExpander<'tcx> {
                 ConstValue::Slice {
                     data: self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id),
                     start: p.offset.bytes().try_into().unwrap(),
-                    end: n.eval_usize(self.tcx, ty::ParamEnv::reveal_all()).try_into().unwrap(),
+                    end: n.eval_usize(self.tcx, ty::ParamEnv::empty()).try_into().unwrap(),
                 }
             },
             // fat pointers stay the same
