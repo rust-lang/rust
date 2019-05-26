@@ -488,11 +488,9 @@ pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
         },
         ConstValue::Slice { data, start, end } => match result.ty.sty {
             ty::Ref(_, tam, _) => match tam.sty {
-                ty::Str => {
-                    String::from_utf8(data.bytes[start..end].to_owned())
-                        .ok()
-                        .map(Constant::Str)
-                },
+                ty::Str => String::from_utf8(data.bytes[start..end].to_owned())
+                    .ok()
+                    .map(Constant::Str),
                 _ => None,
             },
             _ => None,
