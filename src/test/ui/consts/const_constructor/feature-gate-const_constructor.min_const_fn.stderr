@@ -1,0 +1,34 @@
+error: `std::prelude::v1::Some` is not yet stable as a const fn
+  --> $DIR/feature-gate-const_constructor.rs:9:37
+   |
+LL | const EXTERNAL_CONST: Option<i32> = {Some}(1);
+   |                                     ^^^^^^^^^
+   |
+   = help: add `#![feature(const_constructor)]` to the crate attributes to enable
+
+error: `E::V` is not yet stable as a const fn
+  --> $DIR/feature-gate-const_constructor.rs:12:24
+   |
+LL | const LOCAL_CONST: E = {E::V}(1);
+   |                        ^^^^^^^^^
+   |
+   = help: add `#![feature(const_constructor)]` to the crate attributes to enable
+
+error: `std::prelude::v1::Some` is not yet stable as a const fn
+  --> $DIR/feature-gate-const_constructor.rs:17:13
+   |
+LL |     let _ = {Some}(1);
+   |             ^^^^^^^^^
+   |
+   = help: add `#![feature(const_constructor)]` to the crate attributes to enable
+
+error: `E::V` is not yet stable as a const fn
+  --> $DIR/feature-gate-const_constructor.rs:23:13
+   |
+LL |     let _ = {E::V}(1);
+   |             ^^^^^^^^^
+   |
+   = help: add `#![feature(const_constructor)]` to the crate attributes to enable
+
+error: aborting due to 4 previous errors
+
