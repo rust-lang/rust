@@ -11,7 +11,6 @@ use rustc::{bug, span_bug};
 use rustc_data_structures::sync::Lrc;
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
-use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{FloatTy, LitKind};
@@ -341,7 +340,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 };
 
                 let result = self.lcx.tcx.const_eval(self.param_env.and(gid)).ok()?;
-                let result = miri_to_const(self.lcx.tcx, &result);
+                let result = miri_to_const(&result);
                 if result.is_some() {
                     self.needed_resolution = true;
                 }
@@ -466,7 +465,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     }
 }
 
-pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'tcx>) -> Option<Constant> {
+pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
     use rustc::mir::interpret::{ConstValue, Scalar};
     match result.val {
         ConstValue::Scalar(Scalar::Bits { bits: b, .. }) => match result.ty.sty {
@@ -487,16 +486,11 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
             // FIXME: implement other conversions.
             _ => None,
         },
-        ConstValue::Slice(Scalar::Ptr(ptr), n) => match result.ty.sty {
+        ConstValue::Slice { data, start, end } => match result.ty.sty {
             ty::Ref(_, tam, _) => match tam.sty {
-                ty::Str => {
-                    let alloc = tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                    let offset = ptr.offset.bytes().try_into().expect("too-large pointer offset");
-                    let n = usize::try_from(n).unwrap();
-                    String::from_utf8(alloc.bytes[offset..(offset + n)].to_owned())
-                        .ok()
-                        .map(Constant::Str)
-                },
+                ty::Str => String::from_utf8(data.bytes[start..end].to_owned())
+                    .ok()
+                    .map(Constant::Str),
                 _ => None,
             },
             _ => None,
