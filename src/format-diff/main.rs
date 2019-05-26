@@ -7,7 +7,6 @@
 use env_logger;
 #[macro_use]
 extern crate failure;
-use getopts;
 #[macro_use]
 extern crate log;
 use regex;
@@ -16,9 +15,12 @@ use serde_json as json;
 
 use std::collections::HashSet;
 use std::io::{self, BufRead};
-use std::{env, process};
+use std::process;
 
 use regex::Regex;
+
+use structopt::clap::AppSettings;
+use structopt::StructOpt;
 
 /// The default pattern of files to format.
 ///
@@ -53,26 +55,40 @@ impl From<io::Error> for FormatDiffError {
     }
 }
 
+#[derive(StructOpt, Debug)]
+#[structopt(
+    name = "rustfmt-format-diff",
+    author = "",
+    about = "",
+    raw(setting = "AppSettings::DisableVersion"),
+    raw(setting = "AppSettings::NextLineHelp")
+)]
+pub struct Opts {
+    /// Skip the smallest prefix containing NUMBER slashes
+    #[structopt(
+        short = "p",
+        long = "skip-prefix",
+        value_name = "NUMBER",
+        default_value = "0"
+    )]
+    skip_prefix: u32,
+
+    /// Custom pattern selecting file paths to reformat
+    #[structopt(
+        short = "f",
+        long = "filter",
+        value_name = "PATTERN",
+        raw(default_value = "DEFAULT_PATTERN")
+    )]
+    filter: String,
+}
+
 fn main() {
     env_logger::init();
-
-    let mut opts = getopts::Options::new();
-    opts.optflag("h", "help", "show this message");
-    opts.optopt(
-        "p",
-        "skip-prefix",
-        "skip the smallest prefix containing NUMBER slashes",
-        "NUMBER",
-    );
-    opts.optopt(
-        "f",
-        "filter",
-        "custom pattern selecting file paths to reformat",
-        "PATTERN",
-    );
-
-    if let Err(e) = run(&opts) {
-        println!("{}", opts.usage(&e.to_string()));
+    let opts = Opts::from_args();
+    if let Err(e) = run(opts) {
+        println!("{}", e);
+        Opts::clap().print_help().expect("cannot write to stdout");
         process::exit(1);
     }
 }
@@ -83,25 +99,8 @@ struct Range {
     range: [u32; 2],
 }
 
-fn run(opts: &getopts::Options) -> Result<(), FormatDiffError> {
-    let matches = opts.parse(env::args().skip(1))?;
-
-    if matches.opt_present("h") {
-        println!("{}", opts.usage("usage: "));
-        return Ok(());
-    }
-
-    let filter = matches
-        .opt_str("f")
-        .unwrap_or_else(|| DEFAULT_PATTERN.to_owned());
-
-    let skip_prefix = matches
-        .opt_str("p")
-        .and_then(|p| p.parse::<u32>().ok())
-        .unwrap_or(0);
-
-    let (files, ranges) = scan_diff(io::stdin(), skip_prefix, &filter)?;
-
+fn run(opts: Opts) -> Result<(), FormatDiffError> {
+    let (files, ranges) = scan_diff(io::stdin(), opts.skip_prefix, &opts.filter)?;
     run_rustfmt(&files, &ranges)
 }
 
@@ -237,4 +236,61 @@ fn scan_simple_git_diff() {
             },
         ]
     );
+}
+
+#[cfg(test)]
+mod cmd_line_tests {
+    use super::*;
+
+    #[test]
+    fn default_options() {
+        let empty: Vec<String> = vec![];
+        let o = Opts::from_iter(&empty);
+        assert_eq!(DEFAULT_PATTERN, o.filter);
+        assert_eq!(0, o.skip_prefix);
+    }
+
+    #[test]
+    fn good_options() {
+        let o = Opts::from_iter(&["test", "-p", "10", "-f", r".*\.hs"]);
+        assert_eq!(r".*\.hs", o.filter);
+        assert_eq!(10, o.skip_prefix);
+    }
+
+    #[test]
+    fn unexpected_option() {
+        assert!(
+            Opts::clap()
+                .get_matches_from_safe(&["test", "unexpected"])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn unexpected_flag() {
+        assert!(
+            Opts::clap()
+                .get_matches_from_safe(&["test", "--flag"])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn overridden_option() {
+        assert!(
+            Opts::clap()
+                .get_matches_from_safe(&["test", "-p", "10", "-p", "20"])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn negative_filter() {
+        assert!(
+            Opts::clap()
+                .get_matches_from_safe(&["test", "-p", "-1"])
+                .is_err()
+        );
+    }
+
 }
