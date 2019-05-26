@@ -27,7 +27,7 @@ pub trait PermissionsExt {
     ///     let metadata = f.metadata()?;
     ///     let permissions = metadata.permissions();
     ///
-    ///     println!("permissions: {}", permissions.mode());
+    ///     println!("permissions: {:o}", permissions.mode());
     ///     Ok(())
     /// }
     /// ```
