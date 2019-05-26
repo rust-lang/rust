@@ -1154,6 +1154,45 @@ pub(crate) fn format_trait(
     }
 }
 
+pub(crate) struct TraitAliasBounds<'a> {
+    generic_bounds: &'a ast::GenericBounds,
+    generics: &'a ast::Generics,
+}
+
+impl<'a> Rewrite for TraitAliasBounds<'a> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        let generic_bounds_str = self.generic_bounds.rewrite(context, shape)?;
+
+        let mut option = WhereClauseOption::new(true, WhereClauseSpace::None);
+        option.allow_single_line();
+
+        let where_str = rewrite_where_clause(
+            context,
+            &self.generics.where_clause,
+            context.config.brace_style(),
+            shape,
+            Density::Compressed,
+            ";",
+            None,
+            self.generics.where_clause.span.lo(),
+            option,
+        )?;
+
+        let fits_single_line = !generic_bounds_str.contains('\n')
+            && !where_str.contains('\n')
+            && generic_bounds_str.len() + where_str.len() + 1 <= shape.width;
+        let space = if generic_bounds_str.is_empty() || where_str.is_empty() {
+            Cow::from("")
+        } else if fits_single_line {
+            Cow::from(" ")
+        } else {
+            shape.indent.to_string_with_newline(&context.config)
+        };
+
+        Some(format!("{}{}{}", generic_bounds_str, space, where_str))
+    }
+}
+
 pub(crate) fn format_trait_alias(
     context: &RewriteContext<'_>,
     ident: ast::Ident,
@@ -1169,7 +1208,11 @@ pub(crate) fn format_trait_alias(
     let vis_str = format_visibility(context, vis);
     let lhs = format!("{}trait {} =", vis_str, generics_str);
     // 1 = ";"
-    rewrite_assign_rhs(context, lhs, generic_bounds, shape.sub_width(1)?).map(|s| s + ";")
+    let trait_alias_bounds = TraitAliasBounds {
+        generics,
+        generic_bounds,
+    };
+    rewrite_assign_rhs(context, lhs, &trait_alias_bounds, shape.sub_width(1)?).map(|s| s + ";")
 }
 
 fn format_unit_struct(
