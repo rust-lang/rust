@@ -41,7 +41,7 @@ object = "0.11.0"
 cranelift-simplejit = { git = "https://github.com/CraneStation/cranelift.git" }
 
 [patch.crates-io]
-faerie = { git = "https://github.com/m4b/faerie.git", rev = "dcb671a99faa32b72fac88d2406e952a41844636" }
+faerie = { git = "https://github.com/bjorn3/faerie.git", branch = "macho_section_symbols" }
 
 [profile.dev.overrides."*"]
 opt-level = 3

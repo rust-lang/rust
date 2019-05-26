@@ -171,7 +171,7 @@ source = "git+https://github.com/CraneStation/cranelift.git#f3f7cadd0157d06089c9
 dependencies = [
  "cranelift-codegen 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
- "faerie 0.10.0 (git+https://github.com/m4b/faerie.git?rev=dcb671a99faa32b72fac88d2406e952a41844636)",
+ "faerie 0.10.0 (git+https://github.com/bjorn3/faerie.git?branch=macho_section_symbols)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "target-lexicon 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -273,7 +273,7 @@ dependencies = [
 [[package]]
 name = "faerie"
 version = "0.10.0"
-source = "git+https://github.com/m4b/faerie.git?rev=dcb671a99faa32b72fac88d2406e952a41844636#dcb671a99faa32b72fac88d2406e952a41844636"
+source = "git+https://github.com/bjorn3/faerie.git?branch=macho_section_symbols#c08282ee1296abda4f815d5ef8582fc7785b0b3b"
 dependencies = [
  "env_logger 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -688,7 +688,7 @@ dependencies = [
  "cranelift-faerie 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-simplejit 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
- "faerie 0.10.0 (git+https://github.com/m4b/faerie.git?rev=dcb671a99faa32b72fac88d2406e952a41844636)",
+ "faerie 0.10.0 (git+https://github.com/bjorn3/faerie.git?branch=macho_section_symbols)",
  "gimli 0.18.0 (git+https://github.com/gimli-rs/gimli.git)",
  "indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.58 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -977,7 +977,7 @@ dependencies = [
 "checksum env_logger 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b61fa891024a945da30a9581546e8cfaf5602c7b3f4c137a2805cf388f92075a"
 "checksum errno 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "c2a071601ed01b988f896ab14b95e67335d1eeb50190932a1320f7fe3cadc84e"
 "checksum errno-dragonfly 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "14ca354e36190500e1e1fb267c647932382b54053c50b14970856c0b00a35067"
-"checksum faerie 0.10.0 (git+https://github.com/m4b/faerie.git?rev=dcb671a99faa32b72fac88d2406e952a41844636)" = "<none>"
+"checksum faerie 0.10.0 (git+https://github.com/bjorn3/faerie.git?branch=macho_section_symbols)" = "<none>"
 "checksum failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "795bd83d3abeb9220f257e597aa0080a508b27533824adf336529648f6abf7e2"
 "checksum failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "ea1063915fd7ef4309e222a5a07cf9c319fb9c7836b1f89b85458672dbb127e1"
 "checksum fallible-iterator 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
