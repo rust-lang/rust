@@ -95,81 +95,86 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                      -> Result<MovePathIndex, MoveError<'tcx>>
     {
         debug!("lookup({:?})", place);
-        match *place {
-            Place::Base(PlaceBase::Local(local)) => Ok(self.builder.data.rev_lookup.locals[local]),
-            Place::Base(PlaceBase::Static(..)) => {
-                Err(MoveError::cannot_move_out_of(self.loc, Static))
+        place.iterate(|place_base, place_projection| {
+            let mut base = match place_base {
+                PlaceBase::Local(local) => self.builder.data.rev_lookup.locals[*local],
+                PlaceBase::Static(..) => {
+                    return Err(MoveError::cannot_move_out_of(self.loc, Static));
+                }
+            };
+
+            for proj in place_projection {
+                let mir = self.builder.mir;
+                let tcx = self.builder.tcx;
+                let place_ty = proj.base.ty(mir, tcx).ty;
+                match place_ty.sty {
+                    ty::Ref(..) | ty::RawPtr(..) =>
+                        return Err(MoveError::cannot_move_out_of(
+                            self.loc,
+                            BorrowedContent {
+                                target_place: Place::Projection(Box::new(proj.clone())),
+                            })),
+                    ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
+                        return Err(MoveError::cannot_move_out_of(self.loc,
+                                                                 InteriorOfTypeWithDestructor {
+                            container_ty: place_ty
+                        })),
+                    // move out of union - always move the entire union
+                    ty::Adt(adt, _) if adt.is_union() =>
+                        return Err(MoveError::UnionMove { path: base }),
+                    ty::Slice(_) =>
+                        return Err(MoveError::cannot_move_out_of(
+                            self.loc,
+                            InteriorOfSliceOrArray {
+                                ty: place_ty, is_index: match proj.elem {
+                                    ProjectionElem::Index(..) => true,
+                                    _ => false
+                                },
+                            })),
+                    ty::Array(..) => match proj.elem {
+                        ProjectionElem::Index(..) =>
+                            return Err(MoveError::cannot_move_out_of(
+                                self.loc,
+                                InteriorOfSliceOrArray {
+                                    ty: place_ty, is_index: true
+                                })),
+                        _ => {
+                            // FIXME: still badly broken
+                        }
+                    },
+                    _ => {}
+                };
+
+                base = match self
+                    .builder
+                    .data
+                    .rev_lookup
+                    .projections
+                    .entry((base, proj.elem.lift()))
+                {
+                    Entry::Occupied(ent) => *ent.get(),
+                    Entry::Vacant(ent) => {
+                        let path = MoveDataBuilder::new_move_path(
+                            &mut self.builder.data.move_paths,
+                            &mut self.builder.data.path_map,
+                            &mut self.builder.data.init_path_map,
+                            Some(base),
+                            Place::Projection(Box::new(proj.clone())),
+                        );
+                        ent.insert(path);
+                        path
+                    }
+                };
             }
-            Place::Projection(ref proj) => {
-                self.move_path_for_projection(place, proj)
-            }
-        }
+
+            Ok(base)
+        })
     }
 
     fn create_move_path(&mut self, place: &Place<'tcx>) {
         // This is an non-moving access (such as an overwrite or
         // drop), so this not being a valid move path is OK.
         let _ = self.move_path_for(place);
-    }
-
-    fn move_path_for_projection(&mut self,
-                                place: &Place<'tcx>,
-                                proj: &Projection<'tcx>)
-                                -> Result<MovePathIndex, MoveError<'tcx>>
-    {
-        let base = self.move_path_for(&proj.base)?;
-        let mir = self.builder.mir;
-        let tcx = self.builder.tcx;
-        let place_ty = proj.base.ty(mir, tcx).ty;
-        match place_ty.sty {
-            ty::Ref(..) | ty::RawPtr(..) =>
-                return Err(MoveError::cannot_move_out_of(
-                    self.loc,
-                    BorrowedContent { target_place: place.clone() })),
-            ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
-                return Err(MoveError::cannot_move_out_of(self.loc,
-                                                         InteriorOfTypeWithDestructor {
-                    container_ty: place_ty
-                })),
-            // move out of union - always move the entire union
-            ty::Adt(adt, _) if adt.is_union() =>
-                return Err(MoveError::UnionMove { path: base }),
-            ty::Slice(_) =>
-                return Err(MoveError::cannot_move_out_of(
-                    self.loc,
-                    InteriorOfSliceOrArray {
-                        ty: place_ty, is_index: match proj.elem {
-                            ProjectionElem::Index(..) => true,
-                            _ => false
-                        },
-                    })),
-            ty::Array(..) => match proj.elem {
-                ProjectionElem::Index(..) =>
-                    return Err(MoveError::cannot_move_out_of(
-                        self.loc,
-                        InteriorOfSliceOrArray {
-                            ty: place_ty, is_index: true
-                        })),
-                _ => {
-                    // FIXME: still badly broken
-                }
-            },
-            _ => {}
-        };
-        match self.builder.data.rev_lookup.projections.entry((base, proj.elem.lift())) {
-            Entry::Occupied(ent) => Ok(*ent.get()),
-            Entry::Vacant(ent) => {
-                let path = MoveDataBuilder::new_move_path(
-                    &mut self.builder.data.move_paths,
-                    &mut self.builder.data.path_map,
-                    &mut self.builder.data.init_path_map,
-                    Some(base),
-                    place.clone()
-                );
-                ent.insert(path);
-                Ok(path)
-            }
-        }
     }
 }
 

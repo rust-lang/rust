@@ -202,7 +202,7 @@ mod bar {
 Now we'll have a `Re-exports` line, and `Bar` will not link to anywhere.
 
 One special case: In Rust 2018 and later, if you `pub use` one of your dependencies, `rustdoc` will
-not eagerly inline it as a module unless you add `#[doc(inline)}`.
+not eagerly inline it as a module unless you add `#[doc(inline)]`.
 
 ## `#[doc(hidden)]`
 
