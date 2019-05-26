@@ -12,6 +12,7 @@ rustc-hash = "1.0"
 parking_lot = "0.7.0"
 ena = "0.11"
 join_to_string = "0.1.3"
+either = "1.5.2"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_arena = { path = "../ra_arena" }
