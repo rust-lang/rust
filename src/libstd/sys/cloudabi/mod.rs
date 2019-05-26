@@ -4,8 +4,6 @@ use crate::mem;
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
 pub mod args;
-#[cfg(feature = "backtrace")]
-pub mod backtrace;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
 pub mod condvar;

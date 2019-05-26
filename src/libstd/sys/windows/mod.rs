@@ -14,13 +14,9 @@ pub use self::rand::hashmap_random_keys;
 
 pub mod alloc;
 pub mod args;
-#[cfg(feature = "backtrace")]
-pub mod backtrace;
 pub mod c;
 pub mod cmath;
 pub mod condvar;
-#[cfg(feature = "backtrace")]
-pub mod dynamic_lib;
 pub mod env;
 pub mod ext;
 pub mod fast_thread_local;

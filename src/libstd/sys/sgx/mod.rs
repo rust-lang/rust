@@ -12,8 +12,6 @@ mod waitqueue;
 
 pub mod alloc;
 pub mod args;
-#[cfg(feature = "backtrace")]
-pub mod backtrace;
 pub mod cmath;
 pub mod condvar;
 pub mod env;

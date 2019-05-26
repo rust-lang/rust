@@ -77,12 +77,6 @@ cfg_if! {
     }
 }
 
-#[cfg(feature = "backtrace")]
-#[cfg(any(all(unix, not(target_os = "emscripten")),
-          all(windows, target_env = "gnu"),
-          target_os = "redox"))]
-pub mod gnu;
-
 // common error constructors
 
 /// A trait for viewing representations from std types

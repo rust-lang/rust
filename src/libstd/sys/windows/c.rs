@@ -5,8 +5,6 @@
 #![unstable(issue = "0", feature = "windows_c")]
 
 use crate::os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort, c_char};
-#[cfg(target_arch = "x86_64")]
-use crate::os::raw::c_ulonglong;
 use crate::ptr;
 
 use libc::{wchar_t, size_t, c_void};
@@ -33,10 +31,6 @@ pub type WORD = u16;
 pub type CHAR = c_char;
 pub type ULONG_PTR = usize;
 pub type ULONG = c_ulong;
-#[cfg(target_arch = "x86_64")]
-pub type ULONGLONG = u64;
-#[cfg(target_arch = "x86_64")]
-pub type DWORDLONG = ULONGLONG;
 
 pub type LPBOOL = *mut BOOL;
 pub type LPBYTE = *mut BYTE;
@@ -107,11 +101,6 @@ pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
 pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
 pub const FIONBIO: c_ulong = 0x8004667e;
-
-#[cfg(target_arch = "arm")]
-const ARM_MAX_BREAKPOINTS: usize = 8;
-#[cfg(target_arch = "arm")]
-const ARM_MAX_WATCHPOINTS: usize = 1;
 
 #[repr(C)]
 #[derive(Copy)]
@@ -269,22 +258,6 @@ pub const FILE_END: DWORD = 2;
 pub const WAIT_OBJECT_0: DWORD = 0x00000000;
 pub const WAIT_TIMEOUT: DWORD = 258;
 pub const WAIT_FAILED: DWORD = 0xFFFFFFFF;
-
-#[cfg(target_env = "msvc")]
-#[cfg(feature = "backtrace")]
-pub const MAX_SYM_NAME: usize = 2000;
-#[cfg(target_arch = "x86")]
-#[cfg(feature = "backtrace")]
-pub const IMAGE_FILE_MACHINE_I386: DWORD = 0x014c;
-#[cfg(target_arch = "x86_64")]
-#[cfg(feature = "backtrace")]
-pub const IMAGE_FILE_MACHINE_AMD64: DWORD = 0x8664;
-#[cfg(target_arch = "aarch64")]
-#[cfg(feature = "backtrace")]
-pub const IMAGE_FILE_MACHINE_ARM64: DWORD = 0xAA64;
-#[cfg(target_arch = "arm")]
-#[cfg(feature = "backtrace")]
-pub const IMAGE_FILE_MACHINE_ARMNT: DWORD = 0x01c4;
 
 pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
 pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
@@ -581,41 +554,6 @@ pub struct OVERLAPPED {
 }
 
 #[repr(C)]
-#[cfg(target_env = "msvc")]
-#[cfg(feature = "backtrace")]
-pub struct SYMBOL_INFO {
-    pub SizeOfStruct: c_ulong,
-    pub TypeIndex: c_ulong,
-    pub Reserved: [u64; 2],
-    pub Index: c_ulong,
-    pub Size: c_ulong,
-    pub ModBase: u64,
-    pub Flags: c_ulong,
-    pub Value: u64,
-    pub Address: u64,
-    pub Register: c_ulong,
-    pub Scope: c_ulong,
-    pub Tag: c_ulong,
-    pub NameLen: c_ulong,
-    pub MaxNameLen: c_ulong,
-    // note that windows has this as 1, but it basically just means that
-    // the name is inline at the end of the struct. For us, we just bump
-    // the struct size up to MAX_SYM_NAME.
-    pub Name: [c_char; MAX_SYM_NAME],
-}
-
-#[repr(C)]
-#[cfg(target_env = "msvc")]
-#[cfg(feature = "backtrace")]
-pub struct IMAGEHLP_LINE64 {
-    pub SizeOfStruct: u32,
-    pub Key: *const c_void,
-    pub LineNumber: u32,
-    pub Filename: *const c_char,
-    pub Address: u64,
-}
-
-#[repr(C)]
 #[allow(dead_code)] // we only use some variants
 pub enum ADDRESS_MODE {
     AddrMode1616,
@@ -624,279 +562,7 @@ pub enum ADDRESS_MODE {
     AddrModeFlat,
 }
 
-#[repr(C)]
-#[cfg(feature = "backtrace")]
-pub struct ADDRESS64 {
-    pub Offset: u64,
-    pub Segment: u16,
-    pub Mode: ADDRESS_MODE,
-}
-
-#[repr(C)]
-#[cfg(feature = "backtrace")]
-pub struct STACKFRAME_EX {
-    pub AddrPC: ADDRESS64,
-    pub AddrReturn: ADDRESS64,
-    pub AddrFrame: ADDRESS64,
-    pub AddrStack: ADDRESS64,
-    pub AddrBStore: ADDRESS64,
-    pub FuncTableEntry: *mut c_void,
-    pub Params: [u64; 4],
-    pub Far: BOOL,
-    pub Virtual: BOOL,
-    pub Reserved: [u64; 3],
-    pub KdHelp: KDHELP64,
-    pub StackFrameSize: DWORD,
-    pub InlineFrameContext: DWORD,
-}
-
-#[repr(C)]
-#[cfg(feature = "backtrace")]
-pub struct STACKFRAME64 {
-    pub AddrPC: ADDRESS64,
-    pub AddrReturn: ADDRESS64,
-    pub AddrFrame: ADDRESS64,
-    pub AddrStack: ADDRESS64,
-    pub AddrBStore: ADDRESS64,
-    pub FuncTableEntry: *mut c_void,
-    pub Params: [u64; 4],
-    pub Far: BOOL,
-    pub Virtual: BOOL,
-    pub Reserved: [u64; 3],
-    pub KdHelp: KDHELP64,
-}
-
-#[repr(C)]
-#[cfg(feature = "backtrace")]
-pub struct KDHELP64 {
-    pub Thread: u64,
-    pub ThCallbackStack: DWORD,
-    pub ThCallbackBStore: DWORD,
-    pub NextCallback: DWORD,
-    pub FramePointer: DWORD,
-    pub KiCallUserMode: u64,
-    pub KeUserCallbackDispatcher: u64,
-    pub SystemRangeStart: u64,
-    pub KiUserExceptionDispatcher: u64,
-    pub StackBase: u64,
-    pub StackLimit: u64,
-    pub Reserved: [u64; 5],
-}
-
-#[cfg(target_arch = "x86")]
-#[repr(C)]
-pub struct CONTEXT {
-    pub ContextFlags: DWORD,
-    pub Dr0: DWORD,
-    pub Dr1: DWORD,
-    pub Dr2: DWORD,
-    pub Dr3: DWORD,
-    pub Dr6: DWORD,
-    pub Dr7: DWORD,
-    pub FloatSave: FLOATING_SAVE_AREA,
-    pub SegGs: DWORD,
-    pub SegFs: DWORD,
-    pub SegEs: DWORD,
-    pub SegDs: DWORD,
-    pub Edi: DWORD,
-    pub Esi: DWORD,
-    pub Ebx: DWORD,
-    pub Edx: DWORD,
-    pub Ecx: DWORD,
-    pub Eax: DWORD,
-    pub Ebp: DWORD,
-    pub Eip: DWORD,
-    pub SegCs: DWORD,
-    pub EFlags: DWORD,
-    pub Esp: DWORD,
-    pub SegSs: DWORD,
-    pub ExtendedRegisters: [u8; 512],
-}
-
-#[cfg(target_arch = "x86")]
-#[repr(C)]
-pub struct FLOATING_SAVE_AREA {
-    pub ControlWord: DWORD,
-    pub StatusWord: DWORD,
-    pub TagWord: DWORD,
-    pub ErrorOffset: DWORD,
-    pub ErrorSelector: DWORD,
-    pub DataOffset: DWORD,
-    pub DataSelector: DWORD,
-    pub RegisterArea: [u8; 80],
-    pub Cr0NpxState: DWORD,
-}
-
-#[cfg(target_arch = "x86_64")]
-#[repr(C, align(16))]
-pub struct CONTEXT {
-    pub P1Home: DWORDLONG,
-    pub P2Home: DWORDLONG,
-    pub P3Home: DWORDLONG,
-    pub P4Home: DWORDLONG,
-    pub P5Home: DWORDLONG,
-    pub P6Home: DWORDLONG,
-
-    pub ContextFlags: DWORD,
-    pub MxCsr: DWORD,
-
-    pub SegCs: WORD,
-    pub SegDs: WORD,
-    pub SegEs: WORD,
-    pub SegFs: WORD,
-    pub SegGs: WORD,
-    pub SegSs: WORD,
-    pub EFlags: DWORD,
-
-    pub Dr0: DWORDLONG,
-    pub Dr1: DWORDLONG,
-    pub Dr2: DWORDLONG,
-    pub Dr3: DWORDLONG,
-    pub Dr6: DWORDLONG,
-    pub Dr7: DWORDLONG,
-
-    pub Rax: DWORDLONG,
-    pub Rcx: DWORDLONG,
-    pub Rdx: DWORDLONG,
-    pub Rbx: DWORDLONG,
-    pub Rsp: DWORDLONG,
-    pub Rbp: DWORDLONG,
-    pub Rsi: DWORDLONG,
-    pub Rdi: DWORDLONG,
-    pub R8:  DWORDLONG,
-    pub R9:  DWORDLONG,
-    pub R10: DWORDLONG,
-    pub R11: DWORDLONG,
-    pub R12: DWORDLONG,
-    pub R13: DWORDLONG,
-    pub R14: DWORDLONG,
-    pub R15: DWORDLONG,
-
-    pub Rip: DWORDLONG,
-
-    pub FltSave: FLOATING_SAVE_AREA,
-
-    pub VectorRegister: [M128A; 26],
-    pub VectorControl: DWORDLONG,
-
-    pub DebugControl: DWORDLONG,
-    pub LastBranchToRip: DWORDLONG,
-    pub LastBranchFromRip: DWORDLONG,
-    pub LastExceptionToRip: DWORDLONG,
-    pub LastExceptionFromRip: DWORDLONG,
-}
-
-#[cfg(target_arch = "x86_64")]
-#[repr(C, align(16))]
-pub struct M128A {
-    pub Low:  c_ulonglong,
-    pub High: c_longlong
-}
-
-#[cfg(target_arch = "x86_64")]
-#[repr(C, align(16))]
-pub struct FLOATING_SAVE_AREA {
-    _Dummy: [u8; 512] // FIXME: Fill this out
-}
-
-#[cfg(target_arch = "arm")]
-#[repr(C)]
-pub struct CONTEXT {
-    pub ContextFlags: ULONG,
-    pub R0: ULONG,
-    pub R1: ULONG,
-    pub R2: ULONG,
-    pub R3: ULONG,
-    pub R4: ULONG,
-    pub R5: ULONG,
-    pub R6: ULONG,
-    pub R7: ULONG,
-    pub R8: ULONG,
-    pub R9: ULONG,
-    pub R10: ULONG,
-    pub R11: ULONG,
-    pub R12: ULONG,
-    pub Sp: ULONG,
-    pub Lr: ULONG,
-    pub Pc: ULONG,
-    pub Cpsr: ULONG,
-    pub Fpscr: ULONG,
-    pub Padding: ULONG,
-    pub D: [u64; 32],
-    pub Bvr: [ULONG; ARM_MAX_BREAKPOINTS],
-    pub Bcr: [ULONG; ARM_MAX_BREAKPOINTS],
-    pub Wvr: [ULONG; ARM_MAX_WATCHPOINTS],
-    pub Wcr: [ULONG; ARM_MAX_WATCHPOINTS],
-    pub Padding2: [ULONG; 2]
-}
-
-// FIXME(#43348): This structure is used for backtrace only, and a fake
-// definition is provided here only to allow rustdoc to pass type-check. This
-// will not appear in the final documentation. This should be also defined for
-// other architectures supported by Windows such as ARM, and for historical
-// interest, maybe MIPS and PowerPC as well.
-#[cfg(all(rustdoc, not(any(target_arch = "x86_64", target_arch = "x86",
-      target_arch = "aarch64", target_arch = "arm"))))]
 pub enum CONTEXT {}
-
-#[cfg(target_arch = "aarch64")]
-pub const ARM64_MAX_BREAKPOINTS: usize = 8;
-
-#[cfg(target_arch = "aarch64")]
-pub const ARM64_MAX_WATCHPOINTS: usize = 2;
-
-#[cfg(target_arch = "aarch64")]
-#[repr(C)]
-pub struct ARM64_NT_NEON128 {
-    pub D: [f64; 2],
-}
-
-#[cfg(target_arch = "aarch64")]
-#[repr(C, align(16))]
-pub struct CONTEXT {
-    pub ContextFlags: DWORD,
-    pub Cpsr: DWORD,
-    pub X0: u64,
-    pub X1: u64,
-    pub X2: u64,
-    pub X3: u64,
-    pub X4: u64,
-    pub X5: u64,
-    pub X6: u64,
-    pub X7: u64,
-    pub X8: u64,
-    pub X9: u64,
-    pub X10: u64,
-    pub X11: u64,
-    pub X12: u64,
-    pub X13: u64,
-    pub X14: u64,
-    pub X15: u64,
-    pub X16: u64,
-    pub X17: u64,
-    pub X18: u64,
-    pub X19: u64,
-    pub X20: u64,
-    pub X21: u64,
-    pub X22: u64,
-    pub X23: u64,
-    pub X24: u64,
-    pub X25: u64,
-    pub X26: u64,
-    pub X27: u64,
-    pub X28: u64,
-    pub Fp: u64,
-    pub Lr: u64,
-    pub Sp: u64,
-    pub Pc: u64,
-    pub V: [ARM64_NT_NEON128; 32],
-    pub Fpcr: DWORD,
-    pub Fpsr: DWORD,
-    pub Bcr: [DWORD; ARM64_MAX_BREAKPOINTS],
-    pub Bvr: [DWORD; ARM64_MAX_BREAKPOINTS],
-    pub Wcr: [DWORD; ARM64_MAX_WATCHPOINTS],
-    pub Wvr: [DWORD; ARM64_MAX_WATCHPOINTS],
-}
 
 #[repr(C)]
 pub struct SOCKADDR_STORAGE_LH {
@@ -1220,8 +886,6 @@ extern "system" {
     pub fn FindNextFileW(findFile: HANDLE, findFileData: LPWIN32_FIND_DATAW)
                          -> BOOL;
     pub fn FindClose(findFile: HANDLE) -> BOOL;
-    #[cfg(feature = "backtrace")]
-    pub fn RtlCaptureContext(ctx: *mut CONTEXT);
     pub fn getsockopt(s: SOCKET,
                       level: c_int,
                       optname: c_int,
@@ -1252,10 +916,6 @@ extern "system" {
                        res: *mut *mut ADDRINFOA) -> c_int;
     pub fn freeaddrinfo(res: *mut ADDRINFOA);
 
-    #[cfg(feature = "backtrace")]
-    pub fn LoadLibraryW(name: LPCWSTR) -> HMODULE;
-    #[cfg(feature = "backtrace")]
-    pub fn FreeLibrary(handle: HMODULE) -> BOOL;
     pub fn GetProcAddress(handle: HMODULE,
                           name: LPCSTR) -> *mut c_void;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
@@ -1361,34 +1021,3 @@ compat_fn! {
         panic!("rwlocks not available")
     }
 }
-
-#[cfg(all(target_env = "gnu", feature = "backtrace"))]
-mod gnu {
-    use super::*;
-
-    pub const PROCESS_QUERY_INFORMATION: DWORD = 0x0400;
-
-    pub const CP_ACP: UINT = 0;
-
-    pub const WC_NO_BEST_FIT_CHARS: DWORD = 0x00000400;
-
-    extern "system" {
-        pub fn OpenProcess(dwDesiredAccess: DWORD,
-                           bInheritHandle: BOOL,
-                           dwProcessId: DWORD) -> HANDLE;
-    }
-
-    compat_fn! {
-        kernel32:
-
-        pub fn QueryFullProcessImageNameW(_hProcess: HANDLE,
-                                          _dwFlags: DWORD,
-                                          _lpExeName: LPWSTR,
-                                          _lpdwSize: LPDWORD) -> BOOL {
-            SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
-        }
-    }
-}
-
-#[cfg(all(target_env = "gnu", feature = "backtrace"))]
-pub use self::gnu::*;
