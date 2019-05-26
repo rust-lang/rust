@@ -10,7 +10,6 @@ use crate::ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
 use rustc_data_structures::stable_hasher::StableHasher;
-use serialize::{Encodable, Decodable, Encoder, Decoder};
 use crate::session::CrateDisambiguator;
 use std::borrow::Borrow;
 use std::fmt::Write;
@@ -25,14 +24,13 @@ use crate::util::nodemap::NodeMap;
 /// Internally the DefPathTable holds a tree of DefKeys, where each DefKey
 /// stores the DefIndex of its parent.
 /// There is one DefPathTable for each crate.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, RustcDecodable, RustcEncodable)]
 pub struct DefPathTable {
     index_to_key: Vec<DefKey>,
     def_path_hashes: Vec<DefPathHash>,
 }
 
 impl DefPathTable {
-
     fn allocate(&mut self,
                 key: DefKey,
                 def_path_hash: DefPathHash)
@@ -83,28 +81,6 @@ impl DefPathTable {
 
     pub fn size(&self) -> usize {
         self.index_to_key.len()
-    }
-}
-
-
-impl Encodable for DefPathTable {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        // Index to key
-        self.index_to_key.encode(s)?;
-
-        // DefPath hashes
-        self.def_path_hashes.encode(s)?;
-
-        Ok(())
-    }
-}
-
-impl Decodable for DefPathTable {
-    fn decode<D: Decoder>(d: &mut D) -> Result<DefPathTable, D::Error> {
-        Ok(DefPathTable {
-            index_to_key: Decodable::decode(d)?,
-            def_path_hashes : Decodable::decode(d)?,
-        })
     }
 }
 
