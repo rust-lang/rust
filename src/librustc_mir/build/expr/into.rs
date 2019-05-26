@@ -200,16 +200,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ty::FnDef(def_id, _) => {
                         let f = ty.fn_sig(this.hir.tcx());
                         if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
-                            Some(this.hir.tcx().item_name(def_id).as_str())
+                            Some(this.hir.tcx().item_name(def_id))
                         } else {
                             None
                         }
                     }
                     _ => None,
                 };
-                let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
                 let fun = unpack!(block = this.as_local_operand(block, fun));
-                if intrinsic == Some("move_val_init") {
+                if let Some(sym::move_val_init) = intrinsic {
                     // `move_val_init` has "magic" semantics - the second argument is
                     // always evaluated "directly" into the first one.
 

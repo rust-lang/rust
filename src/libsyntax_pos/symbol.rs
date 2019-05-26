@@ -432,6 +432,7 @@ symbols! {
         module,
         module_path,
         more_struct_aliases,
+        move_val_init,
         movbe_target_feature,
         must_use,
         naked,
