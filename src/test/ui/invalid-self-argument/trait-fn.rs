@@ -2,8 +2,8 @@ struct Foo {}
 
 impl Foo {
     fn c(foo: u32, self) {}
-    //~^ ERROR unexpected `self` argument in function
-    //~| NOTE `self` is only valid as the first argument of an associated function
+    //~^ ERROR unexpected `self` parameter in function
+    //~| NOTE must be the first associated function parameter
 
     fn good(&mut self, foo: u32) {}
 }

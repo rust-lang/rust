@@ -1,8 +1,10 @@
-error: unexpected `self` argument in function
-  --> $DIR/bare-fn.rs:1:21
+error: unexpected `self` parameter in function
+  --> $DIR/bare-fn.rs:1:16
    |
 LL | fn b(foo: u32, &mut self) { }
-   |                     ^^^^ `self` is only valid as the first argument of an associated function
+   |                ^^^^^^^^^ not valid as function parameter
+   |
+   = note: `self` is only valid as the first parameter of an associated function
 
 error: aborting due to previous error
 
