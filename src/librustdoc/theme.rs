@@ -366,4 +366,10 @@ a {
         get_differences(&other, &against, &mut ret);
         assert_eq!(ret, vec!["  Missing \"c\" rule".to_owned()]);
     }
+
+    #[test]
+    fn check_empty_css() {
+        let events = load_css_events(&[]);
+        assert_eq!(events.len(), 0);
+    }
 }
