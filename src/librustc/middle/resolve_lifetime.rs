@@ -2174,7 +2174,34 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 false
             };
 
-            if let hir::TyKind::Rptr(lifetime_ref, ref mt) = inputs[0].node {
+            let mut self_arg = &inputs[0].node;
+
+            // Apply `self: &(mut) Self` elision rules even if nested in `Pin`.
+            loop {
+                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = *self_arg {
+                    if let Res::Def(DefKind::Struct, def_id) = path.res {
+                        if self.tcx.lang_items().pin_type() == Some(def_id) {
+                            if let Some(args) = path
+                                .segments
+                                .last()
+                                .and_then(|segment| segment.args.as_ref())
+                            {
+                                if args.args.len() == 1 {
+                                    if let GenericArg::Type(ty) = &args.args[0] {
+                                        self_arg = &ty.node;
+                                        // Keep dereferencing `self_arg` until we get to non-`Pin`
+                                        // types.
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+
+            if let hir::TyKind::Rptr(lifetime_ref, ref mt) = *self_arg {
                 if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
                     if is_self_ty(path.res) {
                         if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.hir_id) {
