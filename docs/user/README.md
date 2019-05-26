@@ -89,6 +89,25 @@ to load path and require it in `init.el`
 * (Optionally) bind commands like `rust-analyzer-join-lines` or `rust-analyzer-extend-selection` to keys
 
 
+## Vim and NeoVim
+
+* Install coc.nvim by following the instructions at [coc.nvim]
+* Add rust analyzer using: [coc.nvim wiki][coc-wiki]
+
+```jsonc
+ "languageserver": {
+  "rust": {
+    "command": "ra_lsp_server",
+    "filetypes": ["rust"],
+    "rootPatterns": ["Cargo.toml"]
+  }
+}
+```
+
+[coc.nvim]: https://github.com/neoclide/coc.nvim
+[coc-wiki]: https://github.com/neoclide/coc.nvim/wiki/Language-servers#rust
+
+
 ## Sublime Text 3
 
 Prequisites:
