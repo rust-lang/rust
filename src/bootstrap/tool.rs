@@ -539,9 +539,9 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        // Cargo depends on procedural macros, which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
+        // Cargo depends on procedural macros, so make sure the host
+        // libstd/libproc_macro is available.
+        builder.ensure(compile::Test {
             compiler: self.compiler,
             target: builder.config.build,
         });
@@ -613,26 +613,26 @@ macro_rules! tool_extended {
 tool_extended!((self, builder),
     Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", {};
     CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", {
-        // Clippy depends on procedural macros (serde), which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
+        // Clippy depends on procedural macros, so make sure that's built for
+        // the compiler itself.
+        builder.ensure(compile::Test {
             compiler: self.compiler,
             target: builder.config.build,
         });
     };
     Clippy, clippy, "src/tools/clippy", "clippy-driver", {
-        // Clippy depends on procedural macros (serde), which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
+        // Clippy depends on procedural macros, so make sure that's built for
+        // the compiler itself.
+        builder.ensure(compile::Test {
             compiler: self.compiler,
             target: builder.config.build,
         });
     };
     Miri, miri, "src/tools/miri", "miri", {};
     CargoMiri, miri, "src/tools/miri", "cargo-miri", {
-        // Miri depends on procedural macros (serde), which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
+        // Miri depends on procedural macros, so make sure that's built for
+        // the compiler itself.
+        builder.ensure(compile::Test {
             compiler: self.compiler,
             target: builder.config.build,
         });
@@ -646,9 +646,9 @@ tool_extended!((self, builder),
         if clippy.is_some() {
             self.extra_features.push("clippy".to_owned());
         }
-        // RLS depends on procedural macros, which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
+        // RLS depends on procedural macros, so make sure that's built for
+        // the compiler itself.
+        builder.ensure(compile::Test {
             compiler: self.compiler,
             target: builder.config.build,
         });
