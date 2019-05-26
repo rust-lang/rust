@@ -65,7 +65,7 @@ pub fn trans_promoted<'a, 'tcx: 'a>(
         }))
     {
         Ok(const_) => {
-            let cplace = trans_const_place(fx, const_);
+            let cplace = trans_const_place(fx, *const_);
             debug_assert_eq!(cplace.layout(), fx.layout_of(dest_ty));
             cplace
         }
@@ -100,7 +100,7 @@ pub fn force_eval_const<'a, 'tcx: 'a>(
                 instance,
                 promoted: None,
             };
-            fx.tcx.const_eval(param_env.and(cid)).unwrap()
+            *fx.tcx.const_eval(param_env.and(cid)).unwrap()
         }
         _ => *fx.monomorphize(&const_),
     }

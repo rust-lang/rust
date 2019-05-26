@@ -41,9 +41,9 @@ index f6dee7c..0c6a8c0 100644
 -    }
 -}
 -
- /// `FnBox` is a version of the `FnOnce` intended for use with boxed
- /// closure objects. The idea is that where one would normally store a
- /// `Box<dyn FnOnce()>` in a data structure, you should use
+ /// `FnBox` is deprecated and will be removed.
+ /// `Box<dyn FnOnce()>` can be called directly, since Rust 1.35.0.
+ ///
 diff --git a/src/libstd/sys_common/at_exit_imp.rs b/src/libstd/sys_common/at_exit_imp.rs
 index 1181b86..20f9251 100644
 --- a/src/libstd/sys_common/at_exit_imp.rs
