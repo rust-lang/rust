@@ -1,0 +1,18 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:8:46
+   |
+LL |     fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
+   |                              ----     ----   ^ ...but data from `f` is returned here
+   |                              |
+   |                              this parameter and the return type are declared with different lifetimes...
+
+error[E0623]: lifetime mismatch
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:10:76
+   |
+LL |     fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
+   |                               ----              -----------------          ^ ...but data from `f` is returned here
+   |                               |
+   |                               this parameter and the return type are declared with different lifetimes...
+
+error: aborting due to 2 previous errors
+
