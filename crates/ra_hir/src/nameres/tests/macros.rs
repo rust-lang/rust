@@ -92,3 +92,43 @@ fn macro_rules_from_other_crates_are_visible() {
    ⋮bar: t
     "###);
 }
+
+#[test]
+fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
+    let map = def_map_with_crate_graph(
+        "
+        //- /main.rs      
+        macro_rules! baz {
+            () => {
+                use foo::bar;                
+            }
+        }
+        
+        foo!();              
+        bar!();
+        baz!();
+
+        //- /lib.rs
+        #[macro_export]
+        macro_rules! foo {
+            () => {
+                struct Foo { field: u32 } 
+            }
+        }
+        #[macro_export]
+        macro_rules! bar {
+            () => {
+                use foo::foo;
+            }
+        }
+        ",
+        crate_graph! {
+            "main": ("/main.rs", ["foo"]),
+            "foo": ("/lib.rs", []),
+        },
+    );
+    assert_snapshot_matches!(map, @r###"crate
+Foo: t v
+bar: m
+foo: m"###);
+}
