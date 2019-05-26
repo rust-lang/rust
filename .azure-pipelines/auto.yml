@@ -11,6 +11,7 @@ variables:
 
 jobs:
 - job: Linux
+  timeoutInMinutes: 600
   pool:
     vmImage: ubuntu-16.04
   steps:
@@ -150,11 +151,10 @@ jobs:
         IMAGE: mingw-check
 
 - job: macOS
+  timeoutInMinutes: 600
   pool:
     vmImage: macos-10.13
   steps:
-  - checkout: self
-    fetchDepth: 2
   - template: steps/run.yml
   strategy:
     matrix:
@@ -214,6 +214,7 @@ jobs:
 
 
 - job: Windows
+  timeoutInMinutes: 600
   pool:
     vmImage: 'vs2017-win2016'
   steps:
