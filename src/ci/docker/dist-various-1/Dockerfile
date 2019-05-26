@@ -126,7 +126,6 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
     CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc \
     CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
-    CC_armebv7r_none_eabi=arm-none-eabi-gcc \
     CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
     AR_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
     CXX_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
