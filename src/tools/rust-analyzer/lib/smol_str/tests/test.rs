@@ -31,6 +31,9 @@ fn check_props(std_str: &str, smol: SmolStr) -> Result<(), proptest::test_runner
     prop_assert_eq!(smol.as_str(), std_str);
     prop_assert_eq!(smol.len(), std_str.len());
     prop_assert_eq!(smol.is_empty(), std_str.is_empty());
+    if smol.len() <= 22 {
+        prop_assert!(!smol.is_heap_allocated());
+    }
     Ok(())
 }
 
