@@ -80,5 +80,5 @@ pub use self::code_model::{
     Function, FnSignature,
     StructField, FieldSource,
     Static, Const, ConstSignature,
-    Trait, TypeAlias, Container
+    Trait, TypeAlias, MacroDef, Container
 };
