@@ -121,6 +121,7 @@ impl Clone for WIN32_FIND_DATAW {
 }
 
 pub const WSA_FLAG_OVERLAPPED: DWORD = 0x01;
+pub const WSA_FLAG_NO_HANDLE_INHERIT: DWORD = 0x80;
 
 pub const WSADESCRIPTION_LEN: usize = 256;
 pub const WSASYS_STATUS_LEN: usize = 128;
@@ -130,6 +131,7 @@ pub const INVALID_SOCKET: SOCKET = !0;
 pub const WSAEACCES: c_int = 10013;
 pub const WSAEINVAL: c_int = 10022;
 pub const WSAEWOULDBLOCK: c_int = 10035;
+pub const WSAEPROTOTYPE: c_int = 10041;
 pub const WSAEADDRINUSE: c_int = 10048;
 pub const WSAEADDRNOTAVAIL: c_int = 10049;
 pub const WSAECONNABORTED: c_int = 10053;
@@ -156,8 +158,6 @@ pub const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE: DWORD = 0x2;
 pub const STD_INPUT_HANDLE: DWORD = -10i32 as DWORD;
 pub const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
 pub const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
-
-pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
 pub const PROGRESS_CONTINUE: DWORD = 0;
 
@@ -658,9 +658,15 @@ pub struct timeval {
 // Functions forbidden when targeting UWP
 cfg_if::cfg_if! {
 if #[cfg(not(target_vendor = "uwp"))] {
+    pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
+
     extern "system" {
         #[link_name = "SystemFunction036"]
         pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
+
+        pub fn SetHandleInformation(hObject: HANDLE,
+                                    dwMask: DWORD,
+                                    dwFlags: DWORD) -> BOOL;
     }
 }
 }
@@ -772,9 +778,6 @@ extern "system" {
     pub fn GetUserProfileDirectoryW(hToken: HANDLE,
                                     lpProfileDir: LPWSTR,
                                     lpcchSize: *mut DWORD) -> BOOL;
-    pub fn SetHandleInformation(hObject: HANDLE,
-                                dwMask: DWORD,
-                                dwFlags: DWORD) -> BOOL;
     pub fn CopyFileExW(lpExistingFileName: LPCWSTR,
                        lpNewFileName: LPCWSTR,
                        lpProgressRoutine: LPPROGRESS_ROUTINE,
