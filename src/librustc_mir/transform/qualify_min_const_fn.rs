@@ -250,28 +250,29 @@ fn check_operand(
     }
 }
 
-fn check_place(
-    place: &Place<'tcx>,
-    span: Span,
-) -> McfResult {
-    match place {
-        Place::Base(PlaceBase::Local(_)) => Ok(()),
-        // promoteds are always fine, they are essentially constants
-        Place::Base(PlaceBase::Static(box Static { kind: StaticKind::Promoted(_), .. })) => Ok(()),
-        Place::Base(PlaceBase::Static(box Static { kind: StaticKind::Static(_), .. })) =>
-            Err((span, "cannot access `static` items in const fn".into())),
-        Place::Projection(proj) => {
+fn check_place(place: &Place<'tcx>, span: Span) -> McfResult {
+    place.iterate(|place_base, place_projection| {
+        for proj in place_projection {
             match proj.elem {
-                | ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. }
-                | ProjectionElem::Deref | ProjectionElem::Field(..) | ProjectionElem::Index(_) => {
-                    check_place(&proj.base, span)
+                ProjectionElem::Downcast(..) => {
+                    return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
                 }
-                | ProjectionElem::Downcast(..) => {
-                    Err((span, "`match` or `if let` in `const fn` is unstable".into()))
-                }
+                ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::Deref
+                | ProjectionElem::Field(..)
+                | ProjectionElem::Index(_) => {}
             }
         }
-    }
+
+        match place_base {
+            PlaceBase::Static(box Static { kind: StaticKind::Static(_), .. }) => {
+                Err((span, "cannot access `static` items in const fn".into()))
+            }
+            PlaceBase::Local(_)
+            | PlaceBase::Static(box Static { kind: StaticKind::Promoted(_), .. }) => Ok(()),
+        }
+    })
 }
 
 fn check_terminator(
