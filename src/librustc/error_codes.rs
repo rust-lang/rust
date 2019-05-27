@@ -1217,7 +1217,7 @@ For example:
 ```compile_fail,E0284
 fn foo() -> Result<bool, ()> {
     let results = [Ok(true), Ok(false), Err(())].iter().cloned();
-    let v : Vec<bool> = results.collect()?;
+    let v: Vec<bool> = results.collect()?;
     // Do things with v...
     Ok(true)
 }
@@ -1228,7 +1228,7 @@ Hence, `results.collect()` can return any type implementing
 `FromIterator<Result<bool, ()>>`. On the other hand, the
 `?` operator can accept any type implementing `Try`.
 
-The user of this code probably wants `collect()` to return a
+The author of this code probably wants `collect()` to return a
 `Result<Vec<bool>, ()>`, but the compiler can't be sure
 that there isn't another type `T` implementing both `Try` and
 `FromIterator<Result<bool, ()>>` in scope such that
@@ -1241,16 +1241,15 @@ To resolve this error, use a concrete type for the intermediate expression:
 fn foo() -> Result<bool, ()> {
     let results = [Ok(true), Ok(false), Err(())].iter().cloned();
     let v = {
-        let temp : Result<Vec<bool>, ()> = results.collect();
+        let temp: Result<Vec<bool>, ()> = results.collect();
         temp?
     };
     // Do things with v...
     Ok(true)
 }
 ```
-Note that the type of `v` can now be inferred from the type of `temp`
 
-
+Note that the type of `v` can now be inferred from the type of `temp`.
 "##,
 
 E0308: r##"
