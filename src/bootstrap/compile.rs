@@ -1126,6 +1126,7 @@ pub fn run_cargo(builder: &Builder<'_>,
             // Skip files like executables
             if !filename.ends_with(".rlib") &&
                !filename.ends_with(".lib") &&
+               !filename.ends_with(".a") &&
                !is_dylib(&filename) &&
                !(is_check && filename.ends_with(".rmeta")) {
                 continue;
