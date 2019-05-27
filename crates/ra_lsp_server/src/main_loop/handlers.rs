@@ -64,6 +64,7 @@ pub fn handle_selection_range(
     world: ServerWorld,
     params: req::SelectionRangeParams,
 ) -> Result<Vec<req::SelectionRange>> {
+    let _p = profile("handle_selection_range");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     params
@@ -104,6 +105,7 @@ pub fn handle_find_matching_brace(
     world: ServerWorld,
     params: req::FindMatchingBraceParams,
 ) -> Result<Vec<Position>> {
+    let _p = profile("handle_find_matching_brace");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let res = params
@@ -122,6 +124,7 @@ pub fn handle_join_lines(
     world: ServerWorld,
     params: req::JoinLinesParams,
 ) -> Result<req::SourceChange> {
+    let _p = profile("handle_join_lines");
     let frange = (&params.text_document, params.range).try_conv_with(&world)?;
     world.analysis().join_lines(frange).try_conv_with(&world)
 }
@@ -130,6 +133,7 @@ pub fn handle_on_enter(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::SourceChange>> {
+    let _p = profile("handle_on_enter");
     let position = params.try_conv_with(&world)?;
     match world.analysis().on_enter(position) {
         None => Ok(None),
@@ -141,6 +145,7 @@ pub fn handle_on_type_formatting(
     world: ServerWorld,
     params: req::DocumentOnTypeFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
+    let _p = profile("handle_on_type_formatting");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let position = FilePosition {
