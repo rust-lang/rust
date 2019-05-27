@@ -45,17 +45,25 @@ pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, Toke
 //
 //
 
-/// Parses the token tree (result of macro expansion) to an expression
-pub fn token_tree_to_expr(tt: &tt::Subtree) -> Result<TreeArc<ast::Expr>, ExpandError> {
+fn token_tree_to_syntax_node<F>(tt: &tt::Subtree, f: F) -> Result<TreeArc<SyntaxNode>, ExpandError>
+where
+    F: Fn(&mut ra_parser::TokenSource, &mut ra_parser::TreeSink),
+{
     let buffer = tt::buffer::TokenBuffer::new(&[tt.clone().into()]);
-    let token_source = SubtreeTokenSource::new(&buffer);
-    let mut tree_sink = TtTreeSink::new(token_source.querier());
-    ra_parser::parse_expr(&token_source, &mut tree_sink);
+    let mut token_source = SubtreeTokenSource::new(&buffer);
+    let querier = token_source.querier();
+    let mut tree_sink = TtTreeSink::new(querier.as_ref());
+    f(&mut token_source, &mut tree_sink);
     if tree_sink.roots.len() != 1 {
         return Err(ExpandError::ConversionError);
     }
 
-    let syntax = tree_sink.inner.finish();
+    Ok(tree_sink.inner.finish())
+}
+
+/// Parses the token tree (result of macro expansion) to an expression
+pub fn token_tree_to_expr(tt: &tt::Subtree) -> Result<TreeArc<ast::Expr>, ExpandError> {
+    let syntax = token_tree_to_syntax_node(tt, ra_parser::parse_expr)?;
     ast::Expr::cast(&syntax)
         .map(|m| m.to_owned())
         .ok_or_else(|| crate::ExpandError::ConversionError)
@@ -63,28 +71,13 @@ pub fn token_tree_to_expr(tt: &tt::Subtree) -> Result<TreeArc<ast::Expr>, Expand
 
 /// Parses the token tree (result of macro expansion) to a Pattern
 pub fn token_tree_to_pat(tt: &tt::Subtree) -> Result<TreeArc<ast::Pat>, ExpandError> {
-    let buffer = tt::buffer::TokenBuffer::new(&[tt.clone().into()]);
-    let token_source = SubtreeTokenSource::new(&buffer);
-    let mut tree_sink = TtTreeSink::new(token_source.querier());
-    ra_parser::parse_pat(&token_source, &mut tree_sink);
-    if tree_sink.roots.len() != 1 {
-        return Err(ExpandError::ConversionError);
-    }
-
-    let syntax = tree_sink.inner.finish();
+    let syntax = token_tree_to_syntax_node(tt, ra_parser::parse_pat)?;
     ast::Pat::cast(&syntax).map(|m| m.to_owned()).ok_or_else(|| ExpandError::ConversionError)
 }
 
 /// Parses the token tree (result of macro expansion) to a Type
 pub fn token_tree_to_ty(tt: &tt::Subtree) -> Result<TreeArc<ast::TypeRef>, ExpandError> {
-    let buffer = tt::buffer::TokenBuffer::new(&[tt.clone().into()]);
-    let token_source = SubtreeTokenSource::new(&buffer);
-    let mut tree_sink = TtTreeSink::new(token_source.querier());
-    ra_parser::parse_ty(&token_source, &mut tree_sink);
-    if tree_sink.roots.len() != 1 {
-        return Err(ExpandError::ConversionError);
-    }
-    let syntax = tree_sink.inner.finish();
+    let syntax = token_tree_to_syntax_node(tt, ra_parser::parse_ty)?;
     ast::TypeRef::cast(&syntax).map(|m| m.to_owned()).ok_or_else(|| ExpandError::ConversionError)
 }
 
@@ -92,14 +85,7 @@ pub fn token_tree_to_ty(tt: &tt::Subtree) -> Result<TreeArc<ast::TypeRef>, Expan
 pub fn token_tree_to_macro_stmts(
     tt: &tt::Subtree,
 ) -> Result<TreeArc<ast::MacroStmts>, ExpandError> {
-    let buffer = tt::buffer::TokenBuffer::new(&[tt.clone().into()]);
-    let token_source = SubtreeTokenSource::new(&buffer);
-    let mut tree_sink = TtTreeSink::new(token_source.querier());
-    ra_parser::parse_macro_stmts(&token_source, &mut tree_sink);
-    if tree_sink.roots.len() != 1 {
-        return Err(ExpandError::ConversionError);
-    }
-    let syntax = tree_sink.inner.finish();
+    let syntax = token_tree_to_syntax_node(tt, ra_parser::parse_macro_stmts)?;
     ast::MacroStmts::cast(&syntax).map(|m| m.to_owned()).ok_or_else(|| ExpandError::ConversionError)
 }
 
@@ -107,24 +93,13 @@ pub fn token_tree_to_macro_stmts(
 pub fn token_tree_to_macro_items(
     tt: &tt::Subtree,
 ) -> Result<TreeArc<ast::MacroItems>, ExpandError> {
-    let buffer = tt::buffer::TokenBuffer::new(&[tt.clone().into()]);
-    let token_source = SubtreeTokenSource::new(&buffer);
-    let mut tree_sink = TtTreeSink::new(token_source.querier());
-    ra_parser::parse_macro_items(&token_source, &mut tree_sink);
-    if tree_sink.roots.len() != 1 {
-        return Err(ExpandError::ConversionError);
-    }
-    let syntax = tree_sink.inner.finish();
+    let syntax = token_tree_to_syntax_node(tt, ra_parser::parse_macro_items)?;
     ast::MacroItems::cast(&syntax).map(|m| m.to_owned()).ok_or_else(|| ExpandError::ConversionError)
 }
 
 /// Parses the token tree (result of macro expansion) as a sequence of items
 pub fn token_tree_to_ast_item_list(tt: &tt::Subtree) -> TreeArc<ast::SourceFile> {
-    let buffer = tt::buffer::TokenBuffer::new(&[tt.clone().into()]);
-    let token_source = SubtreeTokenSource::new(&buffer);
-    let mut tree_sink = TtTreeSink::new(token_source.querier());
-    ra_parser::parse(&token_source, &mut tree_sink);
-    let syntax = tree_sink.inner.finish();
+    let syntax = token_tree_to_syntax_node(tt, ra_parser::parse).unwrap();
     ast::SourceFile::cast(&syntax).unwrap().to_owned()
 }
 

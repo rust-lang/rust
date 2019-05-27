@@ -31,12 +31,26 @@ pub struct ParseError(pub String);
 ///
 /// Hopefully this will allow us to treat text and token trees in the same way!
 pub trait TokenSource {
-    /// What is the current token?
-    fn token_kind(&self, pos: usize) -> SyntaxKind;
-    /// Is the current token joined to the next one (`> >` vs `>>`).
-    fn is_token_joint_to_next(&self, pos: usize) -> bool;
+    fn current(&self) -> Token;
+
+    /// Lookahead n token
+    fn lookahead_nth(&self, n: usize) -> Token;
+
+    /// bump cursor to next token
+    fn bump(&mut self);
+
     /// Is the current token a specified keyword?
-    fn is_keyword(&self, pos: usize, kw: &str) -> bool;
+    fn is_keyword(&self, kw: &str) -> bool;
+}
+
+/// `TokenCursor` abstracts the cursor of `TokenSource` operates one.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Token {
+    /// What is the current token?
+    pub kind: SyntaxKind,
+
+    /// Is the current token joined to the next one (`> >` vs `>>`).
+    pub is_jointed_to_next: bool,
 }
 
 /// `TreeSink` abstracts details of a particular syntax tree implementation.
@@ -54,7 +68,7 @@ pub trait TreeSink {
     fn error(&mut self, error: ParseError);
 }
 
-fn parse_from_tokens<F>(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink, f: F)
+fn parse_from_tokens<F>(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink, f: F)
 where
     F: FnOnce(&mut parser::Parser),
 {
@@ -65,61 +79,65 @@ where
 }
 
 /// Parse given tokens into the given sink as a rust file.
-pub fn parse(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::root);
 }
 
 /// Parse given tokens into the given sink as a path
-pub fn parse_path(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse_path(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::path);
 }
 
 /// Parse given tokens into the given sink as a expression
-pub fn parse_expr(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse_expr(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::expr);
 }
 
 /// Parse given tokens into the given sink as a ty
-pub fn parse_ty(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse_ty(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::type_);
 }
 
 /// Parse given tokens into the given sink as a pattern
-pub fn parse_pat(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse_pat(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::pattern);
 }
 
 /// Parse given tokens into the given sink as a statement
-pub fn parse_stmt(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink, with_semi: bool) {
+pub fn parse_stmt(
+    token_source: &mut dyn TokenSource,
+    tree_sink: &mut dyn TreeSink,
+    with_semi: bool,
+) {
     parse_from_tokens(token_source, tree_sink, |p| grammar::stmt(p, with_semi));
 }
 
 /// Parse given tokens into the given sink as a block
-pub fn parse_block(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse_block(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::block);
 }
 
-pub fn parse_meta(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse_meta(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::meta_item);
 }
 
 /// Parse given tokens into the given sink as an item
-pub fn parse_item(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse_item(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::item);
 }
 
 /// Parse given tokens into the given sink as an visibility qualifier
-pub fn parse_vis(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse_vis(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, |p| {
         grammar::opt_visibility(p);
     });
 }
 
-pub fn parse_macro_items(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse_macro_items(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::macro_items);
 }
 
-pub fn parse_macro_stmts(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+pub fn parse_macro_stmts(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::macro_stmts);
 }
 
@@ -140,7 +158,7 @@ impl Reparser {
     ///
     /// Tokens must start with `{`, end with `}` and form a valid brace
     /// sequence.
-    pub fn parse(self, token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    pub fn parse(self, token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
         let Reparser(r) = self;
         let mut p = parser::Parser::new(token_source);
         r(&mut p);

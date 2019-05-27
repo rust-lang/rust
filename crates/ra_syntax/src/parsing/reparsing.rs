@@ -85,9 +85,9 @@ fn reparse_block<'node>(
     if !is_balanced(&tokens) {
         return None;
     }
-    let token_source = TextTokenSource::new(&text, &tokens);
+    let mut token_source = TextTokenSource::new(&text, &tokens);
     let mut tree_sink = TextTreeSink::new(&text, &tokens);
-    reparser.parse(&token_source, &mut tree_sink);
+    reparser.parse(&mut token_source, &mut tree_sink);
     let (green, new_errors) = tree_sink.finish();
     Some((node.replace_with(green), new_errors, node.range()))
 }

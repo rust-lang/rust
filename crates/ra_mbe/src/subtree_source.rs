@@ -1,6 +1,7 @@
-use ra_parser::{TokenSource};
+use ra_parser::{TokenSource, Token};
 use ra_syntax::{classify_literal, SmolStr, SyntaxKind, SyntaxKind::*, T};
 use std::cell::{RefCell, Cell};
+use std::sync::Arc;
 use tt::buffer::{TokenBuffer, Cursor};
 
 pub(crate) trait Querier {
@@ -65,7 +66,7 @@ impl<'a> SubtreeWalk<'a> {
         return cached[pos].clone();
     }
 
-    fn collect_token_trees(&mut self, n: usize) -> Vec<tt::TokenTree> {
+    fn collect_token_trees(&self, n: usize) -> Vec<tt::TokenTree> {
         let mut res = vec![];
 
         let mut pos = 0;
@@ -117,43 +118,59 @@ impl<'a> Querier for SubtreeWalk<'a> {
 }
 
 pub(crate) struct SubtreeTokenSource<'a> {
-    walker: SubtreeWalk<'a>,
+    walker: Arc<SubtreeWalk<'a>>,
+    curr: (Token, usize),
 }
 
 impl<'a> SubtreeTokenSource<'a> {
     pub fn new(buffer: &'a TokenBuffer) -> SubtreeTokenSource<'a> {
-        SubtreeTokenSource { walker: SubtreeWalk::new(buffer.begin()) }
+        let mut res = SubtreeTokenSource {
+            walker: Arc::new(SubtreeWalk::new(buffer.begin())),
+            curr: (Token { kind: EOF, is_jointed_to_next: false }, 0),
+        };
+        res.curr = (res.mk_token(0), 0);
+        res
     }
 
-    pub fn querier<'b>(&'a self) -> &'b SubtreeWalk<'a>
-    where
-        'a: 'b,
-    {
-        &self.walker
+    pub fn querier(&self) -> Arc<SubtreeWalk<'a>> {
+        self.walker.clone()
     }
 
     pub(crate) fn bump_n(&mut self, parsed_tokens: usize) -> Vec<tt::TokenTree> {
         let res = self.walker.collect_token_trees(parsed_tokens);
         res
     }
+
+    fn mk_token(&self, pos: usize) -> Token {
+        match self.walker.get(pos) {
+            Some(tt) => Token { kind: tt.kind, is_jointed_to_next: tt.is_joint_to_next },
+            None => Token { kind: EOF, is_jointed_to_next: false },
+        }
+    }
 }
 
 impl<'a> TokenSource for SubtreeTokenSource<'a> {
-    fn token_kind(&self, pos: usize) -> SyntaxKind {
-        if let Some(tok) = self.walker.get(pos) {
-            tok.kind
-        } else {
-            SyntaxKind::EOF
-        }
+    fn current(&self) -> Token {
+        self.curr.0
     }
-    fn is_token_joint_to_next(&self, pos: usize) -> bool {
-        match self.walker.get(pos) {
-            Some(t) => t.is_joint_to_next,
-            _ => false,
-        }
+
+    /// Lookahead n token
+    fn lookahead_nth(&self, n: usize) -> Token {
+        self.mk_token(self.curr.1 + n)
     }
-    fn is_keyword(&self, pos: usize, kw: &str) -> bool {
-        match self.walker.get(pos) {
+
+    /// bump cursor to next token
+    fn bump(&mut self) {
+        if self.current().kind == EOF {
+            return;
+        }
+
+        self.curr = (self.mk_token(self.curr.1 + 1), self.curr.1 + 1)
+    }
+
+    /// Is the current token a specified keyword?
+    fn is_keyword(&self, kw: &str) -> bool {
+        match self.walker.get(self.curr.1) {
             Some(t) => t.text == *kw,
             _ => false,
         }
