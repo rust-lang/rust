@@ -19,7 +19,7 @@ impl Foo {
 
 type Alias<T> = Pin<T>;
 impl Foo {
-    fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
+    fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> Alias<&Self> { self }
 }
 
 struct Bar<T: Unpin, U: Unpin> {

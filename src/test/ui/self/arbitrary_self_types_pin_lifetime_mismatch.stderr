@@ -14,5 +14,13 @@ LL |     fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, 
    |                               |
    |                               this parameter and the return type are declared with different lifetimes...
 
-error: aborting due to 2 previous errors
+error[E0623]: lifetime mismatch
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:15:58
+   |
+LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
+   |                                         ------     ---   ^^^ ...but data from `arg` is returned here
+   |                                         |
+   |                                         this parameter and the return type are declared with different lifetimes...
+
+error: aborting due to 3 previous errors
 
