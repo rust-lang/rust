@@ -23,6 +23,7 @@ pub enum TypeError<'tcx> {
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
     TupleSize(ExpectedFound<usize>),
+    FixedArraySize(ExpectedFound<u64>),
     ArgCount,
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
@@ -95,6 +96,12 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             Mutability => write!(f, "types differ in mutability"),
             TupleSize(values) => {
                 write!(f, "expected a tuple with {} elements, \
+                           found one with {} elements",
+                       values.expected,
+                       values.found)
+            }
+            FixedArraySize(values) => {
+                write!(f, "expected an array with a fixed size of {} elements, \
                            found one with {} elements",
                        values.expected,
                        values.found)

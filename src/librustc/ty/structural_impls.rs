@@ -716,6 +716,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             AbiMismatch(x) => AbiMismatch(x),
             Mutability => Mutability,
             TupleSize(x) => TupleSize(x),
+            FixedArraySize(x) => FixedArraySize(x),
             ArgCount => ArgCount,
             RegionsDoesNotOutlive(a, b) => {
                 return tcx.lift(&(a, b)).map(|(a, b)| RegionsDoesNotOutlive(a, b))
@@ -1294,6 +1295,7 @@ EnumTypeFoldableImpl! {
         (ty::error::TypeError::AbiMismatch)(x),
         (ty::error::TypeError::Mutability),
         (ty::error::TypeError::TupleSize)(x),
+        (ty::error::TypeError::FixedArraySize)(x),
         (ty::error::TypeError::ArgCount),
         (ty::error::TypeError::RegionsDoesNotOutlive)(a, b),
         (ty::error::TypeError::RegionsInsufficientlyPolymorphic)(a, b),

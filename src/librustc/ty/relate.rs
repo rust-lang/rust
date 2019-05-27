@@ -472,8 +472,22 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) =>
         {
             let t = relation.relate(&a_t, &b_t)?;
-            let sz = relation.relate(&sz_a, &sz_b)?;
-            Ok(tcx.mk_ty(ty::Array(t, sz)))
+            match relation.relate(&sz_a, &sz_b) {
+                Ok(sz) => Ok(tcx.mk_ty(ty::Array(t, sz))),
+                Err(err) => {
+                    // Check whether the lengths are both `usize`s,
+                    // but differ in value, for better diagnostics.
+                    // FIXME(eddyb) get the right param_env.
+                    match (sz_a.assert_usize(tcx), sz_b.assert_usize(tcx)) {
+                        (Some(sz_a_val), Some(sz_b_val)) => {
+                            Err(TypeError::FixedArraySize(
+                                expected_found(relation, &sz_a_val, &sz_b_val)
+                            ))
+                        }
+                        _ => return Err(err),
+                    }
+                }
+            }
         }
 
         (&ty::Slice(a_t), &ty::Slice(b_t)) =>
