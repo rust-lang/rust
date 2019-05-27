@@ -48,14 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         let ty = cx.tables.expr_ty(&expr);
-        let type_permits_lack_of_use = if ty.is_unit()
-            || cx.tcx.is_ty_uninhabited_from(
-                cx.tcx.hir().get_module_parent_by_hir_id(expr.hir_id), ty)
-        {
-            true
-        } else {
-            check_must_use_ty(cx, ty, &expr, s.span)
-        };
+        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span);
 
         let mut fn_warned = false;
         let mut op_warned = false;
@@ -135,12 +128,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         // Returns whether an error has been emitted (and thus another does not need to be later).
-        fn check_must_use_ty(
-            cx: &LateContext<'_, '_>,
-            ty: Ty<'_>,
+        fn check_must_use_ty<'tcx>(
+            cx: &LateContext<'_, 'tcx>,
+            ty: Ty<'tcx>,
             expr: &hir::Expr,
             span: Span,
         ) -> bool {
+            if ty.is_unit() || cx.tcx.is_ty_uninhabited_from(
+                cx.tcx.hir().get_module_parent_by_hir_id(expr.hir_id), ty)
+            {
+                return true;
+            }
+
             match ty.sty {
                 ty::Adt(def, _) => check_must_use_def(cx, def.did, span, "", ""),
                 ty::Opaque(def, _) => {
