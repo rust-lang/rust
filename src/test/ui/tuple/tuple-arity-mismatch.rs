@@ -13,5 +13,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `(isize, f64)`
     //~| found type `(isize,)`
-    //~| expected a tuple with 2 elements, found one with 1 elements
+    //~| expected a tuple with 2 elements, found one with 1 element
 }

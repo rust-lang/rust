@@ -80,6 +80,12 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
         };
 
+        macro_rules! pluralise {
+            ($x:expr) => {
+                if $x != 1 { "s" } else { "" }
+            };
+        }
+
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
@@ -95,16 +101,20 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
             Mutability => write!(f, "types differ in mutability"),
             TupleSize(values) => {
-                write!(f, "expected a tuple with {} elements, \
-                           found one with {} elements",
+                write!(f, "expected a tuple with {} element{}, \
+                           found one with {} element{}",
                        values.expected,
-                       values.found)
+                       pluralise!(values.expected),
+                       values.found,
+                       pluralise!(values.found))
             }
             FixedArraySize(values) => {
-                write!(f, "expected an array with a fixed size of {} elements, \
-                           found one with {} elements",
+                write!(f, "expected an array with a fixed size of {} element{}, \
+                           found one with {} element{}",
                        values.expected,
-                       values.found)
+                       pluralise!(values.expected),
+                       values.found,
+                       pluralise!(values.found))
             }
             ArgCount => {
                 write!(f, "incorrect number of function parameters")
@@ -157,8 +167,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        tcx.def_path_str(values.found))
             }),
             ProjectionBoundsLength(ref values) => {
-                write!(f, "expected {} associated type bindings, found {}",
+                write!(f, "expected {} associated type binding{}, found {}",
                        values.expected,
+                       pluralise!(values.expected),
                        values.found)
             },
             ExistentialMismatch(ref values) => {
