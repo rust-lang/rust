@@ -942,7 +942,6 @@ pub struct MacroDef {
     pub(crate) id: MacroDefId,
 }
 
-
 pub enum Container {
     Trait(Trait),
     ImplBlock(ImplBlock),
