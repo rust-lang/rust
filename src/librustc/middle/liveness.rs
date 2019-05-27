@@ -99,7 +99,7 @@ use self::VarKind::*;
 
 use crate::hir::def::*;
 use crate::hir::Node;
-use crate::ty::{self, TyCtxt};
+use crate::ty::{self, DefIdTree, TyCtxt};
 use crate::ty::query::Providers;
 use crate::lint;
 use crate::util::nodemap::{HirIdMap, HirIdSet};
@@ -182,7 +182,10 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
 }
 
 fn check_mod_liveness<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx).as_deep_visitor());
+    tcx.hir().visit_item_likes_in_module(
+        module_def_id,
+        &mut IrMaps::new(tcx, module_def_id).as_deep_visitor(),
+    );
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -255,6 +258,7 @@ enum VarKind {
 
 struct IrMaps<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    body_owner: DefId,
     num_live_nodes: usize,
     num_vars: usize,
     live_node_map: HirIdMap<LiveNode>,
@@ -265,9 +269,10 @@ struct IrMaps<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> IrMaps<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> IrMaps<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, body_owner: DefId) -> IrMaps<'a, 'tcx> {
         IrMaps {
             tcx,
+            body_owner,
             num_live_nodes: 0,
             num_vars: 0,
             live_node_map: HirIdMap::default(),
@@ -356,7 +361,8 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     debug!("visit_fn");
 
     // swap in a new set of IR maps for this function body:
-    let mut fn_maps = IrMaps::new(ir.tcx);
+    let def_id = ir.tcx.hir().local_def_id_from_hir_id(id);
+    let mut fn_maps = IrMaps::new(ir.tcx, def_id);
 
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
@@ -485,8 +491,15 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         let mut call_caps = Vec::new();
         let closure_def_id = ir.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
         if let Some(upvars) = ir.tcx.upvars(closure_def_id) {
+            let parent_upvars = ir.tcx.upvars(ir.body_owner);
             call_caps.extend(upvars.iter().filter_map(|(&var_id, upvar)| {
-                if !upvar.has_parent {
+                if upvar.has_parent {
+                    assert_eq!(ir.body_owner, ir.tcx.parent(closure_def_id).unwrap());
+                }
+                let has_parent = parent_upvars
+                    .map_or(false, |upvars| upvars.contains_key(&var_id));
+                assert_eq!(upvar.has_parent, has_parent);
+                if !has_parent {
                     let upvar_ln = ir.add_live_node(UpvarNode(upvar.span));
                     Some(CaptureInfo { ln: upvar_ln, var_hid: var_id })
                 } else {
@@ -495,8 +508,10 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
             }));
         }
         ir.set_captures(expr.hir_id, call_caps);
-
+        let old_body_owner = ir.body_owner;
+        ir.body_owner = closure_def_id;
         intravisit::walk_expr(ir, expr);
+        ir.body_owner = old_body_owner;
       }
 
       // live nodes required for interesting control flow:
