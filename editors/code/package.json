@@ -31,11 +31,13 @@
         "singleQuote": true
     },
     "dependencies": {
+        "seedrandom": "^3.0.1",
         "vscode-languageclient": "^5.3.0-next.4"
     },
     "devDependencies": {
         "@types/mocha": "^5.2.6",
         "@types/node": "^10.14.5",
+        "@types/seedrandom": "^2.4.28",
         "prettier": "^1.17.0",
         "shx": "^0.3.1",
         "tslint": "^5.16.0",
@@ -161,6 +163,11 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Highlight Rust code (overrides built-in syntax highlighting)"
+                },
+                "rust-analyzer.rainbowHighlightingOn": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When highlighting Rust code, use a unique color per identifier"
                 },
                 "rust-analyzer.showWorkspaceLoadedNotification": {
                     "type": "boolean",

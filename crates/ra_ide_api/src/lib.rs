@@ -463,8 +463,8 @@ impl Analysis {
     }
 
     /// Computes syntax highlighting for the given file.
-    pub fn highlight_as_html(&self, file_id: FileId) -> Cancelable<String> {
-        self.with_db(|db| syntax_highlighting::highlight_as_html(db, file_id))
+    pub fn highlight_as_html(&self, file_id: FileId, rainbow: bool) -> Cancelable<String> {
+        self.with_db(|db| syntax_highlighting::highlight_as_html(db, file_id, rainbow))
     }
 
     /// Computes completions at the given position.
@@ -472,7 +472,7 @@ impl Analysis {
         self.with_db(|db| completion::completions(db, position).map(Into::into))
     }
 
-    /// Computes assists (aks code actons aka intentions) for the given
+    /// Computes assists (aka code actions aka intentions) for the given
     /// position.
     pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<Assist>> {
         self.with_db(|db| assists::assists(db, frange))

@@ -1,6 +1,6 @@
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashSet, FxHashMap};
 
-use ra_syntax::{ast, AstNode, TextRange, Direction, SyntaxKind, SyntaxKind::*, SyntaxElement, T};
+use ra_syntax::{ast, AstNode, TextRange, Direction, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxElement, T};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 
@@ -10,6 +10,7 @@ use crate::{FileId, db::RootDatabase};
 pub struct HighlightedRange {
     pub range: TextRange,
     pub tag: &'static str,
+    pub binding_hash: Option<u64>,
 }
 
 fn is_control_keyword(kind: SyntaxKind) -> bool {
@@ -29,22 +30,36 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
 
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
-
     let source_file = db.parse(file_id);
+
+    fn calc_binding_hash(file_id: FileId, text: &SmolStr, shadow_count: u32) -> u64 {
+        fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
+            use std::{collections::hash_map::DefaultHasher, hash::Hasher};
+
+            let mut hasher = DefaultHasher::new();
+            x.hash(&mut hasher);
+            hasher.finish()
+        }
+
+        hash((file_id, text, shadow_count))
+    }
 
     // Visited nodes to handle highlighting priorities
     let mut highlighted: FxHashSet<SyntaxElement> = FxHashSet::default();
+    let mut bindings_shadow_count: FxHashMap<SmolStr, u32> = FxHashMap::default();
+
     let mut res = Vec::new();
     for node in source_file.syntax().descendants_with_tokens() {
         if highlighted.contains(&node) {
             continue;
         }
+        let mut binding_hash = None;
         let tag = match node.kind() {
             COMMENT => "comment",
             STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => "string",
             ATTR => "attribute",
             NAME_REF => {
-                if let Some(name_ref) = node.as_node().and_then(|n| ast::NameRef::cast(n)) {
+                if let Some(name_ref) = node.as_node().and_then(ast::NameRef::cast) {
                     use crate::name_ref_kind::{classify_name_ref, NameRefKind::*};
                     use hir::{ModuleDef, ImplItem};
 
@@ -68,7 +83,20 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         Some(Def(ModuleDef::Trait(_))) => "type",
                         Some(Def(ModuleDef::TypeAlias(_))) => "type",
                         Some(SelfType(_)) => "type",
-                        Some(Pat(_)) => "text",
+                        Some(Pat(ptr)) => {
+                            binding_hash = Some({
+                                let text = ptr
+                                    .syntax_node_ptr()
+                                    .to_node(&source_file.syntax())
+                                    .text()
+                                    .to_smol_string();
+                                let shadow_count =
+                                    bindings_shadow_count.entry(text.clone()).or_default();
+                                calc_binding_hash(file_id, &text, *shadow_count)
+                            });
+
+                            "variable"
+                        }
                         Some(SelfParam(_)) => "type",
                         Some(GenericParam(_)) => "type",
                         None => "text",
@@ -77,7 +105,24 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                     "text"
                 }
             }
-            NAME => "function",
+            NAME => {
+                if let Some(name) = node.as_node().and_then(ast::Name::cast) {
+                    if name.syntax().ancestors().any(|x| ast::BindPat::cast(x).is_some()) {
+                        binding_hash = Some({
+                            let text = name.syntax().text().to_smol_string();
+                            let shadow_count =
+                                bindings_shadow_count.entry(text.clone()).or_insert(0);
+                            *shadow_count += 1;
+                            calc_binding_hash(file_id, &text, *shadow_count)
+                        });
+                        "variable"
+                    } else {
+                        "function"
+                    }
+                } else {
+                    "text"
+                }
+            }
             TYPE_ALIAS_DEF | TYPE_ARG | TYPE_PARAM => "type",
             INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE => "literal",
             LIFETIME => "parameter",
@@ -85,6 +130,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             k if is_control_keyword(k) => "keyword.control",
             k if k.is_keyword() => "keyword",
             _ => {
+                // let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
                 if let Some(macro_call) = node.as_node().and_then(ast::MacroCall::cast) {
                     if let Some(path) = macro_call.path() {
                         if let Some(segment) = path.segment() {
@@ -101,6 +147,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                                 res.push(HighlightedRange {
                                     range: TextRange::from_to(range_start, range_end),
                                     tag: "macro",
+                                    binding_hash: None,
                                 })
                             }
                         }
@@ -109,13 +156,24 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                 continue;
             }
         };
-        res.push(HighlightedRange { range: node.range(), tag })
+        res.push(HighlightedRange { range: node.range(), tag, binding_hash })
     }
     res
 }
 
-pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId) -> String {
+pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: bool) -> String {
     let source_file = db.parse(file_id);
+
+    fn rainbowify(seed: u64) -> String {
+        use rand::prelude::*;
+        let mut rng = SmallRng::seed_from_u64(seed);
+        format!(
+            "hsl({h},{s}%,{l}%)",
+            h = rng.gen_range::<u16, _, _>(0, 361),
+            s = rng.gen_range::<u16, _, _>(42, 99),
+            l = rng.gen_range::<u16, _, _>(40, 91),
+        )
+    }
 
     let mut ranges = highlight(db, file_id);
     ranges.sort_by_key(|it| it.range.start());
@@ -138,16 +196,24 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId) -> String {
             }
         }
         let text = html_escape(&token.text());
-        let classes = could_intersect
+        let ranges = could_intersect
             .iter()
             .filter(|it| token.range().is_subrange(&it.range))
-            .map(|it| it.tag)
             .collect::<Vec<_>>();
-        if classes.is_empty() {
+        if ranges.is_empty() {
             buf.push_str(&text);
         } else {
-            let classes = classes.join(" ");
-            buf.push_str(&format!("<span class=\"{}\">{}</span>", classes, text));
+            let classes = ranges.iter().map(|x| x.tag).collect::<Vec<_>>().join(" ");
+            let binding_hash = ranges.first().and_then(|x| x.binding_hash);
+            let color = match (rainbow, binding_hash) {
+                (true, Some(hash)) => format!(
+                    " data-binding-hash=\"{}\" style=\"color: {};\"",
+                    hash,
+                    rainbowify(hash)
+                ),
+                _ => "".into(),
+            };
+            buf.push_str(&format!("<span class=\"{}\"{}>{}</span>", classes, color, text));
         }
     }
     buf.push_str("</code></pre>");
@@ -161,11 +227,8 @@ fn html_escape(text: &str) -> String {
 
 const STYLE: &str = "
 <style>
-pre {
-    color: #DCDCCC;
-    background-color: #3F3F3F;
-    font-size: 22px;
-}
+body       { margin: 0; }
+pre        { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
 
 .comment   { color: #7F9F7F; }
 .string    { color: #CC9393; }
@@ -180,7 +243,6 @@ pre {
 .keyword           { color: #F0DFAF; }
 .keyword\\.unsafe  { color: #F0DFAF; font-weight: bold; }
 .keyword\\.control { color: #DC8CC3; }
-
 </style>
 ";
 
@@ -213,12 +275,36 @@ fn main() {
     }
     unsafe { vec.set_len(0); }
 }
-"#,
+"#
+            .trim(),
         );
         let dst_file = project_dir().join("crates/ra_ide_api/src/snapshots/highlighting.html");
-        let actual_html = &analysis.highlight_as_html(file_id).unwrap();
+        let actual_html = &analysis.highlight_as_html(file_id, true).unwrap();
         let expected_html = &read_text(&dst_file);
-        // std::fs::write(dst_file, &actual_html).unwrap();
+        std::fs::write(dst_file, &actual_html).unwrap();
+        assert_eq_text!(expected_html, actual_html);
+    }
+
+    #[test]
+    fn test_rainbow_highlighting() {
+        let (analysis, file_id) = single_file(
+            r#"
+fn main() {
+    let hello = "hello";
+    let x = hello.to_string();
+    let y = hello.to_string();
+
+    let x = "other color please!";
+    let y = x.to_string();
+}
+"#
+            .trim(),
+        );
+        let dst_file =
+            project_dir().join("crates/ra_ide_api/src/snapshots/rainbow_highlighting.html");
+        let actual_html = &analysis.highlight_as_html(file_id, true).unwrap();
+        let expected_html = &read_text(&dst_file);
+        std::fs::write(dst_file, &actual_html).unwrap();
         assert_eq_text!(expected_html, actual_html);
     }
 }

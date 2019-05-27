@@ -470,3 +470,12 @@ There also snippet completions:
 
 - `tfn` -> `#[test] fn f(){}`
 
+### Code highlighting
+
+Experimental feature to let rust-analyzer highlight Rust code instead of using the
+default highlighter.
+
+#### Rainbow highlighting
+
+Experimental feature that, given code highlighting using rust-analyzer is
+active, will pick unique colors for identifiers.

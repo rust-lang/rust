@@ -1,6 +1,6 @@
 use std::{fmt, ops::{self, Bound}};
 
-use crate::{SyntaxNode, TextRange, TextUnit, SyntaxElement};
+use crate::{SmolStr, SyntaxNode, TextRange, TextUnit, SyntaxElement};
 
 #[derive(Clone)]
 pub struct SyntaxText<'a> {
@@ -32,6 +32,12 @@ impl<'a> SyntaxText<'a> {
 
     pub fn to_string(&self) -> String {
         self.chunks().collect()
+    }
+
+    pub fn to_smol_string(&self) -> SmolStr {
+        // FIXME: use `self.chunks().collect()` here too once
+        // https://github.com/matklad/smol_str/pull/12 is merged and published
+        self.to_string().into()
     }
 
     pub fn contains(&self, c: char) -> bool {
