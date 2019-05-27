@@ -2174,46 +2174,44 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 false
             };
 
-            let mut self_arg = &inputs[0].node;
+            struct SelfVisitor<'a, F: FnMut(Res) -> bool> {
+                is_self_ty: F,
+                map: &'a NamedRegionMap,
+                lifetime: Option<Region>,
+            }
 
-            // Apply `self: &(mut) Self` elision rules even if nested in `Pin`.
-            loop {
-                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = *self_arg {
-                    if let Res::Def(DefKind::Struct, def_id) = path.res {
-                        if self.tcx.lang_items().pin_type() == Some(def_id) {
-                            if let Some(args) = path
-                                .segments
-                                .last()
-                                .and_then(|segment| segment.args.as_ref())
-                            {
-                                if args.args.len() == 1 {
-                                    if let GenericArg::Type(ty) = &args.args[0] {
-                                        self_arg = &ty.node;
-                                        // Keep dereferencing `self_arg` until we get to non-`Pin`
-                                        // types.
-                                        continue;
-                                    }
-                                }
+            impl<'a, F: FnMut(Res) -> bool> Visitor<'a> for SelfVisitor<'a, F> {
+                fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'a> {
+                    NestedVisitorMap::None
+                }
+
+                fn visit_ty(&mut self, ty: &'a hir::Ty) {
+                    if let hir::TyKind::Rptr(lifetime_ref, ref mt) = ty.node {
+                        if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node
+                        {
+                            if (self.is_self_ty)(path.res) {
+                                self.lifetime = self.map.defs.get(&lifetime_ref.hir_id).copied();
+                                return;
                             }
                         }
                     }
+                    intravisit::walk_ty(self, ty)
                 }
-                break;
             }
 
-            if let hir::TyKind::Rptr(lifetime_ref, ref mt) = *self_arg {
-                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
-                    if is_self_ty(path.res) {
-                        if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.hir_id) {
-                            let scope = Scope::Elision {
-                                elide: Elide::Exact(lifetime),
-                                s: self.scope,
-                            };
-                            self.with(scope, |_, this| this.visit_ty(output));
-                            return;
-                        }
-                    }
-                }
+            let mut visitor = SelfVisitor {
+                is_self_ty,
+                map: self.map,
+                lifetime: None,
+            };
+            visitor.visit_ty(&inputs[0]);
+            if let Some(lifetime) = visitor.lifetime {
+                let scope = Scope::Elision {
+                    elide: Elide::Exact(lifetime),
+                    s: self.scope,
+                };
+                self.with(scope, |_, this| this.visit_ty(output));
+                return;
             }
         }
 
