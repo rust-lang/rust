@@ -124,6 +124,21 @@ impl Mark {
         })
     }
 
+    /// `mark.outer_is_descendant_of(ctxt)` is equivalent to but faster than
+    /// `mark.is_descendant_of(ctxt.outer())`.
+    pub fn outer_is_descendant_of(mut self, ctxt: SyntaxContext) -> bool {
+        HygieneData::with(|data| {
+            let outer = data.syntax_contexts[ctxt.0 as usize].outer_mark;
+            while self != outer {
+                if self == Mark::root() {
+                    return false;
+                }
+                self = data.marks[self.0 as usize].parent;
+            }
+            true
+        })
+    }
+
     /// Computes a mark such that both input marks are descendants of (or equal to) the returned
     /// mark. That is, the following holds:
     ///
@@ -416,7 +431,7 @@ impl SyntaxContext {
     /// or `None` if we privacy check as usual (i.e., not w.r.t. a macro definition scope).
     pub fn adjust(&mut self, expansion: Mark) -> Option<Mark> {
         let mut scope = None;
-        while !expansion.is_descendant_of(self.outer()) {
+        while !expansion.outer_is_descendant_of(*self) {
             scope = Some(self.remove_mark());
         }
         scope
@@ -450,7 +465,7 @@ impl SyntaxContext {
     pub fn glob_adjust(&mut self, expansion: Mark, mut glob_ctxt: SyntaxContext)
                        -> Option<Option<Mark>> {
         let mut scope = None;
-        while !expansion.is_descendant_of(glob_ctxt.outer()) {
+        while !expansion.outer_is_descendant_of(glob_ctxt) {
             scope = Some(glob_ctxt.remove_mark());
             if self.remove_mark() != scope.unwrap() {
                 return None;
@@ -476,7 +491,7 @@ impl SyntaxContext {
         }
 
         let mut marks = Vec::new();
-        while !expansion.is_descendant_of(glob_ctxt.outer()) {
+        while !expansion.outer_is_descendant_of(glob_ctxt) {
             marks.push(glob_ctxt.remove_mark());
         }
 
