@@ -1,0 +1,36 @@
+#!/bin/sh
+set -e
+TARGET=$(rustc --print target-spec-json -Z unstable-options | jq '.["llvm-target"]' -r)
+SYSROOT=$(rustc --print sysroot)
+export RUSTFLAGS="-C link-args=-Wl,-rpath,$SYSROOT/lib/rustlib/$TARGET/lib -C debug-assertions"
+
+COMMAND="$1"
+shift
+
+case "$COMMAND" in
+install)
+    exec cargo install --path "$(dirname "$0")" --force --locked --offline
+    ;;
+build|test|run)
+    # Basic build
+    cargo build --release
+
+    # We we want to just build, we are done.
+    if [ "$COMMAND" = "build" ]; then exit 0; fi
+
+    # Get ourselves a sysroot
+    if [ -n "$MIRI_SYSROOT" ]; then
+        # sysroot already set
+        true
+    elif rustc --print sysroot | egrep -q 'build/[^/]+/stage'; then
+	# a local build, we have a proper libstd in $SYSROOT
+	true
+    else
+	# we have to build a sysroot
+	cargo run --release --bin cargo-miri -- miri setup
+	export MIRI_SYSROOT=$HOME/.cache/miri/HOST
+    fi
+
+    exec cargo "$COMMAND" --release "$@"
+    ;;
+esac
