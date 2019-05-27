@@ -14,22 +14,26 @@
 #![feature(target_feature)]
 
 #[target_feature = "+sse2"]
-//~^ ERROR: must be of the form
+//~^ ERROR malformed `target_feature` attribute
 #[target_feature(enable = "foo")]
-//~^ ERROR: not valid for this target
+//~^ ERROR not valid for this target
+//~| NOTE `foo` is not valid for this target
 #[target_feature(bar)]
-//~^ ERROR: only accepts sub-keys
+//~^ ERROR malformed `target_feature` attribute
 #[target_feature(disable = "baz")]
-//~^ ERROR: only accepts sub-keys
+//~^ ERROR malformed `target_feature` attribute
 unsafe fn foo() {}
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR: can only be applied to `unsafe` function
+//~^ ERROR #[target_feature(..)] can only be applied to `unsafe` functions
+//~| NOTE can only be applied to `unsafe` functions
 fn bar() {}
+//~^ NOTE not an `unsafe` function
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR: should be applied to a function
+//~^ ERROR attribute should be applied to a function
 mod another {}
+//~^ NOTE not a function
 
 #[inline(always)]
 //~^ ERROR: cannot use #[inline(always)]

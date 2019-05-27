@@ -1,13 +1,10 @@
-#[repr]
-//~^ ERROR attribute must be of the form
+#[repr] //~ ERROR malformed `repr` attribute
 struct _A {}
 
-#[repr = "B"]
-//~^ ERROR attribute must be of the form
+#[repr = "B"] //~ ERROR malformed `repr` attribute
 struct _B {}
 
-#[repr = "C"]
-//~^ ERROR attribute must be of the form
+#[repr = "C"] //~ ERROR malformed `repr` attribute
 struct _C {}
 
 #[repr(C)]

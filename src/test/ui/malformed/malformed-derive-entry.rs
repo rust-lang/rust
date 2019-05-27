@@ -7,7 +7,7 @@ struct Test2;
 #[derive()] //~ WARNING empty trait list
 struct Test3;
 
-#[derive] //~ ERROR attribute must be of the form `#[derive(Trait1, Trait2, ...)]`
+#[derive] //~ ERROR malformed `derive` attribute input
 struct Test4;
 
 fn main() {}

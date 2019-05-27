@@ -1,8 +1,8 @@
-error: attribute must be of the form `#[plugin(name|name(args))]`
+error: malformed `plugin` attribute input
   --> $DIR/malformed-plugin-1.rs:2:1
    |
 LL | #![plugin]
-   | ^^^^^^^^^^
+   | ^^^^^^^^^^ help: must be of the form: `#[plugin(name|name(args))]`
 
 error: aborting due to previous error
 

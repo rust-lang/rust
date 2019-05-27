@@ -1,14 +1,26 @@
-error[E0633]: malformed `#[unwind]` attribute
+error[E0633]: malformed `unwind` attribute input
   --> $DIR/malformed-unwind-2.rs:3:1
    |
 LL | #[unwind(allowed, aborts)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid argument
+help: the allowed arguments are `allowed` and `aborts`
+   |
+LL | #[unwind(allowed)]
+   |
+LL | #[unwind(aborts)]
+   |
 
-error[E0633]: malformed `#[unwind]` attribute
+error[E0633]: malformed `unwind` attribute input
   --> $DIR/malformed-unwind-2.rs:7:1
    |
 LL | #[unwind(unsupported)]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^ invalid argument
+help: the allowed arguments are `allowed` and `aborts`
+   |
+LL | #[unwind(allowed)]
+   |
+LL | #[unwind(aborts)]
+   |
 
 error: aborting due to 2 previous errors
 
