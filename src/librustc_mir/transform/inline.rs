@@ -440,19 +440,22 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
                 fn dest_needs_borrow(place: &Place<'_>) -> bool {
-                    match *place {
-                        Place::Projection(ref p) => {
-                            match p.elem {
+                    place.iterate(|place_base, place_projection| {
+                        for proj in place_projection {
+                            match proj.elem {
                                 ProjectionElem::Deref |
-                                ProjectionElem::Index(_) => true,
-                                _ => dest_needs_borrow(&p.base)
+                                ProjectionElem::Index(_) => return true,
+                                _ => {}
                             }
                         }
-                        // Static variables need a borrow because the callee
-                        // might modify the same static.
-                        Place::Base(PlaceBase::Static(_)) => true,
-                        _ => false
-                    }
+
+                        match place_base {
+                            // Static variables need a borrow because the callee
+                            // might modify the same static.
+                            PlaceBase::Static(_) => true,
+                            _ => false
+                        }
+                    })
                 }
 
                 let dest = if dest_needs_borrow(&destination.0) {
