@@ -10,7 +10,7 @@ use rustc::mir::RetagKind;
 
 use crate::{
     EvalResult, InterpError, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
-    MemoryKind, MiriMemoryKind, RangeMap, Allocation, AllocationExtra,
+    MemoryKind, MiriMemoryKind, RangeMap, Allocation, AllocationExtra, CheckInAllocMsg,
     Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
@@ -550,7 +550,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
         let alloc = this.memory().get(ptr.alloc_id)?;
-        alloc.check_bounds(this, ptr, size)?;
+        alloc.check_bounds(this, ptr, size, CheckInAllocMsg::InboundsTest)?;
         // Update the stacks.
         // Make sure that raw pointers and mutable shared references are reborrowed "weak":
         // There could be existing unique pointers reborrowed from them that should remain valid!
