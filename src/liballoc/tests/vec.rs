@@ -946,6 +946,7 @@ fn drain_filter_complex() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support catching panics
 fn drain_filter_consumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;
@@ -996,6 +997,7 @@ fn drain_filter_consumed_panic() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support catching panics
 fn drain_filter_unconsumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;
