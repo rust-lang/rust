@@ -182,6 +182,47 @@ impl iter::FromIterator<char> for SmolStr {
     }
 }
 
+fn build_from_str_iter<T>(mut iter: impl Iterator<Item=T>) -> SmolStr
+where
+    T: AsRef<str>,
+    String: iter::Extend<T>,
+{
+    let mut len = 0;
+    let mut buf = [0u8; INLINE_CAP];
+    while let Some(slice) = iter.next() {
+        let slice = slice.as_ref();
+        let size = slice.len();
+        if size + len > INLINE_CAP {
+            let mut heap = String::with_capacity(size + len);
+            heap.push_str(std::str::from_utf8(&buf[..len]).unwrap());
+            heap.push_str(&slice);
+            heap.extend(iter);
+            return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
+        }
+        (&mut buf[len..][..size]).copy_from_slice(slice.as_bytes());
+        len += size;
+    }
+    SmolStr(Repr::Inline { len: len as u8, buf })
+}
+
+impl iter::FromIterator<String> for SmolStr {
+    fn from_iter<I: iter::IntoIterator<Item = String>>(iter: I) -> SmolStr {
+        build_from_str_iter(iter.into_iter())
+    }
+}
+
+impl<'a> iter::FromIterator<&'a String> for SmolStr {
+    fn from_iter<I: iter::IntoIterator<Item = &'a String>>(iter: I) -> SmolStr {
+        SmolStr::from_iter(iter.into_iter().map(|x| x.as_str()))
+    }
+}
+
+impl<'a> iter::FromIterator<&'a str> for SmolStr {
+    fn from_iter<I: iter::IntoIterator<Item = &'a str>>(iter: I) -> SmolStr {
+        build_from_str_iter(iter.into_iter())
+    }
+}
+
 impl<T> From<T> for SmolStr
 where
     T: Into<String> + AsRef<str>,
