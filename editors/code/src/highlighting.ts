@@ -7,7 +7,7 @@ import { Server } from './server';
 export interface Decoration {
     range: lc.Range;
     tag: string;
-    id?: string;
+    bindingHash?: string;
 }
 
 // Based on this HSL-based color generator: https://gist.github.com/bendc/76c48ce53299e6078a76
@@ -92,6 +92,7 @@ export class Highlighter {
 
         const byTag: Map<string, vscode.Range[]> = new Map();
         const colorfulIdents: Map<string, vscode.Range[]> = new Map();
+        const rainbowTime = Server.config.rainbowHighlightingOn;
 
         for (const tag of this.decorations.keys()) {
             byTag.set(tag, []);
@@ -102,12 +103,12 @@ export class Highlighter {
                 continue;
             }
 
-            if (d.id) {
-                if (!colorfulIdents.has(d.id)) {
-                    colorfulIdents.set(d.id, []);
+            if (rainbowTime && d.bindingHash) {
+                if (!colorfulIdents.has(d.bindingHash)) {
+                    colorfulIdents.set(d.bindingHash, []);
                 }
                 colorfulIdents
-                    .get(d.id)!
+                    .get(d.bindingHash)!
                     .push(
                         Server.client.protocol2CodeConverter.asRange(d.range)
                     );

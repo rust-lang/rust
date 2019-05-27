@@ -35,7 +35,8 @@ impl<'a> SyntaxText<'a> {
     }
 
     pub fn to_smol_string(&self) -> SmolStr {
-        // TODO: `impl iter::FromIterator<&str> for SmolStr`
+        // FIXME: use `self.chunks().collect()` here too once
+        // https://github.com/matklad/smol_str/pull/12 is merged and published
         self.to_string().into()
     }
 

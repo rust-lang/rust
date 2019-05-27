@@ -15,6 +15,7 @@ export interface CargoWatchOptions {
 
 export class Config {
     public highlightingOn = true;
+    public rainbowHighlightingOn = false;
     public enableEnhancedTyping = true;
     public raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
     public showWorkspaceLoadedNotification = true;
@@ -37,6 +38,12 @@ export class Config {
         const config = vscode.workspace.getConfiguration('rust-analyzer');
         if (config.has('highlightingOn')) {
             this.highlightingOn = config.get('highlightingOn') as boolean;
+        }
+
+        if (config.has('rainbowHighlightingOn')) {
+            this.rainbowHighlightingOn = config.get(
+                'rainbowHighlightingOn'
+            ) as boolean;
         }
 
         if (config.has('showWorkspaceLoadedNotification')) {

@@ -164,6 +164,11 @@
                     "default": false,
                     "description": "Highlight Rust code (overrides built-in syntax highlighting)"
                 },
+                "rust-analyzer.rainbowHighlightingOn": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When highlighting Rust code, use a unique color per identifier"
+                },
                 "rust-analyzer.showWorkspaceLoadedNotification": {
                     "type": "boolean",
                     "default": true,
