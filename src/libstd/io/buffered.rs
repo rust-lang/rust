@@ -158,7 +158,6 @@ impl<R> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// # #![feature(bufreader_buffer)]
     /// use std::io::{BufReader, BufRead};
     /// use std::fs::File;
     ///
@@ -173,7 +172,7 @@ impl<R> BufReader<R> {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "bufreader_buffer", issue = "45323")]
+    #[stable(feature = "bufreader_buffer", since = "1.37.0")]
     pub fn buffer(&self) -> &[u8] {
         &self.buf[self.pos..self.cap]
     }
@@ -552,7 +551,6 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// # #![feature(bufreader_buffer)]
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
@@ -561,7 +559,7 @@ impl<W: Write> BufWriter<W> {
     /// // See how many bytes are currently buffered
     /// let bytes_buffered = buf_writer.buffer().len();
     /// ```
-    #[unstable(feature = "bufreader_buffer", issue = "45323")]
+    #[stable(feature = "bufreader_buffer", since = "1.37.0")]
     pub fn buffer(&self) -> &[u8] {
         &self.buf
     }
