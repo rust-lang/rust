@@ -270,6 +270,32 @@ macro_rules! s_t_l {
     };
 }
 
+macro_rules! t_t_l {
+    (i32) => {
+        vector_signed_int
+    };
+    (i16) => {
+        vector_signed_short
+    };
+    (i8) => {
+        vector_signed_char
+    };
+
+    (u32) => {
+        vector_unsigned_int
+    };
+    (u16) => {
+        vector_unsigned_short
+    };
+    (u8) => {
+        vector_unsigned_char
+    };
+
+    (f32) => {
+        vector_float
+    };
+}
+
 macro_rules! impl_from {
     ($s: ident) => {
         impl From<$s> for s_t_l!($s) {
@@ -411,6 +437,52 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, vector_signed_int) -> vector_bool_int }
         }
     }
+
+    #[inline(always)]
+    unsafe fn load(off: i32, p: *const i8) -> u32x4 {
+        let addr = p.offset(off as isize);
+
+        *(addr as *const u32x4)
+    }
+
+    pub trait VectorLd {
+        type Result;
+        unsafe fn vec_ld(self, off: i32) -> Self::Result;
+    }
+
+    macro_rules! impl_vec_ld {
+        ($fun:ident $ty:ident [$instr:ident]) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(test, assert_instr($instr))]
+            pub unsafe fn $fun(off: i32, p: *const $ty) -> t_t_l!($ty) {
+                transmute(load(off, p as *const i8))
+            }
+
+            impl VectorLd for *const $ty {
+                type Result = t_t_l!($ty);
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_ld(self, off: i32) -> Self::Result {
+                    $fun(off, self)
+                }
+            }
+        };
+        ($fun:ident $ty:ident) => {
+            impl_vec_ld! { $fun $ty [lvx] }
+        };
+    }
+
+    impl_vec_ld! { vec_ld_u8 u8 }
+    impl_vec_ld! { vec_ld_i8 i8 }
+
+    impl_vec_ld! { vec_ld_u16 u16 }
+    impl_vec_ld! { vec_ld_i16 i16 }
+
+    impl_vec_ld! { vec_ld_u32 u32 }
+    impl_vec_ld! { vec_ld_i32 i32 }
+
+    impl_vec_ld! { vec_ld_f32 f32 }
 
     test_impl! { vec_floor(a: vector_float) -> vector_float [ vfloor, vrfim / xvrspim ] }
 
@@ -1376,6 +1448,16 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector ld.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_ld<T>(off: i32, p: T) -> <T as sealed::VectorLd>::Result
+where
+    T: sealed::VectorLd,
+{
+    p.vec_ld(off)
+}
+
 /// Vector floor.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1809,6 +1891,23 @@ mod tests {
                 let r : $ty_out = transmute($fn(a));
                 assert_eq!(d, r);
             }
+        }
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_ld() {
+        let pat = [
+            u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15),
+            u8x16::new(16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
+        ];
+
+        for off in 0..16 {
+            let v: u8x16 = transmute(vec_ld(0, (pat.as_ptr() as *const u8).offset(off)));
+            assert_eq!(v, u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15));
+        }
+        for off in 16..32 {
+            let v: u8x16 = transmute(vec_ld(0, (pat.as_ptr() as *const u8).offset(off)));
+            assert_eq!(v, u8x16::new(16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31));
         }
     }
 
