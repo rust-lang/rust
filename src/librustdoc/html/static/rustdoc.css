@@ -54,6 +54,21 @@
 		  box-sizing: border-box;
 }
 
+/* This part handles the "default" theme being used depending on the system one. */
+html {
+	content: "";
+}
+@media (prefers-color-scheme: light) {
+	html {
+		content: "light";
+	}
+}
+@media (prefers-color-scheme: dark) {
+	html {
+		content: "dark";
+	}
+}
+
 /* General structure and fonts */
 
 body {
