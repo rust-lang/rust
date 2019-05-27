@@ -14,7 +14,7 @@ use syntax::parse::lexer::comments;
 use syntax::parse::{self, token, ParseSess};
 use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 use syntax_pos::hygiene::{SyntaxContext, Transparency};
-use syntax_pos::symbol::{kw, Symbol};
+use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 
 trait FromInternal<T> {
@@ -159,7 +159,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                     escaped.extend(ch.escape_debug());
                 }
                 let stream = vec![
-                    Ident(ast::Ident::new(Symbol::intern("doc"), span), false),
+                    Ident(ast::Ident::new(sym::doc, span), false),
                     Eq,
                     Token::lit(token::Str, Symbol::intern(&escaped), None),
                 ]

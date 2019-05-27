@@ -91,9 +91,7 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
             call_site: item.span, // use the call site of the static
             def_site: None,
             format: MacroAttribute(Symbol::intern(name)),
-            allow_internal_unstable: Some(vec![
-                Symbol::intern("rustc_attrs"),
-            ].into()),
+            allow_internal_unstable: Some(vec![sym::rustc_attrs].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: self.sess.edition,
@@ -223,7 +221,7 @@ impl AllocFnFactory<'_> {
     }
 
     fn attrs(&self) -> Vec<Attribute> {
-        let special = Symbol::intern("rustc_std_internal_symbol");
+        let special = sym::rustc_std_internal_symbol;
         let special = self.cx.meta_word(self.span, special);
         vec![self.cx.attribute(self.span, special)]
     }

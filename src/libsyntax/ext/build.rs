@@ -3,11 +3,11 @@ use crate::attr;
 use crate::source_map::{dummy_spanned, respan, Spanned};
 use crate::ext::base::ExtCtxt;
 use crate::ptr::P;
-use crate::symbol::{Symbol, kw};
+use crate::symbol::{kw, sym, Symbol};
 use crate::ThinVec;
 
 use rustc_target::spec::abi::Abi;
-use syntax_pos::{Pos, Span, DUMMY_SP};
+use syntax_pos::{Pos, Span};
 
 pub trait AstBuilder {
     // paths
@@ -49,7 +49,6 @@ pub trait AstBuilder {
               ty: P<ast::Ty>,
               mutbl: ast::Mutability) -> P<ast::Ty>;
 
-    fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty>;
     fn ty_infer(&self, sp: Span) -> P<ast::Ty>;
 
     fn typaram(&self,
@@ -425,15 +424,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 ast::TyKind::Ptr(self.ty_mt(ty, mutbl)))
     }
 
-    fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty> {
-        self.ty_path(
-            self.path_all(DUMMY_SP,
-                          true,
-                          self.std_path(&["option", "Option"]),
-                          vec![ast::GenericArg::Type(ty)],
-                          Vec::new()))
-    }
-
     fn ty_infer(&self, span: Span) -> P<ast::Ty> {
         self.ty(span, ast::TyKind::Infer)
     }
@@ -735,7 +725,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::Array(exprs))
     }
     fn expr_vec_ng(&self, sp: Span) -> P<ast::Expr> {
-        self.expr_call_global(sp, self.std_path(&["vec", "Vec", "new"]),
+        self.expr_call_global(sp, self.std_path(&[sym::vec, sym::Vec, sym::new]),
                               Vec::new())
     }
     fn expr_vec_slice(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
@@ -751,12 +741,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
 
     fn expr_some(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
-        let some = self.std_path(&["option", "Option", "Some"]);
+        let some = self.std_path(&[sym::option, sym::Option, sym::Some]);
         self.expr_call_global(sp, some, vec![expr])
     }
 
     fn expr_none(&self, sp: Span) -> P<ast::Expr> {
-        let none = self.std_path(&["option", "Option", "None"]);
+        let none = self.std_path(&[sym::option, sym::Option, sym::None]);
         let none = self.path_global(sp, none);
         self.expr_path(none)
     }
@@ -780,7 +770,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let expr_loc_ptr = self.expr_addr_of(span, expr_loc_tuple);
         self.expr_call_global(
             span,
-            self.std_path(&["rt", "begin_panic"]),
+            self.std_path(&[sym::rt, sym::begin_panic]),
             vec![
                 self.expr_str(span, msg),
                 expr_loc_ptr])
@@ -791,19 +781,19 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_ok(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
-        let ok = self.std_path(&["result", "Result", "Ok"]);
+        let ok = self.std_path(&[sym::result, sym::Result, sym::Ok]);
         self.expr_call_global(sp, ok, vec![expr])
     }
 
     fn expr_err(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
-        let err = self.std_path(&["result", "Result", "Err"]);
+        let err = self.std_path(&[sym::result, sym::Result, sym::Err]);
         self.expr_call_global(sp, err, vec![expr])
     }
 
     fn expr_try(&self, sp: Span, head: P<ast::Expr>) -> P<ast::Expr> {
-        let ok = self.std_path(&["result", "Result", "Ok"]);
+        let ok = self.std_path(&[sym::result, sym::Result, sym::Ok]);
         let ok_path = self.path_global(sp, ok);
-        let err = self.std_path(&["result", "Result", "Err"]);
+        let err = self.std_path(&[sym::result, sym::Result, sym::Err]);
         let err_path = self.path_global(sp, err);
 
         let binding_variable = self.ident_of("__try_var");
@@ -867,25 +857,25 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn pat_some(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
-        let some = self.std_path(&["option", "Option", "Some"]);
+        let some = self.std_path(&[sym::option, sym::Option, sym::Some]);
         let path = self.path_global(span, some);
         self.pat_tuple_struct(span, path, vec![pat])
     }
 
     fn pat_none(&self, span: Span) -> P<ast::Pat> {
-        let some = self.std_path(&["option", "Option", "None"]);
+        let some = self.std_path(&[sym::option, sym::Option, sym::None]);
         let path = self.path_global(span, some);
         self.pat_path(span, path)
     }
 
     fn pat_ok(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
-        let some = self.std_path(&["result", "Result", "Ok"]);
+        let some = self.std_path(&[sym::result, sym::Result, sym::Ok]);
         let path = self.path_global(span, some);
         self.pat_tuple_struct(span, path, vec![pat])
     }
 
     fn pat_err(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
-        let some = self.std_path(&["result", "Result", "Err"]);
+        let some = self.std_path(&[sym::result, sym::Result, sym::Err]);
         let path = self.path_global(span, some);
         self.pat_tuple_struct(span, path, vec![pat])
     }

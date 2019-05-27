@@ -8,7 +8,7 @@ use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, Token
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::Spanned;
-use crate::symbol::kw;
+use crate::symbol::{kw, sym};
 use crate::ThinVec;
 use crate::util::parser::AssocOp;
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
@@ -263,7 +263,7 @@ impl<'a> Parser<'a> {
         };
         self.last_unexpected_token_span = Some(self.span);
         let mut err = self.fatal(&msg_exp);
-        if self.token.is_ident_named("and") {
+        if self.token.is_ident_named(sym::and) {
             err.span_suggestion_short(
                 self.span,
                 "use `&&` instead of `and` for the boolean operator",
@@ -271,7 +271,7 @@ impl<'a> Parser<'a> {
                 Applicability::MaybeIncorrect,
             );
         }
-        if self.token.is_ident_named("or") {
+        if self.token.is_ident_named(sym::or) {
             err.span_suggestion_short(
                 self.span,
                 "use `||` instead of `or` for the boolean operator",

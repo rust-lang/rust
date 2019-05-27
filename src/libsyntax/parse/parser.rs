@@ -2759,7 +2759,7 @@ impl<'a> Parser<'a> {
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 (lo.to(span), ExprKind::Box(e))
             }
-            token::Ident(..) if self.token.is_ident_named("not") => {
+            token::Ident(..) if self.token.is_ident_named(sym::not) => {
                 // `not` is just an ordinary identifier in Rust-the-language,
                 // but as `rustc`-the-compiler, we can issue clever diagnostics
                 // for confused users who really want to say `!`
@@ -4592,7 +4592,7 @@ impl<'a> Parser<'a> {
             let do_not_suggest_help =
                 self.token.is_keyword(kw::In) || self.token == token::Colon;
 
-            if self.token.is_ident_named("and") {
+            if self.token.is_ident_named(sym::and) {
                 e.span_suggestion_short(
                     self.span,
                     "use `&&` instead of `and` for the boolean operator",
@@ -4600,7 +4600,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            if self.token.is_ident_named("or") {
+            if self.token.is_ident_named(sym::or) {
                 e.span_suggestion_short(
                     self.span,
                     "use `||` instead of `or` for the boolean operator",
@@ -5787,7 +5787,7 @@ impl<'a> Parser<'a> {
             VisibilityKind::Inherited => {}
             _ => {
                 let is_macro_rules: bool = match self.token {
-                    token::Ident(sid, _) => sid.name == Symbol::intern("macro_rules"),
+                    token::Ident(sid, _) => sid.name == sym::macro_rules,
                     _ => false,
                 };
                 let mut err = if is_macro_rules {

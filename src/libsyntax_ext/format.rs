@@ -387,7 +387,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     fn rtpath(ecx: &ExtCtxt<'_>, s: &str) -> Vec<ast::Ident> {
-        ecx.std_path(&["fmt", "rt", "v1", s])
+        ecx.std_path(&[sym::fmt, sym::rt, sym::v1, Symbol::intern(s)])
     }
 
     fn build_count(&self, c: parse::Count<'_>) -> P<ast::Expr> {
@@ -644,7 +644,7 @@ impl<'a, 'b> Context<'a, 'b> {
             ("new_v1_formatted", vec![pieces, args_slice, fmt])
         };
 
-        let path = self.ecx.std_path(&["fmt", "Arguments", fn_name]);
+        let path = self.ecx.std_path(&[sym::fmt, sym::Arguments, Symbol::intern(fn_name)]);
         self.ecx.expr_call_global(self.macsp, path, fn_args)
     }
 
@@ -675,14 +675,14 @@ impl<'a, 'b> Context<'a, 'b> {
                 }
             }
             Count => {
-                let path = ecx.std_path(&["fmt", "ArgumentV1", "from_usize"]);
+                let path = ecx.std_path(&[sym::fmt, sym::ArgumentV1, sym::from_usize]);
                 return ecx.expr_call_global(macsp, path, vec![arg]);
             }
         };
 
-        let path = ecx.std_path(&["fmt", trait_, "fmt"]);
+        let path = ecx.std_path(&[sym::fmt, Symbol::intern(trait_), sym::fmt]);
         let format_fn = ecx.path_global(sp, path);
-        let path = ecx.std_path(&["fmt", "ArgumentV1", "new"]);
+        let path = ecx.std_path(&[sym::fmt, sym::ArgumentV1, sym::new]);
         ecx.expr_call_global(macsp, path, vec![arg, ecx.expr_path(format_fn)])
     }
 }

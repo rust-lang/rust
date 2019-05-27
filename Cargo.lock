@@ -3009,6 +3009,7 @@ dependencies = [
  "rustc_cratesio_shim 0.0.0",
  "rustc_data_structures 0.0.0",
  "serialize 0.0.0",
+ "syntax_pos 0.0.0",
 ]
 
 [[package]]

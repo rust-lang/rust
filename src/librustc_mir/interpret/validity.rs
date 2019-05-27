@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::hash::Hash;
 use std::ops::RangeInclusive;
 
-use syntax_pos::symbol::Symbol;
+use syntax_pos::symbol::{sym, Symbol};
 use rustc::hir;
 use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
@@ -188,7 +188,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
 
                 PathElem::ClosureVar(name.unwrap_or_else(|| {
                     // Fall back to showing the field index.
-                    Symbol::intern(&field.to_string())
+                    sym::integer(field)
                 }))
             }
 

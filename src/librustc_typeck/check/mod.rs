@@ -2697,16 +2697,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn resolve_place_op(&self, op: PlaceOp, is_mut: bool) -> (Option<DefId>, ast::Ident) {
         let (tr, name) = match (op, is_mut) {
-            (PlaceOp::Deref, false) =>
-                (self.tcx.lang_items().deref_trait(), "deref"),
-            (PlaceOp::Deref, true) =>
-                (self.tcx.lang_items().deref_mut_trait(), "deref_mut"),
-            (PlaceOp::Index, false) =>
-                (self.tcx.lang_items().index_trait(), "index"),
-            (PlaceOp::Index, true) =>
-                (self.tcx.lang_items().index_mut_trait(), "index_mut"),
+            (PlaceOp::Deref, false) => (self.tcx.lang_items().deref_trait(), sym::deref),
+            (PlaceOp::Deref, true) => (self.tcx.lang_items().deref_mut_trait(), sym::deref_mut),
+            (PlaceOp::Index, false) => (self.tcx.lang_items().index_trait(), sym::index),
+            (PlaceOp::Index, true) => (self.tcx.lang_items().index_mut_trait(), sym::index_mut),
         };
-        (tr, ast::Ident::from_str(name))
+        (tr, ast::Ident::with_empty_ctxt(name))
     }
 
     fn try_overloaded_place_op(&self,
@@ -4948,7 +4944,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
-                Some((decl, ident, ident.name != Symbol::intern("main")))
+                Some((decl, ident, ident.name != sym::main))
             }),
             Node::TraitItem(&hir::TraitItem {
                 ident, node: hir::TraitItemKind::Method(hir::MethodSig {

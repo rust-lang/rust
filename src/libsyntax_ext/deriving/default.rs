@@ -6,7 +6,7 @@ use syntax::ast::{Expr, MetaItem};
 use syntax::ext::base::{Annotatable, DummyResult, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
+use syntax::symbol::{kw, sym};
 use syntax::span_err;
 use syntax_pos::Span;
 
@@ -15,7 +15,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt<'_>,
                                mitem: &MetaItem,
                                item: &Annotatable,
                                push: &mut dyn FnMut(Annotatable)) {
-    let inline = cx.meta_word(span, Symbol::intern("inline"));
+    let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
         span,
@@ -47,7 +47,8 @@ fn default_substructure(cx: &mut ExtCtxt<'_>,
                         trait_span: Span,
                         substr: &Substructure<'_>)
                         -> P<Expr> {
-    let default_ident = cx.std_path(&["default", "Default", "default"]);
+    // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
+    let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
     let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
 
     return match *substr.fields {

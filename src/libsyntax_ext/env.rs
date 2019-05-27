@@ -27,7 +27,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
             let lt = cx.lifetime(sp, Ident::with_empty_ctxt(kw::StaticLifetime));
             cx.expr_path(cx.path_all(sp,
                                      true,
-                                     cx.std_path(&["option", "Option", "None"]),
+                                     cx.std_path(&[sym::option, sym::Option, sym::None]),
                                      vec![GenericArg::Type(cx.ty_rptr(sp,
                                                      cx.ty_ident(sp,
                                                                  Ident::with_empty_ctxt(sym::str)),
@@ -37,7 +37,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
         }
         Ok(s) => {
             cx.expr_call_global(sp,
-                                cx.std_path(&["option", "Option", "Some"]),
+                                cx.std_path(&[sym::option, sym::Option, sym::Some]),
                                 vec![cx.expr_str(sp, Symbol::intern(&s))])
         }
     };

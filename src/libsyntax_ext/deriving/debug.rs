@@ -9,6 +9,7 @@ use syntax::ast::{Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
+use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span};
 
 pub fn expand_deriving_debug(cx: &mut ExtCtxt<'_>,
@@ -82,7 +83,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
 
                 let expr = cx.expr_method_call(span,
                                                 builder_expr.clone(),
-                                                Ident::from_str("field"),
+                                                Ident::with_empty_ctxt(sym::field),
                                                 vec![field]);
 
                 // Use `let _ = expr;` to avoid triggering the
@@ -106,7 +107,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 let field = cx.expr_addr_of(field.span, field);
                 let expr = cx.expr_method_call(span,
                                                 builder_expr.clone(),
-                                                Ident::from_str("field"),
+                                                Ident::with_empty_ctxt(sym::field),
                                                 vec![name, field]);
                 stmts.push(stmt_let_undescore(cx, span, expr));
             }

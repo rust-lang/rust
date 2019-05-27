@@ -8,7 +8,7 @@ use syntax::parse::token::{self, Token};
 use syntax::parse::parser::Parser;
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
+use syntax::symbol::{sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -27,7 +27,7 @@ pub fn expand_assert<'cx>(
 
     let sp = sp.apply_mark(cx.current_expansion.mark);
     let panic_call = Mac_ {
-        path: Path::from_ident(Ident::new(Symbol::intern("panic"), sp)),
+        path: Path::from_ident(Ident::new(sym::panic, sp)),
         tts: custom_message.unwrap_or_else(|| {
             TokenStream::from(TokenTree::Token(
                 DUMMY_SP,
