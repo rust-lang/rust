@@ -1,13 +1,13 @@
-#[cfg_attr] //~ ERROR expected `(`, found end of attribute
+#[cfg_attr] //~ ERROR malformed `cfg_attr` attribute
 struct S1;
 
 #[cfg_attr = ""] //~ ERROR expected `(`, found `=`
 struct S2;
 
-#[derive] //~ ERROR attribute must be of the form
+#[derive] //~ ERROR malformed `derive` attribute
 struct S3;
 
-#[derive = ""] //~ ERROR attribute must be of the form
+#[derive = ""] //~ ERROR malformed `derive` attribute
 struct S4;
 
 fn main() {}

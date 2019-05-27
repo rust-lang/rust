@@ -6,20 +6,18 @@
 extern crate proc_macro;
 use proc_macro::*;
 
-#[proc_macro_derive]
-//~^ ERROR: attribute must be of the form
+#[proc_macro_derive] //~ ERROR malformed `proc_macro_derive` attribute
 pub fn foo1(input: TokenStream) -> TokenStream { input }
 
-#[proc_macro_derive = ""]
-//~^ ERROR: attribute must be of the form
+#[proc_macro_derive = ""] //~ ERROR malformed `proc_macro_derive` attribute
 pub fn foo2(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d3, a, b)]
-//~^ ERROR: attribute must have either one or two arguments
+//~^ ERROR attribute must have either one or two arguments
 pub fn foo3(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d4, attributes(a), b)]
-//~^ ERROR: attribute must have either one or two arguments
+//~^ ERROR attribute must have either one or two arguments
 pub fn foo4(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive("a")]

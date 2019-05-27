@@ -48,6 +48,8 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::GenericParamKind;
 use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
+use errors::Applicability;
+
 use std::iter;
 
 struct OnlySelfBounds(bool);
@@ -2400,13 +2402,18 @@ fn from_target_feature(
         Some(list) => list,
         None => return,
     };
+    let bad_item = |span| {
+        let msg = "malformed `target_feature` attribute input";
+        let code = "enable = \"..\"".to_owned();
+        tcx.sess.struct_span_err(span, &msg)
+            .span_suggestion(span, "must be of the form", code, Applicability::HasPlaceholders)
+            .emit();
+    };
     let rust_features = tcx.features();
     for item in list {
         // Only `enable = ...` is accepted in the meta item list
         if !item.check_name(sym::enable) {
-            let msg = "#[target_feature(..)] only accepts sub-keys of `enable` \
-                       currently";
-            tcx.sess.span_err(item.span(), &msg);
+            bad_item(item.span());
             continue;
         }
 
@@ -2414,9 +2421,7 @@ fn from_target_feature(
         let value = match item.value_str() {
             Some(value) => value,
             None => {
-                let msg = "#[target_feature] attribute must be of the form \
-                           #[target_feature(enable = \"..\")]";
-                tcx.sess.span_err(item.span(), &msg);
+                bad_item(item.span());
                 continue;
             }
         };
@@ -2428,12 +2433,14 @@ fn from_target_feature(
                 Some(g) => g,
                 None => {
                     let msg = format!(
-                        "the feature named `{}` is not valid for \
-                         this target",
+                        "the feature named `{}` is not valid for this target",
                         feature
                     );
                     let mut err = tcx.sess.struct_span_err(item.span(), &msg);
-
+                    err.span_label(
+                        item.span(),
+                        format!("`{}` is not valid for this target", feature),
+                    );
                     if feature.starts_with("+") {
                         let valid = whitelist.contains_key(&feature[1..]);
                         if valid {
@@ -2571,9 +2578,11 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
             }
         } else if attr.check_name(sym::target_feature) {
             if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
-                let msg = "#[target_feature(..)] can only be applied to \
-                           `unsafe` function";
-                tcx.sess.span_err(attr.span, msg);
+                let msg = "#[target_feature(..)] can only be applied to `unsafe` functions";
+                tcx.sess.struct_span_err(attr.span, msg)
+                    .span_label(attr.span, "can only be applied to `unsafe` functions")
+                    .span_label(tcx.def_span(id), "not an `unsafe` function")
+                    .emit();
             }
             from_target_feature(
                 tcx,

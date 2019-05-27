@@ -1,55 +1,47 @@
-error[E0452]: malformed lint attribute
+error[E0452]: malformed lint attribute input
   --> $DIR/reasons-erroneous.rs:3:58
    |
 LL | #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
-   |                                                          ^
-   |
-   = help: reason must be a string literal
+   |                                                          ^ reason must be a string literal
 
-error[E0452]: malformed lint attribute
+error[E0452]: malformed lint attribute input
   --> $DIR/reasons-erroneous.rs:6:40
    |
 LL | #![warn(anonymous_parameters, reason = b"consider these, for we have condemned them")]
-   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: reason must be a string literal
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reason must be a string literal
 
-error[E0452]: malformed lint attribute
+error[E0452]: malformed lint attribute input
   --> $DIR/reasons-erroneous.rs:9:29
    |
 LL | #![warn(bare_trait_objects, reasons = "leaders to no sure land, guides their bearings lost")]
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad attribute argument
 
-error[E0452]: malformed lint attribute
-  --> $DIR/reasons-erroneous.rs:11:23
+error[E0452]: malformed lint attribute input
+  --> $DIR/reasons-erroneous.rs:12:23
    |
 LL | #![warn(box_pointers, blerp = "or in league with robbers have reversed the signposts")]
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad attribute argument
 
-error[E0452]: malformed lint attribute
-  --> $DIR/reasons-erroneous.rs:13:36
+error[E0452]: malformed lint attribute input
+  --> $DIR/reasons-erroneous.rs:15:36
    |
 LL | #![warn(elided_lifetimes_in_paths, reason("disrespectful to ancestors", "irresponsible to heirs"))]
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad attribute argument
 
-error[E0452]: malformed lint attribute
-  --> $DIR/reasons-erroneous.rs:15:44
+error[E0452]: malformed lint attribute input
+  --> $DIR/reasons-erroneous.rs:18:44
    |
 LL | #![warn(ellipsis_inclusive_range_patterns, reason = "born barren", reason = "a freak growth")]
-   |                                            ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: reason in lint attribute must come last
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^ reason in lint attribute must come last
 
-error[E0452]: malformed lint attribute
-  --> $DIR/reasons-erroneous.rs:18:25
+error[E0452]: malformed lint attribute input
+  --> $DIR/reasons-erroneous.rs:21:25
    |
 LL | #![warn(keyword_idents, reason = "root in rubble", macro_use_extern_crate)]
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: reason in lint attribute must come last
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ reason in lint attribute must come last
 
 warning: unknown lint: `reason`
-  --> $DIR/reasons-erroneous.rs:21:39
+  --> $DIR/reasons-erroneous.rs:24:39
    |
 LL | #![warn(missing_copy_implementations, reason)]
    |                                       ^^^^^^

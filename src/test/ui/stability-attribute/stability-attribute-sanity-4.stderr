@@ -1,38 +1,38 @@
-error: attribute must be of the form `#[unstable(feature = "name", reason = "...", issue = "N")]`
+error: malformed `unstable` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:8:5
    |
 LL |     #[unstable]
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ help: must be of the form: `#[unstable(feature = "name", reason = "...", issue = "N")]`
 
-error: attribute must be of the form `#[unstable(feature = "name", reason = "...", issue = "N")]`
+error: malformed `unstable` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:11:5
    |
 LL |     #[unstable = "b"]
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[unstable(feature = "name", reason = "...", issue = "N")]`
 
-error: attribute must be of the form `#[stable(feature = "name", since = "version")]`
+error: malformed `stable` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:14:5
    |
 LL |     #[stable]
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ help: must be of the form: `#[stable(feature = "name", since = "version")]`
 
-error: attribute must be of the form `#[stable(feature = "name", since = "version")]`
+error: malformed `stable` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:17:5
    |
 LL |     #[stable = "a"]
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^ help: must be of the form: `#[stable(feature = "name", since = "version")]`
 
-error: attribute must be of the form `#[rustc_deprecated(since = "version", reason = "...")]`
+error: malformed `rustc_deprecated` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:21:5
    |
 LL |     #[rustc_deprecated]
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_deprecated(since = "version", reason = "...")]`
 
-error: attribute must be of the form `#[rustc_deprecated(since = "version", reason = "...")]`
+error: malformed `rustc_deprecated` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:25:5
    |
 LL |     #[rustc_deprecated = "a"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_deprecated(since = "version", reason = "...")]`
 
 error: aborting due to 6 previous errors
 
