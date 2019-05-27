@@ -3,8 +3,9 @@ use ra_syntax::{
     AstNode, SyntaxNode, TextRange, SyntaxKind, SmolStr, SyntaxTreeBuilder, TreeArc, SyntaxElement,
     ast, SyntaxKind::*, TextUnit, T
 };
+use tt::buffer::Cursor;
 
-use crate::subtree_source::{SubtreeTokenSource, Querier};
+use crate::subtree_source::{SubtreeTokenSource};
 use crate::ExpandError;
 
 /// Maps `tt::TokenId` to the relative range of the original token.
@@ -51,8 +52,7 @@ where
 {
     let buffer = tt::buffer::TokenBuffer::new(&[tt.clone().into()]);
     let mut token_source = SubtreeTokenSource::new(&buffer);
-    let querier = token_source.querier();
-    let mut tree_sink = TtTreeSink::new(querier.as_ref());
+    let mut tree_sink = TtTreeSink::new(buffer.begin());
     f(&mut token_source, &mut tree_sink);
     if tree_sink.roots.len() != 1 {
         return Err(ExpandError::ConversionError);
@@ -259,11 +259,10 @@ fn convert_tt(
     Some(res)
 }
 
-struct TtTreeSink<'a, Q: Querier> {
+struct TtTreeSink<'a> {
     buf: String,
-    src_querier: &'a Q,
+    cursor: Cursor<'a>,
     text_pos: TextUnit,
-    token_pos: usize,
     inner: SyntaxTreeBuilder,
 
     // Number of roots
@@ -271,52 +270,79 @@ struct TtTreeSink<'a, Q: Querier> {
     roots: smallvec::SmallVec<[usize; 1]>,
 }
 
-impl<'a, Q: Querier> TtTreeSink<'a, Q> {
-    fn new(src_querier: &'a Q) -> Self {
+impl<'a> TtTreeSink<'a> {
+    fn new(cursor: Cursor<'a>) -> Self {
         TtTreeSink {
             buf: String::new(),
-            src_querier,
+            cursor,
             text_pos: 0.into(),
-            token_pos: 0,
             inner: SyntaxTreeBuilder::default(),
             roots: smallvec::SmallVec::new(),
         }
     }
 }
 
-fn is_delimiter(kind: SyntaxKind) -> bool {
-    match kind {
-        T!['('] | T!['['] | T!['{'] | T![')'] | T![']'] | T!['}'] => true,
-        _ => false,
-    }
+fn delim_to_str(d: tt::Delimiter, closing: bool) -> SmolStr {
+    let texts = match d {
+        tt::Delimiter::Parenthesis => "()",
+        tt::Delimiter::Brace => "{}",
+        tt::Delimiter::Bracket => "[]",
+        tt::Delimiter::None => "",
+    };
+
+    let idx = closing as usize;
+    let text = if texts.len() > 0 { &texts[idx..texts.len() - (1 - idx)] } else { "" };
+    text.into()
 }
 
-impl<'a, Q: Querier> TreeSink for TtTreeSink<'a, Q> {
+impl<'a> TreeSink for TtTreeSink<'a> {
     fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
         if kind == L_DOLLAR || kind == R_DOLLAR {
-            self.token_pos += n_tokens as usize;
+            if let Some(_) = self.cursor.end() {
+                self.cursor = self.cursor.bump();
+            } else {
+                self.cursor = self.cursor.subtree().unwrap();
+            }
             return;
         }
 
         for _ in 0..n_tokens {
-            self.buf += &self.src_querier.token(self.token_pos).1;
-            self.token_pos += 1;
+            if self.cursor.eof() {
+                break;
+            }
+
+            match self.cursor.token_tree() {
+                Some(tt::TokenTree::Leaf(leaf)) => {
+                    self.cursor = self.cursor.bump();
+                    self.buf += &format!("{}", leaf);
+                }
+                Some(tt::TokenTree::Subtree(subtree)) => {
+                    self.cursor = self.cursor.subtree().unwrap();
+                    self.buf += &delim_to_str(subtree.delimiter, false);
+                }
+                None => {
+                    if let Some(parent) = self.cursor.end() {
+                        self.cursor = self.cursor.bump();
+                        self.buf += &delim_to_str(parent.delimiter, true);
+                    }
+                }
+            };
         }
+
         self.text_pos += TextUnit::of_str(&self.buf);
         let text = SmolStr::new(self.buf.as_str());
         self.buf.clear();
         self.inner.token(kind, text);
 
-        // Add a white space between tokens, only if both are not delimiters
-        if !is_delimiter(kind) {
-            let (last_kind, _, last_joint_to_next) = self.src_querier.token(self.token_pos - 1);
-            if !last_joint_to_next && last_kind.is_punct() {
-                let (cur_kind, _, _) = self.src_querier.token(self.token_pos);
-                if !is_delimiter(cur_kind) {
-                    if cur_kind.is_punct() {
-                        self.inner.token(WHITESPACE, " ".into());
-                    }
-                }
+        // Add whitespace between adjoint puncts
+        let next = self.cursor.bump();
+        if let (
+            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(curr))),
+            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(_))),
+        ) = (self.cursor.token_tree(), next.token_tree())
+        {
+            if curr.spacing == tt::Spacing::Alone {
+                self.inner.token(WHITESPACE, " ".into());
             }
         }
     }
@@ -344,6 +370,7 @@ impl<'a, Q: Querier> TreeSink for TtTreeSink<'a, Q> {
 mod tests {
     use super::*;
     use crate::tests::{expand, create_rules};
+    use ra_parser::TokenSource;
 
     #[test]
     fn convert_tt_token_source() {
@@ -363,24 +390,27 @@ mod tests {
         );
         let expansion = expand(&rules, "literals!(foo)");
         let buffer = tt::buffer::TokenBuffer::new(&[expansion.clone().into()]);
-        let tt_src = SubtreeTokenSource::new(&buffer);
-
-        let query = tt_src.querier();
+        let mut tt_src = SubtreeTokenSource::new(&buffer);
+        let mut tokens = vec![];
+        while tt_src.current().kind != EOF {
+            tokens.push((tt_src.current().kind, tt_src.text()));
+            tt_src.bump();
+        }
 
         // [${]
         // [let] [a] [=] ['c'] [;]
-        assert_eq!(query.token(2 + 3).1, "'c'");
-        assert_eq!(query.token(2 + 3).0, CHAR);
+        assert_eq!(tokens[2 + 3].1, "'c'");
+        assert_eq!(tokens[2 + 3].0, CHAR);
         // [let] [c] [=] [1000] [;]
-        assert_eq!(query.token(2 + 5 + 3).1, "1000");
-        assert_eq!(query.token(2 + 5 + 3).0, INT_NUMBER);
+        assert_eq!(tokens[2 + 5 + 3].1, "1000");
+        assert_eq!(tokens[2 + 5 + 3].0, INT_NUMBER);
         // [let] [f] [=] [12E+99_f64] [;]
-        assert_eq!(query.token(2 + 10 + 3).1, "12E+99_f64");
-        assert_eq!(query.token(2 + 10 + 3).0, FLOAT_NUMBER);
+        assert_eq!(tokens[2 + 10 + 3].1, "12E+99_f64");
+        assert_eq!(tokens[2 + 10 + 3].0, FLOAT_NUMBER);
 
         // [let] [s] [=] ["rust1"] [;]
-        assert_eq!(query.token(2 + 15 + 3).1, "\"rust1\"");
-        assert_eq!(query.token(2 + 15 + 3).0, STRING);
+        assert_eq!(tokens[2 + 15 + 3].1, "\"rust1\"");
+        assert_eq!(tokens[2 + 15 + 3].0, STRING);
     }
 
     #[test]

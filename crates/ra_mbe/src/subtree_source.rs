@@ -1,12 +1,7 @@
 use ra_parser::{TokenSource, Token};
 use ra_syntax::{classify_literal, SmolStr, SyntaxKind, SyntaxKind::*, T};
 use std::cell::{RefCell, Cell};
-use std::sync::Arc;
 use tt::buffer::{TokenBuffer, Cursor};
-
-pub(crate) trait Querier {
-    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool);
-}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct TtToken {
@@ -15,20 +10,47 @@ struct TtToken {
     pub text: SmolStr,
 }
 
-// A wrapper class for ref cell
-#[derive(Debug)]
-pub(crate) struct SubtreeWalk<'a> {
+pub(crate) struct SubtreeTokenSource<'a> {
     start: Cursor<'a>,
     cursor: Cell<Cursor<'a>>,
     cached: RefCell<Vec<Option<TtToken>>>,
+    curr: (Token, usize),
 }
 
-impl<'a> SubtreeWalk<'a> {
-    fn new(cursor: Cursor<'a>) -> Self {
-        SubtreeWalk {
+impl<'a> SubtreeTokenSource<'a> {
+    // Helper function used in test
+    #[allow(unused)]
+    pub fn text(&self) -> SmolStr {
+        match self.get(self.curr.1) {
+            Some(tt) => tt.text,
+            _ => SmolStr::new(""),
+        }
+    }
+}
+
+impl<'a> SubtreeTokenSource<'a> {
+    pub fn new(buffer: &'a TokenBuffer) -> SubtreeTokenSource<'a> {
+        let cursor = buffer.begin();
+
+        let mut res = SubtreeTokenSource {
+            curr: (Token { kind: EOF, is_jointed_to_next: false }, 0),
             start: cursor,
             cursor: Cell::new(cursor),
             cached: RefCell::new(Vec::with_capacity(10)),
+        };
+        res.curr = (res.mk_token(0), 0);
+        res
+    }
+
+    pub(crate) fn bump_n(&mut self, parsed_tokens: usize) -> Vec<tt::TokenTree> {
+        let res = self.collect_token_trees(parsed_tokens);
+        res
+    }
+
+    fn mk_token(&self, pos: usize) -> Token {
+        match self.get(pos) {
+            Some(tt) => Token { kind: tt.kind, is_jointed_to_next: tt.is_joint_to_next },
+            None => Token { kind: EOF, is_jointed_to_next: false },
         }
     }
 
@@ -109,46 +131,6 @@ impl<'a> SubtreeWalk<'a> {
     }
 }
 
-impl<'a> Querier for SubtreeWalk<'a> {
-    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool) {
-        self.get(uidx)
-            .map(|tkn| (tkn.kind, tkn.text, tkn.is_joint_to_next))
-            .unwrap_or_else(|| (SyntaxKind::EOF, "".into(), false))
-    }
-}
-
-pub(crate) struct SubtreeTokenSource<'a> {
-    walker: Arc<SubtreeWalk<'a>>,
-    curr: (Token, usize),
-}
-
-impl<'a> SubtreeTokenSource<'a> {
-    pub fn new(buffer: &'a TokenBuffer) -> SubtreeTokenSource<'a> {
-        let mut res = SubtreeTokenSource {
-            walker: Arc::new(SubtreeWalk::new(buffer.begin())),
-            curr: (Token { kind: EOF, is_jointed_to_next: false }, 0),
-        };
-        res.curr = (res.mk_token(0), 0);
-        res
-    }
-
-    pub fn querier(&self) -> Arc<SubtreeWalk<'a>> {
-        self.walker.clone()
-    }
-
-    pub(crate) fn bump_n(&mut self, parsed_tokens: usize) -> Vec<tt::TokenTree> {
-        let res = self.walker.collect_token_trees(parsed_tokens);
-        res
-    }
-
-    fn mk_token(&self, pos: usize) -> Token {
-        match self.walker.get(pos) {
-            Some(tt) => Token { kind: tt.kind, is_jointed_to_next: tt.is_joint_to_next },
-            None => Token { kind: EOF, is_jointed_to_next: false },
-        }
-    }
-}
-
 impl<'a> TokenSource for SubtreeTokenSource<'a> {
     fn current(&self) -> Token {
         self.curr.0
@@ -170,7 +152,7 @@ impl<'a> TokenSource for SubtreeTokenSource<'a> {
 
     /// Is the current token a specified keyword?
     fn is_keyword(&self, kw: &str) -> bool {
-        match self.walker.get(self.curr.1) {
+        match self.get(self.curr.1) {
             Some(t) => t.text == *kw,
             _ => false,
         }
