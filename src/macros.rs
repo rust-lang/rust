@@ -10,6 +10,7 @@
 // and those with brackets will be formatted as array literals.
 
 use std::collections::HashMap;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use syntax::parse::new_parser_from_tts;
 use syntax::parse::parser::Parser;
@@ -216,12 +217,16 @@ pub(crate) fn rewrite_macro(
         None
     } else {
         let guard = InsideMacroGuard::inside_macro_context(context);
-        let result =
-            rewrite_macro_inner(mac, extra_ident, context, shape, position, guard.is_nested);
-        if result.is_none() {
-            context.macro_rewrite_failure.replace(true);
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            rewrite_macro_inner(mac, extra_ident, context, shape, position, guard.is_nested)
+        }));
+        match result {
+            Err(..) | Ok(None) => {
+                context.macro_rewrite_failure.replace(true);
+                None
+            }
+            Ok(rw) => rw,
         }
-        result
     }
 }
 

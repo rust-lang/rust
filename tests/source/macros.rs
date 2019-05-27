@@ -475,3 +475,6 @@ pub fn fold_abi<V: Fold + ?Sized>(_visitor: &mut V, _i: Abi) -> Abi {
 // #3463
 x ! {()}
 x ! y {()}
+
+// #3583
+foo!(|x = y|);
