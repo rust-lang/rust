@@ -108,6 +108,22 @@ fn match_same_arms() {
         (None, Some(a)) => bar(a), // bindings have different types
         _ => (),
     }
+
+    let _ = match 42 {
+        42 => 1,
+        51 => 1, //~ ERROR match arms have same body
+        41 => 2,
+        52 => 2, //~ ERROR match arms have same body
+        _ => 0,
+    };
+
+    let _ = match 42 {
+        1 => 2,
+        2 => 2, //~ ERROR 2nd matched arms have same body
+        3 => 2, //~ ERROR 3rd matched arms have same body
+        4 => 3,
+        _ => 0,
+    };
 }
 
 fn main() {}

@@ -210,5 +210,38 @@ LL | |         try!(Ok("foo"));
 LL | |     } else {
    | |_____^
 
-error: aborting due to 10 previous errors
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:244:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         let foo = "";
+LL | |         return Ok(&foo[0..]);
+LL | |     }
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else.rs:241:20
+   |
+LL |       } else if true {
+   |  ____________________^
+LL | |         let foo = "";
+LL | |         return Ok(&foo[0..]);
+LL | |     } else {
+   | |_____^
+
+error: this `if` has the same condition as a previous if
+  --> $DIR/if_same_then_else.rs:241:15
+   |
+LL |     } else if true {
+   |               ^^^^
+   |
+   = note: #[deny(clippy::ifs_same_cond)] on by default
+note: same as this
+  --> $DIR/if_same_then_else.rs:235:8
+   |
+LL |     if true {
+   |        ^^^^
+
+error: aborting due to 12 previous errors
 

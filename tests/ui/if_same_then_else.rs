@@ -232,6 +232,20 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         return Ok(&foo[0..]);
     }
 
+    if true {
+        let foo = "";
+        return Ok(&foo[0..]);
+    } else if false {
+        let foo = "bar";
+        return Ok(&foo[0..]);
+    } else if true {
+        let foo = "";
+        return Ok(&foo[0..]);
+    } else {
+        let foo = "";
+        return Ok(&foo[0..]);
+    }
+
     // False positive `if_same_then_else`: `let (x, y)` vs. `let (y, x)`; see issue #3559.
     if true {
         let foo = "";
