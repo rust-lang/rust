@@ -14,7 +14,7 @@ use std::cmp::PartialOrd;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{FloatTy, LitKind};
-use syntax_pos::symbol::{LocalInternedString, Symbol};
+use syntax_pos::symbol::Symbol;
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
@@ -250,14 +250,18 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     if let ExprKind::Path(qpath) = &callee.node;
                     let res = self.tables.qpath_res(qpath, callee.hir_id);
                     if let Some(def_id) = res.opt_def_id();
-                    let get_def_path = self.lcx.get_def_path(def_id);
+                    let get_def_path = self.lcx.get_def_path(def_id, );
                     let def_path = get_def_path
                         .iter()
-                        .map(LocalInternedString::get)
+                        .copied()
+                        .map(Symbol::as_str)
                         .collect::<Vec<_>>();
-                    if let &["core", "num", impl_ty, "max_value"] = &def_path[..];
+                    if def_path[0] == "core";
+                    if def_path[1] == "num";
+                    if def_path[3] == "max_value";
+                    if def_path.len() == 4;
                     then {
-                       let value = match impl_ty {
+                       let value = match &*def_path[2] {
                            "<impl i8>" => i8::max_value() as u128,
                            "<impl i16>" => i16::max_value() as u128,
                            "<impl i32>" => i32::max_value() as u128,
