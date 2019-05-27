@@ -209,24 +209,25 @@ pub(crate) fn rewrite_macro(
     shape: Shape,
     position: MacroPosition,
 ) -> Option<String> {
-    catch_unwind(AssertUnwindSafe(|| {
-        let should_skip = context
-            .skip_macro_names
-            .borrow()
-            .contains(&context.snippet(mac.node.path.span).to_owned());
-        if should_skip {
-            None
-        } else {
-            let guard = InsideMacroGuard::inside_macro_context(context);
-            let result =
-                rewrite_macro_inner(mac, extra_ident, context, shape, position, guard.is_nested);
-            if result.is_none() {
+    let should_skip = context
+        .skip_macro_names
+        .borrow()
+        .contains(&context.snippet(mac.node.path.span).to_owned());
+    if should_skip {
+        None
+    } else {
+        let guard = InsideMacroGuard::inside_macro_context(context);
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            rewrite_macro_inner(mac, extra_ident, context, shape, position, guard.is_nested)
+        }));
+        match result {
+            Err(..) | Ok(None) => {
                 context.macro_rewrite_failure.replace(true);
+                None
             }
-            result
+            Ok(rw) => rw,
         }
-    }))
-    .ok()?
+    }
 }
 
 fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
