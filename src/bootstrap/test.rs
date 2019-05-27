@@ -1143,24 +1143,9 @@ impl Step for Compiletest {
             }
         }
 
-        if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
-            match &var.to_string_lossy().to_lowercase()[..] {
-                "1" | "yes" | "on" => {
-                    assert!(builder.config.lldb_enabled,
-                        "RUSTBUILD_FORCE_CLANG_BASED_TESTS needs Clang/LLDB to \
-                         be built.");
-                    let clang_exe = builder.llvm_out(target).join("bin").join("clang");
-                    cmd.arg("--run-clang-based-tests-with").arg(clang_exe);
-                }
-                "0" | "no" | "off" => {
-                    // Nothing to do.
-                }
-                other => {
-                    // Let's make sure typos don't get unnoticed
-                    panic!("Unrecognized option '{}' set in \
-                            RUSTBUILD_FORCE_CLANG_BASED_TESTS", other);
-                }
-            }
+        if util::forcing_clang_based_tests() {
+            let clang_exe = builder.llvm_out(target).join("bin").join("clang");
+            cmd.arg("--run-clang-based-tests-with").arg(clang_exe);
         }
 
         // Get paths from cmd args
