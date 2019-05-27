@@ -2886,7 +2886,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {
         variant.fields.iter().position(|field| {
-            self.adjust_ident(ident, variant.def_id, hir::DUMMY_HIR_ID).0 == field.ident.modern()
+            self.hygienic_eq(ident, field.ident, variant.def_id)
         })
     }
 
@@ -3085,7 +3085,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// its supposed definition name (`def_name`). The method also needs `DefId` of the supposed
     /// definition's parent/scope to perform comparison.
     pub fn hygienic_eq(self, use_name: Ident, def_name: Ident, def_parent_def_id: DefId) -> bool {
-        self.adjust_ident(use_name, def_parent_def_id, hir::DUMMY_HIR_ID).0 == def_name.modern()
+        // We could use `Ident::eq` here, but we deliberately don't. The name
+        // comparison fails frequently, and we want to avoid the expensive
+        // `modern()` calls required for the span comparison whenever possible.
+        use_name.name == def_name.name &&
+        self.adjust_ident(use_name, def_parent_def_id, hir::DUMMY_HIR_ID).0.span.ctxt() ==
+            def_name.modern().span.ctxt()
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId, block: hir::HirId) -> (Ident, DefId) {
