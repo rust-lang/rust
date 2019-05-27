@@ -156,6 +156,10 @@ impl RootDatabase {
     pub(crate) fn apply_change(&mut self, change: AnalysisChange) {
         let _p = profile("RootDatabase::apply_change");
         log::info!("apply_change {:?}", change);
+        {
+            let _p = profile("RootDatabase::apply_change/cancellation");
+            self.salsa_runtime().next_revision();
+        }
         if !change.new_roots.is_empty() {
             let mut local_roots = Vec::clone(&self.local_roots());
             for (root_id, is_local) in change.new_roots {
