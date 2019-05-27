@@ -37,7 +37,7 @@ find_sysroot() {
             true
         fi
     else
-	# We have to build a sysroot either way.
+        # A normal toolchain.  We have to build a sysroot either way.
         if [ -n "$MIRI_TEST_TARGET" ]; then
             build_sysroot --target "$MIRI_TEST_TARGET"
         else
