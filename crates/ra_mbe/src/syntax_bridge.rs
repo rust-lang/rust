@@ -298,11 +298,7 @@ fn delim_to_str(d: tt::Delimiter, closing: bool) -> SmolStr {
 impl<'a> TreeSink for TtTreeSink<'a> {
     fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
         if kind == L_DOLLAR || kind == R_DOLLAR {
-            if let Some(_) = self.cursor.end() {
-                self.cursor = self.cursor.bump();
-            } else {
-                self.cursor = self.cursor.subtree().unwrap();
-            }
+            self.cursor = self.cursor.bump_subtree();
             return;
         }
 

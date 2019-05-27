@@ -2,16 +2,38 @@ use crate::subtree_source::SubtreeTokenSource;
 
 use ra_parser::{TokenSource, TreeSink};
 use ra_syntax::{SyntaxKind};
-use tt::buffer::TokenBuffer;
+use tt::buffer::{TokenBuffer, Cursor};
 
-struct OffsetTokenSink {
-    token_pos: usize,
+struct OffsetTokenSink<'a> {
+    cursor: Cursor<'a>,
     error: bool,
 }
 
-impl TreeSink for OffsetTokenSink {
+impl<'a> OffsetTokenSink<'a> {
+    pub fn collect(&self, begin: Cursor<'a>) -> Vec<tt::TokenTree> {
+        if !self.cursor.is_root() {
+            return vec![];
+        }
+
+        let mut curr = begin;
+        let mut res = vec![];
+
+        while self.cursor != curr {
+            if let Some(token) = curr.token_tree() {
+                res.push(token);
+            }
+            curr = curr.bump();
+        }
+
+        res
+    }
+}
+
+impl<'a> TreeSink for OffsetTokenSink<'a> {
     fn token(&mut self, _kind: SyntaxKind, n_tokens: u8) {
-        self.token_pos += n_tokens as usize;
+        for _ in 0..n_tokens {
+            self.cursor = self.cursor.bump_subtree();
+        }
     }
     fn start_node(&mut self, _kind: SyntaxKind) {}
     fn finish_node(&mut self) {}
@@ -72,22 +94,20 @@ impl<'a> Parser<'a> {
     {
         let buffer = TokenBuffer::new(&self.subtree.token_trees[*self.cur_pos..]);
         let mut src = SubtreeTokenSource::new(&buffer);
-        let mut sink = OffsetTokenSink { token_pos: 0, error: false };
+        let mut sink = OffsetTokenSink { cursor: buffer.begin(), error: false };
 
         f(&mut src, &mut sink);
 
-        let r = self.finish(sink.token_pos, &mut src);
+        let r = self.finish(buffer.begin(), &mut sink);
         if sink.error {
             return None;
         }
         r
     }
 
-    fn finish(self, parsed_token: usize, src: &mut SubtreeTokenSource) -> Option<tt::TokenTree> {
-        let res = src.bump_n(parsed_token);
+    fn finish(self, begin: Cursor, sink: &mut OffsetTokenSink) -> Option<tt::TokenTree> {
+        let res = sink.collect(begin);
         *self.cur_pos += res.len();
-
-        let res: Vec<_> = res.into_iter().collect();
 
         match res.len() {
             0 => None,

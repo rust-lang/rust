@@ -11,8 +11,7 @@ struct TtToken {
 }
 
 pub(crate) struct SubtreeTokenSource<'a> {
-    start: Cursor<'a>,
-    cursor: Cell<Cursor<'a>>,
+    cached_cursor: Cell<Cursor<'a>>,
     cached: RefCell<Vec<Option<TtToken>>>,
     curr: (Token, usize),
 }
@@ -34,16 +33,10 @@ impl<'a> SubtreeTokenSource<'a> {
 
         let mut res = SubtreeTokenSource {
             curr: (Token { kind: EOF, is_jointed_to_next: false }, 0),
-            start: cursor,
-            cursor: Cell::new(cursor),
+            cached_cursor: Cell::new(cursor),
             cached: RefCell::new(Vec::with_capacity(10)),
         };
         res.curr = (res.mk_token(0), 0);
-        res
-    }
-
-    pub(crate) fn bump_n(&mut self, parsed_tokens: usize) -> Vec<tt::TokenTree> {
-        let res = self.collect_token_trees(parsed_tokens);
         res
     }
 
@@ -61,7 +54,7 @@ impl<'a> SubtreeTokenSource<'a> {
         }
 
         while pos >= cached.len() {
-            let cursor = self.cursor.get();
+            let cursor = self.cached_cursor.get();
             if cursor.eof() {
                 cached.push(None);
                 continue;
@@ -70,64 +63,22 @@ impl<'a> SubtreeTokenSource<'a> {
             match cursor.token_tree() {
                 Some(tt::TokenTree::Leaf(leaf)) => {
                     cached.push(Some(convert_leaf(&leaf)));
-                    self.cursor.set(cursor.bump());
+                    self.cached_cursor.set(cursor.bump());
                 }
                 Some(tt::TokenTree::Subtree(subtree)) => {
-                    self.cursor.set(cursor.subtree().unwrap());
+                    self.cached_cursor.set(cursor.subtree().unwrap());
                     cached.push(Some(convert_delim(subtree.delimiter, false)));
                 }
                 None => {
                     if let Some(subtree) = cursor.end() {
                         cached.push(Some(convert_delim(subtree.delimiter, true)));
-                        self.cursor.set(cursor.bump());
+                        self.cached_cursor.set(cursor.bump());
                     }
                 }
             }
         }
 
         return cached[pos].clone();
-    }
-
-    fn collect_token_trees(&self, n: usize) -> Vec<tt::TokenTree> {
-        let mut res = vec![];
-
-        let mut pos = 0;
-        let mut cursor = self.start;
-        let mut level = 0;
-
-        while pos < n {
-            if cursor.eof() {
-                break;
-            }
-
-            match cursor.token_tree() {
-                Some(tt::TokenTree::Leaf(leaf)) => {
-                    if level == 0 {
-                        res.push(leaf.into());
-                    }
-                    cursor = cursor.bump();
-                    pos += 1;
-                }
-                Some(tt::TokenTree::Subtree(subtree)) => {
-                    if level == 0 {
-                        res.push(subtree.into());
-                    }
-                    pos += 1;
-                    level += 1;
-                    cursor = cursor.subtree().unwrap();
-                }
-
-                None => {
-                    if let Some(_) = cursor.end() {
-                        level -= 1;
-                        pos += 1;
-                        cursor = cursor.bump();
-                    }
-                }
-            }
-        }
-
-        res
     }
 }
 
@@ -147,7 +98,7 @@ impl<'a> TokenSource for SubtreeTokenSource<'a> {
             return;
         }
 
-        self.curr = (self.mk_token(self.curr.1 + 1), self.curr.1 + 1)
+        self.curr = (self.mk_token(self.curr.1 + 1), self.curr.1 + 1);
     }
 
     /// Is the current token a specified keyword?
