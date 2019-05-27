@@ -1616,7 +1616,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             );
 
                             // Find the local from the operand.
-                            let assigned_from_local = match assigned_from.local() {
+                            let assigned_from_local = match assigned_from.local_or_deref_local() {
                                 Some(local) => local,
                                 None => continue,
                             };
@@ -1672,7 +1672,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     );
 
                     // Find the local from the rvalue.
-                    let assigned_from_local = match assigned_from.local() {
+                    let assigned_from_local = match assigned_from.local_or_deref_local() {
                         Some(local) => local,
                         None => continue,
                     };
@@ -1735,7 +1735,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         assigned_from,
                     );
 
-                    if let Some(assigned_from_local) = assigned_from.local() {
+                    if let Some(assigned_from_local) = assigned_from.local_or_deref_local() {
                         debug!(
                             "annotate_argument_and_return_for_borrow: assigned_from_local={:?}",
                             assigned_from_local,
