@@ -1588,6 +1588,20 @@ fn bar(foo: Foo) -> u32 {
 ```
 "##,
 
+E0183: r##"
+Fn* traits (`unboxed closures`) are experimental.
+
+Functions must have exactly one (non self) argument, a tuple representing
+the argument list [1]. This feature can be enabled with:
+
+```
+#![feature(unboxed_closures)]
+```
+
+[1]: https://doc.rust-lang.org/unstable-book/language-features/unboxed-closures.html
+[iss29625]: https://github.com/rust-lang/rust/issues/26925
+"##,
+
 E0184: r##"
 Explicitly implementing both Drop and Copy for a type is currently disallowed.
 This feature can make some sense in theory, but the current implementation is
@@ -4671,7 +4685,6 @@ register_diagnostics! {
 //  E0173, // manual implementations of unboxed closure traits are experimental
 //  E0174,
 //  E0182, // merged into E0229
-    E0183,
 //  E0187, // can't infer the kind of the closure
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
