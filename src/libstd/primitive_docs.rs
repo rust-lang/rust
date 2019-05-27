@@ -683,6 +683,10 @@ mod prim_str { }
 /// assert_eq!(tuple.2, 'c');
 /// ```
 ///
+/// The sequential nature of the tuple applies to its implementations of various
+/// traits.  For example, in `PartialOrd` and `Ord`, the elements are compared
+/// sequentially until the first non-equal set is found.
+///
 /// For more about tuples, see [the book](../book/ch03-02-data-types.html#the-tuple-type).
 ///
 /// # Trait implementations
