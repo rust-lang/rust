@@ -39,7 +39,6 @@ pub type ULONG = c_ulong;
 pub type LPBOOL = *mut BOOL;
 pub type LPBYTE = *mut BYTE;
 pub type LPCSTR = *const CHAR;
-pub type LPCVOID = *const c_void;
 pub type LPCWSTR = *const WCHAR;
 pub type LPDWORD = *mut DWORD;
 pub type LPHANDLE = *mut HANDLE;
@@ -614,16 +613,6 @@ pub enum EXCEPTION_DISPOSITION {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
-pub struct CONSOLE_READCONSOLE_CONTROL {
-    pub nLength: ULONG,
-    pub nInitialChars: ULONG,
-    pub dwCtrlWakeupMask: ULONG,
-    pub dwControlKeyState: ULONG,
-}
-pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
-
-#[repr(C)]
 #[derive(Copy)]
 pub struct fd_set {
     pub fd_count: c_uint,
@@ -647,6 +636,17 @@ pub struct timeval {
 #[cfg(not(target_vendor = "uwp"))]
 ifdef! {
     #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct CONSOLE_READCONSOLE_CONTROL {
+        pub nLength: ULONG,
+        pub nInitialChars: ULONG,
+        pub dwCtrlWakeupMask: ULONG,
+        pub dwControlKeyState: ULONG,
+    }
+
+    pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
+
+    #[repr(C)]
     pub struct BY_HANDLE_FILE_INFORMATION {
         pub dwFileAttributes: DWORD,
         pub ftCreationTime: FILETIME,
@@ -661,6 +661,7 @@ ifdef! {
     }
 
     pub type LPBY_HANDLE_FILE_INFORMATION = *mut BY_HANDLE_FILE_INFORMATION;
+    pub type LPCVOID = *const c_void;
 
     pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
@@ -670,6 +671,20 @@ ifdef! {
         #[link_name = "SystemFunction036"]
         pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
 
+        pub fn ReadConsoleW(hConsoleInput: HANDLE,
+                            lpBuffer: LPVOID,
+                            nNumberOfCharsToRead: DWORD,
+                            lpNumberOfCharsRead: LPDWORD,
+                            pInputControl: PCONSOLE_READCONSOLE_CONTROL) -> BOOL;
+
+        pub fn WriteConsoleW(hConsoleOutput: HANDLE,
+                             lpBuffer: LPCVOID,
+                             nNumberOfCharsToWrite: DWORD,
+                             lpNumberOfCharsWritten: LPDWORD,
+                             lpReserved: LPVOID) -> BOOL;
+
+        pub fn GetConsoleMode(hConsoleHandle: HANDLE,
+                              lpMode: LPDWORD) -> BOOL;
         // Allowed but unused by UWP
         pub fn OpenProcessToken(ProcessHandle: HANDLE,
                                 DesiredAccess: DWORD,
@@ -754,20 +769,6 @@ extern "system" {
     pub fn LeaveCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn DeleteCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
 
-    pub fn ReadConsoleW(hConsoleInput: HANDLE,
-                        lpBuffer: LPVOID,
-                        nNumberOfCharsToRead: DWORD,
-                        lpNumberOfCharsRead: LPDWORD,
-                        pInputControl: PCONSOLE_READCONSOLE_CONTROL) -> BOOL;
-
-    pub fn WriteConsoleW(hConsoleOutput: HANDLE,
-                         lpBuffer: LPCVOID,
-                         nNumberOfCharsToWrite: DWORD,
-                         lpNumberOfCharsWritten: LPDWORD,
-                         lpReserved: LPVOID) -> BOOL;
-
-    pub fn GetConsoleMode(hConsoleHandle: HANDLE,
-                          lpMode: LPDWORD) -> BOOL;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
     pub fn SetFileAttributesW(lpFileName: LPCWSTR,
                               dwFileAttributes: DWORD) -> BOOL;
