@@ -256,10 +256,6 @@ pub const WAIT_OBJECT_0: DWORD = 0x00000000;
 pub const WAIT_TIMEOUT: DWORD = 258;
 pub const WAIT_FAILED: DWORD = 0xFFFFFFFF;
 
-pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
-pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
-pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
-
 pub const PIPE_ACCESS_INBOUND: DWORD = 0x00000001;
 pub const PIPE_ACCESS_OUTBOUND: DWORD = 0x00000002;
 pub const FILE_FLAG_FIRST_PIPE_INSTANCE: DWORD = 0x00080000;
@@ -445,25 +441,6 @@ pub struct REPARSE_MOUNTPOINT_DATA_BUFFER {
 }
 
 #[repr(C)]
-pub struct EXCEPTION_RECORD {
-    pub ExceptionCode: DWORD,
-    pub ExceptionFlags: DWORD,
-    pub ExceptionRecord: *mut EXCEPTION_RECORD,
-    pub ExceptionAddress: LPVOID,
-    pub NumberParameters: DWORD,
-    pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS]
-}
-
-#[repr(C)]
-pub struct EXCEPTION_POINTERS {
-    pub ExceptionRecord: *mut EXCEPTION_RECORD,
-    pub ContextRecord: *mut CONTEXT,
-}
-
-pub type PVECTORED_EXCEPTION_HANDLER = extern "system"
-        fn(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG;
-
-#[repr(C)]
 pub struct GUID {
     pub Data1: DWORD,
     pub Data2: WORD,
@@ -544,8 +521,6 @@ pub enum ADDRESS_MODE {
     AddrModeReal,
     AddrModeFlat,
 }
-
-pub enum CONTEXT {}
 
 #[repr(C)]
 pub struct SOCKADDR_STORAGE_LH {
@@ -631,6 +606,31 @@ pub struct timeval {
 // Functions forbidden when targeting UWP
 cfg_if::cfg_if! {
 if #[cfg(not(target_vendor = "uwp"))] {
+    pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
+    pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
+    pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
+
+    #[repr(C)]
+    pub struct EXCEPTION_RECORD {
+        pub ExceptionCode: DWORD,
+        pub ExceptionFlags: DWORD,
+        pub ExceptionRecord: *mut EXCEPTION_RECORD,
+        pub ExceptionAddress: LPVOID,
+        pub NumberParameters: DWORD,
+        pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS]
+    }
+
+    pub enum CONTEXT {}
+
+    #[repr(C)]
+    pub struct EXCEPTION_POINTERS {
+        pub ExceptionRecord: *mut EXCEPTION_RECORD,
+        pub ContextRecord: *mut CONTEXT,
+    }
+
+    pub type PVECTORED_EXCEPTION_HANDLER = extern "system"
+            fn(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG;
+
     #[repr(C)]
     #[derive(Copy, Clone)]
     pub struct CONSOLE_READCONSOLE_CONTROL {
@@ -694,6 +694,9 @@ if #[cfg(not(target_vendor = "uwp"))] {
         pub fn SetHandleInformation(hObject: HANDLE,
                                     dwMask: DWORD,
                                     dwFlags: DWORD) -> BOOL;
+        pub fn AddVectoredExceptionHandler(FirstHandler: ULONG,
+                                           VectoredHandler: PVECTORED_EXCEPTION_HANDLER)
+                                           -> LPVOID;
         pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
                                lpTargetFileName: LPCWSTR,
                                lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
@@ -804,9 +807,6 @@ extern "system" {
                        lpData: LPVOID,
                        pbCancel: LPBOOL,
                        dwCopyFlags: DWORD) -> BOOL;
-    pub fn AddVectoredExceptionHandler(FirstHandler: ULONG,
-                                       VectoredHandler: PVECTORED_EXCEPTION_HANDLER)
-                                       -> LPVOID;
     pub fn FormatMessageW(flags: DWORD,
                           lpSrc: LPVOID,
                           msgId: DWORD,
@@ -1015,6 +1015,7 @@ compat_fn! {
                                      _dwFlags: DWORD) -> DWORD {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
     }
+    #[cfg(not(target_vendor = "uwp"))]
     pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
     }
