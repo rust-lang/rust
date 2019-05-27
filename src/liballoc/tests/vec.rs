@@ -1045,6 +1045,14 @@ fn drain_filter_unconsumed_panic() {
 }
 
 #[test]
+fn drain_filter_unconsumed() {
+    let mut vec = vec![1, 2, 3, 4];
+    let drain = vec.drain_filter(|&mut x| x % 2 != 0);
+    drop(drain);
+    assert_eq!(vec, [2, 4]);
+}
+
+#[test]
 fn test_reserve_exact() {
     // This is all the same as test_reserve
 
