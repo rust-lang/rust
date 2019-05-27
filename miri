@@ -1,6 +1,7 @@
 #!/bin/sh
 set -e
-TARGET=$(rustc --print target-spec-json -Z unstable-options | jq '.["llvm-target"]' -r)
+# I'd love to use `jq` for parsing the JSON properly, but macOS is totally underequipped for this kind of work.
+TARGET=$(rustc --print target-spec-json -Z unstable-options | grep llvm-target | cut -d '"' -f 4)
 SYSROOT=$(rustc --print sysroot)
 # We set the rpath so that Miri finds the private rustc libraries it needs.
 # We enable debug-assertions to get tracing.
