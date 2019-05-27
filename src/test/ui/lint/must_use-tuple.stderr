@@ -1,5 +1,5 @@
 error: unused `std::result::Result` that must be used
-  --> $DIR/must_use-tuple.rs:4:6
+  --> $DIR/must_use-tuple.rs:8:6
    |
 LL |     (Ok::<(), ()>(()),);
    |      ^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | #![deny(unused_must_use)]
    = note: this `Result` may be an `Err` variant, which should be handled
 
 error: unused `std::result::Result` that must be used
-  --> $DIR/must_use-tuple.rs:6:6
+  --> $DIR/must_use-tuple.rs:10:6
    |
 LL |     (Ok::<(), ()>(()), 0, Ok::<(), ()>(()), 5);
    |      ^^^^^^^^^^^^^^^^
@@ -20,12 +20,20 @@ LL |     (Ok::<(), ()>(()), 0, Ok::<(), ()>(()), 5);
    = note: this `Result` may be an `Err` variant, which should be handled
 
 error: unused `std::result::Result` that must be used
-  --> $DIR/must_use-tuple.rs:6:27
+  --> $DIR/must_use-tuple.rs:10:27
    |
 LL |     (Ok::<(), ()>(()), 0, Ok::<(), ()>(()), 5);
    |                           ^^^^^^^^^^^^^^^^
    |
    = note: this `Result` may be an `Err` variant, which should be handled
 
-error: aborting due to 3 previous errors
+error: unused `std::result::Result` that must be used
+  --> $DIR/must_use-tuple.rs:14:5
+   |
+LL |     foo();
+   |     ^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+
+error: aborting due to 4 previous errors
 
