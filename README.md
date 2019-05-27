@@ -141,14 +141,16 @@ version of `rustc` that, instead of compiling your code, runs it.  It accepts
 all the same flags as `rustc` (though the ones only affecting code generation
 and linking obviously will have no effect) [and more][miri-flags].
 
-Running the Miri driver requires some fiddling with environment variables, so the `miri` script helps you do that.
-For example, you can run the driver on a particular file by doing
+Running the Miri driver requires some fiddling with environment variables, so
+the `miri` script helps you do that.  For example, you can run the driver on a
+particular file by doing
 
 ```sh
-./miri run tests/run-pass/format.rs # or whatever test you like
+./miri run tests/run-pass/format.rs
+./miri run tests/run-pass/hello.rs --target i686-unknown-linux-gnu
 ```
 
-and you can run the test suite using
+and you can run the test suite using:
 
 ```
 ./miri test
