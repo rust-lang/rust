@@ -140,6 +140,11 @@
 //! call `next()` on your iterator, until it reaches `None`. Let's go over that
 //! next.
 //!
+//! Also note that `Iterator` provides a default implementation of methods such as `nth` and `fold`
+//! which call `next` internally. However, it is also possible to write a custom implementation of
+//! methods like `nth` and `fold` if an iterator can compute them more efficiently without calling
+//! `next`.
+//!
 //! # for Loops and IntoIterator
 //!
 //! Rust's `for` loop syntax is actually sugar for iterators. Here's a basic

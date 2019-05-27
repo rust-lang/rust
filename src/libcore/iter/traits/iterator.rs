@@ -964,6 +964,7 @@ pub trait Iterator {
     /// Creates an iterator that skips the first `n` elements.
     ///
     /// After they have been consumed, the rest of the elements are yielded.
+    /// Rather than overriding this method directly, instead override the `nth` method.
     ///
     /// # Examples
     ///
