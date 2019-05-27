@@ -17,6 +17,8 @@ echo
 # Test
 function run_tests {
     ./miri test
+    # "miri test" has built the sysroot for us, now this should pass without
+    # any interactive questions.
     test-cargo-miri/run-test.py
 }
 
