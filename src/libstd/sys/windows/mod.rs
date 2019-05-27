@@ -37,7 +37,14 @@ pub mod stack_overflow;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
-pub mod stdio;
+cfg_if::cfg_if! {
+    if #[cfg(not(target_vendor = "uwp"))] {
+        pub mod stdio;
+    } else {
+        pub mod stdio_uwp;
+        pub use self::stdio_uwp as stdio;
+    }
+}
 
 #[cfg(not(test))]
 pub fn init() {
