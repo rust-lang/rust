@@ -97,12 +97,26 @@ impl Socket {
         };
         let socket = unsafe {
             match c::WSASocketW(fam, ty, 0, ptr::null_mut(), 0,
-                                c::WSA_FLAG_OVERLAPPED) {
-                c::INVALID_SOCKET => Err(last_error()),
+                                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT) {
+                c::INVALID_SOCKET => {
+                    match c::WSAGetLastError() {
+                        c::WSAEPROTOTYPE => {
+                            match c::WSASocketW(fam, ty, 0, ptr::null_mut(), 0,
+                                                c::WSA_FLAG_OVERLAPPED) {
+                                c::INVALID_SOCKET => Err(last_error()),
+                                n => {
+                                    let s = Socket(n);
+                                    s.set_no_inherit()?;
+                                    Ok(s)
+                                },
+                            }
+                        },
+                        n => Err(io::Error::from_raw_os_error(n)),
+                    }
+                },
                 n => Ok(Socket(n)),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -168,7 +182,6 @@ impl Socket {
                 n => Ok(Socket(n)),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -178,16 +191,34 @@ impl Socket {
             cvt(c::WSADuplicateSocketW(self.0,
                                             c::GetCurrentProcessId(),
                                             &mut info))?;
+
             match c::WSASocketW(info.iAddressFamily,
                                 info.iSocketType,
                                 info.iProtocol,
                                 &mut info, 0,
-                                c::WSA_FLAG_OVERLAPPED) {
-                c::INVALID_SOCKET => Err(last_error()),
+                                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT) {
+                c::INVALID_SOCKET => {
+                    match c::WSAGetLastError() {
+                        c::WSAEPROTOTYPE => {
+                            match c::WSASocketW(info.iAddressFamily,
+                                                info.iSocketType,
+                                                info.iProtocol,
+                                                &mut info, 0,
+                                                c::WSA_FLAG_OVERLAPPED) {
+                                c::INVALID_SOCKET => Err(last_error()),
+                                n => {
+                                    let s = Socket(n);
+                                    s.set_no_inherit()?;
+                                    Ok(s)
+                                },
+                            }
+                        },
+                        n => Err(io::Error::from_raw_os_error(n)),
+                    }
+                },
                 n => Ok(Socket(n)),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -312,11 +343,17 @@ impl Socket {
         }
     }
 
+    #[cfg(not(target_vendor = "uwp"))]
     fn set_no_inherit(&self) -> io::Result<()> {
         sys::cvt(unsafe {
             c::SetHandleInformation(self.0 as c::HANDLE,
                                     c::HANDLE_FLAG_INHERIT, 0)
         }).map(|_| ())
+    }
+
+    #[cfg(target_vendor = "uwp")]
+    fn set_no_inherit(&self) -> io::Result<()> {
+        Err(io::Error::new(io::ErrorKind::Other, "Unavailable on UWP"))
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
