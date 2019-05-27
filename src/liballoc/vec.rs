@@ -2762,26 +2762,17 @@ impl<T, F> Iterator for DrainFilter<'_, T, F>
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        struct SetIdxOnDrop<'a> {
-            idx: &'a mut usize,
-            new_idx: usize,
-        }
-
-        impl<'a> Drop for SetIdxOnDrop<'a> {
-            fn drop(&mut self) {
-                *self.idx = self.new_idx;
-            }
-        }
-
         unsafe {
             while self.idx < self.old_len {
                 let i = self.idx;
                 let v = slice::from_raw_parts_mut(self.vec.as_mut_ptr(), self.old_len);
-                let mut set_idx = SetIdxOnDrop { new_idx: self.idx, idx: &mut self.idx };
                 self.panic_flag = true;
                 let drained = (self.pred)(&mut v[i]);
                 self.panic_flag = false;
-                set_idx.new_idx += 1;
+                // Update the index *after* the predicate is called. If the index
+                // is updated prior and the predicate panics, the element at this
+                // index would be leaked.
+                self.idx += 1;
                 if drained {
                     self.del += 1;
                     return Some(ptr::read(&v[i]));
@@ -2806,9 +2797,6 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
     where F: FnMut(&mut T) -> bool,
 {
     fn drop(&mut self) {
-        // If the predicate panics, we still need to backshift everything
-        // down after the last successfully drained element, but no additional
-        // elements are drained or checked.
         struct BackshiftOnDrop<'a, 'b, T, F>
             where
                 F: FnMut(&mut T) -> bool,
@@ -2822,6 +2810,12 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
         {
             fn drop(&mut self) {
                 unsafe {
+                    // Backshift any unprocessed elements, preventing double-drop
+                    // of any element that *should* have been previously overwritten
+                    // but was not due to a panic in the filter predicate. This is
+                    // implemented via drop so that it's guaranteed to run even in
+                    // the event of a panic while consuming the remainder of the
+                    // DrainFilter.
                     while self.drain.idx < self.drain.old_len {
                         let i = self.drain.idx;
                         self.drain.idx += 1;
@@ -2845,6 +2839,9 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
             drain: self
         };
 
+        // Attempt to consume any remaining elements if the filter predicate
+        // has not yet panicked. We'll backshift any remaining elements
+        // whether we've already panicked or if the consumption here panics.
         if !backshift.drain.panic_flag {
             backshift.drain.for_each(drop);
         }
