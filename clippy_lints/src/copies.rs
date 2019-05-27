@@ -152,7 +152,7 @@ fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr]) {
     let eq: &dyn Fn(&&Expr, &&Expr) -> bool =
         &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) };
 
-    if let Some((i, j)) = search_same(conds, hash, eq) {
+    for (i, j) in search_same(conds, hash, eq) {
         span_note_and_lint(
             cx,
             IFS_SAME_COND,
@@ -185,7 +185,7 @@ fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
         };
 
         let indexed_arms: Vec<(usize, &Arm)> = arms.iter().enumerate().collect();
-        if let Some((&(_, i), &(_, j))) = search_same(&indexed_arms, hash, eq) {
+        for (&(_, i), &(_, j)) in search_same(&indexed_arms, hash, eq) {
             span_lint_and_then(
                 cx,
                 MATCH_SAME_ARMS,
@@ -217,7 +217,10 @@ fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
                                 ),
                             );
                         } else {
-                            db.span_note(i.body.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+                            db.span_help(
+                                i.pats[0].span,
+                                &format!("consider refactoring into `{} | {}`", lhs, rhs),
+                            );
                         }
                     }
                 },
@@ -323,21 +326,33 @@ where
     None
 }
 
-fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Option<(&T, &T)>
+fn search_common_cases<'a, T, Eq>(exprs: &'a [T], eq: &Eq) -> Option<(&'a T, &'a T)>
+where
+    Eq: Fn(&T, &T) -> bool,
+{
+    if exprs.len() < 2 {
+        None
+    } else if exprs.len() == 2 {
+        if eq(&exprs[0], &exprs[1]) {
+            Some((&exprs[0], &exprs[1]))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Vec<(&T, &T)>
 where
     Hash: Fn(&T) -> u64,
     Eq: Fn(&T, &T) -> bool,
 {
-    // common cases
-    if exprs.len() < 2 {
-        return None;
-    } else if exprs.len() == 2 {
-        return if eq(&exprs[0], &exprs[1]) {
-            Some((&exprs[0], &exprs[1]))
-        } else {
-            None
-        };
+    if let Some(expr) = search_common_cases(&exprs, &eq) {
+        return vec![expr];
     }
+
+    let mut match_expr_list: Vec<(&T, &T)> = Vec::new();
 
     let mut map: FxHashMap<_, Vec<&_>> =
         FxHashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
@@ -347,7 +362,7 @@ where
             Entry::Occupied(mut o) => {
                 for o in o.get() {
                     if eq(o, expr) {
-                        return Some((o, expr));
+                        match_expr_list.push((o, expr));
                     }
                 }
                 o.get_mut().push(expr);
@@ -358,5 +373,5 @@ where
         }
     }
 
-    None
+    match_expr_list
 }

@@ -5,8 +5,6 @@ LL |     print!("Here >​< is a ZWS, and ​another");
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::zero-width-space` implied by `-D warnings`
-   = help: Consider replacing the string with:
-           ""Here >/u{200B}< is a ZWS, and /u{200B}another""
 
 error: non-nfc unicode sequence detected
   --> $DIR/unicode.rs:9:12
@@ -15,8 +13,6 @@ LL |     print!("̀àh?");
    |            ^^^^^
    |
    = note: `-D clippy::unicode-not-nfc` implied by `-D warnings`
-   = help: Consider replacing the string with:
-           ""̀àh?""
 
 error: literal non-ASCII character detected
   --> $DIR/unicode.rs:15:12
@@ -25,8 +21,6 @@ LL |     print!("Üben!");
    |            ^^^^^^^
    |
    = note: `-D clippy::non-ascii-literal` implied by `-D warnings`
-   = help: Consider replacing the string with:
-           ""/u{dc}ben!""
 
 error: aborting due to 3 previous errors
 

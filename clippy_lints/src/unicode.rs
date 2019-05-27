@@ -1,7 +1,8 @@
-use crate::utils::{is_allowed, snippet, span_help_and_lint};
+use crate::utils::{is_allowed, snippet, span_lint_and_sugg};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::Span;
 use unicode_normalization::UnicodeNormalization;
@@ -34,7 +35,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x = "Hä?"
+    /// let x = String::from("€");
+    /// ```
+    /// Could be written as:
+    /// ```rust
+    /// let x = String::from("\u{20ac}");
     /// ```
     pub NON_ASCII_LITERAL,
     pedantic,
@@ -87,43 +92,40 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
 fn check_str(cx: &LateContext<'_, '_>, span: Span, id: HirId) {
     let string = snippet(cx, span, "");
     if string.contains('\u{200B}') {
-        span_help_and_lint(
+        span_lint_and_sugg(
             cx,
             ZERO_WIDTH_SPACE,
             span,
             "zero-width space detected",
-            &format!(
-                "Consider replacing the string with:\n\"{}\"",
-                string.replace("\u{200B}", "\\u{200B}")
-            ),
+            "consider replacing the string with",
+            string.replace("\u{200B}", "\\u{200B}"),
+            Applicability::MachineApplicable,
         );
     }
     if string.chars().any(|c| c as u32 > 0x7F) {
-        span_help_and_lint(
+        span_lint_and_sugg(
             cx,
             NON_ASCII_LITERAL,
             span,
             "literal non-ASCII character detected",
-            &format!(
-                "Consider replacing the string with:\n\"{}\"",
-                if is_allowed(cx, UNICODE_NOT_NFC, id) {
-                    escape(string.chars())
-                } else {
-                    escape(string.nfc())
-                }
-            ),
+            "consider replacing the string with",
+            if is_allowed(cx, UNICODE_NOT_NFC, id) {
+                escape(string.chars())
+            } else {
+                escape(string.nfc())
+            },
+            Applicability::MachineApplicable,
         );
     }
     if is_allowed(cx, NON_ASCII_LITERAL, id) && string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
-        span_help_and_lint(
+        span_lint_and_sugg(
             cx,
             UNICODE_NOT_NFC,
             span,
             "non-nfc unicode sequence detected",
-            &format!(
-                "Consider replacing the string with:\n\"{}\"",
-                string.nfc().collect::<String>()
-            ),
+            "consider replacing the string with",
+            string.nfc().collect::<String>(),
+            Applicability::MachineApplicable,
         );
     }
 }
