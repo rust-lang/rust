@@ -759,27 +759,27 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     /// # Examples
     ///
     /// ```rust,ignore (no context or def id available)
-    /// if cx.match_def_path(def_id, &["core", "option", "Option"]) {
+    /// if cx.match_def_path(def_id, &[sym::core, sym::option, sym::Option]) {
     ///     // The given `def_id` is that of an `Option` type
     /// }
     /// ```
-    pub fn match_def_path(&self, def_id: DefId, path: &[&str]) -> bool {
+    pub fn match_def_path(&self, def_id: DefId, path: &[Symbol]) -> bool {
         let names = self.get_def_path(def_id);
 
-        names.len() == path.len() && names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
+        names.len() == path.len() && names.into_iter().zip(path.iter()).all(|(a, &b)| a == b)
     }
 
-    /// Gets the absolute path of `def_id` as a vector of `&str`.
+    /// Gets the absolute path of `def_id` as a vector of `Symbol`.
     ///
     /// # Examples
     ///
     /// ```rust,ignore (no context or def id available)
     /// let def_path = cx.get_def_path(def_id);
-    /// if let &["core", "option", "Option"] = &def_path[..] {
+    /// if let &[sym::core, sym::option, sym::Option] = &def_path[..] {
     ///     // The given `def_id` is that of an `Option` type
     /// }
     /// ```
-    pub fn get_def_path(&self, def_id: DefId) -> Vec<LocalInternedString> {
+    pub fn get_def_path(&self, def_id: DefId) -> Vec<Symbol> {
         pub struct AbsolutePathPrinter<'a, 'tcx> {
             pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
@@ -787,7 +787,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
         impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
             type Error = !;
 
-            type Path = Vec<LocalInternedString>;
+            type Path = Vec<Symbol>;
             type Region = ();
             type Type = ();
             type DynExistential = ();
@@ -820,14 +820,14 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
             }
 
             fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
-                Ok(vec![self.tcx.original_crate_name(cnum).as_str()])
+                Ok(vec![self.tcx.original_crate_name(cnum)])
             }
 
             fn path_qualified(
                 self,
                 self_ty: Ty<'tcx>,
                 trait_ref: Option<ty::TraitRef<'tcx>>,
-                ) -> Result<Self::Path, Self::Error> {
+            ) -> Result<Self::Path, Self::Error> {
                 if trait_ref.is_none() {
                     if let ty::Adt(def, substs) = self_ty.sty {
                         return self.print_def_path(def.did, substs);
@@ -836,8 +836,8 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
 
                 // This shouldn't ever be needed, but just in case:
                 Ok(vec![match trait_ref {
-                    Some(trait_ref) => LocalInternedString::intern(&format!("{:?}", trait_ref)),
-                    None => LocalInternedString::intern(&format!("<{}>", self_ty)),
+                    Some(trait_ref) => Symbol::intern(&format!("{:?}", trait_ref)),
+                    None => Symbol::intern(&format!("<{}>", self_ty)),
                 }])
             }
 
@@ -847,16 +847,16 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 _disambiguated_data: &DisambiguatedDefPathData,
                 self_ty: Ty<'tcx>,
                 trait_ref: Option<ty::TraitRef<'tcx>>,
-                ) -> Result<Self::Path, Self::Error> {
+            ) -> Result<Self::Path, Self::Error> {
                 let mut path = print_prefix(self)?;
 
                 // This shouldn't ever be needed, but just in case:
                 path.push(match trait_ref {
                     Some(trait_ref) => {
-                        LocalInternedString::intern(&format!("<impl {} for {}>", trait_ref,
+                        Symbol::intern(&format!("<impl {} for {}>", trait_ref,
                                                     self_ty))
                     },
-                    None => LocalInternedString::intern(&format!("<impl {}>", self_ty)),
+                    None => Symbol::intern(&format!("<impl {}>", self_ty)),
                 });
 
                 Ok(path)
@@ -866,7 +866,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 self,
                 print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
                 disambiguated_data: &DisambiguatedDefPathData,
-                ) -> Result<Self::Path, Self::Error> {
+            ) -> Result<Self::Path, Self::Error> {
                 let mut path = print_prefix(self)?;
 
                 // Skip `::{{constructor}}` on tuple/unit structs.
@@ -875,7 +875,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                     _ => {}
                 }
 
-                path.push(disambiguated_data.data.as_interned_str().as_str());
+                path.push(disambiguated_data.data.as_interned_str().as_symbol());
                 Ok(path)
             }
 
@@ -883,7 +883,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 self,
                 print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
                 _args: &[Kind<'tcx>],
-                ) -> Result<Self::Path, Self::Error> {
+            ) -> Result<Self::Path, Self::Error> {
                 print_prefix(self)
             }
         }

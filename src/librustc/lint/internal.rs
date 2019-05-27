@@ -8,6 +8,7 @@ use crate::lint::{
 use errors::Applicability;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::Ident;
+use syntax::symbol::{sym, Symbol};
 
 declare_lint! {
     pub DEFAULT_HASH_TYPES,
@@ -16,14 +17,16 @@ declare_lint! {
 }
 
 pub struct DefaultHashTypes {
-    map: FxHashMap<String, String>,
+    map: FxHashMap<Symbol, Symbol>,
 }
 
 impl DefaultHashTypes {
+    // we are allowed to use `HashMap` and `HashSet` as identifiers for implementing the lint itself
+    #[allow(internal)]
     pub fn new() -> Self {
         let mut map = FxHashMap::default();
-        map.insert("HashMap".to_string(), "FxHashMap".to_string());
-        map.insert("HashSet".to_string(), "FxHashSet".to_string());
+        map.insert(sym::HashMap, sym::FxHashMap);
+        map.insert(sym::HashSet, sym::FxHashSet);
         Self { map }
     }
 }
@@ -32,11 +35,10 @@ impl_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 
 impl EarlyLintPass for DefaultHashTypes {
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
-        let ident_string = ident.to_string();
-        if let Some(replace) = self.map.get(&ident_string) {
+        if let Some(replace) = self.map.get(&ident.name) {
             let msg = format!(
                 "Prefer {} over {}, it has better performance",
-                replace, ident_string
+                replace, ident
             );
             let mut db = cx.struct_span_lint(DEFAULT_HASH_TYPES, ident.span, &msg);
             db.span_suggestion(
@@ -169,10 +171,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
 }
 
 fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment) -> bool {
-    if segment.ident.as_str() == "TyKind" {
+    if segment.ident.name == sym::TyKind {
         if let Some(res) = segment.res {
             if let Some(did) = res.opt_def_id() {
-                return cx.match_def_path(did, &["rustc", "ty", "sty", "TyKind"]);
+                return cx.match_def_path(did, TYKIND_PATH);
             }
         }
     }
@@ -180,14 +182,18 @@ fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment) -> bool {
     false
 }
 
+const TYKIND_PATH: &[Symbol] = &[sym::rustc, sym::ty, sym::sty, sym::TyKind];
+const TY_PATH: &[Symbol] = &[sym::rustc, sym::ty, sym::Ty];
+const TYCTXT_PATH: &[Symbol] = &[sym::rustc, sym::ty, sym::context, sym::TyCtxt];
+
 fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty) -> Option<String> {
     match &ty.node {
         TyKind::Path(qpath) => {
             if let QPath::Resolved(_, path) = qpath {
                 let did = path.res.opt_def_id()?;
-                if cx.match_def_path(did, &["rustc", "ty", "Ty"]) {
+                if cx.match_def_path(did, TY_PATH) {
                     return Some(format!("Ty{}", gen_args(path.segments.last().unwrap())));
-                } else if cx.match_def_path(did, &["rustc", "ty", "context", "TyCtxt"]) {
+                } else if cx.match_def_path(did, TYCTXT_PATH) {
                     return Some(format!("TyCtxt{}", gen_args(path.segments.last().unwrap())));
                 }
             }
