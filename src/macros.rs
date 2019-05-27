@@ -10,6 +10,7 @@
 // and those with brackets will be formatted as array literals.
 
 use std::collections::HashMap;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use syntax::parse::new_parser_from_tts;
 use syntax::parse::parser::Parser;
@@ -208,21 +209,24 @@ pub(crate) fn rewrite_macro(
     shape: Shape,
     position: MacroPosition,
 ) -> Option<String> {
-    let should_skip = context
-        .skip_macro_names
-        .borrow()
-        .contains(&context.snippet(mac.node.path.span).to_owned());
-    if should_skip {
-        None
-    } else {
-        let guard = InsideMacroGuard::inside_macro_context(context);
-        let result =
-            rewrite_macro_inner(mac, extra_ident, context, shape, position, guard.is_nested);
-        if result.is_none() {
-            context.macro_rewrite_failure.replace(true);
+    catch_unwind(AssertUnwindSafe(|| {
+        let should_skip = context
+            .skip_macro_names
+            .borrow()
+            .contains(&context.snippet(mac.node.path.span).to_owned());
+        if should_skip {
+            None
+        } else {
+            let guard = InsideMacroGuard::inside_macro_context(context);
+            let result =
+                rewrite_macro_inner(mac, extra_ident, context, shape, position, guard.is_nested);
+            if result.is_none() {
+                context.macro_rewrite_failure.replace(true);
+            }
+            result
         }
-        result
-    }
+    }))
+    .ok()?
 }
 
 fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
