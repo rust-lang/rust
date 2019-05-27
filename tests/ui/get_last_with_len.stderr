@@ -1,0 +1,10 @@
+error: accessing last element with `x.get(x.len() - 1)`
+  --> $DIR/get_last_with_len.rs:7:13
+   |
+LL |     let _ = x.get(x.len() - 1); // ~ERROR Use x.last()
+   |             ^^^^^^^^^^^^^^^^^^ help: try: `x.last()`
+   |
+   = note: `-D clippy::get-last-with-len` implied by `-D warnings`
+
+error: aborting due to previous error
+
