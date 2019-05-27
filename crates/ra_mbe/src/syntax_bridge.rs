@@ -3,8 +3,7 @@ use ra_syntax::{
     AstNode, SyntaxNode, TextRange, SyntaxKind, SmolStr, SyntaxTreeBuilder, TreeArc, SyntaxElement,
     ast, SyntaxKind::*, TextUnit, T
 };
-use tt::buffer::Cursor;
-
+use tt::buffer::{TokenBuffer, Cursor};
 use crate::subtree_source::{SubtreeTokenSource};
 use crate::ExpandError;
 
@@ -50,7 +49,7 @@ fn token_tree_to_syntax_node<F>(tt: &tt::Subtree, f: F) -> Result<TreeArc<Syntax
 where
     F: Fn(&mut ra_parser::TokenSource, &mut ra_parser::TreeSink),
 {
-    let buffer = tt::buffer::TokenBuffer::new(&[tt.clone().into()]);
+    let buffer = TokenBuffer::new(&[tt.clone().into()]);
     let mut token_source = SubtreeTokenSource::new(&buffer);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
     f(&mut token_source, &mut tree_sink);
