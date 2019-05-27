@@ -325,7 +325,7 @@ impl Step for StartupObjects {
     fn run(self, builder: &Builder<'_>) {
         let for_compiler = self.compiler;
         let target = self.target;
-        if !target.contains("pc-windows-gnu") {
+        if !target.contains("windows-gnu") {
             return
         }
 
