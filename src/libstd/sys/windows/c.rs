@@ -4,6 +4,10 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "0", feature = "windows_c")]
 
+macro_rules! ifdef {
+    ($($t:tt)*) => ($($t)*)
+}
+
 use crate::os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort, c_char};
 use crate::ptr;
 
@@ -655,6 +659,27 @@ pub struct timeval {
     pub tv_usec: c_long,
 }
 
+// Functions forbidden when targeting UWP
+#[cfg(not(target_vendor = "uwp"))]
+ifdef! {
+    extern "system" {
+        #[link_name = "SystemFunction036"]
+        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
+    }
+}
+
+// UWP specific functions & types
+#[cfg(target_vendor = "uwp")]
+ifdef! {
+    pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
+
+    extern "system" {
+        pub fn BCryptGenRandom(hAlgorithm: LPVOID, pBuffer: *mut u8,
+                               cbBuffer: ULONG, dwFlags: ULONG) -> LONG;
+    }
+}
+
+// Shared between Desktop & UWP
 extern "system" {
     pub fn WSAStartup(wVersionRequested: WORD,
                       lpWSAData: LPWSADATA) -> c_int;
@@ -950,8 +975,6 @@ extern "system" {
                   exceptfds: *mut fd_set,
                   timeout: *const timeval) -> c_int;
 
-    #[link_name = "SystemFunction036"]
-    pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
 
     pub fn GetProcessHeap() -> HANDLE;
     pub fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;
