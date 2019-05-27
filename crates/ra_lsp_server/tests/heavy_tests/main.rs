@@ -365,7 +365,6 @@ fn main() {{}}
         librs, libs
     ));
     server.wait_until_workspace_is_loaded();
-    eprintln!("workspace loaded");
     for i in 0..10 {
         server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
@@ -376,7 +375,6 @@ fn main() {{}}
             },
         });
     }
-    eprintln!("docs opened");
     let start = std::time::Instant::now();
     server.request::<OnEnter>(
         TextDocumentPositionParams {
@@ -407,5 +405,6 @@ fn main() {{}}
           }
         }),
     );
-    eprintln!("handled: {:?}", start.elapsed());
+    let elapsed = start.elapsed();
+    assert!(elapsed.as_millis() < 2000, "typing enter took {:?}", elapsed);
 }
