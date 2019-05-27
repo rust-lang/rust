@@ -33,8 +33,8 @@ find_sysroot() {
             export XARGO_RUST_SRC="$SYSROOT/../../../src"
             build_sysroot --target "$MIRI_TEST_TARGET"
         else
-	    # Assume we have a proper host libstd in $SYSROOT.
-	    true
+            # Assume we have a proper host libstd in $SYSROOT.
+            true
         fi
     else
 	# We have to build a sysroot either way.
