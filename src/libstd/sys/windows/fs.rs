@@ -670,6 +670,7 @@ pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_vendor = "uwp"))]
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
     let src = to_u16s(src)?;
     let dst = to_u16s(dst)?;
@@ -677,6 +678,12 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
         c::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
     })?;
     Ok(())
+}
+
+#[cfg(target_vendor = "uwp")]
+pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
+    return Err(io::Error::new(io::ErrorKind::Other,
+                            "hard link are not supported on UWP"));
 }
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {

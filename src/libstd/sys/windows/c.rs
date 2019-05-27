@@ -667,6 +667,10 @@ if #[cfg(not(target_vendor = "uwp"))] {
         pub fn SetHandleInformation(hObject: HANDLE,
                                     dwMask: DWORD,
                                     dwFlags: DWORD) -> BOOL;
+        pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
+                               lpTargetFileName: LPCWSTR,
+                               lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
+                               -> BOOL;
     }
 }
 }
@@ -883,10 +887,6 @@ extern "system" {
                      lpOverlapped: LPOVERLAPPED)
                      -> BOOL;
     pub fn CloseHandle(hObject: HANDLE) -> BOOL;
-    pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
-                           lpTargetFileName: LPCWSTR,
-                           lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
-                           -> BOOL;
     pub fn MoveFileExW(lpExistingFileName: LPCWSTR,
                        lpNewFileName: LPCWSTR,
                        dwFlags: DWORD)
