@@ -38,7 +38,6 @@ pub type ULONG = c_ulong;
 
 pub type LPBOOL = *mut BOOL;
 pub type LPBYTE = *mut BYTE;
-pub type LPBY_HANDLE_FILE_INFORMATION = *mut BY_HANDLE_FILE_INFORMATION;
 pub type LPCSTR = *const CHAR;
 pub type LPCVOID = *const c_void;
 pub type LPCWSTR = *const WCHAR;
@@ -346,20 +345,6 @@ pub struct WIN32_FILE_ATTRIBUTE_DATA {
 }
 
 #[repr(C)]
-pub struct BY_HANDLE_FILE_INFORMATION {
-    pub dwFileAttributes: DWORD,
-    pub ftCreationTime: FILETIME,
-    pub ftLastAccessTime: FILETIME,
-    pub ftLastWriteTime: FILETIME,
-    pub dwVolumeSerialNumber: DWORD,
-    pub nFileSizeHigh: DWORD,
-    pub nFileSizeLow: DWORD,
-    pub nNumberOfLinks: DWORD,
-    pub nFileIndexHigh: DWORD,
-    pub nFileIndexLow: DWORD,
-}
-
-#[repr(C)]
 #[allow(dead_code)] // we only use some variants
 pub enum FILE_INFO_BY_HANDLE_CLASS {
     FileBasicInfo                   = 0,
@@ -661,6 +646,22 @@ pub struct timeval {
 // Functions forbidden when targeting UWP
 #[cfg(not(target_vendor = "uwp"))]
 ifdef! {
+    #[repr(C)]
+    pub struct BY_HANDLE_FILE_INFORMATION {
+        pub dwFileAttributes: DWORD,
+        pub ftCreationTime: FILETIME,
+        pub ftLastAccessTime: FILETIME,
+        pub ftLastWriteTime: FILETIME,
+        pub dwVolumeSerialNumber: DWORD,
+        pub nFileSizeHigh: DWORD,
+        pub nFileSizeLow: DWORD,
+        pub nNumberOfLinks: DWORD,
+        pub nFileIndexHigh: DWORD,
+        pub nFileIndexLow: DWORD,
+    }
+
+    pub type LPBY_HANDLE_FILE_INFORMATION = *mut BY_HANDLE_FILE_INFORMATION;
+
     pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
     pub const TOKEN_READ: DWORD = 0x20008;
@@ -676,6 +677,9 @@ ifdef! {
         pub fn GetUserProfileDirectoryW(hToken: HANDLE,
                                         lpProfileDir: LPWSTR,
                                         lpcchSize: *mut DWORD) -> BOOL;
+        pub fn GetFileInformationByHandle(hFile: HANDLE,
+                            lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
+                            -> BOOL;
         pub fn SetHandleInformation(hObject: HANDLE,
                                     dwMask: DWORD,
                                     dwFlags: DWORD) -> BOOL;
@@ -691,7 +695,20 @@ ifdef! {
 ifdef! {
     pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
 
+    #[repr(C)]
+    pub struct FILE_STANDARD_INFO {
+        pub AllocationSize: LARGE_INTEGER,
+        pub EndOfFile: LARGE_INTEGER,
+        pub NumberOfLink: DWORD,
+        pub DeletePending: BOOLEAN,
+        pub Directory: BOOLEAN,
+    }
+
     extern "system" {
+        pub fn GetFileInformationByHandleEx(hFile: HANDLE,
+                                            fileInfoClass: FILE_INFO_BY_HANDLE_CLASS,
+                                            lpFileInformation: LPVOID,
+                                            dwBufferSize: DWORD) -> BOOL;
         pub fn BCryptGenRandom(hAlgorithm: LPVOID, pBuffer: *mut u8,
                                cbBuffer: ULONG, dwFlags: ULONG) -> LONG;
     }
@@ -754,10 +771,6 @@ extern "system" {
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
     pub fn SetFileAttributesW(lpFileName: LPCWSTR,
                               dwFileAttributes: DWORD) -> BOOL;
-    pub fn GetFileInformationByHandle(hFile: HANDLE,
-                            lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
-                            -> BOOL;
-
     pub fn SetLastError(dwErrCode: DWORD);
     pub fn GetCommandLineW() -> *mut LPCWSTR;
     pub fn GetTempPathW(nBufferLength: DWORD,
