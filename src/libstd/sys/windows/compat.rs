@@ -37,12 +37,14 @@ pub fn store_func(ptr: &AtomicUsize, module: &str, symbol: &str,
 
 macro_rules! compat_fn {
     ($module:ident: $(
+        $(#[$meta:meta])*
         pub fn $symbol:ident($($argname:ident: $argtype:ty),*)
                                   -> $rettype:ty {
             $($body:expr);*
         }
     )*) => ($(
         #[allow(unused_variables)]
+        $(#[$meta])*
         pub unsafe fn $symbol($($argname: $argtype),*) -> $rettype {
             use crate::sync::atomic::{AtomicUsize, Ordering};
             use crate::mem;
