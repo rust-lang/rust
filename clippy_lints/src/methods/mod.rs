@@ -2157,7 +2157,7 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_, '_>, info: &mut Binary
     lint_with_both_lhs_and_rhs!(lint_chars_last_cmp_with_unwrap, cx, info);
 }
 
-/// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_NEXT_CMP` lints.
+/// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints.
 fn lint_chars_cmp(
     cx: &LateContext<'_, '_>,
     info: &BinaryExprInfo<'_>,
