@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         {
             true
         } else {
-            check_must_use_ty(cx, ty, s.span)
+            check_must_use_ty(cx, ty, &expr, s.span)
         };
 
         let mut fn_warned = false;
@@ -138,6 +138,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         fn check_must_use_ty(
             cx: &LateContext<'_, '_>,
             ty: Ty<'_>,
+            expr: &hir::Expr,
             span: Span,
         ) -> bool {
             match ty.sty {
@@ -170,9 +171,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     has_emitted
                 }
                 ty::Tuple(ref tys) => {
-                    tys.iter().map(|k| k.expect_ty()).any(|ty| {
-                        check_must_use_ty(cx, ty, span)
-                    })
+                    let mut has_emitted = false;
+                    let spans = if let hir::ExprKind::Tup(comps) = &expr.node {
+                        debug_assert_eq!(comps.len(), tys.len());
+                        comps.iter().map(|e| e.span).collect()
+                    } else {
+                        vec![]
+                    };
+                    for (i, ty) in tys.iter().map(|k| k.expect_ty()).enumerate() {
+                        if check_must_use_ty(cx, ty, expr, *spans.get(i).unwrap_or(&span)) {
+                            has_emitted = true;
+                        }
+                    }
+                    has_emitted
                 }
                 _ => false,
             }

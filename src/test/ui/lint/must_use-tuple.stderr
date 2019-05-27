@@ -1,8 +1,8 @@
 error: unused `std::result::Result` that must be used
-  --> $DIR/must_use-tuple.rs:4:5
+  --> $DIR/must_use-tuple.rs:4:6
    |
 LL |     (Ok::<(), ()>(()),);
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |      ^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/must_use-tuple.rs:1:9
@@ -11,5 +11,21 @@ LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
    = note: this `Result` may be an `Err` variant, which should be handled
 
-error: aborting due to previous error
+error: unused `std::result::Result` that must be used
+  --> $DIR/must_use-tuple.rs:6:6
+   |
+LL |     (Ok::<(), ()>(()), 0, Ok::<(), ()>(()), 5);
+   |      ^^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+
+error: unused `std::result::Result` that must be used
+  --> $DIR/must_use-tuple.rs:6:27
+   |
+LL |     (Ok::<(), ()>(()), 0, Ok::<(), ()>(()), 5);
+   |                           ^^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+
+error: aborting due to 3 previous errors
 
