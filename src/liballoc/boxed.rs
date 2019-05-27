@@ -395,6 +395,7 @@ impl<T: Clone> Clone for Box<T> {
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl Clone for Box<str> {
     fn clone(&self) -> Self {
+        // this makes a copy of the data
         let buf: Box<[u8]> = self.as_bytes().into();
         unsafe {
             from_boxed_utf8_unchecked(buf)
