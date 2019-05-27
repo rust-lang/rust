@@ -18,6 +18,7 @@ use rustc_typeck::hir_ty_to_ty;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::errors::DiagnosticBuilder;
 use syntax::source_map::Span;
+use syntax::symbol::sym;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
@@ -1091,7 +1092,7 @@ fn is_c_void(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
         if names.is_empty() {
             return false;
         }
-        if names[0] == "libc" || names[0] == "core" && *names.last().unwrap() == "c_void" {
+        if names[0] == sym!(libc) || names[0] == sym::core && *names.last().unwrap() == sym!(c_void) {
             return true;
         }
     }
