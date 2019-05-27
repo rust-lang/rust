@@ -6,10 +6,11 @@ use std::{
 };
 
 use lsp_types::{
-    CodeActionContext, DocumentFormattingParams, FormattingOptions, Position, Range,
+    CodeActionContext, DocumentFormattingParams, FormattingOptions, Position, Range, DidOpenTextDocumentParams, TextDocumentItem, TextDocumentPositionParams
 };
 use ra_lsp_server::req::{
     CodeActionParams, CodeActionRequest, Formatting, Runnables, RunnablesParams, CompletionParams, Completion,
+    DidOpenTextDocument, OnEnter,
 };
 use serde_json::json;
 use tempfile::TempDir;
@@ -17,6 +18,7 @@ use tempfile::TempDir;
 use crate::support::{project, Project};
 
 const LOG: &'static str = "";
+const PROFILE: &'static str = "*@3>100";
 
 #[test]
 fn completes_items_from_standard_library() {
@@ -340,4 +342,70 @@ fn main() {{}}
         },
         json!([]),
     );
+}
+
+#[test]
+fn diagnostics_dont_block_typing() {
+    let librs: String = (0..10).map(|i| format!("mod m{};", i)).collect();
+    let libs: String = (0..10).map(|i| format!("//- src/m{}.rs\nfn foo() {{}}\n\n", i)).collect();
+    let server = project(&format!(
+        r#"
+//- Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- src/lib.rs
+{}
+
+{}
+
+fn main() {{}}
+"#,
+        librs, libs
+    ));
+    server.wait_until_workspace_is_loaded();
+    eprintln!("workspace loaded");
+    for i in 0..10 {
+        server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+            text_document: TextDocumentItem {
+                uri: server.doc_id(&format!("src/m{}.rs", i)).uri,
+                language_id: "rust".to_string(),
+                version: 0,
+                text: "/// Docs\nfn foo() {}".to_string(),
+            },
+        });
+    }
+    eprintln!("docs opened");
+    let start = std::time::Instant::now();
+    server.request::<OnEnter>(
+        TextDocumentPositionParams {
+            text_document: server.doc_id("src/m0.rs"),
+            position: Position { line: 0, character: 5 },
+        },
+        json!({
+          "cursorPosition": {
+            "position": { "character": 4, "line": 1 },
+            "textDocument": { "uri": "file:///[..]src/m0.rs" }
+          },
+          "label": "on enter",
+          "workspaceEdit": {
+            "documentChanges": [
+              {
+                "edits": [
+                  {
+                    "newText": "\n/// ",
+                    "range": {
+                      "end": { "character": 5, "line": 0 },
+                      "start": { "character": 5, "line": 0 }
+                    }
+                  }
+                ],
+                "textDocument": { "uri": "file:///[..]src/m0.rs", "version": null }
+              }
+            ]
+          }
+        }),
+    );
+    eprintln!("handled: {:?}", start.elapsed());
 }

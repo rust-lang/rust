@@ -52,6 +52,11 @@ impl<'a> Project<'a> {
         static INIT: Once = Once::new();
         INIT.call_once(|| {
             let _ = Logger::with_env_or_str(crate::LOG).start().unwrap();
+            ra_prof::set_filter(if crate::PROFILE.is_empty() {
+                ra_prof::Filter::disabled()
+            } else {
+                ra_prof::Filter::from_spec(&crate::PROFILE)
+            });
         });
 
         let mut paths = vec![];
@@ -119,6 +124,15 @@ impl Server {
     pub fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
         let path = self.dir.path().join(rel_path);
         TextDocumentIdentifier { uri: Url::from_file_path(path).unwrap() }
+    }
+
+    pub fn notification<N>(&self, params: N::Params)
+    where
+        N: Notification,
+        N::Params: Serialize,
+    {
+        let r = RawNotification::new::<N>(&params);
+        self.send_notification(r)
     }
 
     pub fn request<R>(&self, params: R::Params, expected_resp: Value)
