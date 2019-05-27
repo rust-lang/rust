@@ -2,6 +2,8 @@
 set -e
 TARGET=$(rustc --print target-spec-json -Z unstable-options | jq '.["llvm-target"]' -r)
 SYSROOT=$(rustc --print sysroot)
+# We set the rpath so that Miri finds the private rustc libraries it needs.
+# We enable debug-assertions to get tracing.
 export RUSTFLAGS="-C link-args=-Wl,-rpath,$SYSROOT/lib/rustlib/$TARGET/lib -C debug-assertions"
 
 COMMAND="$1"
@@ -22,8 +24,8 @@ build|test|run)
     if [ -n "$MIRI_SYSROOT" ]; then
         # sysroot already set
         true
-    elif rustc --print sysroot | egrep -q 'build/[^/]+/stage'; then
-	# a local build, we have a proper libstd in $SYSROOT
+    elif echo "$SYSROOT" | egrep -q 'build/[^/]+/stage'; then
+	# a local rustc build, assume we have a proper libstd in $SYSROOT
 	true
     else
 	# we have to build a sysroot
