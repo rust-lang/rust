@@ -2785,8 +2785,7 @@ impl<T, F> Iterator for DrainFilter<'_, T, F>
                 if drained {
                     self.del += 1;
                     return Some(ptr::read(&v[i]));
-                }
-                else if self.del > 0 {
+                } else if self.del > 0 {
                     let del = self.del;
                     let src: *const T = &v[i];
                     let dst: *mut T = &mut v[i - del];
