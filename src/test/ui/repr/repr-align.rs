@@ -1,4 +1,3 @@
-#![feature(repr_align_enum)]
 #![allow(dead_code)]
 
 #[repr(align(16.0))] //~ ERROR: invalid `repr(align)` attribute: not an unsuffixed integer

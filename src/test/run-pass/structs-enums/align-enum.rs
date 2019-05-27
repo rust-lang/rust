@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-#![feature(repr_align_enum)]
 
 use std::mem;
 
