@@ -655,6 +655,29 @@ pub struct timeval {
     pub tv_usec: c_long,
 }
 
+// Functions forbidden when targeting UWP
+cfg_if::cfg_if! {
+if #[cfg(not(target_vendor = "uwp"))] {
+    extern "system" {
+        #[link_name = "SystemFunction036"]
+        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
+    }
+}
+}
+
+// UWP specific functions & types
+cfg_if::cfg_if! {
+if #[cfg(target_vendor = "uwp")] {
+    pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
+
+    extern "system" {
+        pub fn BCryptGenRandom(hAlgorithm: LPVOID, pBuffer: *mut u8,
+                               cbBuffer: ULONG, dwFlags: ULONG) -> LONG;
+    }
+}
+}
+
+// Shared between Desktop & UWP
 extern "system" {
     pub fn WSAStartup(wVersionRequested: WORD,
                       lpWSAData: LPWSADATA) -> c_int;
@@ -950,8 +973,6 @@ extern "system" {
                   exceptfds: *mut fd_set,
                   timeout: *const timeval) -> c_int;
 
-    #[link_name = "SystemFunction036"]
-    pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
 
     pub fn GetProcessHeap() -> HANDLE;
     pub fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;

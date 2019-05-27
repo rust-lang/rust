@@ -41,6 +41,8 @@ fn main() {
         println!("cargo:rustc-link-lib=resolv");
     } else if target.contains("uwp") {
         println!("cargo:rustc-link-lib=ws2_32");
+        // For BCryptGenRandom
+        println!("cargo:rustc-link-lib=bcrypt");
     } else if target.contains("windows") {
         println!("cargo:rustc-link-lib=advapi32");
         println!("cargo:rustc-link-lib=ws2_32");
