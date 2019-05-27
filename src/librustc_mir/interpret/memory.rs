@@ -20,7 +20,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
     EvalResult, Scalar, InterpError, AllocKind, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck,
+    Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg, InboundsCheck,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -252,7 +252,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Scalar::Ptr(ptr) => {
                 // check this is not NULL -- which we can ensure only if this is in-bounds
                 // of some (potentially dead) allocation.
-                let align = self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead)?;
+                let align = self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead,
+                                                  CheckInAllocMsg::NullPointerTest)?;
                 (ptr.offset.bytes(), align)
             }
             Scalar::Bits { bits, size } => {
@@ -293,9 +294,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         ptr: Pointer<M::PointerTag>,
         liveness: InboundsCheck,
+        msg: CheckInAllocMsg,
     ) -> EvalResult<'tcx, Align> {
         let (allocation_size, align) = self.get_size_and_align(ptr.alloc_id, liveness)?;
-        ptr.check_in_alloc(allocation_size, liveness)?;
+        ptr.check_in_alloc(allocation_size, msg)?;
         Ok(align)
     }
 }
@@ -419,7 +421,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     /// Obtain the size and alignment of an allocation, even if that allocation has been deallocated
     ///
-    /// If `liveness` is `InboundsCheck::Dead`, this function always returns `Ok`
+    /// If `liveness` is `InboundsCheck::MaybeDead`, this function always returns `Ok`
     pub fn get_size_and_align(
         &self,
         id: AllocId,

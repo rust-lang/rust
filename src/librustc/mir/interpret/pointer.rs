@@ -5,7 +5,7 @@ use crate::ty::layout::{self, HasDataLayout, Size};
 use rustc_macros::HashStable;
 
 use super::{
-    AllocId, EvalResult, InboundsCheck,
+    AllocId, EvalResult, CheckInAllocMsg
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,12 +177,12 @@ impl<'tcx, Tag> Pointer<Tag> {
     pub fn check_in_alloc(
         self,
         allocation_size: Size,
-        check: InboundsCheck,
+        msg: CheckInAllocMsg,
     ) -> EvalResult<'tcx, ()> {
         if self.offset > allocation_size {
             err!(PointerOutOfBounds {
                 ptr: self.erase_tag(),
-                check,
+                msg,
                 allocation_size,
             })
         } else {
