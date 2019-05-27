@@ -4,7 +4,8 @@ TARGET=$(rustc --print target-spec-json -Z unstable-options | jq '.["llvm-target
 SYSROOT=$(rustc --print sysroot)
 # We set the rpath so that Miri finds the private rustc libraries it needs.
 # We enable debug-assertions to get tracing.
-export RUSTFLAGS="-C link-args=-Wl,-rpath,$SYSROOT/lib/rustlib/$TARGET/lib -C debug-assertions"
+# We enable line-only debuginfo for backtraces.
+export RUSTFLAGS="-C link-args=-Wl,-rpath,$SYSROOT/lib/rustlib/$TARGET/lib -C debug-assertions -C debuginfo=1"
 
 COMMAND="$1"
 shift
