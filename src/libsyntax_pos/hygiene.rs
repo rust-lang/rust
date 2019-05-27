@@ -517,6 +517,16 @@ impl SyntaxContext {
         HygieneData::with(|data| data.syntax_contexts[self.0 as usize].outer_mark)
     }
 
+    /// `ctxt.outer_expn_info()` is equivalent to but faster than
+    /// `ctxt.outer().expn_info()`.
+    #[inline]
+    pub fn outer_expn_info(self) -> Option<ExpnInfo> {
+        HygieneData::with(|data| {
+            let outer = data.syntax_contexts[self.0 as usize].outer_mark;
+            data.marks[outer.0 as usize].expn_info.clone()
+        })
+    }
+
     pub fn dollar_crate_name(self) -> Symbol {
         HygieneData::with(|data| data.syntax_contexts[self.0 as usize].dollar_crate_name)
     }

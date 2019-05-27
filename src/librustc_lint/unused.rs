@@ -391,9 +391,8 @@ impl EarlyLintPass for UnusedParens {
                 // trigger in situations that macro authors shouldn't have to care about, e.g.,
                 // when a parenthesized token tree matched in one macro expansion is matched as
                 // an expression in another and used as a fn/method argument (Issue #47775)
-                if e.span.ctxt().outer().expn_info()
-                    .map_or(false, |info| info.call_site.ctxt().outer()
-                            .expn_info().is_some()) {
+                if e.span.ctxt().outer_expn_info()
+                    .map_or(false, |info| info.call_site.ctxt().outer_expn_info().is_some()) {
                         return;
                 }
                 let msg = format!("{} argument", call_kind);

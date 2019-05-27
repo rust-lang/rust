@@ -680,7 +680,7 @@ impl server::Span for Rustc<'_> {
         self.sess.source_map().lookup_char_pos(span.lo()).file
     }
     fn parent(&mut self, span: Self::Span) -> Option<Self::Span> {
-        span.ctxt().outer().expn_info().map(|i| i.call_site)
+        span.ctxt().outer_expn_info().map(|i| i.call_site)
     }
     fn source(&mut self, span: Self::Span) -> Self::Span {
         span.source_callsite()

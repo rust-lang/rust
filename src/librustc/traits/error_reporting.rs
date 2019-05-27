@@ -65,7 +65,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 format: ExpnFormat::CompilerDesugaring(_),
                 def_site: Some(def_span),
                 ..
-            }) = span.ctxt().outer().expn_info() {
+            }) = span.ctxt().outer_expn_info() {
                 span = def_span;
             }
 

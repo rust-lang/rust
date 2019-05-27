@@ -131,7 +131,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // at the level above that.
             let mut span = source_info.span;
             while span.ctxt() != NO_EXPANSION && span.ctxt() != self.mir.span.ctxt() {
-                if let Some(info) = span.ctxt().outer().expn_info() {
+                if let Some(info) = span.ctxt().outer_expn_info() {
                     span = info.call_site;
                 } else {
                     break;

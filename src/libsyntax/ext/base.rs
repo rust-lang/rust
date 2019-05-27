@@ -872,7 +872,7 @@ impl<'a> ExtCtxt<'a> {
         let mut ctxt = self.backtrace();
         let mut last_macro = None;
         loop {
-            if ctxt.outer().expn_info().map_or(None, |info| {
+            if ctxt.outer_expn_info().map_or(None, |info| {
                 if info.format.name() == sym::include {
                     // Stop going up the backtrace once include! is encountered
                     return None;

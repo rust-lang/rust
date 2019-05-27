@@ -158,7 +158,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                 if fieldpat.node.is_shorthand {
                     continue;
                 }
-                if fieldpat.span.ctxt().outer().expn_info().is_some() {
+                if fieldpat.span.ctxt().outer_expn_info().is_some() {
                     // Don't lint if this is a macro expansion: macro authors
                     // shouldn't have to worry about this kind of style issue
                     // (Issue #49588)
@@ -1003,7 +1003,7 @@ impl UnreachablePub {
         let mut applicability = Applicability::MachineApplicable;
         match vis.node {
             hir::VisibilityKind::Public if !cx.access_levels.is_reachable(id) => {
-                if span.ctxt().outer().expn_info().is_some() {
+                if span.ctxt().outer_expn_info().is_some() {
                     applicability = Applicability::MaybeIncorrect;
                 }
                 let def_span = cx.tcx.sess.source_map().def_span(span);

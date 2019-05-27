@@ -30,8 +30,8 @@ use errors::SourceMapper;
 /// otherwise return the call site span up to the `enclosing_sp` by
 /// following the `expn_info` chain.
 pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
-    let call_site1 = sp.ctxt().outer().expn_info().map(|ei| ei.call_site);
-    let call_site2 = enclosing_sp.ctxt().outer().expn_info().map(|ei| ei.call_site);
+    let call_site1 = sp.ctxt().outer_expn_info().map(|ei| ei.call_site);
+    let call_site2 = enclosing_sp.ctxt().outer_expn_info().map(|ei| ei.call_site);
     match (call_site1, call_site2) {
         (None, _) => sp,
         (Some(call_site1), Some(call_site2)) if call_site1 == call_site2 => sp,
