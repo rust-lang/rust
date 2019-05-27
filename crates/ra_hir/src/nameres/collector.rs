@@ -1,17 +1,18 @@
 use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
+use either::Either;
 use relative_path::RelativePathBuf;
 use test_utils::tested_by;
 use ra_db::FileId;
 use ra_syntax::ast;
 
 use crate::{
-    Function, Module, Struct, Union, Enum, Const, Static, Trait, TypeAlias,
+    Function, Module, Struct, Union, Enum, Const, Static, Trait, TypeAlias, MacroDef,
     DefDatabase, HirFileId, Name, Path,
     KnownName,
     nameres::{
         Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode,
-        CrateDefMap, CrateModuleId, ModuleData,
+        CrateDefMap, CrateModuleId, ModuleData, ItemOrMacro,
         diagnostics::DefDiagnostic,
         raw,
     },
@@ -124,13 +125,21 @@ where
         let unresolved_imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
         // show unresolved imports in completion, etc
         for (module_id, import, import_data) in unresolved_imports {
-            self.record_resolved_import(module_id, PerNs::none(), import, &import_data)
+            self.record_resolved_import(
+                module_id,
+                Either::Left(PerNs::none()),
+                import,
+                &import_data,
+            )
         }
     }
 
     fn define_macro(&mut self, name: Name, macro_id: MacroDefId, export: bool) {
         if export {
             self.def_map.public_macros.insert(name.clone(), macro_id);
+
+            let def = Either::Right(MacroDef { id: macro_id });
+            self.update(self.def_map.root, None, &[(name.clone(), def)]);
         } else {
             self.def_map.local_macros.insert(name.clone(), macro_id);
         }
@@ -161,7 +170,7 @@ where
         &self,
         module_id: CrateModuleId,
         import: &raw::ImportData,
-    ) -> (PerNs<ModuleDef>, ReachedFixedPoint) {
+    ) -> (ItemOrMacro, ReachedFixedPoint) {
         log::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
         if import.is_extern_crate {
             let res = self.def_map.resolve_name_in_extern_prelude(
@@ -170,10 +179,14 @@ where
                     .as_ident()
                     .expect("extern crate should have been desugared to one-element path"),
             );
-            (res, ReachedFixedPoint::Yes)
+            (Either::Left(res), ReachedFixedPoint::Yes)
         } else {
-            let res =
-                self.def_map.resolve_path_fp(self.db, ResolveMode::Import, module_id, &import.path);
+            let res = self.def_map.resolve_path_fp_with_macro(
+                self.db,
+                ResolveMode::Import,
+                module_id,
+                &import.path,
+            );
 
             (res.resolved_def, res.reached_fixedpoint)
         }
@@ -182,13 +195,13 @@ where
     fn record_resolved_import(
         &mut self,
         module_id: CrateModuleId,
-        def: PerNs<ModuleDef>,
+        def: ItemOrMacro,
         import_id: raw::ImportId,
         import: &raw::ImportData,
     ) {
         if import.is_glob {
             log::debug!("glob import: {:?}", import);
-            match def.take_types() {
+            match def.left().and_then(|item| item.take_types()) {
                 Some(ModuleDef::Module(m)) => {
                     if import.is_prelude {
                         tested_by!(std_prelude);
@@ -201,9 +214,14 @@ where
                         let items = scope
                             .items
                             .iter()
-                            .map(|(name, res)| (name.clone(), res.clone()))
-                            .collect::<Vec<_>>();
-                        self.update(module_id, Some(import_id), &items);
+                            .map(|(name, res)| (name.clone(), Either::Left(res.clone())));
+                        let macros = scope
+                            .macros
+                            .iter()
+                            .map(|(name, res)| (name.clone(), Either::Right(res.clone())));
+
+                        let all = items.chain(macros).collect::<Vec<_>>();
+                        self.update(module_id, Some(import_id), &all);
                     } else {
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
@@ -212,9 +230,15 @@ where
                         let items = scope
                             .items
                             .iter()
-                            .map(|(name, res)| (name.clone(), res.clone()))
-                            .collect::<Vec<_>>();
-                        self.update(module_id, Some(import_id), &items);
+                            .map(|(name, res)| (name.clone(), Either::Left(res.clone())));
+                        let macros = scope
+                            .macros
+                            .iter()
+                            .map(|(name, res)| (name.clone(), Either::Right(res.clone())));
+
+                        let all = items.chain(macros).collect::<Vec<_>>();
+
+                        self.update(module_id, Some(import_id), &all);
                         // record the glob import in case we add further items
                         self.glob_imports
                             .entry(m.module_id)
@@ -234,7 +258,7 @@ where
                                 import: Some(import_id),
                             };
                             let name = variant.name(self.db)?;
-                            Some((name, res))
+                            Some((name, Either::Left(res)))
                         })
                         .collect::<Vec<_>>();
                     self.update(module_id, Some(import_id), &resolutions);
@@ -254,11 +278,18 @@ where
 
                     // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
                     if import.is_extern_crate && module_id == self.def_map.root {
-                        if let Some(def) = def.take_types() {
+                        if let Some(def) = def.left().and_then(|item| item.take_types()) {
                             self.def_map.extern_prelude.insert(name.clone(), def);
                         }
                     }
-                    let resolution = Resolution { def, import: Some(import_id) };
+
+                    let resolution = match def {
+                        Either::Left(item) => {
+                            Either::Left(Resolution { def: item, import: Some(import_id) })
+                        }
+                        Either::Right(macro_) => Either::Right(macro_),
+                    };
+
                     self.update(module_id, Some(import_id), &[(name, resolution)]);
                 }
                 None => tested_by!(bogus_paths),
@@ -270,7 +301,7 @@ where
         &mut self,
         module_id: CrateModuleId,
         import: Option<raw::ImportId>,
-        resolutions: &[(Name, Resolution)],
+        resolutions: &[(Name, Either<Resolution, MacroDef>)],
     ) {
         self.update_recursive(module_id, import, resolutions, 0)
     }
@@ -279,7 +310,7 @@ where
         &mut self,
         module_id: CrateModuleId,
         import: Option<raw::ImportId>,
-        resolutions: &[(Name, Resolution)],
+        resolutions: &[(Name, Either<Resolution, MacroDef>)],
         depth: usize,
     ) {
         if depth > 100 {
@@ -289,25 +320,38 @@ where
         let module_items = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            let existing = module_items.items.entry(name.clone()).or_default();
-            if existing.def.types.is_none() && res.def.types.is_some() {
-                existing.def.types = res.def.types;
-                existing.import = import.or(res.import);
-                changed = true;
-            }
-            if existing.def.values.is_none() && res.def.values.is_some() {
-                existing.def.values = res.def.values;
-                existing.import = import.or(res.import);
-                changed = true;
-            }
-            if existing.def.is_none()
-                && res.def.is_none()
-                && existing.import.is_none()
-                && res.import.is_some()
-            {
-                existing.import = res.import;
+            match res {
+                // item
+                Either::Left(res) => {
+                    let existing = module_items.items.entry(name.clone()).or_default();
+
+                    if existing.def.types.is_none() && res.def.types.is_some() {
+                        existing.def.types = res.def.types;
+                        existing.import = import.or(res.import);
+                        changed = true;
+                    }
+                    if existing.def.values.is_none() && res.def.values.is_some() {
+                        existing.def.values = res.def.values;
+                        existing.import = import.or(res.import);
+                        changed = true;
+                    }
+
+                    if existing.def.is_none()
+                        && res.def.is_none()
+                        && existing.import.is_none()
+                        && res.import.is_some()
+                    {
+                        existing.import = res.import;
+                    }
+                }
+                // macro
+                Either::Right(res) => {
+                    // Always shadowing
+                    module_items.macros.insert(name.clone(), *res);
+                }
             }
         }
+
         if !changed {
             return;
         }
@@ -324,37 +368,64 @@ where
         }
     }
 
-    // XXX: this is just a pile of hacks now, because `PerNs` does not handle
-    // macro namespace.
     fn resolve_macros(&mut self) -> ReachedFixedPoint {
         let mut macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
         let mut resolved = Vec::new();
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|(module_id, ast_id, path)| {
-            if path.segments.len() != 2 {
-                return true;
+            let resolved_res = self.def_map.resolve_path_fp_with_macro(
+                self.db,
+                ResolveMode::Other,
+                *module_id,
+                path,
+            );
+
+            if let Some(def) = resolved_res.resolved_def.right() {
+                let call_id = MacroCallLoc { def: def.id, ast_id: *ast_id }.id(self.db);
+                resolved.push((*module_id, call_id, def.id));
+                res = ReachedFixedPoint::No;
+                return false;
             }
-            let crate_name = &path.segments[0].name;
-            let krate = match self.def_map.resolve_name_in_extern_prelude(crate_name).take_types() {
-                Some(ModuleDef::Module(m)) => m.krate(self.db),
-                _ => return true,
-            };
-            let krate = match krate {
-                Some(it) => it,
-                _ => return true,
-            };
-            res = ReachedFixedPoint::No;
-            let def_map = self.db.crate_def_map(krate);
-            if let Some(macro_id) = def_map.public_macros.get(&path.segments[1].name).cloned() {
-                let call_id = MacroCallLoc { def: macro_id, ast_id: *ast_id }.id(self.db);
-                resolved.push((*module_id, call_id, macro_id));
+
+            if resolved_res.reached_fixedpoint != ReachedFixedPoint::Yes {
+                let crate_name = &path.segments[0].name;
+
+                // FIXME:
+                // $crate are not handled in resolver right now
+                if crate_name.to_string() == "$crate" {
+                    return true;
+                }
+
+                // FIXME:
+                // Currently `#[cfg(test)]` are ignored and cargo-metadata do not insert
+                // dev-dependencies of dependencies. For example,
+                // if we depend on parking lot, and parking lot has a dev-dependency on lazy_static.
+                // Then `lazy_static` wil not included in `CrateGraph`
+                // We can fix that by proper handling `cfg(test)`.
+                //
+                // So right now we set the fixpoint to No only if its crate is in CrateGraph
+                // See issue #1282 for details
+                let krate =
+                    match self.def_map.resolve_name_in_extern_prelude(crate_name).take_types() {
+                        Some(ModuleDef::Module(m)) => m.krate(self.db),
+                        _ => return true,
+                    };
+                if krate.is_none() {
+                    return true;
+                }
+
+                res = resolved_res.reached_fixedpoint;
             }
-            false
+
+            true
         });
+
+        self.unexpanded_macros = macros;
 
         for (module_id, macro_call_id, macro_def_id) in resolved {
             self.collect_macro_expansion(module_id, macro_call_id, macro_def_id);
         }
+
         res
     }
 
@@ -475,7 +546,7 @@ where
             ),
             import: None,
         };
-        self.def_collector.update(self.module_id, None, &[(name, resolution)]);
+        self.def_collector.update(self.module_id, None, &[(name, Either::Left(resolution))]);
         res
     }
 
@@ -506,7 +577,7 @@ where
             raw::DefKind::TypeAlias(ast_id) => PerNs::types(def!(TypeAlias, ast_id)),
         };
         let resolution = Resolution { def, import: None };
-        self.def_collector.update(self.module_id, None, &[(name, resolution)])
+        self.def_collector.update(self.module_id, None, &[(name, Either::Left(resolution))])
     }
 
     fn collect_macro(&mut self, mac: &raw::MacroData) {

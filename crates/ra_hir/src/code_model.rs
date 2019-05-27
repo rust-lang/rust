@@ -13,7 +13,7 @@ use crate::{
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::HasGenericParams,
     docs::{Documentation, Docs, docs_from_ast},
-    ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeAliasId},
+    ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeAliasId, MacroDefId},
     impl_block::ImplBlock,
     resolve::Resolver,
     diagnostics::{DiagnosticSink},
@@ -936,6 +936,10 @@ impl Docs for TypeAlias {
     fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
         docs_from_ast(&*self.source(db).1)
     }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacroDef {
+    pub(crate) id: MacroDefId,
 }
 
 pub enum Container {
