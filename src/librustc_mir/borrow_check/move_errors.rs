@@ -242,12 +242,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         let (mut err, err_span) = {
             let (span, original_path, kind): (Span, &Place<'tcx>, &IllegalMoveOriginKind<'_>) =
                 match error {
-                    GroupedMoveError::MovesFromPlace {
-                        span,
-                        ref original_path,
-                        ref kind,
-                        ..
-                    } |
+                    GroupedMoveError::MovesFromPlace { span, ref original_path, ref kind, .. } |
                     GroupedMoveError::MovesFromValue { span, ref original_path, ref kind, .. } |
                     GroupedMoveError::OtherIllegalMove { span, ref original_path, ref kind } => {
                         (span, original_path, kind)
@@ -257,81 +252,99 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             debug!("report: original_path={:?} span={:?}, kind={:?} \
                    original_path.is_upvar_field_projection={:?}", original_path, span, kind,
                    self.is_upvar_field_projection(original_path));
-            (
-                match kind {
-                    IllegalMoveOriginKind::Static => {
-                        self.infcx.tcx.cannot_move_out_of(span, "static item", origin)
-                    }
-                    IllegalMoveOriginKind::BorrowedContent { target_place: place } => {
-                        // Inspect the type of the content behind the
-                        // borrow to provide feedback about why this
-                        // was a move rather than a copy.
-                        let ty = place.ty(self.mir, self.infcx.tcx).ty;
-                        let is_upvar_field_projection =
-                            self.prefixes(&original_path, PrefixSet::All)
-                            .any(|p| self.is_upvar_field_projection(p).is_some());
-                        debug!("report: ty={:?}", ty);
-                        match ty.sty {
-                            ty::Array(..) | ty::Slice(..) =>
-                                self.infcx.tcx.cannot_move_out_of_interior_noncopy(
-                                    span, ty, None, origin
-                                ),
-                            ty::Closure(def_id, closure_substs)
-                                if def_id == self.mir_def_id && is_upvar_field_projection
-                            => {
-                                let closure_kind_ty =
-                                    closure_substs.closure_kind_ty(def_id, self.infcx.tcx);
-                                let closure_kind = closure_kind_ty.to_opt_closure_kind();
-                                let place_description = match closure_kind {
-                                    Some(ty::ClosureKind::Fn) => {
-                                        "captured variable in an `Fn` closure"
-                                    }
-                                    Some(ty::ClosureKind::FnMut) => {
-                                        "captured variable in an `FnMut` closure"
-                                    }
-                                    Some(ty::ClosureKind::FnOnce) => {
-                                        bug!("closure kind does not match first argument type")
-                                    }
-                                    None => bug!("closure kind not inferred by borrowck"),
-                                };
-                                debug!("report: closure_kind_ty={:?} closure_kind={:?} \
-                                       place_description={:?}", closure_kind_ty, closure_kind,
-                                       place_description);
-
-                                let mut diag = self.infcx.tcx.cannot_move_out_of(
-                                    span, place_description, origin);
-
-                                for prefix in self.prefixes(&original_path, PrefixSet::All) {
-                                    if let Some(field) = self.is_upvar_field_projection(prefix) {
-                                        let upvar_hir_id = self.upvars[field.index()].var_hir_id;
-                                        let upvar_span = self.infcx.tcx.hir().span_by_hir_id(
-                                            upvar_hir_id);
-                                        diag.span_label(upvar_span, "captured outer variable");
-                                        break;
-                                    }
+            let err = match kind {
+                IllegalMoveOriginKind::Static => {
+                    self.infcx.tcx.cannot_move_out_of(span, "static item", origin)
+                }
+                IllegalMoveOriginKind::BorrowedContent { target_place: place } => {
+                    // Inspect the type of the content behind the
+                    // borrow to provide feedback about why this
+                    // was a move rather than a copy.
+                    let ty = place.ty(self.mir, self.infcx.tcx).ty;
+                    let is_upvar_field_projection =
+                        self.prefixes(&original_path, PrefixSet::All)
+                        .any(|p| self.is_upvar_field_projection(p).is_some());
+                    debug!("report: ty={:?}", ty);
+                    let mut err = match ty.sty {
+                        ty::Array(..) | ty::Slice(..) =>
+                            self.infcx.tcx.cannot_move_out_of_interior_noncopy(
+                                span, ty, None, origin
+                            ),
+                        ty::Closure(def_id, closure_substs)
+                            if def_id == self.mir_def_id && is_upvar_field_projection
+                        => {
+                            let closure_kind_ty =
+                                closure_substs.closure_kind_ty(def_id, self.infcx.tcx);
+                            let closure_kind = closure_kind_ty.to_opt_closure_kind();
+                            let place_description = match closure_kind {
+                                Some(ty::ClosureKind::Fn) => {
+                                    "captured variable in an `Fn` closure"
                                 }
+                                Some(ty::ClosureKind::FnMut) => {
+                                    "captured variable in an `FnMut` closure"
+                                }
+                                Some(ty::ClosureKind::FnOnce) => {
+                                    bug!("closure kind does not match first argument type")
+                                }
+                                None => bug!("closure kind not inferred by borrowck"),
+                            };
+                            debug!("report: closure_kind_ty={:?} closure_kind={:?} \
+                                    place_description={:?}", closure_kind_ty, closure_kind,
+                                    place_description);
 
-                                diag
+                            let mut diag = self.infcx.tcx.cannot_move_out_of(
+                                span, place_description, origin);
+
+                            for prefix in self.prefixes(&original_path, PrefixSet::All) {
+                                if let Some(field) = self.is_upvar_field_projection(prefix) {
+                                    let upvar_hir_id = self.upvars[field.index()].var_hir_id;
+                                    let upvar_span = self.infcx.tcx.hir().span_by_hir_id(
+                                        upvar_hir_id);
+                                    diag.span_label(upvar_span, "captured outer variable");
+                                    break;
+                                }
                             }
-                            _ => {
-                                let source = self.borrowed_content_source(place);
-                                self.infcx.tcx.cannot_move_out_of(
-                                    span, &source.to_string(), origin
-                                )
-                            },
+
+                            diag
                         }
+                        _ => {
+                            let source = self.borrowed_content_source(place);
+                            self.infcx.tcx.cannot_move_out_of(
+                                span, &source.to_string(), origin
+                            )
+                        },
+                    };
+                    let orig_path_ty = format!(
+                        "{:?}",
+                        original_path.ty(self.mir, self.infcx.tcx).ty,
+                    );
+                    let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
+                    let is_option = orig_path_ty.starts_with("std::option::Option");
+                    let is_result = orig_path_ty.starts_with("std::result::Result");
+                    if  is_option || is_result {
+                        err.span_suggestion(
+                            span,
+                            &format!("consider borrowing the `{}`'s content", if is_option {
+                                "Option"
+                            } else {
+                                "Result"
+                            }),
+                            format!("{}.as_ref()", snippet),
+                            Applicability::MaybeIncorrect,
+                        );
                     }
-                    IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
-                        self.infcx.tcx
-                            .cannot_move_out_of_interior_of_drop(span, ty, origin)
-                    }
-                    IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } =>
-                        self.infcx.tcx.cannot_move_out_of_interior_noncopy(
-                            span, ty, Some(*is_index), origin
-                        ),
-                },
-                span,
-            )
+                    err
+                }
+                IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
+                    self.infcx.tcx
+                        .cannot_move_out_of_interior_of_drop(span, ty, origin)
+                }
+                IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } =>
+                    self.infcx.tcx.cannot_move_out_of_interior_noncopy(
+                        span, ty, Some(*is_index), origin
+                    ),
+            };
+            (err, span)
         };
 
         self.add_move_hints(error, &mut err, err_span);

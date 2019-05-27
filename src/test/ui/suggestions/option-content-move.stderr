@@ -1,0 +1,21 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/option-content-move.rs:11:20
+   |
+LL |                 if selection.1.unwrap().contains(selection.0) {
+   |                    ^^^^^^^^^^^
+   |                    |
+   |                    cannot move out of borrowed content
+   |                    help: consider borrowing the `Option`'s content: `selection.1.as_ref()`
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/option-content-move.rs:29:20
+   |
+LL |                 if selection.1.unwrap().contains(selection.0) {
+   |                    ^^^^^^^^^^^
+   |                    |
+   |                    cannot move out of borrowed content
+   |                    help: consider borrowing the `Result`'s content: `selection.1.as_ref()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.
