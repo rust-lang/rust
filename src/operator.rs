@@ -158,8 +158,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     // Dead allocations in miri cannot overlap with live allocations, but
                     // on read hardware this can easily happen. Thus for comparisons we require
                     // both pointers to be live.
-                    self.memory().check_bounds_ptr(left, InboundsCheck::Live)?;
-                    self.memory().check_bounds_ptr(right, InboundsCheck::Live)?;
+                    self.memory().check_bounds_ptr(left, InboundsCheck::Live, CheckInAllocMsg::InboundsTest)?;
+                    self.memory().check_bounds_ptr(right, InboundsCheck::Live, CheckInAllocMsg::InboundsTest)?;
                     // Two in-bounds pointers, we can compare across allocations.
                     left == right
                 }
@@ -183,7 +183,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 if bits < 32 {
                     // Test if the ptr is in-bounds. Then it cannot be NULL.
                     // Even dangling pointers cannot be NULL.
-                    if self.memory().check_bounds_ptr(ptr, InboundsCheck::MaybeDead).is_ok() {
+                    if self.memory().check_bounds_ptr(ptr, InboundsCheck::MaybeDead, CheckInAllocMsg::NullPointerTest).is_ok() {
                         return Ok(false);
                     }
                 }
@@ -340,9 +340,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         if let Scalar::Ptr(ptr) = ptr {
             // Both old and new pointer must be in-bounds of a *live* allocation.
             // (Of the same allocation, but that part is trivial with our representation.)
-            self.memory().check_bounds_ptr(ptr, InboundsCheck::Live)?;
+            self.memory().check_bounds_ptr(ptr, InboundsCheck::Live, CheckInAllocMsg::InboundsTest)?;
             let ptr = ptr.signed_offset(offset, self)?;
-            self.memory().check_bounds_ptr(ptr, InboundsCheck::Live)?;
+            self.memory().check_bounds_ptr(ptr, InboundsCheck::Live, CheckInAllocMsg::InboundsTest)?;
             Ok(Scalar::Ptr(ptr))
         } else {
             // An integer pointer. They can only be offset by 0, and we pretend there
