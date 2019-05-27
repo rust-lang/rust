@@ -1,0 +1,8 @@
+error: symbol `collision` is already defined
+  --> $DIR/linkage-detect-local-generated-name-collision.rs:7:9
+   |
+LL |         pub static collision: *const i32;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
