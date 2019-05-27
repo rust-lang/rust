@@ -2120,6 +2120,7 @@ impl<T> Vec<T> {
             del: 0,
             old_len,
             pred: filter,
+            panic_flag: false,
         }
     }
 }
@@ -2751,6 +2752,7 @@ pub struct DrainFilter<'a, T, F>
     del: usize,
     old_len: usize,
     pred: F,
+    panic_flag: bool,
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -2760,21 +2762,34 @@ impl<T, F> Iterator for DrainFilter<'_, T, F>
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
+        struct SetIdxOnDrop<'a> {
+            idx: &'a mut usize,
+            new_idx: usize,
+        }
+
+        impl<'a> Drop for SetIdxOnDrop<'a> {
+            fn drop(&mut self) {
+                *self.idx = self.new_idx;
+            }
+        }
+
         unsafe {
-            while self.idx != self.old_len {
+            while self.idx < self.old_len {
                 let i = self.idx;
-                self.idx += 1;
                 let v = slice::from_raw_parts_mut(self.vec.as_mut_ptr(), self.old_len);
-                if (self.pred)(&mut v[i]) {
+                let mut set_idx = SetIdxOnDrop { new_idx: self.idx, idx: &mut self.idx };
+                self.panic_flag = true;
+                let drained = (self.pred)(&mut v[i]);
+                self.panic_flag = false;
+                set_idx.new_idx += 1;
+                if drained {
                     self.del += 1;
                     return Some(ptr::read(&v[i]));
-                } else if self.del > 0 {
+                }
+                else if self.del > 0 {
                     let del = self.del;
                     let src: *const T = &v[i];
                     let dst: *mut T = &mut v[i - del];
-                    // This is safe because self.vec has length 0
-                    // thus its elements will not have Drop::drop
-                    // called on them in the event of a panic.
                     ptr::copy_nonoverlapping(src, dst, 1);
                 }
             }
@@ -2792,9 +2807,47 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
     where F: FnMut(&mut T) -> bool,
 {
     fn drop(&mut self) {
-        self.for_each(drop);
-        unsafe {
-            self.vec.set_len(self.old_len - self.del);
+        // If the predicate panics, we still need to backshift everything
+        // down after the last successfully drained element, but no additional
+        // elements are drained or checked.
+        struct BackshiftOnDrop<'a, 'b, T, F>
+            where
+                F: FnMut(&mut T) -> bool,
+        {
+            drain: &'b mut DrainFilter<'a, T, F>,
+        }
+
+        impl<'a, 'b, T, F> Drop for BackshiftOnDrop<'a, 'b, T, F>
+            where
+                F: FnMut(&mut T) -> bool
+        {
+            fn drop(&mut self) {
+                unsafe {
+                    while self.drain.idx < self.drain.old_len {
+                        let i = self.drain.idx;
+                        self.drain.idx += 1;
+                        let v = slice::from_raw_parts_mut(
+                            self.drain.vec.as_mut_ptr(),
+                            self.drain.old_len,
+                        );
+                        if self.drain.del > 0 {
+                            let del = self.drain.del;
+                            let src: *const T = &v[i];
+                            let dst: *mut T = &mut v[i - del];
+                            ptr::copy_nonoverlapping(src, dst, 1);
+                        }
+                    }
+                    self.drain.vec.set_len(self.drain.old_len - self.drain.del);
+                }
+            }
+        }
+
+        let backshift = BackshiftOnDrop {
+            drain: self
+        };
+
+        if !backshift.drain.panic_flag {
+            backshift.drain.for_each(drop);
         }
     }
 }
