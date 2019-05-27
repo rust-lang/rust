@@ -395,11 +395,9 @@ impl<T: Clone> Clone for Box<T> {
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl Clone for Box<str> {
     fn clone(&self) -> Self {
-        let len = self.len();
-        let buf = RawVec::with_capacity(len);
+        let buf: Box<[u8]> = self.as_bytes().into();
         unsafe {
-            ptr::copy_nonoverlapping(self.as_ptr(), buf.ptr(), len);
-            from_boxed_utf8_unchecked(buf.into_box())
+            from_boxed_utf8_unchecked(buf)
         }
     }
 }
