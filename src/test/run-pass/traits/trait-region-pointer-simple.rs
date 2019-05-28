@@ -16,6 +16,6 @@ impl Foo for A {
 
 pub fn main() {
     let a = A { x: 3 };
-    let b = (&a) as &Foo;
+    let b = (&a) as &dyn Foo;
     assert_eq!(b.f(), 3);
 }

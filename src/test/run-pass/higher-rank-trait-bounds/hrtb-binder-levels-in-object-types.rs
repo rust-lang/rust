@@ -19,7 +19,7 @@ struct Tcx<'tcx> {
 impl<'tcx> Typer<'tcx> for Tcx<'tcx> {
 }
 
-fn g<'tcx>(typer: &Typer<'tcx>) {
+fn g<'tcx>(typer: &dyn Typer<'tcx>) {
 }
 
 fn check_static_type<'x>(tcx: &Tcx<'x>) {

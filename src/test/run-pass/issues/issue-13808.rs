@@ -4,7 +4,7 @@
 // pretty-expanded FIXME #23616
 
 struct Foo<'a> {
-    listener: Box<FnMut() + 'a>,
+    listener: Box<dyn FnMut() + 'a>,
 }
 
 impl<'a> Foo<'a> {

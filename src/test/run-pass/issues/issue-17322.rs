@@ -5,11 +5,11 @@
 
 use std::io::{self, Write};
 
-fn f(wr: &mut Write) {
+fn f(wr: &mut dyn Write) {
     wr.write_all(b"hello").ok().expect("failed");
 }
 
 fn main() {
-    let mut wr = box io::stdout() as Box<Write>;
+    let mut wr = box io::stdout() as Box<dyn Write>;
     f(&mut wr);
 }

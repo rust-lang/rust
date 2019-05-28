@@ -22,37 +22,37 @@ struct Ref2<'a,'b,T:'a+'b+?Sized> {
 }
 
 struct SomeStruct<'a> {
-    t: Ref<'a,Test>,
-    u: Ref<'a,Test+'a>,
+    t: Ref<'a, dyn Test>,
+    u: Ref<'a, dyn Test+'a>,
 }
 
-fn a<'a>(t: Ref<'a,Test>, mut ss: SomeStruct<'a>) {
+fn a<'a>(t: Ref<'a, dyn Test>, mut ss: SomeStruct<'a>) {
     ss.t = t;
 }
 
-fn b<'a>(t: Ref<'a,Test>, mut ss: SomeStruct<'a>) {
+fn b<'a>(t: Ref<'a, dyn Test>, mut ss: SomeStruct<'a>) {
     ss.u = t;
 }
 
-fn c<'a>(t: Ref<'a,Test+'a>, mut ss: SomeStruct<'a>) {
+fn c<'a>(t: Ref<'a, dyn Test+'a>, mut ss: SomeStruct<'a>) {
     ss.t = t;
 }
 
-fn d<'a>(t: Ref<'a,Test+'a>, mut ss: SomeStruct<'a>) {
+fn d<'a>(t: Ref<'a, dyn Test+'a>, mut ss: SomeStruct<'a>) {
     ss.u = t;
 }
 
-fn e<'a>(_: Ref<'a, Display+'static>) {}
-fn g<'a, 'b>(_: Ref2<'a, 'b, Display+'static>) {}
+fn e<'a>(_: Ref<'a, dyn Display+'static>) {}
+fn g<'a, 'b>(_: Ref2<'a, 'b, dyn Display+'static>) {}
 
 
 fn main() {
     // Inside a function body, we can just infer all
     // lifetimes, to allow Ref<'tmp, Display+'static>
     // and Ref2<'tmp, 'tmp, Display+'static>.
-    let x = &0 as &(Display+'static);
-    let r: Ref<Display> = Ref { r: x };
-    let r2: Ref2<Display> = Ref2 { a: x, b: x };
+    let x = &0 as &(dyn Display+'static);
+    let r: Ref<dyn Display> = Ref { r: x };
+    let r2: Ref2<dyn Display> = Ref2 { a: x, b: x };
     e(r);
     g(r2);
 }

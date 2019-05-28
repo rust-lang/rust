@@ -6,5 +6,5 @@ impl Str for str {}
 impl<'a, S: ?Sized> Str for &'a S where S: Str {}
 
 fn main() {
-    let _: &Str = &"x";
+    let _: &dyn Str = &"x";
 }

@@ -24,9 +24,9 @@ trait MyTrait { fn dummy(&self) { } }
 impl MyTrait for Box<DroppableStruct> {}
 impl MyTrait for Box<DroppableEnum> {}
 
-struct Whatever { w: Box<MyTrait+'static> }
+struct Whatever { w: Box<dyn MyTrait+'static> }
 impl  Whatever {
-    fn new(w: Box<MyTrait+'static>) -> Whatever {
+    fn new(w: Box<dyn MyTrait+'static>) -> Whatever {
         Whatever { w: w }
     }
 }
@@ -34,13 +34,13 @@ impl  Whatever {
 fn main() {
     {
         let f: Box<_> = box DroppableStruct;
-        let _a = Whatever::new(box f as Box<MyTrait>);
+        let _a = Whatever::new(box f as Box<dyn MyTrait>);
     }
     assert!(unsafe { DROPPED });
     unsafe { DROPPED = false; }
     {
         let f: Box<_> = box DroppableEnum::DroppableVariant1;
-        let _a = Whatever::new(box f as Box<MyTrait>);
+        let _a = Whatever::new(box f as Box<dyn MyTrait>);
     }
     assert!(unsafe { DROPPED });
 }

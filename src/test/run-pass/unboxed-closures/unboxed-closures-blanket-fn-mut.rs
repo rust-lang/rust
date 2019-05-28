@@ -8,7 +8,7 @@ fn a<F:FnMut() -> i32>(mut f: F) -> i32 {
     f()
 }
 
-fn b(f: &mut FnMut() -> i32) -> i32 {
+fn b(f: &mut dyn FnMut() -> i32) -> i32 {
     a(f)
 }
 

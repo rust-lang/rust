@@ -22,13 +22,13 @@ impl Trait for Struct {
     }
 }
 
-fn foo(mut a: Box<Write>) {}
+fn foo(mut a: Box<dyn Write>) {}
 
 pub fn main() {
     let a = Struct { x: 1, y: 2 };
-    let b: Box<Trait> = Box::new(a);
+    let b: Box<dyn Trait> = Box::new(a);
     b.f();
-    let c: &Trait = &a;
+    let c: &dyn Trait = &a;
     c.f();
 
     let out = io::stdout();

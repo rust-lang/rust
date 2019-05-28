@@ -21,11 +21,11 @@ impl Inner for isize {
 }
 
 struct Outer<'a> {
-    inner: &'a (Inner+'a)
+    inner: &'a (dyn Inner+'a)
 }
 
 impl<'a> Outer<'a> {
-    fn new(inner: &Inner) -> Outer {
+    fn new(inner: &dyn Inner) -> Outer {
         Outer {
             inner: inner
         }
@@ -34,7 +34,7 @@ impl<'a> Outer<'a> {
 
 pub fn main() {
     let inner: isize = 5;
-    let outer = Outer::new(&inner as &Inner);
+    let outer = Outer::new(&inner as &dyn Inner);
     outer.inner.print();
 }
 
@@ -45,11 +45,11 @@ pub trait MyTrait<T> {
 }
 
 pub struct MyContainer<'a, T:'a> {
-    foos: Vec<&'a (MyTrait<T>+'a)> ,
+    foos: Vec<&'a (dyn MyTrait<T>+'a)> ,
 }
 
 impl<'a, T> MyContainer<'a, T> {
-    pub fn add (&mut self, foo: &'a MyTrait<T>) {
+    pub fn add (&mut self, foo: &'a dyn MyTrait<T>) {
         self.foos.push(foo);
     }
 }

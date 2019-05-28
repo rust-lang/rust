@@ -19,7 +19,7 @@ fn call_it<F:FnMut(i32)->i32>(mut f: F, x: i32) -> i32 {
     f(x) + 3
 }
 
-fn call_box(f: &mut FnMut(i32) -> i32, x: i32) -> i32 {
+fn call_box(f: &mut dyn FnMut(i32) -> i32, x: i32) -> i32 {
     f(x) + 3
 }
 

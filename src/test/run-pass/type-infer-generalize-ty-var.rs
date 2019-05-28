@@ -23,8 +23,8 @@ trait Get<T: ?Sized> {
     fn get(&self) -> &T;
 }
 
-impl Get<MyShow + 'static> for Wrap<T> {
-    fn get(&self) -> &(MyShow + 'static) {
+impl Get<dyn MyShow + 'static> for Wrap<T> {
+    fn get(&self) -> &(dyn MyShow + 'static) {
         static x: usize = 42;
         &x
     }
@@ -38,9 +38,9 @@ impl Get<usize> for Wrap<U> {
 }
 
 trait MyShow { fn dummy(&self) { } }
-impl<'a> MyShow for &'a (MyShow + 'a) { }
+impl<'a> MyShow for &'a (dyn MyShow + 'a) { }
 impl MyShow for usize { }
-fn constrain<'a>(rc: RefCell<&'a (MyShow + 'a)>) { }
+fn constrain<'a>(rc: RefCell<&'a (dyn MyShow + 'a)>) { }
 
 fn main() {
     let mut collection: Wrap<_> = WrapNone;

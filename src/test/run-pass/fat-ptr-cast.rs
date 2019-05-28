@@ -25,7 +25,7 @@ fn main() {
     assert_eq!(a as usize, b as *const () as usize);
 
     // And conversion to a void pointer/address for trait objects too.
-    let a: *mut Foo = &mut Bar;
+    let a: *mut dyn Foo = &mut Bar;
     let b = a as *mut ();
     let c = a as *const () as usize;
     let d = unsafe {

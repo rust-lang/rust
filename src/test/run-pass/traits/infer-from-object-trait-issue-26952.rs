@@ -14,7 +14,7 @@ trait Trait<A> { fn foo(&self); }
 
 struct Type<A> { a: PhantomData<A> }
 
-fn as_trait<A>(t: &Type<A>) -> &Trait<A> { loop {  } }
+fn as_trait<A>(t: &Type<A>) -> &dyn Trait<A> { loop {  } }
 
 fn want<A,T:Trait<A>+?Sized>(t: &T) { }
 

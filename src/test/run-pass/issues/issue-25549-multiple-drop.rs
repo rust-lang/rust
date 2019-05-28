@@ -25,7 +25,7 @@ fn main() {
 
     drops = 0;
     {
-        let y = &Holder(Foo(&mut drops)) as &Holder<Trait>;
+        let y = &Holder(Foo(&mut drops)) as &Holder<dyn Trait>;
         // this used to cause an extra drop of the Foo instance
         let x = &y.0;
     }

@@ -4,7 +4,7 @@
 #![feature(box_syntax)]
 
 pub enum Thing {
-    A(Box<Foo+'static>)
+    A(Box<dyn Foo+'static>)
 }
 
 pub trait Foo {
@@ -16,7 +16,7 @@ pub struct Struct;
 impl Foo for Struct {}
 
 pub fn main() {
-    match Thing::A(box Struct as Box<Foo+'static>) {
+    match Thing::A(box Struct as Box<dyn Foo + 'static>) {
         Thing::A(_a) => 0,
     };
 }

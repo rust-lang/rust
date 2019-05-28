@@ -13,9 +13,9 @@ trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ctxt<'tcx>;
 }
 
-fn foo(conv: &AstConv) { }
+fn foo(conv: &dyn AstConv) { }
 
-fn bar<'tcx>(conv: &AstConv<'tcx>) {
+fn bar<'tcx>(conv: &dyn AstConv<'tcx>) {
     foo(conv)
 }
 

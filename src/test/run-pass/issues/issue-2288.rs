@@ -23,13 +23,13 @@ fn foo<A>(b: A) -> foo<A> {
     }
 }
 
-fn f<A>(x: Box<clam<A>>, a: A) {
+fn f<A>(x: Box<dyn clam<A>>, a: A) {
   x.chowder(a);
 }
 
 pub fn main() {
 
   let c = foo(42);
-  let d: Box<clam<isize>> = box c as Box<clam<isize>>;
+  let d: Box<dyn clam<isize>> = box c as Box<dyn clam<isize>>;
   f(d, c.x);
 }

@@ -12,30 +12,30 @@ trait Test {
 }
 
 struct SomeStruct<'a> {
-    t: &'a Test,
-    u: &'a (Test+'a),
+    t: &'a dyn Test,
+    u: &'a (dyn Test+'a),
 }
 
-fn a<'a>(t: &'a Test, mut ss: SomeStruct<'a>) {
+fn a<'a>(t: &'a dyn Test, mut ss: SomeStruct<'a>) {
     ss.t = t;
 }
 
-fn b<'a>(t: &'a Test, mut ss: SomeStruct<'a>) {
+fn b<'a>(t: &'a dyn Test, mut ss: SomeStruct<'a>) {
     ss.u = t;
 }
 
-fn c<'a>(t: &'a (Test+'a), mut ss: SomeStruct<'a>) {
+fn c<'a>(t: &'a (dyn Test+'a), mut ss: SomeStruct<'a>) {
     ss.t = t;
 }
 
-fn d<'a>(t: &'a (Test+'a), mut ss: SomeStruct<'a>) {
+fn d<'a>(t: &'a (dyn Test+'a), mut ss: SomeStruct<'a>) {
     ss.u = t;
 }
 
-fn e<'a>(_: &'a (Display+'static)) {}
+fn e<'a>(_: &'a (dyn Display+'static)) {}
 
 fn main() {
     // Inside a function body, we can just infer both
     // lifetimes, to allow &'tmp (Display+'static).
-    e(&0 as &Display);
+    e(&0 as &dyn Display);
 }

@@ -9,7 +9,7 @@ trait Matcher {
 
 struct CharPredMatcher<'a, 'b> {
     str: &'a str,
-    pred: Box<FnMut(char) -> bool + 'b>,
+    pred: Box<dyn FnMut(char) -> bool + 'b>,
 }
 
 impl<'a, 'b> Matcher for CharPredMatcher<'a, 'b> {

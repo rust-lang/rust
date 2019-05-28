@@ -44,7 +44,7 @@ impl<'a,'tcx> Foo<'a,'tcx> {
 
     fn elaborate_bounds(
         &mut self,
-        mut mk_cand: Box<for<'b> FnMut(&mut Foo<'b, 'tcx>) -> isize>)
+        mut mk_cand: Box<dyn for<'b> FnMut(&mut Foo<'b, 'tcx>) -> isize>)
         -> isize
     {
         mk_cand(self)

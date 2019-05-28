@@ -10,13 +10,13 @@ pub trait Service {
 pub struct S<T>(T);
 
 impl Service for ClientMap {
-    type Request = S<Box<Fn(i32)>>;
+    type Request = S<Box<dyn Fn(i32)>>;
     fn call(&self, _req: Self::Request) {}
 }
 
 
 impl Service for ClientMap2 {
-    type Request = (Box<Fn(i32)>,);
+    type Request = (Box<dyn Fn(i32)>,);
     fn call(&self, _req: Self::Request) {}
 }
 

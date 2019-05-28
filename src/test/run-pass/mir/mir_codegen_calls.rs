@@ -42,7 +42,7 @@ fn test4(x: &Foo, a: isize) -> isize {
     x.extension_method(a)
 }
 
-fn test5(x: &Bar, a: isize) -> isize {
+fn test5(x: &dyn Bar, a: isize) -> isize {
     // Test calling method on trait object
     x.extension_method(a)
 }
@@ -88,11 +88,11 @@ fn test_closure<F>(f: &F, x: i32, y: i32) -> i32
     f(x, y)
 }
 
-fn test_fn_object(f: &Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
+fn test_fn_object(f: &dyn Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
     f(x, y)
 }
 
-fn test_fn_impl(f: &&Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
+fn test_fn_impl(f: &&dyn Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
     // This call goes through the Fn implementation for &Fn provided in
     // core::ops::impls. It expands to a static Fn::call() that calls the
     // Fn::call() implementation of the object shim underneath.
@@ -174,7 +174,7 @@ fn main() {
     let closure = |x: i32, y: i32| { r*(x + (y*2)) };
     assert_eq!(test_fn_const_call(&closure), 294);
     assert_eq!(test_closure(&closure, 100, 1), 306);
-    let function_object = &closure as &Fn(i32, i32) -> i32;
+    let function_object = &closure as &dyn Fn(i32, i32) -> i32;
     assert_eq!(test_fn_object(function_object, 100, 2), 312);
     assert_eq!(test_fn_impl(&function_object, 100, 3), 318);
     assert_eq!(test_fn_direct_call(&closure, 100, 4), 324);

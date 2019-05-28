@@ -12,7 +12,7 @@ pub trait Routing<I> {
 
 pub trait ToRouting {
     type Input;
-    type Routing : ?Sized = Routing<Self::Input, Output=()>;
+    type Routing : ?Sized = dyn Routing<Self::Input, Output=()>;
     fn to_routing(self) -> Self::Routing;
 }
 

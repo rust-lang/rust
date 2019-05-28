@@ -93,7 +93,7 @@ pub fn main() {
     t!(format!("{:#4}", C), "☃123");
     t!(format!("{:b}", D), "aa☃bb");
 
-    let a: &fmt::Debug = &1;
+    let a: &dyn fmt::Debug = &1;
     t!(format!("{:?}", a), "1");
 
 

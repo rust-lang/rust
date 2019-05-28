@@ -13,5 +13,5 @@ trait Bar: for<'a> Foo<&'a ()> { }
 impl Bar for () {}
 
 fn main() {
-    (&() as &Bar).print(); // Segfault
+    (&() as &dyn Bar).print(); // Segfault
 }

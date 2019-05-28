@@ -9,11 +9,11 @@ use std::thread::Builder;
 
 static generations: usize = 1024+256+128+49;
 
-fn spawn(mut f: Box<FnMut() + 'static + Send>) {
+fn spawn(mut f: Box<dyn FnMut() + 'static + Send>) {
     Builder::new().stack_size(32 * 1024).spawn(move|| f());
 }
 
-fn child_no(x: usize) -> Box<FnMut() + 'static + Send> {
+fn child_no(x: usize) -> Box<dyn FnMut() + 'static + Send> {
     Box::new(move|| {
         if x < generations {
             spawn(child_no(x+1));

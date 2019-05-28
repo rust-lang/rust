@@ -11,8 +11,8 @@ trait X<T> {
     fn dummy(&self) -> T { panic!() }
 }
 
-struct S<T> {f: Box<X<T>+'static>,
-             g: Box<X<T>+'static>}
+struct S<T> {f: Box<dyn X<T>+'static>,
+             g: Box<dyn X<T>+'static>}
 
 struct F;
 impl X<isize> for F {

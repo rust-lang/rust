@@ -6,7 +6,7 @@
 // 'static` and not `Fn(isize) -> (isize + 'static)`. The latter would
 // cause a compilation error. Issue #18772.
 
-fn adder(y: isize) -> Box<Fn(isize) -> isize + 'static> {
+fn adder(y: isize) -> Box<dyn Fn(isize) -> isize + 'static> {
     Box::new(move |x| y + x)
 }
 

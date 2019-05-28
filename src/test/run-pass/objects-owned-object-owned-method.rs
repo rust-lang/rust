@@ -19,6 +19,6 @@ impl FooTrait for BarStruct {
 }
 
 pub fn main() {
-    let foo = box BarStruct{ x: 22 } as Box<FooTrait>;
+    let foo = box BarStruct{ x: 22 } as Box<dyn FooTrait>;
     assert_eq!(22, foo.foo());
 }

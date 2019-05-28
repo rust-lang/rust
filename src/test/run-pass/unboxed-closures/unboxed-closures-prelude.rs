@@ -4,10 +4,10 @@
 // pretty-expanded FIXME #23616
 
 fn main() {
-    let task: Box<Fn(isize) -> isize> = Box::new(|x| x);
+    let task: Box<dyn Fn(isize) -> isize> = Box::new(|x| x);
     task(0);
 
-    let mut task: Box<FnMut(isize) -> isize> = Box::new(|x| x);
+    let mut task: Box<dyn FnMut(isize) -> isize> = Box::new(|x| x);
     task(0);
 
     call(|x| x, 22);

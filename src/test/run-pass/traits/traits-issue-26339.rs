@@ -25,7 +25,7 @@ impl PartialEq<Bar> for Aimpl {
 impl A for Aimpl { }
 
 fn main() {
-    let a = &Aimpl as &A;
+    let a = &Aimpl as &dyn A;
 
     assert!(*a == Foo);
 }

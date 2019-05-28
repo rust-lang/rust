@@ -7,7 +7,7 @@ trait Typer<'tcx> {
     fn dummy(&self) { }
 }
 
-fn g<F>(_: F) where F: FnOnce(&Typer) {}
+fn g<F>(_: F) where F: FnOnce(&dyn Typer) {}
 
 fn h() {
     g(|typer| typer.dummy())

@@ -20,5 +20,5 @@ impl<E> Graph<isize, E> for HashMap<isize, isize> {
 
 pub fn main() {
     let g : Box<HashMap<isize,isize>> = box HashMap::new();
-    let _g2 : Box<Graph<isize,isize>> = g as Box<Graph<isize,isize>>;
+    let _g2 : Box<dyn Graph<isize,isize>> = g as Box<dyn Graph<isize,isize>>;
 }

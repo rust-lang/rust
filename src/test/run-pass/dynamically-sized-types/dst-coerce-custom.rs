@@ -36,7 +36,7 @@ fn main() {
 
     // Trait objects.
     let a: Bar<i32> = Bar { x: &42 };
-    let b: Bar<Baz> = a;
+    let b: Bar<dyn Baz> = a;
     unsafe {
         assert_eq!((*b.x).get(), 42);
     }

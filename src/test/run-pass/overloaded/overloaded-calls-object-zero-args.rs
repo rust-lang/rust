@@ -3,7 +3,7 @@
 // This is a bit tricky due to rust-call ABI.
 
 
-fn foo(f: &mut FnMut() -> isize) -> isize {
+fn foo(f: &mut dyn FnMut() -> isize) -> isize {
     f()
 }
 

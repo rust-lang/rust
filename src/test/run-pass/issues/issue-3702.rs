@@ -6,7 +6,7 @@ pub fn main() {
     fn to_string(&self) -> String;
   }
 
-  fn to_string(t: Box<Text>) {
+  fn to_string(t: Box<dyn Text>) {
     println!("{}", (*t).to_string());
   }
 

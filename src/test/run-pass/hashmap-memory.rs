@@ -19,7 +19,7 @@ mod map_reduce {
     use std::str;
     use std::thread;
 
-    pub type putter<'a> = Box<FnMut(String, String) + 'a>;
+    pub type putter<'a> = Box<dyn FnMut(String, String) + 'a>;
 
     pub type mapper = extern fn(String, putter);
 

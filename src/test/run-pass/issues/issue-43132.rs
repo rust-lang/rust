@@ -6,7 +6,7 @@ fn main() {
 
 fn foo() {
     let b = mk::<
-        Forward<(Box<Future<Error = u32>>,)>,
+        Forward<(Box<dyn Future<Error = u32>>,)>,
     >();
     b.map_err(|_| ()).join();
 }

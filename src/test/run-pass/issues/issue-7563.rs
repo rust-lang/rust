@@ -16,7 +16,7 @@ struct B<'a> { b: isize, pa: &'a A }
     }
 
 impl<'a> B<'a> {
-    fn get_pa(&self) -> &'a IDummy { self.pa as &'a IDummy }
+    fn get_pa(&self) -> &'a dyn IDummy { self.pa as &'a dyn IDummy }
 }
 
 pub fn main() {

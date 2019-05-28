@@ -20,10 +20,10 @@ impl FooTrait for BarStruct {
 }
 
 pub fn main() {
-    let foos: Vec<Box<FooTrait>> = vec![
-        box BarStruct{ x: 0 } as Box<FooTrait>,
-        box BarStruct{ x: 1 } as Box<FooTrait>,
-        box BarStruct{ x: 2 } as Box<FooTrait>
+    let foos: Vec<Box<dyn FooTrait>> = vec![
+        box BarStruct{ x: 0 } as Box<dyn FooTrait>,
+        box BarStruct{ x: 1 } as Box<dyn FooTrait>,
+        box BarStruct{ x: 2 } as Box<dyn FooTrait>
     ];
 
     for i in 0..foos.len() {

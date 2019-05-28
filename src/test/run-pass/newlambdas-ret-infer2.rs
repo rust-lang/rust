@@ -4,7 +4,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn unique() -> Box<FnMut()+'static> { Box::new(|| ()) }
+fn unique() -> Box<dyn FnMut()+'static> { Box::new(|| ()) }
 
 pub fn main() {
 }

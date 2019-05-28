@@ -12,7 +12,7 @@ trait T {
     fn t(&self) {}
 }
 
-impl<'a> T+'a {
+impl<'a> dyn T+'a {
     fn foo(&self) {
         unsafe { COUNT *= 2; }
     }
@@ -27,7 +27,7 @@ struct Foo;
 impl<'a> Bar<'a> for Foo {}
 
 fn main() {
-    let x: &T = &42;
+    let x: &dyn T = &42;
 
     x.foo();
     T::foo(x);
@@ -36,6 +36,6 @@ fn main() {
     unsafe { assert_eq!(COUNT, 12); }
 
     // Cross-crait case
-    let x: &Bar = &Foo;
+    let x: &dyn Bar = &Foo;
     x.bar();
 }

@@ -17,5 +17,5 @@ fn main() {
     let data = [1, 2, 3];
     let iter = data.iter();
     let x = MyRc { _ptr: &iter, _boo: PhantomData };
-    let _y: MyRc<Iterator<Item=&u32>> = x;
+    let _y: MyRc<dyn Iterator<Item=&u32>> = x;
 }

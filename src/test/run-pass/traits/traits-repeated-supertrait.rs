@@ -22,7 +22,7 @@ impl CompareTo<u64> for i64 {
 
 impl CompareToInts for i64 { }
 
-fn with_obj(c: &CompareToInts) -> bool {
+fn with_obj(c: &dyn CompareToInts) -> bool {
     c.same_as(22_i64) && c.same_as(22_u64)
 }
 

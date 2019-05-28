@@ -20,7 +20,7 @@ fn Ident_new() -> Ident {
     Ident {name: 0x6789ABCD }
 }
 
-pub fn light_fuse(fld: Box<bomb>) {
+pub fn light_fuse(fld: Box<dyn bomb>) {
     int3!();
     let f = || {
         int3!();
@@ -30,6 +30,6 @@ pub fn light_fuse(fld: Box<bomb>) {
 }
 
 pub fn main() {
-    let b = box S as Box<bomb>;
+    let b = box S as Box<dyn bomb>;
     light_fuse(b);
 }

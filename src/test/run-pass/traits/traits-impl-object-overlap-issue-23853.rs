@@ -14,5 +14,5 @@ impl<T:?Sized> Foo for T { }
 fn want_foo<B:?Sized+Foo>() { }
 
 fn main() {
-    want_foo::<Bar>();
+    want_foo::<dyn Bar>();
 }

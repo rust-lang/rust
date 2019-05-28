@@ -4,12 +4,12 @@
 use std::ops::CoerceUnsized;
 use std::marker::Unsize;
 
-fn identity_coercion(x: &(Fn(u32)->u32 + Send)) -> &Fn(u32)->u32 {
+fn identity_coercion(x: &(dyn Fn(u32)->u32 + Send)) -> &dyn Fn(u32)->u32 {
     x
 }
 fn fn_coercions(f: &fn(u32) -> u32) ->
     (unsafe fn(u32) -> u32,
-     &(Fn(u32) -> u32+Send))
+     &(dyn Fn(u32) -> u32+Send))
 {
     (*f, f)
 }
@@ -35,8 +35,8 @@ fn coerce_triv_ptr_wrapper(p: TrivPtrWrapper<[u8; 3]>) -> TrivPtrWrapper<[u8]> {
     p
 }
 
-fn coerce_fat_ptr_wrapper(p: PtrWrapper<Fn(u32) -> u32+Send>)
-                          -> PtrWrapper<Fn(u32) -> u32> {
+fn coerce_fat_ptr_wrapper(p: PtrWrapper<dyn Fn(u32) -> u32+Send>)
+                          -> PtrWrapper<dyn Fn(u32) -> u32> {
     p
 }
 
@@ -65,7 +65,7 @@ fn main() {
     let z = coerce_fat_ptr_wrapper(PtrWrapper(2,3,(),&square_local));
     assert_eq!((z.3)(6), 36);
 
-    let z: PtrWrapper<Fn(u32) -> u32> =
+    let z: PtrWrapper<dyn Fn(u32) -> u32> =
         coerce_ptr_wrapper_poly(PtrWrapper(2,3,(),&square_local));
     assert_eq!((z.3)(6), 36);
 }

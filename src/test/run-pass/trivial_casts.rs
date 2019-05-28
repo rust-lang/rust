@@ -36,21 +36,21 @@ pub fn main() {
 
     // unsize trait
     let x: &Bar = &Bar;
-    let _ = x as &Foo;
-    let _ = x as *const Foo;
+    let _ = x as &dyn Foo;
+    let _ = x as *const dyn Foo;
 
     let x: &mut Bar = &mut Bar;
-    let _ = x as &mut Foo;
-    let _ = x as *mut Foo;
+    let _ = x as &mut dyn Foo;
+    let _ = x as *mut dyn Foo;
 
     let x: Box<Bar> = Box::new(Bar);
-    let _ = x as Box<Foo>;
+    let _ = x as Box<dyn Foo>;
 
     // functions
     fn baz(_x: i32) {}
-    let _ = &baz as &Fn(i32);
+    let _ = &baz as &dyn Fn(i32);
     let x = |_x: i32| {};
-    let _ = &x as &Fn(i32);
+    let _ = &x as &dyn Fn(i32);
 }
 
 // subtyping
