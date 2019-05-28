@@ -845,22 +845,22 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             p!(write("{}", name));
             return Ok(self);
         }
-        if let ConstValue::Scalar(Scalar::Bits { bits, .. }) = ct.val {
+        if let ConstValue::Scalar(Scalar::Raw { data, .. }) = ct.val {
             match ct.ty.sty {
                 ty::Bool => {
-                    p!(write("{}", if bits == 0 { "false" } else { "true" }));
+                    p!(write("{}", if data == 0 { "false" } else { "true" }));
                     return Ok(self);
                 },
                 ty::Float(ast::FloatTy::F32) => {
-                    p!(write("{}f32", Single::from_bits(bits)));
+                    p!(write("{}f32", Single::from_bits(data)));
                     return Ok(self);
                 },
                 ty::Float(ast::FloatTy::F64) => {
-                    p!(write("{}f64", Double::from_bits(bits)));
+                    p!(write("{}f64", Double::from_bits(data)));
                     return Ok(self);
                 },
                 ty::Uint(ui) => {
-                    p!(write("{}{}", bits, ui));
+                    p!(write("{}{}", data, ui));
                     return Ok(self);
                 },
                 ty::Int(i) =>{
@@ -868,11 +868,11 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                     let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty))
                         .unwrap()
                         .size;
-                    p!(write("{}{}", sign_extend(bits, size) as i128, i));
+                    p!(write("{}{}", sign_extend(data, size) as i128, i));
                     return Ok(self);
                 },
                 ty::Char => {
-                    p!(write("{:?}", ::std::char::from_u32(bits as u32).unwrap()));
+                    p!(write("{:?}", ::std::char::from_u32(data as u32).unwrap()));
                     return Ok(self);
                 }
                 _ => {},

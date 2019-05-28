@@ -1001,7 +1001,7 @@ impl<'tcx> CommonConsts<'tcx> {
 
         CommonConsts {
             err: mk_const(ty::Const {
-                val: ConstValue::Scalar(Scalar::Bits { bits: 0, size: 0 }),
+                val: ConstValue::Scalar(Scalar::zst()),
                 ty: types.err,
             }),
         }

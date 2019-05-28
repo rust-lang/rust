@@ -115,7 +115,7 @@ fn op_to_const<'tcx>(
                     ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
                     ptr.offset.bytes(),
                 ),
-                Scalar::Bits { .. } => (
+                Scalar::Raw { .. } => (
                     ecx.tcx.intern_const_alloc(Allocation::from_byte_aligned_bytes(b"", ())),
                     0,
                 ),

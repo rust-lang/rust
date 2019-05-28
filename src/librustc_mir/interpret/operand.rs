@@ -641,19 +641,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             } => {
                 let variants_start = niche_variants.start().as_u32() as u128;
                 let variants_end = niche_variants.end().as_u32() as u128;
-                match raw_discr {
-                    ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) => {
+                let raw_discr = raw_discr.not_undef()
+                    .map_err(|_| InterpError::InvalidDiscriminant(ScalarMaybeUndef::Undef))?;
+                match raw_discr.to_bits_or_ptr(discr_val.layout.size, self) {
+                    Err(ptr) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
                             self.memory.check_bounds_ptr(ptr, InboundsCheck::MaybeDead,
                                                          CheckInAllocMsg::NullPointerTest).is_ok();
                         if !ptr_valid {
-                            return err!(InvalidDiscriminant(raw_discr.erase_tag()));
+                            return err!(InvalidDiscriminant(raw_discr.erase_tag().into()));
                         }
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
-                    ScalarMaybeUndef::Scalar(Scalar::Bits { bits: raw_discr, size }) => {
-                        assert_eq!(size as u64, discr_val.layout.size.bytes());
+                    Ok(raw_discr) => {
                         let adjusted_discr = raw_discr.wrapping_sub(niche_start)
                             .wrapping_add(variants_start);
                         if variants_start <= adjusted_discr && adjusted_discr <= variants_end {
@@ -668,8 +669,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                             (dataful_variant.as_u32() as u128, dataful_variant)
                         }
                     },
-                    ScalarMaybeUndef::Undef =>
-                        return err!(InvalidDiscriminant(ScalarMaybeUndef::Undef)),
                 }
             }
         })

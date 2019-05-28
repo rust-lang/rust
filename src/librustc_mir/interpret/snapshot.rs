@@ -186,9 +186,9 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         match self {
             Scalar::Ptr(p) => Scalar::Ptr(p.snapshot(ctx)),
-            Scalar::Bits{ size, bits } => Scalar::Bits {
+            Scalar::Raw{ size, data } => Scalar::Raw {
+                data: *data,
                 size: *size,
-                bits: *bits,
             },
         }
     }

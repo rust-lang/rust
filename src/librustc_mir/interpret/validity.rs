@@ -480,8 +480,8 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 wrapping_range_format(&layout.valid_range, max_hi),
             )
         );
-        let bits = match value {
-            Scalar::Ptr(ptr) => {
+        let bits = match value.to_bits_or_ptr(op.layout.size, self.ecx) {
+            Err(ptr) => {
                 if lo == 1 && hi == max_hi {
                     // only NULL is not allowed.
                     // We can call `check_align` to check non-NULL-ness, but have to also look
@@ -509,10 +509,8 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     );
                 }
             }
-            Scalar::Bits { bits, size } => {
-                assert_eq!(size as u64, op.layout.size.bytes());
-                bits
-            }
+            Ok(data) =>
+                data
         };
         // Now compare. This is slightly subtle because this is a special "wrap-around" range.
         if wrapping_range_contains(&layout.valid_range, bits) {
