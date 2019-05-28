@@ -136,10 +136,10 @@ fn check_rvalue(
 ) -> McfResult {
     match rvalue {
         Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
-            check_operand(tcx, mir, operand, span)
+            check_operand(operand, span)
         }
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) => {
-            check_place(tcx, mir, place, span)
+            check_place(place, span)
         }
         Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
             use rustc::ty::cast::CastTy;
@@ -153,11 +153,11 @@ fn check_rvalue(
                 (CastTy::RPtr(_), CastTy::Float) => bug!(),
                 (CastTy::RPtr(_), CastTy::Int(_)) => bug!(),
                 (CastTy::Ptr(_), CastTy::RPtr(_)) => bug!(),
-                _ => check_operand(tcx, mir, operand, span),
+                _ => check_operand(operand, span),
             }
         }
         Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _) => {
-            check_operand(tcx, mir, operand, span)
+            check_operand(operand, span)
         }
         Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), _, _) |
         Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), _, _) |
@@ -171,8 +171,8 @@ fn check_rvalue(
         )),
         // binops are fine on integers
         Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
-            check_operand(tcx, mir, lhs, span)?;
-            check_operand(tcx, mir, rhs, span)?;
+            check_operand(lhs, span)?;
+            check_operand(rhs, span)?;
             let ty = lhs.ty(mir, tcx);
             if ty.is_integral() || ty.is_bool() || ty.is_char() {
                 Ok(())
@@ -191,7 +191,7 @@ fn check_rvalue(
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(mir, tcx);
             if ty.is_integral() || ty.is_bool() {
-                check_operand(tcx, mir, operand, span)
+                check_operand(operand, span)
             } else {
                 Err((
                     span,
@@ -201,7 +201,7 @@ fn check_rvalue(
         }
         Rvalue::Aggregate(_, operands) => {
             for operand in operands {
-                check_operand(tcx, mir, operand, span)?;
+                check_operand(operand, span)?;
             }
             Ok(())
         }
@@ -216,11 +216,11 @@ fn check_statement(
     let span = statement.source_info.span;
     match &statement.kind {
         StatementKind::Assign(place, rval) => {
-            check_place(tcx, mir, place, span)?;
+            check_place(place, span)?;
             check_rvalue(tcx, mir, rval, span)
         }
 
-        StatementKind::FakeRead(_, place) => check_place(tcx, mir, place, span),
+        StatementKind::FakeRead(_, place) => check_place(place, span),
 
         // just an assignment
         StatementKind::SetDiscriminant { .. } => Ok(()),
@@ -239,43 +239,40 @@ fn check_statement(
 }
 
 fn check_operand(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
     operand: &Operand<'tcx>,
     span: Span,
 ) -> McfResult {
     match operand {
         Operand::Move(place) | Operand::Copy(place) => {
-            check_place(tcx, mir, place, span)
+            check_place(place, span)
         }
         Operand::Constant(_) => Ok(()),
     }
 }
 
-fn check_place(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
-    place: &Place<'tcx>,
-    span: Span,
-) -> McfResult {
-    match place {
-        Place::Base(PlaceBase::Local(_)) => Ok(()),
-        // promoteds are always fine, they are essentially constants
-        Place::Base(PlaceBase::Static(box Static { kind: StaticKind::Promoted(_), .. })) => Ok(()),
-        Place::Base(PlaceBase::Static(box Static { kind: StaticKind::Static(_), .. })) =>
-            Err((span, "cannot access `static` items in const fn".into())),
-        Place::Projection(proj) => {
+fn check_place(place: &Place<'tcx>, span: Span) -> McfResult {
+    place.iterate(|place_base, place_projection| {
+        for proj in place_projection {
             match proj.elem {
-                | ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. }
-                | ProjectionElem::Deref | ProjectionElem::Field(..) | ProjectionElem::Index(_) => {
-                    check_place(tcx, mir, &proj.base, span)
+                ProjectionElem::Downcast(..) => {
+                    return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
                 }
-                | ProjectionElem::Downcast(..) => {
-                    Err((span, "`match` or `if let` in `const fn` is unstable".into()))
-                }
+                ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::Deref
+                | ProjectionElem::Field(..)
+                | ProjectionElem::Index(_) => {}
             }
         }
-    }
+
+        match place_base {
+            PlaceBase::Static(box Static { kind: StaticKind::Static(_), .. }) => {
+                Err((span, "cannot access `static` items in const fn".into()))
+            }
+            PlaceBase::Local(_)
+            | PlaceBase::Static(box Static { kind: StaticKind::Promoted(_), .. }) => Ok(()),
+        }
+    })
 }
 
 fn check_terminator(
@@ -290,11 +287,11 @@ fn check_terminator(
         | TerminatorKind::Resume => Ok(()),
 
         TerminatorKind::Drop { location, .. } => {
-            check_place(tcx, mir, location, span)
+            check_place(location, span)
         }
         TerminatorKind::DropAndReplace { location, value, .. } => {
-            check_place(tcx, mir, location, span)?;
-            check_operand(tcx, mir, value, span)
+            check_place(location, span)?;
+            check_operand(value, span)
         },
 
         TerminatorKind::FalseEdges { .. } | TerminatorKind::SwitchInt { .. } => Err((
@@ -346,10 +343,10 @@ fn check_terminator(
                     )),
                 }
 
-                check_operand(tcx, mir, func, span)?;
+                check_operand(func, span)?;
 
                 for arg in args {
-                    check_operand(tcx, mir, arg, span)?;
+                    check_operand(arg, span)?;
                 }
                 Ok(())
             } else {
@@ -363,7 +360,7 @@ fn check_terminator(
             msg: _,
             target: _,
             cleanup: _,
-        } => check_operand(tcx, mir, cond, span),
+        } => check_operand(cond, span),
 
         TerminatorKind::FalseUnwind { .. } => {
             Err((span, "loops are not allowed in const fn".into()))
