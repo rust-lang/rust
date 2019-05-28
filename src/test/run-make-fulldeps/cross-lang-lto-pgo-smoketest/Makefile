@@ -21,7 +21,7 @@ all: cpp-executable rust-executable
 
 cpp-executable:
 	$(RUSTC) -Clinker-plugin-lto=on \
-	         -Zpgo-gen="$(TMPDIR)"/cpp-profdata \
+	         -Cprofile-generate="$(TMPDIR)"/cpp-profdata \
 	         -o "$(TMPDIR)"/librustlib-xlto.a \
 	         $(COMMON_FLAGS) \
 	         ./rustlib.rs
@@ -39,7 +39,7 @@ cpp-executable:
 		-o "$(TMPDIR)"/cpp-profdata/merged.profdata \
 		"$(TMPDIR)"/cpp-profdata/default_*.profraw
 	$(RUSTC) -Clinker-plugin-lto=on \
-	         -Zpgo-use="$(TMPDIR)"/cpp-profdata/merged.profdata \
+	         -Cprofile-use="$(TMPDIR)"/cpp-profdata/merged.profdata \
 	         -o "$(TMPDIR)"/librustlib-xlto.a \
 	         $(COMMON_FLAGS) \
 	         ./rustlib.rs
@@ -57,7 +57,7 @@ rust-executable:
 	$(CLANG) ./clib.c -fprofile-generate="$(TMPDIR)"/rs-profdata -flto=thin -c -o $(TMPDIR)/clib.o -O3
 	(cd $(TMPDIR); $(AR) crus ./libxyz.a ./clib.o)
 	$(RUSTC) -Clinker-plugin-lto=on \
-	         -Zpgo-gen="$(TMPDIR)"/rs-profdata \
+	         -Cprofile-generate="$(TMPDIR)"/rs-profdata \
 	         -L$(TMPDIR) \
 	         $(COMMON_FLAGS) \
 	         -Clinker=$(CLANG) \
@@ -78,7 +78,7 @@ rust-executable:
 	rm "$(TMPDIR)"/libxyz.a
 	(cd $(TMPDIR); $(AR) crus ./libxyz.a ./clib.o)
 	$(RUSTC) -Clinker-plugin-lto=on \
-	         -Zpgo-use="$(TMPDIR)"/rs-profdata/merged.profdata \
+	         -Cprofile-use="$(TMPDIR)"/rs-profdata/merged.profdata \
 	         -L$(TMPDIR) \
 	         $(COMMON_FLAGS) \
 	         -Clinker=$(CLANG) \

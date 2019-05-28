@@ -1,8 +1,8 @@
-// Test that `-Zpgo-gen` creates expected instrumentation artifacts in LLVM IR.
+// Test that `-Cprofile-generate` creates expected instrumentation artifacts in LLVM IR.
 // Compiling with `-Cpanic=abort` because PGO+unwinding isn't supported on all platforms.
 
 // needs-profiler-support
-// compile-flags: -Z pgo-gen -Ccodegen-units=1 -Cpanic=abort
+// compile-flags: -Cprofile-generate -Ccodegen-units=1 -Cpanic=abort
 
 // CHECK: @__llvm_profile_raw_version =
 // CHECK: @__profc_{{.*}}pgo_instrumentation{{.*}}some_function{{.*}} = private global
