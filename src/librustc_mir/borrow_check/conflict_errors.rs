@@ -595,11 +595,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) -> (String, String, String, String) {
         // Define a small closure that we can use to check if the type of a place
         // is a union.
-        let is_union = |place: &Place<'tcx>| -> bool {
-            place.ty(self.mir, self.infcx.tcx).ty
-                .ty_adt_def()
-                .map(|adt| adt.is_union())
-                .unwrap_or(false)
+        let union_ty = |place: &Place<'tcx>| -> Option<Ty<'tcx>> {
+            let ty = place.ty(self.mir, self.infcx.tcx).ty;
+            ty.ty_adt_def().filter(|adt| adt.is_union()).map(|_| ty)
         };
 
         // Start with an empty tuple, so we can use the functions on `Option` to reduce some
@@ -619,7 +617,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let mut current = first_borrowed_place;
                 while let Place::Projection(box Projection { base, elem }) = current {
                     match elem {
-                        ProjectionElem::Field(field, _) if is_union(base) => {
+                        ProjectionElem::Field(field, _) if union_ty(base).is_some() => {
                             return Some((base, field));
                         },
                         _ => current = base,
@@ -632,25 +630,29 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // borrowed place and look for a access to a different field of the same union.
                 let mut current = second_borrowed_place;
                 while let Place::Projection(box Projection { base, elem }) = current {
-                    match elem {
-                        ProjectionElem::Field(field, _) if {
-                            is_union(base) && field != target_field && base == target_base
-                        } => {
-                            let desc_base = self.describe_place(base)
-                                .unwrap_or_else(|| "_".to_owned());
-                            let desc_first = self.describe_place(first_borrowed_place)
-                                .unwrap_or_else(|| "_".to_owned());
-                            let desc_second = self.describe_place(second_borrowed_place)
-                                .unwrap_or_else(|| "_".to_owned());
+                    if let ProjectionElem::Field(field, _) = elem {
+                        if let Some(union_ty) = union_ty(base) {
+                            if field != target_field && base == target_base {
+                                let desc_base =
+                                    self.describe_place(base).unwrap_or_else(|| "_".to_owned());
+                                let desc_first = self
+                                    .describe_place(first_borrowed_place)
+                                    .unwrap_or_else(|| "_".to_owned());
+                                let desc_second = self
+                                    .describe_place(second_borrowed_place)
+                                    .unwrap_or_else(|| "_".to_owned());
 
-                            // Also compute the name of the union type, eg. `Foo` so we
-                            // can add a helpful note with it.
-                            let ty = base.ty(self.mir, self.infcx.tcx).ty;
-
-                            return Some((desc_base, desc_first, desc_second, ty.to_string()));
-                        },
-                        _ => current = base,
+                                return Some((
+                                    desc_base,
+                                    desc_first,
+                                    desc_second,
+                                    union_ty.to_string(),
+                                ));
+                            }
+                        }
                     }
+
+                    current = base;
                 }
                 None
             })
