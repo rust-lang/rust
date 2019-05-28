@@ -472,18 +472,18 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
     use rustc::mir::interpret::{ConstValue, Scalar};
     match result.val {
-        ConstValue::Scalar(Scalar::Bits { bits: b, .. }) => match result.ty.sty {
-            ty::Bool => Some(Constant::Bool(b == 1)),
-            ty::Uint(_) | ty::Int(_) => Some(Constant::Int(b)),
+        ConstValue::Scalar(Scalar::Raw { data: d, .. }) => match result.ty.sty {
+            ty::Bool => Some(Constant::Bool(d == 1)),
+            ty::Uint(_) | ty::Int(_) => Some(Constant::Int(d)),
             ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
-                b.try_into().expect("invalid f32 bit representation"),
+                d.try_into().expect("invalid f32 bit representation"),
             ))),
             ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
-                b.try_into().expect("invalid f64 bit representation"),
+                d.try_into().expect("invalid f64 bit representation"),
             ))),
             ty::RawPtr(type_and_mut) => {
                 if let ty::Uint(_) = type_and_mut.ty.sty {
-                    return Some(Constant::RawPtr(b));
+                    return Some(Constant::RawPtr(d));
                 }
                 None
             },
