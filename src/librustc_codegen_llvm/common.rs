@@ -294,13 +294,13 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.value.size(self).bits() };
         match cv {
-            Scalar::Bits { size: 0, .. } => {
+            Scalar::Raw { size: 0, .. } => {
                 assert_eq!(0, layout.value.size(self).bytes());
                 self.const_undef(self.type_ix(0))
             },
-            Scalar::Bits { bits, size } => {
+            Scalar::Raw { data, size } => {
                 assert_eq!(size as u64, layout.value.size(self).bytes());
-                let llval = self.const_uint_big(self.type_ix(bitsize), bits);
+                let llval = self.const_uint_big(self.type_ix(bitsize), data);
                 if layout.value == layout::Pointer {
                     unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                 } else {

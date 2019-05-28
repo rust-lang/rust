@@ -6,7 +6,7 @@ use syntax::symbol::sym;
 
 use rustc_apfloat::ieee::{Single, Double};
 use rustc::mir::interpret::{
-    Scalar, EvalResult, Pointer, PointerArithmetic, InterpError, truncate
+    Scalar, EvalResult, Pointer, PointerArithmetic, InterpError,
 };
 use rustc::mir::CastKind;
 use rustc_apfloat::Float;
@@ -135,29 +135,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         use rustc::ty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", val, src_layout.ty, dest_layout.ty);
 
-        match val {
-            Scalar::Ptr(ptr) => self.cast_from_ptr(ptr, dest_layout.ty),
-            Scalar::Bits { bits, size } => {
-                debug_assert_eq!(size as u64, src_layout.size.bytes());
-                debug_assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
-                    "Unexpected value of size {} before casting", size);
-
-                let res = match src_layout.ty.sty {
-                    Float(fty) => self.cast_from_float(bits, fty, dest_layout.ty)?,
-                    _ => self.cast_from_int(bits, src_layout, dest_layout)?,
-                };
-
-                // Sanity check
-                match res {
-                    Scalar::Ptr(_) => bug!("Fabricated a ptr value from an int...?"),
-                    Scalar::Bits { bits, size } => {
-                        debug_assert_eq!(size as u64, dest_layout.size.bytes());
-                        debug_assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
-                            "Unexpected value of size {} after casting", size);
-                    }
+        match val.to_bits_or_ptr(src_layout.size, self) {
+            Err(ptr) => self.cast_from_ptr(ptr, dest_layout.ty),
+            Ok(data) => {
+                match src_layout.ty.sty {
+                    Float(fty) => self.cast_from_float(data, fty, dest_layout.ty),
+                    _ => self.cast_from_int(data, src_layout, dest_layout),
                 }
-                // Done
-                Ok(res)
             }
         }
     }
@@ -177,7 +161,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         trace!("cast_from_int: {}, {}, {}", v, src_layout.ty, dest_layout.ty);
         use rustc::ty::TyKind::*;
         match dest_layout.ty.sty {
-            Int(_) | Uint(_) => {
+            Int(_) | Uint(_) | RawPtr(_) => {
                 let v = self.truncate(v, dest_layout);
                 Ok(Scalar::from_uint(v, dest_layout.size))
             }
@@ -203,15 +187,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 // `u8` to `char` cast
                 debug_assert_eq!(v as u8 as u128, v);
                 Ok(Scalar::from_uint(v, Size::from_bytes(4)))
-            },
-
-            // No alignment check needed for raw pointers.
-            // But we have to truncate to target ptr size.
-            RawPtr(_) => {
-                Ok(Scalar::from_uint(
-                    self.truncate_to_ptr(v).0,
-                    self.pointer_size(),
-                ))
             },
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
