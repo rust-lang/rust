@@ -870,7 +870,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         self.ribs[ValueNS].push(Rib::new(rib_kind));
 
         // Create a label rib for the function.
-        self.label_ribs.push(Rib::new(rib_kind));
+        match rib_kind {
+            ClosureRibKind(_) => {}
+            _ => self.label_ribs.push(Rib::new(rib_kind)),
+        }
 
         // Add each argument to the rib.
         let mut bindings_list = FxHashMap::default();
@@ -900,7 +903,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         if let IsAsync::Async { closure_id, .. } = asyncness {
             let rib_kind = ClosureRibKind(*closure_id);
             self.ribs[ValueNS].push(Rib::new(rib_kind));
-            self.label_ribs.push(Rib::new(rib_kind));
         }
 
         match function_kind {
@@ -927,13 +929,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 
         // Leave the body of the async closure
         if asyncness.is_async() {
-            self.label_ribs.pop();
             self.ribs[ValueNS].pop();
         }
 
         debug!("(resolving function) leaving function");
 
-        self.label_ribs.pop();
+        match rib_kind {
+            ClosureRibKind(_) => {}
+            _ => {
+                self.label_ribs.pop();
+            }
+        }
         self.ribs[ValueNS].pop();
     }
 
@@ -2500,6 +2506,9 @@ impl<'a> Resolver<'a> {
         for rib in self.label_ribs.iter().rev() {
             match rib.kind {
                 NormalRibKind => {}
+                ClosureRibKind(_) => {
+                    span_bug!(ident.span, "rustc_resolve: `ClosureRibKind` in `label_ribs`");
+                }
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
                 MacroDefinition(def) => {
@@ -4465,9 +4474,7 @@ impl<'a> Resolver<'a> {
             ExprKind::Async(_, async_closure_id, ref block) => {
                 let rib_kind = ClosureRibKind(async_closure_id);
                 self.ribs[ValueNS].push(Rib::new(rib_kind));
-                self.label_ribs.push(Rib::new(rib_kind));
                 self.visit_block(&block);
-                self.label_ribs.pop();
                 self.ribs[ValueNS].pop();
             }
             // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
@@ -4479,7 +4486,6 @@ impl<'a> Resolver<'a> {
             ) => {
                 let rib_kind = ClosureRibKind(expr.id);
                 self.ribs[ValueNS].push(Rib::new(rib_kind));
-                self.label_ribs.push(Rib::new(rib_kind));
                 // Resolve arguments:
                 let mut bindings_list = FxHashMap::default();
                 for argument in &fn_decl.inputs {
@@ -4493,16 +4499,13 @@ impl<'a> Resolver<'a> {
                 {
                     let rib_kind = ClosureRibKind(inner_closure_id);
                     self.ribs[ValueNS].push(Rib::new(rib_kind));
-                    self.label_ribs.push(Rib::new(rib_kind));
                     // No need to resolve arguments: the inner closure has none.
                     // Resolve the return type:
                     visit::walk_fn_ret_ty(self, &fn_decl.output);
                     // Resolve the body
                     self.visit_expr(body);
-                    self.label_ribs.pop();
                     self.ribs[ValueNS].pop();
                 }
-                self.label_ribs.pop();
                 self.ribs[ValueNS].pop();
             }
             _ => {
