@@ -2037,7 +2037,7 @@ impl<'tcx> Place<'tcx> {
     /// a single deref of a local.
     //
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
-    pub fn local(&self) -> Option<Local> {
+    pub fn local_or_deref_local(&self) -> Option<Local> {
         match self {
             Place::Base(PlaceBase::Local(local)) |
             Place::Projection(box Projection {
