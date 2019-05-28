@@ -599,6 +599,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let ty = place.ty(self.mir, self.infcx.tcx).ty;
             ty.ty_adt_def().filter(|adt| adt.is_union()).map(|_| ty)
         };
+        let describe_place = |place| self.describe_place(place).unwrap_or_else(|| "_".to_owned());
 
         // Start with an empty tuple, so we can use the functions on `Option` to reduce some
         // code duplication (particularly around returning an empty description in the failure
@@ -633,19 +634,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     if let ProjectionElem::Field(field, _) = elem {
                         if let Some(union_ty) = union_ty(base) {
                             if field != target_field && base == target_base {
-                                let desc_base =
-                                    self.describe_place(base).unwrap_or_else(|| "_".to_owned());
-                                let desc_first = self
-                                    .describe_place(first_borrowed_place)
-                                    .unwrap_or_else(|| "_".to_owned());
-                                let desc_second = self
-                                    .describe_place(second_borrowed_place)
-                                    .unwrap_or_else(|| "_".to_owned());
-
                                 return Some((
-                                    desc_base,
-                                    desc_first,
-                                    desc_second,
+                                    describe_place(base),
+                                    describe_place(first_borrowed_place),
+                                    describe_place(second_borrowed_place),
                                     union_ty.to_string(),
                                 ));
                             }
@@ -659,9 +651,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .unwrap_or_else(|| {
                 // If we didn't find a field access into a union, or both places match, then
                 // only return the description of the first place.
-                let desc_place = self.describe_place(first_borrowed_place)
-                    .unwrap_or_else(|| "_".to_owned());
-                (desc_place, "".to_string(), "".to_string(), "".to_string())
+                (
+                    describe_place(first_borrowed_place),
+                    "".to_string(),
+                    "".to_string(),
+                    "".to_string(),
+                )
             })
     }
 
