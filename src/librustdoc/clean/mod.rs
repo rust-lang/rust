@@ -3145,10 +3145,7 @@ impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> Constant {
         Constant {
             type_: self.ty.clean(cx),
-            expr: match self.val {
-                ConstValue::Param(ty::ParamConst { name, .. }) => format!("{}", name),
-                e => format!("{:?}", e), // FIXME generic consts with expressions
-            },
+            expr: format!("{}", self),
         }
     }
 }
