@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         let ty = cx.tables.expr_ty(&expr);
-        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span);
+        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "");
 
         let mut fn_warned = false;
         let mut op_warned = false;
@@ -133,6 +133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             ty: Ty<'tcx>,
             expr: &hir::Expr,
             span: Span,
+            descr_post_path: &str,
         ) -> bool {
             if ty.is_unit() || cx.tcx.is_ty_uninhabited_from(
                 cx.tcx.hir().get_module_parent_by_hir_id(expr.hir_id), ty)
@@ -141,7 +142,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             }
 
             match ty.sty {
-                ty::Adt(def, _) => check_must_use_def(cx, def.did, span, "", ""),
+                ty::Adt(def, _) => check_must_use_def(cx, def.did, span, "", descr_post_path),
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
                     for (predicate, _) in &cx.tcx.predicates_of(def).predicates {
@@ -178,7 +179,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                         vec![]
                     };
                     for (i, ty) in tys.iter().map(|k| k.expect_ty()).enumerate() {
-                        if check_must_use_ty(cx, ty, expr, *spans.get(i).unwrap_or(&span)) {
+                        let descr_post_path = &format!(" in tuple element {}", i);
+                        let span = *spans.get(i).unwrap_or(&span);
+                        if check_must_use_ty(cx, ty, expr, span, descr_post_path) {
                             has_emitted = true;
                         }
                     }
