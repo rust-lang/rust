@@ -330,14 +330,6 @@ macro_rules! hash_option {
             bug!("Duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
         }
     });
-    ($opt_name:ident,
-     $opt_expr:expr,
-     $sub_hashes:expr,
-     [UNTRACKED_WITH_WARNING $warn_val:expr, $warn_text:expr, $error_format:expr]) => ({
-        if *$opt_expr == $warn_val {
-            early_warn($error_format, $warn_text)
-        }
-    });
 }
 
 macro_rules! top_level_options {
@@ -382,10 +374,6 @@ macro_rules! top_level_options {
 //
 // [UNTRACKED]
 // Incremental compilation is not influenced by this option.
-//
-// [UNTRACKED_WITH_WARNING(val, warning)]
-// The option is incompatible with incremental compilation in some way. If it
-// has the value `val`, the string `warning` is emitted as a warning.
 //
 // If you add a new option to this struct or one of the sub-structs like
 // CodegenOptions, think about how it influences incremental compilation. If in
@@ -1163,9 +1151,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "a list of extra LLVM passes to run (space separated)"),
     llvm_args: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list of arguments to pass to llvm (space separated)"),
-    save_temps: bool = (false, parse_bool, [UNTRACKED_WITH_WARNING(true,
-        "`-C save-temps` might not produce all requested temporary products \
-         when incremental compilation is enabled.")],
+    save_temps: bool = (false, parse_bool, [UNTRACKED],
         "save all temporary output files during compilation"),
     rpath: bool = (false, parse_bool, [UNTRACKED],
         "set rpath values in libs/exes"),
@@ -1241,9 +1227,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "measure time of each rustc pass"),
     time: bool = (false, parse_bool, [UNTRACKED],
         "measure time of rustc processes"),
-    time_llvm_passes: bool = (false, parse_bool, [UNTRACKED_WITH_WARNING(true,
-        "The output of `-Z time-llvm-passes` will only reflect timings of \
-         re-codegened modules when used with incremental compilation" )],
+    time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input"),
