@@ -203,8 +203,16 @@ impl Step for Llvm {
             cfg.define("LLVM_BUILD_32_BITS", "ON");
         }
 
+        let mut enabled_llvm_projects = Vec::new();
+
+        if util::forcing_clang_based_tests() {
+            enabled_llvm_projects.push("clang");
+            enabled_llvm_projects.push("compiler-rt");
+        }
+
         if want_lldb {
-            cfg.define("LLVM_ENABLE_PROJECTS", "clang;lldb");
+            enabled_llvm_projects.push("clang");
+            enabled_llvm_projects.push("lldb");
             // For the time being, disable code signing.
             cfg.define("LLDB_CODESIGN_IDENTITY", "");
             cfg.define("LLDB_NO_DEBUGSERVER", "ON");
@@ -212,6 +220,12 @@ impl Step for Llvm {
             // LLDB requires libxml2; but otherwise we want it to be disabled.
             // See https://github.com/rust-lang/rust/pull/50104
             cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
+        }
+
+        if enabled_llvm_projects.len() > 0 {
+            enabled_llvm_projects.sort();
+            enabled_llvm_projects.dedup();
+            cfg.define("LLVM_ENABLE_PROJECTS", enabled_llvm_projects.join(";"));
         }
 
         if let Some(num_linkers) = builder.config.llvm_link_jobs {

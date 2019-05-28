@@ -356,3 +356,19 @@ impl CiEnv {
         }
     }
 }
+
+pub fn forcing_clang_based_tests() -> bool {
+    if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
+        match &var.to_string_lossy().to_lowercase()[..] {
+            "1" | "yes" | "on" => true,
+            "0" | "no" | "off" => false,
+            other => {
+                // Let's make sure typos don't go unnoticed
+                panic!("Unrecognized option '{}' set in \
+                        RUSTBUILD_FORCE_CLANG_BASED_TESTS", other)
+            }
+        }
+    } else {
+        false
+    }
+}
