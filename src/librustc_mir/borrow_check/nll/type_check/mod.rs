@@ -1695,7 +1695,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         from_hir_call: bool,
     ) {
         debug!("check_call_inputs({:?}, {:?})", sig, args);
-        // Do not count the `VaList` argument as a "true" argument to
+        // Do not count the `VaListImpl` argument as a "true" argument to
         // a C-variadic function.
         let inputs = if sig.c_variadic {
             &sig.inputs()[..sig.inputs().len() - 1]
