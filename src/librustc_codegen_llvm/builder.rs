@@ -531,9 +531,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn volatile_load(&mut self, ptr: &'ll Value) -> &'ll Value {
         unsafe {
-            let insn = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
-            llvm::LLVMSetVolatile(insn, llvm::True);
-            insn
+            let load = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
+            llvm::LLVMSetVolatile(load, llvm::True);
+            load
         }
     }
 
