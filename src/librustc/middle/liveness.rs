@@ -99,7 +99,7 @@ use self::VarKind::*;
 
 use crate::hir::def::*;
 use crate::hir::Node;
-use crate::ty::{self, DefIdTree, TyCtxt};
+use crate::ty::{self, TyCtxt};
 use crate::ty::query::Providers;
 use crate::lint;
 use crate::util::nodemap::{HirIdMap, HirIdSet};
@@ -493,12 +493,8 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         if let Some(upvars) = ir.tcx.upvars(closure_def_id) {
             let parent_upvars = ir.tcx.upvars(ir.body_owner);
             call_caps.extend(upvars.iter().filter_map(|(&var_id, upvar)| {
-                if upvar.has_parent {
-                    assert_eq!(ir.body_owner, ir.tcx.parent(closure_def_id).unwrap());
-                }
                 let has_parent = parent_upvars
                     .map_or(false, |upvars| upvars.contains_key(&var_id));
-                assert_eq!(upvar.has_parent, has_parent);
                 if !has_parent {
                     let upvar_ln = ir.add_live_node(UpvarNode(upvar.span));
                     Some(CaptureInfo { ln: upvar_ln, var_hid: var_id })

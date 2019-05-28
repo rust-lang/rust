@@ -2495,9 +2495,6 @@ impl ForeignItemKind {
 /// A variable captured by a closure.
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Upvar {
-    /// Whether this is not a direct capture (comes from parent closure).
-    pub has_parent: bool,
-
     // First span where it is accessed (there can be multiple).
     pub span: Span
 }

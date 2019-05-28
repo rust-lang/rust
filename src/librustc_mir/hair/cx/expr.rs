@@ -6,7 +6,7 @@ use crate::hair::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
-use rustc::ty::{self, AdtKind, DefIdTree, Ty};
+use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, PointerCast};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::hir;
@@ -515,7 +515,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let upvars = cx.tcx.upvars(def_id).iter()
                 .flat_map(|upvars| upvars.iter())
                 .zip(substs.upvar_tys(def_id, cx.tcx))
-                .map(|((&var_hir_id, upvar), ty)| capture_upvar(cx, expr, var_hir_id, upvar, ty))
+                .map(|((&var_hir_id, _), ty)| capture_upvar(cx, expr, var_hir_id, ty))
                 .collect();
             ExprKind::Closure {
                 closure_id: def_id,
@@ -1192,7 +1192,6 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
 fn capture_upvar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    closure_expr: &'tcx hir::Expr,
                                    var_hir_id: hir::HirId,
-                                   upvar: &hir::Upvar,
                                    upvar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
     let upvar_id = ty::UpvarId {
@@ -1202,15 +1201,6 @@ fn capture_upvar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
     let var_ty = cx.tables().node_type(var_hir_id);
-    if upvar.has_parent {
-        let closure_def_id = upvar_id.closure_expr_id.to_def_id();
-        assert_eq!(cx.body_owner, cx.tcx.parent(closure_def_id).unwrap());
-    }
-    assert_eq!(
-        upvar.has_parent,
-        cx.tables().upvar_list.get(&cx.body_owner)
-            .map_or(false, |upvars| upvars.contains_key(&var_hir_id)),
-    );
     let captured_var = Expr {
         temp_lifetime,
         ty: var_ty,

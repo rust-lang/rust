@@ -940,8 +940,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.hir_id,
                                                                    fn_decl_span,
-                                                                   var_id,
-                                                                   upvar));
+                                                                   var_id));
                 match upvar_capture {
                     ty::UpvarCapture::ByValue => {
                         let mode = copy_or_move(&self.mc,
@@ -966,12 +965,11 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn cat_captured_var(&mut self,
                         closure_hir_id: hir::HirId,
                         closure_span: Span,
-                        var_id: hir::HirId,
-                        upvar: &hir::Upvar)
+                        var_id: hir::HirId)
                         -> mc::McResult<mc::cmt_<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let res = if upvar.has_parent {
+        let res = if self.mc.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)) {
             Res::Upvar(var_id)
         } else {
             Res::Local(var_id)

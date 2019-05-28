@@ -4049,20 +4049,12 @@ impl<'a> Resolver<'a> {
                             // Nothing to do. Continue.
                         }
                         ClosureRibKind(function_id) => {
-                            let has_parent = match res {
-                                Res::Upvar(..) => true,
-                                _ => false,
-                            };
                             res = Res::Upvar(var_id);
-
                             match self.upvars.entry(function_id).or_default().entry(var_id) {
                                 indexmap::map::Entry::Occupied(_) => continue,
                                 indexmap::map::Entry::Vacant(entry) => {
                                     if record_used {
-                                        entry.insert(Upvar {
-                                            has_parent,
-                                            span,
-                                        });
+                                        entry.insert(Upvar { span });
                                     }
                                 }
                             }
