@@ -20,7 +20,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::weak_lang_items;
-use rustc::mir::mono::{Stats, CodegenUnitNameBuilder};
+use rustc::mir::mono::CodegenUnitNameBuilder;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::ty::query::Providers;
@@ -28,7 +28,6 @@ use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, EntryFnType, Lto};
 use rustc::session::Session;
-use rustc_mir::monomorphize::item::DefPathBasedNames;
 use rustc_mir::monomorphize::Instance;
 use rustc_mir::monomorphize::partitioning::{CodegenUnit, CodegenUnitExt};
 use rustc::util::nodemap::FxHashMap;
@@ -57,39 +56,6 @@ use syntax::attr;
 use rustc::hir;
 
 use crate::mir::operand::OperandValue;
-
-use std::marker::PhantomData;
-
-pub struct StatRecorder<'a, 'tcx, Cx: 'a + CodegenMethods<'tcx>> {
-    cx: &'a Cx,
-    name: Option<String>,
-    istart: usize,
-    _marker: PhantomData<&'tcx ()>,
-}
-
-impl<'a, 'tcx, Cx: CodegenMethods<'tcx>> StatRecorder<'a, 'tcx, Cx> {
-    pub fn new(cx: &'a Cx, name: String) -> Self {
-        let istart = cx.stats().borrow().n_llvm_insns;
-        StatRecorder {
-            cx,
-            name: Some(name),
-            istart,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<'a, 'tcx, Cx: CodegenMethods<'tcx>> Drop for StatRecorder<'a, 'tcx, Cx> {
-    fn drop(&mut self) {
-        if self.cx.sess().codegen_stats() {
-            let mut stats = self.cx.stats().borrow_mut();
-            let iend = stats.n_llvm_insns;
-            stats.fn_stats.push((self.name.take().unwrap(), iend - self.istart));
-            // Reset LLVM insn count to avoid compound costs.
-            stats.n_llvm_insns = self.istart;
-        }
-    }
-}
 
 pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind,
                                 signed: bool)
@@ -407,15 +373,6 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {
-    let _s = if cx.sess().codegen_stats() {
-        let mut instance_name = String::new();
-        DefPathBasedNames::new(cx.tcx(), true, true)
-            .push_def_path(instance.def_id(), &mut instance_name);
-        Some(StatRecorder::new(cx, instance_name))
-    } else {
-        None
-    };
-
     // this is an info! to allow collecting monomorphization statistics
     // and to allow finding the last function before LLVM aborts from
     // release builds.
@@ -650,7 +607,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     };
 
     let mut total_codegen_time = Duration::new(0, 0);
-    let mut all_stats = Stats::default();
 
     for cgu in codegen_units.into_iter() {
         ongoing_codegen.wait_for_signal_to_codegen_item();
@@ -663,8 +619,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             CguReuse::No => {
                 tcx.sess.profiler(|p| p.start_activity(format!("codegen {}", cgu.name())));
                 let start_time = Instant::now();
-                let stats = backend.compile_codegen_unit(tcx, *cgu.name());
-                all_stats.extend(stats);
+                backend.compile_codegen_unit(tcx, *cgu.name());
                 total_codegen_time += start_time.elapsed();
                 tcx.sess.profiler(|p| p.end_activity(format!("codegen {}", cgu.name())));
                 false
@@ -697,21 +652,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     ::rustc_incremental::assert_module_sources::assert_module_sources(tcx);
 
     symbol_names_test::report_symbol_names(tcx);
-
-    if tcx.sess.codegen_stats() {
-        println!("--- codegen stats ---");
-        println!("fn stats:");
-        all_stats.fn_stats.sort_by_key(|&(_, insns)| insns);
-        for &(ref name, insns) in all_stats.fn_stats.iter() {
-            println!("{} insns, {}", insns, *name);
-        }
-    }
-
-    if tcx.sess.count_llvm_insns() {
-        for (k, v) in all_stats.llvm_insns.iter() {
-            println!("{:7} {}", *v, *k);
-        }
-    }
 
     ongoing_codegen.check_for_errors(tcx.sess);
 

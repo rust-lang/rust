@@ -188,31 +188,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
     }
 }
 
-#[derive(Clone, Default)]
-pub struct Stats {
-    pub n_llvm_insns: usize,
-    pub llvm_insns: FxHashMap<String, usize>,
-    // (ident, llvm-instructions)
-    pub fn_stats: Vec<(String, usize)>,
-}
-
-impl_stable_hash_for!(struct self::Stats {
-    n_llvm_insns,
-    llvm_insns,
-    fn_stats
-});
-
-impl Stats {
-    pub fn extend(&mut self, stats: Stats) {
-        self.n_llvm_insns += stats.n_llvm_insns;
-
-        for (k, v) in stats.llvm_insns {
-            *self.llvm_insns.entry(k).or_insert(0) += v;
-        }
-        self.fn_stats.extend(stats.fn_stats);
-    }
-}
-
 pub struct CodegenUnitNameBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     cache: FxHashMap<CrateNum, String>,
