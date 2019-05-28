@@ -5,7 +5,7 @@
 set -ex
 
 # Originally from https://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-curl https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/clang%2Bllvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz | \
+curl https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/clang%2Bllvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz | \
   tar xJf -
 export PATH=`pwd`/clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04/bin:$PATH
 
