@@ -12,7 +12,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
-use rustc::ty::layout::{self, LayoutOf, VariantIdx, Size};
+use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
@@ -117,7 +117,7 @@ fn op_to_const<'tcx>(
                 ),
                 Scalar::Raw { .. } => (
                     ecx.tcx.intern_const_alloc(Allocation::from_byte_aligned_bytes(
-                        b"" as &[u8], (),
+                        b"" as &[u8],
                     )),
                     0,
                 ),
@@ -397,27 +397,27 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn find_foreign_static(
         _def_id: DefId,
         _tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-        _memory_extra: &(),
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
         err!(ReadForeignStatic)
     }
 
     #[inline(always)]
-    fn adjust_static_allocation<'b>(
-        alloc: &'b Allocation,
+    fn tag_allocation<'b>(
+        _id: AllocId,
+        alloc: Cow<'b, Allocation>,
+        _kind: Option<MemoryKind<!>>,
         _memory_extra: &(),
-    ) -> Cow<'b, Allocation<Self::PointerTag>> {
-        // We do not use a tag so we can just cheaply forward the reference
-        Cow::Borrowed(alloc)
+    ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
+        // We do not use a tag so we can just cheaply forward the allocation
+        (alloc, ())
     }
 
     #[inline(always)]
-    fn new_allocation(
-        _size: Size,
-        _extra: &Self::MemoryExtra,
-        _kind: MemoryKind<!>,
-    ) -> (Self::AllocExtra, Self::PointerTag) {
-        ((), ())
+    fn tag_static_base_pointer(
+        _id: AllocId,
+        _memory_extra: &(),
+    ) -> Self::PointerTag {
+        ()
     }
 
     fn box_alloc(

@@ -140,23 +140,18 @@ impl<'tcx> Scalar<()> {
 
     #[inline]
     pub fn with_tag<Tag>(self, new_tag: Tag) -> Scalar<Tag> {
+        // Used by `MemPlace::replace_tag`
         match self {
             Scalar::Ptr(ptr) => Scalar::Ptr(ptr.with_tag(new_tag)),
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
         }
-    }
-
-    #[inline(always)]
-    pub fn with_default_tag<Tag>(self) -> Scalar<Tag>
-        where Tag: Default
-    {
-        self.with_tag(Tag::default())
     }
 }
 
 impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn erase_tag(self) -> Scalar {
+        // Used by error reporting code to avoid having the error type depend on `Tag`
         match self {
             Scalar::Ptr(ptr) => Scalar::Ptr(ptr.erase_tag()),
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
@@ -476,27 +471,11 @@ impl<Tag> fmt::Display for ScalarMaybeUndef<Tag> {
     }
 }
 
-impl<'tcx> ScalarMaybeUndef<()> {
-    #[inline]
-    pub fn with_tag<Tag>(self, new_tag: Tag) -> ScalarMaybeUndef<Tag> {
-        match self {
-            ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.with_tag(new_tag)),
-            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
-        }
-    }
-
-    #[inline(always)]
-    pub fn with_default_tag<Tag>(self) -> ScalarMaybeUndef<Tag>
-        where Tag: Default
-    {
-        self.with_tag(Tag::default())
-    }
-}
-
 impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     #[inline]
     pub fn erase_tag(self) -> ScalarMaybeUndef
     {
+        // Used by error reporting code to avoid having the error type depend on `Tag`
         match self {
             ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.erase_tag()),
             ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,

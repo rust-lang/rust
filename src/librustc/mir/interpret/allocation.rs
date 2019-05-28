@@ -111,9 +111,10 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
 // For Tag=() and no extra state, we have is a trivial implementation.
 impl AllocationExtra<()> for () { }
 
-impl<Tag, Extra> Allocation<Tag, Extra> {
+// The constructors are all without extra; the extra gets added by a machine hook later.
+impl<Tag> Allocation<Tag> {
     /// Creates a read-only allocation initialized by the given bytes
-    pub fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align, extra: Extra) -> Self {
+    pub fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align) -> Self {
         let bytes = slice.into().into_owned();
         let undef_mask = UndefMask::new(Size::from_bytes(bytes.len() as u64), true);
         Self {
@@ -122,15 +123,15 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
             undef_mask,
             align,
             mutability: Mutability::Immutable,
-            extra,
+            extra: (),
         }
     }
 
-    pub fn from_byte_aligned_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, extra: Extra) -> Self {
-        Allocation::from_bytes(slice, Align::from_bytes(1).unwrap(), extra)
+    pub fn from_byte_aligned_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
+        Allocation::from_bytes(slice, Align::from_bytes(1).unwrap())
     }
 
-    pub fn undef(size: Size, align: Align, extra: Extra) -> Self {
+    pub fn undef(size: Size, align: Align) -> Self {
         assert_eq!(size.bytes() as usize as u64, size.bytes());
         Allocation {
             bytes: vec![0; size.bytes() as usize],
@@ -138,7 +139,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
             undef_mask: UndefMask::new(size, false),
             align,
             mutability: Mutability::Mutable,
-            extra,
+            extra: (),
         }
     }
 }

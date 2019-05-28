@@ -116,13 +116,6 @@ impl<'tcx> Pointer<()> {
     {
         Pointer::new_with_tag(self.alloc_id, self.offset, tag)
     }
-
-    #[inline(always)]
-    pub fn with_default_tag<Tag>(self) -> Pointer<Tag>
-        where Tag: Default
-    {
-        self.with_tag(Tag::default())
-    }
 }
 
 impl<'tcx, Tag> Pointer<Tag> {
