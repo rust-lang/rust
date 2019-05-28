@@ -226,6 +226,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     }
 
     #[inline(always)]
+    pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
+        self.memory.tag_static_base_pointer(ptr)
+    }
+
+    #[inline(always)]
     pub fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>] {
         &self.stack
     }
@@ -361,11 +366,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
             }
             Some(layout) => Ok(layout),
         }
-    }
-
-    pub fn str_to_immediate(&mut self, s: &str) -> EvalResult<'tcx, Immediate<M::PointerTag>> {
-        let ptr = self.memory.allocate_static_bytes(s.as_bytes()).with_default_tag();
-        Ok(Immediate::new_slice(Scalar::Ptr(ptr), s.len() as u64, self))
     }
 
     /// Returns the actual dynamic size and alignment of the place at the given type.
