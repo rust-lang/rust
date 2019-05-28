@@ -647,7 +647,11 @@ impl Step for Std {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Std {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler_for(
+                run.builder.top_stage,
+                run.builder.config.build,
+                run.target,
+            ),
             target: run.target,
         });
     }
@@ -757,13 +761,10 @@ impl Step for Analysis {
 
         builder.ensure(Std { compiler, target });
 
-        // Package save-analysis from stage1 if not doing a full bootstrap, as the
-        // stage2 artifacts is simply copied from stage1 in that case.
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler.clone()
-        };
+        // Find the actual compiler (handling the full bootstrap option) which
+        // produced the save-analysis data because that data isn't copied
+        // through the sysroot uplifting.
+        let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
         let image = tmpdir(builder).join(format!("{}-{}-image", name, target));
 
