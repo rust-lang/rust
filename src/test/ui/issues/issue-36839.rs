@@ -19,5 +19,5 @@ impl<T> Broken for T {
 
 
 fn main() {
-    let _m: &Broken<Assoc=()> = &();
+    let _m: &dyn Broken<Assoc=()> = &();
 }

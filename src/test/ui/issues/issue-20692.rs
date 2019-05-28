@@ -4,7 +4,7 @@ fn f<T: Array>(x: &T) {
     let _ = x
     //~^ ERROR `Array` cannot be made into an object
     as
-    &Array;
+    &dyn Array;
     //~^ ERROR `Array` cannot be made into an object
 }
 

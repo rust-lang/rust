@@ -1,8 +1,8 @@
 error[E0120]: the Drop trait may only be implemented on structures
   --> $DIR/E0120.rs:3:15
    |
-LL | impl Drop for MyTrait {
-   |               ^^^^^^^ implementing Drop requires a struct
+LL | impl Drop for dyn MyTrait {
+   |               ^^^^^^^^^^^ implementing Drop requires a struct
 
 error: aborting due to previous error
 

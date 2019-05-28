@@ -1,7 +1,7 @@
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-upvars.rs:6:1
    |
-LL | / const BAD_UPVAR: &FnOnce() = &{
+LL | / const BAD_UPVAR: &dyn FnOnce() = &{
 LL | |     let bad_ref: &'static u16 = unsafe { mem::transmute(0usize) };
 LL | |     let another_var = 13;
 LL | |     move || { let _ = bad_ref; let _ = another_var; }

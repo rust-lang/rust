@@ -6,7 +6,7 @@ use std::fmt;
 struct MyString<'a>(&'a String);
 
 struct B {
-    list: Vec<Box<fmt::Debug>>,
+    list: Vec<Box<dyn fmt::Debug>>,
 }
 
 trait A<'a> {

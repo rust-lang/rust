@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub};
 
-type Test = Add +
+type Test = dyn Add +
             //~^ ERROR E0393
             //~| ERROR E0191
             Sub;

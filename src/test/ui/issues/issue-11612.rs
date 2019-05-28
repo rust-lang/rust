@@ -14,11 +14,11 @@ struct B<'a, T:'a> {
 
 impl<'a, T> A for B<'a, T> {}
 
-fn foo(_: &A) {}
+fn foo(_: &dyn A) {}
 
 fn bar<G>(b: &B<G>) {
     foo(b);       // Coercion should work
-    foo(b as &A); // Explicit cast should work as well
+    foo(b as &dyn A); // Explicit cast should work as well
 }
 
 fn main() {}

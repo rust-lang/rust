@@ -9,7 +9,7 @@ trait SomeTrait: Send + Sync + 'static {
     fn do_something(&self);
 }
 
-async fn my_task(obj: Arc<SomeTrait>) {
+async fn my_task(obj: Arc<dyn SomeTrait>) {
     unimplemented!()
 }
 

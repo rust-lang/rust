@@ -6,7 +6,7 @@ pub trait Writer {
     fn write(&mut self, b: &[u8]) -> Result<(), ()>;
 }
 
-fn foo(a: &mut Writer) {
+fn foo(a: &mut dyn Writer) {
     a.write(&[]).unwrap();
 }
 

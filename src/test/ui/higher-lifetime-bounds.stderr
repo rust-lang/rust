@@ -47,10 +47,10 @@ LL | struct S_fnty(for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32);
    |                             ^^^
 
 error: lifetime bounds cannot be used in this context
-  --> $DIR/higher-lifetime-bounds.rs:61:29
+  --> $DIR/higher-lifetime-bounds.rs:61:33
    |
-LL | type T1 = Box<for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>;
-   |                             ^^^
+LL | type T1 = Box<dyn for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>;
+   |                                 ^^^
 
 error: lifetime bounds cannot be used in this context
   --> $DIR/higher-lifetime-bounds.rs:65:34
@@ -59,10 +59,10 @@ LL |     let _ : Option<for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32> =
    |                                  ^^^
 
 error: lifetime bounds cannot be used in this context
-  --> $DIR/higher-lifetime-bounds.rs:67:38
+  --> $DIR/higher-lifetime-bounds.rs:67:42
    |
-LL |     let _ : Option<Box<for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>> = None;
-   |                                      ^^^
+LL |     let _ : Option<Box<dyn for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>> = None;
+   |                                          ^^^
 
 error: aborting due to 11 previous errors
 

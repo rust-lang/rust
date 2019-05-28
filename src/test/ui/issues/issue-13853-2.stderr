@@ -1,8 +1,8 @@
 error[E0615]: attempted to take value of method `get` on type `std::boxed::Box<(dyn ResponseHook + 'static)>`
-  --> $DIR/issue-13853-2.rs:5:39
+  --> $DIR/issue-13853-2.rs:5:43
    |
-LL | fn foo(res : Box<ResponseHook>) { res.get }
-   |                                       ^^^ help: use parentheses to call the method: `get()`
+LL | fn foo(res : Box<dyn ResponseHook>) { res.get }
+   |                                           ^^^ help: use parentheses to call the method: `get()`
 
 error: aborting due to previous error
 

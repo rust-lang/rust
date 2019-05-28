@@ -5,7 +5,7 @@ trait T {
     fn foo(&self);
 }
 
-impl<'a> T + 'a {
+impl<'a> dyn T + 'a {
     fn foo(&self) {}
 }
 
@@ -14,6 +14,6 @@ impl T for i32 {
 }
 
 fn main() {
-    let x: &T = &0i32;
+    let x: &dyn T = &0i32;
     x.foo(); //~ ERROR multiple applicable items in scope [E0034]
 }

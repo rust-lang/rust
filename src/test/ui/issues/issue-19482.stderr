@@ -4,8 +4,8 @@ error[E0191]: the value of the associated type `A` (from the trait `Foo`) must b
 LL |     type A;
    |     ------- `A` defined here
 ...
-LL | fn bar(x: &Foo) {}
-   |            ^^^ associated type `A` must be specified
+LL | fn bar(x: &dyn Foo) {}
+   |            ^^^^^^^ associated type `A` must be specified
 
 error: aborting due to previous error
 

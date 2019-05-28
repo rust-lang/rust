@@ -5,10 +5,10 @@ LL | fn foo<'_>
    |        ^^ `'_` is a reserved lifetime name
 
 error[E0637]: `'_` cannot be used here
-  --> $DIR/underscore-lifetime-binders.rs:10:21
+  --> $DIR/underscore-lifetime-binders.rs:10:25
    |
-LL | fn meh() -> Box<for<'_> Meh<'_>>
-   |                     ^^ `'_` is a reserved lifetime name
+LL | fn meh() -> Box<dyn for<'_> Meh<'_>>
+   |                         ^^ `'_` is a reserved lifetime name
 
 error[E0106]: missing lifetime specifier
   --> $DIR/underscore-lifetime-binders.rs:2:17
@@ -17,10 +17,10 @@ LL | struct Baz<'a>(&'_ &'a u8);
    |                 ^^ expected lifetime parameter
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/underscore-lifetime-binders.rs:10:29
+  --> $DIR/underscore-lifetime-binders.rs:10:33
    |
-LL | fn meh() -> Box<for<'_> Meh<'_>>
-   |                             ^^ help: consider giving it a 'static lifetime: `'static`
+LL | fn meh() -> Box<dyn for<'_> Meh<'_>>
+   |                                 ^^ help: consider giving it a 'static lifetime: `'static`
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 

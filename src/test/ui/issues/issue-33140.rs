@@ -38,10 +38,10 @@ impl Foo<dyn Sync + Send> {
 }
 
 fn main() {
-    assert_eq!(<Send+Sync>::xyz(), false);
-    assert_eq!(<Sync+Send>::xyz(), true);
-    assert_eq!(<Send+Sync>::uvw(), false);
-    assert_eq!(<Sync+Send+Sync>::uvw(), true);
-    assert_eq!(<Foo<Send+Sync>>::abc(), false);
-    assert_eq!(<Foo<Sync+Send>>::abc(), true);
+    assert_eq!(<dyn Send + Sync>::xyz(), false);
+    assert_eq!(<dyn Sync + Send>::xyz(), true);
+    assert_eq!(<dyn Send + Sync>::uvw(), false);
+    assert_eq!(<dyn Sync + Send+ Sync>::uvw(), true);
+    assert_eq!(<Foo<dyn Send + Sync>>::abc(), false);
+    assert_eq!(<Foo<dyn Sync + Send>>::abc(), true);
 }

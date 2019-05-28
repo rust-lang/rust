@@ -55,7 +55,7 @@ fn square_from_char(c: char) -> square {
 
 fn read_board_grid<rdr:'static + Read>(mut input: rdr)
                    -> Vec<Vec<square>> {
-    let mut input: &mut Read = &mut input;
+    let mut input: &mut dyn Read = &mut input;
     let mut grid = Vec::new();
     let mut line = [0; 10];
     input.read(&mut line);

@@ -7,8 +7,8 @@ LL | fn foo1<T:Copy<U>, U>(x: T) {}
 error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/typeck-builtin-bound-type-parameters.rs:4:19
    |
-LL | trait Trait: Copy<Send> {}
-   |                   ^^^^ unexpected type argument
+LL | trait Trait: Copy<dyn Send> {}
+   |                   ^^^^^^^^ unexpected type argument
 
 error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/typeck-builtin-bound-type-parameters.rs:7:26

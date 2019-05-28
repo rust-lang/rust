@@ -1,29 +1,29 @@
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/bad-sized.rs:4:24
+  --> $DIR/bad-sized.rs:4:28
    |
-LL |     let x: Vec<Trait + Sized> = Vec::new();
-   |                -----   ^^^^^
-   |                |       |
-   |                |       additional non-auto trait
-   |                |       trait alias used in trait object type (additional use)
-   |                first non-auto trait
-   |                trait alias used in trait object type (first use)
+LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
+   |                    -----   ^^^^^
+   |                    |       |
+   |                    |       additional non-auto trait
+   |                    |       trait alias used in trait object type (additional use)
+   |                    first non-auto trait
+   |                    trait alias used in trait object type (first use)
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
   --> $DIR/bad-sized.rs:4:12
    |
-LL |     let x: Vec<Trait + Sized> = Vec::new();
-   |            ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
+   |            ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `dyn Trait`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required by `std::vec::Vec`
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
-  --> $DIR/bad-sized.rs:4:33
+  --> $DIR/bad-sized.rs:4:37
    |
-LL |     let x: Vec<Trait + Sized> = Vec::new();
-   |                                 ^^^^^^^^ doesn't have a size known at compile-time
+LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
+   |                                     ^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `dyn Trait`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>

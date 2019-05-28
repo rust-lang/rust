@@ -6,7 +6,7 @@
 // `'static` is a lifetime, `'static +` is a type, `'a` is a type
 fn g() where
     'static: 'static,
-    'static +: 'static + Copy,
+    dyn 'static +: 'static + Copy,
     //~^ ERROR at least one non-builtin trait is required for an object type
 {}
 

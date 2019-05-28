@@ -141,7 +141,7 @@ const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
 
 const fn no_unsafe() { unsafe {} }
 
-const fn really_no_traits_i_mean_it() { (&() as &std::fmt::Debug, ()).1 }
+const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
 //~^ ERROR trait bounds other than `Sized`
 
 const fn no_fn_ptrs(_x: fn()) {}

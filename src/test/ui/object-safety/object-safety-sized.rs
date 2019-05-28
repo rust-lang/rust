@@ -5,7 +5,7 @@ trait Bar : Sized {
     fn bar<T>(&self, t: T);
 }
 
-fn make_bar<T:Bar>(t: &T) -> &Bar {
+fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
         //~^ ERROR E0038
     t
 }

@@ -5,7 +5,8 @@ macro_rules! m {
 }
 
 fn main() {
-    m!(Copy + Send + 'static); //~ ERROR the trait `std::marker::Copy` cannot be made into an object
-    m!('static + Send);
-    m!('static +); //~ ERROR at least one non-builtin trait is required for an object type
+    m!(dyn Copy + Send + 'static);
+    //~^ ERROR the trait `std::marker::Copy` cannot be made into an object
+    m!(dyn 'static + Send);
+    m!(dyn 'static +); //~ ERROR at least one non-builtin trait is required for an object type
 }

@@ -8,7 +8,7 @@ trait Trait2<'a> {
   type Ty;
 }
 
-fn _ice(param: Box<for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
+fn _ice(param: Box<dyn for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
     let _e: (usize, usize) = unsafe{mem::transmute(param)};
 }
 

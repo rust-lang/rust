@@ -21,7 +21,7 @@ fn a() {
 fn b() {
     let x: Box<_> = box 3;
     let y = &x;
-    let z = &x as &Foo;
+    let z = &x as &dyn Foo;
     //~^ ERROR E0038
     //~| ERROR E0038
 }

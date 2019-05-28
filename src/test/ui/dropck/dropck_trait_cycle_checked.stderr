@@ -1,8 +1,8 @@
 error[E0597]: `o2` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:111:13
    |
-LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
-   |                                                                   -------- cast requires that `o2` is borrowed for `'static`
+LL |     let (o1, o2, o3): (Box<dyn Obj>, Box<dyn Obj>, Box<dyn Obj>) = (O::new(), O::new(), O::new());
+   |                                                                               -------- cast requires that `o2` is borrowed for `'static`
 LL |     o1.set0(&o2);
    |             ^^^ borrowed value does not live long enough
 ...
@@ -12,8 +12,8 @@ LL | }
 error[E0597]: `o3` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:112:13
    |
-LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
-   |                                                                             -------- cast requires that `o3` is borrowed for `'static`
+LL |     let (o1, o2, o3): (Box<dyn Obj>, Box<dyn Obj>, Box<dyn Obj>) = (O::new(), O::new(), O::new());
+   |                                                                                         -------- cast requires that `o3` is borrowed for `'static`
 LL |     o1.set0(&o2);
 LL |     o1.set1(&o3);
    |             ^^^ borrowed value does not live long enough
@@ -24,8 +24,8 @@ LL | }
 error[E0597]: `o2` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:113:13
    |
-LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
-   |                                                                   -------- cast requires that `o2` is borrowed for `'static`
+LL |     let (o1, o2, o3): (Box<dyn Obj>, Box<dyn Obj>, Box<dyn Obj>) = (O::new(), O::new(), O::new());
+   |                                                                               -------- cast requires that `o2` is borrowed for `'static`
 ...
 LL |     o2.set0(&o2);
    |             ^^^ borrowed value does not live long enough
@@ -36,8 +36,8 @@ LL | }
 error[E0597]: `o3` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:114:13
    |
-LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
-   |                                                                             -------- cast requires that `o3` is borrowed for `'static`
+LL |     let (o1, o2, o3): (Box<dyn Obj>, Box<dyn Obj>, Box<dyn Obj>) = (O::new(), O::new(), O::new());
+   |                                                                                         -------- cast requires that `o3` is borrowed for `'static`
 ...
 LL |     o2.set1(&o3);
    |             ^^^ borrowed value does not live long enough
@@ -48,8 +48,8 @@ LL | }
 error[E0597]: `o1` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:115:13
    |
-LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
-   |                                                         -------- cast requires that `o1` is borrowed for `'static`
+LL |     let (o1, o2, o3): (Box<dyn Obj>, Box<dyn Obj>, Box<dyn Obj>) = (O::new(), O::new(), O::new());
+   |                                                                     -------- cast requires that `o1` is borrowed for `'static`
 ...
 LL |     o3.set0(&o1);
    |             ^^^ borrowed value does not live long enough
@@ -60,8 +60,8 @@ LL | }
 error[E0597]: `o2` does not live long enough
   --> $DIR/dropck_trait_cycle_checked.rs:116:13
    |
-LL |     let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
-   |                                                                   -------- cast requires that `o2` is borrowed for `'static`
+LL |     let (o1, o2, o3): (Box<dyn Obj>, Box<dyn Obj>, Box<dyn Obj>) = (O::new(), O::new(), O::new());
+   |                                                                               -------- cast requires that `o2` is borrowed for `'static`
 ...
 LL |     o3.set1(&o2);
    |             ^^^ borrowed value does not live long enough

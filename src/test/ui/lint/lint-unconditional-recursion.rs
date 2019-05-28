@@ -39,7 +39,7 @@ trait Foo {
     }
 }
 
-impl Foo for Box<Foo+'static> {
+impl Foo for Box<dyn Foo + 'static> {
     fn bar(&self) { //~ ERROR function cannot return without recursing
         loop {
             self.bar()
@@ -67,7 +67,7 @@ trait Foo2 {
     }
 }
 
-impl Foo2 for Box<Foo2+'static> {
+impl Foo2 for Box<dyn Foo2 + 'static> {
     fn bar(&self) { //~ ERROR function cannot return without recursing
         loop {
             Foo2::bar(self)

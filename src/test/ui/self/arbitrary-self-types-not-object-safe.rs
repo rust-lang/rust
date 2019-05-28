@@ -28,13 +28,13 @@ impl Bar for usize {
 }
 
 fn make_foo() {
-    let x = Rc::new(5usize) as Rc<Foo>;
+    let x = Rc::new(5usize) as Rc<dyn Foo>;
     //~^ ERROR E0038
     //~| ERROR E0038
 }
 
 fn make_bar() {
-    let x = Rc::new(5usize) as Rc<Bar>;
+    let x = Rc::new(5usize) as Rc<dyn Bar>;
     x.bar();
 }
 

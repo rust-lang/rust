@@ -5,7 +5,7 @@ trait Foo {
     fn foo();
 }
 
-fn foo_implicit<T:Foo+'static>(b: Box<T>) -> Box<Foo+'static> {
+fn foo_implicit<T:Foo+'static>(b: Box<T>) -> Box<dyn Foo + 'static> {
     //~^ ERROR E0038
     loop { }
 }

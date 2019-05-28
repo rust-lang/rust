@@ -17,7 +17,7 @@ struct Foo<T: SendSyncAlias>(PhantomData<T>);
 #[allow(dead_code)]
 struct Bar<T>(PhantomData<T>) where T: SendSyncAlias;
 
-impl EmptyAlias {}
+impl dyn EmptyAlias {}
 
 impl<T: SendSyncAlias> Empty for T {}
 

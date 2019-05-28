@@ -5,7 +5,7 @@
 #![test_runner(crate::foo_runner)]
 
 #[cfg(test)]
-fn foo_runner(ts: &[&Fn(usize)->()]) {
+fn foo_runner(ts: &[&dyn Fn(usize)->()]) {
     for (i, t) in ts.iter().enumerate() {
         t(i);
     }

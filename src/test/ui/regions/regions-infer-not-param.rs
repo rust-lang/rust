@@ -4,12 +4,12 @@ struct Direct<'a> {
 
 struct Indirect1 {
     // Here the lifetime parameter of direct is bound by the fn()
-    g: Box<FnOnce(Direct) + 'static>
+    g: Box<dyn FnOnce(Direct) + 'static>
 }
 
 struct Indirect2<'a> {
     // But here it is set to 'a
-    g: Box<FnOnce(Direct<'a>) + 'static>
+    g: Box<dyn FnOnce(Direct<'a>) + 'static>
 }
 
 fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p } //~ ERROR mismatched types

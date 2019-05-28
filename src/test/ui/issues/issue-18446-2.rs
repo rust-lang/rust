@@ -6,7 +6,7 @@ trait T {
     fn foo(&self) -> i32 { 0 }
 }
 
-impl<'a> T + 'a {
+impl<'a> dyn T + 'a {
     fn foo(&self) -> i32 { 1 }
 }
 

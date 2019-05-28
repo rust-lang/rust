@@ -4,8 +4,8 @@ error[E0521]: borrowed data escapes outside of closure
 LL |     let mut ay = &y;
    |         ------ `ay` is declared here, outside of the closure body
 LL | 
-LL |     ignore::<Box<for<'z> FnMut(&'z isize)>>(Box::new(|z| {
-   |                                                       - `z` is a reference that is only valid in the closure body
+LL |     ignore::<Box<dyn for<'z> FnMut(&'z isize)>>(Box::new(|z| {
+   |                                                           - `z` is a reference that is only valid in the closure body
 ...
 LL |         ay = z;
    |         ^^^^^^ `z` escapes the closure body here
@@ -25,8 +25,8 @@ LL | }
 error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns.rs:9:15
    |
-LL |     ignore::<Box<for<'z> FnMut(&'z isize)>>(Box::new(|z| {
-   |                                                      --- value captured here
+LL |     ignore::<Box<dyn for<'z> FnMut(&'z isize)>>(Box::new(|z| {
+   |                                                          --- value captured here
 LL |         ay = x;
 LL |         ay = &y;
    |               ^ borrowed value does not live long enough

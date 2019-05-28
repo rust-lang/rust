@@ -68,15 +68,15 @@ fn overloaded_call_traits() {
         //[g2p]~^^  ERROR use of moved value: `f`
     }
 
-    fn twice_ten_om(f: &mut FnMut(i32) -> i32) {
+    fn twice_ten_om(f: &mut dyn FnMut(i32) -> i32) {
         f(f(10));
         //[nll]~^   ERROR cannot borrow `*f` as mutable more than once at a time
         //[g2p]~^^  ERROR cannot borrow `*f` as mutable more than once at a time
     }
-    fn twice_ten_oi(f: &mut Fn(i32) -> i32) {
+    fn twice_ten_oi(f: &mut dyn Fn(i32) -> i32) {
         f(f(10));
     }
-    fn twice_ten_oo(f: Box<FnOnce(i32) -> i32>) {
+    fn twice_ten_oo(f: Box<dyn FnOnce(i32) -> i32>) {
         f(f(10));
         //[nll]~^   ERROR use of moved value: `f`
         //[g2p]~^^  ERROR use of moved value: `f`

@@ -1,7 +1,7 @@
 trait Trait { }
 
-fn function(t: &mut Trait) {
-    t as *mut Trait
+fn function(t: &mut dyn Trait) {
+    t as *mut dyn Trait
  //~^ ERROR: mismatched types
 }
 

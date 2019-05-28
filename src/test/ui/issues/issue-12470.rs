@@ -16,10 +16,10 @@ impl X for B {
 }
 
 struct A<'a> {
-    p: &'a (X+'a)
+    p: &'a (dyn X + 'a)
 }
 
-fn make_a<'a>(p: &'a X) -> A<'a> {
+fn make_a<'a>(p: &'a dyn X) -> A<'a> {
     A { p: p }
 }
 

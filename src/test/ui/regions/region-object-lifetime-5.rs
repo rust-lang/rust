@@ -7,7 +7,7 @@ trait Foo {
 
 // Here, the object is bounded by an anonymous lifetime and returned
 // as `&'static`, so you get an error.
-fn owned_receiver(x: Box<Foo>) -> &'static () {
+fn owned_receiver(x: Box<dyn Foo>) -> &'static () {
     x.borrowed() //~ ERROR cannot return value referencing local data `*x`
 }
 

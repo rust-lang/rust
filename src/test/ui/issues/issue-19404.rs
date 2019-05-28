@@ -12,10 +12,10 @@ trait Component: 'static {}
 impl Component for Engine {}
 
 trait Env {
-    fn get_component_type_id(&self, type_id: TypeId) -> Option<Fp<Component>>;
+    fn get_component_type_id(&self, type_id: TypeId) -> Option<Fp<dyn Component>>;
 }
 
-impl<'a> Env+'a {
+impl<'a> dyn Env + 'a {
     fn get_component<T: Component>(&self) -> Option<Fp<T>> {
         let x = self.get_component_type_id(TypeId::of::<T>());
         None
@@ -23,13 +23,13 @@ impl<'a> Env+'a {
 }
 
 trait Figment {
-    fn init(&mut self, env: &Env);
+    fn init(&mut self, env: &dyn Env);
 }
 
 struct MyFigment;
 
 impl Figment for MyFigment {
-    fn init(&mut self, env: &Env) {
+    fn init(&mut self, env: &dyn Env) {
         let engine = env.get_component::<Engine>();
     }
 }
