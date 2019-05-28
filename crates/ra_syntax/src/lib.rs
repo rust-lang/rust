@@ -69,12 +69,31 @@ impl Parse {
         }
     }
 
+    pub fn reparse(&self, edit: &AtomTextEdit) -> Parse {
+        self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
+    }
+
     pub fn debug_dump(&self) -> String {
         let mut buf = self.tree.syntax().debug_dump();
         for err in self.errors.iter() {
             writeln!(buf, "err: `{}`", err).unwrap();
         }
         buf
+    }
+
+    fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<Parse> {
+        // FIXME: validation errors are not handled here
+        parsing::incremental_reparse(self.tree.syntax(), edit, self.errors.to_vec()).map(
+            |(green_node, errors, _reparsed_range)| Parse {
+                tree: SourceFile::new(green_node),
+                errors: Arc::new(errors),
+            },
+        )
+    }
+
+    fn full_reparse(&self, edit: &AtomTextEdit) -> Parse {
+        let text = edit.apply(self.tree.syntax().text().to_string());
+        SourceFile::parse(&text)
     }
 }
 
@@ -91,36 +110,11 @@ impl SourceFile {
         TreeArc::cast(root)
     }
 
-    pub fn parse2(text: &str) -> Parse {
+    pub fn parse(text: &str) -> Parse {
         let (green, mut errors) = parsing::parse_text(text);
         let tree = SourceFile::new(green);
         errors.extend(validation::validate(&tree));
         Parse { tree, errors: Arc::new(errors) }
-    }
-
-    pub fn parse(text: &str) -> TreeArc<SourceFile> {
-        let (green, _errors) = parsing::parse_text(text);
-        SourceFile::new(green)
-    }
-
-    pub fn reparse(&self, edit: &AtomTextEdit) -> TreeArc<SourceFile> {
-        self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
-    }
-
-    pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<TreeArc<SourceFile>> {
-        parsing::incremental_reparse(self.syntax(), edit, self.errors())
-            .map(|(green_node, _errors, _reparsed_range)| SourceFile::new(green_node))
-    }
-
-    fn full_reparse(&self, edit: &AtomTextEdit) -> TreeArc<SourceFile> {
-        let text = edit.apply(self.syntax().text().to_string());
-        SourceFile::parse(&text)
-    }
-
-    pub fn errors(&self) -> Vec<SyntaxError> {
-        let mut errors = self.syntax.root_data().to_vec();
-        errors.extend(validation::validate(self));
-        errors
     }
 }
 
@@ -137,14 +131,15 @@ fn api_walkthrough() {
     ";
     // `SourceFile` is the main entry point.
     //
-    // Note how `parse` does not return a `Result`: even completely invalid
-    // source code might be parsed.
-    let file = SourceFile::parse(source_code);
+    // The `parse` method returns a `Parse` -- a pair of syntax tree and a list
+    // of errors. That is, syntax tree is constructed even in presence of errors.
+    let parse = SourceFile::parse(source_code);
+    assert!(parse.errors.is_empty());
 
     // Due to the way ownership is set up, owned syntax Nodes always live behind
     // a `TreeArc` smart pointer. `TreeArc` is roughly an `std::sync::Arc` which
     // points to the whole file instead of an individual node.
-    let file: TreeArc<SourceFile> = file;
+    let file: TreeArc<SourceFile> = parse.tree;
 
     // `SourceFile` is the root of the syntax tree. We can iterate file's items:
     let mut func = None;

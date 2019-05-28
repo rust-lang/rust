@@ -21,7 +21,7 @@ fn lexer_tests() {
 #[test]
 fn parser_tests() {
     dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], |text, path| {
-        let parse = SourceFile::parse2(text);
+        let parse = SourceFile::parse(text);
         let errors = parse.errors.as_slice();
         assert_eq!(
             errors,
@@ -32,7 +32,7 @@ fn parser_tests() {
         parse.debug_dump()
     });
     dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], |text, path| {
-        let parse = SourceFile::parse2(text);
+        let parse = SourceFile::parse(text);
         let errors = parse.errors.as_slice();
         assert!(!errors.is_empty(), "There should be errors in the file {:?}", path.display());
         parse.debug_dump()
@@ -78,9 +78,7 @@ fn self_hosting_parsing() {
     {
         count += 1;
         let text = read_text(entry.path());
-        let node = SourceFile::parse(&text);
-        let errors = node.errors();
-        assert_eq!(&*errors, &[], "There should be no errors in the file {:?}", entry);
+        SourceFile::parse(&text).ok().expect("There should be no errors in the file");
     }
     assert!(
         count > 30,

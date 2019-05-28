@@ -280,16 +280,6 @@ impl SyntaxNode {
         buf
     }
 
-    pub(crate) fn root_data(&self) -> &[SyntaxError] {
-        match self.0.root_data() {
-            None => &[],
-            Some(data) => {
-                let data: &Vec<SyntaxError> = std::any::Any::downcast_ref(data).unwrap();
-                data.as_slice()
-            }
-        }
-    }
-
     pub(crate) fn replace_with(&self, replacement: GreenNode) -> GreenNode {
         self.0.replace_with(replacement)
     }

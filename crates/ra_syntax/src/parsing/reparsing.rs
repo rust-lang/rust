@@ -178,12 +178,12 @@ mod tests {
         let edit = AtomTextEdit::replace(range, replace_with.to_owned());
         let after = edit.apply(before.clone());
 
-        let fully_reparsed = SourceFile::parse2(&after);
+        let fully_reparsed = SourceFile::parse(&after);
         let incrementally_reparsed = {
             let f = SourceFile::parse(&before);
             let edit = AtomTextEdit { delete: range, insert: replace_with.to_string() };
             let (green, new_errors, range) =
-                incremental_reparse(f.syntax(), &edit, f.errors()).unwrap();
+                incremental_reparse(f.tree.syntax(), &edit, f.errors.to_vec()).unwrap();
             assert_eq!(range.len(), reparsed_len.into(), "reparsed fragment has wrong length");
             Parse { tree: SourceFile::new(green), errors: Arc::new(new_errors) }
         };
