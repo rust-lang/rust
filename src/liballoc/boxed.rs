@@ -395,11 +395,10 @@ impl<T: Clone> Clone for Box<T> {
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl Clone for Box<str> {
     fn clone(&self) -> Self {
-        let len = self.len();
-        let buf = RawVec::with_capacity(len);
+        // this makes a copy of the data
+        let buf: Box<[u8]> = self.as_bytes().into();
         unsafe {
-            ptr::copy_nonoverlapping(self.as_ptr(), buf.ptr(), len);
-            from_boxed_utf8_unchecked(buf.into_box())
+            from_boxed_utf8_unchecked(buf)
         }
     }
 }
@@ -546,9 +545,12 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     /// println!("{:?}", boxed_slice);
     /// ```
     fn from(slice: &[T]) -> Box<[T]> {
-        let mut boxed = unsafe { RawVec::with_capacity(slice.len()).into_box() };
-        boxed.copy_from_slice(slice);
-        boxed
+        let len = slice.len();
+        let buf = RawVec::with_capacity(len);
+        unsafe {
+            ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
+            buf.into_box()
+        }
     }
 }
 
