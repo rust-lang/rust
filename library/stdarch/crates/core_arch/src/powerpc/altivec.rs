@@ -1774,6 +1774,17 @@ mod tests {
     }
 
     macro_rules! test_vec_1 {
+        { $name: ident, $fn:ident, f32x4, [$($a:expr),+], ~[$($d:expr),+] } => {
+            #[simd_test(enable = "altivec")]
+            unsafe fn $name() {
+                let a: vector_float = transmute(f32x4::new($($a),+));
+
+                let d: vector_float = transmute(f32x4::new($($d),+));
+                let r = transmute(vec_cmple(vec_abs(vec_sub($fn(a), d)), vec_splats(std::f32::EPSILON)));
+                let e = m32x4::new(true, true, true, true);
+                assert_eq!(e, r);
+            }
+        };
         { $name: ident, $fn:ident, $ty: ident, [$($a:expr),+], [$($d:expr),+] } => {
             test_vec_1! { $name, $fn, $ty -> $ty, [$($a),+], [$($d),+] }
         };
@@ -1790,8 +1801,8 @@ mod tests {
     }
 
     test_vec_1! { test_vec_expte, vec_expte, f32x4,
-        [0.0, 2.0, 4.0, -1.0],
-        [1.0, 4.0, 16.0, 0.5]
+        [0.0, 2.0, 2.0, -1.0],
+        ~[1.0, 4.0, 4.0, 0.5]
     }
 
     test_vec_2! { test_vec_cmpgt_i8, vec_cmpgt, i8x16 -> m8x16,
