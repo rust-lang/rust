@@ -14,5 +14,5 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for Array<[T; N]> {
 }
 
 fn main() {
-    println!("{:?}", Array([1, 2, 3]));
+    assert_eq!(format!("{:?}", Array([1, 2, 3])), "[1, 2, 3]");
 }
