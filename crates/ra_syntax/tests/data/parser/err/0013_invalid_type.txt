@@ -43,17 +43,9 @@ SOURCE_FILE@[0; 86)
                                     IDENT@[63; 66) "Box"
                                   TYPE_ARG_LIST@[66; 68)
                                     L_ANGLE@[66; 67) "<"
-                                    err: `expected type`
                                     TYPE_ARG@[67; 68)
                                       ERROR@[67; 68)
                                         AT@[67; 68) "@"
-                                        err: `expected COMMA`
-                                        err: `expected R_ANGLE`
-                                        err: `expected COMMA`
-                                        err: `expected R_ANGLE`
-                                        err: `expected COMMA`
-                                        err: `expected R_ANGLE`
-                                        err: `expected COMMA`
       WHITESPACE@[68; 69) " "
       POS_FIELD_DEF@[69; 72)
         PATH_TYPE@[69; 72)
@@ -61,29 +53,37 @@ SOURCE_FILE@[0; 86)
             PATH_SEGMENT@[69; 72)
               NAME_REF@[69; 72)
                 IDENT@[69; 72) "Any"
-                err: `expected COMMA`
-                err: `expected a type`
-                err: `expected R_PAREN`
-                err: `expected SEMI`
-                err: `expected an item`
       ERROR@[72; 72)
   ERROR@[72; 73)
     R_ANGLE@[72; 73) ">"
-    err: `expected an item`
   ERROR@[73; 74)
     COMMA@[73; 74) ","
   WHITESPACE@[74; 79) "\n    "
-  err: `expected an item`
   ERROR@[79; 80)
     R_ANGLE@[79; 80) ">"
-    err: `expected an item`
   ERROR@[80; 81)
     R_ANGLE@[80; 81) ">"
   WHITESPACE@[81; 82) "\n"
-  err: `expected an item`
   ERROR@[82; 83)
     R_PAREN@[82; 83) ")"
-    err: `expected an item`
   ERROR@[83; 84)
     SEMI@[83; 84) ";"
   WHITESPACE@[84; 86) "\n\n"
+err: `expected type`
+err: `expected COMMA`
+err: `expected R_ANGLE`
+err: `expected COMMA`
+err: `expected R_ANGLE`
+err: `expected COMMA`
+err: `expected R_ANGLE`
+err: `expected COMMA`
+err: `expected COMMA`
+err: `expected a type`
+err: `expected R_PAREN`
+err: `expected SEMI`
+err: `expected an item`
+err: `expected an item`
+err: `expected an item`
+err: `expected an item`
+err: `expected an item`
+err: `expected an item`

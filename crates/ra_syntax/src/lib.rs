@@ -92,8 +92,9 @@ impl SourceFile {
     }
 
     pub fn parse2(text: &str) -> Parse {
-        let (green, errors) = parsing::parse_text(text);
+        let (green, mut errors) = parsing::parse_text(text);
         let tree = SourceFile::new(green);
+        errors.extend(validation::validate(&tree));
         Parse { tree, errors: Arc::new(errors) }
     }
 

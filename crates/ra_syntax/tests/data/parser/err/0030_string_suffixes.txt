@@ -21,7 +21,6 @@ SOURCE_FILE@[0; 112)
         WHITESPACE@[23; 24) " "
         LITERAL@[24; 27)
           CHAR@[24; 27) "\'c\'"
-          err: `expected SEMI`
       EXPR_STMT@[27; 31)
         PATH_EXPR@[27; 30)
           PATH@[27; 30)
@@ -68,3 +67,4 @@ SOURCE_FILE@[0; 112)
       WHITESPACE@[109; 110) "\n"
       R_CURLY@[110; 111) "}"
   WHITESPACE@[111; 112) "\n"
+err: `expected SEMI`

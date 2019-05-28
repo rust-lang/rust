@@ -23,25 +23,17 @@ SOURCE_FILE@[0; 74)
       VISIBILITY@[27; 30)
         PUB_KW@[27; 30) "pub"
       WHITESPACE@[30; 31) " "
-      err: `expected field declaration`
       ERROR@[31; 33)
         INT_NUMBER@[31; 33) "92"
-        err: `expected COMMA`
       WHITESPACE@[33; 38) "\n    "
-      err: `expected field declaration`
       ERROR@[38; 39)
         PLUS@[38; 39) "+"
-        err: `expected COMMA`
       WHITESPACE@[39; 40) " "
-      err: `expected field declaration`
       ERROR@[40; 41)
         MINUS@[40; 41) "-"
-        err: `expected COMMA`
       WHITESPACE@[41; 42) " "
-      err: `expected field declaration`
       ERROR@[42; 43)
         STAR@[42; 43) "*"
-        err: `expected COMMA`
       WHITESPACE@[43; 48) "\n    "
       NAMED_FIELD_DEF@[48; 58)
         VISIBILITY@[48; 51)
@@ -72,3 +64,11 @@ SOURCE_FILE@[0; 74)
       WHITESPACE@[71; 72) "\n"
       R_CURLY@[72; 73) "}"
   WHITESPACE@[73; 74) "\n"
+err: `expected field declaration`
+err: `expected COMMA`
+err: `expected field declaration`
+err: `expected COMMA`
+err: `expected field declaration`
+err: `expected COMMA`
+err: `expected field declaration`
+err: `expected COMMA`

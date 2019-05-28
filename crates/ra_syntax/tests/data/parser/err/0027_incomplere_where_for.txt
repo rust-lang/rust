@@ -19,10 +19,10 @@ SOURCE_FILE@[0; 30)
             LIFETIME_PARAM@[23; 25)
               LIFETIME@[23; 25) "\'a"
             R_ANGLE@[25; 26) ">"
-            err: `expected a path`
-            err: `expected colon`
     WHITESPACE@[26; 27) "\n"
     BLOCK@[27; 29)
       L_CURLY@[27; 28) "{"
       R_CURLY@[28; 29) "}"
   WHITESPACE@[29; 30) "\n"
+err: `expected a path`
+err: `expected colon`

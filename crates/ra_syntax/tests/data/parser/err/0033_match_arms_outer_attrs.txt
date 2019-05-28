@@ -54,11 +54,11 @@ SOURCE_FILE@[0; 89)
                   IDENT@[74; 78) "test"
                   R_PAREN@[78; 79) ")"
                 R_BRACK@[79; 80) "]"
-                err: `expected pattern`
-                err: `expected FAT_ARROW`
-                err: `expected expression`
           WHITESPACE@[80; 85) "\n    "
           R_CURLY@[85; 86) "}"
       WHITESPACE@[86; 87) "\n"
       R_CURLY@[87; 88) "}"
   WHITESPACE@[88; 89) "\n"
+err: `expected pattern`
+err: `expected FAT_ARROW`
+err: `expected expression`

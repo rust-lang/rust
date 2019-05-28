@@ -29,7 +29,7 @@ SOURCE_FILE@[0; 24)
               NAME_REF@[19; 20)
                 IDENT@[19; 20) "a"
         DOT@[20; 21) "."
-        err: `expected field name or number`
       WHITESPACE@[21; 22) "\n"
       R_CURLY@[22; 23) "}"
   WHITESPACE@[23; 24) "\n"
+err: `expected field name or number`

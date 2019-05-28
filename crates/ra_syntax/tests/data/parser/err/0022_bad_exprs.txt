@@ -21,34 +21,23 @@ SOURCE_FILE@[0; 112)
           LITERAL@[13; 14)
             INT_NUMBER@[13; 14) "2"
           COMMA@[14; 15) ","
-          err: `expected expression`
-          err: `expected R_BRACK`
-          err: `expected SEMI`
       WHITESPACE@[15; 16) " "
-      err: `expected expression`
       EXPR_STMT@[16; 17)
         ERROR@[16; 17)
           AT@[16; 17) "@"
-          err: `expected SEMI`
-          err: `expected expression`
       EXPR_STMT@[17; 18)
         ERROR@[17; 18)
           COMMA@[17; 18) ","
-          err: `expected SEMI`
       WHITESPACE@[18; 19) " "
       STRUCT_DEF@[19; 26)
         STRUCT_KW@[19; 25) "struct"
-        err: `expected a name`
         ERROR@[25; 26)
           COMMA@[25; 26) ","
-          err: `expected `;`, `{`, or `(``
       WHITESPACE@[26; 27) " "
       LET_STMT@[27; 31)
         LET_KW@[27; 30) "let"
-        err: `expected pattern`
         ERROR@[30; 31)
           R_BRACK@[30; 31) "]"
-          err: `expected SEMI`
       WHITESPACE@[31; 32) " "
       R_CURLY@[32; 33) "}"
   WHITESPACE@[33; 34) "\n"
@@ -80,35 +69,22 @@ SOURCE_FILE@[0; 112)
             LITERAL@[50; 51)
               INT_NUMBER@[50; 51) "2"
             COMMA@[51; 52) ","
-            err: `expected expression`
-            err: `expected SEMI`
       WHITESPACE@[52; 53) " "
-      err: `expected expression`
       EXPR_STMT@[53; 54)
         ERROR@[53; 54)
           AT@[53; 54) "@"
-          err: `expected SEMI`
-          err: `expected expression`
       EXPR_STMT@[54; 55)
         ERROR@[54; 55)
           COMMA@[54; 55) ","
-          err: `expected SEMI`
       WHITESPACE@[55; 56) " "
       IMPL_BLOCK@[56; 60)
         IMPL_KW@[56; 60) "impl"
-        err: `expected type`
-        err: `expected `{``
-        err: `expected expression`
       EXPR_STMT@[60; 61)
         ERROR@[60; 61)
           COMMA@[60; 61) ","
-          err: `expected SEMI`
       WHITESPACE@[61; 62) " "
       LET_STMT@[62; 65)
         LET_KW@[62; 65) "let"
-        err: `expected pattern`
-        err: `expected SEMI`
-        err: `expected expression`
       ERROR@[65; 66)
         R_PAREN@[65; 66) ")"
       WHITESPACE@[66; 67) " "
@@ -145,45 +121,69 @@ SOURCE_FILE@[0; 112)
             LITERAL@[89; 90)
               INT_NUMBER@[89; 90) "2"
             COMMA@[90; 91) ","
-            err: `expected expression`
-            err: `expected SEMI`
       WHITESPACE@[91; 92) " "
-      err: `expected expression`
       EXPR_STMT@[92; 93)
         ERROR@[92; 93)
           AT@[92; 93) "@"
-          err: `expected SEMI`
-          err: `expected expression`
       EXPR_STMT@[93; 94)
         ERROR@[93; 94)
           COMMA@[93; 94) ","
-          err: `expected SEMI`
       WHITESPACE@[94; 95) " "
-      err: `expected expression`
       EXPR_STMT@[95; 96)
         ERROR@[95; 96)
           R_BRACK@[95; 96) "]"
-          err: `expected SEMI`
-          err: `expected expression`
       EXPR_STMT@[96; 97)
         ERROR@[96; 97)
           COMMA@[96; 97) ","
-          err: `expected SEMI`
       WHITESPACE@[97; 98) " "
       TRAIT_DEF@[98; 104)
         TRAIT_KW@[98; 103) "trait"
-        err: `expected a name`
         ERROR@[103; 104)
           COMMA@[103; 104) ","
-          err: `expected `{``
       WHITESPACE@[104; 105) " "
       LET_STMT@[105; 108)
         LET_KW@[105; 108) "let"
-        err: `expected pattern`
-        err: `expected SEMI`
-        err: `expected expression`
       ERROR@[108; 109)
         R_PAREN@[108; 109) ")"
       WHITESPACE@[109; 110) " "
       R_CURLY@[110; 111) "}"
   WHITESPACE@[111; 112) "\n"
+err: `expected expression`
+err: `expected R_BRACK`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected a name`
+err: `expected `;`, `{`, or `(``
+err: `expected pattern`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected type`
+err: `expected `{``
+err: `expected expression`
+err: `expected SEMI`
+err: `expected pattern`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected a name`
+err: `expected `{``
+err: `expected pattern`
+err: `expected SEMI`
+err: `expected expression`

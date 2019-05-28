@@ -103,8 +103,6 @@ SOURCE_FILE@[0; 240)
                                 NAME_REF@[83; 87)
                                   IDENT@[83; 87) "Copy"
                           R_PAREN@[87; 88) ")"
-                          err: `expected COMMA`
-                          err: `expected R_ANGLE`
             WHITESPACE@[88; 89) " "
             PLUS@[89; 90) "+"
             WHITESPACE@[90; 91) " "
@@ -141,8 +139,6 @@ SOURCE_FILE@[0; 240)
                           LIFETIME@[117; 119) "\'a"
                         R_ANGLE@[119; 120) ">"
               R_PAREN@[120; 121) ")"
-              err: `expected SEMI`
-              err: `expected expression`
       EXPR_STMT@[121; 123)
         ERROR@[121; 122)
           R_ANGLE@[121; 122) ">"
@@ -165,54 +161,35 @@ SOURCE_FILE@[0; 240)
                 TYPE_ARG@[139; 141)
                   PAREN_TYPE@[139; 141)
                     L_PAREN@[139; 140) "("
-                    err: `expected type`
                     ERROR@[140; 141)
                       QUESTION@[140; 141) "?"
-                      err: `expected R_PAREN`
-                      err: `expected COMMA`
-                      err: `expected R_ANGLE`
-                      err: `expected SEMI`
       EXPR_STMT@[141; 146)
         PATH_EXPR@[141; 146)
           PATH@[141; 146)
             PATH_SEGMENT@[141; 146)
               NAME_REF@[141; 146)
                 IDENT@[141; 146) "Sized"
-                err: `expected SEMI`
-                err: `expected expression`
       EXPR_STMT@[146; 147)
         ERROR@[146; 147)
           R_PAREN@[146; 147) ")"
-          err: `expected SEMI`
       WHITESPACE@[147; 148) " "
-      err: `expected expression`
       EXPR_STMT@[148; 149)
         ERROR@[148; 149)
           PLUS@[148; 149) "+"
-          err: `expected SEMI`
       WHITESPACE@[149; 150) " "
       EXPR_STMT@[150; 151)
         PAREN_EXPR@[150; 151)
           L_PAREN@[150; 151) "("
-          err: `expected expression`
-          err: `expected R_PAREN`
-          err: `expected SEMI`
       EXPR_STMT@[151; 157)
         FOR_EXPR@[151; 157)
           FOR_KW@[151; 154) "for"
-          err: `expected pattern`
           ERROR@[154; 155)
             L_ANGLE@[154; 155) "<"
-            err: `expected IN_KW`
-            err: `expected expression`
           ERROR@[155; 157)
             LIFETIME@[155; 157) "\'a"
-            err: `expected a block`
-            err: `expected expression`
       EXPR_STMT@[157; 158)
         ERROR@[157; 158)
           R_ANGLE@[157; 158) ">"
-          err: `expected SEMI`
       WHITESPACE@[158; 159) " "
       EXPR_STMT@[159; 180)
         BIN_EXPR@[159; 180)
@@ -225,11 +202,9 @@ SOURCE_FILE@[0; 240)
                       NAME_REF@[159; 164)
                         IDENT@[159; 164) "Trait"
                 L_ANGLE@[164; 165) "<"
-                err: `expected expression`
                 ERROR@[165; 167)
                   LIFETIME@[165; 167) "\'a"
               R_ANGLE@[167; 168) ">"
-              err: `expected expression`
               ERROR@[168; 169)
                 R_PAREN@[168; 169) ")"
             WHITESPACE@[169; 170) " "
@@ -244,10 +219,8 @@ SOURCE_FILE@[0; 240)
                       IDENT@[173; 177) "Copy"
               R_PAREN@[177; 178) ")"
           R_ANGLE@[178; 179) ">"
-          err: `expected expression`
           ERROR@[179; 180)
             SEMI@[179; 180) ";"
-            err: `expected SEMI`
       WHITESPACE@[180; 185) "\n    "
       LET_STMT@[185; 235)
         LET_KW@[185; 188) "let"
@@ -288,8 +261,6 @@ SOURCE_FILE@[0; 240)
                                       LIFETIME@[211; 213) "\'a"
                                     R_ANGLE@[213; 214) ">"
                           R_PAREN@[214; 215) ")"
-                          err: `expected COMMA`
-                          err: `expected R_ANGLE`
             WHITESPACE@[215; 216) " "
             PLUS@[216; 217) "+"
             WHITESPACE@[217; 218) " "
@@ -313,8 +284,6 @@ SOURCE_FILE@[0; 240)
                     NAME_REF@[229; 234)
                       IDENT@[229; 234) "Sized"
               R_PAREN@[234; 235) ")"
-              err: `expected SEMI`
-              err: `expected expression`
       EXPR_STMT@[235; 237)
         ERROR@[235; 236)
           R_ANGLE@[235; 236) ">"
@@ -322,3 +291,34 @@ SOURCE_FILE@[0; 240)
       WHITESPACE@[237; 238) "\n"
       R_CURLY@[238; 239) "}"
   WHITESPACE@[239; 240) "\n"
+err: `expected COMMA`
+err: `expected R_ANGLE`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected type`
+err: `expected R_PAREN`
+err: `expected COMMA`
+err: `expected R_ANGLE`
+err: `expected SEMI`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected R_PAREN`
+err: `expected SEMI`
+err: `expected pattern`
+err: `expected IN_KW`
+err: `expected expression`
+err: `expected a block`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected expression`
+err: `expected expression`
+err: `expected expression`
+err: `expected SEMI`
+err: `expected COMMA`
+err: `expected R_ANGLE`
+err: `expected SEMI`
+err: `expected expression`

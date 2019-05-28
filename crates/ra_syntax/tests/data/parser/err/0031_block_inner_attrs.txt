@@ -24,7 +24,6 @@ SOURCE_FILE@[0; 350)
           BLOCK@[29; 128)
             L_CURLY@[29; 30) "{"
             WHITESPACE@[30; 39) "\n        "
-            err: `A block in this position cannot accept inner attributes`
             ATTR@[39; 83)
               POUND@[39; 40) "#"
               EXCL@[40; 41) "!"
@@ -53,7 +52,6 @@ SOURCE_FILE@[0; 350)
           BLOCK@[142; 257)
             L_CURLY@[142; 143) "{"
             WHITESPACE@[143; 152) "\n        "
-            err: `A block in this position cannot accept inner attributes`
             ATTR@[152; 171)
               POUND@[152; 153) "#"
               EXCL@[153; 154) "!"
@@ -66,7 +64,6 @@ SOURCE_FILE@[0; 350)
                   R_PAREN@[169; 170) ")"
                 R_BRACK@[170; 171) "]"
             WHITESPACE@[171; 180) "\n        "
-            err: `A block in this position cannot accept inner attributes`
             ATTR@[180; 212)
               POUND@[180; 181) "#"
               EXCL@[181; 182) "!"
@@ -93,7 +90,6 @@ SOURCE_FILE@[0; 350)
         BLOCK@[273; 347)
           L_CURLY@[273; 274) "{"
           WHITESPACE@[274; 283) "\n        "
-          err: `A block in this position cannot accept inner attributes`
           ATTR@[283; 302)
             POUND@[283; 284) "#"
             EXCL@[284; 285) "!"
@@ -112,3 +108,7 @@ SOURCE_FILE@[0; 350)
       WHITESPACE@[347; 348) "\n"
       R_CURLY@[348; 349) "}"
   WHITESPACE@[349; 350) "\n"
+err: `A block in this position cannot accept inner attributes`
+err: `A block in this position cannot accept inner attributes`
+err: `A block in this position cannot accept inner attributes`
+err: `A block in this position cannot accept inner attributes`

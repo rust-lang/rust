@@ -31,13 +31,13 @@ SOURCE_FILE@[0; 94)
           COMMA@[44; 45) ","
           WHITESPACE@[45; 46) " "
           FLOAT_NUMBER@[46; 49) "2.0"
-          err: `unmatched `}``
       WHITESPACE@[49; 54) "\n    "
       R_CURLY@[54; 55) "}"
   WHITESPACE@[55; 56) " "
   COMMENT@[56; 91) "//~ ERROR incorrect c ..."
   WHITESPACE@[91; 92) "\n"
-  err: `unmatched `}``
   ERROR@[92; 93)
     R_CURLY@[92; 93) "}"
   WHITESPACE@[93; 94) "\n"
+err: `unmatched `}``
+err: `unmatched `}``

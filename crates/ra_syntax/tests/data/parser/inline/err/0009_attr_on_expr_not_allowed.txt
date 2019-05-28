@@ -27,7 +27,6 @@ SOURCE_FILE@[0; 48)
           WHITESPACE@[22; 23) " "
           LITERAL@[23; 24)
             INT_NUMBER@[23; 24) "2"
-            err: `attributes are not allowed on BIN_EXPR`
         SEMI@[24; 25) ";"
       WHITESPACE@[25; 29) "\n   "
       EXPR_STMT@[29; 45)
@@ -48,8 +47,9 @@ SOURCE_FILE@[0; 48)
           BLOCK@[42; 44)
             L_CURLY@[42; 43) "{"
             R_CURLY@[43; 44) "}"
-            err: `attributes are not allowed on IF_EXPR`
         SEMI@[44; 45) ";"
       WHITESPACE@[45; 46) "\n"
       R_CURLY@[46; 47) "}"
   WHITESPACE@[47; 48) "\n"
+err: `attributes are not allowed on BIN_EXPR`
+err: `attributes are not allowed on IF_EXPR`

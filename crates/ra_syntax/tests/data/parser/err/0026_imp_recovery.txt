@@ -16,8 +16,6 @@ SOURCE_FILE@[0; 38)
                   NAME_REF@[8; 13)
                     IDENT@[8; 13) "Clone"
       R_ANGLE@[13; 14) ">"
-      err: `expected trait or type`
-      err: `expected `{``
   WHITESPACE@[14; 15) "\n"
   IMPL_BLOCK@[15; 37)
     IMPL_KW@[15; 19) "impl"
@@ -47,3 +45,5 @@ SOURCE_FILE@[0; 38)
       L_CURLY@[35; 36) "{"
       R_CURLY@[36; 37) "}"
   WHITESPACE@[37; 38) "\n"
+err: `expected trait or type`
+err: `expected `{``

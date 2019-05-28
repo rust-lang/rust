@@ -1,9 +1,6 @@
 SOURCE_FILE@[0; 16)
   FN_DEF@[0; 2)
     FN_KW@[0; 2) "fn"
-    err: `expected a name`
-    err: `expected function arguments`
-    err: `expected a block`
   WHITESPACE@[2; 4) "\n\n"
   FN_DEF@[4; 15)
     FN_KW@[4; 6) "fn"
@@ -18,3 +15,6 @@ SOURCE_FILE@[0; 16)
       L_CURLY@[13; 14) "{"
       R_CURLY@[14; 15) "}"
   WHITESPACE@[15; 16) "\n"
+err: `expected a name`
+err: `expected function arguments`
+err: `expected a block`

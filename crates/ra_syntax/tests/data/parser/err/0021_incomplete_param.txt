@@ -23,8 +23,6 @@ SOURCE_FILE@[0; 22)
         BIND_PAT@[15; 16)
           NAME@[15; 16)
             IDENT@[15; 16) "y"
-            err: `expected COLON`
-            err: `expected type`
       R_PAREN@[16; 17) ")"
     WHITESPACE@[17; 18) " "
     BLOCK@[18; 21)
@@ -32,3 +30,5 @@ SOURCE_FILE@[0; 22)
       WHITESPACE@[19; 20) "\n"
       R_CURLY@[20; 21) "}"
   WHITESPACE@[21; 22) "\n"
+err: `expected COLON`
+err: `expected type`

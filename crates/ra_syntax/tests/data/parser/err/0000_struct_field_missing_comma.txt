@@ -18,7 +18,6 @@ SOURCE_FILE@[0; 34)
             PATH_SEGMENT@[18; 21)
               NAME_REF@[18; 21)
                 IDENT@[18; 21) "u32"
-                err: `expected COMMA`
       WHITESPACE@[21; 26) "\n    "
       NAMED_FIELD_DEF@[26; 32)
         NAME@[26; 27)
@@ -32,3 +31,4 @@ SOURCE_FILE@[0; 34)
                 IDENT@[29; 32) "u32"
       WHITESPACE@[32; 33) "\n"
       R_CURLY@[33; 34) "}"
+err: `expected COMMA`

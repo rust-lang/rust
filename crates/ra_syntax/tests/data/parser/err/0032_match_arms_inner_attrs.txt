@@ -36,11 +36,8 @@ SOURCE_FILE@[0; 293)
             MATCH_ARM@[51; 78)
               ATTR@[51; 52)
                 POUND@[51; 52) "#"
-                err: `expected `[``
-                err: `expected pattern`
               ERROR@[52; 53)
                 EXCL@[52; 53) "!"
-                err: `expected FAT_ARROW`
               ARRAY_EXPR@[53; 78)
                 L_BRACK@[53; 54) "["
                 CALL_EXPR@[54; 77)
@@ -55,7 +52,6 @@ SOURCE_FILE@[0; 293)
                       STRING@[58; 76) "\"Not allowed here\""
                     R_PAREN@[76; 77) ")"
                 R_BRACK@[77; 78) "]"
-                err: `expected COMMA`
             WHITESPACE@[78; 87) "\n        "
             MATCH_ARM@[87; 94)
               PLACEHOLDER_PAT@[87; 88)
@@ -106,11 +102,8 @@ SOURCE_FILE@[0; 293)
             MATCH_ARM@[160; 179)
               ATTR@[160; 161)
                 POUND@[160; 161) "#"
-                err: `expected `[``
-                err: `expected pattern`
               ERROR@[161; 162)
                 EXCL@[161; 162) "!"
-                err: `expected FAT_ARROW`
               ARRAY_EXPR@[162; 179)
                 L_BRACK@[162; 163) "["
                 CALL_EXPR@[163; 178)
@@ -152,11 +145,8 @@ SOURCE_FILE@[0; 293)
             WHITESPACE@[222; 231) "\n        "
             ATTR@[231; 232)
               POUND@[231; 232) "#"
-              err: `expected `[``
-              err: `expected pattern`
             ERROR@[232; 233)
               EXCL@[232; 233) "!"
-              err: `expected FAT_ARROW`
             ARRAY_EXPR@[233; 250)
               L_BRACK@[233; 234) "["
               CALL_EXPR@[234; 249)
@@ -171,7 +161,6 @@ SOURCE_FILE@[0; 293)
                     STRING@[238; 248) "\"Nor here\""
                   R_PAREN@[248; 249) ")"
               R_BRACK@[249; 250) "]"
-              err: `expected COMMA`
           WHITESPACE@[250; 259) "\n        "
           MATCH_ARM@[259; 266)
             PLACEHOLDER_PAT@[259; 260)
@@ -199,3 +188,14 @@ SOURCE_FILE@[0; 293)
       WHITESPACE@[290; 291) "\n"
       R_CURLY@[291; 292) "}"
   WHITESPACE@[292; 293) "\n"
+err: `expected `[``
+err: `expected pattern`
+err: `expected FAT_ARROW`
+err: `expected COMMA`
+err: `expected `[``
+err: `expected pattern`
+err: `expected FAT_ARROW`
+err: `expected `[``
+err: `expected pattern`
+err: `expected FAT_ARROW`
+err: `expected COMMA`

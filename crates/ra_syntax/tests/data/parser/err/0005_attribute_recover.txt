@@ -49,7 +49,7 @@ SOURCE_FILE@[0; 54)
           L_CURLY@[50; 51) "{"
           WHITESPACE@[51; 52) "\n"
           R_CURLY@[52; 53) "}"
-          err: `expected R_PAREN`
-          err: `expected R_BRACK`
-          err: `expected an item`
   WHITESPACE@[53; 54) "\n"
+err: `expected R_PAREN`
+err: `expected R_BRACK`
+err: `expected an item`

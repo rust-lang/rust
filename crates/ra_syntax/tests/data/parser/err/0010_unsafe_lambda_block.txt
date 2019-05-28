@@ -23,7 +23,6 @@ SOURCE_FILE@[0; 42)
             TUPLE_TYPE@[22; 24)
               L_PAREN@[22; 23) "("
               R_PAREN@[23; 24) ")"
-              err: `expected `{``
           WHITESPACE@[24; 25) " "
           BLOCK_EXPR@[25; 38)
             UNSAFE_KW@[25; 31) "unsafe"
@@ -40,3 +39,4 @@ SOURCE_FILE@[0; 42)
       WHITESPACE@[39; 40) "\n"
       R_CURLY@[40; 41) "}"
   WHITESPACE@[41; 42) "\n"
+err: `expected `{``
