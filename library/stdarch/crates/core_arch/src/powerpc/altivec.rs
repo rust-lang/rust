@@ -629,6 +629,7 @@ mod sealed {
     }
 
     impl_vec_trait! { [VectorSub vec_sub] ~(simd_sub, simd_sub, simd_sub, simd_sub, simd_sub, simd_sub) }
+    impl_vec_trait! { [VectorSub vec_sub] simd_sub(vector_float, vector_float) -> vector_float }
 
     test_impl! { vec_vminsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vminsb, vminsb] }
     test_impl! { vec_vminsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vminsh, vminsh] }
@@ -2006,6 +2007,11 @@ mod tests {
             test_vec_2! {$name, vec_sub, $ty, [$($a),+], [$($b),+], [$($d),+] }
         }
     }
+
+    test_vec_sub! { test_vec_sub_f32x4, f32x4,
+    [-1.0, 0.0, 1.0, 2.0],
+    [2.0, 1.0, -1.0, -2.0],
+    [-3.0, -1.0, 2.0, 4.0] }
 
     test_vec_sub! { test_vec_sub_i32x4, i32x4,
     [-1, 0, 1, 2],
