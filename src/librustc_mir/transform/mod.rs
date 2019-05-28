@@ -100,7 +100,7 @@ fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     tcx.alloc_steal_mir(mir)
 }
 
-/// Where a specific Mir comes from.
+/// Where a specific `mir::Body` comes from.
 #[derive(Debug, Copy, Clone)]
 pub struct MirSource<'tcx> {
     pub instance: InstanceDef<'tcx>,
@@ -228,7 +228,7 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 }
 
 fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Body<'tcx> {
-    // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
+    // `mir_borrowck` uses `mir_validated`, so we have to force it to
     // execute before we can steal.
     tcx.ensure().mir_borrowck(def_id);
 

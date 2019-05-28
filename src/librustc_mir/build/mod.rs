@@ -164,7 +164,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'
             build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
 
-        // Convert the Mir to global types.
+        // Convert the `mir::Body` to global types.
         let mut globalizer = GlobalizeMir {
             tcx,
             span: mir.span
@@ -243,7 +243,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.infer_ctxt().enter(|infcx| {
             let mut mir = shim::build_adt_ctor(&infcx, ctor_id, fields, span);
 
-            // Convert the Mir to global types.
+            // Convert the `mir::Body` to global types.
             let tcx = infcx.tcx.global_tcx();
             let mut globalizer = GlobalizeMir {
                 tcx,

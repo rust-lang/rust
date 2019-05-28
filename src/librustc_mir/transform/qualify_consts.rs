@@ -1431,7 +1431,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mir = &tcx.mir_const(def_id).borrow();
 
     if mir.return_ty().references_error() {
-        tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
+        tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: MIR had errors");
         return (1 << IsNotPromotable::IDX, tcx.arena.alloc(BitSet::new_empty(0)));
     }
 
@@ -1447,7 +1447,7 @@ impl MirPass for QualifyAndPromoteConstants {
                           mir: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if mir.return_ty().references_error() {
-            tcx.sess.delay_span_bug(mir.span, "QualifyAndPromoteConstants: Mir had errors");
+            tcx.sess.delay_span_bug(mir.span, "QualifyAndPromoteConstants: MIR had errors");
             return;
         }
 

@@ -44,7 +44,7 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// Whether this constant/function needs overflow checks.
     check_overflow: bool,
 
-    /// See field with the same name on `Mir`.
+    /// See field with the same name on `mir::Body`.
     control_flow_destroyed: Vec<(Span, String)>,
 }
 

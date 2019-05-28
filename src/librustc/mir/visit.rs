@@ -261,7 +261,7 @@ macro_rules! make_mir_visitor {
                 }
 
                 // for best performance, we want to use an iterator rather
-                // than a for-loop, to avoid calling Mir::invalidate for
+                // than a for-loop, to avoid calling `mir::Body::invalidate` for
                 // each basic block.
                 macro_rules! basic_blocks {
                     (mut) => (mir.basic_blocks_mut().iter_enumerated_mut());
