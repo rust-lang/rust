@@ -175,7 +175,7 @@ mod tests {
     }
 
     fn create_rules(macro_definition: &str) -> Result<crate::MacroRules, ParseError> {
-        let source_file = ast::SourceFile::parse(macro_definition);
+        let source_file = ast::SourceFile::parse(macro_definition).ok().unwrap();
         let macro_definition =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 

@@ -597,7 +597,7 @@ mod tests {
     }
 
     fn create_rules(macro_definition: &str) -> crate::MacroRules {
-        let source_file = ast::SourceFile::parse(macro_definition);
+        let source_file = ast::SourceFile::parse(macro_definition).ok().unwrap();
         let macro_definition =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
@@ -609,7 +609,7 @@ mod tests {
         rules: &crate::MacroRules,
         invocation: &str,
     ) -> Result<tt::Subtree, ExpandError> {
-        let source_file = ast::SourceFile::parse(invocation);
+        let source_file = ast::SourceFile::parse(invocation).ok().unwrap();
         let macro_invocation =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
