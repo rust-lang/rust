@@ -16,4 +16,15 @@ be found at the [GitHub repository]. If you find any mistakes in the
 guide, please file an issue about it, or even better, open a PR
 with a correction!
 
+## Other places to find information
+
+You might also find the following sites useful:
+
+- [Rustc API docs] -- rustdoc documentation for the compiler
+- [Forge] -- contains documentation about rust infrastructure, team procedures, and more
+- [compiler-team] -- the home-base for the rust compiler team, with description of the team procedures, active working groups, and the team calendar.
+
 [GitHub repository]: https://github.com/rust-lang/rustc-guide/
+[Rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
+[Forge]: https://forge.rust-lang.org/
+[compiler-team]: https://github.com/rust-lang/compiler-team/
