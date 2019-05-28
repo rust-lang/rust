@@ -1,5 +1,5 @@
-PROC MACRO INPUT (PRETTY-PRINTED): struct M ( $crate :: S ) ;
-PROC MACRO INPUT: TokenStream [
+PRINT-BANG INPUT (DISPLAY): struct M ( $crate :: S ) ;
+PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
         span: #2 bytes(LO..HI),
@@ -38,8 +38,9 @@ PROC MACRO INPUT: TokenStream [
         span: #2 bytes(LO..HI),
     },
 ]
-ATTRIBUTE INPUT (PRETTY-PRINTED): struct A(crate::S);
-ATTRIBUTE INPUT: TokenStream [
+PRINT-ATTR INPUT (DISPLAY): struct A(crate::S);
+PRINT-ATTR RE-COLLECTED (DISPLAY): struct A ( $crate :: S ) ;
+PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
         span: #2 bytes(LO..HI),
@@ -78,8 +79,9 @@ ATTRIBUTE INPUT: TokenStream [
         span: #2 bytes(LO..HI),
     },
 ]
-DERIVE INPUT (PRETTY-PRINTED): struct D(crate::S);
-DERIVE INPUT: TokenStream [
+PRINT-DERIVE INPUT (DISPLAY): struct D(crate::S);
+PRINT-DERIVE RE-COLLECTED (DISPLAY): struct D ( $crate :: S ) ;
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
         span: #2 bytes(LO..HI),
@@ -118,8 +120,8 @@ DERIVE INPUT: TokenStream [
         span: #2 bytes(LO..HI),
     },
 ]
-PROC MACRO INPUT (PRETTY-PRINTED): struct M ( $crate :: S ) ;
-PROC MACRO INPUT: TokenStream [
+PRINT-BANG INPUT (DISPLAY): struct M ( $crate :: S ) ;
+PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
         span: #10 bytes(LO..HI),
@@ -158,8 +160,9 @@ PROC MACRO INPUT: TokenStream [
         span: #10 bytes(LO..HI),
     },
 ]
-ATTRIBUTE INPUT (PRETTY-PRINTED): struct A(::dollar_crate_external::S);
-ATTRIBUTE INPUT: TokenStream [
+PRINT-ATTR INPUT (DISPLAY): struct A(::dollar_crate_external::S);
+PRINT-ATTR RE-COLLECTED (DISPLAY): struct A ( $crate :: S ) ;
+PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
         span: #10 bytes(LO..HI),
@@ -198,8 +201,9 @@ ATTRIBUTE INPUT: TokenStream [
         span: #10 bytes(LO..HI),
     },
 ]
-DERIVE INPUT (PRETTY-PRINTED): struct D(::dollar_crate_external::S);
-DERIVE INPUT: TokenStream [
+PRINT-DERIVE INPUT (DISPLAY): struct D(::dollar_crate_external::S);
+PRINT-DERIVE RE-COLLECTED (DISPLAY): struct D ( $crate :: S ) ;
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
         span: #10 bytes(LO..HI),

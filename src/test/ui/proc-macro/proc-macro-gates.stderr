@@ -1,95 +1,95 @@
 error[E0658]: non-builtin inner attributes are unstable
-  --> $DIR/proc-macro-gates.rs:11:5
+  --> $DIR/proc-macro-gates.rs:10:5
    |
-LL |     #![a]
-   |     ^^^^^
+LL |     #![empty_attr]
+   |     ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54726
    = help: add #![feature(custom_inner_attributes)] to the crate attributes to enable
 
 error[E0658]: non-builtin inner attributes are unstable
-  --> $DIR/proc-macro-gates.rs:18:5
+  --> $DIR/proc-macro-gates.rs:17:5
    |
-LL |     #![a]
-   |     ^^^^^
+LL |     #![empty_attr]
+   |     ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54726
    = help: add #![feature(custom_inner_attributes)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to modules
-  --> $DIR/proc-macro-gates.rs:14:1
+  --> $DIR/proc-macro-gates.rs:13:1
    |
-LL | #[a]
-   | ^^^^
+LL | #[empty_attr]
+   | ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to modules
-  --> $DIR/proc-macro-gates.rs:18:5
+  --> $DIR/proc-macro-gates.rs:17:5
    |
-LL |     #![a]
-   |     ^^^^^
+LL |     #![empty_attr]
+   |     ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error: custom attribute invocations must be of the form #[foo] or #[foo(..)], the macro name must only be followed by a delimiter token
-  --> $DIR/proc-macro-gates.rs:22:1
+  --> $DIR/proc-macro-gates.rs:21:1
    |
-LL | #[a = "y"]
-   | ^^^^^^^^^^
+LL | #[empty_attr = "y"]
+   | ^^^^^^^^^^^^^^^^^^^
 
 error[E0658]: custom attributes cannot be applied to statements
-  --> $DIR/proc-macro-gates.rs:31:5
+  --> $DIR/proc-macro-gates.rs:30:5
    |
-LL |     #[a]
-   |     ^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
-   = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
-
-error[E0658]: custom attributes cannot be applied to statements
-  --> $DIR/proc-macro-gates.rs:35:5
-   |
-LL |     #[a]
-   |     ^^^^
+LL |     #[empty_attr]
+   |     ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to statements
-  --> $DIR/proc-macro-gates.rs:39:5
+  --> $DIR/proc-macro-gates.rs:34:5
    |
-LL |     #[a]
-   |     ^^^^
+LL |     #[empty_attr]
+   |     ^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
+
+error[E0658]: custom attributes cannot be applied to statements
+  --> $DIR/proc-macro-gates.rs:38:5
+   |
+LL |     #[empty_attr]
+   |     ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to expressions
-  --> $DIR/proc-macro-gates.rs:43:14
+  --> $DIR/proc-macro-gates.rs:42:14
    |
-LL |     let _x = #[a] 2;
-   |              ^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
-   = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
-
-error[E0658]: custom attributes cannot be applied to expressions
-  --> $DIR/proc-macro-gates.rs:46:15
-   |
-LL |     let _x = [#[a] 2];
-   |               ^^^^
+LL |     let _x = #[identity_attr] 2;
+   |              ^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to expressions
-  --> $DIR/proc-macro-gates.rs:49:14
+  --> $DIR/proc-macro-gates.rs:45:15
    |
-LL |     let _x = #[a] println!();
-   |              ^^^^
+LL |     let _x = [#[identity_attr] 2];
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
+
+error[E0658]: custom attributes cannot be applied to expressions
+  --> $DIR/proc-macro-gates.rs:48:14
+   |
+LL |     let _x = #[identity_attr] println!();
+   |              ^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -97,8 +97,8 @@ LL |     let _x = #[a] println!();
 error[E0658]: procedural macros cannot be expanded to types
   --> $DIR/proc-macro-gates.rs:53:13
    |
-LL |     let _x: m!(u32) = 3;
-   |             ^^^^^^^
+LL |     let _x: identity!(u32) = 3;
+   |             ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -106,17 +106,8 @@ LL |     let _x: m!(u32) = 3;
 error[E0658]: procedural macros cannot be expanded to patterns
   --> $DIR/proc-macro-gates.rs:54:12
    |
-LL |     if let m!(Some(_x)) = Some(3) {}
-   |            ^^^^^^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
-   = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
-
-error[E0658]: procedural macros cannot be expanded to statements
-  --> $DIR/proc-macro-gates.rs:56:5
-   |
-LL |     m!(struct S;);
-   |     ^^^^^^^^^^^^^^
+LL |     if let identity!(Some(_x)) = Some(3) {}
+   |            ^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
@@ -124,26 +115,35 @@ LL |     m!(struct S;);
 error[E0658]: procedural macros cannot be expanded to statements
   --> $DIR/proc-macro-gates.rs:57:5
    |
-LL |     m!(let _x = 3;);
-   |     ^^^^^^^^^^^^^^^^
+LL |     empty!(struct S;);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
+
+error[E0658]: procedural macros cannot be expanded to statements
+  --> $DIR/proc-macro-gates.rs:58:5
+   |
+LL |     empty!(let _x = 3;);
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to expressions
-  --> $DIR/proc-macro-gates.rs:59:14
+  --> $DIR/proc-macro-gates.rs:60:14
    |
-LL |     let _x = m!(3);
-   |              ^^^^^
+LL |     let _x = identity!(3);
+   |              ^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to expressions
-  --> $DIR/proc-macro-gates.rs:60:15
+  --> $DIR/proc-macro-gates.rs:61:15
    |
-LL |     let _x = [m!(3)];
-   |               ^^^^^
+LL |     let _x = [empty!(3)];
+   |               ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable

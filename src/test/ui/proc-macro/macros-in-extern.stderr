@@ -1,26 +1,26 @@
 error[E0658]: macro invocations in `extern {}` blocks are experimental
-  --> $DIR/macros-in-extern.rs:15:5
+  --> $DIR/macros-in-extern.rs:14:5
    |
-LL |     #[no_output]
-   |     ^^^^^^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/49476
-   = help: add #![feature(macros_in_extern)] to the crate attributes to enable
-
-error[E0658]: macro invocations in `extern {}` blocks are experimental
-  --> $DIR/macros-in-extern.rs:19:5
-   |
-LL |     #[nop_attr]
-   |     ^^^^^^^^^^^
+LL |     #[empty_attr]
+   |     ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/49476
    = help: add #![feature(macros_in_extern)] to the crate attributes to enable
 
 error[E0658]: macro invocations in `extern {}` blocks are experimental
-  --> $DIR/macros-in-extern.rs:23:5
+  --> $DIR/macros-in-extern.rs:18:5
    |
-LL |     emit_input!(fn rust_dbg_extern_identity_u32(arg: u32) -> u32;);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[identity_attr]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49476
+   = help: add #![feature(macros_in_extern)] to the crate attributes to enable
+
+error[E0658]: macro invocations in `extern {}` blocks are experimental
+  --> $DIR/macros-in-extern.rs:22:5
+   |
+LL |     identity!(fn rust_dbg_extern_identity_u32(arg: u32) -> u32;);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/49476
    = help: add #![feature(macros_in_extern)] to the crate attributes to enable

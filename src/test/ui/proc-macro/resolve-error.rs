@@ -1,7 +1,6 @@
 // aux-build:derive-foo.rs
 // aux-build:derive-clona.rs
-// aux-build:attr_proc_macro.rs
-// aux-build:bang_proc_macro.rs
+// aux-build:test-macros.rs
 
 #![feature(custom_attribute)]
 
@@ -9,11 +8,10 @@
 extern crate derive_foo;
 #[macro_use]
 extern crate derive_clona;
-extern crate attr_proc_macro;
-extern crate bang_proc_macro;
+extern crate test_macros;
 
-use attr_proc_macro::attr_proc_macro;
-use bang_proc_macro::bang_proc_macro;
+use test_macros::empty as bang_proc_macro;
+use test_macros::empty_attr as attr_proc_macro;
 
 macro_rules! FooWithLongNam {
     () => {}
