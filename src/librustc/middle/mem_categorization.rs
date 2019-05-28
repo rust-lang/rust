@@ -746,23 +746,20 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 })
             }
 
-            Res::Upvar(var_id) => {
-                assert!(self.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)));
-                let var_nid = self.tcx.hir().hir_to_node_id(var_id);
-                self.cat_upvar(hir_id, span, var_nid)
-            }
-
             Res::Local(var_id) => {
-                assert!(!self.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)));
                 let var_nid = self.tcx.hir().hir_to_node_id(var_id);
-                Ok(cmt_ {
-                    hir_id,
-                    span,
-                    cat: Categorization::Local(var_id),
-                    mutbl: MutabilityCategory::from_local(self.tcx, self.tables, var_nid),
-                    ty: expr_ty,
-                    note: NoteNone
-                })
+                if self.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)) {
+                    self.cat_upvar(hir_id, span, var_nid)
+                } else {
+                    Ok(cmt_ {
+                        hir_id,
+                        span,
+                        cat: Categorization::Local(var_id),
+                        mutbl: MutabilityCategory::from_local(self.tcx, self.tables, var_nid),
+                        ty: expr_ty,
+                        note: NoteNone
+                    })
+                }
             }
 
             def => span_bug!(span, "unexpected definition in memory categorization: {:?}", def)

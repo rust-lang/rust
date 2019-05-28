@@ -612,7 +612,6 @@ impl<'a> PathSource<'a> {
                 | Res::Def(DefKind::Const, _)
                 | Res::Def(DefKind::Static, _)
                 | Res::Local(..)
-                | Res::Upvar(..)
                 | Res::Def(DefKind::Fn, _)
                 | Res::Def(DefKind::Method, _)
                 | Res::Def(DefKind::AssocConst, _)
@@ -2204,7 +2203,7 @@ impl<'a> Resolver<'a> {
             if let Some(res) = self.ribs[ns][i].bindings.get(&ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Res(
-                    self.adjust_local_res(ns, i, res, record_used, path_span)
+                    self.validate_res_from_ribs(ns, i, res, record_used, path_span),
                 ));
             }
 
@@ -4006,14 +4005,16 @@ impl<'a> Resolver<'a> {
             diag);
     }
 
-    // Resolve a local definition, potentially adjusting for closures.
-    fn adjust_local_res(&mut self,
-                        ns: Namespace,
-                        rib_index: usize,
-                        mut res: Res,
-                        record_used: bool,
-                        span: Span) -> Res {
-        debug!("adjust_local_res");
+    // Validate a local resolution (from ribs), potentially recording closure upvars.
+    fn validate_res_from_ribs(
+        &mut self,
+        ns: Namespace,
+        rib_index: usize,
+        res: Res,
+        record_used: bool,
+        span: Span,
+    ) -> Res {
+        debug!("validate_res_from_ribs({:?})", res);
         let ribs = &self.ribs[ns][rib_index + 1..];
 
         // An invalid forward use of a type parameter from a previous default.
@@ -4035,9 +4036,6 @@ impl<'a> Resolver<'a> {
         }
 
         match res {
-            Res::Upvar(..) => {
-                span_bug!(span, "unexpected {:?} in bindings", res)
-            }
             Res::Local(var_id) => {
                 use ResolutionError::*;
                 let mut res_err = None;
@@ -4049,14 +4047,9 @@ impl<'a> Resolver<'a> {
                             // Nothing to do. Continue.
                         }
                         ClosureRibKind(function_id) => {
-                            res = Res::Upvar(var_id);
-                            match self.upvars.entry(function_id).or_default().entry(var_id) {
-                                indexmap::map::Entry::Occupied(_) => continue,
-                                indexmap::map::Entry::Vacant(entry) => {
-                                    if record_used {
-                                        entry.insert(Upvar { span });
-                                    }
-                                }
+                            if record_used {
+                                self.upvars.entry(function_id).or_default()
+                                    .entry(var_id).or_insert(Upvar { span });
                             }
                         }
                         ItemRibKind | FnItemRibKind | AssocItemRibKind => {

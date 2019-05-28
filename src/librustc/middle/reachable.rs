@@ -104,7 +104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
         };
 
         match res {
-            Some(Res::Local(hir_id)) | Some(Res::Upvar(hir_id, ..)) => {
+            Some(Res::Local(hir_id)) => {
                 self.reachable_symbols.insert(hir_id);
             }
             Some(res) => {

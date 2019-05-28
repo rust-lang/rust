@@ -1409,7 +1409,6 @@ impl Expr {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
                 match path.res {
                     Res::Local(..)
-                    | Res::Upvar(..)
                     | Res::Def(DefKind::Static, _)
                     | Res::Err => true,
                     _ => false,

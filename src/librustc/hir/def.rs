@@ -139,7 +139,6 @@ pub enum Res<Id = hir::HirId> {
     // Value namespace
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Local(Id),
-    Upvar(Id),
 
     // Macro namespace
     NonMacroAttr(NonMacroAttrKind), // e.g., `#[inline]` or `#[rustfmt::skip]`
@@ -345,7 +344,6 @@ impl<Id> Res<Id> {
             Res::Def(_, id) => Some(id),
 
             Res::Local(..) |
-            Res::Upvar(..) |
             Res::PrimTy(..) |
             Res::SelfTy(..) |
             Res::SelfCtor(..) |
@@ -372,7 +370,6 @@ impl<Id> Res<Id> {
             Res::SelfCtor(..) => "self constructor",
             Res::PrimTy(..) => "builtin type",
             Res::Local(..) => "local variable",
-            Res::Upvar(..) => "closure capture",
             Res::SelfTy(..) => "self type",
             Res::ToolMod => "tool module",
             Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
@@ -395,7 +392,6 @@ impl<Id> Res<Id> {
             Res::SelfCtor(id) => Res::SelfCtor(id),
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)),
-            Res::Upvar(id) => Res::Upvar(map(id)),
             Res::SelfTy(a, b) => Res::SelfTy(a, b),
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),

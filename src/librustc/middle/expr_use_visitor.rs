@@ -968,14 +968,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         var_id: hir::HirId)
                         -> mc::McResult<mc::cmt_<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
-        // caller's perspective
-        let res = if self.mc.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)) {
-            Res::Upvar(var_id)
-        } else {
-            Res::Local(var_id)
-        };
+        // perspective of the creator (parent) of the closure.
         let var_ty = self.mc.node_ty(var_id)?;
-        self.mc.cat_res(closure_hir_id, closure_span, var_ty, res)
+        self.mc.cat_res(closure_hir_id, closure_span, var_ty, Res::Local(var_id))
     }
 }
 

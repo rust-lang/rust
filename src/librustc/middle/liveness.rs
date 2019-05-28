@@ -474,8 +474,11 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       // live nodes required for uses or definitions of variables:
       hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
         debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
-        if let Res::Local(..) = path.res {
-            ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+        if let Res::Local(var_hir_id) = path.res {
+            let upvars = ir.tcx.upvars(ir.body_owner);
+            if !upvars.map_or(false, |upvars| upvars.contains_key(&var_hir_id)) {
+                ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+            }
         }
         intravisit::walk_expr(ir, expr);
       }
@@ -1338,8 +1341,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                    -> LiveNode {
         match path.res {
             Res::Local(hid) => {
-              let nid = self.ir.tcx.hir().hir_to_node_id(hid);
-              self.access_var(hir_id, nid, succ, acc, path.span)
+                let upvars = self.ir.tcx.upvars(self.ir.body_owner);
+                if !upvars.map_or(false, |upvars| upvars.contains_key(&hid)) {
+                    let nid = self.ir.tcx.hir().hir_to_node_id(hid);
+                    self.access_var(hir_id, nid, succ, acc, path.span)
+                } else {
+                    succ
+                }
             }
             _ => succ
         }
@@ -1531,13 +1539,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match expr.node {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 if let Res::Local(var_hid) = path.res {
-                    // Assignment to an immutable variable or argument: only legal
-                    // if there is no later assignment. If this local is actually
-                    // mutable, then check for a reassignment to flag the mutability
-                    // as being used.
-                    let ln = self.live_node(expr.hir_id, expr.span);
-                    let var = self.variable(var_hid, expr.span);
-                    self.warn_about_dead_assign(expr.span, expr.hir_id, ln, var);
+                    let upvars = self.ir.tcx.upvars(self.ir.body_owner);
+                    if !upvars.map_or(false, |upvars| upvars.contains_key(&var_hid)) {
+                        // Assignment to an immutable variable or argument: only legal
+                        // if there is no later assignment. If this local is actually
+                        // mutable, then check for a reassignment to flag the mutability
+                        // as being used.
+                        let ln = self.live_node(expr.hir_id, expr.span);
+                        let var = self.variable(var_hid, expr.span);
+                        self.warn_about_dead_assign(expr.span, expr.hir_id, ln, var);
+                    }
                 }
             }
             _ => {

@@ -702,7 +702,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let span = self.span_from_span(span);
 
         match res {
-            Res::Upvar(id, ..) | Res::Local(id) => {
+            Res::Local(id) => {
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,

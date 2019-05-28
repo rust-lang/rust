@@ -960,18 +960,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         Res::Def(DefKind::Static, id) => ExprKind::StaticRef { id },
 
-        Res::Local(var_hir_id) => {
-            assert!(!cx.tables().upvar_list.get(&cx.body_owner)
-                .map_or(false, |upvars| upvars.contains_key(&var_hir_id)));
-
-            convert_var(cx, expr, var_hir_id)
-        }
-        Res::Upvar(var_hir_id) => {
-            assert!(cx.tables().upvar_list.get(&cx.body_owner)
-                .map_or(false, |upvars| upvars.contains_key(&var_hir_id)));
-
-            convert_var(cx, expr, var_hir_id)
-        }
+        Res::Local(var_hir_id) => convert_var(cx, expr, var_hir_id),
 
         _ => span_bug!(expr.span, "res `{:?}` not yet implemented", res),
     }
