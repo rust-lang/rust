@@ -4,9 +4,9 @@ use crate::ty::{self, Ty, Const, TyCtxt, TypeFoldable, InferConst, TypeFlags};
 use crate::ty::fold::{TypeFolder, TypeVisitor};
 
 ///////////////////////////////////////////////////////////////////////////
-// OPPORTUNISTIC KIND RESOLVER
+// OPPORTUNISTIC VAR RESOLVER
 
-/// The opportunistic kind resolver can be used at any time. It simply replaces
+/// The opportunistic resolver can be used at any time. It simply replaces
 /// type/const variables that have been unified with the things they have
 /// been unified with (similar to `shallow_resolve`, but deep). This is
 /// useful for printing messages etc but also required at various
