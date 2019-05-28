@@ -9,7 +9,7 @@ use crate::lint;
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::middle::allocator::AllocatorKind;
 use crate::middle::dependency_format;
-use crate::session::config::{OutputType, PgoGenerate};
+use crate::session::config::{OutputType, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use crate::util::common::{duration_to_secs_str, ErrorReported};
@@ -1137,7 +1137,7 @@ fn build_session_(
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 ) -> Session {
     let self_profiler =
-        if let PgoGenerate::Enabled(ref d) = sopts.debugging_opts.self_profile {
+        if let SwitchWithOptPath::Enabled(ref d) = sopts.debugging_opts.self_profile {
             let directory = if let Some(ref directory) = d {
                 directory
             } else {
