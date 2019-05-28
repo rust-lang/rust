@@ -109,6 +109,7 @@ macro_rules! arena_types {
             >,
             [few] crate_variances: rustc::ty::CrateVariancesMap<'tcx>,
             [few] inferred_outlives_crate: rustc::ty::CratePredicatesMap<'tcx>,
+            [] upvars: rustc_data_structures::fx::FxIndexMap<rustc::hir::HirId, rustc::hir::Upvar>,
         ], $tcx);
     )
 }

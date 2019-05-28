@@ -26,7 +26,7 @@ use crate::util::common::time;
 
 use std::io;
 use std::result::Result::Err;
-use crate::ty::TyCtxt;
+use crate::ty::query::Providers;
 
 pub mod blocks;
 mod collector;
@@ -1450,11 +1450,13 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
     }
 }
 
-pub fn def_kind(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefKind> {
-    if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-        tcx.hir().def_kind(node_id)
-    } else {
-        bug!("Calling local def_kind query provider for upstream DefId: {:?}",
-             def_id)
-    }
+pub fn provide(providers: &mut Providers<'_>) {
+    providers.def_kind = |tcx, def_id| {
+        if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
+            tcx.hir().def_kind(node_id)
+        } else {
+            bug!("Calling local def_kind query provider for upstream DefId: {:?}",
+                def_id)
+        }
+    };
 }

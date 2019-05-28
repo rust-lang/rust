@@ -30,7 +30,6 @@ use syntax::util::parser::ExprPrecedence;
 use crate::ty::AdtKind;
 use crate::ty::query::Providers;
 
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable;
@@ -64,6 +63,7 @@ pub mod lowering;
 pub mod map;
 pub mod pat_util;
 pub mod print;
+pub mod upvars;
 
 /// Uniquely identifies a node in the HIR of the current crate. It is
 /// composed of the `owner`, which is the `DefIndex` of the directly enclosing
@@ -2498,8 +2498,6 @@ pub struct Upvar {
     pub span: Span
 }
 
-pub type UpvarMap = NodeMap<FxIndexMap<ast::NodeId, Upvar>>;
-
 pub type CaptureModeMap = NodeMap<CaptureClause>;
 
  // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
@@ -2518,10 +2516,10 @@ pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 // imported.
 pub type GlobMap = NodeMap<FxHashSet<Name>>;
 
-
 pub fn provide(providers: &mut Providers<'_>) {
     check_attr::provide(providers);
-    providers.def_kind = map::def_kind;
+    map::provide(providers);
+    upvars::provide(providers);
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
