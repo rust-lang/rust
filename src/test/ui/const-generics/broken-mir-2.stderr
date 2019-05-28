@@ -1,0 +1,19 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/broken-mir-2.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+
+error[E0277]: `[T; _]` doesn't implement `std::fmt::Debug`
+  --> $DIR/broken-mir-2.rs:7:36
+   |
+LL | struct S<T: Debug, const N: usize>([T; N]);
+   |                                    ^^^^^^ `[T; _]` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `[T; _]`
+   = note: required because of the requirements on the impl of `std::fmt::Debug` for `&[T; _]`
+   = note: required for the cast to the object type `dyn std::fmt::Debug`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

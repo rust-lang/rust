@@ -307,9 +307,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 continue;
             }
 
-            // Call infcx.resolve_type_vars_if_possible to see if we can
+            // Call infcx.resolve_vars_if_possible to see if we can
             // get rid of any inference variables.
-            let obligation = infcx.resolve_type_vars_if_possible(
+            let obligation = infcx.resolve_vars_if_possible(
                 &Obligation::new(dummy_cause.clone(), new_env, pred)
             );
             let result = select.select(&obligation);
@@ -642,7 +642,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 fresh_preds.insert(self.clean_pred(select.infcx(), predicate));
 
             // Resolve any inference variables that we can, to help selection succeed
-            predicate = select.infcx().resolve_type_vars_if_possible(&predicate);
+            predicate = select.infcx().resolve_vars_if_possible(&predicate);
 
             // We only add a predicate as a user-displayable bound if
             // it involves a generic parameter, and doesn't contain

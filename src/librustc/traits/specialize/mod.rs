@@ -278,7 +278,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 
                 // Now resolve the *substitution* we built for the target earlier, replacing
                 // the inference variables inside with whatever we got from fulfillment.
-                Ok(infcx.resolve_type_vars_if_possible(&target_substs))
+                Ok(infcx.resolve_vars_if_possible(&target_substs))
             }
         }
     })

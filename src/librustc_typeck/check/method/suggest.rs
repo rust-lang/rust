@@ -196,7 +196,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }) => {
                 let tcx = self.tcx;
 
-                let actual = self.resolve_type_vars_if_possible(&rcvr_ty);
+                let actual = self.resolve_vars_if_possible(&rcvr_ty);
                 let ty_str = self.ty_to_string(actual);
                 let is_method = mode == Mode::MethodCall;
                 let item_kind = if is_method {

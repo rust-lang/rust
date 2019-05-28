@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     scope: ProbeScope)
                     -> probe::PickResult<'tcx> {
         let mode = probe::Mode::MethodCall;
-        let self_ty = self.resolve_type_vars_if_possible(&self_ty);
+        let self_ty = self.resolve_vars_if_possible(&self_ty);
         self.probe_for_name(span, mode, method_name, IsSuggestion(false),
                             self_ty, call_expr.hir_id, scope)
     }

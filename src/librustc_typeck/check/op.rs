@@ -618,7 +618,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 method.sig.output()
             }
             Err(()) => {
-                let actual = self.resolve_type_vars_if_possible(&operand_ty);
+                let actual = self.resolve_vars_if_possible(&operand_ty);
                 if !actual.references_error() {
                     let mut err = struct_span_err!(self.tcx.sess, ex.span, E0600,
                                      "cannot apply unary operator `{}` to type `{}`",

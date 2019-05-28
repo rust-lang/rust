@@ -10,6 +10,16 @@ error[E0282]: type annotations needed
 LL |     let _ = Foo::<3>([1, 2, 3]);
    |                   ^ cannot infer type for `{integer}`
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/cannot-infer-type-for-const-param.rs:10:22
+   |
+LL |     let _ = Foo::<3>([1, 2, 3]);
+   |                      ^^^^^^^^^ expected `3`, found `3usize`
+   |
+   = note: expected type `[u8; _]`
+              found type `[u8; 3]`
 
-For more information about this error, try `rustc --explain E0282`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.
