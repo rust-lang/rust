@@ -1,12 +1,7 @@
 use ra_parser::{TokenSource, Token};
 use ra_syntax::{classify_literal, SmolStr, SyntaxKind, SyntaxKind::*, T};
 use std::cell::{RefCell, Cell};
-use std::sync::Arc;
 use tt::buffer::{TokenBuffer, Cursor};
-
-pub(crate) trait Querier {
-    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool);
-}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct TtToken {
@@ -15,20 +10,40 @@ struct TtToken {
     pub text: SmolStr,
 }
 
-// A wrapper class for ref cell
-#[derive(Debug)]
-pub(crate) struct SubtreeWalk<'a> {
-    start: Cursor<'a>,
-    cursor: Cell<Cursor<'a>>,
+pub(crate) struct SubtreeTokenSource<'a> {
+    cached_cursor: Cell<Cursor<'a>>,
     cached: RefCell<Vec<Option<TtToken>>>,
+    curr: (Token, usize),
 }
 
-impl<'a> SubtreeWalk<'a> {
-    fn new(cursor: Cursor<'a>) -> Self {
-        SubtreeWalk {
-            start: cursor,
-            cursor: Cell::new(cursor),
+impl<'a> SubtreeTokenSource<'a> {
+    // Helper function used in test
+    #[cfg(test)]
+    pub fn text(&self) -> SmolStr {
+        match self.get(self.curr.1) {
+            Some(tt) => tt.text,
+            _ => SmolStr::new(""),
+        }
+    }
+}
+
+impl<'a> SubtreeTokenSource<'a> {
+    pub fn new(buffer: &'a TokenBuffer) -> SubtreeTokenSource<'a> {
+        let cursor = buffer.begin();
+
+        let mut res = SubtreeTokenSource {
+            curr: (Token { kind: EOF, is_jointed_to_next: false }, 0),
+            cached_cursor: Cell::new(cursor),
             cached: RefCell::new(Vec::with_capacity(10)),
+        };
+        res.curr = (res.mk_token(0), 0);
+        res
+    }
+
+    fn mk_token(&self, pos: usize) -> Token {
+        match self.get(pos) {
+            Some(tt) => Token { kind: tt.kind, is_jointed_to_next: tt.is_joint_to_next },
+            None => Token { kind: EOF, is_jointed_to_next: false },
         }
     }
 
@@ -39,7 +54,7 @@ impl<'a> SubtreeWalk<'a> {
         }
 
         while pos >= cached.len() {
-            let cursor = self.cursor.get();
+            let cursor = self.cached_cursor.get();
             if cursor.eof() {
                 cached.push(None);
                 continue;
@@ -48,104 +63,22 @@ impl<'a> SubtreeWalk<'a> {
             match cursor.token_tree() {
                 Some(tt::TokenTree::Leaf(leaf)) => {
                     cached.push(Some(convert_leaf(&leaf)));
-                    self.cursor.set(cursor.bump());
+                    self.cached_cursor.set(cursor.bump());
                 }
                 Some(tt::TokenTree::Subtree(subtree)) => {
-                    self.cursor.set(cursor.subtree().unwrap());
+                    self.cached_cursor.set(cursor.subtree().unwrap());
                     cached.push(Some(convert_delim(subtree.delimiter, false)));
                 }
                 None => {
                     if let Some(subtree) = cursor.end() {
                         cached.push(Some(convert_delim(subtree.delimiter, true)));
-                        self.cursor.set(cursor.bump());
+                        self.cached_cursor.set(cursor.bump());
                     }
                 }
             }
         }
 
         return cached[pos].clone();
-    }
-
-    fn collect_token_trees(&self, n: usize) -> Vec<tt::TokenTree> {
-        let mut res = vec![];
-
-        let mut pos = 0;
-        let mut cursor = self.start;
-        let mut level = 0;
-
-        while pos < n {
-            if cursor.eof() {
-                break;
-            }
-
-            match cursor.token_tree() {
-                Some(tt::TokenTree::Leaf(leaf)) => {
-                    if level == 0 {
-                        res.push(leaf.into());
-                    }
-                    cursor = cursor.bump();
-                    pos += 1;
-                }
-                Some(tt::TokenTree::Subtree(subtree)) => {
-                    if level == 0 {
-                        res.push(subtree.into());
-                    }
-                    pos += 1;
-                    level += 1;
-                    cursor = cursor.subtree().unwrap();
-                }
-
-                None => {
-                    if let Some(_) = cursor.end() {
-                        level -= 1;
-                        pos += 1;
-                        cursor = cursor.bump();
-                    }
-                }
-            }
-        }
-
-        res
-    }
-}
-
-impl<'a> Querier for SubtreeWalk<'a> {
-    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool) {
-        self.get(uidx)
-            .map(|tkn| (tkn.kind, tkn.text, tkn.is_joint_to_next))
-            .unwrap_or_else(|| (SyntaxKind::EOF, "".into(), false))
-    }
-}
-
-pub(crate) struct SubtreeTokenSource<'a> {
-    walker: Arc<SubtreeWalk<'a>>,
-    curr: (Token, usize),
-}
-
-impl<'a> SubtreeTokenSource<'a> {
-    pub fn new(buffer: &'a TokenBuffer) -> SubtreeTokenSource<'a> {
-        let mut res = SubtreeTokenSource {
-            walker: Arc::new(SubtreeWalk::new(buffer.begin())),
-            curr: (Token { kind: EOF, is_jointed_to_next: false }, 0),
-        };
-        res.curr = (res.mk_token(0), 0);
-        res
-    }
-
-    pub fn querier(&self) -> Arc<SubtreeWalk<'a>> {
-        self.walker.clone()
-    }
-
-    pub(crate) fn bump_n(&mut self, parsed_tokens: usize) -> Vec<tt::TokenTree> {
-        let res = self.walker.collect_token_trees(parsed_tokens);
-        res
-    }
-
-    fn mk_token(&self, pos: usize) -> Token {
-        match self.walker.get(pos) {
-            Some(tt) => Token { kind: tt.kind, is_jointed_to_next: tt.is_joint_to_next },
-            None => Token { kind: EOF, is_jointed_to_next: false },
-        }
     }
 }
 
@@ -165,12 +98,12 @@ impl<'a> TokenSource for SubtreeTokenSource<'a> {
             return;
         }
 
-        self.curr = (self.mk_token(self.curr.1 + 1), self.curr.1 + 1)
+        self.curr = (self.mk_token(self.curr.1 + 1), self.curr.1 + 1);
     }
 
     /// Is the current token a specified keyword?
     fn is_keyword(&self, kw: &str) -> bool {
-        match self.walker.get(self.curr.1) {
+        match self.get(self.curr.1) {
             Some(t) => t.text == *kw,
             _ => false,
         }

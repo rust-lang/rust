@@ -166,4 +166,19 @@ impl<'a> Cursor<'a> {
             Cursor::create(self.buffer, EntryPtr(self.ptr.0, self.ptr.1 + 1))
         }
     }
+
+    /// Bump the cursor, if it is a subtree, returns
+    /// a cursor into that subtree
+    pub fn bump_subtree(self) -> Cursor<'a> {
+        match self.entry() {
+            Some(Entry::Subtree(_, _)) => self.subtree().unwrap(),
+            _ => self.bump(),
+        }
+    }
+
+    /// Check whether it is a top level
+    pub fn is_root(&self) -> bool {
+        let entry_id = self.ptr.0;
+        return entry_id.0 == 0;
+    }
 }
