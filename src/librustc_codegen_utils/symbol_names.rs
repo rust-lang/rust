@@ -629,6 +629,9 @@ impl fmt::Write for SymbolPrinter<'_, '_> {
                 // for ':' and '-'
                 '-' | ':' => self.path.temp_buf.push('.'),
 
+                // Avoid segmentation fault on some platforms, see #60925.
+                'm' if self.path.temp_buf.ends_with(".llv") => self.path.temp_buf.push_str("$6d$"),
+
                 // These are legal symbols
                 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '$' => self.path.temp_buf.push(c),
 
