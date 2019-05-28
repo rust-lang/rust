@@ -1,8 +1,8 @@
 warning: unused extern crate
   --> $DIR/no-macro-use-attr.rs:6:1
    |
-LL | extern crate derive_a;
-   | ^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+LL | extern crate test_macros;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
    |
 note: lint level defined here
   --> $DIR/no-macro-use-attr.rs:4:9

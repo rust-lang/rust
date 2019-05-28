@@ -1,23 +1,25 @@
-// aux-build:derive-helper-shadowing.rs
+// aux-build:test-macros.rs
 
-extern crate derive_helper_shadowing;
-use derive_helper_shadowing::*;
+#[macro_use]
+extern crate test_macros;
 
-#[my_attr] //~ ERROR `my_attr` is ambiguous
-#[derive(MyTrait)]
+use test_macros::empty_attr as empty_helper;
+
+#[empty_helper] //~ ERROR `empty_helper` is ambiguous
+#[derive(Empty)]
 struct S {
     // FIXME No ambiguity, attributes in non-macro positions are not resolved properly
-    #[my_attr]
+    #[empty_helper]
     field: [u8; {
         // FIXME No ambiguity, derive helpers are not put into scope for non-attributes
-        use my_attr;
+        use empty_helper;
 
         // FIXME No ambiguity, derive helpers are not put into scope for inner items
-        #[my_attr]
+        #[empty_helper]
         struct U;
 
         mod inner {
-            #[my_attr] //~ ERROR attribute `my_attr` is currently unknown
+            #[empty_helper] //~ ERROR attribute `empty_helper` is currently unknown
             struct V;
         }
 
