@@ -575,7 +575,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 // Uncertain or unimplemented.
                 Ok(None) => {
                     if trait_ref.def_id() == unsize_did {
-                        let trait_ref = self.resolve_type_vars_if_possible(&trait_ref);
+                        let trait_ref = self.resolve_vars_if_possible(&trait_ref);
                         let self_ty = trait_ref.skip_binder().self_ty();
                         let unsize_ty = trait_ref.skip_binder().input_types().nth(1).unwrap();
                         debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_ref);

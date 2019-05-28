@@ -330,13 +330,13 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
         match self {
             NoExpectation => NoExpectation,
             ExpectCastableToType(t) => {
-                ExpectCastableToType(fcx.resolve_type_vars_if_possible(&t))
+                ExpectCastableToType(fcx.resolve_vars_if_possible(&t))
             }
             ExpectHasType(t) => {
-                ExpectHasType(fcx.resolve_type_vars_if_possible(&t))
+                ExpectHasType(fcx.resolve_vars_if_possible(&t))
             }
             ExpectRvalueLikeUnsized(t) => {
-                ExpectRvalueLikeUnsized(fcx.resolve_type_vars_if_possible(&t))
+                ExpectRvalueLikeUnsized(fcx.resolve_vars_if_possible(&t))
             }
         }
     }
@@ -2067,7 +2067,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Resolves type variables in `ty` if possible. Unlike the infcx
-    /// version (resolve_type_vars_if_possible), this version will
+    /// version (resolve_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
     fn resolve_type_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -2080,7 +2080,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
-        ty = self.resolve_type_vars_if_possible(&ty);
+        ty = self.resolve_vars_if_possible(&ty);
         if !ty.has_infer_types() {
             debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
             return ty;
@@ -2091,7 +2091,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         self.select_obligations_where_possible(false);
-        ty = self.resolve_type_vars_if_possible(&ty);
+        ty = self.resolve_vars_if_possible(&ty);
 
         debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
         ty
@@ -2127,7 +2127,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     #[inline]
     pub fn write_ty(&self, id: hir::HirId, ty: Ty<'tcx>) {
         debug!("write_ty({:?}, {:?}) in fcx {}",
-               id, self.resolve_type_vars_if_possible(&ty), self.tag());
+               id, self.resolve_vars_if_possible(&ty), self.tag());
         self.tables.borrow_mut().node_types_mut().insert(id, ty);
 
         if ty.references_error() {
@@ -2950,9 +2950,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else {
             // is the missing argument of type `()`?
             let sugg_unit = if expected_arg_tys.len() == 1 && supplied_arg_count == 0 {
-                self.resolve_type_vars_if_possible(&expected_arg_tys[0]).is_unit()
+                self.resolve_vars_if_possible(&expected_arg_tys[0]).is_unit()
             } else if fn_inputs.len() == 1 && supplied_arg_count == 0 {
-                self.resolve_type_vars_if_possible(&fn_inputs[0]).is_unit()
+                self.resolve_vars_if_possible(&fn_inputs[0]).is_unit()
             } else {
                 false
             };
@@ -3063,7 +3063,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     ty::FnDef(..) => {
                         let ptr_ty = self.tcx.mk_fn_ptr(arg_ty.fn_sig(self.tcx));
-                        let ptr_ty = self.resolve_type_vars_if_possible(&ptr_ty);
+                        let ptr_ty = self.resolve_vars_if_possible(&ptr_ty);
                         variadic_error(tcx.sess, arg.span, arg_ty, &ptr_ty.to_string());
                     }
                     _ => {}
@@ -3253,7 +3253,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Record all the argument types, with the substitutions
             // produced from the above subtyping unification.
             Ok(formal_args.iter().map(|ty| {
-                self.resolve_type_vars_if_possible(ty)
+                self.resolve_vars_if_possible(ty)
             }).collect())
         }).unwrap_or_default();
         debug!("expected_inputs_for_expected_output(formal={:?} -> {:?}, expected={:?} -> {:?})",
@@ -4333,9 +4333,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Find the type of `e`. Supply hints based on the type we are casting to,
                 // if appropriate.
                 let t_cast = self.to_ty_saving_user_provided_ty(t);
-                let t_cast = self.resolve_type_vars_if_possible(&t_cast);
+                let t_cast = self.resolve_vars_if_possible(&t_cast);
                 let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
-                let t_cast = self.resolve_type_vars_if_possible(&t_cast);
+                let t_cast = self.resolve_vars_if_possible(&t_cast);
 
                 // Eagerly check for some obvious errors.
                 if t_expr.references_error() || t_cast.references_error() {

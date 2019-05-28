@@ -178,7 +178,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     {
         // this helps to reduce duplicate errors, as well as making
         // debug output much nicer to read and so on.
-        let obligation = infcx.resolve_type_vars_if_possible(&obligation);
+        let obligation = infcx.resolve_vars_if_possible(&obligation);
 
         debug!("register_predicate_obligation(obligation={:?})", obligation);
 
@@ -261,7 +261,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
             }) {
                 debug!("process_predicate: pending obligation {:?} still stalled on {:?}",
                        self.selcx.infcx()
-                           .resolve_type_vars_if_possible(&pending_obligation.obligation),
+                           .resolve_vars_if_possible(&pending_obligation.obligation),
                        pending_obligation.stalled_on);
                 return ProcessResult::Unchanged;
             }
@@ -272,7 +272,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
 
         if obligation.predicate.has_infer_types() {
             obligation.predicate =
-                self.selcx.infcx().resolve_type_vars_if_possible(&obligation.predicate);
+                self.selcx.infcx().resolve_vars_if_possible(&obligation.predicate);
         }
 
         debug!("process_obligation: obligation = {:?}", obligation);
@@ -318,7 +318,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                             trait_ref_type_vars(self.selcx, data.to_poly_trait_ref());
 
                         debug!("process_predicate: pending obligation {:?} now stalled on {:?}",
-                               self.selcx.infcx().resolve_type_vars_if_possible(obligation),
+                               self.selcx.infcx().resolve_vars_if_possible(obligation),
                                pending_obligation.stalled_on);
 
                         ProcessResult::Unchanged
@@ -519,7 +519,7 @@ fn trait_ref_type_vars<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 't
 {
     t.skip_binder() // ok b/c this check doesn't care about regions
      .input_types()
-     .map(|t| selcx.infcx().resolve_type_vars_if_possible(&t))
+     .map(|t| selcx.infcx().resolve_vars_if_possible(&t))
      .filter(|t| t.has_infer_types())
      .flat_map(|t| t.walk())
      .filter(|t| match t.sty { ty::Infer(_) => true, _ => false })

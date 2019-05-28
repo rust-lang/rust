@@ -24,7 +24,7 @@ impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
         });
         match ty_opt {
             Some(ty) => {
-                let ty = self.infcx.resolve_type_vars_if_possible(&ty);
+                let ty = self.infcx.resolve_vars_if_possible(&ty);
                 ty.walk().any(|inner_ty| {
                     inner_ty == self.target_ty || match (&inner_ty.sty, &self.target_ty.sty) {
                         (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
@@ -94,7 +94,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         ty: Ty<'tcx>
     ) -> DiagnosticBuilder<'gcx> {
-        let ty = self.resolve_type_vars_if_possible(&ty);
+        let ty = self.resolve_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty, None);
 
         let mut err_span = span;
@@ -166,7 +166,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         ty: Ty<'tcx>
     ) -> DiagnosticBuilder<'gcx> {
-        let ty = self.resolve_type_vars_if_possible(&ty);
+        let ty = self.resolve_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty, None);
 
         let mut err = struct_span_err!(self.tcx.sess,

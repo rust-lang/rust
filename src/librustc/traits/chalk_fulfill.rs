@@ -33,7 +33,7 @@ fn in_environment(
     obligation: PredicateObligation<'tcx>
 ) -> InEnvironment<'tcx, PredicateObligation<'tcx>> {
     assert!(!infcx.is_in_snapshot());
-    let obligation = infcx.resolve_type_vars_if_possible(&obligation);
+    let obligation = infcx.resolve_vars_if_possible(&obligation);
 
     let environment = match obligation.param_env.def_id {
         Some(def_id) => infcx.tcx.environment(def_id),

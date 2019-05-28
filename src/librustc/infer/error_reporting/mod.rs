@@ -652,7 +652,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         for sp in prior_arms {
                             err.span_label(*sp, format!(
                                 "this is found to be of type `{}`",
-                                self.resolve_type_vars_if_possible(&last_ty),
+                                self.resolve_vars_if_possible(&last_ty),
                             ));
                         }
                     } else if let Some(sp) = prior_arms.last() {
@@ -1278,7 +1278,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &self,
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
     ) -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
-        let exp_found = self.resolve_type_vars_if_possible(exp_found);
+        let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
         }
@@ -1291,7 +1291,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &self,
         exp_found: &ty::error::ExpectedFound<T>,
     ) -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
-        let exp_found = self.resolve_type_vars_if_possible(exp_found);
+        let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
         }

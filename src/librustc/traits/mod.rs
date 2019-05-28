@@ -927,7 +927,7 @@ pub fn fully_normalize<'a, 'gcx, 'tcx, T>(
     debug!("fully_normalize: select_all_or_error start");
     fulfill_cx.select_all_or_error(infcx)?;
     debug!("fully_normalize: select_all_or_error complete");
-    let resolved_value = infcx.resolve_type_vars_if_possible(&normalized_value);
+    let resolved_value = infcx.resolve_vars_if_possible(&normalized_value);
     debug!("fully_normalize: resolved_value={:?}", resolved_value);
     Ok(resolved_value)
 }

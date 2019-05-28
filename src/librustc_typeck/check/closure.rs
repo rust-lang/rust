@@ -282,7 +282,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let input_tys = if is_fn {
             let arg_param_ty = trait_ref.skip_binder().substs.type_at(1);
-            let arg_param_ty = self.resolve_type_vars_if_possible(&arg_param_ty);
+            let arg_param_ty = self.resolve_vars_if_possible(&arg_param_ty);
             debug!("deduce_sig_from_projection: arg_param_ty={:?}", arg_param_ty);
 
             match arg_param_ty.sty {
@@ -295,7 +295,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         let ret_param_ty = projection.skip_binder().ty;
-        let ret_param_ty = self.resolve_type_vars_if_possible(&ret_param_ty);
+        let ret_param_ty = self.resolve_vars_if_possible(&ret_param_ty);
         debug!("deduce_sig_from_projection: ret_param_ty={:?}", ret_param_ty);
 
         let sig = self.tcx.mk_fn_sig(
