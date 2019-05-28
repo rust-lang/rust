@@ -357,7 +357,8 @@ impl<T> RawTable<T> {
     pub fn new() -> Self {
         Self {
             data: NonNull::dangling(),
-            ctrl: NonNull::from(&Group::static_empty()[0]),
+            // Be careful to cast the entire slice to a raw pointer.
+            ctrl: unsafe { NonNull::new_unchecked(Group::static_empty().as_ptr() as *mut u8) },
             bucket_mask: 0,
             items: 0,
             growth_left: 0,
