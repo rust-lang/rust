@@ -62,7 +62,7 @@ fn make_x() -> P<Expr> {
 /// Iterate over exprs of depth up to `depth`. The goal is to explore all "interesting"
 /// combinations of expression nesting. For example, we explore combinations using `if`, but not
 /// `while` or `match`, since those should print and parse in much the same way as `if`.
-fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
+fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
     if depth == 0 {
         f(make_x());
         return;
