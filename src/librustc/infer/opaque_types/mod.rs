@@ -1,6 +1,3 @@
-use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::Span;
-
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::Node;
@@ -11,6 +8,7 @@ use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{InternalSubsts, Kind, SubstsRef, UnpackedKind};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use crate::util::nodemap::DefIdMap;
+use rustc_data_structures::fx::FxHashMap;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
@@ -303,11 +301,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let required_region_bounds = tcx.required_region_bounds(opaque_type, bounds.predicates);
             debug_assert!(!required_region_bounds.is_empty());
 
-            for region in required_region_bounds {
-                concrete_ty.visit_with(&mut OpaqueTypeOutlivesVisitor {
-                    infcx: self,
-                    least_region: region,
-                    span,
+            for required_region in required_region_bounds {
+                concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+                    tcx: self.tcx,
+                    op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
                 });
             }
             return;
@@ -389,7 +386,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let least_region = least_region.unwrap_or(tcx.lifetimes.re_static);
         debug!("constrain_opaque_types: least_region={:?}", least_region);
 
-        concrete_ty.visit_with(&mut OpaqueTypeOutlivesVisitor { infcx: self, least_region, span });
+        concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+            tcx: self.tcx,
+            op: |r| self.sub_regions(infer::CallReturn(span), least_region, r),
+        });
     }
 
     /// Given the fully resolved, instantiated type for an opaque
@@ -471,13 +471,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 //
 // We ignore any type parameters because impl trait values are assumed to
 // capture all the in-scope type parameters.
-struct OpaqueTypeOutlivesVisitor<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
-    least_region: ty::Region<'tcx>,
-    span: Span,
+struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
+where
+    OP: FnMut(ty::Region<'tcx>),
+{
+    tcx: TyCtxt<'tcx>,
+    op: OP,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for OpaqueTypeOutlivesVisitor<'_, 'tcx> {
+impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
+where
+    OP: FnMut(ty::Region<'tcx>),
+{
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> bool {
         t.skip_binder().visit_with(self);
         false // keep visiting
@@ -488,7 +493,7 @@ impl<'tcx> TypeVisitor<'tcx> for OpaqueTypeOutlivesVisitor<'_, 'tcx> {
             // ignore bound regions, keep visiting
             ty::ReLateBound(_, _) => false,
             _ => {
-                self.infcx.sub_regions(infer::CallReturn(self.span), self.least_region, r);
+                (self.op)(r);
                 false
             }
         }
@@ -504,23 +509,23 @@ impl<'tcx> TypeVisitor<'tcx> for OpaqueTypeOutlivesVisitor<'_, 'tcx> {
             ty::Closure(def_id, ref substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                for upvar_ty in substs.upvar_tys(def_id, self.infcx.tcx) {
+                for upvar_ty in substs.upvar_tys(def_id, self.tcx) {
                     upvar_ty.visit_with(self);
                 }
 
-                substs.closure_sig_ty(def_id, self.infcx.tcx).visit_with(self);
+                substs.closure_sig_ty(def_id, self.tcx).visit_with(self);
             }
 
             ty::Generator(def_id, ref substs, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
-                for upvar_ty in substs.upvar_tys(def_id, self.infcx.tcx) {
+                for upvar_ty in substs.upvar_tys(def_id, self.tcx) {
                     upvar_ty.visit_with(self);
                 }
 
-                substs.return_ty(def_id, self.infcx.tcx).visit_with(self);
-                substs.yield_ty(def_id, self.infcx.tcx).visit_with(self);
+                substs.return_ty(def_id, self.tcx).visit_with(self);
+                substs.yield_ty(def_id, self.tcx).visit_with(self);
             }
             _ => {
                 ty.super_visit_with(self);
