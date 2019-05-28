@@ -383,7 +383,7 @@ impl SyntaxNode {
         let len = new_children.iter().map(|it| it.text_len()).sum::<TextUnit>();
         let new_node = GreenNode::new(rowan::SyntaxKind(self.kind() as u16), new_children);
         let new_file_node = self.replace_with(new_node);
-        let file = SourceFile::new(new_file_node, Vec::new());
+        let file = SourceFile::new(new_file_node);
 
         // FIXME: use a more elegant way to re-fetch the node (#1185), make
         // `range` private afterwards

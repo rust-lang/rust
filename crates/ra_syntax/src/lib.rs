@@ -74,7 +74,7 @@ impl Parse {
 pub use crate::ast::SourceFile;
 
 impl SourceFile {
-    fn new(green: GreenNode, _errors: Vec<SyntaxError>) -> TreeArc<SourceFile> {
+    fn new(green: GreenNode) -> TreeArc<SourceFile> {
         let root = SyntaxNode::new(green);
         if cfg!(debug_assertions) {
             validation::validate_block_structure(&root);
@@ -84,8 +84,8 @@ impl SourceFile {
     }
 
     pub fn parse(text: &str) -> TreeArc<SourceFile> {
-        let (green, errors) = parsing::parse_text(text);
-        SourceFile::new(green, errors)
+        let (green, _errors) = parsing::parse_text(text);
+        SourceFile::new(green)
     }
 
     pub fn reparse(&self, edit: &AtomTextEdit) -> TreeArc<SourceFile> {
@@ -94,7 +94,7 @@ impl SourceFile {
 
     pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<TreeArc<SourceFile>> {
         parsing::incremental_reparse(self.syntax(), edit, self.errors())
-            .map(|(green_node, errors, _reparsed_range)| SourceFile::new(green_node, errors))
+            .map(|(green_node, _errors, _reparsed_range)| SourceFile::new(green_node))
     }
 
     fn full_reparse(&self, edit: &AtomTextEdit) -> TreeArc<SourceFile> {
