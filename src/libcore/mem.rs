@@ -966,7 +966,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 ///
 /// The compiler then knows to not make any incorrect assumptions or optimizations on this code.
 ///
-/// You can think of `MaybeUninit<T>` and being a bit like `Option<T>` but without
+/// You can think of `MaybeUninit<T>` as being a bit like `Option<T>` but without
 /// any of the run-time tracking and without any of the safety checks.
 ///
 /// ## out-pointers
