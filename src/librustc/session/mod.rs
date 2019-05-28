@@ -9,7 +9,7 @@ use crate::lint;
 use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::middle::allocator::AllocatorKind;
 use crate::middle::dependency_format;
-use crate::session::config::OutputType;
+use crate::session::config::{OutputType, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use crate::util::common::{duration_to_secs_str, ErrorReported};
@@ -1137,8 +1137,18 @@ fn build_session_(
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 ) -> Session {
     let self_profiler =
-        if sopts.debugging_opts.self_profile {
-            let profiler = SelfProfiler::new(&sopts.debugging_opts.self_profile_events);
+        if let SwitchWithOptPath::Enabled(ref d) = sopts.debugging_opts.self_profile {
+            let directory = if let Some(ref directory) = d {
+                directory
+            } else {
+                std::path::Path::new(".")
+            };
+
+            let profiler = SelfProfiler::new(
+                directory,
+                sopts.crate_name.as_ref().map(|s| &s[..]),
+                &sopts.debugging_opts.self_profile_events
+            );
             match profiler {
                 Ok(profiler) => {
                     crate::ty::query::QueryName::register_with_profiler(&profiler);
