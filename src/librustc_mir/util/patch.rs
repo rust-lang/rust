@@ -17,7 +17,7 @@ pub struct MirPatch<'tcx> {
 }
 
 impl<'tcx> MirPatch<'tcx> {
-    pub fn new(mir: &Mir<'tcx>) -> Self {
+    pub fn new(mir: &Body<'tcx>) -> Self {
         let mut result = MirPatch {
             patch_map: IndexVec::from_elem(None, mir.basic_blocks()),
             new_blocks: vec![],
@@ -75,7 +75,7 @@ impl<'tcx> MirPatch<'tcx> {
         self.patch_map[bb].is_some()
     }
 
-    pub fn terminator_loc(&self, mir: &Mir<'tcx>, bb: BasicBlock) -> Location {
+    pub fn terminator_loc(&self, mir: &Body<'tcx>, bb: BasicBlock) -> Location {
         let offset = match bb.index().checked_sub(mir.basic_blocks().len()) {
             Some(index) => self.new_blocks[index].statements.len(),
             None => mir[bb].statements.len()
@@ -127,7 +127,7 @@ impl<'tcx> MirPatch<'tcx> {
         self.make_nop.push(loc);
     }
 
-    pub fn apply(self, mir: &mut Mir<'tcx>) {
+    pub fn apply(self, mir: &mut Body<'tcx>) {
         debug!("MirPatch: make nops at: {:?}", self.make_nop);
         for loc in self.make_nop {
             mir.make_statement_nop(loc);
@@ -177,7 +177,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
     }
 
-    pub fn source_info_for_location(&self, mir: &Mir<'_>, loc: Location) -> SourceInfo {
+    pub fn source_info_for_location(&self, mir: &Body<'_>, loc: Location) -> SourceInfo {
         let data = match loc.block.index().checked_sub(mir.basic_blocks().len()) {
             Some(new) => &self.new_blocks[new],
             None => &mir[loc.block]

@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let (mut fudger, value) = self.probe(|snapshot| {
             match f() {
                 Ok(value) => {
-                    let value = self.resolve_type_vars_if_possible(&value);
+                    let value = self.resolve_vars_if_possible(&value);
 
                     // At this point, `value` could in principle refer
                     // to inference variables that have been created during

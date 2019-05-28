@@ -1,11 +1,11 @@
 // compile-pass
-// aux-build:bang_proc_macro.rs
+// aux-build:test-macros.rs
 
 #![feature(proc_macro_hygiene)]
 
 #[macro_use]
-extern crate bang_proc_macro;
+extern crate test_macros;
 
 fn main() {
-    bang_proc_macro!(println!("Hello, world!"));
+    identity!(println!("Hello, world!"));
 }

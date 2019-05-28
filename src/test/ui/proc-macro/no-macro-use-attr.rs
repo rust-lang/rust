@@ -1,9 +1,9 @@
-// aux-build:derive-a.rs
+// aux-build:test-macros.rs
 
 #![feature(rustc_attrs)]
 #![warn(unused_extern_crates)]
 
-extern crate derive_a;
+extern crate test_macros;
 //~^ WARN unused extern crate
 
 #[rustc_error]

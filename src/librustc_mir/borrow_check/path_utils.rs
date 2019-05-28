@@ -2,7 +2,7 @@ use crate::borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseActivation}
 use crate::borrow_check::places_conflict;
 use crate::borrow_check::AccessDepth;
 use crate::dataflow::indexes::BorrowIndex;
-use rustc::mir::{BasicBlock, Location, Mir, Place, PlaceBase};
+use rustc::mir::{BasicBlock, Location, Body, Place, PlaceBase};
 use rustc::mir::{ProjectionElem, BorrowKind};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
@@ -25,7 +25,7 @@ pub(super) enum Control {
 pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     s: &mut S,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     _location: Location,
     access_place: (AccessDepth, &Place<'tcx>),
     borrow_set: &BorrowSet<'tcx>,

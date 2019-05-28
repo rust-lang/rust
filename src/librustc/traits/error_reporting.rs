@@ -186,7 +186,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                error: &MismatchedProjectionTypes<'tcx>)
     {
         let predicate =
-            self.resolve_type_vars_if_possible(&obligation.predicate);
+            self.resolve_vars_if_possible(&obligation.predicate);
 
         if predicate.references_error() {
             return
@@ -531,7 +531,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         where T: fmt::Display + TypeFoldable<'tcx>
     {
         let predicate =
-            self.resolve_type_vars_if_possible(&obligation.predicate);
+            self.resolve_vars_if_possible(&obligation.predicate);
         let mut err = struct_span_err!(self.tcx.sess, obligation.cause.span, E0275,
                                        "overflow evaluating the requirement `{}`",
                                        predicate);
@@ -553,7 +553,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// we do not suggest increasing the overflow limit, which is not
     /// going to help).
     pub fn report_overflow_error_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
-        let cycle = self.resolve_type_vars_if_possible(&cycle.to_owned());
+        let cycle = self.resolve_vars_if_possible(&cycle.to_owned());
         assert!(cycle.len() > 0);
 
         debug!("report_overflow_error_cycle: cycle={:?}", cycle);
@@ -589,7 +589,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn get_parent_trait_ref(&self, code: &ObligationCauseCode<'tcx>) -> Option<String> {
         match code {
             &ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
-                let parent_trait_ref = self.resolve_type_vars_if_possible(
+                let parent_trait_ref = self.resolve_vars_if_possible(
                     &data.parent_trait_ref);
                 match self.get_parent_trait_ref(&data.parent_code) {
                     Some(t) => Some(t),
@@ -625,7 +625,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 match obligation.predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
                         let trait_predicate =
-                            self.resolve_type_vars_if_possible(trait_predicate);
+                            self.resolve_vars_if_possible(trait_predicate);
 
                         if self.tcx.sess.has_errors() && trait_predicate.references_error() {
                             return;
@@ -749,7 +749,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     ty::Predicate::RegionOutlives(ref predicate) => {
-                        let predicate = self.resolve_type_vars_if_possible(predicate);
+                        let predicate = self.resolve_vars_if_possible(predicate);
                         let err = self.region_outlives_predicate(&obligation.cause,
                                                                  &predicate).err().unwrap();
                         struct_span_err!(
@@ -761,7 +761,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                     ty::Predicate::Projection(..) | ty::Predicate::TypeOutlives(..) => {
                         let predicate =
-                            self.resolve_type_vars_if_possible(&obligation.predicate);
+                            self.resolve_vars_if_possible(&obligation.predicate);
                         struct_span_err!(self.tcx.sess, span, E0280,
                             "the requirement `{}` is not satisfied",
                             predicate)
@@ -852,8 +852,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             OutputTypeParameterMismatch(ref found_trait_ref, ref expected_trait_ref, _) => {
-                let found_trait_ref = self.resolve_type_vars_if_possible(&*found_trait_ref);
-                let expected_trait_ref = self.resolve_type_vars_if_possible(&*expected_trait_ref);
+                let found_trait_ref = self.resolve_vars_if_possible(&*found_trait_ref);
+                let expected_trait_ref = self.resolve_vars_if_possible(&*expected_trait_ref);
 
                 if expected_trait_ref.self_ty().references_error() {
                     return;
@@ -1345,7 +1345,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // ambiguous impls. The latter *ought* to be a
         // coherence violation, so we don't report it here.
 
-        let predicate = self.resolve_type_vars_if_possible(&obligation.predicate);
+        let predicate = self.resolve_vars_if_possible(&obligation.predicate);
         let span = obligation.cause.span;
 
         debug!("maybe_report_ambiguity(predicate={:?}, obligation={:?})",
@@ -1617,7 +1617,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.note("shared static variables must have a type that implements `Sync`");
             }
             ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
-                let parent_trait_ref = self.resolve_type_vars_if_possible(&data.parent_trait_ref);
+                let parent_trait_ref = self.resolve_vars_if_possible(&data.parent_trait_ref);
                 let ty = parent_trait_ref.skip_binder().self_ty();
                 err.note(&format!("required because it appears within the type `{}`", ty));
                 obligated_types.push(ty);
@@ -1631,7 +1631,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             ObligationCauseCode::ImplDerivedObligation(ref data) => {
-                let parent_trait_ref = self.resolve_type_vars_if_possible(&data.parent_trait_ref);
+                let parent_trait_ref = self.resolve_vars_if_possible(&data.parent_trait_ref);
                 err.note(
                     &format!("required because of the requirements on the impl of `{}` for `{}`",
                              parent_trait_ref,
@@ -1672,7 +1672,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                obligated_types: &mut Vec<&ty::TyS<'tcx>>,
                                cause_code: &ObligationCauseCode<'tcx>) -> bool {
         if let ObligationCauseCode::BuiltinDerivedObligation(ref data) = cause_code {
-            let parent_trait_ref = self.resolve_type_vars_if_possible(&data.parent_trait_ref);
+            let parent_trait_ref = self.resolve_vars_if_possible(&data.parent_trait_ref);
 
             if obligated_types.iter().any(|ot| ot == &parent_trait_ref.skip_binder().self_ty()) {
                 return true;

@@ -98,7 +98,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
             body_id,
             param_env,
             steps: vec![],
-            cur_ty: infcx.resolve_type_vars_if_possible(&base_ty),
+            cur_ty: infcx.resolve_vars_if_possible(&base_ty),
             obligations: vec![],
             at_start: true,
             include_raw_pointers: false,
@@ -152,7 +152,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
                ty, normalized_ty, obligations);
         self.obligations.extend(obligations);
 
-        Some(self.infcx.resolve_type_vars_if_possible(&normalized_ty))
+        Some(self.infcx.resolve_vars_if_possible(&normalized_ty))
     }
 
     /// Returns the final type, generating an error if it is an
@@ -164,7 +164,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
     /// Returns the final type we ended up with, which may well be an
     /// inference variable (we will resolve it first, if possible).
     pub fn maybe_ambiguous_final_ty(&self) -> Ty<'tcx> {
-        self.infcx.resolve_type_vars_if_possible(&self.cur_ty)
+        self.infcx.resolve_vars_if_possible(&self.cur_ty)
     }
 
     pub fn step_count(&self) -> usize {

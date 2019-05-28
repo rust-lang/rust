@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("pointer_kind({:?}, {:?})", t, span);
 
-        let t = self.resolve_type_vars_if_possible(&t);
+        let t = self.resolve_vars_if_possible(&t);
 
         if t.references_error() {
             return Err(ErrorReported);
@@ -334,7 +334,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         let tstr = fcx.ty_to_string(self.cast_ty);
         let mut err = type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0620,
                                          "cast to unsized type: `{}` as `{}`",
-                                         fcx.resolve_type_vars_if_possible(&self.expr_ty),
+                                         fcx.resolve_vars_if_possible(&self.expr_ty),
                                          tstr);
         match self.expr_ty.sty {
             ty::Ref(_, _, mt) => {

@@ -71,7 +71,7 @@ pub enum Candidate {
 struct TempCollector<'tcx> {
     temps: IndexVec<Local, TempState>,
     span: Span,
-    mir: &'tcx Mir<'tcx>,
+    mir: &'tcx Body<'tcx>,
 }
 
 impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
@@ -134,7 +134,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
     }
 }
 
-pub fn collect_temps(mir: &Mir<'_>,
+pub fn collect_temps(mir: &Body<'_>,
                      rpo: &mut ReversePostorder<'_, '_>) -> IndexVec<Local, TempState> {
     let mut collector = TempCollector {
         temps: IndexVec::from_elem(TempState::Undefined, &mir.local_decls),
@@ -149,8 +149,8 @@ pub fn collect_temps(mir: &Mir<'_>,
 
 struct Promoter<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    source: &'a mut Mir<'tcx>,
-    promoted: Mir<'tcx>,
+    source: &'a mut Body<'tcx>,
+    promoted: Body<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
 
     /// If true, all nested temps are also kept in the
@@ -369,7 +369,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     }
 }
 
-pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
+pub fn promote_candidates<'a, 'tcx>(mir: &mut Body<'tcx>,
                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     mut temps: IndexVec<Local, TempState>,
                                     candidates: Vec<Candidate>) {
@@ -393,13 +393,13 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         }
 
 
-        // Declare return place local so that `Mir::new` doesn't complain.
+        // Declare return place local so that `mir::Body::new` doesn't complain.
         let initial_locals = iter::once(
             LocalDecl::new_return_place(tcx.types.never, mir.span)
         ).collect();
 
         let promoter = Promoter {
-            promoted: Mir::new(
+            promoted: Body::new(
                 IndexVec::new(),
                 // FIXME: maybe try to filter this to avoid blowing up
                 // memory usage?

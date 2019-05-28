@@ -1174,7 +1174,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Process the region constraints and report any errors that
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
-    /// `resolve_type_vars_if_possible` as well as `fully_resolve`.
+    /// `resolve_vars_if_possible` as well as `fully_resolve`.
     pub fn resolve_regions_and_report_errors(
         &self,
         region_context: DefId,
@@ -1262,7 +1262,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
-        self.resolve_type_vars_if_possible(&t).to_string()
+        self.resolve_vars_if_possible(&t).to_string()
     }
 
     pub fn tys_to_string(&self, ts: &[Ty<'tcx>]) -> String {
@@ -1271,7 +1271,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn trait_ref_to_string(&self, t: &ty::TraitRef<'tcx>) -> String {
-        self.resolve_type_vars_if_possible(t).to_string()
+        self.resolve_vars_if_possible(t).to_string()
     }
 
     /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
@@ -1297,20 +1297,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.type_variables.borrow_mut().root_var(var)
     }
 
-    /// Where possible, replaces type/int/float variables in
+    /// Where possible, replaces type/const variables in
     /// `value` with their final value. Note that region variables
-    /// are unaffected. If a type variable has not been unified, it
+    /// are unaffected. If a type/const variable has not been unified, it
     /// is left as is. This is an idempotent operation that does
     /// not affect inference state in any way and so you can do it
     /// at will.
-    pub fn resolve_type_vars_if_possible<T>(&self, value: &T) -> T
+    pub fn resolve_vars_if_possible<T>(&self, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
         if !value.needs_infer() {
             return value.clone(); // avoid duplicated subst-folding
         }
-        let mut r = resolve::OpportunisticTypeResolver::new(self);
+        let mut r = resolve::OpportunisticVarResolver::new(self);
         value.fold_with(&mut r)
     }
 
@@ -1318,7 +1318,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
     /// resolved type, so it's more efficient than
-    /// `resolve_type_vars_if_possible()`.
+    /// `resolve_vars_if_possible()`.
     pub fn unresolved_type_vars<T>(&self, value: &T) -> Option<(Ty<'tcx>, Option<Span>)>
     where
         T: TypeFoldable<'tcx>,
@@ -1389,7 +1389,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     where
         M: FnOnce(String) -> DiagnosticBuilder<'tcx>,
     {
-        let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
+        let actual_ty = self.resolve_vars_if_possible(&actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
         // Don't report an error if actual type is `Error`.
@@ -1446,7 +1446,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         ty: Ty<'tcx>,
         span: Span,
     ) -> bool {
-        let ty = self.resolve_type_vars_if_possible(&ty);
+        let ty = self.resolve_vars_if_possible(&ty);
 
         // Even if the type may have no inference variables, during
         // type-checking closure types are in local tables only.

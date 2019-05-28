@@ -113,7 +113,7 @@ struct ConstCx<'a, 'tcx> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     mode: Mode,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
 
     per_local: PerQualif<BitSet<Local>>,
 }
@@ -619,7 +619,7 @@ impl Deref for Checker<'a, 'tcx> {
 impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            def_id: DefId,
-           mir: &'a Mir<'tcx>,
+           mir: &'a Body<'tcx>,
            mode: Mode)
            -> Self {
         assert!(def_id.is_local());
@@ -1431,7 +1431,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mir = &tcx.mir_const(def_id).borrow();
 
     if mir.return_ty().references_error() {
-        tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
+        tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: MIR had errors");
         return (1 << IsNotPromotable::IDX, tcx.arena.alloc(BitSet::new_empty(0)));
     }
 
@@ -1444,10 +1444,10 @@ impl MirPass for QualifyAndPromoteConstants {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if mir.return_ty().references_error() {
-            tcx.sess.delay_span_bug(mir.span, "QualifyAndPromoteConstants: Mir had errors");
+            tcx.sess.delay_span_bug(mir.span, "QualifyAndPromoteConstants: MIR had errors");
             return;
         }
 

@@ -5,7 +5,7 @@ use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
 use rustc::mir::traversal;
 use rustc::mir::visit::{PlaceContext, Visitor, NonUseContext, MutatingUseContext};
-use rustc::mir::{self, Location, Mir, Local};
+use rustc::mir::{self, Location, Body, Local};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -90,7 +90,7 @@ crate enum LocalsStateAtExit {
 impl LocalsStateAtExit {
     fn build(
         locals_are_invalidated_at_exit: bool,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         move_data: &MoveData<'tcx>
     ) -> Self {
         struct HasStorageDead(BitSet<Local>);
@@ -107,7 +107,7 @@ impl LocalsStateAtExit {
             LocalsStateAtExit::AllAreInvalidated
         } else {
             let mut has_storage_dead = HasStorageDead(BitSet::new_empty(mir.local_decls.len()));
-            has_storage_dead.visit_mir(mir);
+            has_storage_dead.visit_body(mir);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
             for move_out in &move_data.moves {
                 if let Some(index) = move_data.base_local(move_out.path) {
@@ -123,7 +123,7 @@ impl LocalsStateAtExit {
 impl<'tcx> BorrowSet<'tcx> {
     pub fn build(
         tcx: TyCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         locals_are_invalidated_at_exit: bool,
         move_data: &MoveData<'tcx>
     ) -> Self {
@@ -163,7 +163,7 @@ impl<'tcx> BorrowSet<'tcx> {
 
 struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
     activation_map: FxHashMap<Location, Vec<BorrowIndex>>,

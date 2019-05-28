@@ -8,9 +8,7 @@ use crate::hir::def_id::DefId;
 use crate::ty::subst::{Kind, UnpackedKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::{GlobalId, ConstValue, Scalar};
-use crate::util::common::ErrorReported;
-use syntax_pos::DUMMY_SP;
+use crate::mir::interpret::{ConstValue, Scalar, GlobalId};
 use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
@@ -474,55 +472,19 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) =>
         {
             let t = relation.relate(&a_t, &b_t)?;
-            let to_u64 = |x: ty::Const<'tcx>| -> Result<u64, ErrorReported> {
-                match x.val {
-                    // FIXME(const_generics): this doesn't work right now,
-                    // because it tries to relate an `Infer` to a `Param`.
-                    ConstValue::Unevaluated(def_id, substs) => {
-                        // FIXME(eddyb) get the right param_env.
-                        let param_env = ty::ParamEnv::empty();
-                        if let Some(substs) = tcx.lift_to_global(&substs) {
-                            let instance = ty::Instance::resolve(
-                                tcx.global_tcx(),
-                                param_env,
-                                def_id,
-                                substs,
-                            );
-                            if let Some(instance) = instance {
-                                let cid = GlobalId {
-                                    instance,
-                                    promoted: None,
-                                };
-                                if let Some(s) = tcx.const_eval(param_env.and(cid))
-                                                    .ok()
-                                                    .map(|c| c.unwrap_usize(tcx)) {
-                                    return Ok(s)
-                                }
-                            }
+            match relation.relate(&sz_a, &sz_b) {
+                Ok(sz) => Ok(tcx.mk_ty(ty::Array(t, sz))),
+                Err(err) => {
+                    // Check whether the lengths are both concrete/known values,
+                    // but are unequal, for better diagnostics.
+                    match (sz_a.assert_usize(tcx), sz_b.assert_usize(tcx)) {
+                        (Some(sz_a_val), Some(sz_b_val)) => {
+                            Err(TypeError::FixedArraySize(
+                                expected_found(relation, &sz_a_val, &sz_b_val)
+                            ))
                         }
-                        tcx.sess.delay_span_bug(tcx.def_span(def_id),
-                            "array length could not be evaluated");
-                        Err(ErrorReported)
+                        _ => return Err(err),
                     }
-                    _ => x.assert_usize(tcx).ok_or_else(|| {
-                        tcx.sess.delay_span_bug(DUMMY_SP,
-                            "array length could not be evaluated");
-                        ErrorReported
-                    })
-                }
-            };
-            match (to_u64(*sz_a), to_u64(*sz_b)) {
-                (Ok(sz_a_u64), Ok(sz_b_u64)) => {
-                    if sz_a_u64 == sz_b_u64 {
-                        Ok(tcx.mk_ty(ty::Array(t, sz_a)))
-                    } else {
-                        Err(TypeError::FixedArraySize(
-                            expected_found(relation, &sz_a_u64, &sz_b_u64)))
-                    }
-                }
-                // We reported an error or will ICE, so we can return Error.
-                (Err(ErrorReported), _) | (_, Err(ErrorReported)) => {
-                    Ok(tcx.types.err)
                 }
             }
         }
@@ -598,11 +560,36 @@ where
 {
     let tcx = relation.tcx();
 
+    let eagerly_eval = |x: &'tcx ty::Const<'tcx>| {
+        if let ConstValue::Unevaluated(def_id, substs) = x.val {
+            // FIXME(eddyb) get the right param_env.
+            let param_env = ty::ParamEnv::empty();
+            if let Some(substs) = tcx.lift_to_global(&substs) {
+                let instance = ty::Instance::resolve(
+                    tcx.global_tcx(),
+                    param_env,
+                    def_id,
+                    substs,
+                );
+                if let Some(instance) = instance {
+                    let cid = GlobalId {
+                        instance,
+                        promoted: None,
+                    };
+                    if let Ok(ct) = tcx.const_eval(param_env.and(cid)) {
+                        return ct.val;
+                    }
+                }
+            }
+        }
+        x.val
+    };
+
     // Currently, the values that can be unified are those that
     // implement both `PartialEq` and `Eq`, corresponding to
     // `structural_match` types.
     // FIXME(const_generics): check for `structural_match` synthetic attribute.
-    match (a.val, b.val) {
+    match (eagerly_eval(a), eagerly_eval(b)) {
         (ConstValue::Infer(_), _) | (_, ConstValue::Infer(_)) => {
             // The caller should handle these cases!
             bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
@@ -613,8 +600,13 @@ where
         (ConstValue::Placeholder(p1), ConstValue::Placeholder(p2)) if p1 == p2 => {
             Ok(a)
         }
-        (ConstValue::Scalar(Scalar::Raw { .. }), _) if a == b => {
-            Ok(a)
+        (a_val @ ConstValue::Scalar(Scalar::Raw { .. }), b_val @ _)
+            if a.ty == b.ty && a_val == b_val =>
+        {
+            Ok(tcx.mk_const(ty::Const {
+                val: a_val,
+                ty: a.ty,
+            }))
         }
         (ConstValue::ByRef(..), _) => {
             bug!(
@@ -635,9 +627,7 @@ where
                 }))
             }
 
-            _ => {
-            Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
-        }
+        _ => Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
     }
 }
 

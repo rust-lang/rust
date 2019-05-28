@@ -3,7 +3,7 @@
 
 use rustc::hir::def::DefKind;
 use rustc::mir::{
-    AggregateKind, Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Local,
+    AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue, Local,
     NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind,
     TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp, ProjectionElem,
     SourceScope, SourceScopeLocalData, LocalDecl, Promoted,
@@ -33,7 +33,7 @@ impl MirPass for ConstProp {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
             return;
@@ -63,7 +63,7 @@ impl MirPass for ConstProp {
         // That would require an uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
         let mut optimization_finder = ConstPropagator::new(mir, tcx, source);
-        optimization_finder.visit_mir(mir);
+        optimization_finder.visit_body(mir);
 
         // put back the data we stole from `mir`
         std::mem::replace(
@@ -91,7 +91,7 @@ struct ConstPropagator<'a, 'mir, 'tcx:'a+'mir> {
     param_env: ParamEnv<'tcx>,
     source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
-    promoted: IndexVec<Promoted, Mir<'tcx>>,
+    promoted: IndexVec<Promoted, Body<'tcx>>,
 }
 
 impl<'a, 'b, 'tcx> LayoutOf for ConstPropagator<'a, 'b, 'tcx> {
@@ -119,7 +119,7 @@ impl<'a, 'b, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'a, 'b, 'tcx> {
 
 impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
     fn new(
-        mir: &mut Mir<'tcx>,
+        mir: &mut Body<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         source: MirSource<'tcx>,
     ) -> ConstPropagator<'a, 'mir, 'tcx> {
@@ -143,7 +143,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             can_const_prop,
             places: IndexVec::from_elem(None, &mir.local_decls),
             source_scope_local_data,
-            //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_mir()` needs it
+            //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
             local_decls: mir.local_decls.clone(),
             promoted,
         }
@@ -569,7 +569,7 @@ struct CanConstProp {
 
 impl CanConstProp {
     /// returns true if `local` can be propagated
-    fn check(mir: &Mir<'_>) -> IndexVec<Local, bool> {
+    fn check(mir: &Body<'_>) -> IndexVec<Local, bool> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(true, &mir.local_decls),
             found_assignment: IndexVec::from_elem(false, &mir.local_decls),
@@ -586,7 +586,7 @@ impl CanConstProp {
                 trace!("local {:?} can't be propagated because it's not a temporary", local);
             }
         }
-        cpv.visit_mir(mir);
+        cpv.visit_body(mir);
         cpv.can_const_prop
     }
 }

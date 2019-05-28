@@ -210,11 +210,11 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             _ => (),
         }
 
-        let expected_trait_ref = self.infcx.resolve_type_vars_if_possible(&ty::TraitRef {
+        let expected_trait_ref = self.infcx.resolve_vars_if_possible(&ty::TraitRef {
             def_id: trait_def_id,
             substs: expected_substs,
         });
-        let actual_trait_ref = self.infcx.resolve_type_vars_if_possible(&ty::TraitRef {
+        let actual_trait_ref = self.infcx.resolve_vars_if_possible(&ty::TraitRef {
             def_id: trait_def_id,
             substs: actual_substs,
         });

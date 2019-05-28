@@ -1,21 +1,21 @@
 // compile-pass
-// aux-build:issue-53481.rs
+// aux-build:test-macros.rs
 
 #[macro_use]
-extern crate issue_53481;
+extern crate test_macros;
 
 mod m1 {
-    use m2::MyTrait;
+    use m2::Empty;
 
-    #[derive(MyTrait)]
+    #[derive(Empty)]
     struct A {}
 }
 
 mod m2 {
-    pub type MyTrait = u8;
+    pub type Empty = u8;
 
-    #[derive(MyTrait)]
-    #[my_attr]
+    #[derive(Empty)]
+    #[empty_helper]
     struct B {}
 }
 

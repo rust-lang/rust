@@ -226,7 +226,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // Now that we know the types can be unified we find the unified type and use
                 // it to type the entire expression.
-                let common_type = self.resolve_type_vars_if_possible(&lhs_ty);
+                let common_type = self.resolve_vars_if_possible(&lhs_ty);
 
                 // subtyping doesn't matter here, as the value is some kind of scalar
                 self.demand_eqtype_pat(pat.span, expected, lhs_ty, discrim_span);

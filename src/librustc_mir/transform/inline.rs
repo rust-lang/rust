@@ -41,7 +41,7 @@ impl MirPass for Inline {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(mir);
         }
@@ -54,7 +54,7 @@ struct Inliner<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Inliner<'a, 'tcx> {
-    fn run_pass(&self, caller_mir: &mut Mir<'tcx>) {
+    fn run_pass(&self, caller_mir: &mut Body<'tcx>) {
         // Keep a queue of callsites to try inlining on. We take
         // advantage of the fact that queries detect cycles here to
         // allow us to try and fetch the fully optimized MIR of a
@@ -171,7 +171,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
     fn get_valid_function_call(&self,
                                bb: BasicBlock,
                                bb_data: &BasicBlockData<'tcx>,
-                               caller_mir: &Mir<'tcx>,
+                               caller_mir: &Body<'tcx>,
                                param_env: ParamEnv<'tcx>,
     ) -> Option<CallSite<'tcx>> {
         // Don't inline calls that are in cleanup blocks.
@@ -204,7 +204,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
     fn consider_optimizing(&self,
                            callsite: CallSite<'tcx>,
-                           callee_mir: &Mir<'tcx>)
+                           callee_mir: &Body<'tcx>)
                            -> bool
     {
         debug!("consider_optimizing({:?})", callsite);
@@ -216,7 +216,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
     fn should_inline(&self,
                      callsite: CallSite<'tcx>,
-                     callee_mir: &Mir<'tcx>)
+                     callee_mir: &Body<'tcx>)
                      -> bool
     {
         debug!("should_inline({:?})", callsite);
@@ -394,8 +394,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
     fn inline_call(&self,
                    callsite: CallSite<'tcx>,
-                   caller_mir: &mut Mir<'tcx>,
-                   mut callee_mir: Mir<'tcx>) -> bool {
+                   caller_mir: &mut Body<'tcx>,
+                   mut callee_mir: Body<'tcx>) -> bool {
         let terminator = caller_mir[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
             // FIXME: Handle inlining of diverging calls
@@ -531,7 +531,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         &self,
         args: Vec<Operand<'tcx>>,
         callsite: &CallSite<'tcx>,
-        caller_mir: &mut Mir<'tcx>,
+        caller_mir: &mut Body<'tcx>,
     ) -> Vec<Local> {
         let tcx = self.tcx;
 
@@ -601,7 +601,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         &self,
         arg: Operand<'tcx>,
         callsite: &CallSite<'tcx>,
-        caller_mir: &mut Mir<'tcx>,
+        caller_mir: &mut Body<'tcx>,
     ) -> Local {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.

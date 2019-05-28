@@ -57,7 +57,7 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
         use rustc::traits::WhereClause::*;
         use rustc::infer::canonical::OriginalQueryValues;
 
-        let goal = self.infcx.resolve_type_vars_if_possible(goal);
+        let goal = self.infcx.resolve_vars_if_possible(goal);
 
         debug!("program_clauses(goal = {:?})", goal);
 

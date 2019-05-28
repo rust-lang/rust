@@ -8,4 +8,5 @@ struct Foo<const NUM_BYTES: usize>(pub [u8; NUM_BYTES]);
 
 fn main() {
     let _ = Foo::<3>([1, 2, 3]); //~ ERROR type annotations needed
+    //~^ ERROR mismatched types
 }

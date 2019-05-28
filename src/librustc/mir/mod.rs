@@ -60,7 +60,7 @@ impl<'tcx> HasLocalDecls<'tcx> for LocalDecls<'tcx> {
     }
 }
 
-impl<'tcx> HasLocalDecls<'tcx> for Mir<'tcx> {
+impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
     fn local_decls(&self) -> &LocalDecls<'tcx> {
         &self.local_decls
     }
@@ -86,7 +86,7 @@ impl MirPhase {
 
 /// Lowered representation of a single function.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Mir<'tcx> {
+pub struct Body<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
@@ -107,15 +107,15 @@ pub struct Mir<'tcx> {
     pub source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
 
     /// Rvalues promoted from this function, such as borrows of constants.
-    /// Each of them is the Mir of a constant with the fn's type parameters
+    /// Each of them is the Body of a constant with the fn's type parameters
     /// in scope, but a separate set of locals.
-    pub promoted: IndexVec<Promoted, Mir<'tcx>>,
+    pub promoted: IndexVec<Promoted, Body<'tcx>>,
 
     /// Yields type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
 
     /// Generator drop glue
-    pub generator_drop: Option<Box<Mir<'tcx>>>,
+    pub generator_drop: Option<Box<Body<'tcx>>>,
 
     /// The layout of a generator. Produced by the state transformation.
     pub generator_layout: Option<GeneratorLayout<'tcx>>,
@@ -167,12 +167,12 @@ pub struct Mir<'tcx> {
     cache: cache::Cache,
 }
 
-impl<'tcx> Mir<'tcx> {
+impl<'tcx> Body<'tcx> {
     pub fn new(
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
         source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
-        promoted: IndexVec<Promoted, Mir<'tcx>>,
+        promoted: IndexVec<Promoted, Body<'tcx>>,
         yield_ty: Option<Ty<'tcx>>,
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
@@ -189,7 +189,7 @@ impl<'tcx> Mir<'tcx> {
             local_decls.len()
         );
 
-        Mir {
+        Body {
             phase: MirPhase::Build,
             basic_blocks,
             source_scopes,
@@ -423,7 +423,7 @@ pub enum Safety {
     ExplicitUnsafe(hir::HirId),
 }
 
-impl_stable_hash_for!(struct Mir<'tcx> {
+impl_stable_hash_for!(struct Body<'tcx> {
     phase,
     basic_blocks,
     source_scopes,
@@ -442,7 +442,7 @@ impl_stable_hash_for!(struct Mir<'tcx> {
     cache
 });
 
-impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
+impl<'tcx> Index<BasicBlock> for Body<'tcx> {
     type Output = BasicBlockData<'tcx>;
 
     #[inline]
@@ -451,7 +451,7 @@ impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
     }
 }
 
-impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
+impl<'tcx> IndexMut<BasicBlock> for Body<'tcx> {
     #[inline]
     fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
         &mut self.basic_blocks_mut()[index]
@@ -599,7 +599,7 @@ newtype_index! {
     }
 }
 
-/// Classifies locals into categories. See `Mir::local_kind`.
+/// Classifies locals into categories. See `Body::local_kind`.
 #[derive(PartialEq, Eq, Debug, HashStable)]
 pub enum LocalKind {
     /// User-declared variable binding
@@ -2828,23 +2828,23 @@ impl<'tcx> Display for Constant<'tcx> {
     }
 }
 
-impl<'tcx> graph::DirectedGraph for Mir<'tcx> {
+impl<'tcx> graph::DirectedGraph for Body<'tcx> {
     type Node = BasicBlock;
 }
 
-impl<'tcx> graph::WithNumNodes for Mir<'tcx> {
+impl<'tcx> graph::WithNumNodes for Body<'tcx> {
     fn num_nodes(&self) -> usize {
         self.basic_blocks.len()
     }
 }
 
-impl<'tcx> graph::WithStartNode for Mir<'tcx> {
+impl<'tcx> graph::WithStartNode for Body<'tcx> {
     fn start_node(&self) -> Self::Node {
         START_BLOCK
     }
 }
 
-impl<'tcx> graph::WithPredecessors for Mir<'tcx> {
+impl<'tcx> graph::WithPredecessors for Body<'tcx> {
     fn predecessors<'graph>(
         &'graph self,
         node: Self::Node,
@@ -2853,7 +2853,7 @@ impl<'tcx> graph::WithPredecessors for Mir<'tcx> {
     }
 }
 
-impl<'tcx> graph::WithSuccessors for Mir<'tcx> {
+impl<'tcx> graph::WithSuccessors for Body<'tcx> {
     fn successors<'graph>(
         &'graph self,
         node: Self::Node,
@@ -2862,12 +2862,12 @@ impl<'tcx> graph::WithSuccessors for Mir<'tcx> {
     }
 }
 
-impl<'a, 'b> graph::GraphPredecessors<'b> for Mir<'a> {
+impl<'a, 'b> graph::GraphPredecessors<'b> for Body<'a> {
     type Item = BasicBlock;
     type Iter = IntoIter<BasicBlock>;
 }
 
-impl<'a, 'b> graph::GraphSuccessors<'b> for Mir<'a> {
+impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
     type Item = BasicBlock;
     type Iter = iter::Cloned<Successors<'b>>;
 }
@@ -2906,7 +2906,7 @@ impl Location {
     }
 
     /// Returns `true` if `other` is earlier in the control flow graph than `self`.
-    pub fn is_predecessor_of<'tcx>(&self, other: Location, mir: &Mir<'tcx>) -> bool {
+    pub fn is_predecessor_of<'tcx>(&self, other: Location, mir: &Body<'tcx>) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.
         if self.block == other.block && self.statement_index < other.statement_index {
@@ -3159,7 +3159,7 @@ CloneTypeFoldableAndLiftImpls! {
 }
 
 BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
+    impl<'tcx> TypeFoldable<'tcx> for Body<'tcx> {
         phase,
         basic_blocks,
         source_scopes,

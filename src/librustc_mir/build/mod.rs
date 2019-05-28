@@ -26,7 +26,7 @@ use syntax_pos::Span;
 use super::lints;
 
 /// Construct the MIR for a given `DefId`.
-pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'tcx> {
+pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'tcx> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
@@ -164,14 +164,14 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
 
-        // Convert the Mir to global types.
+        // Convert the `mir::Body` to global types.
         let mut globalizer = GlobalizeMir {
             tcx,
             span: mir.span
         };
-        globalizer.visit_mir(&mut mir);
+        globalizer.visit_body(&mut mir);
         let mir = unsafe {
-            mem::transmute::<Mir<'_>, Mir<'tcx>>(mir)
+            mem::transmute::<Body<'_>, Body<'tcx>>(mir)
         };
 
         mir_util::dump_mir(tcx, None, "mir_map", &0,
@@ -236,22 +236,22 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
 fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      ctor_id: hir::HirId,
                                      v: &'tcx hir::VariantData)
-                                     -> Mir<'tcx>
+                                     -> Body<'tcx>
 {
     let span = tcx.hir().span_by_hir_id(ctor_id);
     if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
         tcx.infer_ctxt().enter(|infcx| {
             let mut mir = shim::build_adt_ctor(&infcx, ctor_id, fields, span);
 
-            // Convert the Mir to global types.
+            // Convert the `mir::Body` to global types.
             let tcx = infcx.tcx.global_tcx();
             let mut globalizer = GlobalizeMir {
                 tcx,
                 span: mir.span
             };
-            globalizer.visit_mir(&mut mir);
+            globalizer.visit_body(&mut mir);
             let mir = unsafe {
-                mem::transmute::<Mir<'_>, Mir<'tcx>>(mir)
+                mem::transmute::<Body<'_>, Body<'tcx>>(mir)
             };
 
             mir_util::dump_mir(tcx, None, "mir_map", &0,
@@ -628,7 +628,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    yield_ty: Option<Ty<'gcx>>,
                                    return_ty_span: Span,
                                    body: &'gcx hir::Body)
-                                   -> Mir<'tcx>
+                                   -> Body<'tcx>
     where A: Iterator<Item=ArgInfo<'gcx>>
 {
     let arguments: Vec<_> = arguments.collect();
@@ -748,7 +748,7 @@ fn construct_const<'a, 'gcx, 'tcx>(
     body_id: hir::BodyId,
     const_ty: Ty<'tcx>,
     const_ty_span: Span,
-) -> Mir<'tcx> {
+) -> Body<'tcx> {
     let tcx = hir.tcx();
     let owner_id = tcx.hir().body_owner(body_id);
     let span = tcx.hir().span(owner_id);
@@ -787,7 +787,7 @@ fn construct_const<'a, 'gcx, 'tcx>(
 
 fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
                                    body_id: hir::BodyId)
-                                   -> Mir<'tcx> {
+                                   -> Body<'tcx> {
     let owner_id = hir.tcx().hir().body_owner(body_id);
     let span = hir.tcx().hir().span(owner_id);
     let ty = hir.tcx().types.err;
@@ -849,14 +849,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn finish(self,
               yield_ty: Option<Ty<'tcx>>)
-              -> Mir<'tcx> {
+              -> Body<'tcx> {
         for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {
                 span_bug!(self.fn_span, "no terminator on block {:?}", index);
             }
         }
 
-        Mir::new(
+        Body::new(
             self.cfg.basic_blocks,
             self.source_scopes,
             ClearCrossCrate::Set(self.source_scope_local_data),

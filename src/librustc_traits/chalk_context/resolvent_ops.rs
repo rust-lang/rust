@@ -111,8 +111,8 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     ) -> Fallible<ChalkExClause<'tcx>> {
         debug!(
             "apply_answer_subst(ex_clause = {:?}, selected_goal = {:?})",
-            self.infcx.resolve_type_vars_if_possible(&ex_clause),
-            self.infcx.resolve_type_vars_if_possible(selected_goal)
+            self.infcx.resolve_vars_if_possible(&ex_clause),
+            self.infcx.resolve_vars_if_possible(selected_goal)
         );
 
         let (answer_subst, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(

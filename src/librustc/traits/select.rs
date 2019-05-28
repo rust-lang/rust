@@ -1463,7 +1463,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         let obligation = &stack.obligation;
         let predicate = self.infcx()
-            .resolve_type_vars_if_possible(&obligation.predicate);
+            .resolve_vars_if_possible(&obligation.predicate);
 
         // OK to skip binder because of the nature of the
         // trait-ref-is-knowable check, which does not care about
@@ -1621,7 +1621,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             cause: obligation.cause.clone(),
             recursion_depth: obligation.recursion_depth,
             predicate: self.infcx()
-                .resolve_type_vars_if_possible(&obligation.predicate),
+                .resolve_vars_if_possible(&obligation.predicate),
         };
 
         if obligation.predicate.skip_binder().self_ty().is_ty_var() {
@@ -1737,7 +1737,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> bool {
         let poly_trait_predicate = self.infcx()
-            .resolve_type_vars_if_possible(&obligation.predicate);
+            .resolve_vars_if_possible(&obligation.predicate);
         let (placeholder_trait_predicate, placeholder_map) = self.infcx()
             .replace_bound_vars_with_placeholders(&poly_trait_predicate);
         debug!(
