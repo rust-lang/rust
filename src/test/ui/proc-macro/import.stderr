@@ -1,8 +1,8 @@
-error[E0432]: unresolved import `derive_a::derive_a`
-  --> $DIR/import.rs:8:5
+error[E0432]: unresolved import `test_macros::empty_derive`
+  --> $DIR/import.rs:5:5
    |
-LL | use derive_a::derive_a;
-   |     ^^^^^^^^^^^^^^^^^^ no `derive_a` in the root
+LL | use test_macros::empty_derive;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ no `empty_derive` in the root
 
 error: aborting due to previous error
 

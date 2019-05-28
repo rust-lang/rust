@@ -1,12 +1,11 @@
-// aux-build:attribute-with-error.rs
+// aux-build:test-macros.rs
 
 #![feature(custom_inner_attributes)]
 
-extern crate attribute_with_error;
+#[macro_use]
+extern crate test_macros;
 
-use attribute_with_error::foo;
-
-#[foo]
+#[recollect_attr]
 fn test1() {
     let a: i32 = "foo";
     //~^ ERROR: mismatched types
@@ -15,13 +14,13 @@ fn test1() {
 }
 
 fn test2() {
-    #![foo]
+    #![recollect_attr]
 
     // FIXME: should have a type error here and assert it works but it doesn't
 }
 
 trait A {
-    // FIXME: should have a #[foo] attribute here and assert that it works
+    // FIXME: should have a #[recollect_attr] attribute here and assert that it works
     fn foo(&self) {
         let a: i32 = "foo";
         //~^ ERROR: mismatched types
@@ -31,13 +30,13 @@ trait A {
 struct B;
 
 impl A for B {
-    #[foo]
+    #[recollect_attr]
     fn foo(&self) {
         let a: i32 = "foo";
         //~^ ERROR: mismatched types
     }
 }
 
-#[foo]
+#[recollect_attr]
 fn main() {
 }

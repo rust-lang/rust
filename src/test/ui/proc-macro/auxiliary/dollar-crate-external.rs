@@ -3,14 +3,14 @@ pub type S = u8;
 #[macro_export]
 macro_rules! external {
     () => {
-        dollar_crate::m! {
+        print_bang! {
             struct M($crate::S);
         }
 
-        #[dollar_crate::a]
+        #[print_attr]
         struct A($crate::S);
 
-        #[derive(dollar_crate::d)]
+        #[derive(Print)]
         struct D($crate::S);
     };
 }

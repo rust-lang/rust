@@ -1,9 +1,10 @@
 // compile-pass
-// aux-build:attr_proc_macro.rs
+// aux-build:test-macros.rs
 
-#[macro_use] extern crate attr_proc_macro;
+#[macro_use]
+extern crate test_macros;
 
-#[attr_proc_macro]
+#[identity_attr]
 struct Foo;
 
 fn main() {

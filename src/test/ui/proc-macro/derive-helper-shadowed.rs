@@ -1,16 +1,16 @@
 // compile-pass
-// aux-build:derive-helper-shadowed.rs
+// aux-build:test-macros.rs
 // aux-build:derive-helper-shadowed-2.rs
 
 #[macro_use]
-extern crate derive_helper_shadowed;
-#[macro_use(my_attr)]
+extern crate test_macros;
+#[macro_use(empty_helper)]
 extern crate derive_helper_shadowed_2;
 
-macro_rules! my_attr { () => () }
+macro_rules! empty_helper { () => () }
 
-#[derive(MyTrait)]
-#[my_attr] // OK
+#[derive(Empty)]
+#[empty_helper] // OK
 struct S;
 
 fn main() {}
