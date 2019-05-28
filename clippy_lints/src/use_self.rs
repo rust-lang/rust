@@ -119,7 +119,7 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
         .tcx
         .associated_items(impl_trait_ref.def_id)
         .find(|assoc_item| {
-            assoc_item.kind == ty::AssociatedKind::Method
+            assoc_item.kind == ty::AssocKind::Method
                 && cx
                     .tcx
                     .hygienic_eq(impl_item.ident, assoc_item.ident, impl_trait_ref.def_id)
