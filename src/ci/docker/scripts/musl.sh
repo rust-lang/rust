@@ -22,7 +22,7 @@ shift
 
 export CFLAGS="-fPIC $CFLAGS"
 
-MUSL=musl-1.1.20
+MUSL=musl-1.1.22
 
 # may have been downloaded in a previous run
 if [ ! -d $MUSL ]; then
