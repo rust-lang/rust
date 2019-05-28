@@ -85,7 +85,6 @@ impl<'a, 'tcx, Cx: CodegenMethods<'tcx>> Drop for StatRecorder<'a, 'tcx, Cx> {
             let mut stats = self.cx.stats().borrow_mut();
             let iend = stats.n_llvm_insns;
             stats.fn_stats.push((self.name.take().unwrap(), iend - self.istart));
-            stats.n_fns += 1;
             // Reset LLVM insn count to avoid compound costs.
             stats.n_llvm_insns = self.istart;
         }
@@ -428,8 +427,6 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     let lldecl = cx.instances().borrow().get(&instance).cloned().unwrap_or_else(||
         bug!("Instance `{:?}` not already declared", instance));
 
-    cx.stats().borrow_mut().n_closures += 1;
-
     let mir = cx.tcx().instance_mir(instance.def);
     mir::codegen_mir::<Bx>(cx, lldecl, &mir, instance, sig);
 }
@@ -703,13 +700,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     if tcx.sess.codegen_stats() {
         println!("--- codegen stats ---");
-        println!("n_glues_created: {}", all_stats.n_glues_created);
-        println!("n_null_glues: {}", all_stats.n_null_glues);
-        println!("n_real_glues: {}", all_stats.n_real_glues);
-
-        println!("n_fns: {}", all_stats.n_fns);
-        println!("n_inlines: {}", all_stats.n_inlines);
-        println!("n_closures: {}", all_stats.n_closures);
         println!("fn stats:");
         all_stats.fn_stats.sort_by_key(|&(_, insns)| insns);
         for &(ref name, insns) in all_stats.fn_stats.iter() {
