@@ -396,22 +396,20 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cx = self.cx;
         let tcx = self.cx.tcx();
 
-        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
-            match self.locals[index] {
-                LocalRef::Place(place) => {
-                    return place;
-                }
-                LocalRef::UnsizedPlace(place) => {
-                    return bx.load_operand(place).deref(cx);
-                }
-                LocalRef::Operand(..) => {
-                    bug!("using operand local {:?} as place", place);
+        let result = match *place {
+            mir::Place::Base(mir::PlaceBase::Local(index)) => {
+                match self.locals[index] {
+                    LocalRef::Place(place) => {
+                        return place;
+                    }
+                    LocalRef::UnsizedPlace(place) => {
+                        return bx.load_operand(place).deref(cx);
+                    }
+                    LocalRef::Operand(..) => {
+                        bug!("using operand local {:?} as place", place);
+                    }
                 }
             }
-        }
-
-        let result = match *place {
-            mir::Place::Base(mir::PlaceBase::Local(_)) => bug!(), // handled above
             mir::Place::Base(
                 mir::PlaceBase::Static(
                     box mir::Static { ty, kind: mir::StaticKind::Promoted(promoted) }
