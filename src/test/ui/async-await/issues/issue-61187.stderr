@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow async `fn` parameter as mutable, as it is not declared as mutable
+error[E0596]: cannot borrow `async fn` parameter as mutable, as it is not declared as mutable
   --> $DIR/issue-61187.rs:8:5
    |
 LL | async fn response(data: Vec<u8>) {

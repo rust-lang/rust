@@ -49,7 +49,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             (Some(desc), _) => format!("`{}`", desc),
             (None, Place::Base(PlaceBase::Local(local))) if self.mir.local_decls[*local]
                 .source_info.span.is_compiler_desugaring(CompilerDesugaringKind::Async)
-            => "async `fn` parameter".to_string(),
+            => "`async fn` parameter".to_string(),
             (None, _) => "temporary place".to_string(),
         };
         match the_place_err {
