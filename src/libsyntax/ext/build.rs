@@ -14,23 +14,33 @@ pub trait AstBuilder {
     fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path;
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path;
     fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path;
-    fn path_all(&self, sp: Span,
-                global: bool,
-                idents: Vec<ast::Ident>,
-                args: Vec<ast::GenericArg>,
-                bindings: Vec<ast::TypeBinding>)
-        -> ast::Path;
+    fn path_all(
+        &self, sp: Span,
+        global: bool,
+        idents: Vec<ast::Ident>,
+        lifetimes: Vec<ast::Lifetime>,
+        types: Vec<P<ast::Ty>>,
+        const_args: Vec<ast::AnonConst>,
+        bindings: Vec<ast::TypeBinding>,
+    ) -> ast::Path;
 
-    fn qpath(&self, self_type: P<ast::Ty>,
-             trait_path: ast::Path,
-             ident: ast::Ident)
-             -> (ast::QSelf, ast::Path);
-    fn qpath_all(&self, self_type: P<ast::Ty>,
-                trait_path: ast::Path,
-                ident: ast::Ident,
-                args: Vec<ast::GenericArg>,
-                bindings: Vec<ast::TypeBinding>)
-                -> (ast::QSelf, ast::Path);
+    fn qpath(
+        &self,
+        self_type: P<ast::Ty>,
+        trait_path: ast::Path,
+        ident: ast::Ident,
+    ) -> (ast::QSelf, ast::Path);
+
+    fn qpath_all(
+        &self,
+        self_type: P<ast::Ty>,
+        trait_path: ast::Path,
+        ident: ast::Ident,
+        lifetimes: Vec<ast::Lifetime>,
+        types: Vec<P<ast::Ty>>,
+        const_args: Vec<ast::AnonConst>,
+        bindings: Vec<ast::TypeBinding>,
+    ) -> (ast::QSelf, ast::Path);
 
     // types and consts
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy;
@@ -289,21 +299,24 @@ pub trait AstBuilder {
 
 impl<'a> AstBuilder for ExtCtxt<'a> {
     fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, false, strs, vec![], vec![])
+        self.path_all(span, false, strs, vec![], vec![], vec![], vec![])
     }
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
         self.path(span, vec![id])
     }
     fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, true, strs, vec![], vec![])
+        self.path_all(span, true, strs, vec![], vec![], vec![], vec![])
     }
-    fn path_all(&self,
-                span: Span,
-                global: bool,
-                mut idents: Vec<ast::Ident> ,
-                args: Vec<ast::GenericArg>,
-                bindings: Vec<ast::TypeBinding> )
-                -> ast::Path {
+    fn path_all(
+        &self,
+        span: Span,
+        global: bool,
+        mut idents: Vec<ast::Ident> ,
+        lifetimes: Vec<ast::Lifetime>,
+        types: Vec<P<ast::Ty>>,
+        const_args: Vec<ast::AnonConst>,
+        bindings: Vec<ast::TypeBinding>,
+    ) -> ast::Path {
         assert!(!idents.is_empty());
         let add_root = global && !idents[0].is_path_segment_keyword();
         let mut segments = Vec::with_capacity(idents.len() + add_root as usize);
@@ -314,8 +327,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         segments.extend(idents.into_iter().map(|ident| {
             ast::PathSegment::from_ident(ident.with_span_pos(span))
         }));
-        let args = if !args.is_empty() || !bindings.is_empty() {
-            ast::AngleBracketedArgs { args, bindings, span }.into()
+        let args = if !lifetimes.is_empty() ||
+            !types.is_empty() ||
+            !const_args.is_empty() ||
+            !bindings.is_empty()
+        {
+            ast::AngleBracketedArgs { lifetimes, types, const_args, bindings, span }.into()
         } else {
             None
         };
@@ -330,27 +347,37 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     /// Constructs a qualified path.
     ///
     /// Constructs a path like `<self_type as trait_path>::ident`.
-    fn qpath(&self,
-             self_type: P<ast::Ty>,
-             trait_path: ast::Path,
-             ident: ast::Ident)
-             -> (ast::QSelf, ast::Path) {
-        self.qpath_all(self_type, trait_path, ident, vec![], vec![])
+    fn qpath(
+        &self,
+        self_type: P<ast::Ty>,
+        trait_path: ast::Path,
+        ident: ast::Ident,
+    ) -> (ast::QSelf, ast::Path) {
+        self.qpath_all(self_type, trait_path, ident, vec![], vec![], vec![], vec![])
     }
 
     /// Constructs a qualified path.
     ///
     /// Constructs a path like `<self_type as trait_path>::ident<'a, T, A = Bar>`.
-    fn qpath_all(&self,
-                 self_type: P<ast::Ty>,
-                 trait_path: ast::Path,
-                 ident: ast::Ident,
-                 args: Vec<ast::GenericArg>,
-                 bindings: Vec<ast::TypeBinding>)
-                 -> (ast::QSelf, ast::Path) {
+    fn qpath_all(
+        &self,
+        self_type: P<ast::Ty>,
+        trait_path: ast::Path,
+        ident: ast::Ident,
+        lifetimes: Vec<ast::Lifetime>,
+        types: Vec<P<ast::Ty>>,
+        const_args: Vec<ast::AnonConst>,
+        bindings: Vec<ast::TypeBinding>,
+    ) -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
-        let args = if !args.is_empty() || !bindings.is_empty() {
-            ast::AngleBracketedArgs { args, bindings, span: ident.span }.into()
+        let args = if !lifetimes.is_empty() ||
+            !types.is_empty() ||
+            !const_args.is_empty() ||
+            !bindings.is_empty()
+        {
+            ast::AngleBracketedArgs {
+                lifetimes, types, const_args, bindings, span: ident.span,
+            }.into()
         } else {
             None
         };

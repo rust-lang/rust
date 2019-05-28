@@ -549,21 +549,30 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     fn ty_for_param(&self, p: ty::ParamTy, source_ty: Ty<'tcx>) -> Ty<'tcx> {
         // Look up the type in the substitutions. It really should be in there.
         let opt_ty = self.substs.get(p.index as usize).map(|k| k.unpack());
+        debug!(
+            "parameter `{:?}` ({:?}/{}), found {:?} when substituting (root type={:?}) substs={:?}",
+            p,
+            source_ty,
+            p.index,
+            opt_ty,
+            self.root_ty,
+            self.substs,
+        );
         let ty = match opt_ty {
             Some(UnpackedKind::Type(ty)) => ty,
             Some(kind) => {
                 let span = self.span.unwrap_or(DUMMY_SP);
-                span_bug!(
-                    span,
-                    "expected type for `{:?}` ({:?}/{}) but found {:?} \
-                     when substituting (root type={:?}) substs={:?}",
+                self.tcx.sess.delay_span_bug(span, &format!(
+                    "expected type for `{:?}` ({:?}/{}) but found {:?} when substituting \
+                     (root type={:?}) substs={:?}",
                     p,
                     source_ty,
                     p.index,
                     kind,
                     self.root_ty,
                     self.substs,
-                );
+                ));
+                self.tcx.types.err
             }
             None => {
                 let span = self.span.unwrap_or(DUMMY_SP);

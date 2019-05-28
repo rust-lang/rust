@@ -1,26 +1,26 @@
-error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/suggest-move-lifetimes.rs:1:13
+error: incorrect parameter order
+  --> $DIR/suggest-move-lifetimes.rs:1:9
    |
 LL | struct A<T, 'a> {
-   |         ----^^- help: reorder the parameters: lifetimes, then types: `<'a, T>`
+   |         ^^^^^^^ help: reorder the parameters: `<'a, T>`
 
-error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/suggest-move-lifetimes.rs:5:13
+error: incorrect parameter order
+  --> $DIR/suggest-move-lifetimes.rs:5:9
    |
 LL | struct B<T, 'a, U> {
-   |         ----^^---- help: reorder the parameters: lifetimes, then types: `<'a, T, U>`
+   |         ^^^^^^^^^^ help: reorder the parameters: `<'a, T, U>`
 
-error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/suggest-move-lifetimes.rs:10:16
+error: incorrect parameter order
+  --> $DIR/suggest-move-lifetimes.rs:10:9
    |
 LL | struct C<T, U, 'a> {
-   |         -------^^- help: reorder the parameters: lifetimes, then types: `<'a, T, U>`
+   |         ^^^^^^^^^^ help: reorder the parameters: `<'a, T, U>`
 
-error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/suggest-move-lifetimes.rs:15:16
+error: incorrect parameter order
+  --> $DIR/suggest-move-lifetimes.rs:15:9
    |
 LL | struct D<T, U, 'a, 'b, V, 'c> {
-   |         -------^^--^^-----^^- help: reorder the parameters: lifetimes, then types: `<'a, 'b, 'c, T, U, V>`
+   |         ^^^^^^^^^^^^^^^^^^^^^ help: reorder the parameters: `<'a, 'b, 'c, T, U, V>`
 
 error: aborting due to 4 previous errors
 

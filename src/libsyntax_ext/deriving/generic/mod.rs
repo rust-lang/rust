@@ -184,7 +184,7 @@ use std::vec;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
-use syntax::ast::{VariantData, GenericParamKind, GenericArg};
+use syntax::ast::{VariantData, GenericParamKind};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
@@ -649,20 +649,26 @@ impl<'a> TraitDef<'a> {
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(trait_path);
 
-        let self_params: Vec<_> = generics.params.iter().map(|param| match param.kind {
-            GenericParamKind::Lifetime { .. } => {
-                GenericArg::Lifetime(cx.lifetime(self.span, param.ident))
+        let mut lifetimes = vec![];
+        let mut types = vec![];
+        let mut const_args = vec![];
+        for param in &generics.params {
+            match param.kind {
+                GenericParamKind::Lifetime { .. } => {
+                    lifetimes.push(cx.lifetime(self.span, param.ident));
+                }
+                GenericParamKind::Type { .. } => {
+                    types.push(cx.ty_ident(self.span, param.ident));
+                }
+                GenericParamKind::Const { .. } => {
+                    const_args.push(cx.const_ident(self.span, param.ident));
+                }
             }
-            GenericParamKind::Type { .. } => {
-                GenericArg::Type(cx.ty_ident(self.span, param.ident))
-            }
-            GenericParamKind::Const { .. } => {
-                GenericArg::Const(cx.const_ident(self.span, param.ident))
-            }
-        }).collect();
+        }
 
         // Create the type of `self`.
-        let path = cx.path_all(self.span, false, vec![type_ident], self_params, vec![]);
+        let sp = self.span;
+        let path = cx.path_all(sp, false, vec![type_ident], lifetimes, types, const_args, vec![]);
         let self_type = cx.ty_path(path);
 
         let attr = cx.attribute(self.span,

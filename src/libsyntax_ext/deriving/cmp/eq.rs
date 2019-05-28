@@ -2,7 +2,7 @@ use crate::deriving::path_std;
 use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
-use syntax::ast::{self, Expr, MetaItem, GenericArg};
+use syntax::ast::{self, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
@@ -53,9 +53,15 @@ fn cs_total_eq_assert(cx: &mut ExtCtxt<'_>,
         // Generate statement `let _: helper_name<ty>;`,
         // set the expn ID so we can use the unstable struct.
         let span = span.with_ctxt(cx.backtrace());
-        let assert_path = cx.path_all(span, true,
-                                        cx.std_path(&[sym::cmp, Symbol::intern(helper_name)]),
-                                        vec![GenericArg::Type(ty)], vec![]);
+        let assert_path = cx.path_all(
+            span,
+            true,
+            cx.std_path(&[sym::cmp, Symbol::intern(helper_name)]),
+            vec![],
+            vec![ty],
+            vec![],
+            vec![],
+        );
         stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
     fn process_variant(cx: &mut ExtCtxt<'_>,

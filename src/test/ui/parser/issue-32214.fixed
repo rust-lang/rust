@@ -1,7 +1,7 @@
 // run-rustfix
 pub trait Trait<T> { type Item; }
 
-pub fn test<W, I: Trait<Item=(), W> >() {}
+pub fn test<W, I: Trait<W, Item = ()> >() {}
 //~^ ERROR incorrect parameter order
 
 fn main() { }

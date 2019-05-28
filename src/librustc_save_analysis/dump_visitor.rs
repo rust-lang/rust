@@ -795,11 +795,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             if let Some(ref generic_args) = seg.args {
                 match **generic_args {
                     ast::GenericArgs::AngleBracketed(ref data) => {
-                        for arg in &data.args {
-                            match arg {
-                                ast::GenericArg::Type(ty) => self.visit_ty(ty),
-                                _ => {}
-                            }
+                        for ty in &data.types {
+                            self.visit_ty(ty);
                         }
                     }
                     ast::GenericArgs::Parenthesized(ref data) => {
@@ -861,11 +858,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         // Explicit types in the turbo-fish.
         if let Some(ref generic_args) = seg.args {
             if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
-                for arg in &data.args {
-                    match arg {
-                        ast::GenericArg::Type(ty) => self.visit_ty(ty),
-                        _ => {}
-                    }
+                for ty in &data.types {
+                    self.visit_ty(ty);
                 }
             }
         }

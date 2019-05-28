@@ -1,8 +1,9 @@
 // ignore-tidy-filelength
 
-use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
-use crate::ast::{Attribute, MacDelimiter, GenericArg};
+use crate::ast::{
+    self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax, SelfKind, GenericBound,
+    TraitBoundModifier, Attribute, MacDelimiter,
+};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::attr;
 use crate::source_map::{self, SourceMap, Spanned};
@@ -473,7 +474,7 @@ pub trait PrintState<'a> {
         self.writer().end()
     }
 
-    fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F) -> io::Result<()>
+    fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F) -> io::Result<bool>
         where F: FnMut(&mut Self, &T) -> io::Result<()>,
     {
         self.rbox(0, b)?;
@@ -482,7 +483,7 @@ pub trait PrintState<'a> {
             if first { first = false; } else { self.word_space(",")?; }
             op(self, elt)?;
         }
-        self.end()
+        self.end().map(|_| !elts.is_empty())
     }
 
     fn maybe_print_comment(&mut self, pos: BytePos) -> io::Result<()> {
@@ -930,14 +931,6 @@ impl<'a> State<'a> {
             self.nbsp()?;
         }
         Ok(())
-    }
-
-    pub fn print_generic_arg(&mut self, generic_arg: &GenericArg) -> io::Result<()> {
-        match generic_arg {
-            GenericArg::Lifetime(lt) => self.print_lifetime(*lt),
-            GenericArg::Type(ty) => self.print_type(ty),
-            GenericArg::Const(ct) => self.print_expr(&ct.value),
-        }
     }
 
     pub fn print_type(&mut self, ty: &ast::Ty) -> io::Result<()> {
@@ -2444,21 +2437,30 @@ impl<'a> State<'a> {
             ast::GenericArgs::AngleBracketed(ref data) => {
                 self.s.word("<")?;
 
-                self.commasep(Inconsistent, &data.args, |s, generic_arg| {
-                    s.print_generic_arg(generic_arg)
+                let mut comma = false;
+                comma |= self.commasep(Inconsistent, &data.lifetimes, |s, lt| {
+                    s.print_lifetime(*lt)
                 })?;
-
-                let mut comma = data.args.len() != 0;
-
+                if comma && (
+                    !data.types.is_empty() ||
+                    !data.const_args.is_empty() ||
+                    !data.bindings.is_empty()
+                ) {
+                    self.word_space(",")?
+                }
+                comma |= self.commasep(Inconsistent, &data.types, |s, ty| s.print_type(ty))?;
+                if comma && (!data.const_args.is_empty() || !data.bindings.is_empty()) {
+                    self.word_space(",")?
+                }
+                self.commasep(Inconsistent, &data.const_args, |s, c| s.print_expr(&c.value))?;
+                if comma && !data.bindings.is_empty() {
+                    self.word_space(",")?
+                }
                 for binding in data.bindings.iter() {
-                    if comma {
-                        self.word_space(",")?
-                    }
                     self.print_ident(binding.ident)?;
                     self.s.space()?;
                     self.word_space("=")?;
                     self.print_type(&binding.ty)?;
-                    comma = true;
                 }
 
                 self.s.word(">")?

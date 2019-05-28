@@ -1,0 +1,8 @@
+// run-rustfix
+#![allow(unused, dead_code)]
+fn first<'a, 'b, T>() {} //~ ERROR incorrect parameter order
+fn second<'a, 'b, T>() {} //~ ERROR incorrect parameter order
+fn third<'a, T, U>() {} //~ ERROR incorrect parameter order
+fn fourth<'a, 'b, 'c, T, U, V>() {} //~ ERROR incorrect parameter order
+
+fn main() {}

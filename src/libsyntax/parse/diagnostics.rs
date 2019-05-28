@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::ast::{
     BlockCheckMode, BinOpKind, Expr, ExprKind, Item, ItemKind, Pat, PatKind, PathSegment, QSelf,
-    Ty, TyKind, VariantData,
+    Ty, TyKind, VariantData, Lifetime, TypeBinding, AnonConst,
 };
 use crate::parse::{SeqSep, token, PResult, Parser};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
@@ -1205,4 +1205,46 @@ impl<'a> Parser<'a> {
         err.span_label(span, "expected expression");
         err
     }
+}
+
+pub fn generic_arg_list(
+    lifetimes: &[Lifetime],
+    types: &[P<Ty>],
+    const_args: &[AnonConst],
+    bindings: &[TypeBinding],
+
+) -> String {
+    let mut ordered_params = String::new();
+    let mut first = true;
+    for lt in lifetimes {
+        if !first {
+            ordered_params += ", ";
+        }
+        ordered_params += &lt.ident.as_str();
+        first = false;
+    }
+    for ty in types {
+        if !first {
+            ordered_params += ", ";
+        }
+        ordered_params += &pprust::ty_to_string(ty);
+        first = false;
+    }
+    for const_arg in const_args {
+        if !first {
+            ordered_params += ", ";
+        }
+        ordered_params += &pprust::expr_to_string(&const_arg.value);
+        first = false;
+    }
+    for binding in bindings {
+        if !first {
+            ordered_params += ", ";
+        }
+        ordered_params += &binding.ident.as_str();
+        ordered_params += " = ";
+        ordered_params += &pprust::ty_to_string(&binding.ty);
+        first = false;
+    }
+    ordered_params
 }

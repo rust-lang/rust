@@ -1,0 +1,5 @@
+// run-rustfix
+#![allow(dead_code)]
+trait Foo<'a, 'b, T> {} //~ ERROR incorrect parameter order
+
+fn main() {}

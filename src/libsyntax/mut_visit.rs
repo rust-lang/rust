@@ -151,10 +151,6 @@ pub trait MutVisitor: Sized {
         noop_filter_map_expr(e, self)
     }
 
-    fn visit_generic_arg(&mut self, arg: &mut GenericArg) {
-        noop_visit_generic_arg(arg, self);
-    }
-
     fn visit_ty(&mut self, t: &mut P<Ty>) {
         noop_visit_ty(t, self);
     }
@@ -497,18 +493,14 @@ pub fn noop_visit_generic_args<T: MutVisitor>(generic_args: &mut GenericArgs, vi
     }
 }
 
-pub fn noop_visit_generic_arg<T: MutVisitor>(arg: &mut GenericArg, vis: &mut T) {
-    match arg {
-        GenericArg::Lifetime(lt) => vis.visit_lifetime(lt),
-        GenericArg::Type(ty) => vis.visit_ty(ty),
-        GenericArg::Const(ct) => vis.visit_anon_const(ct),
-    }
-}
-
-pub fn noop_visit_angle_bracketed_parameter_data<T: MutVisitor>(data: &mut AngleBracketedArgs,
-                                                                vis: &mut T) {
-    let AngleBracketedArgs { args, bindings, span } = data;
-    visit_vec(args, |arg| vis.visit_generic_arg(arg));
+pub fn noop_visit_angle_bracketed_parameter_data<T: MutVisitor>(
+    data: &mut AngleBracketedArgs,
+    vis: &mut T,
+) {
+    let AngleBracketedArgs { lifetimes, types, const_args, bindings, span } = data;
+    visit_vec(lifetimes, |lt| vis.visit_lifetime(lt));
+    visit_vec(types, |ty| vis.visit_ty(ty));
+    visit_vec(const_args, |arg| vis.visit_anon_const(arg));
     visit_vec(bindings, |binding| vis.visit_ty_binding(binding));
     vis.visit_span(span);
 }

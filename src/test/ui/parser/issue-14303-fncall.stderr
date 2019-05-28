@@ -1,8 +1,8 @@
-error: lifetime arguments must be declared prior to type arguments
-  --> $DIR/issue-14303-fncall.rs:13:29
+error: incorrect parameter order
+  --> $DIR/issue-14303-fncall.rs:14:26
    |
 LL |         .collect::<Vec<S<_, 'a>>>();
-   |                             ^^
+   |                          ^^^^^ help: reorder the arguments: `'a, _`
 
 error: aborting due to previous error
 

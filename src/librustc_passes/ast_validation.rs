@@ -11,7 +11,6 @@ use syntax::print::pprust;
 use rustc::lint;
 use rustc::lint::builtin::{BuiltinLintDiagnostics, NESTED_IMPL_TRAIT};
 use rustc::session::Session;
-use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::source_map::Spanned;
@@ -21,7 +20,7 @@ use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
 use syntax_ext::proc_macro_decls::is_proc_macro_attr;
 use syntax_pos::{Span, MultiSpan};
-use errors::{Applicability, FatalError};
+use errors::Applicability;
 use log::debug;
 
 #[derive(Copy, Clone, Debug)]
@@ -346,104 +345,65 @@ impl<'a> AstValidator<'a> {
     }
 }
 
-enum GenericPosition {
-    Param,
-    Arg,
-}
-
 fn validate_generics_order<'a>(
-    sess: &Session,
     handler: &errors::Handler,
     generics: impl Iterator<
-        Item = (
-            ParamKindOrd,
-            Option<&'a [GenericBound]>,
-            Span,
-            Option<String>
-        ),
+        Item = (ParamKindOrd, Option<&'a [GenericBound]>, Span, Option<String>),
     >,
-    pos: GenericPosition,
     span: Span,
 ) {
-    let mut max_param: Option<ParamKindOrd> = None;
-    let mut out_of_order = FxHashMap::default();
-    let mut param_idents = vec![];
-    let mut found_type = false;
-    let mut found_const = false;
+    let mut lifetimes = vec![];
+    let mut type_args = vec![];
+    let mut const_args = vec![];
+    let mut out_of_order = false;
 
-    for (kind, bounds, span, ident) in generics {
-        if let Some(ident) = ident {
-            param_idents.push((kind, bounds, param_idents.len(), ident));
-        }
-        let max_param = &mut max_param;
-        match max_param {
-            Some(max_param) if *max_param > kind => {
-                let entry = out_of_order.entry(kind).or_insert((*max_param, vec![]));
-                entry.1.push(span);
-            }
-            Some(_) | None => *max_param = Some(kind),
+    for (kind, bounds, _span, ident) in generics {
+        let ident = match ident {
+            Some(ident) => ident,
+            None => return,
         };
         match kind {
-            ParamKindOrd::Type => found_type = true,
-            ParamKindOrd::Const => found_const = true,
-            _ => {}
+            ParamKindOrd::Lifetime => {
+                lifetimes.push((ident, bounds));
+                out_of_order |= type_args.len() > 0 || const_args.len() > 0;
+            }
+            ParamKindOrd::Type => {
+                type_args.push((ident, bounds));
+                out_of_order |= const_args.len() > 0;
+            }
+            ParamKindOrd::Const => {
+                const_args.push((ident, bounds));
+            }
         }
+    }
+    if !out_of_order {
+        return;
     }
 
     let mut ordered_params = "<".to_string();
-    if !out_of_order.is_empty() {
-        param_idents.sort_by_key(|&(po, _, i, _)| (po, i));
-        let mut first = true;
-        for (_, bounds, _, ident) in param_idents {
-            if !first {
-                ordered_params += ", ";
-            }
-            ordered_params += &ident;
-            if let Some(bounds) = bounds {
-                if !bounds.is_empty() {
-                    ordered_params += ": ";
-                    ordered_params += &pprust::bounds_to_string(&bounds);
-                }
-            }
-            first = false;
+    let mut first = true;
+    for (ident, bounds) in lifetimes.iter().chain(type_args.iter()).chain(const_args.iter()) {
+        if !first {
+            ordered_params += ", ";
         }
+        ordered_params += &ident;
+        if let Some(bounds) = bounds {
+            if !bounds.is_empty() {
+                ordered_params += ": ";
+                ordered_params += &pprust::bounds_to_string(&bounds);
+            }
+        }
+        first = false;
     }
     ordered_params += ">";
 
-    let pos_str = match pos {
-        GenericPosition::Param => "parameter",
-        GenericPosition::Arg => "argument",
-    };
-
-    for (param_ord, (max_param, spans)) in &out_of_order {
-        let mut err = handler.struct_span_err(spans.clone(),
-            &format!(
-                "{} {pos}s must be declared prior to {} {pos}s",
-                param_ord,
-                max_param,
-                pos = pos_str,
-            ));
-        if let GenericPosition::Param = pos {
-            err.span_suggestion(
-                span,
-                &format!(
-                    "reorder the {}s: lifetimes, then types{}",
-                    pos_str,
-                    if sess.features_untracked().const_generics { ", then consts" } else { "" },
-                ),
-                ordered_params.clone(),
-                Applicability::MachineApplicable,
-            );
-        }
-        err.emit();
-    }
-
-    // FIXME(const_generics): we shouldn't have to abort here at all, but we currently get ICEs
-    // if we don't. Const parameters and type parameters can currently conflict if they
-    // are out-of-order.
-    if !out_of_order.is_empty() && found_type && found_const {
-        FatalError.raise();
-    }
+    handler.struct_span_err(span, "incorrect parameter order")
+        .span_suggestion(
+            span,
+            "reorder the parameters",
+            ordered_params.clone(),
+            Applicability::MachineApplicable,
+        ).emit();
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
@@ -703,21 +663,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
-                walk_list!(self, visit_generic_arg, &data.args);
-                validate_generics_order(
-                    self.session,
-                    self.err_handler(),
-                    data.args.iter().map(|arg| {
-                        (match arg {
-                            GenericArg::Lifetime(..) => ParamKindOrd::Lifetime,
-                            GenericArg::Type(..) => ParamKindOrd::Type,
-                            GenericArg::Const(..) => ParamKindOrd::Const,
-                        }, None, arg.span(), None)
-                    }),
-                    GenericPosition::Arg,
-                    generic_args.span(),
-                );
-
+                walk_list!(self, visit_lifetime, &data.lifetimes);
+                walk_list!(self, visit_ty, &data.types);
+                walk_list!(self, visit_anon_const, &data.const_args);
                 // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
                 // are allowed to contain nested `impl Trait`.
                 self.with_impl_trait(None, |this| {
@@ -750,7 +698,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         validate_generics_order(
-            self.session,
             self.err_handler(),
             generics.params.iter().map(|param| {
                 let ident = Some(param.ident.to_string());
@@ -764,7 +711,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 };
                 (kind, Some(&*param.bounds), param.ident.span, ident)
             }),
-            GenericPosition::Param,
             generics.span,
         );
 

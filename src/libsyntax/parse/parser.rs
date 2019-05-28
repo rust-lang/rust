@@ -13,7 +13,6 @@ use crate::ast::{Expr, ExprKind, RangeLimits};
 use crate::ast::{Field, FnDecl, FnHeader};
 use crate::ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use crate::ast::{GenericParam, GenericParamKind};
-use crate::ast::GenericArg;
 use crate::ast::{Ident, ImplItem, IsAsync, IsAuto, Item, ItemKind};
 use crate::ast::{Label, Lifetime};
 use crate::ast::{Local, LocalSource};
@@ -40,6 +39,7 @@ use crate::parse::lexer::{TokenAndSpan, UnmatchedBrace};
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::token::DelimToken;
 use crate::parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
+use crate::parse::diagnostics::generic_arg_list;
 use crate::util::parser::{AssocOp, Fixity};
 use crate::print::pprust;
 use crate::ptr::P;
@@ -1796,11 +1796,11 @@ impl<'a> Parser<'a> {
             let lo = self.span;
             let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
-                let (args, bindings) =
+                let (lifetimes, types, const_args, bindings) =
                     self.parse_generic_args_with_leaning_angle_bracket_recovery(style, lo)?;
                 self.expect_gt()?;
                 let span = lo.to(self.prev_span);
-                AngleBracketedArgs { args, bindings, span }.into()
+                AngleBracketedArgs { lifetimes, types, const_args, bindings, span }.into()
             } else {
                 // `(T, U) -> R`
                 self.bump(); // `(`
@@ -5075,7 +5075,7 @@ impl<'a> Parser<'a> {
         &mut self,
         style: PathStyle,
         lo: Span,
-    ) -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
+    ) -> PResult<'a, (Vec<Lifetime>, Vec<P<Ty>>, Vec<AnonConst>, Vec<TypeBinding>)> {
         // We need to detect whether there are extra leading left angle brackets and produce an
         // appropriate error and suggestion. This cannot be implemented by looking ahead at
         // upcoming tokens for a matching `>` character - if there are unmatched `<` tokens
@@ -5210,19 +5210,22 @@ impl<'a> Parser<'a> {
 
     /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
     /// possibly including trailing comma.
-    fn parse_generic_args(&mut self) -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
-        let mut args = Vec::new();
+    fn parse_generic_args(
+        &mut self,
+    ) -> PResult<'a, (Vec<Lifetime>, Vec<P<Ty>>, Vec<AnonConst>, Vec<TypeBinding>)> {
+        let mut lifetimes = Vec::new();
+        let mut types = Vec::new();
+        let mut const_args = Vec::new();
         let mut bindings = Vec::new();
-        let mut misplaced_assoc_ty_bindings: Vec<Span> = Vec::new();
-        let mut assoc_ty_bindings: Vec<Span> = Vec::new();
+        let mut bad_order = false;
 
         let args_lo = self.span;
 
         loop {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
-                args.push(GenericArg::Lifetime(self.expect_lifetime()));
-                misplaced_assoc_ty_bindings.append(&mut assoc_ty_bindings);
+                lifetimes.push(self.expect_lifetime());
+                bad_order |= !types.is_empty() || !const_args.is_empty() || !bindings.is_empty();
             } else if self.check_ident() && self.look_ahead(1, |t| t == &token::Eq) {
                 // Parse associated type binding.
                 let lo = self.span;
@@ -5236,7 +5239,6 @@ impl<'a> Parser<'a> {
                     ty,
                     span,
                 });
-                assoc_ty_bindings.push(span);
             } else if self.check_const_arg() {
                 // Parse const argument.
                 let expr = if let token::OpenDelim(token::Brace) = self.token {
@@ -5255,12 +5257,12 @@ impl<'a> Parser<'a> {
                     id: ast::DUMMY_NODE_ID,
                     value: expr,
                 };
-                args.push(GenericArg::Const(value));
-                misplaced_assoc_ty_bindings.append(&mut assoc_ty_bindings);
+                const_args.push(value);
+                bad_order |= !bindings.is_empty();
             } else if self.check_type() {
                 // Parse type argument.
-                args.push(GenericArg::Type(self.parse_ty()?));
-                misplaced_assoc_ty_bindings.append(&mut assoc_ty_bindings);
+                types.push(self.parse_ty()?);
+                bad_order |= !const_args.is_empty() || !bindings.is_empty();
             } else {
                 break
             }
@@ -5273,21 +5275,18 @@ impl<'a> Parser<'a> {
         // FIXME: we would like to report this in ast_validation instead, but we currently do not
         // preserve ordering of generic parameters with respect to associated type binding, so we
         // lose that information after parsing.
-        if misplaced_assoc_ty_bindings.len() > 0 {
-            let mut err = self.struct_span_err(
-                args_lo.to(self.prev_span),
-                "associated type bindings must be declared after generic parameters",
-            );
-            for span in misplaced_assoc_ty_bindings {
-                err.span_label(
-                    span,
-                    "this associated type binding should be moved after the generic parameters",
-                );
-            }
-            err.emit();
+        if bad_order {
+            let sp = args_lo.to(self.prev_span);
+            self.struct_span_err(sp, "incorrect parameter order")
+                .span_suggestion(
+                    sp,
+                    "reorder the arguments",
+                    generic_arg_list(&lifetimes, &types, &const_args, &bindings),
+                    Applicability::MachineApplicable,
+                ).emit();
         }
 
-        Ok((args, bindings))
+        Ok((lifetimes, types, const_args, bindings))
     }
 
     /// Parses an optional where-clause and places it in `generics`.

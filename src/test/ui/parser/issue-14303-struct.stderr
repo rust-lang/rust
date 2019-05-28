@@ -1,8 +1,8 @@
-error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/issue-14303-struct.rs:1:17
+error: incorrect parameter order
+  --> $DIR/issue-14303-struct.rs:3:9
    |
 LL | struct X<'a, T, 'b> {
-   |         --------^^- help: reorder the parameters: lifetimes, then types: `<'a, 'b, T>`
+   |         ^^^^^^^^^^^ help: reorder the parameters: `<'a, 'b, T>`
 
 error: aborting due to previous error
 

@@ -1,4 +1,5 @@
-trait Foo<'a, T, 'b> {}
-//~^ ERROR lifetime parameters must be declared prior to type parameters
+// run-rustfix
+#![allow(dead_code)]
+trait Foo<'a, T, 'b> {} //~ ERROR incorrect parameter order
 
 fn main() {}

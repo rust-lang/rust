@@ -1,8 +1,8 @@
-error: lifetime arguments must be declared prior to type arguments
-  --> $DIR/issue-14303-path.rs:10:40
+error: incorrect parameter order
+  --> $DIR/issue-14303-path.rs:12:33
    |
 LL | fn bar<'a, 'b, 'c, T>(x: foo::X<'a, T, 'b, 'c>) {}
-   |                                        ^^  ^^
+   |                                 ^^^^^^^^^^^^^ help: reorder the arguments: `'a, 'b, 'c, T`
 
 error: aborting due to previous error
 

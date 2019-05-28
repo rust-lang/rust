@@ -166,30 +166,14 @@ impl GenericArgs {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum GenericArg {
-    Lifetime(Lifetime),
-    Type(P<Ty>),
-    Const(AnonConst),
-}
-
-impl GenericArg {
-    pub fn span(&self) -> Span {
-        match self {
-            GenericArg::Lifetime(lt) => lt.ident.span,
-            GenericArg::Type(ty) => ty.span,
-            GenericArg::Const(ct) => ct.value.span,
-        }
-    }
-}
-
 /// A path like `Foo<'a, T>`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
 pub struct AngleBracketedArgs {
     /// The overall span.
     pub span: Span,
-    /// The arguments for this path segment.
-    pub args: Vec<GenericArg>,
+    pub lifetimes: Vec<Lifetime>,
+    pub types: Vec<P<Ty>>,
+    pub const_args: Vec<AnonConst>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A = Bar>`.
     pub bindings: Vec<TypeBinding>,
@@ -224,7 +208,9 @@ impl ParenthesizedArgs {
     pub fn as_angle_bracketed_args(&self) -> AngleBracketedArgs {
         AngleBracketedArgs {
             span: self.span,
-            args: self.inputs.iter().cloned().map(|input| GenericArg::Type(input)).collect(),
+            lifetimes: vec![],
+            types: self.inputs.iter().cloned().collect(),
+            const_args: vec![],
             bindings: vec![],
         }
     }

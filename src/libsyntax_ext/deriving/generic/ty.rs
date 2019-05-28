@@ -4,7 +4,7 @@
 pub use PtrTy::*;
 pub use Ty::*;
 
-use syntax::ast::{self, Expr, GenericParamKind, Generics, Ident, SelfKind, GenericArg};
+use syntax::ast::{self, Expr, GenericParamKind, Generics, Ident, SelfKind};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::source_map::{respan, DUMMY_SP};
@@ -76,18 +76,14 @@ impl<'a> Path<'a> {
         let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys: Vec<P<ast::Ty>> =
             self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
-        let params = lt.into_iter()
-                       .map(|lt| GenericArg::Lifetime(lt))
-                       .chain(tys.into_iter().map(|ty| GenericArg::Type(ty)))
-                       .collect();
 
         match self.kind {
-            PathKind::Global => cx.path_all(span, true, idents, params, Vec::new()),
-            PathKind::Local => cx.path_all(span, false, idents, params, Vec::new()),
+            PathKind::Global => cx.path_all(span, true, idents, lt, tys, vec![], vec![]),
+            PathKind::Local => cx.path_all(span, false, idents, lt, tys, vec![], vec![]),
             PathKind::Std => {
                 let def_site = DUMMY_SP.apply_mark(cx.current_expansion.mark);
                 idents.insert(0, Ident::new(kw::DollarCrate, def_site));
-                cx.path_all(span, false, idents, params, Vec::new())
+                cx.path_all(span, false, idents, lt, tys, vec![], Vec::new())
             }
         }
 
@@ -172,27 +168,33 @@ impl<'a> Ty<'a> {
         }
     }
 
-    pub fn to_path(&self,
-                   cx: &ExtCtxt<'_>,
-                   span: Span,
-                   self_ty: Ident,
-                   generics: &Generics)
-                   -> ast::Path {
+    pub fn to_path(
+        &self,
+        cx: &ExtCtxt<'_>,
+        span: Span,
+        self_ty: Ident,
+        generics: &Generics,
+    ) -> ast::Path {
         match *self {
             Self_ => {
-                let params: Vec<_> = generics.params.iter().map(|param| match param.kind {
-                    GenericParamKind::Lifetime { .. } => {
-                        GenericArg::Lifetime(ast::Lifetime { id: param.id, ident: param.ident })
+                let mut lifetimes = vec![];
+                let mut types = vec![];
+                let mut const_args = vec![];
+                for param in &generics.params {
+                    match param.kind {
+                        GenericParamKind::Lifetime { .. } => {
+                            lifetimes.push(ast::Lifetime { id: param.id, ident: param.ident });
+                        }
+                        GenericParamKind::Type { .. } => {
+                            types.push(cx.ty_ident(span, param.ident));
+                        }
+                        GenericParamKind::Const { .. } => {
+                            const_args.push(cx.const_ident(span, param.ident));
+                        }
                     }
-                    GenericParamKind::Type { .. } => {
-                        GenericArg::Type(cx.ty_ident(span, param.ident))
-                    }
-                    GenericParamKind::Const { .. } => {
-                        GenericArg::Const(cx.const_ident(span, param.ident))
-                    }
-                }).collect();
+                }
 
-                cx.path_all(span, false, vec![self_ty], params, vec![])
+                cx.path_all(span, false, vec![self_ty], lifetimes, types, const_args, vec![])
             }
             Literal(ref p) => p.to_path(cx, span, self_ty, generics),
             Ptr(..) => cx.span_bug(span, "pointer in a path in generic `derive`"),

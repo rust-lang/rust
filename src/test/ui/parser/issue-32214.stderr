@@ -1,10 +1,8 @@
-error: associated type bindings must be declared after generic parameters
-  --> $DIR/issue-32214.rs:5:25
+error: incorrect parameter order
+  --> $DIR/issue-32214.rs:4:25
    |
 LL | pub fn test<W, I: Trait<Item=(), W> >() {}
-   |                         -------^^^
-   |                         |
-   |                         this associated type binding should be moved after the generic parameters
+   |                         ^^^^^^^^^^ help: reorder the arguments: `W, Item = ()`
 
 error: aborting due to previous error
 

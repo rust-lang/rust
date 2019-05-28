@@ -9,7 +9,7 @@ mod foo {
     }
 }
 
-fn bar<'a, 'b, 'c, T>(x: foo::X<'a, T, 'b, 'c>) {}
+fn bar<'a, 'b, 'c, T>(x: foo::X<'a, 'b, 'c, T>) {}
 //~^ ERROR incorrect parameter order
 
 fn main() {}

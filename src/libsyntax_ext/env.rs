@@ -3,7 +3,7 @@
 // interface.
 //
 
-use syntax::ast::{self, Ident, GenericArg};
+use syntax::ast::{self, Ident};
 use syntax::ext::base::{self, *};
 use syntax::ext::build::AstBuilder;
 use syntax::symbol::{kw, sym, Symbol};
@@ -25,20 +25,27 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
     let e = match env::var(&*var.as_str()) {
         Err(..) => {
             let lt = cx.lifetime(sp, Ident::with_empty_ctxt(kw::StaticLifetime));
-            cx.expr_path(cx.path_all(sp,
-                                     true,
-                                     cx.std_path(&[sym::option, sym::Option, sym::None]),
-                                     vec![GenericArg::Type(cx.ty_rptr(sp,
-                                                     cx.ty_ident(sp,
-                                                                 Ident::with_empty_ctxt(sym::str)),
-                                                     Some(lt),
-                                                     ast::Mutability::Immutable))],
-                                     vec![]))
+            cx.expr_path(cx.path_all(
+                sp,
+                true,
+                cx.std_path(&[sym::option, sym::Option, sym::None]),
+                vec![],
+                vec![cx.ty_rptr(sp,
+                    cx.ty_ident(sp,
+                    Ident::with_empty_ctxt(sym::str)),
+                    Some(lt),
+                    ast::Mutability::Immutable,
+                )],
+                vec![],
+                vec![],
+            ))
         }
         Ok(s) => {
-            cx.expr_call_global(sp,
-                                cx.std_path(&[sym::option, sym::Option, sym::Some]),
-                                vec![cx.expr_str(sp, Symbol::intern(&s))])
+            cx.expr_call_global(
+                sp,
+                cx.std_path(&[sym::option, sym::Option, sym::Some]),
+                vec![cx.expr_str(sp, Symbol::intern(&s))],
+            )
         }
     };
     MacEager::expr(e)

@@ -1334,22 +1334,6 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_generic_arg(&mut self,
-                        arg: &ast::GenericArg,
-                        itctx: ImplTraitContext<'_>)
-                        -> hir::GenericArg {
-        match arg {
-            ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
-            ast::GenericArg::Type(ty) => GenericArg::Type(self.lower_ty_direct(&ty, itctx)),
-            ast::GenericArg::Const(ct) => {
-                GenericArg::Const(ConstArg {
-                    value: self.lower_anon_const(&ct),
-                    span: ct.value.span,
-                })
-            }
-        }
-    }
-
     fn lower_ty(&mut self, t: &Ty, itctx: ImplTraitContext<'_>) -> P<hir::Ty> {
         P(self.lower_ty_direct(t, itctx))
     }
@@ -2175,17 +2159,25 @@ impl<'a> LoweringContext<'a> {
         param_mode: ParamMode,
         mut itctx: ImplTraitContext<'_>,
     ) -> (hir::GenericArgs, bool) {
-        let &AngleBracketedArgs { ref args, ref bindings, .. } = data;
-        let has_types = args.iter().any(|arg| match arg {
-            ast::GenericArg::Type(_) => true,
-            _ => false,
-        });
-        (hir::GenericArgs {
-            args: args.iter().map(|a| self.lower_generic_arg(a, itctx.reborrow())).collect(),
-            bindings: bindings.iter().map(|b| self.lower_ty_binding(b, itctx.reborrow())).collect(),
-            parenthesized: false,
-        },
-        !has_types && param_mode == ParamMode::Optional)
+        let AngleBracketedArgs { lifetimes, types, const_args, bindings, .. } = &data;
+        let mut args = vec![];
+        for lt in lifetimes {
+            args.push(GenericArg::Lifetime(self.lower_lifetime(&lt)));
+        }
+        for ty in types {
+            args.push(GenericArg::Type(self.lower_ty_direct(&ty, itctx.reborrow())));
+        }
+        for ct in const_args {
+            args.push(GenericArg::Const(ConstArg {
+                value: self.lower_anon_const(&ct),
+                span: ct.value.span,
+            }))
+        }
+        let args = hir::HirVec::from(args);
+        let bindings = bindings.iter().map(|b| self.lower_ty_binding(b, itctx.reborrow()))
+            .collect();
+        (hir::GenericArgs { args, bindings, parenthesized: false },
+         types.is_empty() && param_mode == ParamMode::Optional)
     }
 
     fn lower_parenthesized_parameter_data(

@@ -661,9 +661,11 @@ pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
     }
 }
 
-pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
-                                             path_span: Span,
-                                             segment: &'v PathSegment) {
+pub fn walk_path_segment<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    path_span: Span,
+    segment: &'v PathSegment,
+) {
     visitor.visit_ident(segment.ident);
     if let Some(id) = segment.hir_id {
         visitor.visit_id(id);
@@ -673,10 +675,12 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
     }
 }
 
-pub fn walk_generic_args<'v, V: Visitor<'v>>(visitor: &mut V,
-                                             _path_span: Span,
-                                             generic_args: &'v GenericArgs) {
-    walk_list!(visitor, visit_generic_arg, &generic_args.args);
+pub fn walk_generic_args<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    _path_span: Span,
+    generic_args: &'v GenericArgs,
+) {
+        walk_list!(visitor, visit_generic_arg, &generic_args.args);
     walk_list!(visitor, visit_assoc_type_binding, &generic_args.bindings);
 }
 

@@ -132,13 +132,6 @@ pub trait Visitor<'ast>: Sized {
     fn visit_generic_args(&mut self, path_span: Span, generic_args: &'ast GenericArgs) {
         walk_generic_args(self, path_span, generic_args)
     }
-    fn visit_generic_arg(&mut self, generic_arg: &'ast GenericArg) {
-        match generic_arg {
-            GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
-            GenericArg::Type(ty) => self.visit_ty(ty),
-            GenericArg::Const(ct) => self.visit_anon_const(ct),
-        }
-    }
     fn visit_assoc_type_binding(&mut self, type_binding: &'ast TypeBinding) {
         walk_assoc_type_binding(self, type_binding)
     }
@@ -403,7 +396,9 @@ pub fn walk_generic_args<'a, V>(visitor: &mut V,
 {
     match *generic_args {
         GenericArgs::AngleBracketed(ref data) => {
-            walk_list!(visitor, visit_generic_arg, &data.args);
+            walk_list!(visitor, visit_lifetime, &data.lifetimes);
+            walk_list!(visitor, visit_ty, &data.types);
+            walk_list!(visitor, visit_anon_const, &data.const_args);
             walk_list!(visitor, visit_assoc_type_binding, &data.bindings);
         }
         GenericArgs::Parenthesized(ref data) => {
