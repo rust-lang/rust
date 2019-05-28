@@ -9,7 +9,7 @@ pub fn check_action<F: Fn(&SourceFile, TextUnit) -> Option<TextEdit>>(
     f: F,
 ) {
     let (before_cursor_pos, before) = extract_offset(before);
-    let file = SourceFile::parse(&before);
+    let file = SourceFile::parse(&before).ok().unwrap();
     let result = f(&file, before_cursor_pos).expect("code action is not applicable");
     let actual = result.apply(&before);
     let actual_cursor_pos =

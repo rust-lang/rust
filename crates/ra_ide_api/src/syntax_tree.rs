@@ -14,7 +14,7 @@ pub(crate) fn syntax_tree(
     text_range: Option<TextRange>,
 ) -> String {
     if let Some(text_range) = text_range {
-        let file = db.parse(file_id);
+        let file = db.parse(file_id).tree;
         let node = match algo::find_covering_element(file.syntax(), text_range) {
             SyntaxElement::Node(node) => node,
             SyntaxElement::Token(token) => {
@@ -27,7 +27,7 @@ pub(crate) fn syntax_tree(
 
         node.debug_dump()
     } else {
-        db.parse(file_id).syntax().debug_dump()
+        db.parse(file_id).tree.syntax().debug_dump()
     }
 }
 
@@ -84,8 +84,8 @@ fn syntax_tree_for_token(node: SyntaxToken, text_range: TextRange) -> Option<Str
 
     // If the "file" parsed without errors,
     // return its syntax
-    if parsed.errors().is_empty() {
-        return Some(parsed.syntax().debug_dump());
+    if parsed.errors.is_empty() {
+        return Some(parsed.tree.syntax().debug_dump());
     }
 
     None

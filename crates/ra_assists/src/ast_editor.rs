@@ -283,7 +283,7 @@ impl AstBuilder<ast::NameRef> {
 }
 
 fn ast_node_from_file_text<N: AstNode>(text: &str) -> TreeArc<N> {
-    let file = SourceFile::parse(text);
+    let file = SourceFile::parse(text).tree;
     let res = file.syntax().descendants().find_map(N::cast).unwrap().to_owned();
     res
 }
@@ -292,7 +292,7 @@ mod tokens {
     use once_cell::sync::Lazy;
     use ra_syntax::{AstNode, SourceFile, TreeArc, SyntaxToken, SyntaxKind::*, T};
 
-    static SOURCE_FILE: Lazy<TreeArc<SourceFile>> = Lazy::new(|| SourceFile::parse(",\n; ;"));
+    static SOURCE_FILE: Lazy<TreeArc<SourceFile>> = Lazy::new(|| SourceFile::parse(",\n; ;").tree);
 
     pub(crate) fn comma() -> SyntaxToken<'static> {
         SOURCE_FILE
@@ -326,7 +326,7 @@ mod tokens {
 
     impl WsBuilder {
         pub(crate) fn new(text: &str) -> WsBuilder {
-            WsBuilder(SourceFile::parse(text))
+            WsBuilder(SourceFile::parse(text).ok().unwrap())
         }
         pub(crate) fn ws(&self) -> SyntaxToken<'_> {
             self.0.syntax().first_child_or_token().unwrap().as_token().unwrap()

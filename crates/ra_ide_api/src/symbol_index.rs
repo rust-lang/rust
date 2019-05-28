@@ -63,7 +63,7 @@ pub(crate) trait SymbolsDatabase: hir::db::HirDatabase {
 
 fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> {
     db.check_canceled();
-    let source_file = db.parse(file_id);
+    let source_file = db.parse(file_id).tree;
 
     let symbols = source_file_to_file_symbols(&source_file, file_id);
 

@@ -4,7 +4,7 @@ use itertools::Itertools;
 use hir::{source_binder, diagnostics::{Diagnostic as _, DiagnosticSink}};
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    T, Location, SourceFile, TextRange, SyntaxNode,
+    T, Location, TextRange, SyntaxNode,
     ast::{self, AstNode, NamedFieldList, NamedField},
 };
 use ra_assists::ast_editor::{AstEditor, AstBuilder};
@@ -21,10 +21,17 @@ pub enum Severity {
 
 pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
     let _p = profile("diagnostics");
-    let source_file = db.parse(file_id);
+    let parse = db.parse(file_id);
     let mut res = Vec::new();
 
-    syntax_errors(&mut res, &source_file);
+    res.extend(parse.errors.iter().map(|err| Diagnostic {
+        range: location_to_range(err.location()),
+        message: format!("Syntax Error: {}", err),
+        severity: Severity::Error,
+        fix: None,
+    }));
+
+    let source_file = parse.tree;
 
     for node in source_file.syntax().descendants() {
         check_unnecessary_braces_in_use_statement(&mut res, file_id, node);
@@ -51,8 +58,9 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         })
     })
     .on::<hir::diagnostics::MissingFields, _>(|d| {
+        //TODO: commment
         let file_id = d.file().original_file(db);
-        let source_file = db.parse(file_id);
+        let source_file = db.parse(file_id).tree;
         let syntax_node = d.syntax_node_ptr();
         let node = NamedFieldList::cast(syntax_node.to_node(source_file.syntax())).unwrap();
         let mut ast_editor = AstEditor::new(node);
@@ -77,21 +85,11 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     drop(sink);
     res.into_inner()
 }
-
-fn syntax_errors(acc: &mut Vec<Diagnostic>, source_file: &SourceFile) {
-    fn location_to_range(location: Location) -> TextRange {
-        match location {
-            Location::Offset(offset) => TextRange::offset_len(offset, 1.into()),
-            Location::Range(range) => range,
-        }
+fn location_to_range(location: Location) -> TextRange {
+    match location {
+        Location::Offset(offset) => TextRange::offset_len(offset, 1.into()),
+        Location::Range(range) => range,
     }
-
-    acc.extend(source_file.errors().into_iter().map(|err| Diagnostic {
-        range: location_to_range(err.location()),
-        message: format!("Syntax Error: {}", err),
-        severity: Severity::Error,
-        fix: None,
-    }));
 }
 
 fn check_unnecessary_braces_in_use_statement(
@@ -177,6 +175,7 @@ fn check_struct_shorthand_initialization(
 mod tests {
     use test_utils::assert_eq_text;
     use insta::assert_debug_snapshot_matches;
+    use ra_syntax::SourceFile;
 
     use crate::mock_analysis::single_file;
 
@@ -185,7 +184,7 @@ mod tests {
     type DiagnosticChecker = fn(&mut Vec<Diagnostic>, FileId, &SyntaxNode) -> Option<()>;
 
     fn check_not_applicable(code: &str, func: DiagnosticChecker) {
-        let file = SourceFile::parse(code);
+        let file = SourceFile::parse(code).tree;
         let mut diagnostics = Vec::new();
         for node in file.syntax().descendants() {
             func(&mut diagnostics, FileId(0), node);
@@ -194,7 +193,7 @@ mod tests {
     }
 
     fn check_apply(before: &str, after: &str, func: DiagnosticChecker) {
-        let file = SourceFile::parse(before);
+        let file = SourceFile::parse(before).tree;
         let mut diagnostics = Vec::new();
         for node in file.syntax().descendants() {
             func(&mut diagnostics, FileId(0), node);

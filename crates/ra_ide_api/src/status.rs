@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use ra_syntax::{AstNode, TreeArc, SourceFile};
+use ra_syntax::{AstNode, Parse};
 use ra_db::{
     ParseQuery, FileTextQuery, SourceRootId,
     salsa::{Database, debug::{DebugQueryTable, TableEntry}},
@@ -72,17 +72,17 @@ impl fmt::Display for SyntaxTreeStats {
     }
 }
 
-impl FromIterator<TableEntry<FileId, TreeArc<SourceFile>>> for SyntaxTreeStats {
+impl FromIterator<TableEntry<FileId, Parse>> for SyntaxTreeStats {
     fn from_iter<T>(iter: T) -> SyntaxTreeStats
     where
-        T: IntoIterator<Item = TableEntry<FileId, TreeArc<SourceFile>>>,
+        T: IntoIterator<Item = TableEntry<FileId, Parse>>,
     {
         let mut res = SyntaxTreeStats::default();
         for entry in iter {
             res.total += 1;
             if let Some(value) = entry.value {
                 res.retained += 1;
-                res.retained_size += value.syntax().memory_size_of_subtree();
+                res.retained_size += value.tree.syntax().memory_size_of_subtree();
             }
         }
         res

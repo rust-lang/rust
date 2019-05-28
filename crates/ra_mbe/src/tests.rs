@@ -95,7 +95,7 @@ pub(crate) fn expand_to_expr(
 pub(crate) fn text_to_tokentree(text: &str) -> tt::Subtree {
     // wrap the given text to a macro call
     let wrapped = format!("wrap_macro!( {} )", text);
-    let wrapped = ast::SourceFile::parse(&wrapped).ok().unwrap();
+    let wrapped = ast::SourceFile::parse(&wrapped).tree;
     let wrapped = wrapped.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
     let mut wrapped = ast_to_token_tree(wrapped).unwrap().0;
     wrapped.delimiter = tt::Delimiter::None;
@@ -378,7 +378,7 @@ fn test_match_group_with_multichar_sep() {
     assert_expansion(
         MacroKind::Items,
         &rules,
-        "foo! (fn baz {true true} )",
+        "foo! (fn baz {true true} );",
         "fn baz () -> bool {true &&true}",
     );
 }
@@ -392,7 +392,7 @@ fn test_match_group_zero_match() {
         }"#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, "foo! ()", "");
+    assert_expansion(MacroKind::Items, &rules, "foo! ();", "");
 }
 
 #[test]
@@ -404,7 +404,7 @@ fn test_match_group_in_group() {
         }"#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, "foo! ( (a b) )", "(a b)");
+    assert_expansion(MacroKind::Items, &rules, "foo! ( (a b) );", "(a b)");
 }
 
 #[test]
@@ -418,7 +418,7 @@ fn test_expand_to_item_list() {
             }
             ",
     );
-    let expansion = expand(&rules, "structs!(Foo, Bar)");
+    let expansion = expand(&rules, "structs!(Foo, Bar);");
     let tree = token_tree_to_macro_items(&expansion);
     assert_eq!(
         tree.unwrap().syntax().debug_dump().trim(),
@@ -490,7 +490,7 @@ fn test_expand_literals_to_token_tree() {
             }
             "#,
     );
-    let expansion = expand(&rules, "literals!(foo)");
+    let expansion = expand(&rules, "literals!(foo);");
     let stm_tokens = &to_subtree(&expansion.token_trees[0]).token_trees;
 
     // [let] [a] [=] ['c'] [;]
@@ -586,7 +586,7 @@ fn test_match_literal() {
     }
 "#,
     );
-    assert_expansion(MacroKind::Items, &rules, "foo! ['(']", "fn foo () {}");
+    assert_expansion(MacroKind::Items, &rules, "foo! ['('];", "fn foo () {}");
 }
 
 // The following tests are port from intellij-rust directly
@@ -725,7 +725,7 @@ fn test_last_expr() {
     assert_expansion(
         MacroKind::Items,
         &rules,
-        "vec!(1,2,3)",
+        "vec!(1,2,3);",
         "{let mut v = Vec :: new () ; v . push (1) ; v . push (2) ; v . push (3) ; v}",
     );
 }
@@ -902,7 +902,7 @@ fn test_meta_doc_comments() {
                 MultiLines Doc
             */
         }"#,
-        "# [doc = \" Single Line Doc 1\"] # [doc = \" \\\\n                MultiLines Doc\\\\n            \"] fn bar () {}",
+        "# [doc = \" Single Line Doc 1\"] # [doc = \"\\\\n                MultiLines Doc\\\\n            \"] fn bar () {}",
     );
 }
 
@@ -950,7 +950,7 @@ fn test_literal() {
         }
 "#,
     );
-    assert_expansion(MacroKind::Items, &rules, r#"foo!(u8 0)"#, r#"const VALUE : u8 = 0 ;"#);
+    assert_expansion(MacroKind::Items, &rules, r#"foo!(u8 0);"#, r#"const VALUE : u8 = 0 ;"#);
 }
 
 #[test]
@@ -1017,12 +1017,12 @@ fn test_vec() {
     assert_expansion(
         MacroKind::Items,
         &rules,
-        r#"vec![1u32,2]"#,
+        r#"vec![1u32,2];"#,
         r#"{let mut v = Vec :: new () ; v . push (1u32) ; v . push (2) ; v}"#,
     );
 
     assert_eq!(
-        expand_to_expr(&rules, r#"vec![1u32,2]"#).syntax().debug_dump().trim(),
+        expand_to_expr(&rules, r#"vec![1u32,2];"#).syntax().debug_dump().trim(),
         r#"BLOCK_EXPR@[0; 45)
   BLOCK@[0; 45)
     L_CURLY@[0; 1) "{"
@@ -1161,7 +1161,7 @@ macro_rules! generate_pattern_iterators {
 "#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, r#"generate_pattern_iterators ! ( double ended ; with # [ stable ( feature = "rust1" , since = "1.0.0" ) ] , Split , RSplit , & 'a str )"#,
+    assert_expansion(MacroKind::Items, &rules, r#"generate_pattern_iterators ! ( double ended ; with # [ stable ( feature = "rust1" , since = "1.0.0" ) ] , Split , RSplit , & 'a str );"#,
         "fn foo () {}");
 }
 
@@ -1208,7 +1208,6 @@ $body: block; )+
         )+
 }
         }
-}
 "#,
     );
 

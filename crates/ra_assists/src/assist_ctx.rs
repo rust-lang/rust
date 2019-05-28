@@ -71,7 +71,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
     where
         F: FnOnce(AssistCtx<DB>) -> T,
     {
-        let source_file = &db.parse(frange.file_id);
+        let source_file = &db.parse(frange.file_id).tree;
         let assist =
             if should_compute_edit { Assist::Resolved(vec![]) } else { Assist::Unresolved(vec![]) };
 

@@ -10,7 +10,7 @@ use crate::{FilePosition, CallInfo, FunctionSignature, db::RootDatabase};
 
 /// Computes parameter information for the given call expression.
 pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
-    let file = db.parse(position.file_id);
+    let file = db.parse(position.file_id).tree;
     let syntax = file.syntax();
 
     // Find the calling expression and it's NameRef

@@ -79,7 +79,7 @@ impl NavigationTarget {
         file_id: FileId,
         pat: AstPtr<ast::Pat>,
     ) -> NavigationTarget {
-        let file = db.parse(file_id);
+        let file = db.parse(file_id).tree;
         let (name, full_range) = match pat.to_node(file.syntax()).kind() {
             ast::PatKind::BindPat(pat) => return NavigationTarget::from_bind_pat(file_id, &pat),
             _ => ("_".into(), pat.syntax_node_ptr().range()),
@@ -290,7 +290,7 @@ impl NavigationTarget {
     }
 
     pub(crate) fn node(&self, db: &RootDatabase) -> Option<TreeArc<SyntaxNode>> {
-        let source_file = db.parse(self.file_id());
+        let source_file = db.parse(self.file_id()).tree;
         let source_file = source_file.syntax();
         let node = source_file
             .descendants()

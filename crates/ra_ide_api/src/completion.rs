@@ -51,8 +51,8 @@ pub use crate::completion::completion_item::{CompletionItem, CompletionItemKind,
 /// identifier prefix/fuzzy match should be done higher in the stack, together
 /// with ordering of completions (currently this is done by the client).
 pub(crate) fn completions(db: &db::RootDatabase, position: FilePosition) -> Option<Completions> {
-    let original_file = db.parse(position.file_id);
-    let ctx = CompletionContext::new(db, &original_file, position)?;
+    let original_parse = db.parse(position.file_id);
+    let ctx = CompletionContext::new(db, &original_parse, position)?;
 
     let mut acc = Completions::default();
 
