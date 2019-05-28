@@ -65,7 +65,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
             // portability problems between 32 and 64-bit targets
             let bit_width = cmp::min(bit_width, 32);
             let byte_width = bit_width / 8;
-            // Use a limit of 2 times the register bit width
+            // Use a limit of 2 times the register byte width
             byte_width * 2
         });
         Self { limit }
@@ -118,7 +118,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
                         cx,
                         TRIVIALLY_COPY_PASS_BY_REF,
                         input.span,
-                        "this argument is passed by reference, but would be more efficient if passed by value",
+                        &format!("this argument ({} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)", size, self.limit),
                         "consider passing by value instead",
                         value_type,
                         Applicability::Unspecified,
