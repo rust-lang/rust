@@ -588,7 +588,12 @@ impl<'a> Builder<'a> {
     /// sysroot.
     ///
     /// See `force_use_stage1` for documentation on what each argument is.
-    pub fn compiler_for(&self, stage: u32, host: Interned<String>, target: Interned<String>) -> Compiler {
+    pub fn compiler_for(
+        &self,
+        stage: u32,
+        host: Interned<String>,
+        target: Interned<String>,
+    ) -> Compiler {
         if self.build.force_use_stage1(Compiler { stage, host }, target) {
             self.compiler(1, self.config.build)
         } else {

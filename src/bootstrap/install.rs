@@ -210,15 +210,21 @@ install!((self, builder, _config),
             Self::should_install(builder) {
             install_rls(builder, self.compiler.stage, self.target);
         } else {
-            builder.info(&format!("skipping Install RLS stage{} ({})", self.compiler.stage, self.target));
+            builder.info(
+                &format!("skipping Install RLS stage{} ({})", self.compiler.stage, self.target),
+            );
         }
     };
     Clippy, "clippy", Self::should_build(_config), only_hosts: true, {
-        if builder.ensure(dist::Clippy { compiler: self.compiler, target: self.target }).is_some() ||
-            Self::should_install(builder) {
+        if builder.ensure(dist::Clippy {
+            compiler: self.compiler,
+            target: self.target,
+        }).is_some() || Self::should_install(builder) {
             install_clippy(builder, self.compiler.stage, self.target);
         } else {
-            builder.info(&format!("skipping Install clippy stage{} ({})", self.compiler.stage, self.target));
+            builder.info(
+                &format!("skipping Install clippy stage{} ({})", self.compiler.stage, self.target),
+            );
         }
     };
     Miri, "miri", Self::should_build(_config), only_hosts: true, {
@@ -226,16 +232,21 @@ install!((self, builder, _config),
             Self::should_install(builder) {
             install_miri(builder, self.compiler.stage, self.target);
         } else {
-            builder.info(&format!("skipping Install miri stage{} ({})", self.compiler.stage, self.target));
+            builder.info(
+                &format!("skipping Install miri stage{} ({})", self.compiler.stage, self.target),
+            );
         }
     };
     Rustfmt, "rustfmt", Self::should_build(_config), only_hosts: true, {
-        if builder.ensure(dist::Rustfmt { compiler: self.compiler, target: self.target }).is_some() ||
-            Self::should_install(builder) {
+        if builder.ensure(dist::Rustfmt {
+            compiler: self.compiler,
+            target: self.target
+        }).is_some() || Self::should_install(builder) {
             install_rustfmt(builder, self.compiler.stage, self.target);
         } else {
             builder.info(
-                &format!("skipping Install Rustfmt stage{} ({})", self.compiler.stage, self.target));
+                &format!("skipping Install Rustfmt stage{} ({})", self.compiler.stage, self.target),
+            );
         }
     };
     Analysis, "analysis", Self::should_build(_config), only_hosts: false, {
