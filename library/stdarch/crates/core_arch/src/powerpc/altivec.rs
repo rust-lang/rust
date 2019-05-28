@@ -554,6 +554,16 @@ mod sealed {
     impl_abs! { vec_abs_i16, i16x8 }
     impl_abs! { vec_abs_i32, i32x4 }
 
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    unsafe fn vec_abs_f32(v: vector_float) -> vector_float {
+        let v: u32x4 = transmute(v);
+
+        transmute(simd_and(v, u32x4::splat(0x7FFFFFFF)))
+    }
+
+    impl_vec_trait! { [VectorAbs vec_abs] vec_abs_f32 (vector_float) }
+
     pub trait VectorAbss {
         unsafe fn vec_abss(self) -> Self;
     }
@@ -1983,6 +1993,7 @@ mod tests {
     test_vec_abs! { test_vec_abs_i8, i8x16, -42i8, 42i8 }
     test_vec_abs! { test_vec_abs_i16, i16x8, -42i16, 42i16 }
     test_vec_abs! { test_vec_abs_i32, i32x4, -42i32, 42i32 }
+    test_vec_abs! { test_vec_abs_f32, f32x4, -42f32, 42f32 }
 
     macro_rules! test_vec_abss {
         { $name: ident, $ty: ident, $a: expr, $d: expr } => {
