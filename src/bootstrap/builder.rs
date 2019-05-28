@@ -1371,7 +1371,7 @@ mod __test {
 
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
-            &[dist::Docs { stage: 2, host: a },]
+            &[dist::Docs { host: a },]
         );
         assert_eq!(
             first(builder.cache.all::<dist::Mingw>()),
@@ -1405,8 +1405,8 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
             &[
-                dist::Docs { stage: 2, host: a },
-                dist::Docs { stage: 2, host: b },
+                dist::Docs { host: a },
+                dist::Docs { host: b },
             ]
         );
         assert_eq!(
@@ -1447,8 +1447,8 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
             &[
-                dist::Docs { stage: 2, host: a },
-                dist::Docs { stage: 2, host: b },
+                dist::Docs { host: a },
+                dist::Docs { host: b },
             ]
         );
         assert_eq!(
@@ -1488,6 +1488,7 @@ mod __test {
         let b = INTERNER.intern_str("B");
         let mut build = Build::new(configure(&["B"], &[]));
         build.config.docs = false;
+        build.config.extended = true;
         build.hosts = vec![b];
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
@@ -1528,9 +1529,9 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
             &[
-                dist::Docs { stage: 2, host: a },
-                dist::Docs { stage: 2, host: b },
-                dist::Docs { stage: 2, host: c },
+                dist::Docs { host: a },
+                dist::Docs { host: b },
+                dist::Docs { host: c },
             ]
         );
         assert_eq!(
@@ -1587,9 +1588,9 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
             &[
-                dist::Docs { stage: 2, host: a },
-                dist::Docs { stage: 2, host: b },
-                dist::Docs { stage: 2, host: c },
+                dist::Docs { host: a },
+                dist::Docs { host: b },
+                dist::Docs { host: c },
             ]
         );
         assert_eq!(
@@ -1633,8 +1634,8 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
             &[
-                dist::Docs { stage: 2, host: a },
-                dist::Docs { stage: 2, host: b },
+                dist::Docs { host: a },
+                dist::Docs { host: b },
             ]
         );
         assert_eq!(
