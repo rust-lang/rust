@@ -4,5 +4,5 @@
 # target specifications
 all:
 	for target in $(shell $(BARE_RUSTC) --print target-list); do \
-		$(BARE_RUSTC) --target $$target --print sysroot \
+		$(BARE_RUSTC) --target $$target --print sysroot; \
 	done
