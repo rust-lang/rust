@@ -85,6 +85,8 @@ COMMAND="$1"
 shift
 
 # Determine flags passed to all cargo invocations.
+# This is a bit more annoying that one would hope due to
+# <https://github.com/rust-lang/cargo/issues/6992>.
 case "$COMMAND" in
 *-debug)
     CARGO_INSTALL_FLAGS="--debug $CARGO_EXTRA_FLAGS"
