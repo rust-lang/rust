@@ -58,9 +58,6 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         })
     })
     .on::<hir::diagnostics::MissingFields, _>(|d| {
-        //TODO: commment
-        let file_id = d.file().original_file(db);
-        let source_file = db.parse(file_id).tree;
         let syntax_node = d.syntax_node_ptr();
         let node = NamedFieldList::cast(syntax_node.to_node(source_file.syntax())).unwrap();
         let mut ast_editor = AstEditor::new(node);
