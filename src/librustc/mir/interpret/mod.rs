@@ -349,6 +349,7 @@ impl<'tcx> AllocMap<'tcx> {
     /// illegal and will likely ICE.
     /// This function exists to allow const eval to detect the difference between evaluation-
     /// local dangling pointers and allocations in constants/statics.
+    #[inline]
     pub fn get(&self, id: AllocId) -> Option<AllocKind<'tcx>> {
         self.id_to_kind.get(&id).cloned()
     }
@@ -397,6 +398,7 @@ impl<'tcx> AllocMap<'tcx> {
 // Methods to access integers in the target endianness
 ////////////////////////////////////////////////////////////////////////////////
 
+#[inline]
 pub fn write_target_uint(
     endianness: layout::Endian,
     mut target: &mut [u8],
@@ -409,6 +411,7 @@ pub fn write_target_uint(
     }
 }
 
+#[inline]
 pub fn read_target_uint(endianness: layout::Endian, mut source: &[u8]) -> Result<u128, io::Error> {
     match endianness {
         layout::Endian::Little => source.read_uint128::<LittleEndian>(source.len()),
@@ -420,8 +423,15 @@ pub fn read_target_uint(endianness: layout::Endian, mut source: &[u8]) -> Result
 // Methods to facilitate working with signed integers stored in a u128
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Truncate `value` to `size` bits and then sign-extend it to 128 bits
+/// (i.e., if it is negative, fill with 1's on the left).
+#[inline]
 pub fn sign_extend(value: u128, size: Size) -> u128 {
     let size = size.bits();
+    if size == 0 {
+        // Truncated until nothing is left.
+        return 0;
+    }
     // sign extend
     let shift = 128 - size;
     // shift the unsigned value to the left
@@ -429,8 +439,14 @@ pub fn sign_extend(value: u128, size: Size) -> u128 {
     (((value << shift) as i128) >> shift) as u128
 }
 
+/// Truncate `value` to `size` bits.
+#[inline]
 pub fn truncate(value: u128, size: Size) -> u128 {
     let size = size.bits();
+    if size == 0 {
+        // Truncated until nothing is left.
+        return 0;
+    }
     let shift = 128 - size;
     // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
     (value << shift) >> shift

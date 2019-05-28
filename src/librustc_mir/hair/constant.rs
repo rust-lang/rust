@@ -1,5 +1,5 @@
 use syntax::ast;
-use rustc::ty::{self, Ty, TyCtxt, ParamEnv};
+use rustc::ty::{self, Ty, TyCtxt, ParamEnv, layout::Size};
 use syntax_pos::symbol::Symbol;
 use rustc::mir::interpret::{ConstValue, Scalar};
 
@@ -23,10 +23,7 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
         let result = truncate(n, width);
         trace!("trunc result: {}", result);
-        Ok(ConstValue::Scalar(Scalar::Bits {
-            bits: result,
-            size: width.bytes() as u8,
-        }))
+        Ok(ConstValue::Scalar(Scalar::from_uint(result, width)))
     };
 
     use rustc::mir::interpret::*;
@@ -50,10 +47,7 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::Ptr(id.into()))
         },
-        LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
-            bits: n as u128,
-            size: 1,
-        }),
+        LitKind::Byte(n) => ConstValue::Scalar(Scalar::from_uint(n, Size::from_bytes(1))),
         LitKind::Int(n, _) if neg => {
             let n = n as i128;
             let n = n.overflowing_neg().0;
@@ -84,7 +78,7 @@ fn parse_float<'tcx>(
     let num = num.as_str();
     use rustc_apfloat::ieee::{Single, Double};
     use rustc_apfloat::Float;
-    let (bits, size) = match fty {
+    let (data, size) = match fty {
         ast::FloatTy::F32 => {
             num.parse::<f32>().map_err(|_| ())?;
             let mut f = num.parse::<Single>().unwrap_or_else(|e| {
@@ -107,5 +101,5 @@ fn parse_float<'tcx>(
         }
     };
 
-    Ok(ConstValue::Scalar(Scalar::Bits { bits, size }))
+    Ok(ConstValue::Scalar(Scalar::from_uint(data, Size::from_bytes(size))))
 }

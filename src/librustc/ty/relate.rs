@@ -613,7 +613,7 @@ where
         (ConstValue::Placeholder(p1), ConstValue::Placeholder(p2)) if p1 == p2 => {
             Ok(a)
         }
-        (ConstValue::Scalar(Scalar::Bits { .. }), _) if a == b => {
+        (ConstValue::Scalar(Scalar::Raw { .. }), _) if a == b => {
             Ok(a)
         }
         (ConstValue::ByRef(..), _) => {
