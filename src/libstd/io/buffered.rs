@@ -1163,6 +1163,41 @@ mod tests {
     }
 
     #[test]
+    fn test_buffered_reader_seek_underflow_discard_buffer_between_seeks() {
+        // gimmick reader that returns Err after first seek
+        struct ErrAfterFirstSeekReader {
+            first_seek: bool,
+        }
+        impl Read for ErrAfterFirstSeekReader {
+            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+                for x in &mut *buf {
+                    *x = 0;
+                }
+                Ok(buf.len())
+            }
+        }
+        impl Seek for ErrAfterFirstSeekReader {
+            fn seek(&mut self, _: SeekFrom) -> io::Result<u64> {
+                if self.first_seek {
+                    self.first_seek = false;
+                    Ok(0)
+                } else {
+                    Err(io::Error::new(io::ErrorKind::Other, "oh no!"))
+                }
+            }
+        }
+
+        let mut reader = BufReader::with_capacity(5, ErrAfterFirstSeekReader { first_seek: true });
+        assert_eq!(reader.fill_buf().ok(), Some(&[0, 0, 0, 0, 0][..]));
+
+        // The following seek will require two underlying seeks.  The first will
+        // succeed but the second will fail.  This should still invalidate the
+        // buffer.
+        assert!(reader.seek(SeekFrom::Current(i64::min_value())).is_err());
+        assert_eq!(reader.buffer().len(), 0);
+    }
+
+    #[test]
     fn test_buffered_writer() {
         let inner = Vec::new();
         let mut writer = BufWriter::with_capacity(2, inner);
