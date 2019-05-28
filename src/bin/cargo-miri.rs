@@ -243,6 +243,7 @@ path = "lib.rs"
     File::create(dir.join("lib.rs")).unwrap();
     // Run xargo.
     let target = get_arg_flag_value("--target");
+    let print_env = !ask_user && has_arg_flag("--env"); // whether we just print the necessary environment variable
     let mut command = Command::new("xargo");
     command.arg("build").arg("-q")
         .current_dir(&dir)
@@ -265,7 +266,9 @@ path = "lib.rs"
     };
     let sysroot = if is_host { dir.join("HOST") } else { PathBuf::from(dir) };
     std::env::set_var("MIRI_SYSROOT", &sysroot);
-    if !ask_user {
+    if print_env {
+        println!("MIRI_SYSROOT={}", sysroot.display());
+    } else if !ask_user {
         println!("A libstd for Miri is now available in `{}`", sysroot.display());
     }
 }

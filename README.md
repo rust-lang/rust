@@ -141,42 +141,30 @@ version of `rustc` that, instead of compiling your code, runs it.  It accepts
 all the same flags as `rustc` (though the ones only affecting code generation
 and linking obviously will have no effect) [and more][miri-flags].
 
-To run the Miri driver, you need to have the `MIRI_SYSROOT` environment variable
-set to an appropriate sysroot.  You can generate such a sysroot with the
-following incantation:
-
-```
-cargo run --bin cargo-miri -- miri setup
-```
-
-This basically runs the `cargo-miri` binary (which backs the `cargo miri`
-subcommand) with `cargo`, and asks it to `setup`.  It should in the end print
-the directory where the libstd was built.  In the following, we will assume it
-is `~/.cache/miri/HOST`; you may have to adjust that if you are not using Linux.
-
-Now you can run the driver directly using
+Running the Miri driver requires some fiddling with environment variables, so
+the `miri` script helps you do that.  For example, you can run the driver on a
+particular file by doing
 
 ```sh
-MIRI_SYSROOT=~/.cache/miri/HOST cargo run tests/run-pass/format.rs # or whatever test you like
+./miri run tests/run-pass/format.rs
+./miri run tests/run-pass/hello.rs --target i686-unknown-linux-gnu
 ```
 
-and you can run the test suite using
+and you can run the test suite using:
 
 ```
-cargo test
+./miri test
 ```
 
-We recommend adding the `--release` flag to make tests run faster.
-
-`cargo test --release FILTER` only runs those tests that contain `FILTER` in
-their filename (including the base directory, e.g. `cargo test --release fail`
-will run all compile-fail tests).
+`./miri test FILTER` only runs those tests that contain `FILTER` in their
+filename (including the base directory, e.g. `./miri test fail` will run all
+compile-fail tests).
 
 You can get a trace of which MIR statements are being executed by setting the
 `MIRI_LOG` environment variable.  For example:
 
 ```sh
-MIRI_LOG=info cargo run tests/run-pass/vecs.rs
+MIRI_LOG=info ./miri run tests/run-pass/vecs.rs
 ```
 
 Setting `MIRI_LOG` like this will configure logging for Miri itself as well as
@@ -185,7 +173,7 @@ can also do more targeted configuration, e.g. the following helps debug the
 stacked borrows implementation:
 
 ```sh
-MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows cargo run tests/run-pass/vecs.rs
+MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/run-pass/vecs.rs
 ```
 
 In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
@@ -199,7 +187,7 @@ is probably easier to test it with the cargo wrapper.  You can install your
 development version of Miri using
 
 ```
-cargo install --path . --force
+./miri install
 ```
 
 and then you can use it as if it was installed by `rustup`.  Make sure you use
@@ -235,18 +223,7 @@ rustup override set custom
 ```
 
 With this, you should now have a working development setup!  See
-[above][testing-miri] for how to proceed working with the Miri driver.  Notice
-that rustc's sysroot is already built for Miri in this case, so you can set
-`MIRI_SYSROOT=$(rustc --print sysroot)`.
-
-Running `cargo miri` in this setup is a bit more complicated, because the Miri
-binary you just created needs help to find the libraries it links against.  On
-Linux, you can set the rpath to make this "just work":
-
-```sh
-export RUSTFLAGS="-C link-args=-Wl,-rpath,$(rustc --print sysroot)/lib/rustlib/x86_64-unknown-linux-gnu/lib"
-cargo install --path . --force
-```
+[above][testing-miri] for how to proceed working with the Miri driver.
 
 ### Miri `-Z` flags and environment variables
 [miri-flags]: #miri--z-flags-and-environment-variables

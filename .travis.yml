@@ -16,7 +16,6 @@ env:
   global:
   - RUST_TEST_NOCAPTURE=1
   - RUST_BACKTRACE=1
-  - RUSTFLAGS="-C debug-assertions"
 
 before_script:
 # Linux: install extra stuff for cross-compilation

@@ -1,0 +1,83 @@
+#!/bin/sh
+set -e
+# I'd love to use `jq` for parsing the JSON properly, but macOS is totally underequipped for this kind of work.
+TARGET=$(rustc --print target-spec-json -Z unstable-options | grep llvm-target | cut -d '"' -f 4)
+SYSROOT=$(rustc --print sysroot)
+# We set the rpath so that Miri finds the private rustc libraries it needs.
+# We enable debug-assertions to get tracing.
+# We enable line-only debuginfo for backtraces.
+export RUSTFLAGS="-C link-args=-Wl,-rpath,$SYSROOT/lib/rustlib/$TARGET/lib -C debug-assertions -C debuginfo=1"
+
+## Helper functions
+
+# Build a sysroot and set MIRI_SYSROOT to use it.  Arguments are passed to `cargo miri setup`.
+build_sysroot() {
+    # Build once, for the user to see.
+    cargo run --release --bin cargo-miri -- miri setup "$@"
+    # Call again, to just set env var.
+    eval $(cargo run --release -q --bin cargo-miri -- miri setup --env "$@")
+    export MIRI_SYSROOT
+}
+
+# Prepare and set MIRI_SYSROOT.  Respects `MIRI_TEST_TARGET` and takes into account
+# locally built vs. distributed rustc.
+find_sysroot() {
+    # Get ourselves a sysroot
+    if [ -n "$MIRI_SYSROOT" ]; then
+        # Sysroot already set, use that.
+        true
+    elif echo "$SYSROOT" | egrep -q 'build/[^/]+/stage'; then
+        # A local rustc build.
+        if [ -n "$MIRI_TEST_TARGET" ]; then
+            # Foreign targets still need a build.  Use the rustc sources.
+            export XARGO_RUST_SRC="$SYSROOT/../../../src"
+            build_sysroot --target "$MIRI_TEST_TARGET"
+        else
+            # Assume we have a proper host libstd in $SYSROOT.
+            true
+        fi
+    else
+        # A normal toolchain.  We have to build a sysroot either way.
+        if [ -n "$MIRI_TEST_TARGET" ]; then
+            build_sysroot --target "$MIRI_TEST_TARGET"
+        else
+            build_sysroot
+        fi
+    fi
+}
+
+## Main
+
+COMMAND="$1"
+shift
+
+case "$COMMAND" in
+install)
+    # "--locked" to respect the Cargo.lock file if it exists,
+    # "--offline" to avoid querying the registry (for yanked packages).
+    exec cargo "$COMMAND" --path "$(dirname "$0")" --force --locked --offline "$@"
+    ;;
+build)
+    # Build, and let caller control flags.
+    exec cargo "$COMMAND" --release "$@"
+    ;;
+test|run)
+    # In "run" mode, scan for "--target" to set the "MIRI_TEST_TARGET" env var so
+    # that we set the MIRI_SYSROOT up the right way.
+    if [ "$COMMAND" = "run" ] && [ -z "$MIRI_TEST_TARGET" ]; then
+        for ARG in "$@"; do
+            if [ "$LAST_ARG" = "--target" ]; then
+                # Found it!
+                export MIRI_TEST_TARGET="$ARG"
+                break
+            fi
+            LAST_ARG="$ARG"
+        done
+    fi
+    # First build and get a sysroot.
+    cargo build --release
+    find_sysroot
+    # Then run the actual command.
+    exec cargo "$COMMAND" --release "$@"
+    ;;
+esac
