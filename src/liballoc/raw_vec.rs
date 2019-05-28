@@ -685,12 +685,14 @@ impl<T, A: Alloc> RawVec<T, A> {
 impl<T> RawVec<T, Global> {
     /// Converts the entire buffer into `Box<[T]>`.
     ///
-    /// While it is not *strictly* Undefined Behavior to call
-    /// this procedure while some of the RawVec is uninitialized,
-    /// it certainly makes it trivial to trigger it.
-    ///
     /// Note that this will correctly reconstitute any `cap` changes
     /// that may have been performed. (see description of type for details)
+    ///
+    /// # Undefined Behavior
+    ///
+    /// All elements of `RawVec<T, Global>` must be initialized. Notice that
+    /// the rules around uninitialized boxed values are not finalized yet,
+    /// but until they are, it is advisable to avoid them.
     pub unsafe fn into_box(self) -> Box<[T]> {
         // NOTE: not calling `cap()` here, actually using the real `cap` field!
         let slice = slice::from_raw_parts_mut(self.ptr(), self.cap);
