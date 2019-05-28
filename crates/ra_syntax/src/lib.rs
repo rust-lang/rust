@@ -31,7 +31,7 @@ pub mod ast;
 #[doc(hidden)]
 pub mod fuzz;
 
-use std::sync::Arc;
+use std::{sync::Arc, fmt::Write};
 
 use ra_text_edit::AtomTextEdit;
 
@@ -68,6 +68,14 @@ impl Parse {
             Err(self.errors)
         }
     }
+
+    pub fn debug_dump(&self) -> String {
+        let mut buf = self.tree.syntax().debug_dump();
+        for err in self.errors.iter() {
+            writeln!(buf, "err: `{}`", err).unwrap();
+        }
+        buf
+    }
 }
 
 /// `SourceFile` represents a parse tree for a single Rust file.
@@ -81,6 +89,12 @@ impl SourceFile {
         }
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         TreeArc::cast(root)
+    }
+
+    pub fn parse2(text: &str) -> Parse {
+        let (green, errors) = parsing::parse_text(text);
+        let tree = SourceFile::new(green);
+        Parse { tree, errors: Arc::new(errors) }
     }
 
     pub fn parse(text: &str) -> TreeArc<SourceFile> {

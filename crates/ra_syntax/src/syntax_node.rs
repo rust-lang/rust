@@ -256,37 +256,18 @@ impl SyntaxNode {
     }
 
     pub fn debug_dump(&self) -> String {
-        let mut errors: Vec<_> = match self.ancestors().find_map(SourceFile::cast) {
-            Some(file) => file.errors(),
-            None => self.root_data().to_vec(),
-        };
-        errors.sort_by_key(|e| e.offset());
-        let mut err_pos = 0;
         let mut level = 0;
         let mut buf = String::new();
-        macro_rules! indent {
-            () => {
-                for _ in 0..level {
-                    buf.push_str("  ");
-                }
-            };
-        }
 
         for event in self.preorder_with_tokens() {
             match event {
                 WalkEvent::Enter(element) => {
-                    indent!();
+                    for _ in 0..level {
+                        buf.push_str("  ");
+                    }
                     match element {
                         SyntaxElement::Node(node) => writeln!(buf, "{:?}", node).unwrap(),
-                        SyntaxElement::Token(token) => {
-                            writeln!(buf, "{:?}", token).unwrap();
-                            let off = token.range().end();
-                            while err_pos < errors.len() && errors[err_pos].offset() <= off {
-                                indent!();
-                                writeln!(buf, "err: `{}`", errors[err_pos]).unwrap();
-                                err_pos += 1;
-                            }
-                        }
+                        SyntaxElement::Token(token) => writeln!(buf, "{:?}", token).unwrap(),
                     }
                     level += 1;
                 }
@@ -295,9 +276,6 @@ impl SyntaxNode {
         }
 
         assert_eq!(level, 0);
-        for err in errors[err_pos..].iter() {
-            writeln!(buf, "err: `{}`", err).unwrap();
-        }
 
         buf
     }
