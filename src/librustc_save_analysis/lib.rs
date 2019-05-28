@@ -723,8 +723,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Res::Def(HirDefKind::TyAlias, def_id) |
             Res::Def(HirDefKind::ForeignTy, def_id) |
             Res::Def(HirDefKind::TraitAlias, def_id) |
-            Res::Def(HirDefKind::AssociatedExistential, def_id) |
-            Res::Def(HirDefKind::AssociatedTy, def_id) |
+            Res::Def(HirDefKind::AssocExistential, def_id) |
+            Res::Def(HirDefKind::AssocTy, def_id) |
             Res::Def(HirDefKind::Trait, def_id) |
             Res::Def(HirDefKind::Existential, def_id) |
             Res::Def(HirDefKind::TyParam, def_id) => {
@@ -754,7 +754,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             Res::Def(HirDefKind::Static, _) |
             Res::Def(HirDefKind::Const, _) |
-            Res::Def(HirDefKind::AssociatedConst, _) |
+            Res::Def(HirDefKind::AssocConst, _) |
             Res::Def(HirDefKind::Ctor(..), _) => {
                 Some(Ref {
                     kind: RefKind::Variable,

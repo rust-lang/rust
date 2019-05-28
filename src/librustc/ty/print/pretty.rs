@@ -823,7 +823,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             match self.tcx().def_kind(did) {
                 | Some(DefKind::Static)
                 | Some(DefKind::Const)
-                | Some(DefKind::AssociatedConst) => p!(print_value_path(did, substs)),
+                | Some(DefKind::AssocConst) => p!(print_value_path(did, substs)),
                 _ => if did.is_local() {
                     let span = self.tcx().def_span(did);
                     if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {

@@ -527,8 +527,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Check if `def_id` is a trait method.
         match self.def_kind(def_id) {
             Some(DefKind::Method) |
-            Some(DefKind::AssociatedTy) |
-            Some(DefKind::AssociatedConst) => {
+            Some(DefKind::AssocTy) |
+            Some(DefKind::AssocConst) => {
                 if let ty::TraitContainer(trait_def_id) = self.associated_item(def_id).container {
                     // Trait methods do not declare visibility (even
                     // for visibility info in cstore). Use containing

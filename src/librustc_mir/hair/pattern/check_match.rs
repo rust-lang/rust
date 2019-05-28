@@ -102,7 +102,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternError::StaticInPattern(span) => {
                     self.span_e0158(span, "statics cannot be referenced in patterns")
                 }
-                PatternError::AssociatedConstInPattern(span) => {
+                PatternError::AssocConstInPattern(span) => {
                     self.span_e0158(span, "associated consts cannot be referenced in patterns")
                 }
                 PatternError::FloatBug => {

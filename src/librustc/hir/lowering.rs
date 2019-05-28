@@ -1860,7 +1860,7 @@ impl<'a> LoweringContext<'a> {
                         index: this.def_key(def_id).parent.expect("missing parent"),
                     };
                     let type_def_id = match partial_res.base_res() {
-                        Res::Def(DefKind::AssociatedTy, def_id) if i + 2 == proj_start => {
+                        Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
                             Some(parent_def_id(self, def_id))
                         }
                         Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
@@ -1882,8 +1882,8 @@ impl<'a> LoweringContext<'a> {
                             if i + 1 == proj_start => ParenthesizedGenericArgs::Ok,
                         // `a::b::Trait(Args)::TraitItem`
                         Res::Def(DefKind::Method, _)
-                        | Res::Def(DefKind::AssociatedConst, _)
-                        | Res::Def(DefKind::AssociatedTy, _)
+                        | Res::Def(DefKind::AssocConst, _)
+                        | Res::Def(DefKind::AssocTy, _)
                             if i + 2 == proj_start =>
                         {
                             ParenthesizedGenericArgs::Ok
@@ -3589,13 +3589,13 @@ impl<'a> LoweringContext<'a> {
     fn lower_trait_item_ref(&mut self, i: &TraitItem) -> hir::TraitItemRef {
         let (kind, has_default) = match i.node {
             TraitItemKind::Const(_, ref default) => {
-                (hir::AssociatedItemKind::Const, default.is_some())
+                (hir::AssocItemKind::Const, default.is_some())
             }
             TraitItemKind::Type(_, ref default) => {
-                (hir::AssociatedItemKind::Type, default.is_some())
+                (hir::AssocItemKind::Type, default.is_some())
             }
             TraitItemKind::Method(ref sig, ref default) => (
-                hir::AssociatedItemKind::Method {
+                hir::AssocItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },
                 default.is_some(),
@@ -3695,10 +3695,10 @@ impl<'a> LoweringContext<'a> {
             vis: self.lower_visibility(&i.vis, Some(i.id)),
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
             kind: match i.node {
-                ImplItemKind::Const(..) => hir::AssociatedItemKind::Const,
-                ImplItemKind::Type(..) => hir::AssociatedItemKind::Type,
-                ImplItemKind::Existential(..) => hir::AssociatedItemKind::Existential,
-                ImplItemKind::Method(ref sig, _) => hir::AssociatedItemKind::Method {
+                ImplItemKind::Const(..) => hir::AssocItemKind::Const,
+                ImplItemKind::Type(..) => hir::AssocItemKind::Type,
+                ImplItemKind::Existential(..) => hir::AssocItemKind::Existential,
+                ImplItemKind::Method(ref sig, _) => hir::AssocItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },
                 ImplItemKind::Macro(..) => unimplemented!(),

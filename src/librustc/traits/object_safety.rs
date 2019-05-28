@@ -35,7 +35,7 @@ pub enum ObjectSafetyViolation {
     Method(ast::Name, MethodViolationCode),
 
     /// Associated const.
-    AssociatedConst(ast::Name),
+    AssocConst(ast::Name),
 }
 
 impl ObjectSafetyViolation {
@@ -58,7 +58,7 @@ impl ObjectSafetyViolation {
                 format!("method `{}` has generic type parameters", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver) =>
                 format!("method `{}`'s receiver cannot be dispatched on", name).into(),
-            ObjectSafetyViolation::AssociatedConst(name) =>
+            ObjectSafetyViolation::AssocConst(name) =>
                 format!("the trait cannot contain associated consts like `{}`", name).into(),
         }
     }
@@ -119,7 +119,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     {
         // Check methods for violations.
         let mut violations: Vec<_> = self.associated_items(trait_def_id)
-            .filter(|item| item.kind == ty::AssociatedKind::Method)
+            .filter(|item| item.kind == ty::AssocKind::Method)
             .filter_map(|item|
                 self.object_safety_violation_for_method(trait_def_id, &item)
                     .map(|code| ObjectSafetyViolation::Method(item.ident.name, code))
@@ -151,8 +151,8 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         }
 
         violations.extend(self.associated_items(trait_def_id)
-            .filter(|item| item.kind == ty::AssociatedKind::Const)
-            .map(|item| ObjectSafetyViolation::AssociatedConst(item.ident.name)));
+            .filter(|item| item.kind == ty::AssocKind::Const)
+            .map(|item| ObjectSafetyViolation::AssocConst(item.ident.name)));
 
         debug!("object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
                trait_def_id,
@@ -251,7 +251,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// Returns `Some(_)` if this method makes the containing trait not object safe.
     fn object_safety_violation_for_method(self,
                                           trait_def_id: DefId,
-                                          method: &ty::AssociatedItem)
+                                          method: &ty::AssocItem)
                                           -> Option<MethodViolationCode>
     {
         debug!("object_safety_violation_for_method({:?}, {:?})", trait_def_id, method);
@@ -270,7 +270,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// otherwise ensure that they cannot be used when `Self=Trait`.
     pub fn is_vtable_safe_method(self,
                                  trait_def_id: DefId,
-                                 method: &ty::AssociatedItem)
+                                 method: &ty::AssocItem)
                                  -> bool
     {
         debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
@@ -291,7 +291,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// `Self:Sized`.
     fn virtual_call_violation_for_method(self,
                                          trait_def_id: DefId,
-                                         method: &ty::AssociatedItem)
+                                         method: &ty::AssocItem)
                                          -> Option<MethodViolationCode>
     {
         // The method's first parameter must be named `self`
@@ -439,7 +439,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                 self.associated_items(super_trait_ref.def_id())
                     .map(move |item| (super_trait_ref, item))
             })
-            .filter(|(_, item)| item.kind == ty::AssociatedKind::Type)
+            .filter(|(_, item)| item.kind == ty::AssocKind::Type)
             .collect::<Vec<_>>();
 
         // existential predicates need to be in a specific order
@@ -520,7 +520,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     #[allow(dead_code)]
     fn receiver_is_dispatchable(
         self,
-        method: &ty::AssociatedItem,
+        method: &ty::AssocItem,
         receiver_ty: Ty<'tcx>,
     ) -> bool {
         debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);

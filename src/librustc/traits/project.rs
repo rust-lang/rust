@@ -275,7 +275,7 @@ pub fn normalize_with_depth<'a, 'b, 'gcx, 'tcx, T>(
     where T : TypeFoldable<'tcx>
 {
     debug!("normalize_with_depth(depth={}, value={:?})", depth, value);
-    let mut normalizer = AssociatedTypeNormalizer::new(selcx, param_env, cause, depth);
+    let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth);
     let result = normalizer.fold(value);
     debug!("normalize_with_depth: depth={} result={:?} with {} obligations",
            depth, result, normalizer.obligations.len());
@@ -287,7 +287,7 @@ pub fn normalize_with_depth<'a, 'b, 'gcx, 'tcx, T>(
     }
 }
 
-struct AssociatedTypeNormalizer<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
+struct AssocTypeNormalizer<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
     selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -295,14 +295,14 @@ struct AssociatedTypeNormalizer<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
     depth: usize,
 }
 
-impl<'a, 'b, 'gcx, 'tcx> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
+impl<'a, 'b, 'gcx, 'tcx> AssocTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
     fn new(selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
            param_env: ty::ParamEnv<'tcx>,
            cause: ObligationCause<'tcx>,
            depth: usize)
-           -> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx>
+           -> AssocTypeNormalizer<'a, 'b, 'gcx, 'tcx>
     {
-        AssociatedTypeNormalizer {
+        AssocTypeNormalizer {
             selcx,
             param_env,
             cause,
@@ -322,7 +322,7 @@ impl<'a, 'b, 'gcx, 'tcx> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
+impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssocTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
     fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'tcx> {
         self.selcx.tcx()
     }
@@ -388,7 +388,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                                                               self.cause.clone(),
                                                               self.depth,
                                                               &mut self.obligations);
-                debug!("AssociatedTypeNormalizer: depth={} normalized {:?} to {:?}, \
+                debug!("AssocTypeNormalizer: depth={} normalized {:?} to {:?}, \
                         now with {} obligations",
                        self.depth, ty, normalized_ty, self.obligations.len());
                 normalized_ty
@@ -635,7 +635,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                    projected_obligations);
 
             let result = if projected_ty.has_projections() {
-                let mut normalizer = AssociatedTypeNormalizer::new(selcx,
+                let mut normalizer = AssocTypeNormalizer::new(selcx,
                                                                    param_env,
                                                                    cause,
                                                                    depth+1);
@@ -1496,7 +1496,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
         };
     }
     let substs = translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.node);
-    let ty = if let ty::AssociatedKind::Existential = assoc_ty.item.kind {
+    let ty = if let ty::AssocKind::Existential = assoc_ty.item.kind {
         let item_substs = InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         tcx.mk_opaque(assoc_ty.item.def_id, item_substs)
     } else {
@@ -1517,7 +1517,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     selcx: &SelectionContext<'cx, 'gcx, 'tcx>,
     impl_def_id: DefId,
     assoc_ty_def_id: DefId)
-    -> specialization_graph::NodeItem<ty::AssociatedItem>
+    -> specialization_graph::NodeItem<ty::AssocItem>
 {
     let tcx = selcx.tcx();
     let assoc_ty_name = tcx.associated_item(assoc_ty_def_id).ident;
@@ -1532,7 +1532,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     // cycle error if the specialization graph is currently being built.
     let impl_node = specialization_graph::Node::Impl(impl_def_id);
     for item in impl_node.items(tcx) {
-        if item.kind == ty::AssociatedKind::Type &&
+        if item.kind == ty::AssocKind::Type &&
                 tcx.hygienic_eq(item.ident, assoc_ty_name, trait_def_id) {
             return specialization_graph::NodeItem {
                 node: specialization_graph::Node::Impl(impl_def_id),
@@ -1543,7 +1543,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 
     if let Some(assoc_item) = trait_def
         .ancestors(tcx, impl_def_id)
-        .defs(tcx, assoc_ty_name, ty::AssociatedKind::Type, trait_def_id)
+        .defs(tcx, assoc_ty_name, ty::AssocKind::Type, trait_def_id)
         .next() {
         assoc_item
     } else {

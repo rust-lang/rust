@@ -112,7 +112,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 pub fn find_associated_item<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    item: &ty::AssociatedItem,
+    item: &ty::AssocItem,
     substs: SubstsRef<'tcx>,
     impl_data: &super::VtableImplData<'tcx, ()>,
 ) -> (DefId, SubstsRef<'tcx>) {

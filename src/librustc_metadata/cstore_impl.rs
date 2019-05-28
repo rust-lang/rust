@@ -471,7 +471,7 @@ impl cstore::CStore {
         })
     }
 
-    pub fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem {
+    pub fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssocItem {
         self.get_crate_data(def.krate).get_associated_item(def.index)
     }
 }

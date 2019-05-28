@@ -337,17 +337,17 @@ impl<'hir> Map<'hir> {
             }
             Node::TraitItem(item) => {
                 match item.node {
-                    TraitItemKind::Const(..) => DefKind::AssociatedConst,
+                    TraitItemKind::Const(..) => DefKind::AssocConst,
                     TraitItemKind::Method(..) => DefKind::Method,
-                    TraitItemKind::Type(..) => DefKind::AssociatedTy,
+                    TraitItemKind::Type(..) => DefKind::AssocTy,
                 }
             }
             Node::ImplItem(item) => {
                 match item.node {
-                    ImplItemKind::Const(..) => DefKind::AssociatedConst,
+                    ImplItemKind::Const(..) => DefKind::AssocConst,
                     ImplItemKind::Method(..) => DefKind::Method,
-                    ImplItemKind::Type(..) => DefKind::AssociatedTy,
-                    ImplItemKind::Existential(..) => DefKind::AssociatedExistential,
+                    ImplItemKind::Type(..) => DefKind::AssocTy,
+                    ImplItemKind::Existential(..) => DefKind::AssocExistential,
                 }
             }
             Node::Variant(_) => DefKind::Variant,

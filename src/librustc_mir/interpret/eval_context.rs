@@ -513,7 +513,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                 // statics and constants don't have `Storage*` statements, no need to look for them
                 Some(DefKind::Static)
                 | Some(DefKind::Const)
-                | Some(DefKind::AssociatedConst) => {},
+                | Some(DefKind::AssocConst) => {},
                 _ => {
                     trace!("push_stack_frame: {:?}: num_bbs: {}", span, mir.basic_blocks().len());
                     for block in mir.basic_blocks() {

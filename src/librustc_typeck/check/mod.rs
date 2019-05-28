@@ -1499,17 +1499,17 @@ fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            trait_def: &ty::TraitDef,
-                                           trait_item: &ty::AssociatedItem,
+                                           trait_item: &ty::AssocItem,
                                            impl_id: DefId,
                                            impl_item: &hir::ImplItem)
 {
     let ancestors = trait_def.ancestors(tcx, impl_id);
 
     let kind = match impl_item.node {
-        hir::ImplItemKind::Const(..) => ty::AssociatedKind::Const,
-        hir::ImplItemKind::Method(..) => ty::AssociatedKind::Method,
-        hir::ImplItemKind::Existential(..) => ty::AssociatedKind::Existential,
-        hir::ImplItemKind::Type(_) => ty::AssociatedKind::Type
+        hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
+        hir::ImplItemKind::Method(..) => ty::AssocKind::Method,
+        hir::ImplItemKind::Existential(..) => ty::AssocKind::Existential,
+        hir::ImplItemKind::Type(_) => ty::AssocKind::Type
     };
 
     let parent = ancestors.defs(tcx, trait_item.ident, kind, trait_def.def_id).nth(1)
@@ -1560,7 +1560,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             match impl_item.node {
                 hir::ImplItemKind::Const(..) => {
                     // Find associated const definition.
-                    if ty_trait_item.kind == ty::AssociatedKind::Const {
+                    if ty_trait_item.kind == ty::AssocKind::Const {
                         compare_const_impl(tcx,
                                            &ty_impl_item,
                                            impl_item.span,
@@ -1583,7 +1583,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
                 hir::ImplItemKind::Method(..) => {
                     let trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                    if ty_trait_item.kind == ty::AssociatedKind::Method {
+                    if ty_trait_item.kind == ty::AssocKind::Method {
                         compare_impl_method(tcx,
                                             &ty_impl_item,
                                             impl_item.span,
@@ -1605,7 +1605,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
                 hir::ImplItemKind::Existential(..) |
                 hir::ImplItemKind::Type(_) => {
-                    if ty_trait_item.kind == ty::AssociatedKind::Type {
+                    if ty_trait_item.kind == ty::AssocKind::Type {
                         if ty_trait_item.defaultness.has_value() {
                             overridden_associated_type = Some(impl_item);
                         }
@@ -3742,7 +3742,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Res::Def(DefKind::Struct, _)
             | Res::Def(DefKind::Union, _)
             | Res::Def(DefKind::TyAlias, _)
-            | Res::Def(DefKind::AssociatedTy, _)
+            | Res::Def(DefKind::AssocTy, _)
             | Res::SelfTy(..) => {
                 match ty.sty {
                     ty::Adt(adt, substs) if !adt.is_enum() => {
@@ -5275,7 +5275,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             Res::Def(DefKind::Method, def_id)
-            | Res::Def(DefKind::AssociatedConst, def_id) => {
+            | Res::Def(DefKind::AssocConst, def_id) => {
                 let container = tcx.associated_item(def_id).container;
                 debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
                 match container {

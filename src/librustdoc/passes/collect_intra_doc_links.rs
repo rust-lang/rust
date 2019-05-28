@@ -75,8 +75,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // In case this is a trait item, skip the
                 // early return and try looking for the trait.
                 let value = match result.res {
-                    Res::Def(DefKind::Method, _) | Res::Def(DefKind::AssociatedConst, _) => true,
-                    Res::Def(DefKind::AssociatedTy, _) => false,
+                    Res::Def(DefKind::Method, _) | Res::Def(DefKind::AssocConst, _) => true,
+                    Res::Def(DefKind::AssocTy, _) => false,
                     Res::Def(DefKind::Variant, _) => return handle_variant(cx, result.res),
                     // Not a trait item; just return what we found.
                     _ => return Ok((result.res, None))
@@ -120,7 +120,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 return cx.tcx.associated_items(did)
                     .find(|item| item.ident.name == item_name)
                     .and_then(|item| match item.kind {
-                        ty::AssociatedKind::Method => Some("method"),
+                        ty::AssocKind::Method => Some("method"),
                         _ => None,
                     })
                     .map(|out| (prim, Some(format!("{}#{}.{}", path, out, item_name))))
@@ -143,8 +143,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                      .find(|item| item.ident.name == item_name);
                     if let Some(item) = item {
                         let out = match item.kind {
-                            ty::AssociatedKind::Method if ns == ValueNS => "method",
-                            ty::AssociatedKind::Const if ns == ValueNS => "associatedconstant",
+                            ty::AssocKind::Method if ns == ValueNS => "method",
+                            ty::AssocKind::Const if ns == ValueNS => "associatedconstant",
                             _ => return Err(())
                         };
                         Ok((ty.res, Some(format!("{}.{}", out, item_name))))
@@ -181,9 +181,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                  .find(|item| item.ident.name == item_name);
                     if let Some(item) = item {
                         let kind = match item.kind {
-                            ty::AssociatedKind::Const if ns == ValueNS => "associatedconstant",
-                            ty::AssociatedKind::Type if ns == TypeNS => "associatedtype",
-                            ty::AssociatedKind::Method if ns == ValueNS => {
+                            ty::AssocKind::Const if ns == ValueNS => "associatedconstant",
+                            ty::AssocKind::Type if ns == TypeNS => "associatedtype",
+                            ty::AssocKind::Method if ns == ValueNS => {
                                 if item.defaultness.has_value() {
                                     "method"
                                 } else {

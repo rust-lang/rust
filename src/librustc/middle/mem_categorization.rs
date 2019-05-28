@@ -703,7 +703,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             Res::Def(DefKind::Ctor(..), _)
             | Res::Def(DefKind::Const, _)
             | Res::Def(DefKind::ConstParam, _)
-            | Res::Def(DefKind::AssociatedConst, _)
+            | Res::Def(DefKind::AssocConst, _)
             | Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::Method, _)
             | Res::SelfCtor(..) => {

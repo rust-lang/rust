@@ -909,7 +909,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 | Res::Def(DefKind::Ctor(..), _)
                 | Res::Def(DefKind::Union, _)
                 | Res::Def(DefKind::TyAlias, _)
-                | Res::Def(DefKind::AssociatedTy, _)
+                | Res::Def(DefKind::AssocTy, _)
                 | Res::SelfTy(..) => {
                     debug!("struct cmt_pat={:?} pat={:?}", cmt_pat, pat);
                     delegate.matched_pat(pat, &cmt_pat, match_mode);

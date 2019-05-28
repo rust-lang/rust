@@ -1924,7 +1924,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
         let type_def_id = match res {
-            Res::Def(DefKind::AssociatedTy, def_id)
+            Res::Def(DefKind::AssocTy, def_id)
                 if depth == 1 => Some(parent_def_id(self, def_id)),
             Res::Def(DefKind::Variant, def_id)
                 if depth == 0 => Some(parent_def_id(self, def_id)),
@@ -2112,7 +2112,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
 
         let has_self = match assoc_item_kind {
-            Some(hir::AssociatedItemKind::Method { has_self }) => has_self,
+            Some(hir::AssocItemKind::Method { has_self }) => has_self,
             _ => false,
         };
 

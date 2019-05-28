@@ -822,15 +822,15 @@ impl EncodeContext<'_, 'tcx> {
 
         let container = match trait_item.defaultness {
             hir::Defaultness::Default { has_value: true } =>
-                AssociatedContainer::TraitWithDefault,
+                AssocContainer::TraitWithDefault,
             hir::Defaultness::Default { has_value: false } =>
-                AssociatedContainer::TraitRequired,
+                AssocContainer::TraitRequired,
             hir::Defaultness::Final =>
                 span_bug!(ast_item.span, "traits cannot have final items"),
         };
 
         let kind = match trait_item.kind {
-            ty::AssociatedKind::Const => {
+            ty::AssocKind::Const => {
                 let const_qualif =
                     if let hir::TraitItemKind::Const(_, Some(body)) = ast_item.node {
                         self.const_qualif(0, body)
@@ -842,9 +842,9 @@ impl EncodeContext<'_, 'tcx> {
                     hir::print::to_string(self.tcx.hir(), |s| s.print_trait_item(ast_item));
                 let rendered_const = self.lazy(&RenderedConst(rendered));
 
-                EntryKind::AssociatedConst(container, const_qualif, rendered_const)
+                EntryKind::AssocConst(container, const_qualif, rendered_const)
             }
-            ty::AssociatedKind::Method => {
+            ty::AssocKind::Method => {
                 let fn_data = if let hir::TraitItemKind::Method(_, ref m) = ast_item.node {
                     let arg_names = match *m {
                         hir::TraitMethod::Required(ref names) => {
@@ -868,8 +868,8 @@ impl EncodeContext<'_, 'tcx> {
                     has_self: trait_item.method_has_self_argument,
                 }))
             }
-            ty::AssociatedKind::Type => EntryKind::AssociatedType(container),
-            ty::AssociatedKind::Existential =>
+            ty::AssocKind::Type => EntryKind::AssocType(container),
+            ty::AssocKind::Existential =>
                 span_bug!(ast_item.span, "existential type in trait"),
         };
 
@@ -883,21 +883,21 @@ impl EncodeContext<'_, 'tcx> {
             deprecation: self.encode_deprecation(def_id),
 
             ty: match trait_item.kind {
-                ty::AssociatedKind::Const |
-                ty::AssociatedKind::Method => {
+                ty::AssocKind::Const |
+                ty::AssocKind::Method => {
                     Some(self.encode_item_type(def_id))
                 }
-                ty::AssociatedKind::Type => {
+                ty::AssocKind::Type => {
                     if trait_item.defaultness.has_value() {
                         Some(self.encode_item_type(def_id))
                     } else {
                         None
                     }
                 }
-                ty::AssociatedKind::Existential => unreachable!(),
+                ty::AssocKind::Existential => unreachable!(),
             },
             inherent_impls: LazySeq::empty(),
-            variances: if trait_item.kind == ty::AssociatedKind::Method {
+            variances: if trait_item.kind == ty::AssocKind::Method {
                 self.encode_variances_of(def_id)
             } else {
                 LazySeq::empty()
@@ -931,25 +931,25 @@ impl EncodeContext<'_, 'tcx> {
         let impl_item = self.tcx.associated_item(def_id);
 
         let container = match impl_item.defaultness {
-            hir::Defaultness::Default { has_value: true } => AssociatedContainer::ImplDefault,
-            hir::Defaultness::Final => AssociatedContainer::ImplFinal,
+            hir::Defaultness::Default { has_value: true } => AssocContainer::ImplDefault,
+            hir::Defaultness::Final => AssocContainer::ImplFinal,
             hir::Defaultness::Default { has_value: false } =>
                 span_bug!(ast_item.span, "impl items always have values (currently)"),
         };
 
         let kind = match impl_item.kind {
-            ty::AssociatedKind::Const => {
+            ty::AssocKind::Const => {
                 if let hir::ImplItemKind::Const(_, body_id) = ast_item.node {
                     let mir = self.tcx.at(ast_item.span).mir_const_qualif(def_id).0;
 
-                    EntryKind::AssociatedConst(container,
+                    EntryKind::AssocConst(container,
                         self.const_qualif(mir, body_id),
                         self.encode_rendered_const_for_body(body_id))
                 } else {
                     bug!()
                 }
             }
-            ty::AssociatedKind::Method => {
+            ty::AssocKind::Method => {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
                     FnData {
                         constness: sig.header.constness,
@@ -965,8 +965,8 @@ impl EncodeContext<'_, 'tcx> {
                     has_self: impl_item.method_has_self_argument,
                 }))
             }
-            ty::AssociatedKind::Existential => EntryKind::AssociatedExistential(container),
-            ty::AssociatedKind::Type => EntryKind::AssociatedType(container)
+            ty::AssocKind::Existential => EntryKind::AssocExistential(container),
+            ty::AssocKind::Type => EntryKind::AssocType(container)
         };
 
         let mir =
@@ -996,7 +996,7 @@ impl EncodeContext<'_, 'tcx> {
 
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
-            variances: if impl_item.kind == ty::AssociatedKind::Method {
+            variances: if impl_item.kind == ty::AssocKind::Method {
                 self.encode_variances_of(def_id)
             } else {
                 LazySeq::empty()
