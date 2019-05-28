@@ -18,7 +18,7 @@ pub(crate) struct SubtreeTokenSource<'a> {
 
 impl<'a> SubtreeTokenSource<'a> {
     // Helper function used in test
-    #[allow(unused)]
+    #[cfg(test)]
     pub fn text(&self) -> SmolStr {
         match self.get(self.curr.1) {
             Some(tt) => tt.text,
