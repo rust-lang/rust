@@ -528,13 +528,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }) => {
                 // Not projected from the implicit `self` in a closure.
                 debug_assert!(
-                    match *base {
-                        Place::Base(PlaceBase::Local(local)) => local == Local::new(1),
-                        Place::Projection(box Projection {
-                            ref base,
-                            elem: ProjectionElem::Deref,
-                        }) => *base == Place::Base(PlaceBase::Local(Local::new(1))),
-                        _ => false,
+                    match base.local() {
+                        Some(local) => local == Local::new(1),
+                        None => false,
                     },
                     "Unexpected capture place"
                 );
