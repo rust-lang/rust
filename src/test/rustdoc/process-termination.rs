@@ -21,4 +21,16 @@
 /// Err("This is returned from `main`, leading to panic")?;
 /// Ok::<(), &'static str>(())
 /// ```
+///
+/// This also works with `Option<()>`s now:
+///
+/// ```rust
+/// Some(())
+/// ```
+///
+/// ```rust,should_panic
+/// let x: &[u32] = &[];
+/// let _ = x.iter().next()?;
+/// Some(())
+/// ```
 pub fn check_process_termination() {}
