@@ -7,9 +7,9 @@ use rustc_data_structures::sync::{RwLock, ReadGuard, MappedReadGuard};
 /// optimization, but that'd be expensive. And yet we don't just want
 /// to mutate it in place, because that would spoil the idea that
 /// queries are these pure functions that produce an immutable value
-/// (since if you did the query twice, you could observe the
-/// mutations). So instead we have the query produce a `&'tcx
-/// Steal<Mir<'tcx>>` (to be very specific). Now we can read from this
+/// (since if you did the query twice, you could observe the mutations).
+/// So instead we have the query produce a `&'tcx Steal<mir::Body<'tcx>>`
+/// (to be very specific). Now we can read from this
 /// as much as we want (using `borrow()`), but you can also
 /// `steal()`. Once you steal, any further attempt to read will panic.
 /// Therefore, we know that -- assuming no ICE -- nobody is observing

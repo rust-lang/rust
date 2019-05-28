@@ -47,7 +47,7 @@ pub struct GlobalId<'tcx> {
     /// For a promoted global, the `Instance` of the function they belong to.
     pub instance: ty::Instance<'tcx>,
 
-    /// The index for promoted globals within their function's `Mir`.
+    /// The index for promoted globals within their function's `mir::Body`.
     pub promoted: Option<mir::Promoted>,
 }
 

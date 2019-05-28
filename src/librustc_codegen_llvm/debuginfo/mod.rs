@@ -239,7 +239,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         instance: Instance<'tcx>,
         sig: ty::FnSig<'tcx>,
         llfn: &'ll Value,
-        mir: &mir::Mir<'_>,
+        mir: &mir::Body<'_>,
     ) -> FunctionDebugContext<&'ll DISubprogram> {
         if self.sess().opts.debuginfo == DebugInfo::None {
             return FunctionDebugContext::DebugInfoDisabled;
@@ -523,7 +523,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn create_mir_scopes(
         &self,
-        mir: &mir::Mir<'_>,
+        mir: &mir::Body<'_>,
         debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
     ) -> IndexVec<mir::SourceScope, MirDebugScope<&'ll DIScope>> {
         create_scope_map::create_mir_scopes(self, mir, debug_context)

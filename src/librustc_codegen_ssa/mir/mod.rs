@@ -1,6 +1,6 @@
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{TyLayout, HasTyCtxt, FnTypeExt};
-use rustc::mir::{self, Mir};
+use rustc::mir::{self, Body};
 use rustc::session::config::DebugInfo;
 use rustc_mir::monomorphize::Instance;
 use rustc_target::abi::call::{FnType, PassMode, IgnoreMode};
@@ -27,7 +27,7 @@ use self::operand::{OperandRef, OperandValue};
 pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: &'a mir::Mir<'tcx>,
+    mir: &'a mir::Body<'tcx>,
 
     debug_context: FunctionDebugContext<Bx::DIScope>,
 
@@ -196,7 +196,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> LocalRef<'tcx, V> {
 pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     llfn: Bx::Value,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
 ) {
@@ -360,7 +360,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     bx: &mut Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
     block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>)

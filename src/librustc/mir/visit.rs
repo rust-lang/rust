@@ -71,8 +71,8 @@ macro_rules! make_mir_visitor {
             // Override these, and call `self.super_xxx` to revert back to the
             // default behavior.
 
-            fn visit_mir(&mut self, mir: & $($mutability)? Mir<'tcx>) {
-                self.super_mir(mir);
+            fn visit_body(&mut self, mir: & $($mutability)? Body<'tcx>) {
+                self.super_body(mir);
             }
 
             fn visit_basic_block_data(&mut self,
@@ -251,8 +251,8 @@ macro_rules! make_mir_visitor {
             // The `super_xxx` methods comprise the default behavior and are
             // not meant to be overridden.
 
-            fn super_mir(&mut self,
-                         mir: & $($mutability)? Mir<'tcx>) {
+            fn super_body(&mut self,
+                         mir: & $($mutability)? Body<'tcx>) {
                 if let Some(yield_ty) = &$($mutability)? mir.yield_ty {
                     self.visit_ty(yield_ty, TyContext::YieldTy(SourceInfo {
                         span: mir.span,
@@ -261,7 +261,7 @@ macro_rules! make_mir_visitor {
                 }
 
                 // for best performance, we want to use an iterator rather
-                // than a for-loop, to avoid calling Mir::invalidate for
+                // than a for-loop, to avoid calling `mir::Body::invalidate` for
                 // each basic block.
                 macro_rules! basic_blocks {
                     (mut) => (mir.basic_blocks_mut().iter_enumerated_mut());
@@ -825,7 +825,7 @@ macro_rules! make_mir_visitor {
 
             // Convenience methods
 
-            fn visit_location(&mut self, mir: & $($mutability)? Mir<'tcx>, location: Location) {
+            fn visit_location(&mut self, mir: & $($mutability)? Body<'tcx>, location: Location) {
                 let basic_block = & $($mutability)? mir[location.block];
                 if basic_block.statements.len() == location.statement_index {
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {

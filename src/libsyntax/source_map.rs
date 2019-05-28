@@ -727,6 +727,11 @@ impl SourceMap {
         debug!("find_width_of_character_at_span: local_begin=`{:?}`, local_end=`{:?}`",
                local_begin, local_end);
 
+        if local_begin.sf.start_pos != local_end.sf.start_pos {
+            debug!("find_width_of_character_at_span: begin and end are in different files");
+            return 1;
+        }
+
         let start_index = local_begin.pos.to_usize();
         let end_index = local_end.pos.to_usize();
         debug!("find_width_of_character_at_span: start_index=`{:?}`, end_index=`{:?}`",

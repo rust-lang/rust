@@ -18,7 +18,7 @@ use rustc::mir::interpret::AllocDecodingSession;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
-use rustc::mir::Mir;
+use rustc::mir::Body;
 use rustc::util::captures::Captures;
 
 use std::io;
@@ -887,7 +887,7 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn maybe_get_optimized_mir(&self,
                                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    id: DefIndex)
-                                   -> Option<Mir<'tcx>> {
+                                   -> Option<Body<'tcx>> {
         match self.is_proc_macro(id) {
             true => None,
             false => self.entry(id).mir.map(|mir| mir.decode((self, tcx))),
