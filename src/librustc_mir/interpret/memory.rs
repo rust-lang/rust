@@ -326,7 +326,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// The resolved ID is never used by the interpreted progrma, it is hidden.
     /// The `GlobalAlloc::Memory` branch here is still reachable though; when a static
     /// contains a reference to memory that was created during its evaluation (i.e., not to
-    /// another static), those inner references only exist in "resolved" from.
+    /// another static), those inner references only exist in "resolved" form.
     fn get_static_alloc(
         id: AllocId,
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,

@@ -171,7 +171,8 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
     ///
-    /// The tag returned must be the same as the one returned by `tag_base_pointer`.
+    /// For static allocations, the tag returned must be the same as the one returned by
+    /// `tag_static_base_pointer`.
     fn tag_allocation<'b>(
         id: AllocId,
         alloc: Cow<'b, Allocation>,
