@@ -1750,6 +1750,22 @@ mod tests {
          }
     }
 
+    macro_rules! test_vec_1 {
+        { $name: ident, $fn:ident, $ty: ident, [$($a:expr),+], [$($d:expr),+] } => {
+            test_vec_1! { $name, $fn, $ty -> $ty, [$($a),+], [$($d),+] }
+        };
+        { $name: ident, $fn:ident, $ty: ident -> $ty_out: ident, [$($a:expr),+], [$($d:expr),+] } => {
+            #[simd_test(enable = "altivec")]
+            unsafe fn $name() {
+                let a: s_t_l!($ty) = transmute($ty::new($($a),+));
+
+                let d = $ty_out::new($($d),+);
+                let r : $ty_out = transmute($fn(a));
+                assert_eq!(d, r);
+            }
+        }
+    }
+
     test_vec_2! { test_vec_cmpgt_i8, vec_cmpgt, i8x16 -> m8x16,
         [1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, -1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
