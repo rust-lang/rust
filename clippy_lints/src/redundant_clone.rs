@@ -212,7 +212,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
 /// If `kind` is `y = func(x: &T)` where `T: !Copy`, returns `(DefId of func, x, T, y)`.
 fn is_call_with_ref_arg<'tcx>(
     cx: &LateContext<'_, 'tcx>,
-    mir: &'tcx mir::Mir<'tcx>,
+    mir: &'tcx mir::Body<'tcx>,
     kind: &'tcx mir::TerminatorKind<'tcx>,
 ) -> Option<(def_id::DefId, mir::Local, Ty<'tcx>, Option<&'tcx mir::Place<'tcx>>)> {
     if_chain! {
@@ -236,7 +236,7 @@ type CannotMoveOut = bool;
 /// ``Some((from, [`true` if `from` cannot be moved out]))``.
 fn find_stmt_assigns_to<'a, 'tcx: 'a>(
     cx: &LateContext<'_, 'tcx>,
-    mir: &mir::Mir<'tcx>,
+    mir: &mir::Body<'tcx>,
     to: mir::Local,
     by_ref: bool,
     stmts: impl DoubleEndedIterator<Item = &'a mir::Statement<'tcx>>,
@@ -270,7 +270,7 @@ fn find_stmt_assigns_to<'a, 'tcx: 'a>(
 /// Also reports whether given `place` cannot be moved out.
 fn base_local_and_movability<'tcx>(
     cx: &LateContext<'_, 'tcx>,
-    mir: &mir::Mir<'tcx>,
+    mir: &mir::Body<'tcx>,
     mut place: &mir::Place<'tcx>,
 ) -> Option<(mir::Local, CannotMoveOut)> {
     use rustc::mir::Place::*;
