@@ -7,10 +7,11 @@ if [ "$TRAVIS_OS_NAME" == osx ]; then
 else
   FOREIGN_TARGET=i686-unknown-linux-gnu
 fi
+export CARGO_EXTRA_FLAGS="--all-features"
 
 # Prepare
 echo "Build and install miri"
-./miri build --all-features --all-targets
+./miri build --all-targets
 ./miri install
 echo
 
