@@ -64,7 +64,7 @@ impl HirFileId {
         db.check_canceled();
         let _p = profile("parse_or_expand_query");
         match file_id.0 {
-            HirFileIdRepr::File(file_id) => Some(db.parse(file_id).syntax().to_owned()),
+            HirFileIdRepr::File(file_id) => Some(db.parse(file_id).tree.syntax().to_owned()),
             HirFileIdRepr::Macro(macro_file) => {
                 let macro_call_id = macro_file.macro_call_id;
                 let tt = db

@@ -59,7 +59,7 @@ fn test() {
     let b: usize = 1;
     let c = b;
 }
-}"#),
+"#),
         @r###"
 [11; 71) '{     ...= b; }': ()
 [21; 22) 'a': isize
@@ -85,7 +85,7 @@ fn test() {
     a();
     b::c();
 }
-}"#),
+"#),
         @r###"
 [15; 20) '{ 1 }': u32
 [17; 18) '1': u32
@@ -1004,7 +1004,7 @@ fn infer_tuple_struct_generics() {
     assert_snapshot_matches!(
         infer(r#"
 struct A<T>(T);
-enum Option<T> { Some(T), None };
+enum Option<T> { Some(T), None }
 use Option::*;
 
 fn test() {
@@ -1017,22 +1017,24 @@ fn test() {
 }
 "#),
         @r###"
-[77; 185) '{     ...one; }': ()
-[83; 84) 'A': A<i32>(T) -> A<T>
-[83; 88) 'A(42)': A<i32>
-[85; 87) '42': i32
-[94; 95) 'A': A<u128>(T) -> A<T>
-[94; 103) 'A(42u128)': A<u128>
-[96; 102) '42u128': u128
-[109; 113) 'Some': Some<&str>(T) -> Option<T>
-[109; 118) 'Some("x")': Option<&str>
-[114; 117) '"x"': &str
-[124; 136) 'Option::Some': Some<&str>(T) -> Option<T>
-[124; 141) 'Option...e("x")': Option<&str>
-[137; 140) '"x"': &str
-[147; 151) 'None': Option<{unknown}>
-[161; 162) 'x': Option<i64>
-[178; 182) 'None': Option<i64>"###
+   ⋮
+   ⋮[76; 184) '{     ...one; }': ()
+   ⋮[82; 83) 'A': A<i32>(T) -> A<T>
+   ⋮[82; 87) 'A(42)': A<i32>
+   ⋮[84; 86) '42': i32
+   ⋮[93; 94) 'A': A<u128>(T) -> A<T>
+   ⋮[93; 102) 'A(42u128)': A<u128>
+   ⋮[95; 101) '42u128': u128
+   ⋮[108; 112) 'Some': Some<&str>(T) -> Option<T>
+   ⋮[108; 117) 'Some("x")': Option<&str>
+   ⋮[113; 116) '"x"': &str
+   ⋮[123; 135) 'Option::Some': Some<&str>(T) -> Option<T>
+   ⋮[123; 140) 'Option...e("x")': Option<&str>
+   ⋮[136; 139) '"x"': &str
+   ⋮[146; 150) 'None': Option<{unknown}>
+   ⋮[160; 161) 'x': Option<i64>
+   ⋮[177; 181) 'None': Option<i64>
+    "###
     );
 }
 
@@ -1268,7 +1270,7 @@ impl Struct {
     const FOO: u32 = 1;
 }
 
-enum Enum;
+enum Enum {}
 
 impl Enum {
     const BAR: u32 = 2;
@@ -1291,16 +1293,18 @@ fn test() {
 }
 "#),
         @r###"
-[52; 53) '1': u32
-[103; 104) '2': u32
-[211; 212) '5': u32
-[227; 305) '{     ...:ID; }': ()
-[237; 238) 'x': u32
-[241; 252) 'Struct::FOO': u32
-[262; 263) 'y': u32
-[266; 275) 'Enum::BAR': u32
-[285; 286) 'z': {unknown}
-[289; 302) 'TraitTest::ID': {unknown}"###
+   ⋮
+   ⋮[52; 53) '1': u32
+   ⋮[105; 106) '2': u32
+   ⋮[213; 214) '5': u32
+   ⋮[229; 307) '{     ...:ID; }': ()
+   ⋮[239; 240) 'x': u32
+   ⋮[243; 254) 'Struct::FOO': u32
+   ⋮[264; 265) 'y': u32
+   ⋮[268; 277) 'Enum::BAR': u32
+   ⋮[287; 288) 'z': {unknown}
+   ⋮[291; 304) 'TraitTest::ID': {unknown}
+    "###
     );
 }
 
@@ -1308,7 +1312,7 @@ fn test() {
 fn infer_associated_method_struct() {
     assert_snapshot_matches!(
         infer(r#"
-struct A { x: u32 };
+struct A { x: u32 }
 
 impl A {
     fn new() -> A {
@@ -1321,15 +1325,17 @@ fn test() {
 }
 "#),
         @r###"
-[50; 76) '{     ...     }': A
-[60; 70) 'A { x: 0 }': A
-[67; 68) '0': u32
-[89; 123) '{     ...a.x; }': ()
-[99; 100) 'a': A
-[103; 109) 'A::new': fn new() -> A
-[103; 111) 'A::new()': A
-[117; 118) 'a': A
-[117; 120) 'a.x': u32"###
+   ⋮
+   ⋮[49; 75) '{     ...     }': A
+   ⋮[59; 69) 'A { x: 0 }': A
+   ⋮[66; 67) '0': u32
+   ⋮[88; 122) '{     ...a.x; }': ()
+   ⋮[98; 99) 'a': A
+   ⋮[102; 108) 'A::new': fn new() -> A
+   ⋮[102; 110) 'A::new()': A
+   ⋮[116; 117) 'a': A
+   ⋮[116; 119) 'a.x': u32
+    "###
     );
 }
 
@@ -1337,7 +1343,7 @@ fn test() {
 fn infer_associated_method_enum() {
     assert_snapshot_matches!(
         infer(r#"
-enum A { B, C };
+enum A { B, C }
 
 impl A {
     pub fn b() -> A {
@@ -1355,19 +1361,21 @@ fn test() {
 }
 "#),
         @r###"
-[48; 68) '{     ...     }': A
-[58; 62) 'A::B': A
-[89; 109) '{     ...     }': A
-[99; 103) 'A::C': A
-[122; 179) '{     ...  c; }': ()
-[132; 133) 'a': A
-[136; 140) 'A::b': fn b() -> A
-[136; 142) 'A::b()': A
-[148; 149) 'a': A
-[159; 160) 'c': A
-[163; 167) 'A::c': fn c() -> A
-[163; 169) 'A::c()': A
-[175; 176) 'c': A"###
+   ⋮
+   ⋮[47; 67) '{     ...     }': A
+   ⋮[57; 61) 'A::B': A
+   ⋮[88; 108) '{     ...     }': A
+   ⋮[98; 102) 'A::C': A
+   ⋮[121; 178) '{     ...  c; }': ()
+   ⋮[131; 132) 'a': A
+   ⋮[135; 139) 'A::b': fn b() -> A
+   ⋮[135; 141) 'A::b()': A
+   ⋮[147; 148) 'a': A
+   ⋮[158; 159) 'c': A
+   ⋮[162; 166) 'A::c': fn c() -> A
+   ⋮[162; 168) 'A::c()': A
+   ⋮[174; 175) 'c': A
+    "###
     );
 }
 
@@ -1540,7 +1548,7 @@ fn test() {
 fn infer_type_alias() {
     assert_snapshot_matches!(
         infer(r#"
-struct A<X, Y> { x: X, y: Y };
+struct A<X, Y> { x: X, y: Y }
 type Foo = A<u32, i128>;
 type Bar<T> = A<T, u128>;
 type Baz<U, V> = A<V, U>;
@@ -1554,22 +1562,24 @@ fn test(x: Foo, y: Bar<&str>, z: Baz<i8, u8>) {
 }
 "#),
         @r###"
-[117; 118) 'x': A<u32, i128>
-[125; 126) 'y': A<&str, u128>
-[139; 140) 'z': A<u8, i8>
-[155; 212) '{     ...z.y; }': ()
-[161; 162) 'x': A<u32, i128>
-[161; 164) 'x.x': u32
-[170; 171) 'x': A<u32, i128>
-[170; 173) 'x.y': i128
-[179; 180) 'y': A<&str, u128>
-[179; 182) 'y.x': &str
-[188; 189) 'y': A<&str, u128>
-[188; 191) 'y.y': u128
-[197; 198) 'z': A<u8, i8>
-[197; 200) 'z.x': u8
-[206; 207) 'z': A<u8, i8>
-[206; 209) 'z.y': i8"###
+   ⋮
+   ⋮[116; 117) 'x': A<u32, i128>
+   ⋮[124; 125) 'y': A<&str, u128>
+   ⋮[138; 139) 'z': A<u8, i8>
+   ⋮[154; 211) '{     ...z.y; }': ()
+   ⋮[160; 161) 'x': A<u32, i128>
+   ⋮[160; 163) 'x.x': u32
+   ⋮[169; 170) 'x': A<u32, i128>
+   ⋮[169; 172) 'x.y': i128
+   ⋮[178; 179) 'y': A<&str, u128>
+   ⋮[178; 181) 'y.x': &str
+   ⋮[187; 188) 'y': A<&str, u128>
+   ⋮[187; 190) 'y.y': u128
+   ⋮[196; 197) 'z': A<u8, i8>
+   ⋮[196; 199) 'z.x': u8
+   ⋮[205; 206) 'z': A<u8, i8>
+   ⋮[205; 208) 'z.y': i8
+    "###
     )
 }
 
@@ -1578,7 +1588,7 @@ fn test(x: Foo, y: Bar<&str>, z: Baz<i8, u8>) {
 fn recursive_type_alias() {
     assert_snapshot_matches!(
         infer(r#"
-struct A<X> {};
+struct A<X> {}
 type Foo = Foo;
 type Bar = A<Bar>;
 fn test(x: Foo) {}
@@ -1795,18 +1805,21 @@ fn infer_std_crash_3() {
     assert_snapshot_matches!(
         infer(r#"
 pub fn compute() {
-    match _ {
+    match nope!() {
         SizeSkeleton::Pointer { non_zero: true, tail } => {}
     }
 }
 "#),
         @r###"
-[18; 102) '{     ...   } }': ()
-[24; 100) 'match ...     }': ()
-[42; 88) 'SizeSk...tail }': {unknown}
-[76; 80) 'true': {unknown}
-[82; 86) 'tail': {unknown}
-[92; 94) '{}': ()"###
+   ⋮
+   ⋮[18; 108) '{     ...   } }': ()
+   ⋮[24; 106) 'match ...     }': ()
+   ⋮[30; 37) 'nope!()': {unknown}
+   ⋮[48; 94) 'SizeSk...tail }': {unknown}
+   ⋮[82; 86) 'true': {unknown}
+   ⋮[88; 92) 'tail': {unknown}
+   ⋮[98; 100) '{}': ()
+    "###
     );
 }
 
@@ -1817,20 +1830,21 @@ fn infer_std_crash_4() {
         infer(r#"
 pub fn primitive_type() {
     match *self {
-        BorrowedRef { type_: box Primitive(p), ..} => {},
+        BorrowedRef { type_: Primitive(p), ..} => {},
     }
 }
 "#),
         @r###"
-[25; 110) '{     ...   } }': ()
-[31; 108) 'match ...     }': ()
-[37; 42) '*self': {unknown}
-[38; 42) 'self': {unknown}
-[53; 95) 'Borrow...), ..}': {unknown}
-[74; 77) 'box': {unknown}
-[78; 87) 'Primitive': {unknown}
-[88; 89) 'p': {unknown}
-[99; 101) '{}': ()"###
+   ⋮
+   ⋮[25; 106) '{     ...   } }': ()
+   ⋮[31; 104) 'match ...     }': ()
+   ⋮[37; 42) '*self': {unknown}
+   ⋮[38; 42) 'self': {unknown}
+   ⋮[53; 91) 'Borrow...), ..}': {unknown}
+   ⋮[74; 86) 'Primitive(p)': {unknown}
+   ⋮[84; 85) 'p': {unknown}
+   ⋮[95; 97) '{}': ()
+    "###
     );
 }
 
@@ -2304,8 +2318,8 @@ trait Into<T> {
     fn into(self) -> T;
 }
 struct S;
-impl Into<u32> for S;
-impl Into<u64> for S;
+impl Into<u32> for S {}
+impl Into<u64> for S {}
 fn test() {
     let x: u32 = S.into();
     let y: u64 = S.into();
@@ -2313,18 +2327,20 @@ fn test() {
 }
 "#),
         @r###"
-[29; 33) 'self': Self
-[107; 198) '{     ...(S); }': ()
-[117; 118) 'x': u32
-[126; 127) 'S': S
-[126; 134) 'S.into()': u32
-[144; 145) 'y': u64
-[153; 154) 'S': S
-[153; 161) 'S.into()': u64
-[171; 172) 'z': {unknown}
-[175; 192) 'Into::...::into': {unknown}
-[175; 195) 'Into::...nto(S)': {unknown}
-[193; 194) 'S': S"###
+   ⋮
+   ⋮[29; 33) 'self': Self
+   ⋮[111; 202) '{     ...(S); }': ()
+   ⋮[121; 122) 'x': u32
+   ⋮[130; 131) 'S': S
+   ⋮[130; 138) 'S.into()': u32
+   ⋮[148; 149) 'y': u64
+   ⋮[157; 158) 'S': S
+   ⋮[157; 165) 'S.into()': u64
+   ⋮[175; 176) 'z': {unknown}
+   ⋮[179; 196) 'Into::...::into': {unknown}
+   ⋮[179; 199) 'Into::...nto(S)': {unknown}
+   ⋮[197; 198) 'S': S
+    "###
     );
 }
 
@@ -2617,7 +2633,7 @@ fn method_resolution_where_clause_1() {
 trait Clone {}
 trait Trait { fn foo(self) -> u128; }
 struct S;
-impl Clone for S {};
+impl Clone for S {}
 impl<T> Trait for T where T: Clone {}
 fn test() { S.foo()<|>; }
 "#,
@@ -2634,7 +2650,7 @@ trait Into<T> { fn into(self) -> T; }
 trait From<T> { fn from(other: T) -> Self; }
 struct S1;
 struct S2;
-impl From<S2> for S1 {};
+impl From<S2> for S1 {}
 impl<T, U> Into<U> for T where U: From<T> {}
 fn test() { S2.into()<|>; }
 "#,
@@ -2651,7 +2667,7 @@ trait Into<T> { fn into(self) -> T; }
 trait From<T> { fn from(other: T) -> Self; }
 struct S1;
 struct S2;
-impl From<S2> for S1 {};
+impl From<S2> for S1 {}
 impl<T, U: From<T>> Into<U> for T {}
 fn test() { S2.into()<|>; }
 "#,
@@ -2680,8 +2696,8 @@ fn method_resolution_slow() {
 //- /main.rs
 trait SendX {}
 
-struct S1; impl SendX for S1;
-struct S2; impl SendX for S2;
+struct S1; impl SendX for S1 {}
+struct S2; impl SendX for S2 {}
 struct U1;
 
 trait Trait { fn method(self); }
@@ -2702,7 +2718,7 @@ fn test() { (S {}).method()<|>; }
 }
 
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
-    let file = db.parse(pos.file_id);
+    let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
     let analyzer = SourceAnalyzer::new(db, pos.file_id, expr.syntax(), Some(pos.offset));
     let ty = analyzer.type_of(db, expr).unwrap();
@@ -2716,7 +2732,7 @@ fn type_at(content: &str) -> String {
 
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
-    let source_file = db.parse(file_id);
+    let source_file = db.parse(file_id).ok().unwrap();
 
     let mut acc = String::new();
     acc.push_str("\n");
@@ -2794,7 +2810,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     ",
     );
     {
-        let file = db.parse(pos.file_id);
+        let file = db.parse(pos.file_id).ok().unwrap();
         let node =
             algo::find_token_at_offset(file.syntax(), pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
@@ -2815,7 +2831,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     db.query_mut(ra_db::FileTextQuery).set(pos.file_id, Arc::new(new_text));
 
     {
-        let file = db.parse(pos.file_id);
+        let file = db.parse(pos.file_id).ok().unwrap();
         let node =
             algo::find_token_at_offset(file.syntax(), pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {

@@ -75,7 +75,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
         let source_map = self.func.body_source_map(db);
         let file_id = self.func.source(db).0;
-        let source_file = db.parse(file_id.original_file(db));
+        let source_file = db.parse(file_id.original_file(db)).tree;
         if let Some(field_list_node) = source_map
             .expr_syntax(id)
             .map(|ptr| ptr.to_node(source_file.syntax()))
