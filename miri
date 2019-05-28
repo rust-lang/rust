@@ -103,7 +103,7 @@ case "$COMMAND" in
 install|install-debug)
     # "--locked" to respect the Cargo.lock file if it exists,
     # "--offline" to avoid querying the registry (for yanked packages).
-    exec cargo install --path "$(dirname "$0")" --force --locked --offline "$@"
+    exec cargo install $CARGO_INSTALL_FLAGS --path "$(dirname "$0")" --force --locked --offline "$@"
     ;;
 build|build-debug)
     # Build, and let caller control flags.
