@@ -239,6 +239,9 @@ extern "C" {
 
     #[link_name = "llvm.ppc.altivec.vexptefp"]
     fn vexptefp(a: vector_float) -> vector_float;
+
+    #[link_name = "llvm.floor.v4f32"]
+    fn vfloor(a: vector_float) -> vector_float;
 }
 
 macro_rules! s_t_l {
@@ -408,6 +411,8 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, vector_signed_int) -> vector_bool_int }
         }
     }
+
+    test_impl! { vec_floor(a: vector_float) -> vector_float [ vfloor, vrfim / xvrspim ] }
 
     test_impl! { vec_vexptefp(a: vector_float) -> vector_float [ vexptefp, vexptefp ] }
 
@@ -1371,6 +1376,13 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector floor.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_floor(a: vector_float) -> vector_float {
+    sealed::vec_floor(a)
+}
+
 /// Vector expte.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1798,6 +1810,11 @@ mod tests {
                 assert_eq!(d, r);
             }
         }
+    }
+
+    test_vec_1! { test_vec_floor, vec_floor, f32x4,
+        [1.1, 1.9, -0.5, -0.9],
+        [1.0, 1.0, -1.0, -1.0]
     }
 
     test_vec_1! { test_vec_expte, vec_expte, f32x4,
