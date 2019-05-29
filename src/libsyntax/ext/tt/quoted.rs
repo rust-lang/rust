@@ -1,12 +1,12 @@
+use crate::ast;
 use crate::ast::NodeId;
 use crate::ext::tt::macro_parser;
 use crate::feature_gate::Features;
 use crate::parse::token::{self, Token, TokenKind};
 use crate::parse::ParseSess;
 use crate::print::pprust;
-use crate::tokenstream::{self, DelimSpan};
-use crate::ast;
 use crate::symbol::kw;
+use crate::tokenstream::{self, DelimSpan};
 
 use syntax_pos::{edition::Edition, BytePos, Span};
 
@@ -137,8 +137,7 @@ impl TokenTree {
             TokenTree::Token(Token { span, .. })
             | TokenTree::MetaVar(span, _)
             | TokenTree::MetaVarDecl(span, _, _) => span,
-            TokenTree::Delimited(span, _)
-            | TokenTree::Sequence(span, _) => span.entire(),
+            TokenTree::Delimited(span, _) | TokenTree::Sequence(span, _) => span.entire(),
         }
     }
 
@@ -199,7 +198,7 @@ pub fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
-                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) =>
+                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) => {
                         match trees.next() {
                             Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
                                 Some((kind, _)) => {
@@ -209,22 +208,13 @@ pub fn parse(
                                 }
                                 _ => token.span,
                             },
-                            tree => tree
-                                .as_ref()
-                                .map(tokenstream::TokenTree::span)
-                                .unwrap_or(span),
-                        },
-                    tree => tree
-                        .as_ref()
-                        .map(tokenstream::TokenTree::span)
-                        .unwrap_or(start_sp),
+                            tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
+                        }
+                    }
+                    tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
                 };
                 sess.missing_fragment_specifiers.borrow_mut().insert(span);
-                result.push(TokenTree::MetaVarDecl(
-                    span,
-                    ident,
-                    ast::Ident::invalid(),
-                ));
+                result.push(TokenTree::MetaVarDecl(span, ident, ast::Ident::invalid()));
             }
 
             // Not a metavar or no matchers allowed, so just return the tree
@@ -311,10 +301,8 @@ fn parse_tree(
 
             // `tree` is followed by a random token. This is an error.
             Some(tokenstream::TokenTree::Token(token)) => {
-                let msg = format!(
-                    "expected identifier, found `{}`",
-                    pprust::token_to_string(&token),
-                );
+                let msg =
+                    format!("expected identifier, found `{}`", pprust::token_to_string(&token),);
                 sess.span_diagnostic.span_err(token.span, &msg);
                 TokenTree::MetaVar(token.span, ast::Ident::invalid())
             }
@@ -371,10 +359,7 @@ fn parse_kleene_op(
             Some(op) => Ok(Ok((op, token.span))),
             None => Ok(Err(token)),
         },
-        tree => Err(tree
-            .as_ref()
-            .map(tokenstream::TokenTree::span)
-            .unwrap_or(span)),
+        tree => Err(tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span)),
     }
 }
 
@@ -426,8 +411,7 @@ fn parse_sep_and_kleene_op(
     };
 
     // If we ever get to this point, we have experienced an "unexpected token" error
-    sess.span_diagnostic
-        .span_err(span, "expected one of: `*`, `+`, or `?`");
+    sess.span_diagnostic.span_err(span, "expected one of: `*`, `+`, or `?`");
 
     // Return a dummy
     (None, KleeneOp::ZeroOrMore)
