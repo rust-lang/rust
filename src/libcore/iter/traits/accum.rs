@@ -223,3 +223,113 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
         ResultShunt::process(iter, |i| i.product())
     }
 }
+
+/// An iterator adapter that produces output as long as the underlying
+/// iterator produces `Option::Some` values.
+struct OptionShunt<I> {
+    iter: I,
+    exited_early: bool,
+}
+
+impl<I, T> OptionShunt<I>
+where
+    I: Iterator<Item = Option<T>>,
+{
+    /// Process the given iterator as if it yielded a `T` instead of a
+    /// `Option<T>`. Any `None` value will stop the inner iterator and
+    /// the overall result will be a `None`.
+    pub fn process<F, U>(iter: I, mut f: F) -> Option<U>
+    where
+        F: FnMut(&mut Self) -> U,
+    {
+        let mut shunt = OptionShunt::new(iter);
+        let value = f(shunt.by_ref());
+        shunt.reconstruct(value)
+    }
+
+    fn new(iter: I) -> Self {
+        OptionShunt {
+            iter,
+            exited_early: false,
+        }
+    }
+
+    /// Consume the adapter and rebuild a `Option` value.
+    fn reconstruct<U>(self, val: U) -> Option<U> {
+        if self.exited_early {
+            None
+        } else {
+            Some(val)
+        }
+    }
+}
+
+impl<I, T> Iterator for OptionShunt<I>
+where
+    I: Iterator<Item = Option<T>>,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.iter.next() {
+            Some(Some(v)) => Some(v),
+            Some(None) => {
+                self.exited_early = true;
+                None
+            }
+            None => None,
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.exited_early {
+            (0, Some(0))
+        } else {
+            let (_, upper) = self.iter.size_hint();
+            (0, upper)
+        }
+    }
+}
+
+#[stable(feature = "iter_arith_traits_option", since = "1.37.0")]
+impl<T, U> Sum<Option<U>> for Option<T>
+where
+    T: Sum<U>,
+{
+    /// Takes each element in the `Iterator`: if it is a `None`, no further
+    /// elements are taken, and the `None` is returned. Should no `None` occur,
+    /// the sum of all elements is returned.
+    ///
+    /// # Examples
+    ///
+    /// This sums up the position of the character 'a' in a vector of strings,
+    /// if a word did not have the character 'a' the operation returns `None`:
+    ///
+    /// ```
+    /// let words = vec!["have", "a", "great", "day"];
+    /// let total: Option<usize> = words.iter().map(|w| w.find('a')).sum();
+    /// assert_eq!(total, Some(5));
+    /// ```
+    fn sum<I>(iter: I) -> Option<T>
+    where
+        I: Iterator<Item = Option<U>>,
+    {
+        OptionShunt::process(iter, |i| i.sum())
+    }
+}
+
+#[stable(feature = "iter_arith_traits_option", since = "1.37.0")]
+impl<T, U> Product<Option<U>> for Option<T>
+where
+    T: Product<U>,
+{
+    /// Takes each element in the `Iterator`: if it is a `None`, no further
+    /// elements are taken, and the `None` is returned. Should no `None` occur,
+    /// the product of all elements is returned.
+    fn product<I>(iter: I) -> Option<T>
+    where
+        I: Iterator<Item = Option<U>>,
+    {
+        OptionShunt::process(iter, |i| i.product())
+    }
+}
