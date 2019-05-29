@@ -13,7 +13,7 @@ use core::borrow;
 use core::fmt;
 use core::cmp::{self, Ordering};
 use core::intrinsics::abort;
-use core::mem::{self, align_of_val, size_of_val};
+use core::mem::{self, align_of, align_of_val, size_of_val};
 use core::ops::{Deref, Receiver, CoerceUnsized, DispatchFromDyn};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -397,11 +397,7 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        // Align the unsized value to the end of the ArcInner.
-        // Because it is ?Sized, it will always be the last field in memory.
-        let align = align_of_val(&*ptr);
-        let layout = Layout::new::<ArcInner<()>>();
-        let offset = (layout.size() + layout.padding_needed_for(align)) as isize;
+        let offset = data_offset(ptr);
 
         // Reverse the offset to find the original ArcInner.
         let fake_ptr = ptr as *mut ArcInner<T>;
@@ -1069,6 +1065,144 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         Weak {
             ptr: NonNull::new(usize::MAX as *mut ArcInner<T>).expect("MAX is not 0"),
+        }
+    }
+
+    /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
+    ///
+    /// It is up to the caller to ensure that the object is still alive when accessing it through
+    /// the pointer.
+    ///
+    /// The pointer may be [`null`] or be dangling in case the object has already been destroyed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(weak_into_raw)]
+    ///
+    /// use std::sync::{Arc, Weak};
+    /// use std::ptr;
+    ///
+    /// let strong = Arc::new(42);
+    /// let weak = Arc::downgrade(&strong);
+    /// // Both point to the same object
+    /// assert!(ptr::eq(&*strong, Weak::as_raw(&weak)));
+    /// // The strong here keeps it alive, so we can still access the object.
+    /// assert_eq!(42, unsafe { *Weak::as_raw(&weak) });
+    ///
+    /// drop(strong);
+    /// // But not any more. We can do Weak::as_raw(&weak), but accessing the pointer would lead to
+    /// // undefined behaviour.
+    /// // assert_eq!(42, unsafe { *Weak::as_raw(&weak) });
+    /// ```
+    ///
+    /// [`null`]: ../../std/ptr/fn.null.html
+    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    pub fn as_raw(this: &Self) -> *const T {
+        match this.inner() {
+            None => ptr::null(),
+            Some(inner) => {
+                let offset = data_offset_sized::<T>();
+                let ptr = inner as *const ArcInner<T>;
+                // Note: while the pointer we create may already point to dropped value, the
+                // allocation still lives (it must hold the weak point as long as we are alive).
+                // Therefore, the offset is OK to do, it won't get out of the allocation.
+                let ptr = unsafe { (ptr as *const u8).offset(offset) };
+                ptr as *const T
+            }
+        }
+    }
+
+    /// Consumes the `Weak<T>` and turns it into a raw pointer.
+    ///
+    /// This converts the weak pointer into a raw pointer, preserving the original weak count. It
+    /// can be turned back into the `Weak<T>` with [`from_raw`].
+    ///
+    /// The same restrictions of accessing the target of the pointer as with
+    /// [`as_raw`] apply.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(weak_into_raw)]
+    ///
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// let strong = Arc::new(42);
+    /// let weak = Arc::downgrade(&strong);
+    /// let raw = Weak::into_raw(weak);
+    ///
+    /// assert_eq!(1, Arc::weak_count(&strong));
+    /// assert_eq!(42, unsafe { *raw });
+    ///
+    /// drop(unsafe { Weak::from_raw(raw) });
+    /// assert_eq!(0, Arc::weak_count(&strong));
+    /// ```
+    ///
+    /// [`from_raw`]: struct.Weak.html#method.from_raw
+    /// [`as_raw`]: struct.Weak.html#method.as_raw
+    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    pub fn into_raw(this: Self) -> *const T {
+        let result = Self::as_raw(&this);
+        mem::forget(this);
+        result
+    }
+
+    /// Converts a raw pointer previously created by [`into_raw`] back into
+    /// `Weak<T>`.
+    ///
+    /// This can be used to safely get a strong reference (by calling [`upgrade`]
+    /// later) or to deallocate the weak count by dropping the `Weak<T>`.
+    ///
+    /// It takes ownership of one weak count. In case a [`null`] is passed, a dangling [`Weak`] is
+    /// returned.
+    ///
+    /// # Safety
+    ///
+    /// The pointer must represent one valid weak count. In other words, it must point to `T` which
+    /// is or *was* managed by an [`Arc`] and the weak count of that [`Arc`] must not have reached
+    /// 0. It is allowed for the strong count to be 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(weak_into_raw)]
+    ///
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// let strong = Arc::new(42);
+    ///
+    /// let raw_1 = Weak::into_raw(Arc::downgrade(&strong));
+    /// let raw_2 = Weak::into_raw(Arc::downgrade(&strong));
+    ///
+    /// assert_eq!(2, Arc::weak_count(&strong));
+    ///
+    /// assert_eq!(42, *Weak::upgrade(&unsafe { Weak::from_raw(raw_1) }).unwrap());
+    /// assert_eq!(1, Arc::weak_count(&strong));
+    ///
+    /// drop(strong);
+    ///
+    /// // Decrement the last weak count.
+    /// assert!(Weak::upgrade(&unsafe { Weak::from_raw(raw_2) }).is_none());
+    /// ```
+    ///
+    /// [`null`]: ../../std/ptr/fn.null.html
+    /// [`into_raw`]: struct.Weak.html#method.into_raw
+    /// [`upgrade`]: struct.Weak.html#method.upgrade
+    /// [`Weak`]: struct.Weak.html
+    /// [`Arc`]: struct.Arc.html
+    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    pub unsafe fn from_raw(ptr: *const T) -> Self {
+        if ptr.is_null() {
+            Self::new()
+        } else {
+            // See Arc::from_raw for details
+            let offset = data_offset(ptr);
+            let fake_ptr = ptr as *mut ArcInner<T>;
+            let ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
+            Weak {
+                ptr: NonNull::new(ptr).expect("Invalid pointer passed to from_raw"),
+            }
         }
     }
 }
@@ -2150,3 +2284,21 @@ impl<T: ?Sized> AsRef<T> for Arc<T> {
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Arc<T> { }
+
+/// Computes the offset of the data field within ArcInner.
+unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
+    // Align the unsized value to the end of the ArcInner.
+    // Because it is ?Sized, it will always be the last field in memory.
+    let align = align_of_val(&*ptr);
+    let layout = Layout::new::<ArcInner<()>>();
+    (layout.size() + layout.padding_needed_for(align)) as isize
+}
+
+/// Computes the offset of the data field within ArcInner.
+///
+/// Unlike [`data_offset`], this doesn't need the pointer, but it works only on `T: Sized`.
+fn data_offset_sized<T>() -> isize {
+    let align = align_of::<T>();
+    let layout = Layout::new::<ArcInner<()>>();
+    (layout.size() + layout.padding_needed_for(align)) as isize
+}

@@ -37,15 +37,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         diag: &mut DiagnosticBuilder<'_>,
     ) {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
-        let mut target = place.local();
+        let mut target = place.local_or_deref_local();
         for stmt in &self.mir[location.block].statements[location.statement_index..] {
             debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
             if let StatementKind::Assign(into, box Rvalue::Use(from)) = &stmt.kind {
                 debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
                 match from {
                     Operand::Copy(ref place) |
-                    Operand::Move(ref place) if target == place.local() =>
-                        target = into.local(),
+                    Operand::Move(ref place) if target == place.local_or_deref_local() =>
+                        target = into.local_or_deref_local(),
                     _ => {},
                 }
             }
@@ -69,8 +69,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
                 let closure = match args.first() {
                     Some(Operand::Copy(ref place)) |
-                    Some(Operand::Move(ref place)) if target == place.local() =>
-                        place.local().unwrap(),
+                    Some(Operand::Move(ref place)) if target == place.local_or_deref_local() =>
+                        place.local_or_deref_local().unwrap(),
                     _ => return,
                 };
 

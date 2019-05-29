@@ -46,8 +46,10 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
                          sets: &mut BlockSets<'_, Local>,
                          loc: Location) {
         match &self.mir[loc.block].terminator().kind {
-            TerminatorKind::Drop { location, .. } => if let Some(l) = location.local() {
-                sets.kill(l);
+            TerminatorKind::Drop { location, .. } => {
+                if let Some(l) = location.local_or_deref_local() {
+                    sets.kill(l);
+                }
             }
             _ => (),
         }
