@@ -12,16 +12,13 @@ fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
     let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");
-    let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
+    let stage = env!("RUSTC_STAGE","RUSTC_STAGE was not set");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let mut has_unstable = false;
 
     use std::str::FromStr;
 
-    let verbose = match env::var("RUSTC_VERBOSE") {
-        Ok(s) => usize::from_str(&s).expect("RUSTC_VERBOSE should be an integer"),
-        Err(_) => 0,
-    };
+    let verbose = env!("RUSTC_VERBOSE","RUSTC_VERBOSE should be an integer");
 
     let mut dylib_path = bootstrap::util::dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir.clone()));
