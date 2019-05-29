@@ -12,7 +12,7 @@ fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
     let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");
-    let stage = env!("RUSTC_STAGE","RUSTC_STAGE was not set");
+    let stage = env!("RUSTC_STAGE","RUSTC_STAGE was not set").to_String();
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let mut has_unstable = false;
 
