@@ -508,7 +508,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let tag_scalar = |scalar| match scalar {
             Scalar::Ptr(ptr) => Scalar::Ptr(self.tag_static_base_pointer(ptr)),
-            Scalar::Bits { bits, size } => Scalar::Bits { bits, size },
+            Scalar::Raw { data, size } => Scalar::Raw { data, size },
         };
         // Early-return cases.
         match val.val {
