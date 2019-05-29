@@ -407,7 +407,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
+    ) -> EvalResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         ecx.find_fn(instance, args, dest, ret)
     }
 
