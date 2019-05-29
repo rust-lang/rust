@@ -15,7 +15,7 @@ macro_rules! panic {
         $crate::panic!($msg)
     );
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::panicking::panic_fmt(format_args!($fmt, $($arg)*),
+        $crate::panicking::panic_fmt(format_args!($fmt, $($arg)+),
                                      &(file!(), line!(), __rust_unstable_column!()))
     });
 }
@@ -558,7 +558,7 @@ macro_rules! unreachable {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unimplemented {
     () => (panic!("not yet implemented"));
-    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)*)));
+    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)+)));
 }
 
 /// Indicates unfinished code.
@@ -617,7 +617,7 @@ macro_rules! unimplemented {
 #[unstable(feature = "todo_macro", issue = "59277")]
 macro_rules! todo {
     () => (panic!("not yet implemented"));
-    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)*)));
+    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)+)));
 }
 
 /// Creates an array of [`MaybeUninit`].

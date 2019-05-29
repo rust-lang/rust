@@ -98,9 +98,9 @@ macro_rules! ast_fragments {
                             }
                         });
                     }
-                    $($(AstFragment::$Kind(ast) => vis.$mut_visit_ast(ast),)*)*
+                    $($(AstFragment::$Kind(ast) => vis.$mut_visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ast) =>
-                        ast.flat_map_in_place(|ast| vis.$flat_map_ast_elt(ast)),)*)*
+                        ast.flat_map_in_place(|ast| vis.$flat_map_ast_elt(ast)),)?)*
                 }
             }
 
@@ -108,10 +108,10 @@ macro_rules! ast_fragments {
                 match *self {
                     AstFragment::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
                     AstFragment::OptExpr(None) => {}
-                    $($(AstFragment::$Kind(ref ast) => visitor.$visit_ast(ast),)*)*
+                    $($(AstFragment::$Kind(ref ast) => visitor.$visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ref ast) => for ast_elt in &ast[..] {
                         visitor.$visit_ast_elt(ast_elt);
-                    })*)*
+                    })?)*
                 }
             }
         }
@@ -122,10 +122,10 @@ macro_rules! ast_fragments {
             }
             $($(fn $mut_visit_ast(&mut self, ast: &mut $AstTy) {
                 visit_clobber(ast, |ast| self.expand_fragment(AstFragment::$Kind(ast)).$make_ast());
-            })*)*
+            })?)*
             $($(fn $flat_map_ast_elt(&mut self, ast_elt: <$AstTy as IntoIterator>::Item) -> $AstTy {
                 self.expand_fragment(AstFragment::$Kind(smallvec![ast_elt])).$make_ast()
-            })*)*
+            })?)*
         }
 
         impl<'a> MacResult for crate::ext::tt::macro_rules::ParserAnyMacro<'a> {

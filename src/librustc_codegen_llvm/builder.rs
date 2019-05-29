@@ -110,7 +110,7 @@ macro_rules! builder_methods_for_value_instructions {
             unsafe {
                 llvm::$llvm_capi(self.llbuilder, $($arg,)* UNNAMED)
             }
-        })*
+        })+
     }
 }
 

@@ -617,11 +617,11 @@ mod impls {
 
         ( $($name:ident)+) => (
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($name: Hash),*> Hash for ($($name,)*) where last_type!($($name,)+): ?Sized {
+            impl<$($name: Hash),+> Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
                 #[allow(non_snake_case)]
                 fn hash<S: Hasher>(&self, state: &mut S) {
-                    let ($(ref $name,)*) = *self;
-                    $($name.hash(state);)*
+                    let ($(ref $name,)+) = *self;
+                    $($name.hash(state);)+
                 }
             }
         );

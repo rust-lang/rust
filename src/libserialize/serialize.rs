@@ -739,33 +739,33 @@ macro_rules! count {
 macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
-        impl<$($name:Decodable),*> Decodable for ($($name,)*) {
+        impl<$($name:Decodable),+> Decodable for ($($name,)+) {
             #[allow(non_snake_case)]
-            fn decode<D: Decoder>(d: &mut D) -> Result<($($name,)*), D::Error> {
-                let len: usize = count!($($name)*);
+            fn decode<D: Decoder>(d: &mut D) -> Result<($($name,)+), D::Error> {
+                let len: usize = count!($($name)+);
                 d.read_tuple(len, |d| {
                     let mut i = 0;
                     let ret = ($(d.read_tuple_arg({ i+=1; i-1 }, |d| -> Result<$name, D::Error> {
                         Decodable::decode(d)
-                    })?,)*);
+                    })?,)+);
                     Ok(ret)
                 })
             }
         }
-        impl<$($name:Encodable),*> Encodable for ($($name,)*) {
+        impl<$($name:Encodable),+> Encodable for ($($name,)+) {
             #[allow(non_snake_case)]
             fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-                let ($(ref $name,)*) = *self;
+                let ($(ref $name,)+) = *self;
                 let mut n = 0;
-                $(let $name = $name; n += 1;)*
+                $(let $name = $name; n += 1;)+
                 s.emit_tuple(n, |s| {
                     let mut i = 0;
-                    $(s.emit_tuple_arg({ i+=1; i-1 }, |s| $name.encode(s))?;)*
+                    $(s.emit_tuple_arg({ i+=1; i-1 }, |s| $name.encode(s))?;)+
                     Ok(())
                 })
             }
         }
-        peel! { $($name,)* }
+        peel! { $($name,)+ }
     )
 }
 
