@@ -67,4 +67,4 @@ SOURCE_FILE@[0; 112)
       WHITESPACE@[109; 110) "\n"
       R_CURLY@[110; 111) "}"
   WHITESPACE@[111; 112) "\n"
-err: `expected SEMI`
+error 27: expected SEMI

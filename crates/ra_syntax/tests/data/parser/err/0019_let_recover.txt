@@ -91,13 +91,13 @@ SOURCE_FILE@[0; 139)
       WHITESPACE@[136; 137) "\n"
       R_CURLY@[137; 138) "}"
   WHITESPACE@[138; 139) "\n"
-err: `expected expression`
-err: `expected SEMI`
-err: `expected pattern`
-err: `expected SEMI`
-err: `expected pattern`
-err: `expected SEMI`
-err: `expected pattern`
-err: `expected SEMI`
-err: `expected pattern`
-err: `expected SEMI`
+error 24: expected expression
+error 24: expected SEMI
+error 49: expected pattern
+error 49: expected SEMI
+error 75: expected pattern
+error 75: expected SEMI
+error 98: expected pattern
+error 98: expected SEMI
+error 124: expected pattern
+error 124: expected SEMI
