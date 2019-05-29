@@ -2210,8 +2210,7 @@ impl<'test> TestCx<'test> {
 
     fn fatal(&self, err: &str) -> ! {
         self.error(err);
-        error!("fatal error, panic: {:?}", err);
-        panic!("fatal error");
+        panic!("fatal error: {:?}", err);
     }
 
     fn fatal_proc_rec(&self, err: &str, proc_res: &ProcRes) -> ! {
