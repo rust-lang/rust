@@ -222,6 +222,7 @@ fn or(left: ItemOrMacro, right: ItemOrMacro) -> ItemOrMacro {
 
 impl CrateDefMap {
     pub(crate) fn crate_def_map_query(db: &impl DefDatabase, krate: Crate) -> Arc<CrateDefMap> {
+        db.check_canceled();
         let _p = profile("crate_def_map_query");
         let def_map = {
             let edition = krate.edition(db);
