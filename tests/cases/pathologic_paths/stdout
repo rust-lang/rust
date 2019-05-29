@@ -1,6 +1,6 @@
 version bump: 1.0.0 -> (technically breaking) -> 1.1.0
 warning: path changes to `a`
- --> $REPO_PATH/tests/cases/pathologic_paths/new.rs:5:9
+ --> pathologic_paths/new.rs:5:9
   |
 5 |         pub mod a { blow!($($rest)*); }
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ warning: path changes to `a`
   = note: added definition (technically breaking)
 
 warning: path changes to `b`
- --> $REPO_PATH/tests/cases/pathologic_paths/new.rs:6:9
+ --> pathologic_paths/new.rs:6:9
   |
 6 |         pub mod b { pub use super::a::*; }
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

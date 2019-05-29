@@ -1,6 +1,6 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 warning: technically breaking changes in `Def`
- --> $REPO_PATH/tests/cases/structs/new.rs:6:1
+ --> structs/new.rs:6:1
   |
 6 | / pub struct Def<A=u8> {
 7 | |     pub field: A,
@@ -9,13 +9,13 @@ warning: technically breaking changes in `Def`
   |
   = note: defaulted type parameter added (non-breaking)
 note: item made public (technically breaking)
- --> $REPO_PATH/tests/cases/structs/new.rs:7:5
+ --> structs/new.rs:7:5
   |
 7 |     pub field: A,
   |     ^^^^^^^^^^^^
 
 error: breaking changes in `Def2`
-  --> $REPO_PATH/tests/cases/structs/new.rs:10:1
+  --> structs/new.rs:10:1
    |
 10 | / pub struct Def2<A=u16> {
 11 | |     pub field: A,
@@ -26,7 +26,7 @@ error: breaking changes in `Def2`
    = warning: type error: expected u8, found u16 (breaking)
 
 error: breaking changes in `Efg`
-  --> $REPO_PATH/tests/cases/structs/new.rs:14:1
+  --> structs/new.rs:14:1
    |
 14 | / pub struct Efg {
 15 | |     pub field: u16,
@@ -36,7 +36,7 @@ error: breaking changes in `Efg`
    = warning: type error: expected u8, found u16 (breaking)
 
 warning: technically breaking changes in `Fgh`
-  --> $REPO_PATH/tests/cases/structs/new.rs:18:1
+  --> structs/new.rs:18:1
    |
 18 | / pub struct Fgh {
 19 | |     pub field: u8,
@@ -44,13 +44,13 @@ warning: technically breaking changes in `Fgh`
    | |_^
    |
 note: item made public (technically breaking)
-  --> $REPO_PATH/tests/cases/structs/new.rs:19:5
+  --> structs/new.rs:19:5
    |
 19 |     pub field: u8,
    |     ^^^^^^^^^^^^^
 
 error: breaking changes in `Ghi`
-  --> $REPO_PATH/tests/cases/structs/new.rs:22:1
+  --> structs/new.rs:22:1
    |
 22 | / pub struct Ghi {
 23 | |     field: u8,
@@ -58,13 +58,13 @@ error: breaking changes in `Ghi`
    | |_^
    |
 warning: item made private (breaking)
-  --> $REPO_PATH/tests/cases/structs/new.rs:23:5
+  --> structs/new.rs:23:5
    |
 23 |     field: u8,
    |     ^^^^^^^^^
 
 error: breaking changes in `Hij`
-  --> $REPO_PATH/tests/cases/structs/new.rs:26:1
+  --> structs/new.rs:26:1
    |
 26 | / pub struct Hij {
 27 | |     field: u8,
@@ -72,7 +72,7 @@ error: breaking changes in `Hij`
    | |_^
    |
 warning: variant with no public fields changed to a struct variant (breaking)
-  --> $REPO_PATH/tests/cases/structs/new.rs:26:1
+  --> structs/new.rs:26:1
    |
 26 | / pub struct Hij {
 27 | |     field: u8,

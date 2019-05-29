@@ -1,6 +1,6 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 error: breaking changes in `<std::vec::Vec<T> as old::Abc>`
- --> $REPO_PATH/tests/cases/trait_impls/old.rs:9:1
+ --> trait_impls/old.rs:9:1
   |
 9 | impl<T> Abc for Vec<T> { }
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ error: breaking changes in `<std::vec::Vec<T> as old::Abc>`
   = warning: trait impl specialized or removed (breaking)
 
 error: breaking changes in `<old::Def as std::clone::Clone>`
-  --> $REPO_PATH/tests/cases/trait_impls/old.rs:11:1
+  --> trait_impls/old.rs:11:1
    |
 11 | / impl Clone for Def {
 12 | |     fn clone(&self) -> Def {
@@ -20,7 +20,7 @@ error: breaking changes in `<old::Def as std::clone::Clone>`
    = warning: trait impl specialized or removed (breaking)
 
 warning: technically breaking changes in `<std::boxed::Box<T> as new::Abc>`
-  --> $REPO_PATH/tests/cases/trait_impls/new.rs:11:1
+  --> trait_impls/new.rs:11:1
    |
 11 | impl<T: Clone> Abc for Box<T> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ warning: technically breaking changes in `<std::boxed::Box<T> as new::Abc>`
    = note: trait impl generalized or newly added (technically breaking)
 
 warning: technically breaking changes in `<std::boxed::Box<new::Def> as new::Abc>`
-  --> $REPO_PATH/tests/cases/trait_impls/new.rs:13:1
+  --> trait_impls/new.rs:13:1
    |
 13 | impl Abc for Box<Def> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ warning: technically breaking changes in `<std::boxed::Box<new::Def> as new::Abc
    = note: trait impl generalized or newly added (technically breaking)
 
 warning: technically breaking changes in `<() as new::Abc>`
-  --> $REPO_PATH/tests/cases/trait_impls/new.rs:15:1
+  --> trait_impls/new.rs:15:1
    |
 15 | impl Abc for () { }
    | ^^^^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ warning: technically breaking changes in `<() as new::Abc>`
    = note: trait impl generalized or newly added (technically breaking)
 
 warning: technically breaking changes in `<std::cell::Cell<(bool, T)> as new::Abc>`
-  --> $REPO_PATH/tests/cases/trait_impls/new.rs:17:1
+  --> trait_impls/new.rs:17:1
    |
 17 | impl<T> Abc for Cell<(bool, T)> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

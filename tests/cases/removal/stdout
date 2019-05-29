@@ -1,6 +1,6 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 error: path changes to `Abc`
- --> $REPO_PATH/tests/cases/removal/old.rs:1:1
+ --> removal/old.rs:1:1
   |
 1 | pub struct Abc;
   | ^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ error: path changes to `Abc`
   = warning: removed definition (breaking)
 
 error: breaking changes in `Bcd`
- --> $REPO_PATH/tests/cases/removal/new.rs:2:1
+ --> removal/new.rs:2:1
   |
 2 | struct Bcd;
   | ^^^^^^^^^^^
@@ -16,7 +16,7 @@ error: breaking changes in `Bcd`
   = warning: item made private (breaking)
 
 error: path changes to `a`
- --> $REPO_PATH/tests/cases/removal/old.rs:5:1
+ --> removal/old.rs:5:1
   |
 5 | / pub mod a {
 6 | |
@@ -26,7 +26,7 @@ error: path changes to `a`
   = warning: removed definition (breaking)
 
 error: breaking changes in `b`
- --> $REPO_PATH/tests/cases/removal/new.rs:4:1
+ --> removal/new.rs:4:1
   |
 4 | / mod b {
 5 | |
@@ -36,7 +36,7 @@ error: breaking changes in `b`
   = warning: item made private (breaking)
 
 error: path changes to `Cde`
-  --> $REPO_PATH/tests/cases/removal/old.rs:11:5
+  --> removal/old.rs:11:5
    |
 11 |     pub struct Cde;
    |     ^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ error: path changes to `Cde`
    = warning: removed definition (breaking)
 
 error: breaking changes in `d`
-  --> $REPO_PATH/tests/cases/removal/new.rs:12:1
+  --> removal/new.rs:12:1
    |
 12 | / mod d {
 13 | |

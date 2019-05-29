@@ -1,6 +1,6 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 error: breaking changes in `Abc`
- --> $REPO_PATH/tests/cases/enums/new.rs:1:1
+ --> enums/new.rs:1:1
   |
 1 | / pub enum Abc {
 2 | |     Abc,
@@ -8,13 +8,13 @@ error: breaking changes in `Abc`
   | |_^
   |
 warning: enum variant added (breaking)
- --> $REPO_PATH/tests/cases/enums/new.rs:2:5
+ --> enums/new.rs:2:5
   |
 2 |     Abc,
   |     ^^^
 
 error: breaking changes in `Bcd`
- --> $REPO_PATH/tests/cases/enums/new.rs:5:1
+ --> enums/new.rs:5:1
   |
 5 | / pub enum Bcd {
 6 | |
@@ -22,13 +22,13 @@ error: breaking changes in `Bcd`
   | |_^
   |
 warning: enum variant removed (breaking)
- --> $REPO_PATH/tests/cases/enums/old.rs:6:5
+ --> enums/old.rs:6:5
   |
 6 |     Abc,
   |     ^^^
 
 error: breaking changes in `Cde`
-  --> $REPO_PATH/tests/cases/enums/new.rs:9:1
+  --> enums/new.rs:9:1
    |
 9  | / pub enum Cde {
 10 | |     Abc,
@@ -37,13 +37,13 @@ error: breaking changes in `Cde`
    | |_^
    |
 warning: enum variant added (breaking)
-  --> $REPO_PATH/tests/cases/enums/new.rs:11:5
+  --> enums/new.rs:11:5
    |
 11 |     Bcd,
    |     ^^^
 
 error: breaking changes in `Def`
-  --> $REPO_PATH/tests/cases/enums/new.rs:14:1
+  --> enums/new.rs:14:1
    |
 14 | / pub enum Def {
 15 | |     Abc,
@@ -51,13 +51,13 @@ error: breaking changes in `Def`
    | |_^
    |
 warning: enum variant removed (breaking)
-  --> $REPO_PATH/tests/cases/enums/old.rs:15:5
+  --> enums/old.rs:15:5
    |
 15 |     Bcd,
    |     ^^^
 
 error: breaking changes in `Efg`
-  --> $REPO_PATH/tests/cases/enums/new.rs:18:1
+  --> enums/new.rs:18:1
    |
 18 | / pub enum Efg {
 19 | |     Abc(u8),
@@ -69,37 +69,37 @@ error: breaking changes in `Efg`
    | |_^
    |
 warning: variant with no public fields changed to a tuple variant (breaking)
-  --> $REPO_PATH/tests/cases/enums/new.rs:19:5
+  --> enums/new.rs:19:5
    |
 19 |     Abc(u8),
    |     ^^^^^^^
 warning: variant with no public fields changed to a tuple variant (breaking)
-  --> $REPO_PATH/tests/cases/enums/new.rs:20:5
+  --> enums/new.rs:20:5
    |
 20 |     Bcd,
    |     ^^^
 warning: variant with no public fields changed to a struct variant (breaking)
-  --> $REPO_PATH/tests/cases/enums/new.rs:21:5
+  --> enums/new.rs:21:5
    |
 21 |     Cde { f: u8 },
    |     ^^^^^^^^^^^^^
 warning: variant with no public fields changed to a tuple variant (breaking)
-  --> $REPO_PATH/tests/cases/enums/new.rs:22:5
+  --> enums/new.rs:22:5
    |
 22 |     Def,
    |     ^^^
 warning: variant with no public fields changed to a struct variant (breaking)
-  --> $REPO_PATH/tests/cases/enums/new.rs:23:5
+  --> enums/new.rs:23:5
    |
 23 |     Efg { f: u8 },
    |     ^^^^^^^^^^^^^
 warning: variant field removed from variant with private fields (breaking)
-  --> $REPO_PATH/tests/cases/enums/old.rs:25:11
+  --> enums/old.rs:25:11
    |
 25 |     Ghi { f: u8 },
    |           ^^^^^
 warning: variant field added to variant with private fields (breaking)
-  --> $REPO_PATH/tests/cases/enums/new.rs:25:11
+  --> enums/new.rs:25:11
    |
 25 |     Ghi { g: u8 },
    |           ^^^^^

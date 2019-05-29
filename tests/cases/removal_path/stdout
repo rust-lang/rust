@@ -1,22 +1,22 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 error: path changes to `Abc`
- --> $REPO_PATH/tests/cases/removal_path/new.rs:2:5
+ --> removal_path/new.rs:2:5
   |
 2 |     pub struct Abc;
   |     ^^^^^^^^^^^^^^^
   |
 warning: removed path (breaking)
- --> $REPO_PATH/tests/cases/removal_path/old.rs:6:13
+ --> removal_path/old.rs:6:13
   |
 6 |     pub use a::*;
   |             ^^^^
 warning: removed path (breaking)
- --> $REPO_PATH/tests/cases/removal_path/old.rs:10:13
+ --> removal_path/old.rs:10:13
   |
 10|     pub use a::Abc;
   |             ^^^^^^
 warning: removed path (breaking)
- --> $REPO_PATH/tests/cases/removal_path/old.rs:13:9
+ --> removal_path/old.rs:13:9
   |
 13| pub use self::a::Abc;
   |         ^^^^^^^^^^^^

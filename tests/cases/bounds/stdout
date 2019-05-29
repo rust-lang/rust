@@ -1,6 +1,6 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 error: breaking changes in `Abc`
- --> $REPO_PATH/tests/cases/bounds/new.rs:1:1
+ --> bounds/new.rs:1:1
   |
 1 | / pub struct Abc<A: Clone> {
 2 | |     pub a: A,
@@ -10,7 +10,7 @@ error: breaking changes in `Abc`
   = warning: added bound: `A: std::clone::Clone` (breaking)
 
 warning: technically breaking changes in `Def`
- --> $REPO_PATH/tests/cases/bounds/new.rs:5:1
+ --> bounds/new.rs:5:1
   |
 5 | / pub struct Def<A> {
 6 | |     pub d: A,
@@ -20,7 +20,7 @@ warning: technically breaking changes in `Def`
   = note: removed bound: `A: std::clone::Clone` (technically breaking)
 
 error: breaking changes in `abc`
- --> $REPO_PATH/tests/cases/bounds/new.rs:9:1
+ --> bounds/new.rs:9:1
   |
 9 | pub fn abc<A: Clone>(_: A) {}
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ error: breaking changes in `abc`
   = warning: added bound: `A: std::clone::Clone` (breaking)
 
 warning: technically breaking changes in `def`
-  --> $REPO_PATH/tests/cases/bounds/new.rs:11:1
+  --> bounds/new.rs:11:1
    |
 11 | pub fn def<A>(_: A) {}
    | ^^^^^^^^^^^^^^^^^^^^^^

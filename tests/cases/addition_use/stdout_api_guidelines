@@ -1,6 +1,6 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 error: breaking changes in `Def`
- --> $REPO_PATH/tests/cases/addition_use/new.rs:5:1
+ --> addition_use/new.rs:5:1
   |
 5 | / pub struct Def<'a> {
 6 | |     pub field1: Abc,
