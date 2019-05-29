@@ -170,7 +170,9 @@ fn main_loop_inner(
 
     let (libdata_sender, libdata_receiver) = unbounded();
     loop {
+        let _p = profile("loop_turn");
         state.maybe_collect_garbage();
+
         log::trace!("selecting");
         let event = select! {
             recv(msg_receiver) -> msg => match msg {
@@ -184,8 +186,11 @@ fn main_loop_inner(
             },
             recv(libdata_receiver) -> data => Event::Lib(data.unwrap())
         };
-        log::info!("loop_turn = {:?}", event);
-        let _p = profile("loop_turn");
+        log::info!("loop turn = {:?}", event);
+        let queue_count = pool.queued_count();
+        if queue_count > 0 {
+            log::info!("queued count = {}", queue_count);
+        }
         let mut state_changed = false;
         match event {
             Event::Task(task) => on_task(task, msg_sender, pending_requests),
@@ -468,7 +473,7 @@ impl<'a> PoolDispatcher<'a> {
         Ok(self)
     }
 
-    fn finish(&mut self) -> ::std::result::Result<u64, RawRequest> {
+    fn finish(&mut self) -> std::result::Result<u64, RawRequest> {
         match (self.res.take(), self.req.take()) {
             (Some(res), None) => Ok(res),
             (None, Some(req)) => Err(req),
