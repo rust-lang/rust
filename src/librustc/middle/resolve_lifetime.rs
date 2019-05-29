@@ -2149,7 +2149,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             struct SelfVisitor<'a> {
                 map: &'a NamedRegionMap,
                 impl_self: Option<&'a hir::TyKind>,
-                lifetime: Option<Region>,
+                lifetime: Set1<Region>,
             }
 
             impl SelfVisitor<'_> {
@@ -2193,8 +2193,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node
                         {
                             if self.is_self_ty(path.res) {
-                                self.lifetime = self.map.defs.get(&lifetime_ref.hir_id).copied();
-                                return;
+                                if let Some(lifetime) = self.map.defs.get(&lifetime_ref.hir_id) {
+                                    self.lifetime.insert(*lifetime);
+                                }
                             }
                         }
                     }
@@ -2205,10 +2206,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let mut visitor = SelfVisitor {
                 map: self.map,
                 impl_self: impl_self.map(|ty| &ty.node),
-                lifetime: None,
+                lifetime: Set1::Empty,
             };
             visitor.visit_ty(&inputs[0]);
-            if let Some(lifetime) = visitor.lifetime {
+            if let Set1::One(lifetime) = visitor.lifetime {
                 let scope = Scope::Elision {
                     elide: Elide::Exact(lifetime),
                     s: self.scope,
