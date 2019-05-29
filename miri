@@ -1,21 +1,60 @@
 #!/bin/sh
 set -e
-# I'd love to use `jq` for parsing the JSON properly, but macOS is totally underequipped for this kind of work.
-TARGET=$(rustc --print target-spec-json -Z unstable-options | grep llvm-target | cut -d '"' -f 4)
+USAGE=$(cat <<"EOF"
+  COMMANDS
+
+./miri install <flags>:
+Installs the miri driver and cargo-miri. <flags> are passed to `cargo
+install`.  Sets up the rpath such that the installed binary should work in any
+working directory.
+
+./miri build <flags>:
+Just build miri.  <flags> are passed to `cargo build`.
+
+./miri test <flags>:
+Build miri, set up a sysroot and then run the test suite. <flags> are passed
+to the final `cargo test` invocation.
+
+./miri run <flags>:
+Build miri, set up a sysroot and then run the driver with the given <flags>.
+
+All commands also exist in a "-debug" variant (e.g. "./miri run-debug
+<flags>") which uses debug builds instead of release builds, for faster build
+times and slower execution times.
+
+  ENVIRONMENT VARIABLES
+
+MIRI_SYSROOT:
+If already set, the "sysroot setup" step is skipped.
+
+CARGO_EXTRA_FLAGS:
+Pass extra flags to all cargo invocations.
+EOF
+)
+
+## Preparation
+TARGET=$(rustc --version --verbose | grep "^host:" | cut -d ' ' -f 2)
 SYSROOT=$(rustc --print sysroot)
+LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
+if ! test -d "$LIBDIR"; then
+    echo "Something went wrong determining the library dir."
+    echo "I got $LIBDIR but that does not exist."
+    echo "Please report a bug at https://github.com/rust-lang/miri/issues."
+    exit 2
+fi
 # We set the rpath so that Miri finds the private rustc libraries it needs.
 # We enable debug-assertions to get tracing.
 # We enable line-only debuginfo for backtraces.
-export RUSTFLAGS="-C link-args=-Wl,-rpath,$SYSROOT/lib/rustlib/$TARGET/lib -C debug-assertions -C debuginfo=1"
+export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debuginfo=1"
 
 ## Helper functions
 
 # Build a sysroot and set MIRI_SYSROOT to use it.  Arguments are passed to `cargo miri setup`.
 build_sysroot() {
     # Build once, for the user to see.
-    cargo run --release --bin cargo-miri -- miri setup "$@"
+    cargo run $CARGO_BUILD_FLAGS --bin cargo-miri -- miri setup "$@"
     # Call again, to just set env var.
-    eval $(cargo run --release -q --bin cargo-miri -- miri setup --env "$@")
+    eval $(cargo run $CARGO_BUILD_FLAGS -q --bin cargo-miri -- miri setup --env "$@")
     export MIRI_SYSROOT
 }
 
@@ -48,23 +87,46 @@ find_sysroot() {
 
 ## Main
 
+# Determine command.
 COMMAND="$1"
 shift
 
+# Determine flags passed to all cargo invocations.
+# This is a bit more annoying that one would hope due to
+# <https://github.com/rust-lang/cargo/issues/6992>.
 case "$COMMAND" in
-install)
+*-debug)
+    CARGO_INSTALL_FLAGS="--debug $CARGO_EXTRA_FLAGS"
+    CARGO_BUILD_FLAGS="$CARGO_EXTRA_FLAGS"
+    ;;
+*)
+    CARGO_INSTALL_FLAGS="$CARGO_EXTRA_FLAGS"
+    CARGO_BUILD_FLAGS="--release $CARGO_EXTRA_FLAGS"
+    ;;
+esac
+
+# Run command.
+case "$COMMAND" in
+install|install-debug)
     # "--locked" to respect the Cargo.lock file if it exists,
     # "--offline" to avoid querying the registry (for yanked packages).
-    exec cargo "$COMMAND" --path "$(dirname "$0")" --force --locked --offline "$@"
+    exec cargo install $CARGO_INSTALL_FLAGS --path "$(dirname "$0")" --force --locked --offline "$@"
     ;;
-build)
+build|build-debug)
     # Build, and let caller control flags.
-    exec cargo "$COMMAND" --release "$@"
+    exec cargo build $CARGO_BUILD_FLAGS "$@"
     ;;
-test|run)
-    # In "run" mode, scan for "--target" to set the "MIRI_TEST_TARGET" env var so
+test|test-debug)
+    # First build and get a sysroot.
+    cargo build $CARGO_BUILD_FLAGS
+    find_sysroot
+    # Then test, and let caller control flags.
+    exec cargo test $CARGO_BUILD_FLAGS "$@"
+    ;;
+run|run-debug)
+    # Scan for "--target" to set the "MIRI_TEST_TARGET" env var so
     # that we set the MIRI_SYSROOT up the right way.
-    if [ "$COMMAND" = "run" ] && [ -z "$MIRI_TEST_TARGET" ]; then
+    if [ -z "$MIRI_TEST_TARGET" ]; then
         for ARG in "$@"; do
             if [ "$LAST_ARG" = "--target" ]; then
                 # Found it!
@@ -75,9 +137,14 @@ test|run)
         done
     fi
     # First build and get a sysroot.
-    cargo build --release
+    cargo build $CARGO_BUILD_FLAGS
     find_sysroot
     # Then run the actual command.
-    exec cargo "$COMMAND" --release "$@"
+    exec cargo run $CARGO_BUILD_FLAGS "$@"
     ;;
+*)
+    echo "Unknown command: $COMMAND"
+    echo
+    echo "$USAGE"
+    exit 1
 esac
