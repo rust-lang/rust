@@ -1703,8 +1703,13 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_trait_or_impl_item(&self, hir_id: hir::HirId, assoc_item_kind: AssocItemKind,
-                                defaultness: hir::Defaultness, vis: ty::Visibility) {
+    fn check_assoc_item(
+        &self,
+        hir_id: hir::HirId,
+        assoc_item_kind: AssocItemKind,
+        defaultness: hir::Defaultness,
+        vis: ty::Visibility,
+    ) {
         let mut check = self.check(hir_id, vis);
 
         let (check_ty, is_assoc_ty) = match assoc_item_kind {
@@ -1754,8 +1759,12 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 self.check(item.hir_id, item_visibility).generics().predicates();
 
                 for trait_item_ref in trait_item_refs {
-                    self.check_trait_or_impl_item(trait_item_ref.id.hir_id, trait_item_ref.kind,
-                                                  trait_item_ref.defaultness, item_visibility);
+                    self.check_assoc_item(
+                        trait_item_ref.id.hir_id,
+                        trait_item_ref.kind,
+                        trait_item_ref.defaultness,
+                        item_visibility,
+                    );
                 }
             }
             hir::ItemKind::TraitAlias(..) => {
@@ -1803,8 +1812,12 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                     } else {
                         impl_vis
                     };
-                    self.check_trait_or_impl_item(impl_item_ref.id.hir_id, impl_item_ref.kind,
-                                                  impl_item_ref.defaultness, impl_item_vis);
+                    self.check_assoc_item(
+                        impl_item_ref.id.hir_id,
+                        impl_item_ref.kind,
+                        impl_item_ref.defaultness,
+                        impl_item_vis,
+                    );
                 }
             }
         }
