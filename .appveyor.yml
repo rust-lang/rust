@@ -33,7 +33,7 @@ build_script:
     - set RUSTFLAGS=-C debug-assertions
     # Build and install miri
     - cargo build --release --all-features --all-targets
-    - cargo install --all-features --force --path .
+    - cargo install --all-features --force --path . --locked --offline
     # Get ourselves a MIR-full libstd, and use it henceforth
     - cargo miri setup
     - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\miri\miri\cache\HOST
