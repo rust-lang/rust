@@ -171,7 +171,6 @@ fn main_loop_inner(
     let (libdata_sender, libdata_receiver) = unbounded();
     loop {
         let _p = profile("loop_turn");
-        state.maybe_collect_garbage();
 
         log::trace!("selecting");
         let event = select! {
@@ -193,13 +192,17 @@ fn main_loop_inner(
         }
         let mut state_changed = false;
         match event {
-            Event::Task(task) => on_task(task, msg_sender, pending_requests),
+            Event::Task(task) => {
+                on_task(task, msg_sender, pending_requests);
+                state.maybe_collect_garbage();
+            }
             Event::Vfs(task) => {
                 state.vfs.write().handle_task(task);
                 state_changed = true;
             }
             Event::Lib(lib) => {
                 state.add_lib(lib);
+                state.maybe_collect_garbage();
                 in_flight_libraries -= 1;
             }
             Event::Msg(msg) => match msg {
