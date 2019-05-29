@@ -39,5 +39,5 @@ SOURCE_FILE@[0; 94)
   ERROR@[92; 93)
     R_CURLY@[92; 93) "}"
   WHITESPACE@[93; 94) "\n"
-err: `unmatched `}``
-err: `unmatched `}``
+error 49: unmatched `}`
+error 92: unmatched `}`

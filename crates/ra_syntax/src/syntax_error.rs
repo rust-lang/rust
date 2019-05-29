@@ -13,7 +13,7 @@ pub struct SyntaxError {
     location: Location,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Location {
     Offset(TextUnit),
     Range(TextRange),
@@ -28,6 +28,15 @@ impl Into<Location> for TextUnit {
 impl Into<Location> for TextRange {
     fn into(self) -> Location {
         Location::Range(self)
+    }
+}
+
+impl fmt::Debug for Location {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Location::Offset(it) => fmt::Debug::fmt(it, f),
+            Location::Range(it) => fmt::Debug::fmt(it, f),
+        }
     }
 }
 

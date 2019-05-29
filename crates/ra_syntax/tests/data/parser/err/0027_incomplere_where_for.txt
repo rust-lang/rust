@@ -24,5 +24,5 @@ SOURCE_FILE@[0; 30)
       L_CURLY@[27; 28) "{"
       R_CURLY@[28; 29) "}"
   WHITESPACE@[29; 30) "\n"
-err: `expected a path`
-err: `expected colon`
+error 26: expected a path
+error 26: expected colon

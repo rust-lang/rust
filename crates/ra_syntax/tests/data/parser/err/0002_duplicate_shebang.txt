@@ -4,4 +4,4 @@ SOURCE_FILE@[0; 42)
   ERROR@[21; 41)
     SHEBANG@[21; 41) "#!/use/bin/env rusti"
   WHITESPACE@[41; 42) "\n"
-err: `expected an item`
+error 21: expected an item

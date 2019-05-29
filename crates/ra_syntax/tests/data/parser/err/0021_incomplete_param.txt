@@ -30,5 +30,5 @@ SOURCE_FILE@[0; 22)
       WHITESPACE@[19; 20) "\n"
       R_CURLY@[20; 21) "}"
   WHITESPACE@[21; 22) "\n"
-err: `expected COLON`
-err: `expected type`
+error 16: expected COLON
+error 16: expected type

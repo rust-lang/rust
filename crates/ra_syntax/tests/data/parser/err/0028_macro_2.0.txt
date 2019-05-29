@@ -256,70 +256,70 @@ SOURCE_FILE@[0; 349)
       WHITESPACE@[346; 347) "\n"
       R_CURLY@[347; 348) "}"
   WHITESPACE@[348; 349) "\n"
-err: `expected EXCL`
-err: `expected SEMI`
-err: `expected an item`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected COMMA`
-err: `expected expression`
-err: `expected R_PAREN`
-err: `expected COMMA`
-err: `expected expression`
-err: `expected R_BRACK`
-err: `expected COMMA`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected R_PAREN`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected COMMA`
-err: `expected expression`
-err: `expected R_PAREN`
-err: `expected COMMA`
-err: `expected expression`
-err: `expected R_BRACK`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected R_PAREN`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
-err: `expected expression`
-err: `expected SEMI`
+error 5: expected EXCL
+error 41: expected SEMI
+error 42: expected an item
+error 139: expected SEMI
+error 152: expected expression
+error 153: expected COMMA
+error 154: expected expression
+error 154: expected R_PAREN
+error 154: expected COMMA
+error 154: expected expression
+error 154: expected R_BRACK
+error 154: expected COMMA
+error 154: expected SEMI
+error 154: expected expression
+error 155: expected SEMI
+error 160: expected SEMI
+error 160: expected expression
+error 161: expected SEMI
+error 165: expected SEMI
+error 165: expected expression
+error 166: expected SEMI
+error 166: expected expression
+error 167: expected SEMI
+error 169: expected expression
+error 170: expected SEMI
+error 171: expected expression
+error 171: expected R_PAREN
+error 171: expected SEMI
+error 171: expected expression
+error 172: expected SEMI
+error 172: expected expression
+error 173: expected SEMI
+error 174: expected expression
+error 175: expected SEMI
+error 175: expected expression
+error 176: expected SEMI
+error 178: expected expression
+error 179: expected COMMA
+error 180: expected expression
+error 180: expected R_PAREN
+error 180: expected COMMA
+error 180: expected expression
+error 180: expected R_BRACK
+error 180: expected SEMI
+error 180: expected expression
+error 181: expected SEMI
+error 187: expected SEMI
+error 187: expected expression
+error 188: expected SEMI
+error 192: expected SEMI
+error 192: expected expression
+error 193: expected SEMI
+error 193: expected expression
+error 194: expected SEMI
+error 196: expected expression
+error 197: expected SEMI
+error 198: expected expression
+error 198: expected R_PAREN
+error 198: expected SEMI
+error 198: expected expression
+error 199: expected SEMI
+error 199: expected expression
+error 200: expected SEMI
+error 201: expected expression
+error 202: expected SEMI
+error 202: expected expression
+error 203: expected SEMI

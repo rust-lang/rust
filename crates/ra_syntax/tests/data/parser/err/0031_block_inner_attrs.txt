@@ -108,7 +108,7 @@ SOURCE_FILE@[0; 350)
       WHITESPACE@[347; 348) "\n"
       R_CURLY@[348; 349) "}"
   WHITESPACE@[349; 350) "\n"
-err: `A block in this position cannot accept inner attributes`
-err: `A block in this position cannot accept inner attributes`
-err: `A block in this position cannot accept inner attributes`
-err: `A block in this position cannot accept inner attributes`
+error [39; 83): A block in this position cannot accept inner attributes
+error [152; 171): A block in this position cannot accept inner attributes
+error [180; 212): A block in this position cannot accept inner attributes
+error [283; 302): A block in this position cannot accept inner attributes

@@ -15,6 +15,6 @@ SOURCE_FILE@[0; 16)
       L_CURLY@[13; 14) "{"
       R_CURLY@[14; 15) "}"
   WHITESPACE@[15; 16) "\n"
-err: `expected a name`
-err: `expected function arguments`
-err: `expected a block`
+error 2: expected a name
+error 2: expected function arguments
+error 2: expected a block

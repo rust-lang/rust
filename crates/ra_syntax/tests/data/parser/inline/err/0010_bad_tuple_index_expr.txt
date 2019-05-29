@@ -46,6 +46,6 @@ SOURCE_FILE@[0; 47)
       WHITESPACE@[44; 45) "\n"
       R_CURLY@[45; 46) "}"
   WHITESPACE@[46; 47) "\n"
-err: `Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix`
-err: `Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix`
-err: `Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix`
+error [17; 19): Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix
+error [27; 31): Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix
+error [39; 43): Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix

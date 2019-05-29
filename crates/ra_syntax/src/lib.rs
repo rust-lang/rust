@@ -76,7 +76,7 @@ impl Parse {
     pub fn debug_dump(&self) -> String {
         let mut buf = self.tree.syntax().debug_dump();
         for err in self.errors.iter() {
-            writeln!(buf, "err: `{}`", err).unwrap();
+            writeln!(buf, "error {:?}: {}", err.location(), err.kind()).unwrap();
         }
         buf
     }
