@@ -170,16 +170,11 @@ pub enum Set1<T> {
 
 impl<T: PartialEq> Set1<T> {
     pub fn insert(&mut self, value: T) {
-        if let Set1::Empty = *self {
-            *self = Set1::One(value);
-            return;
-        }
-        if let Set1::One(ref old) = *self {
-            if *old == value {
-                return;
-            }
-        }
-        *self = Set1::Many;
+        *self = match self {
+            Set1::Empty => Set1::One(value),
+            Set1::One(old) if *old == value => return,
+            _ => Set1::Many,
+        };
     }
 }
 
