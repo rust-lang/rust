@@ -1,7 +1,7 @@
 mod handlers;
 mod subscriptions;
 
-use std::{fmt, path::PathBuf, sync::Arc, time::Instant};
+use std::{fmt, path::PathBuf, sync::Arc, time::Instant, any::TypeId};
 
 use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
 use failure::{bail, format_err};
@@ -447,14 +447,14 @@ struct PoolDispatcher<'a> {
     req: Option<RawRequest>,
     res: Option<u64>,
     pool: &'a ThreadPool,
-    world: &'a ServerWorldState,
+    world: &'a mut ServerWorldState,
     sender: &'a Sender<Task>,
 }
 
 impl<'a> PoolDispatcher<'a> {
     fn on<R>(&mut self, f: fn(ServerWorld, R::Params) -> Result<R::Result>) -> Result<&mut Self>
     where
-        R: req::Request,
+        R: req::Request + 'static,
         R::Params: DeserializeOwned + Send + 'static,
         R::Result: Serialize + 'static,
     {
@@ -464,6 +464,15 @@ impl<'a> PoolDispatcher<'a> {
         };
         match req.cast::<R>() {
             Ok((id, params)) => {
+                // Real time requests block user typing, so we should react quickly to them.
+                // Currently this means that we try to cancel background jobs if we don't have
+                // a spare thread.
+                let is_real_time = TypeId::of::<R>() == TypeId::of::<req::JoinLines>()
+                    || TypeId::of::<R>() == TypeId::of::<req::OnEnter>();
+                if self.pool.queued_count() > 0 && is_real_time {
+                    self.world.cancel_requests();
+                }
+
                 let world = self.world.snapshot();
                 let sender = self.sender.clone();
                 self.pool.execute(move || {
