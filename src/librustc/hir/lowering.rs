@@ -1083,6 +1083,18 @@ impl<'a> LoweringContext<'a> {
             .chain(in_band_defs)
             .collect();
 
+        // FIXME(const_generics): the compiler doesn't always cope with
+        // unsorted generic parameters at the moment, so we make sure
+        // that they're ordered correctly here for now. (When we chain
+        // the `in_band_defs`, we might make the order unsorted.)
+        lowered_generics.params.sort_by_key(|param| {
+            match param.kind {
+                hir::GenericParamKind::Lifetime { .. } => ParamKindOrd::Lifetime,
+                hir::GenericParamKind::Type { .. } => ParamKindOrd::Type,
+                hir::GenericParamKind::Const { .. } => ParamKindOrd::Const,
+            }
+        });
+
         (lowered_generics, res)
     }
 
