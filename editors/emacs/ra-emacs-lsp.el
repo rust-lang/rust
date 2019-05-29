@@ -134,6 +134,13 @@
                             '(rust-analyzer-extend-selection))))
 
 (with-eval-after-load 'expand-region
+  ;; add the expansion for all existing rust-mode buffers. If expand-region is
+  ;; loaded lazily, it might be loaded when the first rust buffer is opened, and
+  ;; then it's too late for the hook for that buffer
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (eq 'rust-mode major-mode)
+        (rust-analyzer--add-er-expansion))))
   (add-hook 'rust-mode-hook 'rust-analyzer--add-er-expansion))
 
 ;; runnables
@@ -169,6 +176,33 @@
   (interactive (list (or rust-analyzer--last-runnable
                          (rust-analyzer--select-runnable))))
   (rust-analyzer-run (or runnable rust-analyzer--last-runnable)))
+
+;; analyzer status buffer
+(define-derived-mode rust-analyzer-status-mode special-mode "Rust-Analyzer-Status"
+  "Mode for the rust-analyzer status buffer.")
+
+(defvar-local rust-analyzer--status-buffer-workspace nil)
+
+(defun rust-analyzer-status ()
+  "Displays status information for rust-analyzer."
+  (interactive)
+  (let* ((workspace (lsp-find-workspace 'rust-analyzer (buffer-file-name)))
+         (buf (get-buffer-create (concat "*rust-analyzer status " (with-lsp-workspace workspace (lsp-workspace-root)) "*"))))
+    (with-current-buffer buf
+      (rust-analyzer-status-mode)
+      (setq rust-analyzer--status-buffer-workspace workspace)
+      (rust-analyzer-status-buffer-refresh))
+    (pop-to-buffer buf)))
+
+(defun rust-analyzer-status-buffer-refresh ()
+  (interactive)
+  (when rust-analyzer--status-buffer-workspace
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (insert (with-lsp-workspace rust-analyzer--status-buffer-workspace
+                (lsp-send-request (lsp-make-request
+                                   "rust-analyzer/analyzerStatus")))))))
+
 
 (provide 'ra-emacs-lsp)
 ;;; ra-emacs-lsp.el ends here
