@@ -180,6 +180,10 @@ impl std::iter::Step for NaiveDate {
     fn add_usize(&self, _: usize) -> Option<Self> {
         unimplemented!()
     }
+
+    fn sub_usize(&self, _: usize) -> Option<Self> {
+        unimplemented!()
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
