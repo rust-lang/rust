@@ -5,7 +5,7 @@ LL |             *array
    |             ^^^^^^
    |             |
    |             move occurs because `*array` has type `std::vec::Vec<Value>`, which does not implement the `Copy` trait
-   |             help: consider removing the `*`: `array`
+   |             help: consider borrowing here: `&*array`
 
 error: aborting due to previous error
 
