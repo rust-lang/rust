@@ -230,7 +230,7 @@ fn render_error_page<T: Formatter>(err_map: &ErrorMetadataMap, output_path: &Pat
 }
 
 fn main_with_result(format: OutputFormat, dst: &Path) -> Result<(), Box<dyn Error>> {
-    let build_arch = env!("CFG_BUILD","CFG BUILD not found");
+    let build_arch = env!("CFG_BUILD","CFG BUILD not found").to_String();
     let metadata_dir = get_metadata_dir(&build_arch);
     let err_map = load_all_errors(&metadata_dir)?;
     match format {
