@@ -102,6 +102,7 @@ pub(crate) fn format_expr(
             path,
             fields,
             base.as_ref().map(|e| &**e),
+            &expr.attrs,
             expr.span,
             shape,
         ),
@@ -1570,6 +1571,7 @@ fn rewrite_struct_lit<'a>(
     path: &ast::Path,
     fields: &'a [ast::Field],
     base: Option<&'a ast::Expr>,
+    attrs: &[ast::Attribute],
     span: Span,
     shape: Shape,
 ) -> Option<String> {
@@ -1664,7 +1666,8 @@ fn rewrite_struct_lit<'a>(
         write_list(&item_vec, &fmt)?
     };
 
-    let fields_str = wrap_struct_field(context, &fields_str, shape, v_shape, one_line_width);
+    let fields_str =
+        wrap_struct_field(context, &attrs, &fields_str, shape, v_shape, one_line_width)?;
     Some(format!("{} {{{}}}", path_str, fields_str))
 
     // FIXME if context.config.indent_style() == Visual, but we run out
@@ -1673,25 +1676,39 @@ fn rewrite_struct_lit<'a>(
 
 pub(crate) fn wrap_struct_field(
     context: &RewriteContext<'_>,
+    attrs: &[ast::Attribute],
     fields_str: &str,
     shape: Shape,
     nested_shape: Shape,
     one_line_width: usize,
-) -> String {
-    if context.config.indent_style() == IndentStyle::Block
+) -> Option<String> {
+    let should_vertical = context.config.indent_style() == IndentStyle::Block
         && (fields_str.contains('\n')
             || !context.config.struct_lit_single_line()
-            || fields_str.len() > one_line_width)
-    {
-        format!(
-            "{}{}{}",
+            || fields_str.len() > one_line_width);
+
+    let inner_attrs = &inner_attributes(attrs);
+    if inner_attrs.is_empty() {
+        if should_vertical {
+            Some(format!(
+                "{}{}{}",
+                nested_shape.indent.to_string_with_newline(context.config),
+                fields_str,
+                shape.indent.to_string_with_newline(context.config)
+            ))
+        } else {
+            // One liner or visual indent.
+            Some(format!(" {} ", fields_str))
+        }
+    } else {
+        Some(format!(
+            "{}{}{}{}{}",
+            nested_shape.indent.to_string_with_newline(context.config),
+            inner_attrs.rewrite(context, shape)?,
             nested_shape.indent.to_string_with_newline(context.config),
             fields_str,
             shape.indent.to_string_with_newline(context.config)
-        )
-    } else {
-        // One liner or visual indent.
-        format!(" {} ", fields_str)
+        ))
     }
 }
 

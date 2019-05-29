@@ -226,7 +226,8 @@ fn rewrite_struct_pat(
         }
     }
 
-    let fields_str = wrap_struct_field(context, &fields_str, shape, v_shape, one_line_width);
+    // ast::Pat doesn't have attrs so use &[]
+    let fields_str = wrap_struct_field(context, &[], &fields_str, shape, v_shape, one_line_width)?;
     Some(format!("{} {{{}}}", path_str, fields_str))
 }
 
