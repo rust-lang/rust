@@ -19,15 +19,15 @@ pub enum Location {
     Range(TextRange),
 }
 
-impl Into<Location> for TextUnit {
-    fn into(self) -> Location {
-        Location::Offset(self)
+impl From<TextUnit> for Location {
+    fn from(offset: TextUnit) -> Location {
+        Location::Offset(offset)
     }
 }
 
-impl Into<Location> for TextRange {
-    fn into(self) -> Location {
-        Location::Range(self)
+impl From<TextRange> for Location {
+    fn from(range: TextRange) -> Location {
+        Location::Range(range)
     }
 }
 
