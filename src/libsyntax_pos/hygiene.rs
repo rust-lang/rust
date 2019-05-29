@@ -112,31 +112,14 @@ impl Mark {
         HygieneData::with(|data| data.marks[self.0 as usize].default_transparency = transparency)
     }
 
-    pub fn is_descendant_of(mut self, ancestor: Mark) -> bool {
-        HygieneData::with(|data| {
-            while self != ancestor {
-                if self == Mark::root() {
-                    return false;
-                }
-                self = data.marks[self.0 as usize].parent;
-            }
-            true
-        })
+    pub fn is_descendant_of(self, ancestor: Mark) -> bool {
+        HygieneData::with(|data| data.is_descendant_of(self, ancestor))
     }
 
     /// `mark.outer_is_descendant_of(ctxt)` is equivalent to but faster than
     /// `mark.is_descendant_of(ctxt.outer())`.
-    pub fn outer_is_descendant_of(mut self, ctxt: SyntaxContext) -> bool {
-        HygieneData::with(|data| {
-            let outer = data.syntax_contexts[ctxt.0 as usize].outer_mark;
-            while self != outer {
-                if self == Mark::root() {
-                    return false;
-                }
-                self = data.marks[self.0 as usize].parent;
-            }
-            true
-        })
+    pub fn outer_is_descendant_of(self, ctxt: SyntaxContext) -> bool {
+        HygieneData::with(|data| data.is_descendant_of(self, data.outer(ctxt)))
     }
 
     /// Computes a mark such that both input marks are descendants of (or equal to) the returned
@@ -215,6 +198,24 @@ impl HygieneData {
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
+    }
+
+    fn outer(&self, ctxt: SyntaxContext) -> Mark {
+        self.syntax_contexts[ctxt.0 as usize].outer_mark
+    }
+
+    fn expn_info(&self, mark: Mark) -> Option<ExpnInfo> {
+        self.marks[mark.0 as usize].expn_info.clone()
+    }
+
+    fn is_descendant_of(&self, mut mark: Mark, ancestor: Mark) -> bool {
+        while mark != ancestor {
+            if mark == Mark::root() {
+                return false;
+            }
+            mark = self.marks[mark.0 as usize].parent;
+        }
+        true
     }
 }
 
@@ -514,17 +515,14 @@ impl SyntaxContext {
 
     #[inline]
     pub fn outer(self) -> Mark {
-        HygieneData::with(|data| data.syntax_contexts[self.0 as usize].outer_mark)
+        HygieneData::with(|data| data.outer(self))
     }
 
     /// `ctxt.outer_expn_info()` is equivalent to but faster than
     /// `ctxt.outer().expn_info()`.
     #[inline]
     pub fn outer_expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| {
-            let outer = data.syntax_contexts[self.0 as usize].outer_mark;
-            data.marks[outer.0 as usize].expn_info.clone()
-        })
+        HygieneData::with(|data| data.expn_info(data.outer(self)))
     }
 
     pub fn dollar_crate_name(self) -> Symbol {
