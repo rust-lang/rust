@@ -84,11 +84,23 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'
                     // HACK(eddyb) Avoid having RustCall on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
                     abi = Abi::Rust;
-                    Some(ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None))
+                    Some(ArgInfo {
+                        ty: liberated_closure_env_ty(tcx, id, body_id),
+                        span: None,
+                        pattern: None,
+                        user_pattern: None,
+                        self_kind: None,
+                    })
                 }
                 ty::Generator(..) => {
                     let gen_ty = tcx.body_tables(body_id).node_type(id);
-                    Some(ArgInfo(gen_ty, None, None, None))
+                    Some(ArgInfo {
+                        ty: gen_ty,
+                        span: None,
+                        pattern: None,
+                        user_pattern: None,
+                        self_kind: None,
+                    })
                 }
                 _ => None,
             };
@@ -126,7 +138,15 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'
                             opt_ty_info = None;
                             self_arg = None;
                         }
-                        ArgInfo(fn_sig.inputs()[index], opt_ty_info, Some(&*arg.pat), self_arg)
+
+                        let original_pat = tcx.hir().original_pat_of_argument(arg);
+                        ArgInfo {
+                            ty: fn_sig.inputs()[index],
+                            span: opt_ty_info,
+                            pattern: Some(&*arg.pat),
+                            user_pattern: Some(&original_pat),
+                            self_kind: self_arg,
+                        }
                     });
 
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
@@ -614,10 +634,13 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-struct ArgInfo<'gcx>(Ty<'gcx>,
-                     Option<Span>,
-                     Option<&'gcx hir::Pat>,
-                     Option<ImplicitSelfKind>);
+struct ArgInfo<'gcx> {
+    ty: Ty<'gcx>,
+    span: Option<Span>,
+    pattern: Option<&'gcx hir::Pat>,
+    user_pattern: Option<&'gcx hir::Pat>,
+    self_kind: Option<ImplicitSelfKind>,
+}
 
 fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    fn_id: hir::HirId,
@@ -878,26 +901,23 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                      -> BlockAnd<()>
     {
         // Allocate locals for the function arguments
-        for &ArgInfo(ty, _, pattern, _) in arguments.iter() {
+        for &ArgInfo { ty, span: _, pattern, user_pattern, self_kind: _ } in arguments.iter() {
             // If this is a simple binding pattern, give the local a name for
             // debuginfo and so that error reporting knows that this is a user
             // variable. For any other pattern the pattern introduces new
             // variables which will be named instead.
-            let mut name = None;
-            if let Some(pat) = pattern {
+            let (name, span) = if let Some(pat) = user_pattern {
                 match pat.node {
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, _)
-                    | hir::PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, _) => {
-                        name = Some(ident.name);
-                    }
-                    _ => (),
+                    | hir::PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, _) =>
+                        (Some(ident.name), pat.span),
+                    _ => (None, pattern.map_or(self.fn_span, |pat| pat.span))
                 }
-            }
-
-            let source_info = SourceInfo {
-                scope: OUTERMOST_SOURCE_SCOPE,
-                span: pattern.map_or(self.fn_span, |pat| pat.span)
+            } else {
+                (None, self.fn_span)
             };
+
+            let source_info = SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span, };
             self.local_decls.push(LocalDecl {
                 mutability: Mutability::Mut,
                 ty,
@@ -917,7 +937,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // Function arguments always get the first Local indices after the return place
             let local = Local::new(index + 1);
             let place = Place::Base(PlaceBase::Local(local));
-            let &ArgInfo(ty, opt_ty_info, pattern, ref self_binding) = arg_info;
+            let &ArgInfo {
+                ty,
+                span: opt_ty_info,
+                pattern,
+                user_pattern: _,
+                self_kind: ref self_binding
+            } = arg_info;
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(

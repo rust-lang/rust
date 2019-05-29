@@ -1932,23 +1932,13 @@ pub struct Arg {
     pub source: ArgSource,
 }
 
-impl Arg {
-    /// Returns the pattern representing the original binding for this argument.
-    pub fn original_pat(&self) -> &P<Pat> {
-        match &self.source {
-            ArgSource::Normal => &self.pat,
-            ArgSource::AsyncFn(pat) => &pat,
-        }
-    }
-}
-
 /// Represents the source of an argument in a function header.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum ArgSource {
     /// Argument as specified by the user.
     Normal,
-    /// Generated argument from `async fn` lowering, contains the original binding pattern.
-    AsyncFn(P<Pat>),
+    /// Generated argument from `async fn` lowering, `HirId` is the original pattern.
+    AsyncFn(HirId),
 }
 
 /// Represents the header (not the body) of a function declaration.

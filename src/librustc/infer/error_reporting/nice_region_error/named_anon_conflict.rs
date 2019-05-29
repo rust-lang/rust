@@ -95,7 +95,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             }
         }
 
-        let (error_var, span_label_var) = match arg.original_pat().simple_ident() {
+        let arg_pat = self.tcx().hir().original_pat_of_argument(arg);
+        let (error_var, span_label_var) = match arg_pat.simple_ident() {
             Some(simple_ident) => (
                 format!("the type of `{}`", simple_ident),
                 format!("the type of `{}`", simple_ident),

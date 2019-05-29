@@ -86,12 +86,14 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         let sub_is_ret_type =
             self.is_return_type_anon(scope_def_id_sub, bregion_sub, ty_fndecl_sub);
 
-        let span_label_var1 = match anon_arg_sup.original_pat().simple_ident() {
+        let arg_sup_pat = self.tcx().hir().original_pat_of_argument(anon_arg_sup);
+        let span_label_var1 = match arg_sup_pat.simple_ident() {
             Some(simple_ident) => format!(" from `{}`", simple_ident),
             None => String::new(),
         };
 
-        let span_label_var2 = match anon_arg_sub.original_pat().simple_ident() {
+        let arg_sub_pat = self.tcx().hir().original_pat_of_argument(anon_arg_sub);
+        let span_label_var2 = match arg_sub_pat.simple_ident() {
             Some(simple_ident) => format!(" into `{}`", simple_ident),
             None => String::new(),
         };

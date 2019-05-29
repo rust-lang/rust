@@ -699,6 +699,19 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    /// Returns the `HirId` of this pattern, or, if this is an `async fn` desugaring, the `HirId`
+    /// of the original pattern that the user wrote.
+    pub fn original_pat_of_argument(&self, arg: &'hir Arg) -> &'hir Pat {
+        match &arg.source {
+            ArgSource::Normal => &*arg.pat,
+            ArgSource::AsyncFn(hir_id) => match self.find_by_hir_id(*hir_id) {
+                Some(Node::Pat(pat)) | Some(Node::Binding(pat)) => &pat,
+                Some(Node::Local(local)) => &*local.pat,
+                x => bug!("ArgSource::AsyncFn HirId not a pattern/binding/local: {:?}", x),
+            },
+        }
+    }
+
     pub fn is_const_scope(&self, hir_id: HirId) -> bool {
         self.walk_parent_nodes(hir_id, |node| match *node {
             Node::Item(Item { node: ItemKind::Const(_, _), .. }) => true,
