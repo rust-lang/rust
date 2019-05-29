@@ -60,7 +60,7 @@ pub(crate) fn find_all_refs(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<ReferenceSearchResult> {
-    let file = db.parse(position.file_id);
+    let file = db.parse(position.file_id).tree;
     let (binding, analyzer) = find_binding(db, &file, position)?;
     let declaration = NavigationTarget::from_bind_pat(position.file_id, binding);
 
@@ -99,7 +99,7 @@ pub(crate) fn rename(
     position: FilePosition,
     new_name: &str,
 ) -> Option<SourceChange> {
-    let source_file = db.parse(position.file_id);
+    let source_file = db.parse(position.file_id).tree;
     let syntax = source_file.syntax();
 
     if let Some((ast_name, ast_module)) = find_name_and_module_at_offset(syntax, position) {

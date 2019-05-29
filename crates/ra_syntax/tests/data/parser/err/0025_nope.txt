@@ -50,14 +50,10 @@ SOURCE_FILE@[0; 575)
                 NAME@[91; 94)
                   IDENT@[91; 94) "abc"
                 COLON@[94; 95) ":"
-                err: `expected type`
-                err: `expected COMMA`
               WHITESPACE@[95; 96) " "
-              err: `expected field`
               ERROR@[96; 98)
                 L_CURLY@[96; 97) "{"
                 R_CURLY@[97; 98) "}"
-                err: `expected field declaration`
               ERROR@[98; 99)
                 COMMA@[98; 99) ","
               WHITESPACE@[99; 100) " "
@@ -159,17 +155,11 @@ SOURCE_FILE@[0; 575)
                           PATH_SEGMENT@[368; 371)
                             NAME_REF@[368; 371)
                               IDENT@[368; 371) "i32"
-                              err: `expected COMMA`
                     WHITESPACE@[371; 372) " "
-                    err: `expected a type`
-                    err: `expected R_PAREN`
-                    err: `expected COMMA`
-                    err: `expected enum variant`
                     ERROR@[372; 372)
                 ERROR@[372; 374)
                   L_CURLY@[372; 373) "{"
                   R_CURLY@[373; 374) "}"
-                  err: `expected enum variant`
                 ERROR@[374; 375)
                   R_PAREN@[374; 375) ")"
                 WHITESPACE@[375; 376) " "
@@ -192,7 +182,6 @@ SOURCE_FILE@[0; 575)
         WHITESPACE@[505; 506) " "
         EQ@[506; 507) "="
         WHITESPACE@[507; 508) " "
-        err: `expected expression`
         ERROR@[508; 509)
           UNDERSCORE@[508; 509) "_"
         SEMI@[509; 510) ";"
@@ -201,3 +190,14 @@ SOURCE_FILE@[0; 575)
       WHITESPACE@[572; 573) "\n"
       R_CURLY@[573; 574) "}"
   WHITESPACE@[574; 575) "\n"
+err: `expected type`
+err: `expected COMMA`
+err: `expected field`
+err: `expected field declaration`
+err: `expected COMMA`
+err: `expected a type`
+err: `expected R_PAREN`
+err: `expected COMMA`
+err: `expected enum variant`
+err: `expected enum variant`
+err: `expected expression`

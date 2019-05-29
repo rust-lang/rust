@@ -29,7 +29,6 @@ SOURCE_FILE@[0; 56)
               INT_NUMBER@[31; 32) "2"
             WHITESPACE@[32; 37) "\n    "
             R_PAREN@[37; 38) ")"
-            err: `expected SEMI`
       WHITESPACE@[38; 43) "\n    "
       EXPR_STMT@[43; 53)
         RETURN_EXPR@[43; 52)
@@ -41,3 +40,4 @@ SOURCE_FILE@[0; 56)
       WHITESPACE@[53; 54) "\n"
       R_CURLY@[54; 55) "}"
   WHITESPACE@[55; 56) "\n"
+err: `expected SEMI`

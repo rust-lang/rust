@@ -9,7 +9,6 @@
 use std::{
     ops::RangeInclusive,
     fmt::{self, Write},
-    any::Any,
     borrow::Borrow,
     iter::successors,
 };
@@ -133,10 +132,8 @@ pub enum Direction {
 }
 
 impl SyntaxNode {
-    pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreeArc<SyntaxNode> {
-        let errors: Option<Box<Any + Send + Sync>> =
-            if errors.is_empty() { None } else { Some(Box::new(errors)) };
-        let ptr = TreeArc(rowan::SyntaxNode::new(green, errors));
+    pub(crate) fn new(green: GreenNode) -> TreeArc<SyntaxNode> {
+        let ptr = TreeArc(rowan::SyntaxNode::new(green, None));
         TreeArc::cast(ptr)
     }
 
@@ -259,37 +256,18 @@ impl SyntaxNode {
     }
 
     pub fn debug_dump(&self) -> String {
-        let mut errors: Vec<_> = match self.ancestors().find_map(SourceFile::cast) {
-            Some(file) => file.errors(),
-            None => self.root_data().to_vec(),
-        };
-        errors.sort_by_key(|e| e.offset());
-        let mut err_pos = 0;
         let mut level = 0;
         let mut buf = String::new();
-        macro_rules! indent {
-            () => {
-                for _ in 0..level {
-                    buf.push_str("  ");
-                }
-            };
-        }
 
         for event in self.preorder_with_tokens() {
             match event {
                 WalkEvent::Enter(element) => {
-                    indent!();
+                    for _ in 0..level {
+                        buf.push_str("  ");
+                    }
                     match element {
                         SyntaxElement::Node(node) => writeln!(buf, "{:?}", node).unwrap(),
-                        SyntaxElement::Token(token) => {
-                            writeln!(buf, "{:?}", token).unwrap();
-                            let off = token.range().end();
-                            while err_pos < errors.len() && errors[err_pos].offset() <= off {
-                                indent!();
-                                writeln!(buf, "err: `{}`", errors[err_pos]).unwrap();
-                                err_pos += 1;
-                            }
-                        }
+                        SyntaxElement::Token(token) => writeln!(buf, "{:?}", token).unwrap(),
                     }
                     level += 1;
                 }
@@ -298,21 +276,8 @@ impl SyntaxNode {
         }
 
         assert_eq!(level, 0);
-        for err in errors[err_pos..].iter() {
-            writeln!(buf, "err: `{}`", err).unwrap();
-        }
 
         buf
-    }
-
-    pub(crate) fn root_data(&self) -> &[SyntaxError] {
-        match self.0.root_data() {
-            None => &[],
-            Some(data) => {
-                let data: &Vec<SyntaxError> = std::any::Any::downcast_ref(data).unwrap();
-                data.as_slice()
-            }
-        }
     }
 
     pub(crate) fn replace_with(&self, replacement: GreenNode) -> GreenNode {
@@ -386,7 +351,7 @@ impl SyntaxNode {
         let len = new_children.iter().map(|it| it.text_len()).sum::<TextUnit>();
         let new_node = GreenNode::new(rowan::SyntaxKind(self.kind() as u16), new_children);
         let new_file_node = self.replace_with(new_node);
-        let file = SourceFile::new(new_file_node, Vec::new());
+        let file = SourceFile::new(new_file_node);
 
         // FIXME: use a more elegant way to re-fetch the node (#1185), make
         // `range` private afterwards
@@ -629,13 +594,13 @@ impl SyntaxTreeBuilder {
         (green, self.errors)
     }
 
-    pub fn finish(self) -> TreeArc<SyntaxNode> {
+    pub fn finish(self) -> (TreeArc<SyntaxNode>, Vec<SyntaxError>) {
         let (green, errors) = self.finish_raw();
-        let node = SyntaxNode::new(green, errors);
+        let node = SyntaxNode::new(green);
         if cfg!(debug_assertions) {
             crate::validation::validate_block_structure(&node);
         }
-        node
+        (node, errors)
     }
 
     pub fn token(&mut self, kind: SyntaxKind, text: SmolStr) {

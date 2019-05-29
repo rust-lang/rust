@@ -32,7 +32,7 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
 
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
-    let source_file = db.parse(file_id);
+    let source_file = db.parse(file_id).tree;
 
     fn calc_binding_hash(file_id: FileId, text: &SmolStr, shadow_count: u32) -> u64 {
         fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
@@ -177,7 +177,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
 }
 
 pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: bool) -> String {
-    let source_file = db.parse(file_id);
+    let source_file = db.parse(file_id).tree;
 
     fn rainbowify(seed: u64) -> String {
         use rand::prelude::*;

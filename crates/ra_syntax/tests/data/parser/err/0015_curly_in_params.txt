@@ -6,19 +6,19 @@ SOURCE_FILE@[0; 14)
       IDENT@[3; 6) "foo"
     PARAM_LIST@[6; 7)
       L_PAREN@[6; 7) "("
-      err: `expected value parameter`
-      err: `expected R_PAREN`
-      err: `expected a block`
-      err: `unmatched `}``
   ERROR@[7; 8)
     R_CURLY@[7; 8) "}"
-    err: `expected an item`
   ERROR@[8; 9)
     R_PAREN@[8; 9) ")"
   WHITESPACE@[9; 10) " "
-  err: `expected an item`
   ERROR@[10; 13)
     L_CURLY@[10; 11) "{"
     WHITESPACE@[11; 12) "\n"
     R_CURLY@[12; 13) "}"
   WHITESPACE@[13; 14) "\n"
+err: `expected value parameter`
+err: `expected R_PAREN`
+err: `expected a block`
+err: `unmatched `}``
+err: `expected an item`
+err: `expected an item`

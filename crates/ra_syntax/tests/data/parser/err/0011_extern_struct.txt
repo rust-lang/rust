@@ -2,7 +2,6 @@ SOURCE_FILE@[0; 19)
   ERROR@[0; 6)
     ABI@[0; 6)
       EXTERN_KW@[0; 6) "extern"
-      err: `expected fn, trait or impl`
   WHITESPACE@[6; 7) " "
   STRUCT_DEF@[7; 18)
     STRUCT_KW@[7; 13) "struct"
@@ -11,3 +10,4 @@ SOURCE_FILE@[0; 19)
       IDENT@[14; 17) "Foo"
     SEMI@[17; 18) ";"
   WHITESPACE@[18; 19) "\n"
+err: `expected fn, trait or impl`

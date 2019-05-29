@@ -14,7 +14,6 @@ SOURCE_FILE@[0; 21)
       ERROR@[11; 14)
         VISIBILITY@[11; 14)
           PUB_KW@[11; 14) "pub"
-          err: `expected an item`
       WHITESPACE@[14; 15) " "
       EXPR_STMT@[15; 18)
         LITERAL@[15; 17)
@@ -23,3 +22,4 @@ SOURCE_FILE@[0; 21)
       WHITESPACE@[18; 19) " "
       R_CURLY@[19; 20) "}"
   WHITESPACE@[20; 21) "\n"
+err: `expected an item`

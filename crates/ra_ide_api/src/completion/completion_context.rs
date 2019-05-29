@@ -1,6 +1,6 @@
 use ra_text_edit::AtomTextEdit;
 use ra_syntax::{
-    AstNode, SyntaxNode, SourceFile, TextUnit, TextRange, SyntaxToken,
+    AstNode, SyntaxNode, SourceFile, TextUnit, TextRange, SyntaxToken, Parse,
     ast,
     algo::{find_token_at_offset, find_covering_element, find_node_at_offset},
     SyntaxKind::*,
@@ -43,11 +43,12 @@ pub(crate) struct CompletionContext<'a> {
 impl<'a> CompletionContext<'a> {
     pub(super) fn new(
         db: &'a db::RootDatabase,
-        original_file: &'a SourceFile,
+        original_parse: &'a Parse,
         position: FilePosition,
     ) -> Option<CompletionContext<'a>> {
         let module = source_binder::module_from_position(db, position);
-        let token = find_token_at_offset(original_file.syntax(), position.offset).left_biased()?;
+        let token =
+            find_token_at_offset(original_parse.tree.syntax(), position.offset).left_biased()?;
         let analyzer =
             hir::SourceAnalyzer::new(db, position.file_id, token.parent(), Some(position.offset));
         let mut ctx = CompletionContext {
@@ -69,7 +70,7 @@ impl<'a> CompletionContext<'a> {
             dot_receiver: None,
             is_call: false,
         };
-        ctx.fill(original_file, position.offset);
+        ctx.fill(&original_parse, position.offset);
         Some(ctx)
     }
 
@@ -82,13 +83,13 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    fn fill(&mut self, original_file: &'a SourceFile, offset: TextUnit) {
+    fn fill(&mut self, original_parse: &'a Parse, offset: TextUnit) {
         // Insert a fake ident to get a valid parse tree. We will use this file
         // to determine context, though the original_file will be used for
         // actual completion.
         let file = {
             let edit = AtomTextEdit::insert(offset, "intellijRulezz".to_string());
-            original_file.reparse(&edit)
+            original_parse.reparse(&edit).tree
         };
 
         // First, let's try to complete a reference to some declaration.
@@ -99,7 +100,7 @@ impl<'a> CompletionContext<'a> {
                 self.is_param = true;
                 return;
             }
-            self.classify_name_ref(original_file, name_ref);
+            self.classify_name_ref(&original_parse.tree, name_ref);
         }
 
         // Otherwise, see if this is a declaration. We can use heuristics to

@@ -183,7 +183,9 @@ fn obsolete() {}
 #[deprecated(note = "for awhile")]
 fn very_obsolete() {}
 "#,
-        );
+        )
+        .ok()
+        .unwrap();
         let structure = file_structure(&file);
         assert_debug_snapshot_matches!("file_structure", structure);
     }

@@ -40,7 +40,7 @@ SOURCE_FILE@[0; 47)
           INT_NUMBER@[41; 42) "1"
         WHITESPACE@[42; 43) " "
         PLUS@[43; 44) "+"
-        err: `expected expression`
       WHITESPACE@[44; 45) "\n"
       R_CURLY@[45; 46) "}"
   WHITESPACE@[46; 47) "\n"
+err: `expected expression`

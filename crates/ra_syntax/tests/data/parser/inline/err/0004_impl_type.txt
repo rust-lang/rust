@@ -35,8 +35,6 @@ SOURCE_FILE@[0; 87)
   WHITESPACE@[33; 34) "\n"
   IMPL_BLOCK@[34; 38)
     IMPL_KW@[34; 38) "impl"
-    err: `expected trait or type`
-    err: `expected `{``
   WHITESPACE@[38; 39) " "
   IMPL_BLOCK@[39; 54)
     IMPL_KW@[39; 43) "impl"
@@ -61,8 +59,6 @@ SOURCE_FILE@[0; 87)
             IDENT@[60; 66) "Trait2"
     WHITESPACE@[66; 67) " "
     FOR_KW@[67; 70) "for"
-    err: `expected trait or type`
-    err: `expected `{``
   WHITESPACE@[70; 71) " "
   IMPL_BLOCK@[71; 86)
     IMPL_KW@[71; 75) "impl"
@@ -77,3 +73,7 @@ SOURCE_FILE@[0; 87)
       L_CURLY@[84; 85) "{"
       R_CURLY@[85; 86) "}"
   WHITESPACE@[86; 87) "\n"
+err: `expected trait or type`
+err: `expected `{``
+err: `expected trait or type`
+err: `expected `{``

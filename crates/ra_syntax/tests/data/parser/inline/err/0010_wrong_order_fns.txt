@@ -1,7 +1,6 @@
 SOURCE_FILE@[0; 50)
   ERROR@[0; 5)
     ASYNC_KW@[0; 5) "async"
-    err: `expected fn, trait or impl`
   WHITESPACE@[5; 6) " "
   FN_DEF@[6; 24)
     UNSAFE_KW@[6; 12) "unsafe"
@@ -20,7 +19,6 @@ SOURCE_FILE@[0; 50)
   WHITESPACE@[24; 25) "\n"
   ERROR@[25; 31)
     UNSAFE_KW@[25; 31) "unsafe"
-    err: `expected fn, trait or impl`
   WHITESPACE@[31; 32) " "
   FN_DEF@[32; 49)
     CONST_KW@[32; 37) "const"
@@ -37,3 +35,5 @@ SOURCE_FILE@[0; 50)
       L_CURLY@[47; 48) "{"
       R_CURLY@[48; 49) "}"
   WHITESPACE@[49; 50) "\n"
+err: `expected fn, trait or impl`
+err: `expected fn, trait or impl`

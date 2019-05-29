@@ -29,11 +29,11 @@ macro_rules! impl_froms {
 impl_froms!(TokenTree: Leaf, Subtree);
 "#;
 
-    let source_file = ast::SourceFile::parse(macro_definition);
+    let source_file = ast::SourceFile::parse(macro_definition).ok().unwrap();
     let macro_definition =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
-    let source_file = ast::SourceFile::parse(macro_invocation);
+    let source_file = ast::SourceFile::parse(macro_invocation).ok().unwrap();
     let macro_invocation =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
@@ -49,7 +49,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
 }
 
 pub(crate) fn create_rules(macro_definition: &str) -> MacroRules {
-    let source_file = ast::SourceFile::parse(macro_definition);
+    let source_file = ast::SourceFile::parse(macro_definition).ok().unwrap();
     let macro_definition =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
@@ -58,7 +58,7 @@ pub(crate) fn create_rules(macro_definition: &str) -> MacroRules {
 }
 
 pub(crate) fn expand(rules: &MacroRules, invocation: &str) -> tt::Subtree {
-    let source_file = ast::SourceFile::parse(invocation);
+    let source_file = ast::SourceFile::parse(invocation).ok().unwrap();
     let macro_invocation =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
@@ -95,7 +95,7 @@ pub(crate) fn expand_to_expr(
 pub(crate) fn text_to_tokentree(text: &str) -> tt::Subtree {
     // wrap the given text to a macro call
     let wrapped = format!("wrap_macro!( {} )", text);
-    let wrapped = ast::SourceFile::parse(&wrapped);
+    let wrapped = ast::SourceFile::parse(&wrapped).tree;
     let wrapped = wrapped.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
     let mut wrapped = ast_to_token_tree(wrapped).unwrap().0;
     wrapped.delimiter = tt::Delimiter::None;
@@ -294,7 +294,7 @@ fn test_match_group_pattern_with_multiple_defs() {
         macro_rules! foo {
             ($ ($ i:ident),*) => ( struct Bar { $ (
                 fn $ i {}
-            )*} );            
+            )*} );
         }
 "#,
     );
@@ -314,7 +314,7 @@ fn test_match_group_pattern_with_multiple_statement() {
         macro_rules! foo {
             ($ ($ i:ident),*) => ( fn baz { $ (
                 $ i ();
-            )*} );            
+            )*} );
         }
 "#,
     );
@@ -329,7 +329,7 @@ fn test_match_group_pattern_with_multiple_statement_without_semi() {
         macro_rules! foo {
             ($ ($ i:ident),*) => ( fn baz { $ (
                 $i()
-            );*} );            
+            );*} );
         }
 "#,
     );
@@ -344,7 +344,7 @@ fn test_match_group_empty_fixed_token() {
         macro_rules! foo {
             ($ ($ i:ident)* #abc) => ( fn baz { $ (
                 $ i ();
-            )*} );            
+            )*} );
         }
 "#,
     );
@@ -356,10 +356,10 @@ fn test_match_group_empty_fixed_token() {
 fn test_match_group_in_subtree() {
     let rules = create_rules(
         r#"
-        macro_rules! foo {            
+        macro_rules! foo {
             (fn $name:ident {$($i:ident)*} ) => ( fn $name() { $ (
                 $ i ();
-            )*} );            
+            )*} );
         }"#,
     );
 
@@ -370,15 +370,15 @@ fn test_match_group_in_subtree() {
 fn test_match_group_with_multichar_sep() {
     let rules = create_rules(
         r#"
-        macro_rules! foo {            
-            (fn $name:ident {$($i:literal)*} ) => ( fn $name() -> bool { $($i)&&*} );            
+        macro_rules! foo {
+            (fn $name:ident {$($i:literal)*} ) => ( fn $name() -> bool { $($i)&&*} );
         }"#,
     );
 
     assert_expansion(
         MacroKind::Items,
         &rules,
-        "foo! (fn baz {true true} )",
+        "foo! (fn baz {true true} );",
         "fn baz () -> bool {true &&true}",
     );
 }
@@ -387,24 +387,24 @@ fn test_match_group_with_multichar_sep() {
 fn test_match_group_zero_match() {
     let rules = create_rules(
         r#"
-        macro_rules! foo {            
-            ( $($i:ident)* ) => ();            
+        macro_rules! foo {
+            ( $($i:ident)* ) => ();
         }"#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, "foo! ()", "");
+    assert_expansion(MacroKind::Items, &rules, "foo! ();", "");
 }
 
 #[test]
 fn test_match_group_in_group() {
     let rules = create_rules(
         r#"
-        macro_rules! foo {            
+        macro_rules! foo {
             { $( ( $($i:ident)* ) )* } => ( $( ( $($i)* ) )* );
         }"#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, "foo! ( (a b) )", "(a b)");
+    assert_expansion(MacroKind::Items, &rules, "foo! ( (a b) );", "(a b)");
 }
 
 #[test]
@@ -418,7 +418,7 @@ fn test_expand_to_item_list() {
             }
             ",
     );
-    let expansion = expand(&rules, "structs!(Foo, Bar)");
+    let expansion = expand(&rules, "structs!(Foo, Bar);");
     let tree = token_tree_to_macro_items(&expansion);
     assert_eq!(
         tree.unwrap().syntax().debug_dump().trim(),
@@ -490,7 +490,7 @@ fn test_expand_literals_to_token_tree() {
             }
             "#,
     );
-    let expansion = expand(&rules, "literals!(foo)");
+    let expansion = expand(&rules, "literals!(foo);");
     let stm_tokens = &to_subtree(&expansion.token_trees[0]).token_trees;
 
     // [let] [a] [=] ['c'] [;]
@@ -586,7 +586,7 @@ fn test_match_literal() {
     }
 "#,
     );
-    assert_expansion(MacroKind::Items, &rules, "foo! ['(']", "fn foo () {}");
+    assert_expansion(MacroKind::Items, &rules, "foo! ['('];", "fn foo () {}");
 }
 
 // The following tests are port from intellij-rust directly
@@ -651,7 +651,7 @@ fn test_expr() {
         r#"
         macro_rules! foo {
             ($ i:expr) => {
-                 fn bar() { $ i; } 
+                 fn bar() { $ i; }
             }
         }
 "#,
@@ -671,7 +671,7 @@ fn test_expr_order() {
         r#"
         macro_rules! foo {
             ($ i:expr) => {
-                 fn bar() { $ i * 2; } 
+                 fn bar() { $ i * 2; }
             }
         }
 "#,
@@ -725,7 +725,7 @@ fn test_last_expr() {
     assert_expansion(
         MacroKind::Items,
         &rules,
-        "vec!(1,2,3)",
+        "vec!(1,2,3);",
         "{let mut v = Vec :: new () ; v . push (1) ; v . push (2) ; v . push (3) ; v}",
     );
 }
@@ -896,13 +896,13 @@ fn test_meta_doc_comments() {
     assert_expansion(
         MacroKind::Items,
         &rules,
-        r#"foo! { 
+        r#"foo! {
             /// Single Line Doc 1
-            /** 
+            /**
                 MultiLines Doc
             */
         }"#,
-        "# [doc = \" Single Line Doc 1\"] # [doc = \" \\\\n                MultiLines Doc\\\\n            \"] fn bar () {}",
+        "# [doc = \" Single Line Doc 1\"] # [doc = \"\\\\n                MultiLines Doc\\\\n            \"] fn bar () {}",
     );
 }
 
@@ -950,7 +950,7 @@ fn test_literal() {
         }
 "#,
     );
-    assert_expansion(MacroKind::Items, &rules, r#"foo!(u8 0)"#, r#"const VALUE : u8 = 0 ;"#);
+    assert_expansion(MacroKind::Items, &rules, r#"foo!(u8 0);"#, r#"const VALUE : u8 = 0 ;"#);
 }
 
 #[test]
@@ -984,7 +984,7 @@ macro_rules! foo {
         bar!($a);
         fn $b() -> u8 {$c}
     }
-}        
+}
 "#,
     );
     assert_expansion(
@@ -1017,12 +1017,12 @@ fn test_vec() {
     assert_expansion(
         MacroKind::Items,
         &rules,
-        r#"vec![1u32,2]"#,
+        r#"vec![1u32,2];"#,
         r#"{let mut v = Vec :: new () ; v . push (1u32) ; v . push (2) ; v}"#,
     );
 
     assert_eq!(
-        expand_to_expr(&rules, r#"vec![1u32,2]"#).syntax().debug_dump().trim(),
+        expand_to_expr(&rules, r#"vec![1u32,2];"#).syntax().debug_dump().trim(),
         r#"BLOCK_EXPR@[0; 45)
   BLOCK@[0; 45)
     L_CURLY@[0; 1) "{"
@@ -1119,7 +1119,7 @@ macro_rules! STRUCT {
     // from https://github.com/retep998/winapi-rs/blob/a7ef2bca086aae76cf6c4ce4c2552988ed9798ad/src/shared/d3d9caps.rs
     assert_expansion(MacroKind::Items, &rules, r#"STRUCT!{struct D3DVSHADERCAPS2_0 {Caps: u8,}}"#,
         "# [repr (C)] # [derive (Copy)] pub struct D3DVSHADERCAPS2_0 {pub Caps : u8 ,} impl Clone for D3DVSHADERCAPS2_0 {# [inline] fn clone (& self) -> D3DVSHADERCAPS2_0 {* self}} # [cfg (feature = \"impl-default\")] impl Default for D3DVSHADERCAPS2_0 {# [inline] fn default () -> D3DVSHADERCAPS2_0 {unsafe {$crate :: _core :: mem :: zeroed ()}}}");
-    assert_expansion(MacroKind::Items, &rules, r#"STRUCT!{#[cfg_attr(target_arch = "x86", repr(packed))] struct D3DCONTENTPROTECTIONCAPS {Caps : u8 ,}}"#, 
+    assert_expansion(MacroKind::Items, &rules, r#"STRUCT!{#[cfg_attr(target_arch = "x86", repr(packed))] struct D3DCONTENTPROTECTIONCAPS {Caps : u8 ,}}"#,
         "# [repr (C)] # [derive (Copy)] # [cfg_attr (target_arch = \"x86\" , repr (packed))] pub struct D3DCONTENTPROTECTIONCAPS {pub Caps : u8 ,} impl Clone for D3DCONTENTPROTECTIONCAPS {# [inline] fn clone (& self) -> D3DCONTENTPROTECTIONCAPS {* self}} # [cfg (feature = \"impl-default\")] impl Default for D3DCONTENTPROTECTIONCAPS {# [inline] fn default () -> D3DCONTENTPROTECTIONCAPS {unsafe {$crate :: _core :: mem :: zeroed ()}}}");
 }
 
@@ -1136,11 +1136,11 @@ macro_rules! int_base {
             }
         }
     }
-}            
+}
 "#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, r#" int_base!{Binary for isize as usize -> Binary}"#, 
+    assert_expansion(MacroKind::Items, &rules, r#" int_base!{Binary for isize as usize -> Binary}"#,
         "# [stable (feature = \"rust1\" , since = \"1.0.0\")] impl fmt ::Binary for isize {fn fmt (& self , f : & mut fmt :: Formatter < \'_ >) -> fmt :: Result {Binary . fmt_int (* self as usize , f)}}"
         );
 }
@@ -1150,7 +1150,7 @@ fn test_generate_pattern_iterators() {
     // from https://github.com/rust-lang/rust/blob/316a391dcb7d66dc25f1f9a4ec9d368ef7615005/src/libcore/str/mod.rs
     let rules = create_rules(
         r#"
-macro_rules! generate_pattern_iterators {        
+macro_rules! generate_pattern_iterators {
         { double ended; with $(#[$common_stability_attribute:meta])*,
                            $forward_iterator:ident,
                            $reverse_iterator:ident, $iterty:ty
@@ -1161,7 +1161,7 @@ macro_rules! generate_pattern_iterators {
 "#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, r#"generate_pattern_iterators ! ( double ended ; with # [ stable ( feature = "rust1" , since = "1.0.0" ) ] , Split , RSplit , & 'a str )"#, 
+    assert_expansion(MacroKind::Items, &rules, r#"generate_pattern_iterators ! ( double ended ; with # [ stable ( feature = "rust1" , since = "1.0.0" ) ] , Split , RSplit , & 'a str );"#,
         "fn foo () {}");
 }
 
@@ -1170,7 +1170,7 @@ fn test_impl_fn_for_zst() {
     // from https://github.com/rust-lang/rust/blob/5d20ff4d2718c820632b38c1e49d4de648a9810b/src/libcore/internal_macros.rs
     let rules = create_rules(
         r#"
-macro_rules! impl_fn_for_zst  {        
+macro_rules! impl_fn_for_zst  {
         {  $( $( #[$attr: meta] )*
         struct $Name: ident impl$( <$( $lifetime : lifetime ),+> )? Fn =
             |$( $arg: ident: $ArgTy: ty ),*| -> $ReturnTy: ty
@@ -1208,27 +1208,26 @@ $body: block; )+
         )+
 }
         }
-}
 "#,
     );
 
     assert_expansion(MacroKind::Items, &rules, r#"
-impl_fn_for_zst !   { 
-     # [ derive ( Clone ) ] 
-     struct   CharEscapeDebugContinue   impl   Fn   =   | c :   char |   ->   char :: EscapeDebug   { 
-         c . escape_debug_ext ( false ) 
-     } ; 
+impl_fn_for_zst !   {
+     # [ derive ( Clone ) ]
+     struct   CharEscapeDebugContinue   impl   Fn   =   | c :   char |   ->   char :: EscapeDebug   {
+         c . escape_debug_ext ( false )
+     } ;
 
-     # [ derive ( Clone ) ] 
-     struct   CharEscapeUnicode   impl   Fn   =   | c :   char |   ->   char :: EscapeUnicode   { 
-         c . escape_unicode ( ) 
-     } ; 
-     # [ derive ( Clone ) ] 
-     struct   CharEscapeDefault   impl   Fn   =   | c :   char |   ->   char :: EscapeDefault   { 
-         c . escape_default ( ) 
-     } ; 
+     # [ derive ( Clone ) ]
+     struct   CharEscapeUnicode   impl   Fn   =   | c :   char |   ->   char :: EscapeUnicode   {
+         c . escape_unicode ( )
+     } ;
+     # [ derive ( Clone ) ]
+     struct   CharEscapeDefault   impl   Fn   =   | c :   char |   ->   char :: EscapeDefault   {
+         c . escape_default ( )
+     } ;
  }
-"#, 
+"#,
         "# [derive (Clone)] struct CharEscapeDebugContinue ; impl Fn < (char ,) > for CharEscapeDebugContinue {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeDebug {{c . escape_debug_ext (false)}}} impl FnMut < (char ,) > for CharEscapeDebugContinue {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeDebug {Fn :: call (&* self , (c ,))}} impl FnOnce < (char ,) > for CharEscapeDebugContinue {type Output = char :: EscapeDebug ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeDebug {Fn :: call (& self , (c ,))}} # [derive (Clone)] struct CharEscapeUnicode ; impl Fn < (char ,) > for CharEscapeUnicode {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeUnicode {{c . escape_unicode ()}}} impl FnMut < (char ,) > for CharEscapeUnicode {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeUnicode {Fn :: call (&* self , (c ,))}} impl FnOnce < (char ,) > for CharEscapeUnicode {type Output = char :: EscapeUnicode ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeUnicode {Fn :: call (& self , (c ,))}} # [derive (Clone)] struct CharEscapeDefault ; impl Fn < (char ,) > for CharEscapeDefault {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeDefault {{c . escape_default ()}}} impl FnMut < (char ,) > for CharEscapeDefault {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeDefault {Fn :: call (&* self , (c ,))}} impl FnOnce < (char ,) > for CharEscapeDefault {type Output = char :: EscapeDefault ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeDefault {Fn :: call (& self , (c ,))}}");
 }
 
@@ -1263,7 +1262,7 @@ fn test_cfg_if_items() {
 "#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, r#"__cfg_if_items ! { ( rustdoc , ) ; ( ( ) ( # [ cfg ( any ( target_os = "redox" , unix ) ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as unix ; # [ cfg ( windows ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as windows ; # [ cfg ( any ( target_os = "linux" , target_os = "l4re" ) ) ] pub mod linux ; ) ) , }"#,         
+    assert_expansion(MacroKind::Items, &rules, r#"__cfg_if_items ! { ( rustdoc , ) ; ( ( ) ( # [ cfg ( any ( target_os = "redox" , unix ) ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as unix ; # [ cfg ( windows ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as windows ; # [ cfg ( any ( target_os = "linux" , target_os = "l4re" ) ) ] pub mod linux ; ) ) , }"#,
         "__cfg_if_items ! {(rustdoc ,) ;}");
 }
 
@@ -1294,23 +1293,23 @@ fn test_cfg_if_main() {
     );
 
     assert_expansion(MacroKind::Items, &rules, r#"
-cfg_if !   { 
-     if   # [ cfg ( target_env   =   "msvc" ) ]   { 
-         // no extra unwinder support needed 
-     }   else   if   # [ cfg ( all ( target_arch   =   "wasm32" ,   not ( target_os   =   "emscripten" ) ) ) ]   { 
-         // no unwinder on the system! 
-     }   else   { 
-         mod   libunwind ; 
-         pub   use   libunwind :: * ; 
-     } 
- }        
-"#,         
+cfg_if !   {
+     if   # [ cfg ( target_env   =   "msvc" ) ]   {
+         // no extra unwinder support needed
+     }   else   if   # [ cfg ( all ( target_arch   =   "wasm32" ,   not ( target_os   =   "emscripten" ) ) ) ]   {
+         // no unwinder on the system!
+     }   else   {
+         mod   libunwind ;
+         pub   use   libunwind :: * ;
+     }
+ }
+"#,
         "__cfg_if_items ! {() ; ((target_env = \"msvc\") ()) , ((all (target_arch = \"wasm32\" , not (target_os = \"emscripten\"))) ()) , (() (mod libunwind ; pub use libunwind :: * ;)) ,}");
 
     assert_expansion(MacroKind::Items, &rules, r#"
-cfg_if ! { @ __apply cfg ( all ( not ( any ( not ( any ( target_os = "solaris" , target_os = "illumos" ) ) ) ) ) ) , }    
+cfg_if ! { @ __apply cfg ( all ( not ( any ( not ( any ( target_os = "solaris" , target_os = "illumos" ) ) ) ) ) ) , }
 "#,
-        ""    
+        ""
     );
 }
 
@@ -1329,16 +1328,16 @@ macro_rules! arbitrary {
                 $logic
             }
         }
-    };  
-   
+    };
+
 }"#,
     );
 
-    assert_expansion(MacroKind::Items, &rules, r#"arbitrary !   ( [ A : Arbitrary ] 
-        Vec < A > , 
-        VecStrategy < A :: Strategy > , 
-        RangedParams1 < A :: Parameters > ; 
-        args =>   { let product_unpack !   [ range , a ] = args ; vec ( any_with :: < A >   ( a ) , range ) } 
+    assert_expansion(MacroKind::Items, &rules, r#"arbitrary !   ( [ A : Arbitrary ]
+        Vec < A > ,
+        VecStrategy < A :: Strategy > ,
+        RangedParams1 < A :: Parameters > ;
+        args =>   { let product_unpack !   [ range , a ] = args ; vec ( any_with :: < A >   ( a ) , range ) }
     ) ;"#,
     "impl <A : Arbitrary > $crate :: arbitrary :: Arbitrary for Vec < A > {type Parameters = RangedParams1 < A :: Parameters > ; type Strategy = VecStrategy < A :: Strategy > ; fn arbitrary_with (args : Self :: Parameters) -> Self :: Strategy {{let product_unpack ! [range , a] = args ; vec (any_with :: < A > (a) , range)}}}");
 }
@@ -1350,7 +1349,7 @@ fn test_old_ridl() {
     let rules = create_rules(
         r#"
 #[macro_export]
-macro_rules! RIDL {    
+macro_rules! RIDL {
     (interface $interface:ident ($vtbl:ident) : $pinterface:ident ($pvtbl:ident)
         {$(
             fn $method:ident(&mut self $(,$p:ident : $t:ty)*) -> $rtr:ty
@@ -1360,7 +1359,7 @@ macro_rules! RIDL {
             $(pub unsafe fn $method(&mut self) -> $rtr {
                 ((*self.lpVtbl).$method)(self $(,$p)*)
             })+
-        }        
+        }
     };
 }"#,
     );
@@ -1388,11 +1387,11 @@ macro_rules! quick_error {
         quick_error!(ENUM_DEFINITION [enum $name $( #[$meta] )*]
             body []
             queue [$(
-                $( #[$imeta] )*                      
-                => 
-                $iitem: $imode [$( $ivar: $ityp ),*]                       
+                $( #[$imeta] )*
+                =>
+                $iitem: $imode [$( $ivar: $ityp ),*]
             )*]
-        );        
+        );
 };
 
 }
@@ -1403,7 +1402,7 @@ macro_rules! quick_error {
         &rules,
         r#"
 quick_error ! (SORT [enum Wrapped # [derive (Debug)]] items [
-        => One : UNIT [] {} 
+        => One : UNIT [] {}
         => Two : TUPLE [s :String] {display ("two: {}" , s) from ()}
     ] buf [] queue []) ;
 "#,

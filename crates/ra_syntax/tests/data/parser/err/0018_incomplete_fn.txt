@@ -21,9 +21,6 @@ SOURCE_FILE@[0; 183)
           PARAM@[33; 34)
             REF_PAT@[33; 34)
               AMP@[33; 34) "&"
-              err: `expected pattern`
-              err: `expected COLON`
-              err: `expected type`
           R_PAREN@[34; 35) ")"
         WHITESPACE@[35; 36) " "
         RET_TYPE@[36; 46)
@@ -124,8 +121,11 @@ SOURCE_FILE@[0; 183)
         WHITESPACE@[169; 170) " "
         NAME@[170; 180)
           IDENT@[170; 180) "set_parent"
-          err: `expected function arguments`
-          err: `expected a block`
       WHITESPACE@[180; 181) "\n"
       R_CURLY@[181; 182) "}"
   WHITESPACE@[182; 183) "\n"
+err: `expected pattern`
+err: `expected COLON`
+err: `expected type`
+err: `expected function arguments`
+err: `expected a block`

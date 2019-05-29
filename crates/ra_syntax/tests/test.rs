@@ -8,7 +8,7 @@ use std::{
 };
 
 use test_utils::{project_dir, dir_tests, read_text, collect_tests};
-use ra_syntax::{SourceFile, AstNode, fuzz};
+use ra_syntax::{SourceFile, fuzz};
 
 #[test]
 fn lexer_tests() {
@@ -21,26 +21,21 @@ fn lexer_tests() {
 #[test]
 fn parser_tests() {
     dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], |text, path| {
-        let file = SourceFile::parse(text);
-        let errors = file.errors();
+        let parse = SourceFile::parse(text);
+        let errors = parse.errors.as_slice();
         assert_eq!(
-            &*errors,
+            errors,
             &[] as &[ra_syntax::SyntaxError],
             "There should be no errors in the file {:?}",
-            path.display()
+            path.display(),
         );
-        file.syntax().debug_dump()
+        parse.debug_dump()
     });
     dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], |text, path| {
-        let file = SourceFile::parse(text);
-        let errors = file.errors();
-        assert_ne!(
-            &*errors,
-            &[] as &[ra_syntax::SyntaxError],
-            "There should be errors in the file {:?}",
-            path.display()
-        );
-        file.syntax().debug_dump()
+        let parse = SourceFile::parse(text);
+        let errors = parse.errors.as_slice();
+        assert!(!errors.is_empty(), "There should be errors in the file {:?}", path.display());
+        parse.debug_dump()
     });
 }
 
@@ -83,9 +78,7 @@ fn self_hosting_parsing() {
     {
         count += 1;
         let text = read_text(entry.path());
-        let node = SourceFile::parse(&text);
-        let errors = node.errors();
-        assert_eq!(&*errors, &[], "There should be no errors in the file {:?}", entry);
+        SourceFile::parse(&text).ok().expect("There should be no errors in the file");
     }
     assert!(
         count > 30,

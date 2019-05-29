@@ -1,7 +1,7 @@
 SOURCE_FILE@[0; 42)
   SHEBANG@[0; 20) "#!/use/bin/env rusti"
   WHITESPACE@[20; 21) "\n"
-  err: `expected an item`
   ERROR@[21; 41)
     SHEBANG@[21; 41) "#!/use/bin/env rusti"
   WHITESPACE@[41; 42) "\n"
+err: `expected an item`

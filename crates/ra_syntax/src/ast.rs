@@ -80,7 +80,9 @@ fn test_doc_comment_none() {
         // non-doc
         mod foo {}
         "#,
-    );
+    )
+    .ok()
+    .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
     assert!(module.doc_comment_text().is_none());
 }
@@ -93,7 +95,9 @@ fn test_doc_comment_of_items() {
         // non-doc
         mod foo {}
         "#,
-    );
+    )
+    .ok()
+    .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
     assert_eq!("doc", module.doc_comment_text().unwrap());
 }
@@ -110,7 +114,9 @@ fn test_doc_comment_preserves_indents() {
         /// ```
         mod foo {}
         "#,
-    );
+    )
+    .ok()
+    .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
     assert_eq!("doc1\n```\nfn foo() {\n    // ...\n}\n```", module.doc_comment_text().unwrap());
 }
@@ -133,7 +139,9 @@ where
    for<'a> F: Fn(&'a str)
 {}
         "#,
-    );
+    )
+    .ok()
+    .unwrap();
     let where_clause = file.syntax().descendants().find_map(WhereClause::cast).unwrap();
 
     let mut predicates = where_clause.predicates();

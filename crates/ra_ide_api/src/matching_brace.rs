@@ -31,7 +31,7 @@ mod tests {
     fn test_matching_brace() {
         fn do_check(before: &str, after: &str) {
             let (pos, before) = extract_offset(before);
-            let file = SourceFile::parse(&before);
+            let file = SourceFile::parse(&before).tree;
             let new_pos = match matching_brace(&file, pos) {
                 None => pos,
                 Some(pos) => pos,

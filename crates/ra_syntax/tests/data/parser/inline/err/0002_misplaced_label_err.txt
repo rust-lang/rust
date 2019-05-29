@@ -16,13 +16,13 @@ SOURCE_FILE@[0; 30)
           LABEL@[16; 22)
             LIFETIME@[16; 21) "\'loop"
             COLON@[21; 22) ":"
-            err: `expected a loop`
-            err: `expected SEMI`
       WHITESPACE@[22; 23) " "
       IMPL_BLOCK@[23; 27)
         IMPL_KW@[23; 27) "impl"
-        err: `expected type`
-        err: `expected `{``
       WHITESPACE@[27; 28) "\n"
       R_CURLY@[28; 29) "}"
   WHITESPACE@[29; 30) "\n"
+err: `expected a loop`
+err: `expected SEMI`
+err: `expected type`
+err: `expected `{``

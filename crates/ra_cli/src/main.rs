@@ -34,7 +34,7 @@ fn main() -> Result<()> {
             if !matches.is_present("no-dump") {
                 println!("{}", file.syntax().debug_dump());
             }
-            ::std::mem::forget(file);
+            std::mem::forget(file);
         }
         ("symbols", _) => {
             let file = file()?;
@@ -60,11 +60,11 @@ fn main() -> Result<()> {
 
 fn file() -> Result<TreeArc<SourceFile>> {
     let text = read_stdin()?;
-    Ok(SourceFile::parse(&text))
+    Ok(SourceFile::parse(&text).tree)
 }
 
 fn read_stdin() -> Result<String> {
     let mut buff = String::new();
-    ::std::io::stdin().read_to_string(&mut buff)?;
+    std::io::stdin().read_to_string(&mut buff)?;
     Ok(buff)
 }

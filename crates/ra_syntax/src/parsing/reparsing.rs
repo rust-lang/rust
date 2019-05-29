@@ -166,9 +166,11 @@ fn merge_errors(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use test_utils::{extract_range, assert_eq_text};
 
-    use crate::{SourceFile, AstNode};
+    use crate::{SourceFile, AstNode, Parse};
     use super::*;
 
     fn do_check(before: &str, replace_with: &str, reparsed_len: u32) {
@@ -181,14 +183,14 @@ mod tests {
             let f = SourceFile::parse(&before);
             let edit = AtomTextEdit { delete: range, insert: replace_with.to_string() };
             let (green, new_errors, range) =
-                incremental_reparse(f.syntax(), &edit, f.errors()).unwrap();
+                incremental_reparse(f.tree.syntax(), &edit, f.errors.to_vec()).unwrap();
             assert_eq!(range.len(), reparsed_len.into(), "reparsed fragment has wrong length");
-            SourceFile::new(green, new_errors)
+            Parse { tree: SourceFile::new(green), errors: Arc::new(new_errors) }
         };
 
         assert_eq_text!(
-            &fully_reparsed.syntax().debug_dump(),
-            &incrementally_reparsed.syntax().debug_dump(),
+            &fully_reparsed.tree.syntax().debug_dump(),
+            &incrementally_reparsed.tree.syntax().debug_dump(),
         );
     }
 

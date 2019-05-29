@@ -19,8 +19,6 @@ SOURCE_FILE@[0; 139)
             IDENT@[19; 22) "foo"
         WHITESPACE@[22; 23) " "
         EQ@[23; 24) "="
-        err: `expected expression`
-        err: `expected SEMI`
       WHITESPACE@[24; 29) "\n    "
       LET_STMT@[29; 41)
         LET_KW@[29; 32) "let"
@@ -37,8 +35,6 @@ SOURCE_FILE@[0; 139)
       WHITESPACE@[41; 46) "\n    "
       LET_STMT@[46; 49)
         LET_KW@[46; 49) "let"
-        err: `expected pattern`
-        err: `expected SEMI`
       WHITESPACE@[49; 54) "\n    "
       LET_STMT@[54; 67)
         LET_KW@[54; 57) "let"
@@ -55,8 +51,6 @@ SOURCE_FILE@[0; 139)
       WHITESPACE@[67; 72) "\n    "
       LET_STMT@[72; 75)
         LET_KW@[72; 75) "let"
-        err: `expected pattern`
-        err: `expected SEMI`
       WHITESPACE@[75; 80) "\n    "
       EXPR_STMT@[80; 90)
         IF_EXPR@[80; 90)
@@ -72,8 +66,6 @@ SOURCE_FILE@[0; 139)
       WHITESPACE@[90; 95) "\n    "
       LET_STMT@[95; 98)
         LET_KW@[95; 98) "let"
-        err: `expected pattern`
-        err: `expected SEMI`
       WHITESPACE@[98; 103) "\n    "
       EXPR_STMT@[103; 116)
         WHILE_EXPR@[103; 116)
@@ -89,8 +81,6 @@ SOURCE_FILE@[0; 139)
       WHITESPACE@[116; 121) "\n    "
       LET_STMT@[121; 124)
         LET_KW@[121; 124) "let"
-        err: `expected pattern`
-        err: `expected SEMI`
       WHITESPACE@[124; 129) "\n    "
       LOOP_EXPR@[129; 136)
         LOOP_KW@[129; 133) "loop"
@@ -101,3 +91,13 @@ SOURCE_FILE@[0; 139)
       WHITESPACE@[136; 137) "\n"
       R_CURLY@[137; 138) "}"
   WHITESPACE@[138; 139) "\n"
+err: `expected expression`
+err: `expected SEMI`
+err: `expected pattern`
+err: `expected SEMI`
+err: `expected pattern`
+err: `expected SEMI`
+err: `expected pattern`
+err: `expected SEMI`
+err: `expected pattern`
+err: `expected SEMI`

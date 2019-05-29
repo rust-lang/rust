@@ -56,8 +56,9 @@ where
     if tree_sink.roots.len() != 1 {
         return Err(ExpandError::ConversionError);
     }
-
-    Ok(tree_sink.inner.finish())
+    //FIXME: would be cool to report errors
+    let (tree, _errors) = tree_sink.inner.finish();
+    Ok(tree)
 }
 
 /// Parses the token tree (result of macro expansion) to an expression
@@ -383,7 +384,7 @@ mod tests {
             }
             "#,
         );
-        let expansion = expand(&rules, "literals!(foo)");
+        let expansion = expand(&rules, "literals!(foo);");
         let buffer = tt::buffer::TokenBuffer::new(&[expansion.clone().into()]);
         let mut tt_src = SubtreeTokenSource::new(&buffer);
         let mut tokens = vec![];
@@ -422,7 +423,7 @@ mod tests {
             }
             "#,
         );
-        let expansion = expand(&rules, "stmts!()");
+        let expansion = expand(&rules, "stmts!();");
         assert!(token_tree_to_expr(&expansion).is_err());
     }
 }
