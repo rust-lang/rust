@@ -17,7 +17,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
+    ) -> EvalResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         trace!("eval_fn_call: {:#?}, {:?}", instance, dest.map(|place| *place));
 
@@ -607,11 +607,12 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
                 let dtor = match this.read_scalar(args[1])?.not_undef()? {
                     Scalar::Ptr(dtor_ptr) => Some(this.memory().get_fn(dtor_ptr)?),
-                    Scalar::Bits { bits: 0, size } => {
+                    Scalar::Raw { data: 0, size } => {
+                        // NULL pointer
                         assert_eq!(size as u64, this.memory().pointer_size().bytes());
                         None
                     },
-                    Scalar::Bits { .. } => return err!(ReadBytesAsPointer),
+                    Scalar::Raw { .. } => return err!(ReadBytesAsPointer),
                 };
 
                 // Figure out how large a pthread TLS key actually is.
