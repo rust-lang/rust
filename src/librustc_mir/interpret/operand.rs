@@ -512,7 +512,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         };
         // Early-return cases.
         match val.val {
-            ConstValue::Param(_) => return err!(TooGeneric),
+            ConstValue::Param(_) => return err!(TooGeneric), // FIXME(oli-obk): try to monomorphize
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 return Ok(OpTy::from(self.const_eval_raw(GlobalId {
