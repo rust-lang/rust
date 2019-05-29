@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# FIXME(61301): we need to debug spurious failures with this on Windows on
+# Azure, so let's print more information in the logs.
+set -x
+
 set -o errexit
 set -o pipefail
 set -o nounset
