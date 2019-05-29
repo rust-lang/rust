@@ -1,5 +1,7 @@
+#![feature(weak_into_raw)]
+
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::fmt::Debug;
 
@@ -69,6 +71,37 @@ fn rc_fat_ptr_eq() {
     drop(unsafe { Rc::from_raw(r) });
 }
 
+/// Taken from the `Weak::into_raw` doctest.
+fn weak_into_raw() {
+    let strong = Rc::new(42);
+    let weak = Rc::downgrade(&strong);
+    let raw = Weak::into_raw(weak);
+
+    assert_eq!(1, Rc::weak_count(&strong));
+    assert_eq!(42, unsafe { *raw });
+
+    drop(unsafe { Weak::from_raw(raw) });
+    assert_eq!(0, Rc::weak_count(&strong));
+}
+
+/// Taken from the `Weak::from_raw` doctest.
+fn weak_from_raw() {
+    let strong = Rc::new(42);
+
+    let raw_1 = Weak::into_raw(Rc::downgrade(&strong));
+    let raw_2 = Weak::into_raw(Rc::downgrade(&strong));
+
+    assert_eq!(2, Rc::weak_count(&strong));
+
+    assert_eq!(42, *Weak::upgrade(&unsafe { Weak::from_raw(raw_1) }).unwrap());
+    assert_eq!(1, Rc::weak_count(&strong));
+
+    drop(strong);
+
+    // Decrement the last weak count.
+    assert!(Weak::upgrade(&unsafe { Weak::from_raw(raw_2) }).is_none());
+}
+
 fn main() {
     rc_fat_ptr_eq();
     rc_refcell();
@@ -76,5 +109,8 @@ fn main() {
     rc_cell();
     rc_raw();
     rc_from();
+    weak_into_raw();
+    weak_from_raw();
+
     arc();
 }
