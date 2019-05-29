@@ -33,13 +33,19 @@ EOF
 )
 
 ## Preparation
-# I'd love to use `jq` for parsing the JSON properly, but macOS is totally underequipped for this kind of work.
-TARGET=$(rustc --print target-spec-json -Z unstable-options | grep llvm-target | cut -d '"' -f 4)
+TARGET=$(rustc --version --verbose | grep "^host:" | cut -d ' ' -f 2)
 SYSROOT=$(rustc --print sysroot)
+LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
+if ! test -d "$LIBDIR"; then
+    echo "Something went wrong determining the library dir."
+    echo "I got $LIBDIR but that does not exist."
+    echo "Please report a bug at https://github.com/rust-lang/miri/issues."
+    exit 2
+fi
 # We set the rpath so that Miri finds the private rustc libraries it needs.
 # We enable debug-assertions to get tracing.
 # We enable line-only debuginfo for backtraces.
-export RUSTFLAGS="-C link-args=-Wl,-rpath,$SYSROOT/lib/rustlib/$TARGET/lib -C debug-assertions -C debuginfo=1"
+export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debuginfo=1"
 
 ## Helper functions
 
