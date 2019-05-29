@@ -162,6 +162,7 @@ impl ColorConfig {
     }
 }
 
+/// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
 pub struct EmitterWriter {
     dst: Destination,
     sm: Option<Lrc<SourceMapperDyn>>,
@@ -170,7 +171,8 @@ pub struct EmitterWriter {
     ui_testing: bool,
 }
 
-struct FileWithAnnotatedLines {
+#[derive(Debug)]
+pub struct FileWithAnnotatedLines {
     file: Lrc<SourceFile>,
     lines: Vec<Line>,
     multiline_depth: usize,
@@ -219,169 +221,6 @@ impl EmitterWriter {
         } else {
             line_num.to_string()
         }
-    }
-
-    fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
-        fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
-                                  file: Lrc<SourceFile>,
-                                  line_index: usize,
-                                  ann: Annotation) {
-
-            for slot in file_vec.iter_mut() {
-                // Look through each of our files for the one we're adding to
-                if slot.file.name == file.name {
-                    // See if we already have a line for it
-                    for line_slot in &mut slot.lines {
-                        if line_slot.line_index == line_index {
-                            line_slot.annotations.push(ann);
-                            return;
-                        }
-                    }
-                    // We don't have a line yet, create one
-                    slot.lines.push(Line {
-                        line_index,
-                        annotations: vec![ann],
-                    });
-                    slot.lines.sort();
-                    return;
-                }
-            }
-            // This is the first time we're seeing the file
-            file_vec.push(FileWithAnnotatedLines {
-                file,
-                lines: vec![Line {
-                                line_index,
-                                annotations: vec![ann],
-                            }],
-                multiline_depth: 0,
-            });
-        }
-
-        let mut output = vec![];
-        let mut multiline_annotations = vec![];
-
-        if let Some(ref sm) = self.sm {
-            for span_label in msp.span_labels() {
-                if span_label.span.is_dummy() {
-                    continue;
-                }
-
-                let lo = sm.lookup_char_pos(span_label.span.lo());
-                let mut hi = sm.lookup_char_pos(span_label.span.hi());
-
-                // Watch out for "empty spans". If we get a span like 6..6, we
-                // want to just display a `^` at 6, so convert that to
-                // 6..7. This is degenerate input, but it's best to degrade
-                // gracefully -- and the parser likes to supply a span like
-                // that for EOF, in particular.
-
-                if lo.col_display == hi.col_display && lo.line == hi.line {
-                    hi.col_display += 1;
-                }
-
-                let ann_type = if lo.line != hi.line {
-                    let ml = MultilineAnnotation {
-                        depth: 1,
-                        line_start: lo.line,
-                        line_end: hi.line,
-                        start_col: lo.col_display,
-                        end_col: hi.col_display,
-                        is_primary: span_label.is_primary,
-                        label: span_label.label.clone(),
-                        overlaps_exactly: false,
-                    };
-                    multiline_annotations.push((lo.file.clone(), ml.clone()));
-                    AnnotationType::Multiline(ml)
-                } else {
-                    AnnotationType::Singleline
-                };
-                let ann = Annotation {
-                    start_col: lo.col_display,
-                    end_col: hi.col_display,
-                    is_primary: span_label.is_primary,
-                    label: span_label.label.clone(),
-                    annotation_type: ann_type,
-                };
-
-                if !ann.is_multiline() {
-                    add_annotation_to_file(&mut output, lo.file, lo.line, ann);
-                }
-            }
-        }
-
-        // Find overlapping multiline annotations, put them at different depths
-        multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, ml.line_end));
-        for item in multiline_annotations.clone() {
-            let ann = item.1;
-            for item in multiline_annotations.iter_mut() {
-                let ref mut a = item.1;
-                // Move all other multiline annotations overlapping with this one
-                // one level to the right.
-                if !(ann.same_span(a)) &&
-                    num_overlap(ann.line_start, ann.line_end, a.line_start, a.line_end, true)
-                {
-                    a.increase_depth();
-                } else if ann.same_span(a) && &ann != a {
-                    a.overlaps_exactly = true;
-                } else {
-                    break;
-                }
-            }
-        }
-
-        let mut max_depth = 0;  // max overlapping multiline spans
-        for (file, ann) in multiline_annotations {
-            if ann.depth > max_depth {
-                max_depth = ann.depth;
-            }
-            let mut end_ann = ann.as_end();
-            if !ann.overlaps_exactly {
-                // avoid output like
-                //
-                //  |        foo(
-                //  |   _____^
-                //  |  |_____|
-                //  | ||         bar,
-                //  | ||     );
-                //  | ||      ^
-                //  | ||______|
-                //  |  |______foo
-                //  |         baz
-                //
-                // and instead get
-                //
-                //  |       foo(
-                //  |  _____^
-                //  | |         bar,
-                //  | |     );
-                //  | |      ^
-                //  | |      |
-                //  | |______foo
-                //  |        baz
-                add_annotation_to_file(&mut output, file.clone(), ann.line_start, ann.as_start());
-                // 4 is the minimum vertical length of a multiline span when presented: two lines
-                // of code and two lines of underline. This is not true for the special case where
-                // the beginning doesn't have an underline, but the current logic seems to be
-                // working correctly.
-                let middle = min(ann.line_start + 4, ann.line_end);
-                for line in ann.line_start + 1..middle {
-                    // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
-                    add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
-                }
-                if middle < ann.line_end - 1 {
-                    for line in ann.line_end - 1..ann.line_end {
-                        add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
-                    }
-                }
-            } else {
-                end_ann.annotation_type = AnnotationType::Singleline;
-            }
-            add_annotation_to_file(&mut output, file, ann.line_end, end_ann);
-        }
-        for file_vec in output.iter_mut() {
-            file_vec.multiline_depth = max_depth;
-        }
-        output
     }
 
     fn render_source_line(&self,
@@ -1093,9 +932,7 @@ impl EmitterWriter {
             }
         }
 
-        // Preprocess all the annotations so that they are grouped by file and by line number
-        // This helps us quickly iterate over the whole message (including secondary file spans)
-        let mut annotated_files = self.preprocess_annotations(msp);
+        let mut annotated_files = FileWithAnnotatedLines::collect_annotations(msp, &self.sm);
 
         // Make sure our primary file comes first
         let (primary_lo, sm) = if let (Some(sm), Some(ref primary_span)) =
@@ -1500,6 +1337,176 @@ impl EmitterWriter {
                 }
             }
         }
+    }
+}
+
+impl FileWithAnnotatedLines {
+    /// Preprocess all the annotations so that they are grouped by file and by line number
+    /// This helps us quickly iterate over the whole message (including secondary file spans)
+    pub fn collect_annotations(
+        msp: &MultiSpan,
+        source_map: &Option<Lrc<SourceMapperDyn>>
+    ) -> Vec<FileWithAnnotatedLines> {
+        fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
+                                  file: Lrc<SourceFile>,
+                                  line_index: usize,
+                                  ann: Annotation) {
+
+            for slot in file_vec.iter_mut() {
+                // Look through each of our files for the one we're adding to
+                if slot.file.name == file.name {
+                    // See if we already have a line for it
+                    for line_slot in &mut slot.lines {
+                        if line_slot.line_index == line_index {
+                            line_slot.annotations.push(ann);
+                            return;
+                        }
+                    }
+                    // We don't have a line yet, create one
+                    slot.lines.push(Line {
+                        line_index,
+                        annotations: vec![ann],
+                    });
+                    slot.lines.sort();
+                    return;
+                }
+            }
+            // This is the first time we're seeing the file
+            file_vec.push(FileWithAnnotatedLines {
+                file,
+                lines: vec![Line {
+                                line_index,
+                                annotations: vec![ann],
+                            }],
+                multiline_depth: 0,
+            });
+        }
+
+        let mut output = vec![];
+        let mut multiline_annotations = vec![];
+
+        if let Some(ref sm) = source_map {
+            for span_label in msp.span_labels() {
+                if span_label.span.is_dummy() {
+                    continue;
+                }
+
+                let lo = sm.lookup_char_pos(span_label.span.lo());
+                let mut hi = sm.lookup_char_pos(span_label.span.hi());
+
+                // Watch out for "empty spans". If we get a span like 6..6, we
+                // want to just display a `^` at 6, so convert that to
+                // 6..7. This is degenerate input, but it's best to degrade
+                // gracefully -- and the parser likes to supply a span like
+                // that for EOF, in particular.
+
+                if lo.col_display == hi.col_display && lo.line == hi.line {
+                    hi.col_display += 1;
+                }
+
+                let ann_type = if lo.line != hi.line {
+                    let ml = MultilineAnnotation {
+                        depth: 1,
+                        line_start: lo.line,
+                        line_end: hi.line,
+                        start_col: lo.col_display,
+                        end_col: hi.col_display,
+                        is_primary: span_label.is_primary,
+                        label: span_label.label.clone(),
+                        overlaps_exactly: false,
+                    };
+                    multiline_annotations.push((lo.file.clone(), ml.clone()));
+                    AnnotationType::Multiline(ml)
+                } else {
+                    AnnotationType::Singleline
+                };
+                let ann = Annotation {
+                    start_col: lo.col_display,
+                    end_col: hi.col_display,
+                    is_primary: span_label.is_primary,
+                    label: span_label.label.clone(),
+                    annotation_type: ann_type,
+                };
+
+                if !ann.is_multiline() {
+                    add_annotation_to_file(&mut output, lo.file, lo.line, ann);
+                }
+            }
+        }
+
+        // Find overlapping multiline annotations, put them at different depths
+        multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, ml.line_end));
+        for item in multiline_annotations.clone() {
+            let ann = item.1;
+            for item in multiline_annotations.iter_mut() {
+                let ref mut a = item.1;
+                // Move all other multiline annotations overlapping with this one
+                // one level to the right.
+                if !(ann.same_span(a)) &&
+                    num_overlap(ann.line_start, ann.line_end, a.line_start, a.line_end, true)
+                {
+                    a.increase_depth();
+                } else if ann.same_span(a) && &ann != a {
+                    a.overlaps_exactly = true;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        let mut max_depth = 0;  // max overlapping multiline spans
+        for (file, ann) in multiline_annotations {
+            if ann.depth > max_depth {
+                max_depth = ann.depth;
+            }
+            let mut end_ann = ann.as_end();
+            if !ann.overlaps_exactly {
+                // avoid output like
+                //
+                //  |        foo(
+                //  |   _____^
+                //  |  |_____|
+                //  | ||         bar,
+                //  | ||     );
+                //  | ||      ^
+                //  | ||______|
+                //  |  |______foo
+                //  |         baz
+                //
+                // and instead get
+                //
+                //  |       foo(
+                //  |  _____^
+                //  | |         bar,
+                //  | |     );
+                //  | |      ^
+                //  | |      |
+                //  | |______foo
+                //  |        baz
+                add_annotation_to_file(&mut output, file.clone(), ann.line_start, ann.as_start());
+                // 4 is the minimum vertical length of a multiline span when presented: two lines
+                // of code and two lines of underline. This is not true for the special case where
+                // the beginning doesn't have an underline, but the current logic seems to be
+                // working correctly.
+                let middle = min(ann.line_start + 4, ann.line_end);
+                for line in ann.line_start + 1..middle {
+                    // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
+                    add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
+                }
+                if middle < ann.line_end - 1 {
+                    for line in ann.line_end - 1..ann.line_end {
+                        add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
+                    }
+                }
+            } else {
+                end_ann.annotation_type = AnnotationType::Singleline;
+            }
+            add_annotation_to_file(&mut output, file, ann.line_end, end_ann);
+        }
+        for file_vec in output.iter_mut() {
+            file_vec.multiline_depth = max_depth;
+        }
+        output
     }
 }
 
