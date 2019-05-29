@@ -7,8 +7,8 @@ pub struct Registry<'a> {
 }
 
 pub struct Listener<'a> {
-    pub announce: Option<Box<FnMut(&mut Registry) + 'a>>,
-    pub remove: Option<Box<FnMut(&mut Registry) + 'a>>,
+    pub announce: Option<Box<dyn FnMut(&mut Registry) + 'a>>,
+    pub remove: Option<Box<dyn FnMut(&mut Registry) + 'a>>,
 }
 
 impl<'a> Drop for Registry<'a> {

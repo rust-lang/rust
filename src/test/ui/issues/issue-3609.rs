@@ -6,7 +6,7 @@ use std::thread;
 use std::sync::mpsc::Sender;
 
 type RingBuffer = Vec<f64> ;
-type SamplesFn = Box<FnMut(&RingBuffer) + Send>;
+type SamplesFn = Box<dyn FnMut(&RingBuffer) + Send>;
 
 enum Msg
 {

@@ -114,13 +114,13 @@ type _T44 = dyn _4 + Send + Sync + _8;
 trait ObjL<'l> {}
 trait _9 = for<'a> ObjL<'a>;
 trait _10 = for<'b> ObjL<'b>;
-type _T50 = _9 + _10;
+type _T50 = dyn _9 + _10;
 //~^ ERROR only auto traits can be used as additional traits in a trait object [E0225]
 
 trait ObjT<T> {}
 trait _11 = ObjT<for<'a> fn(&'a u8)>;
 trait _12 = ObjT<for<'b> fn(&'b u8)>;
-type _T60 = _11 + _12;
+type _T60 = dyn _11 + _12;
 //~^ ERROR only auto traits can be used as additional traits in a trait object [E0225]
 
 fn main() {}

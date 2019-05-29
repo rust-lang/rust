@@ -18,7 +18,7 @@ impl Foo for A {
 
 fn assert_foo<T: ?Sized + Foo>() { }
 
-fn use_foo<T: ?Sized + Foo>(x: &Foo) {
+fn use_foo<T: ?Sized + Foo>(x: &dyn Foo) {
     x.foo();
 }
 

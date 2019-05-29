@@ -1,9 +1,9 @@
 error[E0277]: the trait bound `dyn Foo<(char,), Output = ()>: Eq<dyn Foo<(), Output = ()>>` is not satisfied
   --> $DIR/unboxed-closure-sugar-equiv.rs:43:5
    |
-LL | /     eq::< Foo<(),Output=()>,
-LL | |           Foo(char)                                               >();
-   | |___________________________________________________________________^ the trait `Eq<dyn Foo<(), Output = ()>>` is not implemented for `dyn Foo<(char,), Output = ()>`
+LL | /     eq::< dyn Foo<(),Output=()>,
+LL | |           dyn Foo(char)                                               >();
+   | |_______________________________________________________________________^ the trait `Eq<dyn Foo<(), Output = ()>>` is not implemented for `dyn Foo<(char,), Output = ()>`
    |
 note: required by `eq`
   --> $DIR/unboxed-closure-sugar-equiv.rs:16:1

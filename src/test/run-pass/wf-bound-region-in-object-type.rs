@@ -12,7 +12,7 @@ pub struct Context<'tcx> {
 pub type Cmd<'a> = &'a isize;
 
 pub type DecodeInlinedItem<'a> =
-    Box<for<'tcx> FnMut(Cmd, &Context<'tcx>) -> Result<&'tcx isize, ()> + 'a>;
+    Box<dyn for<'tcx> FnMut(Cmd, &Context<'tcx>) -> Result<&'tcx isize, ()> + 'a>;
 
 fn foo(d: DecodeInlinedItem) {
 }

@@ -11,8 +11,8 @@ trait hax {
 }
 impl<A> hax for A { }
 
-fn perform_hax<T: 'static>(x: Box<T>) -> Box<hax+'static> {
-    box x as Box<hax+'static>
+fn perform_hax<T: 'static>(x: Box<T>) -> Box<dyn hax+'static> {
+    box x as Box<dyn hax+'static>
 }
 
 fn deadcode() {

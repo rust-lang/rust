@@ -8,7 +8,7 @@
 // contains region pointers
 // pretty-expanded FIXME #23616
 
-struct foo(Box<FnMut(&isize)+'static>);
+struct foo(Box<dyn FnMut(&isize)+'static>);
 
 fn take_foo<T:'static>(x: T) {}
 

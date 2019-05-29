@@ -23,7 +23,7 @@ pub fn type_ids() -> Vec<TypeId> {
         TypeId::of::<FooFnPtr>(),
         TypeId::of::<FooNil>(),
         TypeId::of::<FooTuple>(),
-        TypeId::of::<FooTrait>(),
+        TypeId::of::<dyn FooTrait>(),
         TypeId::of::<FooStruct>(),
         TypeId::of::<FooEnum>()
     ]

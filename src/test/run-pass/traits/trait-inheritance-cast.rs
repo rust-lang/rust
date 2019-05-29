@@ -25,8 +25,8 @@ impl Bar for A {
 
 pub fn main() {
     let a = &A { x: 3 };
-    let afoo = a as &Foo;
-    let abar = a as &Bar;
+    let afoo = a as &dyn Foo;
+    let abar = a as &dyn Bar;
     assert_eq!(afoo.f(), 10);
     assert_eq!(abar.g(), 20);
     assert_eq!(abar.f(), 10);

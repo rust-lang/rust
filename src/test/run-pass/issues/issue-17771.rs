@@ -4,13 +4,13 @@
 
 trait Aaa { fn dummy(&self) { } }
 
-impl<'a> Aaa for &'a mut (Aaa + 'a) {}
+impl<'a> Aaa for &'a mut (dyn Aaa + 'a) {}
 
 struct Bar<'a> {
-    writer: &'a mut (Aaa + 'a),
+    writer: &'a mut (dyn Aaa + 'a),
 }
 
-fn baz(_: &mut Aaa) {
+fn baz(_: &mut dyn Aaa) {
 }
 
 fn foo<'a>(mut bar: Bar<'a>) {

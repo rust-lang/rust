@@ -11,15 +11,15 @@ struct LocalC(u32);
 struct LocalG<T>(T);
 
 fn main() {
-    let virtual_localc : &Fn(_) -> LocalC = &LocalC;
+    let virtual_localc : &dyn Fn(_) -> LocalC = &LocalC;
     assert_eq!(virtual_localc(1), LocalC(1));
 
-    let virtual_localg : &Fn(_) -> LocalG<u32> = &LocalG;
+    let virtual_localg : &dyn Fn(_) -> LocalG<u32> = &LocalG;
     assert_eq!(virtual_localg(1), LocalG(1));
 
-    let virtual_remotec : &Fn(_) -> RemoteC = &RemoteC;
+    let virtual_remotec : &dyn Fn(_) -> RemoteC = &RemoteC;
     assert_eq!(virtual_remotec(1), RemoteC(1));
 
-    let virtual_remoteg : &Fn(_) -> RemoteG<u32> = &RemoteG;
+    let virtual_remoteg : &dyn Fn(_) -> RemoteG<u32> = &RemoteG;
     assert_eq!(virtual_remoteg(1), RemoteG(1));
 }

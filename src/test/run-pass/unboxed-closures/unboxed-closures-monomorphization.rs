@@ -3,7 +3,7 @@
 // monomorphize correctly (issue #16791)
 
 fn main(){
-    fn bar<'a, T:Clone+'a> (t: T) -> Box<FnMut()->T + 'a> {
+    fn bar<'a, T:Clone+'a> (t: T) -> Box<dyn FnMut()->T + 'a> {
         Box::new(move || t.clone())
     }
 

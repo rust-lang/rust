@@ -430,28 +430,28 @@ LL | type _T44 = dyn _4 + Send + Sync + _8;
    |                 trait alias used in trait object type (first use)
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/trait-alias-no-duplicates.rs:117:18
+  --> $DIR/trait-alias-no-duplicates.rs:117:22
    |
 LL | trait _9 = for<'a> ObjL<'a>;
    |            ---------------- first non-auto trait
 LL | trait _10 = for<'b> ObjL<'b>;
    |             ---------------- additional non-auto trait
-LL | type _T50 = _9 + _10;
-   |             --   ^^^ trait alias used in trait object type (additional use)
-   |             |
-   |             trait alias used in trait object type (first use)
+LL | type _T50 = dyn _9 + _10;
+   |                 --   ^^^ trait alias used in trait object type (additional use)
+   |                 |
+   |                 trait alias used in trait object type (first use)
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/trait-alias-no-duplicates.rs:123:19
+  --> $DIR/trait-alias-no-duplicates.rs:123:23
    |
 LL | trait _11 = ObjT<for<'a> fn(&'a u8)>;
    |             ------------------------ first non-auto trait
 LL | trait _12 = ObjT<for<'b> fn(&'b u8)>;
    |             ------------------------ additional non-auto trait
-LL | type _T60 = _11 + _12;
-   |             ---   ^^^ trait alias used in trait object type (additional use)
-   |             |
-   |             trait alias used in trait object type (first use)
+LL | type _T60 = dyn _11 + _12;
+   |                 ---   ^^^ trait alias used in trait object type (additional use)
+   |                 |
+   |                 trait alias used in trait object type (first use)
 
 error: aborting due to 27 previous errors
 

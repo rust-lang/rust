@@ -18,8 +18,8 @@ impl Trait<&'static str> for Struct {
 
 pub fn main() {
     let a = Struct { x: 1, y: 2 };
-    let b: Box<Trait<&'static str>> = Box::new(a);
+    let b: Box<dyn Trait<&'static str>> = Box::new(a);
     b.f("Mary");
-    let c: &Trait<&'static str> = &a;
+    let c: &dyn Trait<&'static str> = &a;
     c.f("Joe");
 }

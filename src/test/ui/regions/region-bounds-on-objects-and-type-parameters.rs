@@ -10,15 +10,15 @@ trait SomeTrait { }
 
 struct Foo<'a,'b,'c> { //~ ERROR parameter `'c` is never used
     // All of these are ok, because we can derive exactly one bound:
-    a: Box<IsStatic>,
-    b: Box<Is<'static>>,
-    c: Box<Is<'a>>,
-    d: Box<IsSend>,
-    e: Box<Is<'a>+Send>, // we can derive two bounds, but one is 'static, so ok
-    f: Box<SomeTrait>,   // OK, defaults to 'static due to RFC 599.
-    g: Box<SomeTrait+'a>,
+    a: Box<dyn IsStatic>,
+    b: Box<dyn Is<'static>>,
+    c: Box<dyn Is<'a>>,
+    d: Box<dyn IsSend>,
+    e: Box<dyn Is<'a>+Send>, // we can derive two bounds, but one is 'static, so ok
+    f: Box<dyn SomeTrait>,   // OK, defaults to 'static due to RFC 599.
+    g: Box<dyn SomeTrait+'a>,
 
-    z: Box<Is<'a>+'b+'c>,
+    z: Box<dyn Is<'a>+'b+'c>,
     //~^ ERROR only a single explicit lifetime bound is permitted
     //~| ERROR lifetime bound not satisfied
 }

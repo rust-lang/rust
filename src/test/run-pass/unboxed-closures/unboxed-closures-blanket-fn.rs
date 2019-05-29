@@ -8,7 +8,7 @@ fn a<F:Fn() -> i32>(f: F) -> i32 {
     f()
 }
 
-fn b(f: &Fn() -> i32) -> i32 {
+fn b(f: &dyn Fn() -> i32) -> i32 {
     a(f)
 }
 

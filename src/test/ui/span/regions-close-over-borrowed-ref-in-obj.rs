@@ -11,6 +11,6 @@ fn main() {
     {
         let ss: &isize = &id(1);
         //~^ ERROR temporary value dropped while borrowed
-        blah = box ss as Box<Foo>;
+        blah = box ss as Box<dyn Foo>;
     }
 }

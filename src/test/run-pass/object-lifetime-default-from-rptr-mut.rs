@@ -10,23 +10,23 @@ trait Test {
 }
 
 struct SomeStruct<'a> {
-    t: &'a mut Test,
-    u: &'a mut (Test+'a),
+    t: &'a mut dyn Test,
+    u: &'a mut (dyn Test+'a),
 }
 
-fn a<'a>(t: &'a mut Test, mut ss: SomeStruct<'a>) {
+fn a<'a>(t: &'a mut dyn Test, mut ss: SomeStruct<'a>) {
     ss.t = t;
 }
 
-fn b<'a>(t: &'a mut Test, mut ss: SomeStruct<'a>) {
+fn b<'a>(t: &'a mut dyn Test, mut ss: SomeStruct<'a>) {
     ss.u = t;
 }
 
-fn c<'a>(t: &'a mut (Test+'a), mut ss: SomeStruct<'a>) {
+fn c<'a>(t: &'a mut (dyn Test+'a), mut ss: SomeStruct<'a>) {
     ss.t = t;
 }
 
-fn d<'a>(t: &'a mut (Test+'a), mut ss: SomeStruct<'a>) {
+fn d<'a>(t: &'a mut (dyn Test+'a), mut ss: SomeStruct<'a>) {
     ss.u = t;
 }
 

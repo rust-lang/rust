@@ -38,7 +38,7 @@ impl ToBar for Bar1 {
 }
 
 // x is a fat pointer
-fn foo(x: &Fat<ToBar>) {
+fn foo(x: &Fat<dyn ToBar>) {
     assert_eq!(x.f1, 5);
     assert_eq!(x.f2, "some str");
     assert_eq!(x.ptr.to_bar(), Bar);
@@ -49,12 +49,12 @@ fn foo(x: &Fat<ToBar>) {
     assert_eq!(y.to_val(), 42);
 }
 
-fn bar(x: &ToBar) {
+fn bar(x: &dyn ToBar) {
     assert_eq!(x.to_bar(), Bar);
     assert_eq!(x.to_val(), 42);
 }
 
-fn baz(x: &Fat<Fat<ToBar>>) {
+fn baz(x: &Fat<Fat<dyn ToBar>>) {
     assert_eq!(x.f1, 5);
     assert_eq!(x.f2, "some str");
     assert_eq!(x.ptr.f1, 8);
@@ -73,20 +73,20 @@ pub fn main() {
     foo(&f1);
     let f2 = &f1;
     foo(f2);
-    let f3: &Fat<ToBar> = f2;
+    let f3: &Fat<dyn ToBar> = f2;
     foo(f3);
-    let f4: &Fat<ToBar> = &f1;
+    let f4: &Fat<dyn ToBar> = &f1;
     foo(f4);
-    let f5: &Fat<ToBar> = &Fat { f1: 5, f2: "some str", ptr: Bar1 {f :42} };
+    let f5: &Fat<dyn ToBar> = &Fat { f1: 5, f2: "some str", ptr: Bar1 {f :42} };
     foo(f5);
 
     // Zero size object.
-    let f6: &Fat<ToBar> = &Fat { f1: 5, f2: "some str", ptr: Bar };
+    let f6: &Fat<dyn ToBar> = &Fat { f1: 5, f2: "some str", ptr: Bar };
     assert_eq!(f6.ptr.to_bar(), Bar);
 
     // &*
     //
-    let f7: Box<ToBar> = Box::new(Bar1 {f :42});
+    let f7: Box<dyn ToBar> = Box::new(Bar1 {f :42});
     bar(&*f7);
 
     // Deep nesting
@@ -95,11 +95,11 @@ pub fn main() {
     baz(&f1);
     let f2 = &f1;
     baz(f2);
-    let f3: &Fat<Fat<ToBar>> = f2;
+    let f3: &Fat<Fat<dyn ToBar>> = f2;
     baz(f3);
-    let f4: &Fat<Fat<ToBar>> = &f1;
+    let f4: &Fat<Fat<dyn ToBar>> = &f1;
     baz(f4);
-    let f5: &Fat<Fat<ToBar>> =
+    let f5: &Fat<Fat<dyn ToBar>> =
         &Fat { f1: 5, f2: "some str", ptr: Fat { f1: 8, f2: "deep str", ptr: Bar1 {f :42}} };
     baz(f5);
 }

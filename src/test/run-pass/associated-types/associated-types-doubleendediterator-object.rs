@@ -1,7 +1,7 @@
 // run-pass
 #![feature(box_syntax)]
 
-fn pairwise_sub(mut t: Box<DoubleEndedIterator<Item=isize>>) -> isize {
+fn pairwise_sub(mut t: Box<dyn DoubleEndedIterator<Item=isize>>) -> isize {
     let mut result = 0;
     loop {
         let front = t.next();

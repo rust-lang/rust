@@ -2,6 +2,7 @@
 // compile-flags: -Z continue-parse-after-error
 
 #![feature(box_syntax)]
+#![allow(bare_trait_objects)]
 
 use std::fmt::Debug;
 

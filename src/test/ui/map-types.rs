@@ -13,7 +13,7 @@ impl<K, V> Map<K, V> for HashMap<K, V> {}
 
 fn main() {
     let x: Box<HashMap<isize, isize>> = box HashMap::new();
-    let x: Box<Map<isize, isize>> = x;
-    let y: Box<Map<usize, isize>> = Box::new(x);
+    let x: Box<dyn Map<isize, isize>> = x;
+    let y: Box<dyn Map<usize, isize>> = Box::new(x);
     //~^ ERROR `std::boxed::Box<dyn Map<isize, isize>>: Map<usize, isize>` is not satisfied
 }

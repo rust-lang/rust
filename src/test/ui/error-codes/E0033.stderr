@@ -1,14 +1,14 @@
 error[E0423]: expected value, found trait `SomeTrait`
-  --> $DIR/E0033.rs:6:33
+  --> $DIR/E0033.rs:6:37
    |
-LL |     let trait_obj: &SomeTrait = SomeTrait;
-   |                                 ^^^^^^^^^ not a value
+LL |     let trait_obj: &dyn SomeTrait = SomeTrait;
+   |                                     ^^^^^^^^^ not a value
 
 error[E0038]: the trait `SomeTrait` cannot be made into an object
   --> $DIR/E0033.rs:6:20
    |
-LL |     let trait_obj: &SomeTrait = SomeTrait;
-   |                    ^^^^^^^^^^ the trait `SomeTrait` cannot be made into an object
+LL |     let trait_obj: &dyn SomeTrait = SomeTrait;
+   |                    ^^^^^^^^^^^^^^ the trait `SomeTrait` cannot be made into an object
    |
    = note: method `foo` has no receiver
 

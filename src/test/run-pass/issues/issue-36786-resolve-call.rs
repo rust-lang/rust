@@ -3,6 +3,6 @@
 // correctly
 
 fn main() {
-    let x : Vec<Box<Fn()>> = vec![Box::new(|| ())];
+    let x : Vec<Box<dyn Fn()>> = vec![Box::new(|| ())];
     x[0]()
 }

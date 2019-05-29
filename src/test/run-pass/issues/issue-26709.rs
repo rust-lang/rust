@@ -11,7 +11,7 @@ fn main() {
     let mut x = 0;
     {
         let wrapper = Box::new(Wrapper(&mut x, 123));
-        let _: Box<Wrapper<Send>> = wrapper;
+        let _: Box<Wrapper<dyn Send>> = wrapper;
     }
     assert_eq!(432, x)
 }

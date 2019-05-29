@@ -7,8 +7,8 @@ LL |     c1::<()>;
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/issue-60989.rs:16:10
    |
-LL |     c1::<Into<B>>;
-   |          ^^^^^^^ type argument not allowed
+LL |     c1::<dyn Into<B>>;
+   |          ^^^^^^^^^^^ type argument not allowed
 
 error: aborting due to 2 previous errors
 

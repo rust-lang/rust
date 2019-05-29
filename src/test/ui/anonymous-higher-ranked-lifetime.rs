@@ -31,11 +31,11 @@ fn f4<F>(_: F) where F: for<'r> Fn(&(), &'r ()) {}
 fn f5<F>(_: F) where F: for<'r> Fn(&'r (), &'r ()) {}
 
 // Nested
-fn g1<F>(_: F) where F: Fn(&(), Box<Fn(&())>) {}
+fn g1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>) {}
 fn g2<F>(_: F) where F: Fn(&(), fn(&())) {}
-fn g3<F>(_: F) where F: for<'s> Fn(&'s (), Box<Fn(&())>) {}
+fn g3<F>(_: F) where F: for<'s> Fn(&'s (), Box<dyn Fn(&())>) {}
 fn g4<F>(_: F) where F: Fn(&(), for<'r> fn(&'r ())) {}
 
 // Mixed
-fn h1<F>(_: F) where F: Fn(&(), Box<Fn(&())>, &(), fn(&(), &())) {}
-fn h2<F>(_: F) where F: for<'t0> Fn(&(), Box<Fn(&())>, &'t0 (), fn(&(), &())) {}
+fn h1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>, &(), fn(&(), &())) {}
+fn h2<F>(_: F) where F: for<'t0> Fn(&(), Box<dyn Fn(&())>, &'t0 (), fn(&(), &())) {}

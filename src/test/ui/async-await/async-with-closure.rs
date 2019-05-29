@@ -19,7 +19,7 @@ struct MyStream<C: ?Sized + MyClosure> {
 async fn get_future<C: ?Sized + MyClosure>(_stream: MyStream<C>) {}
 
 async fn f() {
-    let messages: MyStream<FnMut()> = unimplemented!();
+    let messages: MyStream<dyn FnMut()> = unimplemented!();
     await!(get_future(messages));
 }
 

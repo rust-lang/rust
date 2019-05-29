@@ -1,6 +1,6 @@
 // ignore-cloudabi no std::process
 
-fn foo(_: Box<FnMut()>) {}
+fn foo(_: Box<dyn FnMut()>) {}
 
 fn main() {
     foo(loop {

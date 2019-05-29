@@ -12,8 +12,8 @@ impl<'a> SomeTrait for &'a isize {
     }
 }
 
-fn make_object<'a,A:SomeTrait+'a>(v: A) -> Box<SomeTrait+'a> {
-    box v as Box<SomeTrait+'a>
+fn make_object<'a,A:SomeTrait+'a>(v: A) -> Box<dyn SomeTrait+'a> {
+    box v as Box<dyn SomeTrait+'a>
 }
 
 fn main() {

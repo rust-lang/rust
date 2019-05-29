@@ -12,12 +12,12 @@ pub trait Graph<'a> {
     fn out_edges(&'a self, u: &Self::Node) -> Self::EdgesIter;
     fn in_edges(&'a self, u: &Self::Node) -> Self::EdgesIter;
 
-    fn out_neighbors(&'a self, u: &Self::Node) -> Box<Iterator<Item = Self::Node>> {
+    fn out_neighbors(&'a self, u: &Self::Node) -> Box<dyn Iterator<Item = Self::Node>> {
         Box::new(self.out_edges(u).map(|e| e.target()))
 //~^ ERROR cannot infer
     }
 
-    fn in_neighbors(&'a self, u: &Self::Node) -> Box<Iterator<Item = Self::Node>> {
+    fn in_neighbors(&'a self, u: &Self::Node) -> Box<dyn Iterator<Item = Self::Node>> {
         Box::new(self.in_edges(u).map(|e| e.target()))
 //~^ ERROR cannot infer
     }

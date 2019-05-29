@@ -2,7 +2,7 @@ error: rustc_outlives
   --> $DIR/self-structs.rs:4:1
    |
 LL | / struct Foo<'a, 'b, T> {
-LL | |     field1: Bar<'a, 'b, T>
+LL | |     field1: dyn Bar<'a, 'b, T>
 LL | | }
    | |_^
    |

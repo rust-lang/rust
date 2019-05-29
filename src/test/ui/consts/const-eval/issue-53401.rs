@@ -1,6 +1,6 @@
 // compile-pass
 
-pub const STATIC_TRAIT: &Test = &();
+pub const STATIC_TRAIT: &dyn Test = &();
 
 fn main() {}
 

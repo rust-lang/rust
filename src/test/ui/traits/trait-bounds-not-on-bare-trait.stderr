@@ -1,3 +1,11 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/trait-bounds-not-on-bare-trait.rs:7:12
+   |
+LL | fn foo(_x: Foo + Send) {
+   |            ^^^^^^^^^^ help: use `dyn`: `dyn Foo + Send`
+   |
+   = note: #[warn(bare_trait_objects)] on by default
+
 error[E0277]: the size for values of type `(dyn Foo + std::marker::Send + 'static)` cannot be known at compilation time
   --> $DIR/trait-bounds-not-on-bare-trait.rs:7:8
    |

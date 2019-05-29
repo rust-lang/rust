@@ -4,21 +4,21 @@ fn assert_send<T:Send>() { }
 trait Dummy { }
 
 fn test50() {
-    assert_send::<&'static Dummy>();
+    assert_send::<&'static dyn Dummy>();
     //~^ ERROR `(dyn Dummy + 'static)` cannot be shared between threads safely [E0277]
 }
 
 fn test53() {
-    assert_send::<Box<Dummy>>();
+    assert_send::<Box<dyn Dummy>>();
     //~^ ERROR `dyn Dummy` cannot be sent between threads safely
 }
 
 // ...unless they are properly bounded
 fn test60() {
-    assert_send::<&'static (Dummy+Sync)>();
+    assert_send::<&'static (dyn Dummy + Sync)>();
 }
 fn test61() {
-    assert_send::<Box<Dummy+Send>>();
+    assert_send::<Box<dyn Dummy + Send>>();
 }
 
 fn main() { }

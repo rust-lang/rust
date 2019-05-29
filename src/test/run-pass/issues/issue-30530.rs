@@ -8,7 +8,7 @@
 pub enum Handler {
     Default,
     #[allow(dead_code)]
-    Custom(*mut Box<Fn()>),
+    Custom(*mut Box<dyn Fn()>),
 }
 
 fn main() {
@@ -16,7 +16,7 @@ fn main() {
 }
 
 #[inline(never)]
-pub fn take(h: Handler, f: Box<Fn()>) -> Box<Fn()> {
+pub fn take(h: Handler, f: Box<dyn Fn()>) -> Box<dyn Fn()> {
     unsafe {
         match h {
             Handler::Custom(ptr) => *Box::from_raw(ptr),

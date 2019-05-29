@@ -7,18 +7,18 @@
 trait Foo {
 }
 
-fn b(_x: Box<Foo+Send>) {
+fn b(_x: Box<dyn Foo+Send>) {
 }
 
-fn c(x: Box<Foo+Sync+Send>) {
+fn c(x: Box<dyn Foo+Sync+Send>) {
     e(x);
 }
 
-fn d(x: Box<Foo+Send>) {
+fn d(x: Box<dyn Foo+Send>) {
     e(x);
 }
 
-fn e(x: Box<Foo>) {
+fn e(x: Box<dyn Foo>) {
     e(x);
 }
 

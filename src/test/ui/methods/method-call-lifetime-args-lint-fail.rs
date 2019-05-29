@@ -11,10 +11,10 @@ impl S {
 
     // 'late lifetimes here belong to nested types not to the tested functions.
     fn early_tricky_explicit<'a>(_: for<'late> fn(&'late u8),
-                                 _: Box<for<'late> Fn(&'late u8)>)
+                                 _: Box<dyn for<'late> Fn(&'late u8)>)
                                  -> &'a u8 { loop {} }
     fn early_tricky_implicit<'a>(_: fn(&u8),
-                                 _: Box<Fn(&u8)>)
+                                 _: Box<dyn Fn(&u8)>)
                                  -> &'a u8 { loop {} }
 }
 

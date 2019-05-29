@@ -7,9 +7,9 @@ trait A {
 struct B;
 impl A for B {}
 
-fn foo(_: &mut A) {}
+fn foo(_: &mut dyn A) {}
 
 pub fn main() {
     let mut b = B;
-    foo(&mut b as &mut A);
+    foo(&mut b as &mut dyn A);
 }

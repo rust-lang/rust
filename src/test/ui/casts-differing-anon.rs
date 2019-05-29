@@ -5,7 +5,7 @@ fn foo() -> Box<impl fmt::Debug+?Sized> {
     x
 }
 fn bar() -> Box<impl fmt::Debug+?Sized> {
-    let y: Box<fmt::Debug> = Box::new([0]);
+    let y: Box<dyn fmt::Debug> = Box::new([0]);
     y
 }
 

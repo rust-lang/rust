@@ -4,7 +4,7 @@ use std::io::Write;
 use std::fmt;
 
 struct Foo<'a> {
-    writer: &'a mut (Write+'a),
+    writer: &'a mut (dyn Write+'a),
     other: &'a str,
 }
 
@@ -22,7 +22,7 @@ fn borrowing_writer_from_struct_and_formatting_struct_field(foo: Foo) {
 
 fn main() {
     let mut w = Vec::new();
-    write!(&mut w as &mut Write, "").unwrap();
+    write!(&mut w as &mut dyn Write, "").unwrap();
     write!(&mut w, "").unwrap(); // should coerce
     println!("ok");
 

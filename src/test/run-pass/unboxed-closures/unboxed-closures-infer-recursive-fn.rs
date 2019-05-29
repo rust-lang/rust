@@ -20,23 +20,23 @@ impl<F,A,R> YCombinator<F,A,R> {
     }
 }
 
-impl<A,R,F : Fn(&Fn(A) -> R, A) -> R> Fn<(A,)> for YCombinator<F,A,R> {
+impl<A,R,F : Fn(&dyn Fn(A) -> R, A) -> R> Fn<(A,)> for YCombinator<F,A,R> {
     extern "rust-call" fn call(&self, (arg,): (A,)) -> R {
         (self.func)(self, arg)
     }
 }
 
-impl<A,R,F : Fn(&Fn(A) -> R, A) -> R> FnMut<(A,)> for YCombinator<F,A,R> {
+impl<A,R,F : Fn(&dyn Fn(A) -> R, A) -> R> FnMut<(A,)> for YCombinator<F,A,R> {
     extern "rust-call" fn call_mut(&mut self, args: (A,)) -> R { self.call(args) }
 }
 
-impl<A,R,F : Fn(&Fn(A) -> R, A) -> R> FnOnce<(A,)> for YCombinator<F,A,R> {
+impl<A,R,F : Fn(&dyn Fn(A) -> R, A) -> R> FnOnce<(A,)> for YCombinator<F,A,R> {
     type Output = R;
     extern "rust-call" fn call_once(self, args: (A,)) -> R { self.call(args) }
 }
 
 fn main() {
-    let factorial = |recur: &Fn(u32) -> u32, arg: u32| -> u32 {
+    let factorial = |recur: &dyn Fn(u32) -> u32, arg: u32| -> u32 {
         if arg == 0 {1} else {arg * recur(arg-1)}
     };
     let factorial: YCombinator<_,u32,u32> = YCombinator::new(factorial);

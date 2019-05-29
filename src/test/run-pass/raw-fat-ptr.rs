@@ -78,7 +78,7 @@ fn main() {
     let mut u32_ = (4u32, 5u32);
 
     // check ordering for ptrs
-    let buf: &mut [*const Foo] = &mut [
+    let buf: &mut [*const dyn Foo] = &mut [
         &u8_, &u8_.0,
         &u32_, &u32_.0,
     ];
@@ -90,7 +90,7 @@ fn main() {
     assert_inorder(buf);
 
     // check ordering for mut ptrs
-    let buf: &mut [*mut Foo] = &mut [
+    let buf: &mut [*mut dyn Foo] = &mut [
         &mut u8_, &mut u8_.0,
         &mut u32_, &mut u32_.0,
     ];

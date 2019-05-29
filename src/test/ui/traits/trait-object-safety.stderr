@@ -1,8 +1,8 @@
 error[E0038]: the trait `Tr` cannot be made into an object
-  --> $DIR/trait-object-safety.rs:15:18
+  --> $DIR/trait-object-safety.rs:15:22
    |
-LL |     let _: &Tr = &St;
-   |                  ^^^ the trait `Tr` cannot be made into an object
+LL |     let _: &dyn Tr = &St;
+   |                      ^^^ the trait `Tr` cannot be made into an object
    |
    = note: method `foo` has no receiver
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Tr>` for `&St`
@@ -10,8 +10,8 @@ LL |     let _: &Tr = &St;
 error[E0038]: the trait `Tr` cannot be made into an object
   --> $DIR/trait-object-safety.rs:15:12
    |
-LL |     let _: &Tr = &St;
-   |            ^^^ the trait `Tr` cannot be made into an object
+LL |     let _: &dyn Tr = &St;
+   |            ^^^^^^^ the trait `Tr` cannot be made into an object
    |
    = note: method `foo` has no receiver
 

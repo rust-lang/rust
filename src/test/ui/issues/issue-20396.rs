@@ -10,7 +10,7 @@ trait Foo<T> {
 enum Bar<T> { Bla(T) }
 
 struct Baz<'a> {
-    inner: for<'b> Foo<Bar<&'b ()>> + 'a,
+    inner: dyn for<'b> Foo<Bar<&'b ()>> + 'a,
 }
 
 fn main() {}

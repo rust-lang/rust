@@ -5,7 +5,7 @@
 
 pub struct Path;
 
-type rsrc_loader = Box<FnMut(&Path) -> Result<String, String>>;
+type rsrc_loader = Box<dyn FnMut(&Path) -> Result<String, String>>;
 
 fn tester()
 {

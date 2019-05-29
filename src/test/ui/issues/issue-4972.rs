@@ -6,10 +6,10 @@ trait MyTrait {
 }
 
 pub enum TraitWrapper {
-    A(Box<MyTrait+'static>),
+    A(Box<dyn MyTrait + 'static>),
 }
 
-fn get_tw_map(tw: &TraitWrapper) -> &MyTrait {
+fn get_tw_map(tw: &TraitWrapper) -> &dyn MyTrait {
     match *tw {
         TraitWrapper::A(box ref map) => map, //~ ERROR cannot be dereferenced
     }

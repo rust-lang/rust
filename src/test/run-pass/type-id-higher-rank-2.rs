@@ -7,7 +7,7 @@ struct Foo<'a>(&'a str);
 fn good(s: &String) -> Foo { Foo(s) }
 
 fn bad1(s: String) -> Option<&'static str> {
-    let a: Box<Any> = Box::new(good as fn(&String) -> Foo);
+    let a: Box<dyn Any> = Box::new(good as fn(&String) -> Foo);
     a.downcast_ref::<fn(&String) -> Foo<'static>>().map(|f| f(&s).0)
 }
 
@@ -20,8 +20,8 @@ impl<'a> AsStr<'a, 'a> for String {
 }
 
 fn bad2(s: String) -> Option<&'static str> {
-    let a: Box<Any> = Box::new(Box::new(s) as Box<for<'a> AsStr<'a, 'a>>);
-    a.downcast_ref::<Box<for<'a> AsStr<'a, 'static>>>().map(|x| x.get())
+    let a: Box<dyn Any> = Box::new(Box::new(s) as Box<dyn for<'a> AsStr<'a, 'a>>);
+    a.downcast_ref::<Box<dyn for<'a> AsStr<'a, 'static>>>().map(|x| x.get())
 }
 
 fn main() {

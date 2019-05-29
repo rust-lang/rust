@@ -149,8 +149,8 @@ LL |     g1(|_: (), _: ()| {});
 note: required by `g1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:34:1
    |
-LL | fn g1<F>(_: F) where F: Fn(&(), Box<Fn(&())>) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn g1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:12:5
@@ -163,8 +163,8 @@ LL |     g1(|_: (), _: ()| {});
 note: required by `g1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:34:1
    |
-LL | fn g1<F>(_: F) where F: Fn(&(), Box<Fn(&())>) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn g1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:14:5
@@ -205,8 +205,8 @@ LL |     g3(|_: (), _: ()| {});
 note: required by `g3`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:36:1
    |
-LL | fn g3<F>(_: F) where F: for<'s> Fn(&'s (), Box<Fn(&())>) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn g3<F>(_: F) where F: for<'s> Fn(&'s (), Box<dyn Fn(&())>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:16:5
@@ -219,8 +219,8 @@ LL |     g3(|_: (), _: ()| {});
 note: required by `g3`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:36:1
    |
-LL | fn g3<F>(_: F) where F: for<'s> Fn(&'s (), Box<Fn(&())>) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn g3<F>(_: F) where F: for<'s> Fn(&'s (), Box<dyn Fn(&())>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:18:5
@@ -261,8 +261,8 @@ LL |     h1(|_: (), _: (), _: (), _: ()| {});
 note: required by `h1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:40:1
    |
-LL | fn h1<F>(_: F) where F: Fn(&(), Box<Fn(&())>, &(), fn(&(), &())) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn h1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>, &(), fn(&(), &())) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:20:5
@@ -275,8 +275,8 @@ LL |     h1(|_: (), _: (), _: (), _: ()| {});
 note: required by `h1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:40:1
    |
-LL | fn h1<F>(_: F) where F: Fn(&(), Box<Fn(&())>, &(), fn(&(), &())) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn h1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>, &(), fn(&(), &())) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:22:5
@@ -289,8 +289,8 @@ LL |     h2(|_: (), _: (), _: (), _: ()| {});
 note: required by `h2`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:41:1
    |
-LL | fn h2<F>(_: F) where F: for<'t0> Fn(&(), Box<Fn(&())>, &'t0 (), fn(&(), &())) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn h2<F>(_: F) where F: for<'t0> Fn(&(), Box<dyn Fn(&())>, &'t0 (), fn(&(), &())) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:22:5
@@ -303,8 +303,8 @@ LL |     h2(|_: (), _: (), _: (), _: ()| {});
 note: required by `h2`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:41:1
    |
-LL | fn h2<F>(_: F) where F: for<'t0> Fn(&(), Box<Fn(&())>, &'t0 (), fn(&(), &())) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn h2<F>(_: F) where F: for<'t0> Fn(&(), Box<dyn Fn(&())>, &'t0 (), fn(&(), &())) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 22 previous errors
 

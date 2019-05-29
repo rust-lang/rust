@@ -18,13 +18,13 @@ impl Trait for Struct {
     }
 }
 
-fn g(x: Box<Trait>) {
+fn g(x: Box<dyn Trait>) {
     x.printme();
-    let y: &Trait = &*x;
+    let y: &dyn Trait = &*x;
     y.printme();
 }
 
 fn main() {
     f(box 1234);
-    g(box Struct as Box<Trait>);
+    g(box Struct as Box<dyn Trait>);
 }

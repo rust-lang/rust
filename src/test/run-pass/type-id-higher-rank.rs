@@ -26,9 +26,9 @@ fn main() {
         assert!(e != f);
 
         // Make sure lifetime parameters of items are not ignored.
-        let g = TypeId::of::<for<'a> fn(&'a Trait<'a>) -> Struct<'a>>();
-        let h = TypeId::of::<for<'a> fn(&'a Trait<'a>) -> Struct<'static>>();
-        let i = TypeId::of::<for<'a, 'b> fn(&'a Trait<'b>) -> Struct<'b>>();
+        let g = TypeId::of::<for<'a> fn(&'a dyn Trait<'a>) -> Struct<'a>>();
+        let h = TypeId::of::<for<'a> fn(&'a dyn Trait<'a>) -> Struct<'static>>();
+        let i = TypeId::of::<for<'a, 'b> fn(&'a dyn Trait<'b>) -> Struct<'b>>();
         assert!(g != h);
         assert!(g != i);
         assert!(h != i);
@@ -40,10 +40,10 @@ fn main() {
     }
     // Boxed unboxed closures
     {
-        let a = TypeId::of::<Box<Fn(&'static isize, &'static isize)>>();
-        let b = TypeId::of::<Box<for<'a> Fn(&'static isize, &'a isize)>>();
-        let c = TypeId::of::<Box<for<'a, 'b> Fn(&'a isize, &'b isize)>>();
-        let d = TypeId::of::<Box<for<'a, 'b> Fn(&'b isize, &'a isize)>>();
+        let a = TypeId::of::<Box<dyn Fn(&'static isize, &'static isize)>>();
+        let b = TypeId::of::<Box<dyn for<'a> Fn(&'static isize, &'a isize)>>();
+        let c = TypeId::of::<Box<dyn for<'a, 'b> Fn(&'a isize, &'b isize)>>();
+        let d = TypeId::of::<Box<dyn for<'a, 'b> Fn(&'b isize, &'a isize)>>();
         assert!(a != b);
         assert!(a != c);
         assert!(a != d);
@@ -52,8 +52,8 @@ fn main() {
         assert_eq!(c, d);
 
         // Make sure De Bruijn indices are handled correctly
-        let e = TypeId::of::<Box<for<'a> Fn(Box<Fn(&'a isize) -> &'a isize>)>>();
-        let f = TypeId::of::<Box<Fn(Box<for<'a> Fn(&'a isize) -> &'a isize>)>>();
+        let e = TypeId::of::<Box<dyn for<'a> Fn(Box<dyn Fn(&'a isize) -> &'a isize>)>>();
+        let f = TypeId::of::<Box<dyn Fn(Box<dyn for<'a> Fn(&'a isize) -> &'a isize>)>>();
         assert!(e != f);
     }
     // Raw unboxed closures

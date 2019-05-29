@@ -1,5 +1,7 @@
 // compile-flags: -Z continue-parse-after-error
 
+#![allow(bare_trait_objects)]
+
 trait Trait {}
 
 fn f<'a, T: Trait + ('a)>() {} //~ ERROR parenthesized lifetime bounds are not supported

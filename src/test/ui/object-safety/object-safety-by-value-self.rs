@@ -17,28 +17,28 @@ trait Quux {
     fn baz(self: Self) where Self : Sized;
 }
 
-fn make_bar<T:Bar>(t: &T) -> &Bar {
+fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
     t // legal
 }
 
-fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
-    t as &Bar // legal
+fn make_bar_explicit<T:Bar>(t: &T) -> &dyn Bar {
+    t as &dyn Bar // legal
 }
 
-fn make_baz<T:Baz>(t: &T) -> &Baz {
+fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
     t // legal
 }
 
-fn make_baz_explicit<T:Baz>(t: &T) -> &Baz {
-    t as &Baz // legal
+fn make_baz_explicit<T:Baz>(t: &T) -> &dyn Baz {
+    t as &dyn Baz // legal
 }
 
-fn make_quux<T:Quux>(t: &T) -> &Quux {
+fn make_quux<T:Quux>(t: &T) -> &dyn Quux {
     t
 }
 
-fn make_quux_explicit<T:Quux>(t: &T) -> &Quux {
-    t as &Quux
+fn make_quux_explicit<T:Quux>(t: &T) -> &dyn Quux {
+    t as &dyn Quux
 }
 
 

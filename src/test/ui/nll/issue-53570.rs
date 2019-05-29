@@ -14,11 +14,11 @@ trait AnyVec<'a> {
 }
 
 trait GenericVec<T> {
-    fn unwrap<'a, 'b>(vec: &'b AnyVec<'a>) -> &'b [T] where T: 'a;
+    fn unwrap<'a, 'b>(vec: &'b dyn AnyVec<'a>) -> &'b [T] where T: 'a;
 }
 
 struct Scratchpad<'a> {
-    buffers: RefCell<Box<AnyVec<'a>>>,
+    buffers: RefCell<Box<dyn AnyVec<'a>>>,
 }
 
 impl<'a> Scratchpad<'a> {

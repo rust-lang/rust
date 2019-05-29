@@ -1,15 +1,15 @@
 error[E0391]: cycle detected when processing `Foo::X`
-  --> $DIR/cycle-trait-default-type-trait.rs:4:19
+  --> $DIR/cycle-trait-default-type-trait.rs:4:23
    |
-LL | trait Foo<X = Box<Foo>> {
-   |                   ^^^
+LL | trait Foo<X = Box<dyn Foo>> {
+   |                       ^^^
    |
    = note: ...which again requires processing `Foo::X`, completing the cycle
 note: cycle used when collecting item types in top-level module
   --> $DIR/cycle-trait-default-type-trait.rs:4:1
    |
-LL | trait Foo<X = Box<Foo>> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+LL | trait Foo<X = Box<dyn Foo>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

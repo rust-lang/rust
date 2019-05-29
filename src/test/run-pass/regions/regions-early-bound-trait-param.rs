@@ -15,14 +15,14 @@ fn poly_invoke<'c, T: Trait<'c>>(x: &'c T) -> (isize, isize) {
     (l,s)
 }
 
-fn object_invoke1<'d>(x: &'d Trait<'d>) -> (isize, isize) {
+fn object_invoke1<'d>(x: &'d dyn Trait<'d>) -> (isize, isize) {
     let l = x.long();
     let s = x.short();
     (l,s)
 }
 
 struct Struct1<'e> {
-    f: &'e (Trait<'e>+'e)
+    f: &'e (dyn Trait<'e>+'e)
 }
 
 fn field_invoke1<'f, 'g>(x: &'g Struct1<'f>) -> (isize,isize) {
@@ -32,10 +32,10 @@ fn field_invoke1<'f, 'g>(x: &'g Struct1<'f>) -> (isize,isize) {
 }
 
 struct Struct2<'h, 'i:'h> {
-    f: &'h (Trait<'i>+'h)
+    f: &'h (dyn Trait<'i>+'h)
 }
 
-fn object_invoke2<'j, 'k>(x: &'k Trait<'j>) -> isize {
+fn object_invoke2<'j, 'k>(x: &'k dyn Trait<'j>) -> isize {
     x.short()
 }
 
@@ -70,10 +70,10 @@ impl<'s> Trait<'s> for (isize,isize) {
     }
 }
 
-impl<'t> MakerTrait for Box<Trait<'t>+'static> {
-    fn mk() -> Box<Trait<'t>+'static> {
+impl<'t> MakerTrait for Box<dyn Trait<'t>+'static> {
+    fn mk() -> Box<dyn Trait<'t>+'static> {
         let tup: Box<(isize, isize)> = box (4,5);
-        tup as Box<Trait>
+        tup as Box<dyn Trait>
     }
 }
 
@@ -105,7 +105,7 @@ impl<'t> RefMakerTrait<'t> for List<'t> {
 
 pub fn main() {
     let t = (2,3);
-    let o = &t as &Trait;
+    let o = &t as &dyn Trait;
     let s1 = Struct1 { f: o };
     let s2 = Struct2 { f: o };
     assert_eq!(poly_invoke(&t), (2,3));
@@ -114,7 +114,7 @@ pub fn main() {
     assert_eq!(object_invoke2(&t), 3);
     assert_eq!(field_invoke2(&s2), 3);
 
-    let m : Box<Trait> = make_val();
+    let m : Box<dyn Trait> = make_val();
     // assert_eq!(object_invoke1(&*m), (4,5));
     //            ~~~~~~~~~~~~~~~~~~~
     // this call yields a compilation error; see compile-fail/dropck-object-cycle.rs

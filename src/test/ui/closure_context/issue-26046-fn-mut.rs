@@ -1,4 +1,4 @@
-fn foo() -> Box<Fn()> {
+fn foo() -> Box<dyn Fn()> {
     let num = 5;
 
     let closure = || { //~ ERROR expected a closure that

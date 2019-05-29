@@ -24,7 +24,7 @@ struct Foo<T: ?Sized> {
 pub fn main() {
     // raw trait object
     let x = A { f: 42 };
-    let z: *const Trait = &x;
+    let z: *const dyn Trait = &x;
     let r = unsafe {
         (&*z).foo()
     };
@@ -32,7 +32,7 @@ pub fn main() {
 
     // raw DST struct
     let p = Foo {f: A { f: 42 }};
-    let o: *const Foo<Trait> = &p;
+    let o: *const Foo<dyn Trait> = &p;
     let r = unsafe {
         (&*o).f.foo()
     };
@@ -40,7 +40,7 @@ pub fn main() {
 
     // raw DST tuple
     let p = (A { f: 42 },);
-    let o: *const (Trait,) = &p;
+    let o: *const (dyn Trait,) = &p;
     let r = unsafe {
         (&*o).0.foo()
     };
@@ -84,21 +84,21 @@ pub fn main() {
 
     // all of the above with *mut
     let mut x = A { f: 42 };
-    let z: *mut Trait = &mut x;
+    let z: *mut dyn Trait = &mut x;
     let r = unsafe {
         (&*z).foo()
     };
     assert_eq!(r, 42);
 
     let mut p = Foo {f: A { f: 42 }};
-    let o: *mut Foo<Trait> = &mut p;
+    let o: *mut Foo<dyn Trait> = &mut p;
     let r = unsafe {
         (&*o).f.foo()
     };
     assert_eq!(r, 42);
 
     let mut p = (A { f: 42 },);
-    let o: *mut (Trait,) = &mut p;
+    let o: *mut (dyn Trait,) = &mut p;
     let r = unsafe {
         (&*o).0.foo()
     };

@@ -35,7 +35,7 @@ impl<R, F> Future for Lazy<F>
 }
 
 async fn __receive<WantFn, Fut>(want: WantFn) -> ()
-    where Fut: Future<Output = ()>, WantFn: Fn(&Box<Send + 'static>) -> Fut,
+    where Fut: Future<Output = ()>, WantFn: Fn(&Box<dyn Send + 'static>) -> Fut,
 {
     await!(lazy(|_| ()));
 }

@@ -9,7 +9,7 @@ LL |     ss.t = t;
 note: the lifetime 'a as defined on the function body at 14:6...
   --> $DIR/object-lifetime-default-from-rptr-box-error.rs:14:6
    |
-LL | fn c<'a>(t: &'a Box<Test+'a>, mut ss: SomeStruct<'a>) {
+LL | fn c<'a>(t: &'a Box<dyn Test+'a>, mut ss: SomeStruct<'a>) {
    |      ^^
    = note: ...does not necessarily outlive the static lifetime
 

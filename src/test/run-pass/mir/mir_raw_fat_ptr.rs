@@ -63,7 +63,7 @@ fn compare_au8(a: *const [u8], b: *const [u8]) -> ComparisonResults {
     }
 }
 
-fn compare_foo<'a>(a: *const (Foo+'a), b: *const (Foo+'a)) -> ComparisonResults {
+fn compare_foo<'a>(a: *const (dyn Foo+'a), b: *const (dyn Foo+'a)) -> ComparisonResults {
     ComparisonResults {
         lt: a < b,
         le: a <= b,
@@ -74,7 +74,7 @@ fn compare_foo<'a>(a: *const (Foo+'a), b: *const (Foo+'a)) -> ComparisonResults 
     }
 }
 
-fn simple_eq<'a>(a: *const (Foo+'a), b: *const (Foo+'a)) -> bool {
+fn simple_eq<'a>(a: *const (dyn Foo+'a), b: *const (dyn Foo+'a)) -> bool {
     let result = a == b;
     result
 }
@@ -128,7 +128,7 @@ fn main() {
     let u32_ = (4u32, 5u32);
 
     // check ordering for ptrs
-    let buf: &mut [*const Foo] = &mut [
+    let buf: &mut [*const dyn Foo] = &mut [
         &u8_, &u8_.0,
         &u32_, &u32_.0,
     ];

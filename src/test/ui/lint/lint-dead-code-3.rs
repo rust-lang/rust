@@ -73,6 +73,6 @@ mod inner {
 }
 
 pub fn foo() {
-    let a: &inner::Trait = &1_isize;
+    let a: &dyn inner::Trait = &1_isize;
     a.f();
 }

@@ -24,5 +24,5 @@ impl<P: TheTrait> Shape<P> for TheType<P::TheAssociatedType> {
 
 fn main() {
     let ball = TheType { t: PhantomData };
-    let handle: &Shape<()> = &ball;
+    let handle: &dyn Shape<()> = &ball;
 }

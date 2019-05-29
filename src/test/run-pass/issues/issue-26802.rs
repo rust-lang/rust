@@ -5,7 +5,7 @@ trait Foo<'a> {
 
 pub struct FooBar;
 impl Foo<'static> for FooBar {}
-fn test(foobar: FooBar) -> Box<Foo<'static>> {
+fn test(foobar: FooBar) -> Box<dyn Foo<'static>> {
     Box::new(foobar)
 }
 

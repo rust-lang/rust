@@ -22,9 +22,9 @@ fn main() {
     assert_eq!(size_of::<&mut [isize]>(), size_of::<Option<&mut [isize]>>());
 
     // Traits - Box<Trait> / &Trait / &mut Trait
-    assert_eq!(size_of::<Box<Trait>>(), size_of::<Option<Box<Trait>>>());
-    assert_eq!(size_of::<&Trait>(), size_of::<Option<&Trait>>());
-    assert_eq!(size_of::<&mut Trait>(), size_of::<Option<&mut Trait>>());
+    assert_eq!(size_of::<Box<dyn Trait>>(), size_of::<Option<Box<dyn Trait>>>());
+    assert_eq!(size_of::<&dyn Trait>(), size_of::<Option<&dyn Trait>>());
+    assert_eq!(size_of::<&mut dyn Trait>(), size_of::<Option<&mut dyn Trait>>());
 
     // Pointers - Box<T>
     assert_eq!(size_of::<Box<isize>>(), size_of::<Option<Box<isize>>>());

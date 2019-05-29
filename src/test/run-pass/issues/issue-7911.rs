@@ -12,18 +12,18 @@ struct Foo { bar: Bar }
 impl FooBar for Bar {}
 
 trait Test {
-    fn get_immut(&self) -> &FooBar;
-    fn get_mut(&mut self) -> &mut FooBar;
+    fn get_immut(&self) -> &dyn FooBar;
+    fn get_mut(&mut self) -> &mut dyn FooBar;
 }
 
 macro_rules! generate_test { ($type_:path, $slf:ident, $field:expr) => (
     impl Test for $type_ {
-        fn get_immut(&$slf) -> &FooBar {
-            &$field as &FooBar
+        fn get_immut(&$slf) -> &dyn FooBar {
+            &$field as &dyn FooBar
         }
 
-        fn get_mut(&mut $slf) -> &mut FooBar {
-            &mut $field as &mut FooBar
+        fn get_mut(&mut $slf) -> &mut dyn FooBar {
+            &mut $field as &mut dyn FooBar
         }
     }
 )}

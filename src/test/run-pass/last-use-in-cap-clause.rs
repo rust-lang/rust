@@ -3,7 +3,7 @@
 
 struct A { a: Box<isize> }
 
-fn foo() -> Box<FnMut() -> isize + 'static> {
+fn foo() -> Box<dyn FnMut() -> isize + 'static> {
     let k: Box<_> = Box::new(22);
     let _u = A {a: k.clone()};
     let result  = || 22;

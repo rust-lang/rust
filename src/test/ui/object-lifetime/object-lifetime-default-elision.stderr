@@ -7,7 +7,7 @@ LL |     ss
 note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 54:10...
   --> $DIR/object-lifetime-default-elision.rs:54:10
    |
-LL | fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
+LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
    |          ^^
 note: ...so that reference does not outlive borrowed content
   --> $DIR/object-lifetime-default-elision.rs:71:5
@@ -17,7 +17,7 @@ LL |     ss
 note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 54:13...
   --> $DIR/object-lifetime-default-elision.rs:54:13
    |
-LL | fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
+LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
    |             ^^
    = note: ...so that the expression is assignable:
            expected &'b (dyn SomeTrait + 'b)
@@ -32,7 +32,7 @@ LL |     ss
 note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 54:10...
   --> $DIR/object-lifetime-default-elision.rs:54:10
    |
-LL | fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
+LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
    |          ^^
 note: ...so that the declared lifetime parameter bounds are satisfied
   --> $DIR/object-lifetime-default-elision.rs:71:5
@@ -42,7 +42,7 @@ LL |     ss
 note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 54:13...
   --> $DIR/object-lifetime-default-elision.rs:54:13
    |
-LL | fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
+LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
    |             ^^
    = note: ...so that the expression is assignable:
            expected &'b (dyn SomeTrait + 'b)

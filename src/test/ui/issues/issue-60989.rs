@@ -13,6 +13,6 @@ fn main() {
     //~^ ERROR type arguments are not allowed for this type
 
     let c1 = A {};
-    c1::<Into<B>>;
+    c1::<dyn Into<B>>;
     //~^ ERROR type arguments are not allowed for this type
 }

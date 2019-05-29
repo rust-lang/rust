@@ -79,7 +79,7 @@ fn cat(in_x: usize, in_y: isize, in_name: String) -> cat {
 }
 
 
-fn annoy_neighbors(critter: &mut noisy) {
+fn annoy_neighbors(critter: &mut dyn noisy) {
     for _i in 0_usize..10 { critter.speak(); }
 }
 

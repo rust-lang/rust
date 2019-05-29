@@ -8,13 +8,13 @@ impl Foo for Thing {
 }
 
 #[inline(never)]
-fn foo(b: &Bar) {
+fn foo(b: &dyn Bar) {
     //~^ ERROR E0038
     b.foo(&0)
 }
 
 fn main() {
     let mut thing = Thing;
-    let test: &Bar = &mut thing;
+    let test: &dyn Bar = &mut thing;
     foo(test);
 }

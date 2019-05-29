@@ -1,5 +1,5 @@
 // run-pass
-fn action(mut cb: Box<FnMut(usize) -> usize>) -> usize {
+fn action(mut cb: Box<dyn FnMut(usize) -> usize>) -> usize {
     cb(1)
 }
 

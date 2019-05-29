@@ -22,7 +22,7 @@ pub fn foo(box_1: fn () -> Box<[i8; 1]>,
            box_4: fn () -> Box<[i8; 4]>,
             ) {
     println!("Hello World 1");
-    let _: Box<Boo> = match 3 {
+    let _: Box<dyn Boo> = match 3 {
         1 => box_1(),
         2 => box_2(),
         3 => box_3(),

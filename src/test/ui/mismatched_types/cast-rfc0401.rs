@@ -24,7 +24,7 @@ fn main()
     let v = 0 as *const u8;
     let fat_v : *const [u8] = unsafe { &*(0 as *const [u8; 1])};
     let fat_sv : *const [i8] = unsafe { &*(0 as *const [i8; 1])};
-    let foo: &Foo = &f;
+    let foo: &dyn Foo = &f;
 
     let _ = v as &u8; //~ ERROR non-primitive cast
     let _ = v as E; //~ ERROR non-primitive cast
@@ -50,7 +50,7 @@ fn main()
 
     let _ = 42usize as *const [u8]; //~ ERROR is invalid
     let _ = v as *const [u8]; //~ ERROR cannot cast
-    let _ = fat_v as *const Foo; //~ ERROR the size for values of type
+    let _ = fat_v as *const dyn Foo; //~ ERROR the size for values of type
     let _ = foo as *const str; //~ ERROR is invalid
     let _ = foo as *mut str; //~ ERROR is invalid
     let _ = main as *mut str; //~ ERROR is invalid
@@ -59,14 +59,14 @@ fn main()
     let _ = fat_sv as usize; //~ ERROR is invalid
 
     let a : *const str = "hello";
-    let _ = a as *const Foo; //~ ERROR the size for values of type
+    let _ = a as *const dyn Foo; //~ ERROR the size for values of type
 
     // check no error cascade
     let _ = main.f as *const u32; //~ ERROR no field
 
-    let cf: *const Foo = &0;
+    let cf: *const dyn Foo = &0;
     let _ = cf as *const [u16]; //~ ERROR is invalid
-    let _ = cf as *const Bar; //~ ERROR is invalid
+    let _ = cf as *const dyn Bar; //~ ERROR is invalid
 
     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>(); //~ ERROR is invalid
 }

@@ -14,7 +14,7 @@ mod b {
     }
 
     impl Builder {
-        pub fn with_a(&mut self, _a: fn() -> ::a::A) {}
+        pub fn with_a(&mut self, _a: fn() -> dyn (::a::A)) {}
     }
 }
 

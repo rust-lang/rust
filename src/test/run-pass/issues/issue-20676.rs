@@ -7,6 +7,6 @@
 use std::fmt;
 
 fn main() {
-    let a: &fmt::Debug = &1;
+    let a: &dyn fmt::Debug = &1;
     format!("{:?}", a);
 }

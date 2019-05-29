@@ -7,13 +7,13 @@
 // that `x` is in.
 // pretty-expanded FIXME #23616
 
-fn has_same_region(f: Box<for<'a> FnMut(&'a isize, Box<FnMut(&'a isize)>)>) {
+fn has_same_region(f: Box<dyn for<'a> FnMut(&'a isize, Box<dyn FnMut(&'a isize)>)>) {
     // `f` should be the type that `wants_same_region` wants, but
     // right now the compiler complains that it isn't.
     wants_same_region(f);
 }
 
-fn wants_same_region(_f: Box<for<'b> FnMut(&'b isize, Box<FnMut(&'b isize)>)>) {
+fn wants_same_region(_f: Box<dyn for<'b> FnMut(&'b isize, Box<dyn FnMut(&'b isize)>)>) {
 }
 
 pub fn main() {

@@ -19,15 +19,15 @@
 
 pub fn main() {
     fn explicit() {
-        fn test<F>(_x: Option<Box<F>>) where F: FnMut(Box<for<'a> FnMut(&'a isize)>) {}
-        test(Some(box |_f: Box<for<'a> FnMut(&'a isize)>| {}));
+        fn test<F>(_x: Option<Box<F>>) where F: FnMut(Box<dyn for<'a> FnMut(&'a isize)>) {}
+        test(Some(box |_f: Box<dyn for<'a> FnMut(&'a isize)>| {}));
     }
 
     // The code below is shorthand for the code above (and more likely
     // to represent what one encounters in practice).
     fn implicit() {
-        fn test<F>(_x: Option<Box<F>>) where F: FnMut(Box<        FnMut(&   isize)>) {}
-        test(Some(box |_f: Box<        FnMut(&   isize)>| {}));
+        fn test<F>(_x: Option<Box<F>>) where F: FnMut(Box<dyn        FnMut(&   isize)>) {}
+        test(Some(box |_f: Box<dyn        FnMut(&   isize)>| {}));
     }
 
     explicit();

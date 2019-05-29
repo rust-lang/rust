@@ -19,7 +19,7 @@ impl Barks for Dog {
 pub fn main() {
     let snoopy = box Dog{name: "snoopy".to_string()};
     let bubbles = box Dog{name: "bubbles".to_string()};
-    let barker = [snoopy as Box<Barks>, bubbles as Box<Barks>];
+    let barker = [snoopy as Box<dyn Barks>, bubbles as Box<dyn Barks>];
 
     for pup in &barker {
         println!("{}", pup.bark());

@@ -33,7 +33,7 @@ fn main() {
     assert::<Box<[u8]>>();
 
     trait Trait: UnwindSafe {}
-    assert::<Box<Trait>>();
+    assert::<Box<dyn Trait>>();
 
     fn bar<T>() {
         assert::<Mutex<T>>();

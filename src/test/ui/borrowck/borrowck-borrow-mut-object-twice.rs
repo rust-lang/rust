@@ -8,7 +8,7 @@ trait Foo {
     fn f2(&mut self);
 }
 
-fn test(x: &mut Foo) {
+fn test(x: &mut dyn Foo) {
     let y = x.f1();
     x.f2(); //~ ERROR cannot borrow `*x` as mutable
     y.use_ref();

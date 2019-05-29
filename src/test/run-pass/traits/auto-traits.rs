@@ -27,5 +27,5 @@ fn main() {
     take_auto_unsafe(AutoBool(true));
 
     /// Auto traits are allowed in trait object bounds.
-    let _: &(Send + Auto) = &0;
+    let _: &(dyn Send + Auto) = &0;
 }

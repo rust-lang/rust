@@ -23,7 +23,7 @@ fn preticked<C:Counter>() -> C {
     c
 }
 
-fn tick(c: &mut Counter) {
+fn tick(c: &mut dyn Counter) {
     tick_generic(c);
 }
 

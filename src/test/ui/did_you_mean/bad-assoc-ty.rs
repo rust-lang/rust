@@ -24,7 +24,7 @@ type F = &'static (u8)::AssocTy;
 
 // Qualified paths cannot appear in bounds, so the recovery
 // should apply to the whole sum and not `(Send)`.
-type G = 'static + (Send)::AssocTy;
+type G = dyn 'static + (Send)::AssocTy;
 //~^ ERROR missing angle brackets in associated item path
 //~| ERROR ambiguous associated type
 

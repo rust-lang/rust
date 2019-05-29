@@ -19,6 +19,6 @@ impl T for A {
 
 fn main() {
     let a = A;
-    let br = &a as &B;
+    let br = &a as &dyn B;
     br.f();
 }

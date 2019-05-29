@@ -1,10 +1,10 @@
 // run-pass
 #![allow(unused_variables)]
-fn id<'c, 'b>(f: &'c &'b Fn(&i32)) -> &'c &'b Fn(&'static i32) {
+fn id<'c, 'b>(f: &'c &'b dyn Fn(&i32)) -> &'c &'b dyn Fn(&'static i32) {
     f
 }
 
 fn main() {
-    let f: &Fn(&i32) = &|x| {};
+    let f: &dyn Fn(&i32) = &|x| {};
     id(&f);
 }

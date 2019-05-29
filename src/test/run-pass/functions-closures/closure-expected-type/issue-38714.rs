@@ -5,7 +5,7 @@ struct UsizeRef<'a> {
     a: &'a usize
 }
 
-type RefTo = Box<for<'r> Fn(&'r Vec<usize>) -> UsizeRef<'r>>;
+type RefTo = Box<dyn for<'r> Fn(&'r Vec<usize>) -> UsizeRef<'r>>;
 
 fn ref_to<'a>(vec: &'a Vec<usize>) -> UsizeRef<'a> {
     UsizeRef{ a: &vec[0]}

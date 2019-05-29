@@ -30,7 +30,7 @@ impl Drop for Cat {
 pub fn main() {
     {
         let x = box Cat {name: 22};
-        let nyan: Box<Dummy> = x as Box<Dummy>;
+        let nyan: Box<dyn Dummy> = x as Box<dyn Dummy>;
     }
     unsafe {
         assert_eq!(value, 22);

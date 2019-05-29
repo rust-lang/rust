@@ -19,9 +19,9 @@ impl Index<usize> for S {
 struct T;
 
 impl Index<usize> for T {
-    type Output = Debug + 'static;
+    type Output = dyn Debug + 'static;
 
-    fn index<'a>(&'a self, idx: usize) -> &'a (Debug + 'static) {
+    fn index<'a>(&'a self, idx: usize) -> &'a (dyn Debug + 'static) {
         static x: usize = 42;
         &x
     }

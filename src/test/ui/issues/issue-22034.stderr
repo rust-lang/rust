@@ -1,7 +1,7 @@
 error[E0277]: expected a `std::ops::Fn<()>` closure, found `()`
   --> $DIR/issue-22034.rs:8:16
    |
-LL |         &mut *(ptr as *mut Fn())
+LL |         &mut *(ptr as *mut dyn Fn())
    |                ^^^ expected an `Fn<()>` closure, found `()`
    |
    = help: the trait `std::ops::Fn<()>` is not implemented for `()`

@@ -17,10 +17,10 @@ LL | fn angle2<T>() where for<'a> T: Foo<Item=&'a i32> {
    |                                     ^^^^^^^^^^^^
 
 error[E0582]: binding for associated type `Item` references lifetime `'a`, which does not appear in the trait input types
-  --> $DIR/bound-lifetime-in-binding-only.rs:27:27
+  --> $DIR/bound-lifetime-in-binding-only.rs:27:31
    |
-LL | fn angle3(_: &for<'a> Foo<Item=&'a i32>) {
-   |                           ^^^^^^^^^^^^
+LL | fn angle3(_: &dyn for<'a> Foo<Item=&'a i32>) {
+   |                               ^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 
