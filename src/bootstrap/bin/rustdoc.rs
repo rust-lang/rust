@@ -17,8 +17,11 @@ fn main() {
     let mut has_unstable = false;
 
     use std::str::FromStr;
-
-    let verbose = env!("RUSTC_VERBOSE","RUSTC_VERBOSE should be an integer");
+    
+    let verbose = match env::var("RUSTC_VERBOSE") {
+        Ok(s) => usize::from_str(&s).expect("RUSTC_VERBOSE should be an integer"),
+        Err(_) => 0,
+    };
 
     let mut dylib_path = bootstrap::util::dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir.clone()));
