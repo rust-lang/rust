@@ -1,37 +1,38 @@
 #!/bin/sh
-## Usage
-#
-# COMMANDS
-#
-# ./miri install <flags>:
-# Installs the miri driver and cargo-miri. <flags> are passed to `cargo
-# install`.  Sets up the rpath such that the installed binary should work in any
-# working directory.
-#
-# ./miri build <flags>:
-# Just build miri.  <flags> are passed to `cargo build`.
-#
-# ./miri test <flags>:
-# Build miri, set up a sysroot and then run the test suite. <flags> are passed
-# to the final `cargo test` invocation.
-#
-# ./miri run <flags>:
-# Build miri, set up a sysroot and then run the driver with the given <flags>.
-#
-# All commands also exist in a "-debug" variant (e.g. "./miri run-debug
-# <flags>") which uses debug builds instead of release builds, for faster build
-# times and slower execution times.
-#
-# ENVIRONMENT VARIABLES
-#
-# MIRI_SYSROOT:
-# If already set, the "sysroot setup" step is skipped.
-#
-# CARGO_EXTRA_FLAGS:
-# Pass extra flags to all cargo invocations.
+set -e
+USAGE=$(cat <<"EOF"
+  COMMANDS
+
+./miri install <flags>:
+Installs the miri driver and cargo-miri. <flags> are passed to `cargo
+install`.  Sets up the rpath such that the installed binary should work in any
+working directory.
+
+./miri build <flags>:
+Just build miri.  <flags> are passed to `cargo build`.
+
+./miri test <flags>:
+Build miri, set up a sysroot and then run the test suite. <flags> are passed
+to the final `cargo test` invocation.
+
+./miri run <flags>:
+Build miri, set up a sysroot and then run the driver with the given <flags>.
+
+All commands also exist in a "-debug" variant (e.g. "./miri run-debug
+<flags>") which uses debug builds instead of release builds, for faster build
+times and slower execution times.
+
+  ENVIRONMENT VARIABLES
+
+MIRI_SYSROOT:
+If already set, the "sysroot setup" step is skipped.
+
+CARGO_EXTRA_FLAGS:
+Pass extra flags to all cargo invocations.
+EOF
+)
 
 ## Preparation
-set -e
 # I'd love to use `jq` for parsing the JSON properly, but macOS is totally underequipped for this kind of work.
 TARGET=$(rustc --print target-spec-json -Z unstable-options | grep llvm-target | cut -d '"' -f 4)
 SYSROOT=$(rustc --print sysroot)
@@ -135,4 +136,9 @@ run|run-debug)
     # Then run the actual command.
     exec cargo run $CARGO_BUILD_FLAGS "$@"
     ;;
+*)
+    echo "Unknown command: $COMMAND"
+    echo
+    echo "$USAGE"
+    exit 1
 esac
