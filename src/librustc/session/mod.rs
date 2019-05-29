@@ -519,14 +519,8 @@ impl Session {
     pub fn instrument_mcount(&self) -> bool {
         self.opts.debugging_opts.instrument_mcount
     }
-    pub fn count_llvm_insns(&self) -> bool {
-        self.opts.debugging_opts.count_llvm_insns
-    }
     pub fn time_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.time_llvm_passes
-    }
-    pub fn codegen_stats(&self) -> bool {
-        self.opts.debugging_opts.codegen_stats
     }
     pub fn meta_stats(&self) -> bool {
         self.opts.debugging_opts.meta_stats

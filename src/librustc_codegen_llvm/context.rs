@@ -12,7 +12,6 @@ use rustc_codegen_ssa::traits::*;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc::mir::mono::Stats;
 use rustc::session::config::{self, DebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{
@@ -44,7 +43,6 @@ pub struct CodegenCx<'ll, 'tcx: 'll> {
 
     pub llmod: &'ll llvm::Module,
     pub llcx: &'ll llvm::Context,
-    pub stats: RefCell<Stats>,
     pub codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// Cache instances of monomorphic and polymorphic items
@@ -284,7 +282,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             tls_model,
             llmod,
             llcx,
-            stats: RefCell::new(Stats::default()),
             codegen_unit,
             instances: Default::default(),
             vtables: Default::default(),
@@ -406,14 +403,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn check_overflow(&self) -> bool {
         self.check_overflow
-    }
-
-    fn stats(&self) -> &RefCell<Stats> {
-        &self.stats
-    }
-
-    fn consume_stats(self) -> RefCell<Stats> {
-        self.stats
     }
 
     fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>> {

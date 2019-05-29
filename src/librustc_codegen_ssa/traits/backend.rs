@@ -5,7 +5,6 @@ use super::write::WriteBackendMethods;
 use super::CodegenObject;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::EncodedMetadata;
-use rustc::mir::mono::Stats;
 use rustc::session::{Session, config};
 use rustc::ty::TyCtxt;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -49,7 +48,7 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         cgu_name: InternedString,
-    ) -> Stats;
+    );
     // If find_features is true this won't access `sess.crate_types` by assuming
     // that `is_pie_binary` is false. When we discover LLVM target features
     // `sess.crate_types` is uninitialized so we cannot access it.

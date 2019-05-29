@@ -24,7 +24,7 @@ use crate::common;
 use crate::context::CodegenCx;
 use crate::monomorphize::partitioning::CodegenUnitExt;
 use rustc::dep_graph;
-use rustc::mir::mono::{Linkage, Visibility, Stats};
+use rustc::mir::mono::{Linkage, Visibility};
 use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::TyCtxt;
 use rustc::middle::exported_symbols;
@@ -104,17 +104,17 @@ pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
     }
 }
 
-pub fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  cgu_name: InternedString)
-                                  -> Stats {
+pub fn compile_codegen_unit(tcx: TyCtxt<'a, 'tcx, 'tcx>, cgu_name: InternedString) {
     let start_time = Instant::now();
 
     let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
-    let ((stats, module), _) = tcx.dep_graph.with_task(dep_node,
-                                                       tcx,
-                                                       cgu_name,
-                                                       module_codegen,
-                                                       dep_graph::hash_result);
+    let (module, _) = tcx.dep_graph.with_task(
+        dep_node,
+        tcx,
+        cgu_name,
+        module_codegen,
+        dep_graph::hash_result,
+    );
     let time_to_codegen = start_time.elapsed();
 
     // We assume that the cost to run LLVM on a CGU is proportional to
@@ -123,17 +123,15 @@ pub fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                time_to_codegen.subsec_nanos() as u64;
 
     submit_codegened_module_to_llvm(&LlvmCodegenBackend(()), tcx, module, cost);
-    return stats;
 
     fn module_codegen<'ll, 'tcx>(
         tcx: TyCtxt<'ll, 'tcx, 'tcx>,
-        cgu_name: InternedString)
-        -> (Stats, ModuleCodegen<ModuleLlvm>)
-    {
+        cgu_name: InternedString,
+    ) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
-        let stats = {
+        {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit
                                .items_in_deterministic_order(cx.tcx);
@@ -169,15 +167,13 @@ pub fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if cx.sess().opts.debuginfo != DebugInfo::None {
                 cx.debuginfo_finalize();
             }
+        }
 
-            cx.consume_stats().into_inner()
-        };
-
-        (stats, ModuleCodegen {
+        ModuleCodegen {
             name: cgu_name.to_string(),
             module_llvm: llvm_module,
             kind: ModuleKind::Regular,
-        })
+        }
     }
 }
 
