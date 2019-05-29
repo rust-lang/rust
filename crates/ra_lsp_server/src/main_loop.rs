@@ -20,7 +20,7 @@ use crate::{
     main_loop::subscriptions::Subscriptions,
     project_model::workspace_loader,
     req,
-    server_world::{ServerWorld, ServerWorldState},
+    server_world::{ServerWorld, ServerWorldState, CompletedRequest},
     Result,
     InitializationOptions,
 };
@@ -43,6 +43,17 @@ impl LspError {
 enum Task {
     Respond(RawResponse),
     Notify(RawNotification),
+}
+
+struct PendingRequest {
+    received: Instant,
+    method: String,
+}
+
+impl From<(u64, PendingRequest)> for CompletedRequest {
+    fn from((id, pending): (u64, PendingRequest)) -> CompletedRequest {
+        CompletedRequest { id, method: pending.method, duration: pending.received.elapsed() }
+    }
 }
 
 const THREADPOOL_SIZE: usize = 8;
@@ -97,7 +108,9 @@ pub fn main_loop(
     );
 
     log::info!("waiting for tasks to finish...");
-    task_receiver.into_iter().for_each(|task| on_task(task, msg_sender, &mut pending_requests));
+    task_receiver
+        .into_iter()
+        .for_each(|task| on_task(task, msg_sender, &mut pending_requests, &mut state));
     log::info!("...tasks have finished");
     log::info!("joining threadpool...");
     drop(pool);
@@ -159,7 +172,7 @@ fn main_loop_inner(
     task_sender: Sender<Task>,
     task_receiver: Receiver<Task>,
     state: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, Instant>,
+    pending_requests: &mut FxHashMap<u64, PendingRequest>,
     subs: &mut Subscriptions,
 ) -> Result<()> {
     // We try not to index more than THREADPOOL_SIZE - 3 libraries at the same
@@ -195,7 +208,7 @@ fn main_loop_inner(
         let mut state_changed = false;
         match event {
             Event::Task(task) => {
-                on_task(task, msg_sender, pending_requests);
+                on_task(task, msg_sender, pending_requests, state);
                 state.maybe_collect_garbage();
             }
             Event::Vfs(task) => {
@@ -292,12 +305,15 @@ fn main_loop_inner(
 fn on_task(
     task: Task,
     msg_sender: &Sender<RawMessage>,
-    pending_requests: &mut FxHashMap<u64, Instant>,
+    pending_requests: &mut FxHashMap<u64, PendingRequest>,
+    state: &mut ServerWorldState,
 ) {
     match task {
         Task::Respond(response) => {
-            if let Some(request_received) = pending_requests.remove(&response.id) {
-                log::info!("handled req#{} in {:?}", response.id, request_received.elapsed());
+            if let Some(pending) = pending_requests.remove(&response.id) {
+                let completed = CompletedRequest::from((response.id, pending));
+                log::info!("handled req#{} in {:?}", completed.id, completed.duration);
+                state.complete_request(completed);
                 msg_sender.send(response.into()).unwrap();
             }
         }
@@ -309,12 +325,13 @@ fn on_task(
 
 fn on_request(
     world: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, Instant>,
+    pending_requests: &mut FxHashMap<u64, PendingRequest>,
     pool: &ThreadPool,
     sender: &Sender<Task>,
     request_received: Instant,
     req: RawRequest,
 ) -> Result<Option<RawRequest>> {
+    let method = req.method.clone();
     let mut pool_dispatcher = PoolDispatcher { req: Some(req), res: None, pool, world, sender };
     let req = pool_dispatcher
         .on::<req::AnalyzerStatus>(handlers::handle_analyzer_status)?
@@ -348,7 +365,8 @@ fn on_request(
         .finish();
     match req {
         Ok(id) => {
-            let prev = pending_requests.insert(id, request_received);
+            let prev =
+                pending_requests.insert(id, PendingRequest { method, received: request_received });
             assert!(prev.is_none(), "duplicate request: {}", id);
             Ok(None)
         }
@@ -359,7 +377,7 @@ fn on_request(
 fn on_notification(
     msg_sender: &Sender<RawMessage>,
     state: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, Instant>,
+    pending_requests: &mut FxHashMap<u64, PendingRequest>,
     subs: &mut Subscriptions,
     not: RawNotification,
 ) -> Result<()> {

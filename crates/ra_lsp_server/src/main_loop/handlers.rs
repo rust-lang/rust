@@ -1,3 +1,5 @@
+use std::{io::Write as _, fmt::Write as _};
+
 use gen_lsp_server::ErrorCode;
 use lsp_types::{
     CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity, CodeAction,
@@ -16,7 +18,6 @@ use ra_prof::profile;
 use rustc_hash::FxHashMap;
 use serde::{Serialize, Deserialize};
 use serde_json::to_value;
-use std::io::Write;
 use url_serde::Ser;
 
 use crate::{
@@ -28,7 +29,14 @@ use crate::{
 };
 
 pub fn handle_analyzer_status(world: ServerWorld, _: ()) -> Result<String> {
-    Ok(world.status())
+    let mut buf = world.status();
+    writeln!(buf, "\n\nrequests:").unwrap();
+    let requests = world.latest_completed_requests.read();
+    for (idx, r) in requests.iter().enumerate() {
+        let current = if idx == world.request_idx { "*" } else { " " };
+        writeln!(buf, "{:4}{}{:<36}: {:?}", r.id, current, r.method, r.duration).unwrap();
+    }
+    Ok(buf)
 }
 
 pub fn handle_syntax_tree(world: ServerWorld, params: req::SyntaxTreeParams) -> Result<String> {

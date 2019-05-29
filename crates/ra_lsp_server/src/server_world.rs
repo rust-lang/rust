@@ -1,6 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 
 use lsp_types::Url;
@@ -28,12 +29,26 @@ pub struct ServerWorldState {
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis_host: AnalysisHost,
     pub vfs: Arc<RwLock<Vfs>>,
+    // hand-rolling VecDeque here to print things in a nicer way
+    pub latest_completed_requests: Arc<RwLock<[CompletedRequest; N_COMPLETED_REQUESTS]>>,
+    pub request_idx: usize,
 }
+
+const N_COMPLETED_REQUESTS: usize = 10;
 
 pub struct ServerWorld {
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
     pub vfs: Arc<RwLock<Vfs>>,
+    pub latest_completed_requests: Arc<RwLock<[CompletedRequest; N_COMPLETED_REQUESTS]>>,
+    pub request_idx: usize,
+}
+
+#[derive(Debug, Default)]
+pub struct CompletedRequest {
+    pub id: u64,
+    pub method: String,
+    pub duration: Duration,
 }
 
 impl ServerWorldState {
@@ -73,6 +88,8 @@ impl ServerWorldState {
             workspaces: Arc::new(workspaces),
             analysis_host,
             vfs: Arc::new(RwLock::new(vfs)),
+            latest_completed_requests: Default::default(),
+            request_idx: 0,
         }
     }
 
@@ -137,6 +154,8 @@ impl ServerWorldState {
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
+            latest_completed_requests: Arc::clone(&self.latest_completed_requests),
+            request_idx: self.request_idx.checked_sub(1).unwrap_or(N_COMPLETED_REQUESTS - 1),
         }
     }
 
@@ -146,6 +165,16 @@ impl ServerWorldState {
 
     pub fn collect_garbage(&mut self) {
         self.analysis_host.collect_garbage()
+    }
+
+    pub fn complete_request(&mut self, request: CompletedRequest) {
+        // special case: don't track status request itself
+        if request.method == "rust-analyzer/analyzerStatus" {
+            return;
+        }
+        let idx = self.request_idx;
+        self.latest_completed_requests.write()[idx] = request;
+        self.request_idx = (idx + 1) % N_COMPLETED_REQUESTS;
     }
 }
 
