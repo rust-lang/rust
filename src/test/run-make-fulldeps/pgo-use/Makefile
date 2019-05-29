@@ -16,7 +16,7 @@
 COMMON_FLAGS=-Copt-level=s -Ccodegen-units=1
 
 # LLVM doesn't support instrumenting binaries that use SEH:
-# https://bugs.llvm.org/show_bug.cgi?id=41279
+# https://github.com/rust-lang/rust/issues/61002
 #
 # Things work fine with -Cpanic=abort though.
 ifdef IS_MSVC
