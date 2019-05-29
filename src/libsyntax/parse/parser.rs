@@ -1087,6 +1087,11 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
+    fn is_keyword_ahead(&self, dist: usize, kws: &[Symbol]) -> bool {
+        self.look_ahead(dist, |t| kws.iter().any(|&kw| t.is_keyword(kw)))
+    }
+
     /// Is the current token one of the keywords that signals a bare function type?
     fn token_is_bare_fn_keyword(&mut self) -> bool {
         self.check_keyword(kw::Fn) ||
@@ -4270,7 +4275,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Async) &&
         (
             ( // `async move {`
-                self.look_ahead(1, |t| t.is_keyword(kw::Move)) &&
+                self.is_keyword_ahead(1, &[kw::Move]) &&
                 self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))
             ) || ( // `async {`
                 self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace))
@@ -4280,12 +4285,12 @@ impl<'a> Parser<'a> {
 
     fn is_async_fn(&self) -> bool {
         self.token.is_keyword(kw::Async) &&
-            self.look_ahead(1, |t| t.is_keyword(kw::Fn))
+            self.is_keyword_ahead(1, &[kw::Fn])
     }
 
     fn is_do_catch_block(&self) -> bool {
         self.token.is_keyword(kw::Do) &&
-        self.look_ahead(1, |t| t.is_keyword(kw::Catch)) &&
+        self.is_keyword_ahead(1, &[kw::Catch]) &&
         self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace)) &&
         !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
@@ -4309,17 +4314,17 @@ impl<'a> Parser<'a> {
 
     fn is_existential_type_decl(&self) -> bool {
         self.token.is_keyword(kw::Existential) &&
-        self.look_ahead(1, |t| t.is_keyword(kw::Type))
+        self.is_keyword_ahead(1, &[kw::Type])
     }
 
     fn is_auto_trait_item(&self) -> bool {
         // auto trait
-        (self.token.is_keyword(kw::Auto)
-            && self.look_ahead(1, |t| t.is_keyword(kw::Trait)))
+        (self.token.is_keyword(kw::Auto) &&
+            self.is_keyword_ahead(1, &[kw::Trait]))
         || // unsafe auto trait
         (self.token.is_keyword(kw::Unsafe) &&
-         self.look_ahead(1, |t| t.is_keyword(kw::Auto)) &&
-         self.look_ahead(2, |t| t.is_keyword(kw::Trait)))
+         self.is_keyword_ahead(1, &[kw::Auto]) &&
+         self.is_keyword_ahead(2, &[kw::Trait]))
     }
 
     fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility, lo: Span)
@@ -5486,7 +5491,7 @@ impl<'a> Parser<'a> {
                 (if isolated_self(self, 1) {
                     self.bump();
                     SelfKind::Region(None, Mutability::Immutable)
-                } else if self.look_ahead(1, |t| t.is_keyword(kw::Mut)) &&
+                } else if self.is_keyword_ahead(1, &[kw::Mut]) &&
                           isolated_self(self, 2) {
                     self.bump();
                     self.bump();
@@ -5497,7 +5502,7 @@ impl<'a> Parser<'a> {
                     let lt = self.expect_lifetime();
                     SelfKind::Region(Some(lt), Mutability::Immutable)
                 } else if self.look_ahead(1, |t| t.is_lifetime()) &&
-                          self.look_ahead(2, |t| t.is_keyword(kw::Mut)) &&
+                          self.is_keyword_ahead(2, &[kw::Mut]) &&
                           isolated_self(self, 3) {
                     self.bump();
                     let lt = self.expect_lifetime();
@@ -5676,8 +5681,7 @@ impl<'a> Parser<'a> {
     /// (returns `false` for things like `const fn`, etc.).
     fn is_const_item(&self) -> bool {
         self.token.is_keyword(kw::Const) &&
-            !self.look_ahead(1, |t| t.is_keyword(kw::Fn)) &&
-            !self.look_ahead(1, |t| t.is_keyword(kw::Unsafe))
+            !self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe])
     }
 
     /// Parses all the "front matter" for a `fn` declaration, up to
@@ -5955,7 +5959,7 @@ impl<'a> Parser<'a> {
              self.look_ahead(1, |t| t.is_lifetime() || t.is_ident()) &&
                 self.look_ahead(2, |t| t == &token::Gt || t == &token::Comma ||
                                        t == &token::Colon || t == &token::Eq) ||
-             self.look_ahead(1, |t| t.is_keyword(kw::Const)))
+            self.is_keyword_ahead(1, &[kw::Const]))
     }
 
     fn parse_impl_body(&mut self) -> PResult<'a, (Vec<ImplItem>, Vec<Attribute>)> {
@@ -6316,7 +6320,7 @@ impl<'a> Parser<'a> {
             // `()` or a tuple might be allowed. For example, `struct Struct(pub (), pub (usize));`.
             // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
             // by the following tokens.
-            if self.look_ahead(1, |t| t.is_keyword(kw::Crate)) &&
+            if self.is_keyword_ahead(1, &[kw::Crate]) &&
                 self.look_ahead(2, |t| t != &token::ModSep) // account for `pub(crate::foo)`
             {
                 // `pub(crate)`
@@ -6328,7 +6332,7 @@ impl<'a> Parser<'a> {
                     VisibilityKind::Crate(CrateSugar::PubCrate),
                 );
                 return Ok(vis)
-            } else if self.look_ahead(1, |t| t.is_keyword(kw::In)) {
+            } else if self.is_keyword_ahead(1, &[kw::In]) {
                 // `pub(in path)`
                 self.bump(); // `(`
                 self.bump(); // `in`
@@ -6340,8 +6344,7 @@ impl<'a> Parser<'a> {
                 });
                 return Ok(vis)
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren)) &&
-                      self.look_ahead(1, |t| t.is_keyword(kw::Super) ||
-                                             t.is_keyword(kw::SelfLower))
+                      self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
             {
                 // `pub(self)` or `pub(super)`
                 self.bump(); // `(`
@@ -6380,13 +6383,16 @@ impl<'a> Parser<'a> {
     fn parse_defaultness(&mut self) -> Defaultness {
         // `pub` is included for better error messages
         if self.check_keyword(kw::Default) &&
-           self.look_ahead(1, |t| t.is_keyword(kw::Impl) ||
-                                  t.is_keyword(kw::Const) ||
-                                  t.is_keyword(kw::Fn) ||
-                                  t.is_keyword(kw::Unsafe) ||
-                                  t.is_keyword(kw::Extern) ||
-                                  t.is_keyword(kw::Type) ||
-                                  t.is_keyword(kw::Pub)) {
+            self.is_keyword_ahead(1, &[
+                kw::Impl,
+                kw::Const,
+                kw::Fn,
+                kw::Unsafe,
+                kw::Extern,
+                kw::Type,
+                kw::Pub,
+            ])
+        {
             self.bump(); // `default`
             Defaultness::Default
         } else {
@@ -6880,7 +6886,7 @@ impl<'a> Parser<'a> {
         //     Ident ["<"...">"] ["where" ...] ("=" | ":") Ty ";"
         if self.check_keyword(kw::Type) ||
            self.check_keyword(kw::Existential) &&
-                self.look_ahead(1, |t| t.is_keyword(kw::Type)) {
+                self.is_keyword_ahead(1, &[kw::Type]) {
             let existential = self.eat_keyword(kw::Existential);
             assert!(self.eat_keyword(kw::Type));
             Some(self.parse_existential_or_alias(existential))
@@ -7157,7 +7163,7 @@ impl<'a> Parser<'a> {
             let const_span = self.prev_span;
             if self.check_keyword(kw::Fn)
                 || (self.check_keyword(kw::Unsafe)
-                    && self.look_ahead(1, |t| t.is_keyword(kw::Fn))) {
+                    && self.is_keyword_ahead(1, &[kw::Fn])) {
                 // CONST FUNCTION ITEM
                 let unsafety = self.parse_unsafety();
                 self.bump();
@@ -7202,10 +7208,10 @@ impl<'a> Parser<'a> {
         // `unsafe async fn` or `async fn`
         if (
             self.check_keyword(kw::Unsafe) &&
-            self.look_ahead(1, |t| t.is_keyword(kw::Async))
+            self.is_keyword_ahead(1, &[kw::Async])
         ) || (
             self.check_keyword(kw::Async) &&
-            self.look_ahead(1, |t| t.is_keyword(kw::Fn))
+            self.is_keyword_ahead(1, &[kw::Fn])
         )
         {
             // ASYNC FUNCTION ITEM
@@ -7239,8 +7245,7 @@ impl<'a> Parser<'a> {
             return Ok(Some(item));
         }
         if self.check_keyword(kw::Unsafe) &&
-            (self.look_ahead(1, |t| t.is_keyword(kw::Trait)) ||
-            self.look_ahead(1, |t| t.is_keyword(kw::Auto)))
+            self.is_keyword_ahead(1, &[kw::Trait, kw::Auto])
         {
             // UNSAFE TRAIT ITEM
             self.bump(); // `unsafe`
@@ -7263,11 +7268,9 @@ impl<'a> Parser<'a> {
         }
         if self.check_keyword(kw::Impl) ||
            self.check_keyword(kw::Unsafe) &&
-                self.look_ahead(1, |t| t.is_keyword(kw::Impl)) ||
+                self.is_keyword_ahead(1, &[kw::Impl]) ||
            self.check_keyword(kw::Default) &&
-                self.look_ahead(1, |t| t.is_keyword(kw::Impl)) ||
-           self.check_keyword(kw::Default) &&
-                self.look_ahead(1, |t| t.is_keyword(kw::Unsafe)) {
+                self.is_keyword_ahead(1, &[kw::Impl, kw::Unsafe]) {
             // IMPL ITEM
             let defaultness = self.parse_defaultness();
             let unsafety = self.parse_unsafety();
@@ -7360,7 +7363,7 @@ impl<'a> Parser<'a> {
         }
         if self.check_keyword(kw::Trait)
             || (self.check_keyword(kw::Auto)
-                && self.look_ahead(1, |t| t.is_keyword(kw::Trait)))
+                && self.is_keyword_ahead(1, &[kw::Trait]))
         {
             let is_auto = if self.eat_keyword(kw::Trait) {
                 IsAuto::No
