@@ -529,13 +529,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         let op = match val.val {
             ConstValue::ByRef(ptr, _alloc) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
-                // where none should happen -- and for `static mut`, we copy on demand anyway.
+                // where none should happen.
                 let ptr = self.tag_static_base_pointer(ptr);
                 Operand::Indirect(MemPlace::from_ptr(ptr, layout.align.abi))
             },
             ConstValue::Scalar(x) =>
                 Operand::Immediate(Immediate::Scalar(tag_scalar(x).into())),
             ConstValue::Slice { data, start, end } => {
+                // We rely on mutability being set correctly in `data` to prevent writes
+                // where none should happen.
                 let ptr = Pointer::new(
                     self.tcx.alloc_map.lock().create_memory_alloc(data),
                     Size::from_bytes(start as u64), // offset: `start`
