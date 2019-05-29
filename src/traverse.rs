@@ -25,7 +25,7 @@ use rustc::{
     },
     ty::{
         subst::{InternalSubsts, Subst},
-        AssociatedItem, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt,
+        AssocItem, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt,
         Visibility,
         Visibility::Public,
     },
@@ -190,17 +190,17 @@ fn diff_structure<'a, 'tcx>(
                         match (o_kind, n_kind) {
                             // TODO: update comment
                             // matching items we don't care about because they are either
-                            // impossible to encounter at this stage (Mod, AssociatedTy, PrimTy,
-                            // TyParam, SelfTy, Ctor, AssociatedConst, Local, Upvar,
+                            // impossible to encounter at this stage (Mod, AssocTy, PrimTy,
+                            // TyParam, SelfTy, Ctor, AssocConst, Local, Upvar,
                             // Variant, Method, Err), whose analysis is out scope
                             // for us (GlobalAsm), or which don't requite further
                             // analysis at this stage (Const).
                             (Mod, Mod)
-                            | (AssociatedTy, AssociatedTy)
+                            | (AssocTy, AssocTy)
                             | (TyParam, TyParam)
                             | (Ctor(CtorOf::Struct, _), Ctor(CtorOf::Struct, _))
                             | (Ctor(CtorOf::Variant, _), Ctor(CtorOf::Variant, _))
-                            | (AssociatedConst, AssociatedConst)
+                            | (AssocConst, AssocConst)
                             | (Variant, Variant)
                             | (Const, Const)
                             | (Method, Method)
@@ -208,7 +208,7 @@ fn diff_structure<'a, 'tcx>(
                             | (TraitAlias, TraitAlias)
                             | (ForeignTy, ForeignTy)
                             | (ConstParam, ConstParam)
-                            | (AssociatedExistential, AssociatedExistential)
+                            | (AssocExistential, AssocExistential)
                             | (Existential, Existential) => {}
                             // statics are subject to mutability comparison
                             (Static, Static) => {
@@ -351,8 +351,8 @@ fn diff_fn<'a, 'tcx>(changes: &mut ChangeSet,
 fn diff_method<'a, 'tcx>(
     changes: &mut ChangeSet,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    old: AssociatedItem,
-    new: AssociatedItem,
+    old: AssocItem,
+    new: AssocItem,
 ) {
     if old.method_has_self_argument != new.method_has_self_argument {
         changes.add_change(
@@ -1104,10 +1104,10 @@ fn match_inherent_impl<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     orig_impl_def_id: DefId,
     target_impl_def_id: DefId,
-    orig_item: AssociatedItem,
-    target_item: AssociatedItem,
+    orig_item: AssocItem,
+    target_item: AssocItem,
 ) -> bool {
-    use rustc::ty::AssociatedKind;
+    use rustc::ty::AssocKind;
 
     debug!(
         "match_inherent_impl: orig_impl/item: {:?}/{:?}, target_impl/item: {:?}/{:?}",
@@ -1181,12 +1181,12 @@ fn match_inherent_impl<'a, 'tcx>(
 
         // prepare the item type for comparison, as we do for toplevel items' types
         let (orig, target) = match (orig_item.kind, target_item.kind) {
-            (AssociatedKind::Const, AssociatedKind::Const)
-            | (AssociatedKind::Type, AssociatedKind::Type) => (
+            (AssocKind::Const, AssocKind::Const)
+            | (AssocKind::Type, AssocKind::Type) => (
                 infcx.tcx.type_of(orig_item_def_id),
                 infcx.tcx.type_of(target_item_def_id),
             ),
-            (AssociatedKind::Method, AssociatedKind::Method) => {
+            (AssocKind::Method, AssocKind::Method) => {
                 diff_method(changes, tcx, orig_item, target_item);
                 let orig_sig = infcx.tcx.type_of(orig_item_def_id).fn_sig(tcx);
                 let target_sig = infcx.tcx.type_of(target_item_def_id).fn_sig(tcx);

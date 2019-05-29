@@ -238,8 +238,8 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
             (&TyKind::Projection(a_data), &TyKind::Projection(b_data)) => {
                 let _ = self.relate(&a_data, &b_data)?;
 
-                let a = Res::Def(DefKind::AssociatedTy, a_data.item_def_id);
-                let b = Res::Def(DefKind::AssociatedTy, b_data.item_def_id);
+                let a = Res::Def(DefKind::AssocTy, a_data.item_def_id);
+                let b = Res::Def(DefKind::AssocTy, b_data.item_def_id);
 
                 Some((a, b))
             }

@@ -9,7 +9,7 @@ use rustc::{
         def_id::{CrateNum, DefId},
         HirId,
     },
-    ty::{AssociatedKind, GenericParamDef, GenericParamDefKind},
+    ty::{AssocKind, GenericParamDef, GenericParamDefKind},
 };
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use syntax::ast::Name;
@@ -20,7 +20,7 @@ pub struct InherentEntry {
     /// The parent item's `DefId`.
     pub parent_def_id: DefId,
     /// The kind of the item.
-    pub kind: AssociatedKind,
+    pub kind: AssocKind,
     /// The item's name.
     pub name: Name,
 }
@@ -171,7 +171,7 @@ impl IdMapping {
     pub fn add_inherent_item(
         &mut self,
         parent_def_id: DefId,
-        kind: AssociatedKind,
+        kind: AssocKind,
         name: Name,
         impl_def_id: DefId,
         item_def_id: DefId,
@@ -330,8 +330,8 @@ impl NameMapping {
                 TyAlias |
                 ForeignTy |
                 TraitAlias | // TODO: will need some handling later on
-                AssociatedTy |
-                AssociatedExistential |
+                AssocTy |
+                AssocExistential |
                 TyParam => Some(&mut self.type_map),
                 Fn |
                 Const |
@@ -339,7 +339,7 @@ impl NameMapping {
                 Static |
                 Ctor(_, _) |
                 Method |
-                AssociatedConst => Some(&mut self.value_map),
+                AssocConst => Some(&mut self.value_map),
                 Macro(_) => Some(&mut self.macro_map),
             },
             PrimTy(_) | SelfTy(_, _) => Some(&mut self.type_map),

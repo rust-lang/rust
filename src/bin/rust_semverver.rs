@@ -69,7 +69,7 @@ fn main() {
                                     index: CRATE_DEF_INDEX,
                                 };
 
-                                match *tcx.extern_crate(def_id) {
+                                match tcx.extern_crate(def_id) {
                                     Some(ExternCrate {
                                         span, direct: true, ..
                                     }) if span.data().lo.to_usize() > 0 =>
