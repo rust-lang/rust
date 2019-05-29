@@ -18,7 +18,8 @@ use tempfile::TempDir;
 use crate::support::{project, Project};
 
 const LOG: &'static str = "";
-const PROFILE: &'static str = "*@3>100";
+const PROFILE: &'static str = "";
+// const PROFILE: &'static str = "*@3>100";
 
 #[test]
 fn completes_items_from_standard_library() {
