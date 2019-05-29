@@ -183,7 +183,7 @@ pub fn transcribe(
 
                         // Is the repetition empty?
                         if len == 0 {
-                            if seq.op == quoted::KleeneOp::OneOrMore {
+                            if seq.kleene.op == quoted::KleeneOp::OneOrMore {
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.

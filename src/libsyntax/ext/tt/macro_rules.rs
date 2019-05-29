@@ -273,7 +273,7 @@ pub fn compile(
                     if body.legacy { token::Semi } else { token::Comma },
                     def.span,
                 )),
-                op: quoted::KleeneOp::OneOrMore,
+                kleene: quoted::KleeneToken::new(quoted::KleeneOp::OneOrMore, def.span),
                 num_captures: 2,
             }),
         ),
@@ -283,7 +283,7 @@ pub fn compile(
             Lrc::new(quoted::SequenceRepetition {
                 tts: vec![quoted::TokenTree::token(token::Semi, def.span)],
                 separator: None,
-                op: quoted::KleeneOp::ZeroOrMore,
+                kleene: quoted::KleeneToken::new(quoted::KleeneOp::ZeroOrMore, def.span),
                 num_captures: 0,
             }),
         ),
@@ -477,8 +477,8 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
                     && seq.tts.iter().all(|seq_tt| match *seq_tt {
                         TokenTree::MetaVarDecl(_, _, id) => id.name == sym::vis,
                         TokenTree::Sequence(_, ref sub_seq) => {
-                            sub_seq.op == quoted::KleeneOp::ZeroOrMore
-                                || sub_seq.op == quoted::KleeneOp::ZeroOrOne
+                            sub_seq.kleene.op == quoted::KleeneOp::ZeroOrMore
+                                || sub_seq.kleene.op == quoted::KleeneOp::ZeroOrOne
                         }
                         _ => false,
                     })
@@ -628,8 +628,8 @@ impl FirstSets {
 
                         // Reverse scan: Sequence comes before `first`.
                         if subfirst.maybe_empty
-                            || seq_rep.op == quoted::KleeneOp::ZeroOrMore
-                            || seq_rep.op == quoted::KleeneOp::ZeroOrOne
+                            || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrMore
+                            || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrOne
                         {
                             // If sequence is potentially empty, then
                             // union them (preserving first emptiness).
@@ -677,8 +677,8 @@ impl FirstSets {
                             assert!(first.maybe_empty);
                             first.add_all(subfirst);
                             if subfirst.maybe_empty
-                                || seq_rep.op == quoted::KleeneOp::ZeroOrMore
-                                || seq_rep.op == quoted::KleeneOp::ZeroOrOne
+                                || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrMore
+                                || seq_rep.kleene.op == quoted::KleeneOp::ZeroOrOne
                             {
                                 // continue scanning for more first
                                 // tokens, but also make sure we
