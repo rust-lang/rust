@@ -1,6 +1,8 @@
 use rustc_hash::{FxHashSet, FxHashMap};
 
-use ra_syntax::{ast, AstNode, TextRange, Direction, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxElement, T};
+use ra_syntax::{
+    ast, AstNode, TextRange, Direction, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxElement, T,
+};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 
@@ -116,6 +118,19 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                             calc_binding_hash(file_id, &text, *shadow_count)
                         });
                         "variable"
+                    } else if name
+                        .syntax()
+                        .parent()
+                        .map(|x| {
+                            x.kind() == TYPE_PARAM
+                                || x.kind() == STRUCT_DEF
+                                || x.kind() == ENUM_DEF
+                                || x.kind() == TRAIT_DEF
+                                || x.kind() == TYPE_ALIAS_DEF
+                        })
+                        .unwrap_or(false)
+                    {
+                        "type"
                     } else {
                         "function"
                     }
@@ -263,6 +278,7 @@ struct Foo {
 
 fn foo<T>() -> T {
     unimplemented!();
+    foo::<i32>();
 }
 
 // comment

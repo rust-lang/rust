@@ -18,13 +18,14 @@ pre        { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4e
 .keyword\.control { color: #DC8CC3; }
 </style>
 <pre><code><span class="attribute">#</span><span class="attribute">[</span><span class="attribute">derive</span><span class="attribute">(</span><span class="attribute">Clone</span><span class="attribute">,</span><span class="attribute"> </span><span class="attribute">Debug</span><span class="attribute">)</span><span class="attribute">]</span>
-<span class="keyword">struct</span> <span class="function">Foo</span> {
+<span class="keyword">struct</span> <span class="type">Foo</span> {
     <span class="keyword">pub</span> <span class="function">x</span>: <span class="text">i32</span>,
     <span class="keyword">pub</span> <span class="function">y</span>: <span class="text">i32</span>,
 }
 
-<span class="keyword">fn</span> <span class="function">foo</span>&lt;<span class="type function">T</span>&gt;() -&gt; <span class="type">T</span> {
+<span class="keyword">fn</span> <span class="function">foo</span>&lt;<span class="type type">T</span>&gt;() -&gt; <span class="type">T</span> {
     <span class="macro">unimplemented</span><span class="macro">!</span>();
+    <span class="function">foo</span>::&lt;<span class="type text">i32</span>&gt;();
 }
 
 <span class="comment">// comment</span>
