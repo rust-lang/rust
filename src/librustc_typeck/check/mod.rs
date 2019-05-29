@@ -5010,6 +5010,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Applicability::MachineApplicable,
             );
         } else if !self.check_for_cast(err, expr, found, expected) {
+            let is_struct_pat_shorthand_field = self.is_hir_id_from_struct_pattern_shorthand_field(
+                expr.hir_id,
+                expr.span,
+            );
             let methods = self.get_conversion_methods(expr.span, expected, found);
             if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
                 let mut suggestions = iter::repeat(&expr_text).zip(methods.iter())
@@ -5019,14 +5023,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             None  // do not suggest code that is already there (#53348)
                         } else {
                             let method_call_list = [".to_vec()", ".to_string()"];
-                            if receiver.ends_with(".clone()")
+                            let sugg = if receiver.ends_with(".clone()")
                                     && method_call_list.contains(&method_call.as_str()) {
                                 let max_len = receiver.rfind(".").unwrap();
-                                Some(format!("{}{}", &receiver[..max_len], method_call))
-                            }
-                            else {
-                                Some(format!("{}{}", receiver, method_call))
-                            }
+                                format!("{}{}", &receiver[..max_len], method_call)
+                            } else {
+                                format!("{}{}", receiver, method_call)
+                            };
+                            Some(if is_struct_pat_shorthand_field {
+                                format!("{}: {}", receiver, sugg)
+                            } else {
+                                sugg
+                            })
                         }
                     }).peekable();
                 if suggestions.peek().is_some() {

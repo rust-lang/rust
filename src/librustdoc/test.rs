@@ -17,7 +17,7 @@ use std::io::prelude::*;
 use std::io;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{self, Command};
 use std::str;
 use std::sync::{Arc, Mutex};
 use syntax::symbol::sym;
@@ -160,13 +160,45 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     opts
 }
 
-fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
-            cfgs: Vec<String>, libs: Vec<SearchPath>,
-            cg: CodegenOptions, externs: Externs,
-            should_panic: bool, no_run: bool, as_test_harness: bool,
-            compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
-            maybe_sysroot: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
-            persist_doctests: Option<PathBuf>) {
+/// Documentation test failure modes.
+enum TestFailure {
+    /// The test failed to compile.
+    CompileError,
+    /// The test is marked `compile_fail` but compiled successfully.
+    UnexpectedCompilePass,
+    /// The test failed to compile (as expected) but the compiler output did not contain all
+    /// expected error codes.
+    MissingErrorCodes(Vec<String>),
+    /// The test binary was unable to be executed.
+    ExecutionError(io::Error),
+    /// The test binary exited with a non-zero exit code.
+    ///
+    /// This typically means an assertion in the test failed or another form of panic occurred.
+    ExecutionFailure(process::Output),
+    /// The test is marked `should_panic` but the test binary executed successfully.
+    UnexpectedRunPass,
+}
+
+fn run_test(
+    test: &str,
+    cratename: &str,
+    filename: &FileName,
+    line: usize,
+    cfgs: Vec<String>,
+    libs: Vec<SearchPath>,
+    cg: CodegenOptions,
+    externs: Externs,
+    should_panic: bool,
+    no_run: bool,
+    as_test_harness: bool,
+    compile_fail: bool,
+    mut error_codes: Vec<String>,
+    opts: &TestOptions,
+    maybe_sysroot: Option<PathBuf>,
+    linker: Option<PathBuf>,
+    edition: Edition,
+    persist_doctests: Option<PathBuf>,
+) -> Result<(), TestFailure> {
     let (test, line_offset) = match panic::catch_unwind(|| {
         make_test(test, Some(cratename), as_test_harness, opts, edition)
     }) {
@@ -307,44 +339,43 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
 
     match (compile_result, compile_fail) {
         (Ok(()), true) => {
-            panic!("test compiled while it wasn't supposed to")
+            return Err(TestFailure::UnexpectedCompilePass);
         }
         (Ok(()), false) => {}
         (Err(_), true) => {
-            if error_codes.len() > 0 {
+            if !error_codes.is_empty() {
                 let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
                 error_codes.retain(|err| !out.contains(err));
+
+                if !error_codes.is_empty() {
+                    return Err(TestFailure::MissingErrorCodes(error_codes));
+                }
             }
         }
         (Err(_), false) => {
-            panic!("couldn't compile the test")
+            return Err(TestFailure::CompileError);
         }
     }
 
-    if error_codes.len() > 0 {
-        panic!("Some expected error codes were not found: {:?}", error_codes);
+    if no_run {
+        return Ok(());
     }
-
-    if no_run { return }
 
     // Run the code!
     let mut cmd = Command::new(output_file);
 
     match cmd.output() {
-        Err(e) => panic!("couldn't run the test: {}{}", e,
-                        if e.kind() == io::ErrorKind::PermissionDenied {
-                            " - maybe your tempdir is mounted with noexec?"
-                        } else { "" }),
+        Err(e) => return Err(TestFailure::ExecutionError(e)),
         Ok(out) => {
             if should_panic && out.status.success() {
-                panic!("test executable succeeded when it should have failed");
+                return Err(TestFailure::UnexpectedRunPass);
             } else if !should_panic && !out.status.success() {
-                panic!("test executable failed:\n{}\n{}\n",
-                       str::from_utf8(&out.stdout).unwrap_or(""),
-                       str::from_utf8(&out.stderr).unwrap_or(""));
+                return Err(TestFailure::ExecutionFailure(out));
             }
         }
     }
+
+    Ok(())
 }
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
@@ -711,7 +742,7 @@ impl Tester for Collector {
                 allow_fail: config.allow_fail,
             },
             testfn: testing::DynTestFn(box move || {
-                run_test(
+                let res = run_test(
                     &test,
                     &cratename,
                     &filename,
@@ -730,7 +761,65 @@ impl Tester for Collector {
                     linker,
                     edition,
                     persist_doctests
-                )
+                );
+
+                if let Err(err) = res {
+                    match err {
+                        TestFailure::CompileError => {
+                            eprint!("Couldn't compile the test.");
+                        }
+                        TestFailure::UnexpectedCompilePass => {
+                            eprint!("Test compiled successfully, but it's marked `compile_fail`.");
+                        }
+                        TestFailure::UnexpectedRunPass => {
+                            eprint!("Test executable succeeded, but it's marked `should_panic`.");
+                        }
+                        TestFailure::MissingErrorCodes(codes) => {
+                            eprint!("Some expected error codes were not found: {:?}", codes);
+                        }
+                        TestFailure::ExecutionError(err) => {
+                            eprint!("Couldn't run the test: {}", err);
+                            if err.kind() == io::ErrorKind::PermissionDenied {
+                                eprint!(" - maybe your tempdir is mounted with noexec?");
+                            }
+                        }
+                        TestFailure::ExecutionFailure(out) => {
+                            let reason = if let Some(code) = out.status.code() {
+                                format!("exit code {}", code)
+                            } else {
+                                String::from("terminated by signal")
+                            };
+
+                            eprintln!("Test executable failed ({}).", reason);
+
+                            // FIXME(#12309): An unfortunate side-effect of capturing the test
+                            // executable's output is that the relative ordering between the test's
+                            // stdout and stderr is lost. However, this is better than the
+                            // alternative: if the test executable inherited the parent's I/O
+                            // handles the output wouldn't be captured at all, even on success.
+                            //
+                            // The ordering could be preserved if the test process' stderr was
+                            // redirected to stdout, but that functionality does not exist in the
+                            // standard library, so it may not be portable enough.
+                            let stdout = str::from_utf8(&out.stdout).unwrap_or_default();
+                            let stderr = str::from_utf8(&out.stderr).unwrap_or_default();
+
+                            if !stdout.is_empty() || !stderr.is_empty() {
+                                eprintln!();
+
+                                if !stdout.is_empty() {
+                                    eprintln!("stdout:\n{}", stdout);
+                                }
+
+                                if !stderr.is_empty() {
+                                    eprintln!("stderr:\n{}", stderr);
+                                }
+                            }
+                        }
+                    }
+
+                    panic::resume_unwind(box ());
+                }
             }),
         });
     }
