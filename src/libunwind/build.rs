@@ -2,7 +2,7 @@ use std::env;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    let target = env::var("TARGET").expect("TARGET was not set");
+    let target = env!("TARGET","TARGET was not set");
 
     if cfg!(feature = "llvm-libunwind") &&
         (target.contains("linux") ||
@@ -51,8 +51,8 @@ mod llvm_libunwind {
 
     /// Compile the libunwind C/C++ source code.
     pub fn compile() {
-        let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-        let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
+        let target_env = env!("CARGO_CFG_TARGET_ENV","CARGO_CFG_TARGET_ENV not found");
+        let target_vendor = env!("CARGO_CFG_TARGET_VENDOR","CARGO_CFG_TARGET_VENDOR not found");
         let cfg = &mut cc::Build::new();
 
         cfg.cpp(true);
