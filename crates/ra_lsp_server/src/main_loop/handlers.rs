@@ -34,7 +34,7 @@ pub fn handle_analyzer_status(world: ServerWorld, _: ()) -> Result<String> {
     let requests = world.latest_completed_requests.read();
     for (idx, r) in requests.iter().enumerate() {
         let current = if idx == world.request_idx { "*" } else { " " };
-        writeln!(buf, "{:4}{}{:<36}: {:?}", r.id, current, r.method, r.duration).unwrap();
+        writeln!(buf, "{:4}{}{:<36}{}ms", r.id, current, r.method, r.duration.as_millis()).unwrap();
     }
     Ok(buf)
 }
