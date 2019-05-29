@@ -100,6 +100,16 @@ impl HasCodegen<'tcx> for Builder<'_, 'll, 'tcx> {
     type CodegenCx = CodegenCx<'ll, 'tcx>;
 }
 
+macro_rules! builder_methods_for_value_instructions {
+    ($($name:ident($($arg:ident),*) => $llvm_capi:ident),+ $(,)?) => {
+        $(fn $name(&mut self, $($arg: &'ll Value),*) -> &'ll Value {
+            unsafe {
+                llvm::$llvm_capi(self.llbuilder, $($arg,)* noname())
+            }
+        })*
+    }
+}
+
 impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn new_block<'b>(
         cx: &'a CodegenCx<'ll, 'tcx>,
@@ -227,17 +237,30 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    /* Arithmetic */
-    fn add(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildAdd(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn fadd(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildFAdd(self.llbuilder, lhs, rhs, noname())
-        }
+    builder_methods_for_value_instructions! {
+        add(a, b) => LLVMBuildAdd,
+        fadd(a, b) => LLVMBuildFAdd,
+        sub(a, b) => LLVMBuildSub,
+        fsub(a, b) => LLVMBuildFSub,
+        mul(a, b) => LLVMBuildMul,
+        fmul(a, b) => LLVMBuildFMul,
+        udiv(a, b) => LLVMBuildUDiv,
+        exactudiv(a, b) => LLVMBuildExactUDiv,
+        sdiv(a, b) => LLVMBuildSDiv,
+        exactsdiv(a, b) => LLVMBuildExactSDiv,
+        fdiv(a, b) => LLVMBuildFDiv,
+        urem(a, b) => LLVMBuildURem,
+        srem(a, b) => LLVMBuildSRem,
+        frem(a, b) => LLVMBuildFRem,
+        shl(a, b) => LLVMBuildShl,
+        lshr(a, b) => LLVMBuildLShr,
+        ashr(a, b) => LLVMBuildAShr,
+        and(a, b) => LLVMBuildAnd,
+        or(a, b) => LLVMBuildOr,
+        xor(a, b) => LLVMBuildXor,
+        neg(x) => LLVMBuildNeg,
+        fneg(x) => LLVMBuildFNeg,
+        not(x) => LLVMBuildNot,
     }
 
     fn fadd_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
@@ -245,18 +268,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let instr = llvm::LLVMBuildFAdd(self.llbuilder, lhs, rhs, noname());
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
-        }
-    }
-
-    fn sub(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildSub(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn fsub(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildFSub(self.llbuilder, lhs, rhs, noname())
         }
     }
 
@@ -268,54 +279,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn mul(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildMul(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn fmul(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildFMul(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
     fn fmul_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFMul(self.llbuilder, lhs, rhs, noname());
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
-        }
-    }
-
-
-    fn udiv(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildUDiv(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn exactudiv(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildExactUDiv(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn sdiv(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildSDiv(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn exactsdiv(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildExactSDiv(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn fdiv(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildFDiv(self.llbuilder, lhs, rhs, noname())
         }
     }
 
@@ -327,83 +295,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn urem(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildURem(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn srem(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildSRem(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn frem(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildFRem(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
     fn frem_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFRem(self.llbuilder, lhs, rhs, noname());
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
-        }
-    }
-
-    fn shl(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildShl(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn lshr(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildLShr(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn ashr(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildAShr(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn and(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildAnd(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn or(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildOr(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn xor(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildXor(self.llbuilder, lhs, rhs, noname())
-        }
-    }
-
-    fn neg(&mut self, v: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildNeg(self.llbuilder, v, noname())
-        }
-    }
-
-    fn fneg(&mut self, v: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildFNeg(self.llbuilder, v, noname())
-        }
-    }
-
-    fn not(&mut self, v: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildNot(self.llbuilder, v, noname())
         }
     }
 
