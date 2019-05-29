@@ -14,7 +14,9 @@ mod foo {
 
     impl Foo<::llvm::Foo> {
         #[rustc_symbol_name]
-//~^ ERROR _ZN11issue_609253foo36Foo$LT$issue_60925..llv$6d$..Foo$GT$3foo17h059a991a004536adE
+        //~^ ERROR symbol-name(_ZN11issue_609253foo36Foo$LT$issue_60925..llv$6d$..Foo$GT$3foo
+        //~| ERROR demangling(issue_60925::foo::Foo<issue_60925::llv$6d$..Foo$GT$::foo
+        //~| ERROR demangling-alt(issue_60925::foo::Foo<issue_60925::llv$6d$..Foo$GT$::foo)
         pub(crate) fn foo() {
             for _ in 0..0 {
                 for _ in &[::dummy()] {
