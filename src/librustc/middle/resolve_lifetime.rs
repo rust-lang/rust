@@ -2146,41 +2146,44 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // First (determined here), if `self` is by-reference, then the
         // implied output region is the region of the self parameter.
         if has_self {
-            // Look for `self: &'a Self` - also desugared from `&'a self`,
-            // and if that matches, use it for elision and return early.
-            let is_self_ty = |res: Res| {
-                if let Res::SelfTy(..) = res {
-                    return true;
-                }
-
-                // Can't always rely on literal (or implied) `Self` due
-                // to the way elision rules were originally specified.
-                let impl_self = impl_self.map(|ty| &ty.node);
-                if let Some(&hir::TyKind::Path(hir::QPath::Resolved(None, ref path))) = impl_self {
-                    match path.res {
-                        // Whitelist the types that unambiguously always
-                        // result in the same type constructor being used
-                        // (it can't differ between `Self` and `self`).
-                        Res::Def(DefKind::Struct, _)
-                        | Res::Def(DefKind::Union, _)
-                        | Res::Def(DefKind::Enum, _)
-                        | Res::PrimTy(_) => {
-                            return res == path.res
-                        }
-                        _ => {}
-                    }
-                }
-
-                false
-            };
-
-            struct SelfVisitor<'a, F: FnMut(Res) -> bool> {
-                is_self_ty: F,
+            struct SelfVisitor<'a> {
                 map: &'a NamedRegionMap,
+                impl_self: Option<&'a hir::TyKind>,
                 lifetime: Option<Region>,
             }
 
-            impl<'a, F: FnMut(Res) -> bool> Visitor<'a> for SelfVisitor<'a, F> {
+            impl SelfVisitor<'_> {
+                // Look for `self: &'a Self` - also desugared from `&'a self`,
+                // and if that matches, use it for elision and return early.
+                fn is_self_ty(&self, res: Res) -> bool {
+                    if let Res::SelfTy(..) = res {
+                        return true;
+                    }
+
+                    // Can't always rely on literal (or implied) `Self` due
+                    // to the way elision rules were originally specified.
+                    if let Some(&hir::TyKind::Path(hir::QPath::Resolved(None, ref path))) =
+                        self.impl_self
+                    {
+                        match path.res {
+                            // Whitelist the types that unambiguously always
+                            // result in the same type constructor being used
+                            // (it can't differ between `Self` and `self`).
+                            Res::Def(DefKind::Struct, _)
+                            | Res::Def(DefKind::Union, _)
+                            | Res::Def(DefKind::Enum, _)
+                            | Res::PrimTy(_) => {
+                                return res == path.res
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    false
+                }
+            }
+
+            impl<'a> Visitor<'a> for SelfVisitor<'a> {
                 fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'a> {
                     NestedVisitorMap::None
                 }
@@ -2189,7 +2192,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     if let hir::TyKind::Rptr(lifetime_ref, ref mt) = ty.node {
                         if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node
                         {
-                            if (self.is_self_ty)(path.res) {
+                            if self.is_self_ty(path.res) {
                                 self.lifetime = self.map.defs.get(&lifetime_ref.hir_id).copied();
                                 return;
                             }
@@ -2200,8 +2203,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             let mut visitor = SelfVisitor {
-                is_self_ty,
                 map: self.map,
+                impl_self: impl_self.map(|ty| &ty.node),
                 lifetime: None,
             };
             visitor.visit_ty(&inputs[0]);
