@@ -33,9 +33,19 @@ error: expected one of `:` or `@`, found `)`
    |
 LL | fn fizz(i32) {}
    |            ^ expected one of `:` or `@` here
+   |
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this was a parameter name, give it a type
+   |
+LL | fn fizz(i32: TypeName) {}
+   |         ^^^^^^^^^^^^^
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | fn fizz(_: i32) {}
+   |         ^^^^^^
 
 error: expected one of `:` or `@`, found `S`
-  --> $DIR/inverted-parameters.rs:24:23
+  --> $DIR/inverted-parameters.rs:26:23
    |
 LL | fn missing_colon(quux S) {}
    |                  -----^

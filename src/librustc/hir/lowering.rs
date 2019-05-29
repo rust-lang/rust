@@ -2298,7 +2298,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_arg_source(&mut self, source: &ArgSource) -> hir::ArgSource {
         match source {
-            ArgSource::Normal => hir::ArgSource::Normal,
+            ArgSource::Normal | ArgSource::Recovery => hir::ArgSource::Normal,
             ArgSource::AsyncFn(pat) => hir::ArgSource::AsyncFn(self.lower_pat(pat)),
         }
     }

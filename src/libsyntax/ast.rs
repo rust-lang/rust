@@ -1780,6 +1780,8 @@ pub enum ArgSource {
     Normal,
     /// Argument from `async fn` lowering, contains the original binding pattern.
     AsyncFn(P<Pat>),
+    /// Placeholder argument caused by incorrect syntax. Used to silence unecessary errors.
+    Recovery,
 }
 
 /// Alternative representation for `Arg`s describing `self` parameter of methods.

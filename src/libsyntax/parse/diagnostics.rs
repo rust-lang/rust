@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::ast::{
     BlockCheckMode, BinOpKind, Expr, ExprKind, Item, ItemKind, Pat, PatKind, PathSegment, QSelf,
-    Ty, TyKind, VariantData,
+    Ty, TyKind, VariantData, Ident,
 };
 use crate::parse::{SeqSep, token, PResult, Parser};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
@@ -1092,12 +1092,12 @@ impl<'a> Parser<'a> {
         pat: P<ast::Pat>,
         require_name: bool,
         is_trait_item: bool,
-    ) {
+    ) -> Option<Ident> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
         // C-style parameter declaration.
         if self.check_ident() && self.look_ahead(1, |t| {
             *t == token::Comma || *t == token::CloseDelim(token::Paren)
-        }) {
+        }) { // `fn foo(String s) {}`
             let ident = self.parse_ident().unwrap();
             let span = pat.span.with_hi(ident.span.hi());
 
@@ -1107,18 +1107,30 @@ impl<'a> Parser<'a> {
                 String::from("<identifier>: <type>"),
                 Applicability::HasPlaceholders,
             );
-        } else if require_name && is_trait_item {
-            if let PatKind::Ident(_, ident, _) = pat.node {
+            return Some(ident);
+        } else if let PatKind::Ident(_, ident, _) = pat.node {
+            if require_name && (
+                is_trait_item ||
+                self.token == token::Comma ||
+                self.token == token::CloseDelim(token::Paren)
+            ) { // `fn foo(a, b) {}` or `fn foo(usize, usize) {}`
                 err.span_suggestion(
                     pat.span,
-                    "explicitly ignore parameter",
+                    "if this was a parameter name, give it a type",
+                    format!("{}: TypeName", ident),
+                    Applicability::HasPlaceholders,
+                );
+                err.span_suggestion(
+                    pat.span,
+                    "if this is a type, explicitly ignore the parameter name",
                     format!("_: {}", ident),
                     Applicability::MachineApplicable,
                 );
+                err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
+                return Some(ident);
             }
-
-            err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
         }
+        None
     }
 
     crate fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
