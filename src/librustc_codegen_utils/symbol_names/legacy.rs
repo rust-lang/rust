@@ -18,6 +18,7 @@ pub(super) fn mangle(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     instantiating_crate: Option<CrateNum>,
+    include_generic_args: bool,
 ) -> String {
     let def_id = instance.def_id();
 
@@ -56,11 +57,17 @@ pub(super) fn mangle(
 
     let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
 
+    let substs = if include_generic_args {
+        // FIXME(eddyb) this should ideally not be needed.
+        &tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), instance.substs)[..]
+    } else {
+        &[]
+    };
     let mut printer = SymbolPrinter {
         tcx,
         path: SymbolPath::new(),
         keep_within_component: false,
-    }.print_def_path(def_id, &[]).unwrap();
+    }.print_def_path(def_id, substs).unwrap();
 
     if instance.is_vtable_shim() {
         let _ = printer.write_str("{{vtable-shim}}");

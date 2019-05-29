@@ -23,3 +23,7 @@ rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
+
+[dependencies.std-mangle-rs]
+git = "https://github.com/michaelwoerister/std-mangle-rs"
+rev = "2336dcdfcc91db3cdda18eda73aca488773ac6fc"
