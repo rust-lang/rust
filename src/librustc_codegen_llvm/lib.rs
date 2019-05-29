@@ -8,6 +8,7 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(const_cstr_unchecked)]
 #![feature(crate_visibility_modifier)]
 #![feature(custom_attribute)]
 #![feature(extern_types)]
