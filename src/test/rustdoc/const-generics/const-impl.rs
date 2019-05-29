@@ -1,7 +1,8 @@
-#![feature(const_generics)]
-#![crate_name = "foo"]
-
 // ignore-tidy-linelength
+
+#![feature(const_generics)]
+
+#![crate_name = "foo"]
 
 pub enum Order {
     Sorted,
