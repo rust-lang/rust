@@ -17,7 +17,7 @@ fn main() {
     if let Some(arg) = env::args().nth(1) {
         match &arg[..] {
             "test1" => println!("hello2"),
-            "test2" => assert_eq!(env::var("FOO").unwrap(), "BAR"),
+            "test2" => assert_eq!(env!("FOO","FOO not found"), "BAR"),
             "test3" => assert_eq!(env::current_dir().unwrap().to_str().unwrap(), "/"),
             "empty" => {}
             _ => panic!("unknown argument: {}", arg),
