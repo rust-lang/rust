@@ -227,7 +227,7 @@ impl Drop for Server {
 }
 
 fn recv_timeout(receiver: &Receiver<RawMessage>) -> Option<RawMessage> {
-    let timeout = Duration::from_secs(50);
+    let timeout = Duration::from_secs(120);
     select! {
         recv(receiver) -> msg => msg.ok(),
         recv(after(timeout)) -> _ => panic!("timed out"),

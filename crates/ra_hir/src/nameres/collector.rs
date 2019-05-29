@@ -112,6 +112,7 @@ where
         // main name resolution fixed-point loop.
         let mut i = 0;
         loop {
+            self.db.check_canceled();
             match (self.resolve_imports(), self.resolve_macros()) {
                 (ReachedFixedPoint::Yes, ReachedFixedPoint::Yes) => break,
                 _ => i += 1,
