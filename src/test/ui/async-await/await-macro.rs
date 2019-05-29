@@ -122,7 +122,7 @@ fn async_fn_with_internal_borrow(y: u8) -> impl Future<Output = u8> {
     }
 }
 
-unsafe async fn unsafe_async_fn(x: u8) -> u8 {
+async unsafe fn unsafe_async_fn(x: u8) -> u8 {
     await!(wake_and_yield_once());
     x
 }
