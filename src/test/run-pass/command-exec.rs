@@ -41,7 +41,7 @@ fn main() {
             "exec-test5" => {
                 env::set_var("VARIABLE", "ABC");
                 Command::new("definitely-not-a-real-binary").env("VARIABLE", "XYZ").exec();
-                assert_eq!(env::var("VARIABLE").unwrap(), "ABC");
+                assert_eq!(env!("VARIABLE","VARIABLE not found"), "ABC");
                 println!("passed");
             }
 
