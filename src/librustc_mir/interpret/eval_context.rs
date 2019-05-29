@@ -44,9 +44,9 @@ pub struct InterpretCx<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
 
     /// A cache for deduplicating vtables
     pub(super) vtables: FxHashMap<
-            (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
-            Pointer<M::PointerTag>
-        >,
+        (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
+        Pointer<M::PointerTag>
+    >,
 }
 
 /// A stack frame.
