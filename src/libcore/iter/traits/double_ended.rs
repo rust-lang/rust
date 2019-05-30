@@ -88,7 +88,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iter_nth_back)]
     /// let a = [1, 2, 3];
     /// assert_eq!(a.iter().nth_back(2), Some(&1));
     /// ```
@@ -96,7 +95,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Calling `nth_back()` multiple times doesn't rewind the iterator:
     ///
     /// ```
-    /// #![feature(iter_nth_back)]
     /// let a = [1, 2, 3];
     ///
     /// let mut iter = a.iter();
@@ -108,12 +106,11 @@ pub trait DoubleEndedIterator: Iterator {
     /// Returning `None` if there are less than `n + 1` elements:
     ///
     /// ```
-    /// #![feature(iter_nth_back)]
     /// let a = [1, 2, 3];
     /// assert_eq!(a.iter().nth_back(10), None);
     /// ```
     #[inline]
-    #[unstable(feature = "iter_nth_back", issue = "56995")]
+    #[stable(feature = "iter_nth_back", since = "1.37.0")]
     fn nth_back(&mut self, mut n: usize) -> Option<Self::Item> {
         for x in self.rev() {
             if n == 0 { return Some(x) }
