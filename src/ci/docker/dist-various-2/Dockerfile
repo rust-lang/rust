@@ -32,10 +32,9 @@ COPY dist-various-2/build-cloudabi-toolchain.sh /tmp/
 RUN /tmp/build-cloudabi-toolchain.sh x86_64-unknown-cloudabi
 COPY dist-various-2/build-fuchsia-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
-# FIXME(#61022) - reenable solaris
-# COPY dist-various-2/build-solaris-toolchain.sh /tmp/
-# RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386
-# RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc
+COPY dist-various-2/build-solaris-toolchain.sh /tmp/
+RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386
+RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc
 COPY dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 # We pass the commit id of the port of LLVM's libunwind to the build script.
 # Any update to the commit id here, should cause the container image to be re-built from this point on.
@@ -76,9 +75,8 @@ ENV TARGETS=x86_64-fuchsia
 ENV TARGETS=$TARGETS,aarch64-fuchsia
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,wasm32-wasi
-# FIXME(#61022) - reenable solaris
-# ENV TARGETS=$TARGETS,sparcv9-sun-solaris
-# ENV TARGETS=$TARGETS,x86_64-sun-solaris
+ENV TARGETS=$TARGETS,sparcv9-sun-solaris
+ENV TARGETS=$TARGETS,x86_64-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-unknown-cloudabi
 ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx

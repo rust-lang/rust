@@ -530,8 +530,13 @@ pub fn make_test(s: &str,
         prog.push_str(everything_else);
     } else {
         let returns_result = everything_else.trim_end().ends_with("(())");
+        let returns_option = everything_else.trim_end().ends_with("Some(())");
         let (main_pre, main_post) = if returns_result {
-            ("fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {",
+            (if returns_option {
+                "fn main() { fn _inner() -> Option<()> {"
+            } else {
+                "fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {"
+            },
              "}\n_inner().unwrap() }")
         } else {
             ("fn main() {\n", "\n}")

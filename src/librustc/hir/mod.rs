@@ -425,6 +425,13 @@ impl GenericArg {
             GenericArg::Const(c) => c.value.hir_id,
         }
     }
+
+    pub fn is_const(&self) -> bool {
+        match self {
+            GenericArg::Const(_) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]

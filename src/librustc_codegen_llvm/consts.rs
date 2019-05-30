@@ -102,7 +102,7 @@ fn check_and_apply_linkage(
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
     sym: LocalInternedString,
-    span: Option<Span>
+    span: Span
 ) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);
     if let Some(linkage) = attrs.linkage {
@@ -116,11 +116,8 @@ fn check_and_apply_linkage(
         let llty2 = if let ty::RawPtr(ref mt) = ty.sty {
             cx.layout_of(mt.ty).llvm_type(cx)
         } else {
-            if let Some(span) = span {
-                cx.sess().span_fatal(span, "must have type `*const T` or `*mut T`")
-            } else {
-                bug!("must have type `*const T` or `*mut T`")
-            }
+            cx.sess().span_fatal(
+                span, "must have type `*const T` or `*mut T` due to `#[linkage]` attribute")
         };
         unsafe {
             // Declare a symbol `foo` with the desired linkage.
@@ -136,14 +133,7 @@ fn check_and_apply_linkage(
             let mut real_name = "_rust_extern_with_linkage_".to_string();
             real_name.push_str(&sym);
             let g2 = cx.define_global(&real_name, llty).unwrap_or_else(||{
-                if let Some(span) = span {
-                    cx.sess().span_fatal(
-                        span,
-                        &format!("symbol `{}` is already defined", &sym)
-                    )
-                } else {
-                    bug!("symbol `{}` is already defined", &sym)
-                }
+                cx.sess().span_fatal(span, &format!("symbol `{}` is already defined", &sym))
             });
             llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
             llvm::LLVMSetInitializer(g2, g1);
@@ -240,7 +230,7 @@ impl CodegenCx<'ll, 'tcx> {
                     ref attrs, span, node: hir::ForeignItemKind::Static(..), ..
                 }) => {
                     let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                    (check_and_apply_linkage(&self, &fn_attrs, ty, sym, Some(span)), attrs)
+                    (check_and_apply_linkage(&self, &fn_attrs, ty, sym, span), attrs)
                 }
 
                 item => bug!("get_static: expected static, found {:?}", item)
@@ -260,7 +250,8 @@ impl CodegenCx<'ll, 'tcx> {
             debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
 
             let attrs = self.tcx.codegen_fn_attrs(def_id);
-            let g = check_and_apply_linkage(&self, &attrs, ty, sym, None);
+            let span = self.tcx.def_span(def_id);
+            let g = check_and_apply_linkage(&self, &attrs, ty, sym, span);
 
             // Thread-local statics in some other crate need to *always* be linked
             // against in a thread-local fashion, so we need to be sure to apply the
