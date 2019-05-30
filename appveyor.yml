@@ -59,7 +59,7 @@ environment:
     MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
     SCRIPT: make ci-subset-1
-    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+    MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
     # FIXME(#59637)
@@ -69,14 +69,14 @@ environment:
     MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
     SCRIPT: make ci-subset-2
-    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+    MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
   - CI_JOB_NAME: x86_64-mingw
     MSYS_BITS: 64
     SCRIPT: python x.py test
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+    MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
     # FIXME(#59637)
@@ -106,7 +106,7 @@ environment:
     MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools --enable-profiler
     SCRIPT: python x.py dist
-    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+    MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
     DIST_REQUIRE_ALL_TOOLS: 1
@@ -115,7 +115,7 @@ environment:
     MSYS_BITS: 64
     SCRIPT: python x.py dist
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
-    MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+    MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
     DIST_REQUIRE_ALL_TOOLS: 1
@@ -159,7 +159,7 @@ install:
   #
   # Original downloaded here came from
   # http://releases.llvm.org/8.0.0/LLVM-8.0.0-win64.exe
-  - if NOT defined MINGW_URL appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-8.0.0-win64.exe
+  - if NOT defined MINGW_URL appveyor-retry appveyor DownloadFile https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/LLVM-8.0.0-win64.exe
   - if NOT defined MINGW_URL .\LLVM-8.0.0-win64.exe /S /NCRC /D=C:\clang-rust
   - if NOT defined MINGW_URL set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=C:\clang-rust\bin\clang-cl.exe
 
@@ -191,25 +191,25 @@ install:
   - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
-  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-26-sccache-x86_64-pc-windows-msvc
+  - appveyor-retry appveyor DownloadFile https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2018-04-26-sccache-x86_64-pc-windows-msvc
   - mv 2018-04-26-sccache-x86_64-pc-windows-msvc sccache.exe
   - set PATH=%PATH%;%CD%
 
   # Download and install ninja
   #
   # Note that this is originally from the github releases patch of Ninja
-  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-15-ninja-win.zip
+  - appveyor-retry appveyor DownloadFile https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2017-03-15-ninja-win.zip
   - 7z x 2017-03-15-ninja-win.zip
   - set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --enable-ninja
   # - set PATH=%PATH%;%CD% -- this already happens above for sccache
 
   # Install InnoSetup to get `iscc` used to produce installers
-  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-08-22-is.exe
+  - appveyor-retry appveyor DownloadFile https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2017-08-22-is.exe
   - 2017-08-22-is.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
   - set PATH="C:\Program Files (x86)\Inno Setup 5";%PATH%
 
   # Help debug some handle issues on AppVeyor
-  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-15-Handle.zip
+  - appveyor-retry appveyor DownloadFile https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2017-05-15-Handle.zip
   - mkdir handle
   - 7z x -ohandle 2017-05-15-Handle.zip
   - set PATH=%PATH%;%CD%\handle

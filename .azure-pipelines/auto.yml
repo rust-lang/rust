@@ -274,7 +274,7 @@ jobs:
         MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
         SCRIPT: make ci-subset-1
-        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
         MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
         MINGW_DIR: mingw32
         # FIXME(#59637)
@@ -284,14 +284,14 @@ jobs:
         MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
         SCRIPT: make ci-subset-2
-        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
         MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
         MINGW_DIR: mingw32
       x86_64-mingw-1:
         MSYS_BITS: 64
         SCRIPT: make ci-subset-1
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
         MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
         MINGW_DIR: mingw64
         # FIXME(#59637)
@@ -301,7 +301,7 @@ jobs:
         MSYS_BITS: 64
         SCRIPT: make ci-subset-2
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
         MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
         MINGW_DIR: mingw64
 
@@ -328,7 +328,7 @@ jobs:
         MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools
         SCRIPT: python x.py dist
-        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
         MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
         MINGW_DIR: mingw32
         DIST_REQUIRE_ALL_TOOLS: 1
@@ -337,7 +337,7 @@ jobs:
         MSYS_BITS: 64
         SCRIPT: python x.py dist
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools
-        MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
+        MINGW_URL: https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror
         MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
         MINGW_DIR: mingw64
         DIST_REQUIRE_ALL_TOOLS: 1
