@@ -126,26 +126,37 @@ jobs:
 
       asmjs:
         IMAGE: asmjs
+
       i686-gnu:
         IMAGE: i686-gnu
+
       i686-gnu-nopt:
         IMAGE: i686-gnu-nopt
+
       test-various:
         IMAGE: test-various
+
       x86_64-gnu:
         IMAGE: x86_64-gnu
+
       x86_64-gnu-full-bootstrap:
         IMAGE: x86_64-gnu-full-bootstrap
+
       x86_64-gnu-aux:
         IMAGE: x86_64-gnu-aux
+
       x86_64-gnu-tools:
         IMAGE: x86_64-gnu-tools
+
       x86_64-gnu-debug:
         IMAGE: x86_64-gnu-debug
+
       x86_64-gnu-nopt:
         IMAGE: x86_64-gnu-nopt
+
       x86_64-gnu-distcheck:
         IMAGE: x86_64-gnu-distcheck
+
       mingw-check:
         IMAGE: mingw-check
 
