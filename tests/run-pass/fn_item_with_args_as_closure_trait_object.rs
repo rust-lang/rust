@@ -3,6 +3,6 @@ fn foo(i: i32) {
 }
 
 fn main() {
-    let f: &Fn(i32) = &foo;
+    let f: &dyn Fn(i32) = &foo;
     f(42);
 }

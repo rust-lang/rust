@@ -15,7 +15,7 @@ impl Foo for Bar {}
 use std::rc::Rc;
 
 fn main() {
-    let b: Rc<Foo> = Rc::new(Bar);
+    let b: Rc<dyn Foo> = Rc::new(Bar);
     assert!(unsafe { !DROP_CALLED });
     drop(b);
     assert!(unsafe { DROP_CALLED });

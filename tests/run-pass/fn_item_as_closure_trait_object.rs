@@ -1,6 +1,6 @@
 fn foo() {}
 
 fn main() {
-    let f: &Fn() = &foo;
+    let f: &dyn Fn() = &foo;
     f();
 }

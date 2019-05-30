@@ -6,10 +6,10 @@ fn baa(u: u32, f: f32) {
 }
 
 fn main() {
-    let f: &Fn() = &(foo as fn());
+    let f: &dyn Fn() = &(foo as fn());
     f();
-    let f: &Fn(u32) = &(bar as fn(u32));
+    let f: &dyn Fn(u32) = &(bar as fn(u32));
     f(42);
-    let f: &Fn(u32, f32) = &(baa as fn(u32, f32));
+    let f: &dyn Fn(u32, f32) = &(baa as fn(u32, f32));
     f(42, 3.141);
 }

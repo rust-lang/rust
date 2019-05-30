@@ -26,7 +26,7 @@ fn main() {
     // Test that zero-offset works properly
     let b : Baz<usize> = Baz { a: 7 };
     assert_eq!(b.a.get(), 7);
-    let b : &Baz<Bar> = &b;
+    let b : &Baz<dyn Bar> = &b;
     assert_eq!(b.a.get(), 7);
 
     // Test that the field is aligned properly
@@ -34,7 +34,7 @@ fn main() {
     assert_eq!(f.b.get(), 11);
     let ptr1 : *const u8 = &f.b as *const _ as *const u8;
 
-    let f : &Foo<Bar> = &f;
+    let f : &Foo<dyn Bar> = &f;
     let ptr2 : *const u8 = &f.b as *const _ as *const u8;
     assert_eq!(f.b.get(), 11);
 
@@ -44,13 +44,13 @@ fn main() {
     // Test that nested DSTs work properly
     let f : Foo<Foo<usize>> = Foo { a: 0, b: Foo { a: 1, b: 17 }};
     assert_eq!(f.b.b.get(), 17);
-    let f : &Foo<Foo<Bar>> = &f;
+    let f : &Foo<Foo<dyn Bar>> = &f;
     assert_eq!(f.b.b.get(), 17);
 
     // Test that get the pointer via destructuring works
 
     let f : Foo<usize> = Foo { a: 0, b: 11 };
-    let f : &Foo<Bar> = &f;
+    let f : &Foo<dyn Bar> = &f;
     let &Foo { a: _, b: ref bar } = f;
     assert_eq!(bar.get(), 11);
 

@@ -11,8 +11,8 @@ fn bar(i: i32, j: i32, k: f32) {
 
 
 fn main() {
-    let f: &Fn(i32, i32) = &foo;
+    let f: &dyn Fn(i32, i32) = &foo;
     f(42, 55);
-    let f: &Fn(i32, i32, f32) = &bar;
+    let f: &dyn Fn(i32, i32, f32) = &bar;
     f(42, 55, 3.14159);
 }
