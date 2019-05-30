@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.4.0] - 2019-05-30
+
+### Fixed
+- Fixed `Send` trait bounds on `IterMut` not matching the libstd one. (#82)
+
 ## [v0.3.1] - 2019-05-30
 
 ### Fixed
@@ -106,7 +111,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.4.0...HEAD
+[v0.4.0]: https://github.com/rust-lang/hashbrown/compare/v0.3.1...v0.4.0
 [v0.3.1]: https://github.com/rust-lang/hashbrown/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/rust-lang/hashbrown/compare/v0.2.2...v0.3.0
 [v0.2.2]: https://github.com/rust-lang/hashbrown/compare/v0.2.1...v0.2.2
