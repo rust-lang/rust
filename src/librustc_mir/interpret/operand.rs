@@ -550,7 +550,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             ConstValue::Slice { data, start, end } =>
                 Operand::Immediate(Immediate::ScalarPair(
                     Scalar::from(Pointer::new(
-                        self.tcx.alloc_map.lock().allocate(data),
+                        self.tcx.alloc_map.lock().create_memory_alloc(data),
                         Size::from_bytes(start as u64),
                     )).with_default_tag().into(),
                     Scalar::from_uint(

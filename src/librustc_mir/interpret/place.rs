@@ -597,7 +597,7 @@ where
                 // want!  This way, computing statics works concistently between codegen
                 // and miri: They use the same query to eventually obtain a `ty::Const`
                 // and use that for further computation.
-                let alloc = self.tcx.alloc_map.lock().intern_static(cid.instance.def_id());
+                let alloc = self.tcx.alloc_map.lock().create_static_alloc(cid.instance.def_id());
                 MPlaceTy::from_aligned_ptr(Pointer::from(alloc).with_default_tag(), layout)
             }
         })
