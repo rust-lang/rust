@@ -1,8 +1,8 @@
-error[E0282]: type annotations needed in `std::vec::Vec<_>`
+error[E0282]: type annotations needed in `std::vec::Vec<T>`
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:24:17
    |
 LL |     let mut x = Vec::new();
-   |         -----   ^^^^^^^^ cannot infer type for `T` in `std::vec::Vec<_>`
+   |         -----   ^^^^^^^^ cannot infer type for `T` in `std::vec::Vec<T>`
    |         |
    |         consider giving `x` a type
 

@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed in `&_`
+error[E0282]: type annotations needed in `&T`
   --> $DIR/issue-12187-1.rs:6:10
    |
 LL |     let &v = new();

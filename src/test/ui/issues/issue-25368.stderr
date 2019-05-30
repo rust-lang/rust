@@ -1,11 +1,11 @@
-error[E0282]: type annotations needed in `(std::sync::mpsc::Sender<Foo<_>>, std::sync::mpsc::Receiver<Foo<_>>)`
+error[E0282]: type annotations needed in `(std::sync::mpsc::Sender<Foo<T>>, std::sync::mpsc::Receiver<Foo<T>>)`
   --> $DIR/issue-25368.rs:11:17
    |
 LL |     let (tx, rx) = channel();
    |         -------- consider giving the pattern a type
 ...
 LL |         tx.send(Foo{ foo: PhantomData });
-   |                 ^^^ cannot infer type for `T` in `(std::sync::mpsc::Sender<Foo<_>>, std::sync::mpsc::Receiver<Foo<_>>)`
+   |                 ^^^ cannot infer type for `T` in `(std::sync::mpsc::Sender<Foo<T>>, std::sync::mpsc::Receiver<Foo<T>>)`
 
 error: aborting due to previous error
 

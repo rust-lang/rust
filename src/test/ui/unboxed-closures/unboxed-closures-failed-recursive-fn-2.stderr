@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed in `std::option::Option<_>`
+error[E0282]: type annotations needed in `std::option::Option<T>`
   --> $DIR/unboxed-closures-failed-recursive-fn-2.rs:16:32
    |
 LL |     let mut closure0 = None;

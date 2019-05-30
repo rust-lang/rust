@@ -15,7 +15,7 @@ struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     hir_map: &'a hir::map::Map<'gcx>,
     found_local_pattern: Option<&'gcx Pat>,
     found_arg_pattern: Option<&'gcx Pat>,
-    found_ty: Option<String>,
+    found_ty: Option<Ty<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
     fn visit_local(&mut self, local: &'gcx Local) {
         if let (None, Some(ty)) = (self.found_local_pattern, self.node_matches_type(local.hir_id)) {
             self.found_local_pattern = Some(&*local.pat);
-            self.found_ty = Some(ty.to_string());
+            self.found_ty = Some(ty);
         }
         intravisit::walk_local(self, local);
     }
@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
                 self.node_matches_type(argument.hir_id),
             ) {
                 self.found_arg_pattern = Some(&*argument.pat);
-                self.found_ty = Some(ty.to_string());
+                self.found_ty = Some(ty);
             }
         }
         intravisit::walk_body(self, body);
@@ -117,14 +117,43 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             found_arg_pattern: None,
             found_ty: None,
         };
+        let ty_to_string = |ty: Ty<'tcx>| -> String {
+            let mut s = String::new();
+            let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
+            let ty_vars = self.type_variables.borrow();
+            let getter = move |ty_vid| {
+                if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
+                    *ty_vars.var_origin(ty_vid) {
+                    return Some(name.to_string());
+                }
+                None
+            };
+            printer.name_resolver = Some(Box::new(&getter));
+            let _ = ty.print(printer);
+            s
+        };
 
         if let Some(body_id) = body_id {
             let expr = self.tcx.hir().expect_expr_by_hir_id(body_id.hir_id);
             local_visitor.visit_expr(expr);
         }
 
+        // When `name` corresponds to a type argument, show the path of the full type we're
+        // trying to infer. In the following example, `ty_msg` contains
+        // " in `std::result::Result<i32, E>`":
+        // ```
+        // error[E0282]: type annotations needed in `std::result::Result<i32, E>`
+        //  --> file.rs:L:CC
+        //   |
+        // L |     let b = Ok(4);
+        //   |         -   ^^ cannot infer type for `E` in `std::result::Result<i32, E>`
+        //   |         |
+        //   |         consider giving `b` a type
+        // ```
         let ty_msg = match &local_visitor.found_ty {
-            Some(ty) if &ty[..] != "_" && ty != &name => format!(" in `{}`", ty),
+            Some(ty) if &ty.to_string() != "_" && ty.to_string() != name => {
+                format!(" in `{}`", ty_to_string(ty))
+            }
             _ => String::new(),
         };
         let mut labels = vec![(span, InferCtxt::missing_type_msg(&name, &ty_msg))];
@@ -144,17 +173,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // After clearing, it looks something like this:
             // ```
             // let x = |_| {  };
-            //          ^ consider giving this closure parameter a type
+            //          ^ consider giving this closure parameter the type `[_; 0]`
+            //            with the type parameter `_` specified
             // ```
             labels.clear();
             labels.push((pattern.span, format!(
                 "consider giving this closure parameter {}",
                 match &local_visitor.found_ty {
-                    Some(ty) if &ty[..] != "_" && ty != &name => format!(
-                        "the type `{}` with the type parameter `{}` specified",
-                        ty,
-                        name,
-                    ),
+                    Some(ty) if &ty.to_string() != "_" && ty.to_string() != name => {
+                        format!(
+                            "the type `{}` with the type parameter `{}` specified",
+                            ty_to_string(ty),
+                            name,
+                        )
+                    }
                     _ => "a type".to_owned(),
                 },
             )));

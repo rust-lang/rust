@@ -1,8 +1,8 @@
-error[E0282]: type annotations needed in `B<_>`
+error[E0282]: type annotations needed in `B<T>`
   --> $DIR/issue-17551.rs:6:15
    |
 LL |     let foo = B(marker::PhantomData);
-   |         ---   ^ cannot infer type for `T` in `B<_>`
+   |         ---   ^ cannot infer type for `T` in `B<T>`
    |         |
    |         consider giving `foo` a type
 
