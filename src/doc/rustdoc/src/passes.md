@@ -5,8 +5,8 @@ Rustdoc has a concept called "passes". These are transformations that
 
 In addition to the passes below, check out the docs for these flags:
 
-* [`--passes`](command-line-arguments.html#a--passes-add-more-rustdoc-passes)
-* [`--no-defaults`](command-line-arguments.html#a--no-defaults-dont-run-default-passes)
+* [`--passes`](command-line-arguments.md#--passes-add-more-rustdoc-passes)
+* [`--no-defaults`](command-line-arguments.md#--no-defaults-dont-run-default-passes)
 
 ## Default passes
 

@@ -66,7 +66,7 @@ book!(
     Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", RustbookVersion::MdBook1;
     RustcBook, "src/doc/rustc", "rustc", RustbookVersion::MdBook1;
-    RustdocBook, "src/doc/rustdoc", "rustdoc", RustbookVersion::MdBook1;
+    RustdocBook, "src/doc/rustdoc", "rustdoc", RustbookVersion::MdBook2;
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
