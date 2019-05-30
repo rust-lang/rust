@@ -62,7 +62,10 @@ pub(crate) fn reference_definition(
         Some(Macro(mac)) => return Exact(NavigationTarget::from_macro_def(db, mac)),
         Some(FieldAccess(field)) => return Exact(NavigationTarget::from_field(db, field)),
         Some(AssocItem(assoc)) => return Exact(NavigationTarget::from_impl_item(db, assoc)),
-        Some(Def(def)) => return Exact(NavigationTarget::from_def(db, def)),
+        Some(Def(def)) => match NavigationTarget::from_def(db, def) {
+            Some(nav) => return Exact(nav),
+            None => return Approximate(vec![]),
+        },
         Some(SelfType(ty)) => {
             if let Some((def_id, _)) = ty.as_adt() {
                 return Exact(NavigationTarget::from_adt_def(db, def_id));

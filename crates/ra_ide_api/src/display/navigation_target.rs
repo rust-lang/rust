@@ -165,8 +165,11 @@ impl NavigationTarget {
         }
     }
 
-    pub(crate) fn from_def(db: &RootDatabase, module_def: hir::ModuleDef) -> NavigationTarget {
-        match module_def {
+    pub(crate) fn from_def(
+        db: &RootDatabase,
+        module_def: hir::ModuleDef,
+    ) -> Option<NavigationTarget> {
+        let nav = match module_def {
             hir::ModuleDef::Module(module) => NavigationTarget::from_module(db, module),
             hir::ModuleDef::Function(func) => NavigationTarget::from_function(db, func),
             hir::ModuleDef::Struct(s) => {
@@ -201,7 +204,11 @@ impl NavigationTarget {
                 let (file_id, node) = e.source(db);
                 NavigationTarget::from_named(file_id.original_file(db), &*node)
             }
-        }
+            hir::ModuleDef::BuiltinType(..) => {
+                return None;
+            }
+        };
+        Some(nav)
     }
 
     pub(crate) fn from_impl_block(

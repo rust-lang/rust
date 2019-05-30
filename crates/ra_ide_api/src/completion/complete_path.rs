@@ -17,6 +17,12 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         hir::ModuleDef::Module(module) => {
             let module_scope = module.scope(ctx.db);
             for (name, res) in module_scope.entries() {
+                if let Some(hir::ModuleDef::BuiltinType(..)) = res.def.as_ref().take_types() {
+                    if ctx.use_item_syntax.is_some() {
+                        tested_by!(dont_complete_primitive_in_use);
+                        continue;
+                    }
+                }
                 if Some(module) == ctx.module {
                     if let Some(import) = res.import {
                         if let Either::A(use_tree) = module.import_source(ctx.db, import) {
@@ -86,6 +92,20 @@ mod tests {
             CompletionKind::Reference,
         );
         assert_eq!(completions.len(), 2);
+    }
+
+    #[test]
+    fn dont_complete_primitive_in_use() {
+        covers!(dont_complete_primitive_in_use);
+        let completions = do_completion(r"use self::<|>;", CompletionKind::BuiltinType);
+        assert!(completions.is_empty());
+    }
+
+    #[test]
+    fn completes_primitives() {
+        let completions =
+            do_completion(r"fn main() { let _: <|> = 92; }", CompletionKind::BuiltinType);
+        assert_eq!(completions.len(), 17);
     }
 
     #[test]

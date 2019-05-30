@@ -30,14 +30,6 @@ fn is_control_keyword(kind: SyntaxKind) -> bool {
     }
 }
 
-fn is_prim_type(node: &ast::NameRef) -> bool {
-    match node.text().as_str() {
-        "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128" | "i128" | "usize"
-        | "isize" | "f32" | "f64" | "bool" | "char" | "str" => true,
-        _ => false,
-    }
-}
-
 pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
     let source_file = db.parse(file_id).tree;
@@ -71,51 +63,47 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME_REF => {
                 if let Some(name_ref) = node.as_node().and_then(ast::NameRef::cast) {
                     // FIXME: revisit this after #1340
-                    if is_prim_type(name_ref) {
-                        "type"
-                    } else {
-                        use crate::name_ref_kind::{classify_name_ref, NameRefKind::*};
-                        use hir::{ModuleDef, ImplItem};
+                    use crate::name_ref_kind::{classify_name_ref, NameRefKind::*};
+                    use hir::{ModuleDef, ImplItem};
 
-                        // FIXME: try to reuse the SourceAnalyzers
-                        let analyzer =
-                            hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
-                        match classify_name_ref(db, &analyzer, name_ref) {
-                            Some(Method(_)) => "function",
-                            Some(Macro(_)) => "macro",
-                            Some(FieldAccess(_)) => "field",
-                            Some(AssocItem(ImplItem::Method(_))) => "function",
-                            Some(AssocItem(ImplItem::Const(_))) => "constant",
-                            Some(AssocItem(ImplItem::TypeAlias(_))) => "type",
-                            Some(Def(ModuleDef::Module(_))) => "module",
-                            Some(Def(ModuleDef::Function(_))) => "function",
-                            Some(Def(ModuleDef::Struct(_))) => "type",
-                            Some(Def(ModuleDef::Union(_))) => "type",
-                            Some(Def(ModuleDef::Enum(_))) => "type",
-                            Some(Def(ModuleDef::EnumVariant(_))) => "constant",
-                            Some(Def(ModuleDef::Const(_))) => "constant",
-                            Some(Def(ModuleDef::Static(_))) => "constant",
-                            Some(Def(ModuleDef::Trait(_))) => "type",
-                            Some(Def(ModuleDef::TypeAlias(_))) => "type",
-                            Some(SelfType(_)) => "type",
-                            Some(Pat(ptr)) => {
-                                binding_hash = Some({
-                                    let text = ptr
-                                        .syntax_node_ptr()
-                                        .to_node(&source_file.syntax())
-                                        .text()
-                                        .to_smol_string();
-                                    let shadow_count =
-                                        bindings_shadow_count.entry(text.clone()).or_default();
-                                    calc_binding_hash(file_id, &text, *shadow_count)
-                                });
+                    // FIXME: try to reuse the SourceAnalyzers
+                    let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
+                    match classify_name_ref(db, &analyzer, name_ref) {
+                        Some(Method(_)) => "function",
+                        Some(Macro(_)) => "macro",
+                        Some(FieldAccess(_)) => "field",
+                        Some(AssocItem(ImplItem::Method(_))) => "function",
+                        Some(AssocItem(ImplItem::Const(_))) => "constant",
+                        Some(AssocItem(ImplItem::TypeAlias(_))) => "type",
+                        Some(Def(ModuleDef::Module(_))) => "module",
+                        Some(Def(ModuleDef::Function(_))) => "function",
+                        Some(Def(ModuleDef::Struct(_))) => "type",
+                        Some(Def(ModuleDef::Union(_))) => "type",
+                        Some(Def(ModuleDef::Enum(_))) => "type",
+                        Some(Def(ModuleDef::EnumVariant(_))) => "constant",
+                        Some(Def(ModuleDef::Const(_))) => "constant",
+                        Some(Def(ModuleDef::Static(_))) => "constant",
+                        Some(Def(ModuleDef::Trait(_))) => "type",
+                        Some(Def(ModuleDef::TypeAlias(_))) => "type",
+                        Some(Def(ModuleDef::BuiltinType(_))) => "type",
+                        Some(SelfType(_)) => "type",
+                        Some(Pat(ptr)) => {
+                            binding_hash = Some({
+                                let text = ptr
+                                    .syntax_node_ptr()
+                                    .to_node(&source_file.syntax())
+                                    .text()
+                                    .to_smol_string();
+                                let shadow_count =
+                                    bindings_shadow_count.entry(text.clone()).or_default();
+                                calc_binding_hash(file_id, &text, *shadow_count)
+                            });
 
-                                "variable"
-                            }
-                            Some(SelfParam(_)) => "type",
-                            Some(GenericParam(_)) => "type",
-                            None => "text",
+                            "variable"
                         }
+                        Some(SelfParam(_)) => "type",
+                        Some(GenericParam(_)) => "type",
+                        None => "text",
                     }
                 } else {
                     "text"

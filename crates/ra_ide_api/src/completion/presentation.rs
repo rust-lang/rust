@@ -57,6 +57,7 @@ impl Completions {
             }
             Some(it) => it,
         };
+        let mut completion_kind = CompletionKind::Reference;
         let (kind, docs) = match def {
             Resolution::Def(Module(it)) => (CompletionItemKind::Module, it.docs(ctx.db)),
             Resolution::Def(Function(func)) => {
@@ -70,6 +71,10 @@ impl Completions {
             Resolution::Def(Static(it)) => (CompletionItemKind::Static, it.docs(ctx.db)),
             Resolution::Def(Trait(it)) => (CompletionItemKind::Trait, it.docs(ctx.db)),
             Resolution::Def(TypeAlias(it)) => (CompletionItemKind::TypeAlias, it.docs(ctx.db)),
+            Resolution::Def(BuiltinType(..)) => {
+                completion_kind = CompletionKind::BuiltinType;
+                (CompletionItemKind::BuiltinType, None)
+            }
             Resolution::GenericParam(..) => (CompletionItemKind::TypeParam, None),
             Resolution::LocalBinding(..) => (CompletionItemKind::Binding, None),
             Resolution::SelfType(..) => (
@@ -77,7 +82,7 @@ impl Completions {
                 None,
             ),
         };
-        CompletionItem::new(CompletionKind::Reference, ctx.source_range(), local_name)
+        CompletionItem::new(completion_kind, ctx.source_range(), local_name)
             .kind(kind)
             .set_documentation(docs)
             .add_to(self)
