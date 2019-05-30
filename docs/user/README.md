@@ -39,7 +39,7 @@ $ cargo install-code
 The automatic installation is expected to *just work* for common cases, if it
 doesn't, report bugs!
 
-If you have an usual setup (for example, `code` is not in the `PATH`), you
+If you have an unusual setup (for example, `code` is not in the `PATH`), you
 should adapt these manual installation instructions:
 
 ```
