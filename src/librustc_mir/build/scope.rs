@@ -143,10 +143,13 @@ struct DropData<'tcx> {
 
     /// Whether this is a value Drop or a StorageDead.
     kind: DropKind,
+
+    /// The cached blocks for unwinds.
+    cached_block: CachedBlock,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
-pub(crate) struct CachedBlock {
+struct CachedBlock {
     /// The cached block for the cleanups-on-diverge path. This block
     /// contains code to run the current drop and all the preceding
     /// drops (i.e., those having lower index in Drop’s Scope drop
@@ -164,8 +167,8 @@ pub(crate) struct CachedBlock {
 
 #[derive(Debug)]
 pub(crate) enum DropKind {
-    Value { cached_block: CachedBlock },
-    Storage { cached_block: CachedBlock },
+    Value,
+    Storage,
 }
 
 #[derive(Clone, Debug)]
@@ -208,8 +211,8 @@ impl CachedBlock {
 impl DropKind {
     fn may_panic(&self) -> bool {
         match *self {
-            DropKind::Value { .. } => true,
-            DropKind::Storage { .. } => false
+            DropKind::Value => true,
+            DropKind::Storage => false
         }
     }
 }
@@ -240,11 +243,7 @@ impl<'tcx> Scope<'tcx> {
 
         if !ignore_unwinds && !this_scope_only {
             for drop_data in &mut self.drops {
-                let cached_block = match drop_data.kind {
-                    DropKind::Storage { ref mut cached_block } => cached_block,
-                    DropKind::Value { ref mut cached_block } => cached_block,
-                };
-                cached_block.invalidate();
+                drop_data.cached_block.invalidate();
             }
         }
     }
@@ -642,18 +641,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         place: &Place<'tcx>,
         place_ty: Ty<'tcx>,
     ) {
-        self.schedule_drop(
-            span, region_scope, place, place_ty,
-            DropKind::Storage {
-                cached_block: CachedBlock::default(),
-            },
-        );
-        self.schedule_drop(
-            span, region_scope, place, place_ty,
-            DropKind::Value {
-                cached_block: CachedBlock::default(),
-            },
-        );
+        self.schedule_drop(span, region_scope, place, place_ty, DropKind::Storage);
+        self.schedule_drop(span, region_scope, place, place_ty, DropKind::Value);
     }
 
     // Scheduling drops
@@ -673,8 +662,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ) {
         let needs_drop = self.hir.needs_drop(place_ty);
         match drop_kind {
-            DropKind::Value { .. } => if !needs_drop { return },
-            DropKind::Storage { .. } => {
+            DropKind::Value => if !needs_drop { return },
+            DropKind::Storage => {
                 match *place {
                     Place::Base(PlaceBase::Local(index)) => if index.index() <= self.arg_count {
                         span_bug!(
@@ -740,7 +729,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // cache of outer scpoe stays intact.
             scope.invalidate_cache(!needs_drop, self.is_generator, this_scope);
             if this_scope {
-                if let DropKind::Value { .. } = drop_kind {
+                if let DropKind::Value = drop_kind {
                     scope.needs_cleanup = true;
                 }
 
@@ -752,7 +741,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 scope.drops.push(DropData {
                     span: scope_end,
                     location: place.clone(),
-                    kind: drop_kind
+                    kind: drop_kind,
+                    cached_block: CachedBlock::default(),
                 });
                 return;
             }
@@ -984,7 +974,7 @@ fn build_scope_drops<'tcx>(
         let drop_data = &scope.drops[drop_idx];
         let source_info = scope.source_info(drop_data.span);
         match drop_data.kind {
-            DropKind::Value { .. } => {
+            DropKind::Value => {
                 let unwind_to = get_unwind_to(scope, is_generator, drop_idx, generator_drop)
                     .unwrap_or(last_unwind_to);
 
@@ -996,7 +986,7 @@ fn build_scope_drops<'tcx>(
                 });
                 block = next;
             }
-            DropKind::Storage { .. } => {
+            DropKind::Storage => {
                 // Drop the storage for both value and storage drops.
                 // Only temps and vars need their storage dead.
                 match drop_data.location {
@@ -1022,14 +1012,14 @@ fn get_unwind_to<'tcx>(
 ) -> Option<BasicBlock> {
     for drop_idx in (0..unwind_from).rev() {
         let drop_data = &scope.drops[drop_idx];
-        match drop_data.kind {
-            DropKind::Storage { cached_block } if is_generator => {
-                return Some(cached_block.get(generator_drop).unwrap_or_else(|| {
+        match (is_generator, &drop_data.kind) {
+            (true, DropKind::Storage) => {
+                return Some(drop_data.cached_block.get(generator_drop).unwrap_or_else(|| {
                     span_bug!(drop_data.span, "cached block not present for {:?}", drop_data)
                 }));
             }
-            DropKind::Value { cached_block } if !is_generator => {
-                return Some(cached_block.get(generator_drop).unwrap_or_else(|| {
+            (false, DropKind::Value) => {
+                return Some(drop_data.cached_block.get(generator_drop).unwrap_or_else(|| {
                     span_bug!(drop_data.span, "cached block not present for {:?}", drop_data)
                 }));
             }
@@ -1084,7 +1074,7 @@ fn build_diverge_scope<'tcx>(cfg: &mut CFG<'tcx>,
         // match the behavior of clang, but on inspection eddyb says
         // this is not what clang does.
         match drop_data.kind {
-            DropKind::Storage { ref mut cached_block } if is_generator => {
+            DropKind::Storage if is_generator => {
                 // Only temps and vars need their storage dead.
                 match drop_data.location {
                     Place::Base(PlaceBase::Local(index)) => {
@@ -1105,11 +1095,11 @@ fn build_diverge_scope<'tcx>(cfg: &mut CFG<'tcx>,
                     }
                     _ => unreachable!(),
                 };
-                *cached_block.ref_mut(generator_drop) = Some(target);
+                *drop_data.cached_block.ref_mut(generator_drop) = Some(target);
             }
-            DropKind::Storage { .. } => {}
-            DropKind::Value { ref mut cached_block } => {
-                let cached_block = cached_block.ref_mut(generator_drop);
+            DropKind::Storage => {}
+            DropKind::Value => {
+                let cached_block = drop_data.cached_block.ref_mut(generator_drop);
                 target = if let Some(cached_block) = *cached_block {
                     storage_deads.clear();
                     target_built_by_us = false;
