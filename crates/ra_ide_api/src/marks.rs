@@ -6,4 +6,5 @@ test_utils::marks!(
     goto_definition_works_for_named_fields
     call_info_bad_offset
     dont_complete_current_use
+    dont_complete_primitive_in_use
 );

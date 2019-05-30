@@ -1084,6 +1084,7 @@ dependencies = [
  "insta 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "join_to_string 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "once_cell 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_arena 0.1.0",
  "ra_db 0.1.0",

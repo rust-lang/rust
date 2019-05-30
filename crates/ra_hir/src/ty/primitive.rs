@@ -1,7 +1,5 @@
 use std::fmt;
 
-use crate::{Name, KnownName};
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum Signedness {
     Signed,
@@ -30,6 +28,12 @@ pub enum UncertainIntTy {
     Known(IntTy),
 }
 
+impl From<IntTy> for UncertainIntTy {
+    fn from(ty: IntTy) -> Self {
+        UncertainIntTy::Known(ty)
+    }
+}
+
 impl fmt::Display for UncertainIntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -43,6 +47,12 @@ impl fmt::Display for UncertainIntTy {
 pub enum UncertainFloatTy {
     Unknown,
     Known(FloatTy),
+}
+
+impl From<FloatTy> for UncertainFloatTy {
+    fn from(ty: FloatTy) -> Self {
+        UncertainFloatTy::Known(ty)
+    }
 }
 
 impl fmt::Display for UncertainFloatTy {
@@ -138,24 +148,6 @@ impl IntTy {
         }
     }
 
-    pub(crate) fn from_type_name(name: &Name) -> Option<IntTy> {
-        match name.as_known_name()? {
-            KnownName::Isize => Some(IntTy::isize()),
-            KnownName::I8 => Some(IntTy::i8()),
-            KnownName::I16 => Some(IntTy::i16()),
-            KnownName::I32 => Some(IntTy::i32()),
-            KnownName::I64 => Some(IntTy::i64()),
-            KnownName::I128 => Some(IntTy::i128()),
-            KnownName::Usize => Some(IntTy::usize()),
-            KnownName::U8 => Some(IntTy::u8()),
-            KnownName::U16 => Some(IntTy::u16()),
-            KnownName::U32 => Some(IntTy::u32()),
-            KnownName::U64 => Some(IntTy::u64()),
-            KnownName::U128 => Some(IntTy::u128()),
-            _ => None,
-        }
-    }
-
     pub(crate) fn from_suffix(suffix: &str) -> Option<IntTy> {
         match suffix {
             "isize" => Some(IntTy::isize()),
@@ -205,14 +197,6 @@ impl FloatTy {
         match self.bitness {
             FloatBitness::X32 => "f32",
             FloatBitness::X64 => "f64",
-        }
-    }
-
-    pub(crate) fn from_type_name(name: &Name) -> Option<FloatTy> {
-        match name.as_known_name()? {
-            KnownName::F32 => Some(FloatTy::f32()),
-            KnownName::F64 => Some(FloatTy::f64()),
-            _ => None,
         }
     }
 

@@ -62,9 +62,10 @@ use ra_db::{FileId, Edition};
 use test_utils::tested_by;
 use ra_syntax::ast;
 use ra_prof::profile;
+use once_cell::sync::Lazy;
 
 use crate::{
-    ModuleDef, Name, Crate, Module, MacroDef,
+    ModuleDef, Name, Crate, Module, MacroDef, AsName, BuiltinType,
     DefDatabase, Path, PathKind, HirFileId, Trait,
     ids::MacroDefId,
     diagnostics::DiagnosticSink,
@@ -140,12 +141,22 @@ pub struct ModuleScope {
     macros: FxHashMap<Name, MacroDef>,
 }
 
+static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
+    BuiltinType::ALL
+        .iter()
+        .map(|&(known_name, ty)| {
+            (known_name.as_name(), Resolution { def: PerNs::types(ty.into()), import: None })
+        })
+        .collect()
+});
+
 impl ModuleScope {
     pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, &'a Resolution)> + 'a {
-        self.items.iter()
+        //FIXME: shadowing
+        self.items.iter().chain(BUILTIN_SCOPE.iter())
     }
     pub fn get(&self, name: &Name) -> Option<&Resolution> {
-        self.items.get(name)
+        self.items.get(name).or_else(|| BUILTIN_SCOPE.get(name))
     }
     pub fn traits<'a>(&'a self) -> impl Iterator<Item = Trait> + 'a {
         self.items.values().filter_map(|r| match r.def.take_types() {
@@ -154,7 +165,7 @@ impl ModuleScope {
         })
     }
     fn get_item_or_macro(&self, name: &Name) -> Option<ItemOrMacro> {
-        match (self.items.get(name), self.macros.get(name)) {
+        match (self.get(name), self.macros.get(name)) {
             (Some(item), _) if !item.def.is_none() => Some(Either::Left(item.def)),
             (_, Some(macro_)) => Some(Either::Right(*macro_)),
             _ => None,

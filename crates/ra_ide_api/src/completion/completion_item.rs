@@ -78,6 +78,7 @@ pub enum CompletionItemKind {
     Keyword,
     Module,
     Function,
+    BuiltinType,
     Struct,
     Enum,
     EnumVariant,
@@ -102,6 +103,7 @@ pub(crate) enum CompletionKind {
     Magic,
     Snippet,
     Postfix,
+    BuiltinType,
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]

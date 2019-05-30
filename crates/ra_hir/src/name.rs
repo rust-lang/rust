@@ -123,7 +123,7 @@ impl AsName for ra_db::Dependency {
 // const ISIZE: Name = Name::new("isize")
 // ```
 // but const-fn is not that powerful yet.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum KnownName {
     Isize,
     I8,
@@ -150,4 +150,32 @@ pub(crate) enum KnownName {
     SelfParam,
 
     MacroRules,
+}
+
+impl AsName for KnownName {
+    fn as_name(&self) -> Name {
+        let s = match self {
+            KnownName::Isize => "isize",
+            KnownName::I8 => "i8",
+            KnownName::I16 => "i16",
+            KnownName::I32 => "i32",
+            KnownName::I64 => "i64",
+            KnownName::I128 => "i128",
+            KnownName::Usize => "usize",
+            KnownName::U8 => "u8",
+            KnownName::U16 => "u16",
+            KnownName::U32 => "u32",
+            KnownName::U64 => "u64",
+            KnownName::U128 => "u128",
+            KnownName::F32 => "f32",
+            KnownName::F64 => "f64",
+            KnownName::Bool => "bool",
+            KnownName::Char => "char",
+            KnownName::Str => "str",
+            KnownName::SelfType => "Self",
+            KnownName::SelfParam => "self",
+            KnownName::MacroRules => "macro_rules",
+        };
+        Name::new(s.into())
+    }
 }
