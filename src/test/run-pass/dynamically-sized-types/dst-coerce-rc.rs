@@ -26,17 +26,17 @@ fn main() {
     assert_eq!(b[2], 3);
 
     let a: Rc<i32> = Rc::new(42);
-    let b: Rc<Baz> = a.clone();
+    let b: Rc<dyn Baz> = a.clone();
     assert_eq!(b.get(), 42);
 
     let c: Weak<i32> = Rc::downgrade(&a);
-    let d: Weak<Baz> = c.clone();
+    let d: Weak<dyn Baz> = c.clone();
 
     let _c = b.clone();
 
     let a: Rc<RefCell<i32>> = Rc::new(RefCell::new(42));
-    let b: Rc<RefCell<Baz>> = a.clone();
+    let b: Rc<RefCell<dyn Baz>> = a.clone();
     assert_eq!(b.borrow().get(), 42);
     // FIXME
-    let c: Weak<RefCell<Baz>> = Rc::downgrade(&a) as Weak<_>;
+    let c: Weak<RefCell<dyn Baz>> = Rc::downgrade(&a) as Weak<_>;
 }

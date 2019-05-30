@@ -1,5 +1,5 @@
 struct Example {
-    example: Box<Fn(i32) -> i32>
+    example: Box<dyn Fn(i32) -> i32>
 }
 
 fn main() {

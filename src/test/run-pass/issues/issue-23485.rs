@@ -45,6 +45,6 @@ impl Iterator for Counter {
 }
 
 fn main() {
-    let mut x: Box<Iterator<Item=Token>> = Box::new(Counter { value: 22 });
+    let mut x: Box<dyn Iterator<Item=Token>> = Box::new(Counter { value: 22 });
     assert_eq!(x.next().unwrap().value, 22);
 }

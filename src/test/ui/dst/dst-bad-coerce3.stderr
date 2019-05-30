@@ -20,8 +20,8 @@ LL | fn baz<'a>() {
 ...
 LL |     let f2: &Fat<Foo> = &f1;
    |                         ^^^ borrowed value does not live long enough
-LL |     let f3: &'a Fat<Bar> = f2;
-   |             ------------ type annotation requires that `f1` is borrowed for `'a`
+LL |     let f3: &'a Fat<dyn Bar> = f2;
+   |             ---------------- type annotation requires that `f1` is borrowed for `'a`
 ...
 LL | }
    | - `f1` dropped here while still borrowed
@@ -48,8 +48,8 @@ LL | fn baz<'a>() {
 ...
 LL |     let f2: &(Foo,) = &f1;
    |                       ^^^ borrowed value does not live long enough
-LL |     let f3: &'a (Bar,) = f2;
-   |             ---------- type annotation requires that `f1` is borrowed for `'a`
+LL |     let f3: &'a (dyn Bar,) = f2;
+   |             -------------- type annotation requires that `f1` is borrowed for `'a`
 LL | }
    | - `f1` dropped here while still borrowed
 

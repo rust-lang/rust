@@ -21,10 +21,10 @@ impl<'d> M for P<'d> {
     fn n(&self) -> u8 { *self.g }
 }
 
-fn extension<'e>(x: &'e E<'e>) -> Box<M+'e> {
+fn extension<'e>(x: &'e E<'e>) -> Box<dyn M+'e> {
     loop {
         let p = P { g: x.m() };
-        return Box::new(p) as Box<M+'e>;
+        return Box::new(p) as Box<dyn M+'e>;
     }
 }
 

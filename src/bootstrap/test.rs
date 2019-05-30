@@ -1690,15 +1690,11 @@ impl Step for Crate {
         builder.ensure(compile::Test { compiler, target });
         builder.ensure(RemoteCopyLibs { compiler, target });
 
-        // If we're not doing a full bootstrap but we're testing a stage2 version of
-        // libstd, then what we're actually testing is the libstd produced in
-        // stage1. Reflect that here by updating the compiler that we're working
-        // with automatically.
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler.clone()
-        };
+        // If we're not doing a full bootstrap but we're testing a stage2
+        // version of libstd, then what we're actually testing is the libstd
+        // produced in stage1. Reflect that here by updating the compiler that
+        // we're working with automatically.
+        let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
         let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
         match mode {

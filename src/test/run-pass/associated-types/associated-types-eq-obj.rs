@@ -15,7 +15,7 @@ impl Foo for char {
     fn boo(&self) -> Bar { Bar }
 }
 
-fn baz(x: &Foo<A=Bar>) -> Bar {
+fn baz(x: &dyn Foo<A=Bar>) -> Bar {
     x.boo()
 }
 

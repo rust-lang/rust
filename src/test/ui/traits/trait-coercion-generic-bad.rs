@@ -13,7 +13,7 @@ impl Trait<&'static str> for Struct {
 }
 
 fn main() {
-    let s: Box<Trait<isize>> = Box::new(Struct { person: "Fred" });
+    let s: Box<dyn Trait<isize>> = Box::new(Struct { person: "Fred" });
     //~^ ERROR `Struct: Trait<isize>` is not satisfied
     s.f(1);
 }

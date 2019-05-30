@@ -7,14 +7,14 @@ pub trait MethodType {
 pub struct MTFn;
 
 impl<'a> MethodType for MTFn { //~ ERROR E0207
-    type GetProp = fmt::Debug + 'a;
+    type GetProp = dyn fmt::Debug + 'a;
 }
 
-fn bad(a: Box<<MTFn as MethodType>::GetProp>) -> Box<fmt::Debug+'static> {
+fn bad(a: Box<<MTFn as MethodType>::GetProp>) -> Box<dyn fmt::Debug+'static> {
     a
 }
 
-fn dangling(a: &str) -> Box<fmt::Debug> {
+fn dangling(a: &str) -> Box<dyn fmt::Debug> {
     bad(Box::new(a))
 }
 

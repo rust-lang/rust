@@ -6,11 +6,11 @@
 // `value` field of `Node<Send>`).
 
 struct Node<T: ?Sized + Send> {
-    next: Option<Box<Node<Send>>>,
+    next: Option<Box<Node<dyn Send>>>,
     value: T,
 }
 
-fn clear(head: &mut Option<Box<Node<Send>>>) {
+fn clear(head: &mut Option<Box<Node<dyn Send>>>) {
     match head.take() {
         Some(node) => *head = node.next,
         None => (),

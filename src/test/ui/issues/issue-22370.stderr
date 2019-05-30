@@ -1,8 +1,8 @@
 error[E0393]: the type parameter `T` must be explicitly specified
-  --> $DIR/issue-22370.rs:3:10
+  --> $DIR/issue-22370.rs:3:14
    |
-LL | fn f(a: &A) {}
-   |          ^ missing reference to `T`
+LL | fn f(a: &dyn A) {}
+   |              ^ missing reference to `T`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 

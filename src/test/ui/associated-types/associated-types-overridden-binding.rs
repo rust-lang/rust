@@ -7,5 +7,5 @@ trait I32Iterator = Iterator<Item = i32>;
 trait U32Iterator = I32Iterator<Item = u32>;
 
 fn main() {
-    let _: &I32Iterator<Item = u32>;
+    let _: &dyn I32Iterator<Item = u32>;
 }

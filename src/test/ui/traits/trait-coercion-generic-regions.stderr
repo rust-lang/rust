@@ -6,7 +6,7 @@ LL |     let person: &str = &person;
    |                        |
    |                        borrowed value does not live long enough
    |                        assignment requires that `person` is borrowed for `'static`
-LL |     let s: Box<Trait<&'static str>> = Box::new(Struct { person: person });
+LL |     let s: Box<dyn Trait<&'static str>> = Box::new(Struct { person: person });
 LL | }
    | - `person` dropped here while still borrowed
 

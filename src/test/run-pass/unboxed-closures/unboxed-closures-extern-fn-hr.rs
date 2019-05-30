@@ -7,7 +7,7 @@ fn call_it<F:Fn(&isize)->isize>(f: &F, x: isize) -> isize {
     (*f)(&x)
 }
 
-fn call_it_boxed(f: &Fn(&isize) -> isize, x: isize) -> isize {
+fn call_it_boxed(f: &dyn Fn(&isize) -> isize, x: isize) -> isize {
     f(&x)
 }
 

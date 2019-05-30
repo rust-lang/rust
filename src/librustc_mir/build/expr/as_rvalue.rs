@@ -528,7 +528,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }) => {
                 // Not projected from the implicit `self` in a closure.
                 debug_assert!(
-                    match base.local() {
+                    match base.local_or_deref_local() {
                         Some(local) => local == Local::new(1),
                         None => false,
                     },

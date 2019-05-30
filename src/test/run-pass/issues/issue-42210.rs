@@ -12,9 +12,9 @@ struct Bar;
 trait Baz {
 }
 
-impl Foo for (Bar, Baz) { }
+impl Foo for (Bar, dyn Baz) { }
 
 
 fn main() {
-    <(Bar, Baz) as Foo>::foo()
+    <(Bar, dyn Baz) as Foo>::foo()
 }

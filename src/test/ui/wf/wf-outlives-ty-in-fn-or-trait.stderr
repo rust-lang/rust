@@ -17,14 +17,14 @@ error[E0309]: the parameter type `T` may not live long enough
    |
 LL | impl<'a, T> Trait<'a, T> for u32 {
    |          - help: consider adding an explicit lifetime bound `T: 'a`...
-LL |     type Out = &'a Baz<T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+LL |     type Out = &'a dyn Baz<T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'a (dyn Baz<T> + 'a)` does not outlive the data it points at
   --> $DIR/wf-outlives-ty-in-fn-or-trait.rs:19:5
    |
-LL |     type Out = &'a Baz<T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+LL |     type Out = &'a dyn Baz<T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

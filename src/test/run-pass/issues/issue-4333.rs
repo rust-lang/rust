@@ -5,6 +5,6 @@
 use std::io;
 
 pub fn main() {
-    let stdout = &mut io::stdout() as &mut io::Write;
+    let stdout = &mut io::stdout() as &mut dyn io::Write;
     stdout.write(b"Hello!");
 }

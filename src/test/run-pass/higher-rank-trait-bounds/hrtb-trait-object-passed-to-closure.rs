@@ -17,7 +17,7 @@ struct NoAnn<'ast> {
 impl<'ast> PrinterSupport<'ast> for NoAnn<'ast> {
 }
 
-fn foo<'ast, G>(f: Option<&'ast usize>, g: G) where G: FnOnce(&PrinterSupport) {
+fn foo<'ast, G>(f: Option<&'ast usize>, g: G) where G: FnOnce(&dyn PrinterSupport) {
     let annotation = NoAnn { f: f };
     g(&annotation)
 }

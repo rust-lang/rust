@@ -34,6 +34,13 @@ pub trait Step: Clone + PartialOrd + Sized {
 
     /// Adds a `usize`, returning `None` on overflow.
     fn add_usize(&self, n: usize) -> Option<Self>;
+
+    /// Subtracts a `usize`, returning `None` on underflow.
+    fn sub_usize(&self, n: usize) -> Option<Self> {
+        // this default implementation makes the addition of `sub_usize` a non-breaking change
+        let _ = n;
+        unimplemented!()
+    }
 }
 
 // These are still macro-generated because the integer literals resolve to different types.
@@ -85,6 +92,15 @@ macro_rules! step_impl_unsigned {
                 }
             }
 
+            #[inline]
+            #[allow(unreachable_patterns)]
+            fn sub_usize(&self, n: usize) -> Option<Self> {
+                match <$t>::try_from(n) {
+                    Ok(n_as_t) => self.checked_sub(n_as_t),
+                    Err(_) => None,
+                }
+            }
+
             step_identical_methods!();
         }
     )*)
@@ -119,6 +135,25 @@ macro_rules! step_impl_signed {
                             Some(wrapped)
                         } else {
                             None  // Addition overflowed
+                        }
+                    }
+                    Err(_) => None,
+                }
+            }
+
+            #[inline]
+            #[allow(unreachable_patterns)]
+            fn sub_usize(&self, n: usize) -> Option<Self> {
+                match <$unsigned>::try_from(n) {
+                    Ok(n_as_unsigned) => {
+                        // Wrapping in unsigned space handles cases like
+                        // `80_i8.sub_usize(200) == Some(-120_i8)`,
+                        // even though 200_usize is out of range for i8.
+                        let wrapped = (*self as $unsigned).wrapping_sub(n_as_unsigned) as $t;
+                        if wrapped <= *self {
+                            Some(wrapped)
+                        } else {
+                            None  // Subtraction underflowed
                         }
                     }
                     Err(_) => None,

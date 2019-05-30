@@ -9,7 +9,7 @@ trait Expr: Debug + PartialEq {
 //#[derive(PartialEq)]
 #[derive(Debug)]
 struct SExpr<'x> {
-    elements: Vec<Box<Expr+ 'x>>,
+    elements: Vec<Box<dyn Expr + 'x>>,
     //~^ ERROR E0038
 }
 
@@ -35,8 +35,8 @@ impl <'x> Expr for SExpr<'x> {
 }
 
 fn main() {
-    let a: Box<Expr> = Box::new(SExpr::new());
-    let b: Box<Expr> = Box::new(SExpr::new());
+    let a: Box<dyn Expr> = Box::new(SExpr::new());
+    let b: Box<dyn Expr> = Box::new(SExpr::new());
 
     // assert_eq!(a , b);
 }

@@ -13,7 +13,7 @@ fn main() {
     let mut drops = 0;
 
     {
-        let _: Rc<Send> = Rc::new(Foo(&mut drops));
+        let _: Rc<dyn Send> = Rc::new(Foo(&mut drops));
     }
 
     assert_eq!(1, drops);

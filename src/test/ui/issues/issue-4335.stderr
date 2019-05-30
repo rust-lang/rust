@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/issue-4335.rs:6:20
    |
-LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
+LL | fn f<'r, T>(v: &'r T) -> Box<dyn FnMut() -> T + 'r> {
    |             - captured outer variable
 LL |     id(Box::new(|| *v))
    |                    ^^ cannot move out of captured variable in an `FnMut` closure

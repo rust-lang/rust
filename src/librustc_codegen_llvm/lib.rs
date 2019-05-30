@@ -52,7 +52,6 @@ use rustc_codegen_ssa::CompiledModule;
 use errors::{FatalError, Handler};
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::InternedString;
-use rustc::mir::mono::Stats;
 pub use llvm_util::target_features;
 use std::any::Any;
 use std::sync::{mpsc, Arc};
@@ -130,8 +129,8 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         cgu_name: InternedString,
-    ) -> Stats {
-        base::compile_codegen_unit(tcx, cgu_name)
+    ) {
+        base::compile_codegen_unit(tcx, cgu_name);
     }
     fn target_machine_factory(
         &self,

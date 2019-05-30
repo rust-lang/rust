@@ -9,7 +9,7 @@ trait Foo {
     type Assoc where Self: Sized;
     type Assoc2<T> where T: Display;
     type Assoc3<T>;
-    type WithDefault<T> where T: Debug = Iterator<Item=T>;
+    type WithDefault<T> where T: Debug = dyn Iterator<Item=T>;
     type NoGenerics;
 }
 
@@ -19,7 +19,7 @@ impl Foo for Bar {
     type Assoc = usize;
     type Assoc2<T> = Vec<T>;
     type Assoc3<T> where T: Iterator = Vec<T>;
-    type WithDefault<'a, T> = &'a Iterator<T>;
+    type WithDefault<'a, T> = &'a dyn Iterator<T>;
     type NoGenerics = ::std::cell::Cell<i32>;
 }
 

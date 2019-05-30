@@ -10,7 +10,7 @@ impl T<isize> for Empty {
     fn next(&mut self) -> Option<isize> { None }
 }
 
-fn do_something_with(a : &mut T<isize>) {
+fn do_something_with(a : &mut dyn T<isize>) {
     println!("{:?}", a.next())
 }
 

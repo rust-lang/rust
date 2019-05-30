@@ -11,7 +11,7 @@ impl Foo {
     fn bar(&self) {}
 }
 
-impl Trait {
+impl dyn Trait {
     fn baz(_: &Foo) {}
 }
 
@@ -26,5 +26,5 @@ fn main() {
 
     // Should work even if Trait::baz doesn't exist.
     // N.B: `<Trait>::bar` would be ambiguous.
-    <Trait>::baz(&Foo);
+    <dyn Trait>::baz(&Foo);
 }

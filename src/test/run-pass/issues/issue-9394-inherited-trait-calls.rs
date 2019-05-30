@@ -52,7 +52,7 @@ impl Super for X {
 
 pub fn main() {
     let n = X;
-    let s = &n as &Super;
+    let s = &n as &dyn Super;
     assert_eq!(s.bar(),"super bar".to_string());
     assert_eq!(s.foo(),"base foo".to_string());
     assert_eq!(s.foo1(),"base foo1".to_string());

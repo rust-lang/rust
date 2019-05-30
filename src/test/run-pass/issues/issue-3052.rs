@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 // pretty-expanded FIXME #23616
 
-type Connection = Box<FnMut(Vec<u8>) + 'static>;
+type Connection = Box<dyn FnMut(Vec<u8>) + 'static>;
 
 fn f() -> Option<Connection> {
     let mock_connection: Connection = Box::new(|_| {});

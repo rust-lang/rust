@@ -37,7 +37,7 @@ where A: Iterator, B: Iterator<Item=A::Item>
 }
 
 // Make sure we actually codegen a version of the function
-pub fn do_stuff(mut f: Foo<Box<Iterator<Item=u32>>, Box<Iterator<Item=u32>>>) {
+pub fn do_stuff(mut f: Foo<Box<dyn Iterator<Item=u32>>, Box<dyn Iterator<Item=u32>>>) {
     let _x = f.next();
 }
 

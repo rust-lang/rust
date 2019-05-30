@@ -20,7 +20,7 @@ pub fn main() {
   //   let y = box ({a: 4});
   //    let z = box ({a: 4} as it);
   //    let z = box ({a: true} as it);
-    let z: Box<_> = box (box true as Box<it>);
+    let z: Box<_> = box (box true as Box<dyn it>);
     //  x.f();
     // y.f();
     // (*z).f();

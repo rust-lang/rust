@@ -4,8 +4,8 @@ error[E0191]: the value of the associated type `A` (from the trait `Foo`) must b
 LL |     type A;
    |     ------- `A` defined here
 ...
-LL | type I<'a> = &'a (Foo + 'a);
-   |                   ^^^^^^^^ associated type `A` must be specified
+LL | type I<'a> = &'a (dyn Foo + 'a);
+   |                   ^^^^^^^^^^^^ associated type `A` must be specified
 
 error: aborting due to previous error
 

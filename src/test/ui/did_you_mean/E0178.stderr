@@ -1,23 +1,23 @@
 error[E0178]: expected a path on the left-hand side of `+`, not `&'a Foo`
-  --> $DIR/E0178.rs:4:8
+  --> $DIR/E0178.rs:6:8
    |
 LL |     w: &'a Foo + Copy,
    |        ^^^^^^^^^^^^^^ help: try adding parentheses: `&'a (Foo + Copy)`
 
 error[E0178]: expected a path on the left-hand side of `+`, not `&'a Foo`
-  --> $DIR/E0178.rs:5:8
+  --> $DIR/E0178.rs:7:8
    |
 LL |     x: &'a Foo + 'a,
    |        ^^^^^^^^^^^^ help: try adding parentheses: `&'a (Foo + 'a)`
 
 error[E0178]: expected a path on the left-hand side of `+`, not `&'a mut Foo`
-  --> $DIR/E0178.rs:6:8
+  --> $DIR/E0178.rs:8:8
    |
 LL |     y: &'a mut Foo + 'a,
    |        ^^^^^^^^^^^^^^^^ help: try adding parentheses: `&'a mut (Foo + 'a)`
 
 error[E0178]: expected a path on the left-hand side of `+`, not `fn() -> Foo`
-  --> $DIR/E0178.rs:7:8
+  --> $DIR/E0178.rs:9:8
    |
 LL |     z: fn() -> Foo + 'a,
    |        ^^^^^^^^^^^^^^^^ perhaps you forgot parentheses?

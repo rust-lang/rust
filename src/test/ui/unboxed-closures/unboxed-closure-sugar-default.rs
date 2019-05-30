@@ -15,14 +15,14 @@ fn eq<A: ?Sized,B: ?Sized>() where A : Eq<B> { }
 
 fn test<'a,'b>() {
     // Parens are equivalent to omitting default in angle.
-    eq::< Foo<(isize,),Output=()>,                   Foo(isize)                      >();
+    eq::<dyn Foo<(isize,), Output=()>, dyn Foo(isize)>();
 
     // In angle version, we supply something other than the default
-    eq::< Foo<(isize,),isize,Output=()>,      Foo(isize)                      >();
+    eq::<dyn Foo<(isize,), isize, Output=()>, dyn Foo(isize)>();
     //~^ ERROR E0277
 
     // Supply default explicitly.
-    eq::< Foo<(isize,),(isize,),Output=()>,   Foo(isize)                      >();
+    eq::<dyn Foo<(isize,), (isize,), Output=()>, dyn Foo(isize)>();
 }
 
 fn main() { }

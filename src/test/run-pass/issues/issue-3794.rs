@@ -16,7 +16,7 @@ impl T for S {
     }
 }
 
-fn print_t(t: &T) {
+fn print_t(t: &dyn T) {
     t.print();
 }
 
@@ -27,6 +27,6 @@ fn print_s(s: &S) {
 pub fn main() {
     let s: Box<S> = box S { s: 5 };
     print_s(&*s);
-    let t: Box<T> = s as Box<T>;
+    let t: Box<dyn T> = s as Box<dyn T>;
     print_t(&*t);
 }

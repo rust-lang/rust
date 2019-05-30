@@ -270,7 +270,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
-    fn is_hir_id_from_struct_pattern_shorthand_field(&self, hir_id: hir::HirId, sp: Span) -> bool {
+    crate fn is_hir_id_from_struct_pattern_shorthand_field(
+        &self,
+        hir_id: hir::HirId,
+        sp: Span,
+    ) -> bool {
         let cm = self.sess().source_map();
         let parent_id = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
         if let Some(parent) = self.tcx.hir().find_by_hir_id(parent_id) {

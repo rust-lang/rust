@@ -16,7 +16,7 @@ struct Foo<'a,T> {
 trait Baz<T> { }
 
 impl<'a, T> Trait<'a, T> for u32 {
-    type Out = &'a Baz<T>; //~ ERROR `T` may not live long enough
+    type Out = &'a dyn Baz<T>; //~ ERROR `T` may not live long enough
 }
 
 fn main() { }

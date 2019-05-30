@@ -2,10 +2,10 @@
 #![allow(non_camel_case_types)]
 
 struct closure_box<'a> {
-    cl: Box<FnMut() + 'a>,
+    cl: Box<dyn FnMut() + 'a>,
 }
 
-fn box_it<'a>(x: Box<FnMut() + 'a>) -> closure_box<'a> {
+fn box_it<'a>(x: Box<dyn FnMut() + 'a>) -> closure_box<'a> {
     closure_box {cl: x}
 }
 

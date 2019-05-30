@@ -2,7 +2,7 @@
 
 trait Zero { fn dummy(&self); }
 
-fn foo(_: Zero())
+fn foo(_: dyn Zero())
     //~^ ERROR wrong number of type arguments
     //~| ERROR associated type `Output` not found for `Zero`
 {}

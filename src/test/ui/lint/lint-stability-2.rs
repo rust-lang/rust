@@ -148,7 +148,7 @@ mod cross_crate {
         <Foo as Trait>::trait_stable(&foo);
     }
 
-    fn test_method_object(foo: &Trait) {
+    fn test_method_object(foo: &dyn Trait) {
         foo.trait_deprecated();
         foo.trait_deprecated_text();
         foo.trait_deprecated_unstable();
@@ -373,7 +373,7 @@ mod this_crate {
         <Foo as Trait>::trait_stable(&foo);
     }
 
-    fn test_method_object(foo: &Trait) {
+    fn test_method_object(foo: &dyn Trait) {
         foo.trait_deprecated();
         foo.trait_deprecated_text();
         foo.trait_unstable();

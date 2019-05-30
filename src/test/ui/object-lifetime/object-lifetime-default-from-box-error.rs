@@ -8,24 +8,24 @@ trait SomeTrait {
 }
 
 struct SomeStruct<'a> {
-    r: Box<SomeTrait+'a>
+    r: Box<dyn SomeTrait+'a>
 }
 
-fn load(ss: &mut SomeStruct) -> Box<SomeTrait> {
+fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
     // `Box<SomeTrait>` defaults to a `'static` bound, so this return
     // is illegal.
 
     ss.r //~ ERROR explicit lifetime required in the type of `ss` [E0621]
 }
 
-fn store(ss: &mut SomeStruct, b: Box<SomeTrait>) {
+fn store(ss: &mut SomeStruct, b: Box<dyn SomeTrait>) {
     // No error: b is bounded by 'static which outlives the
     // (anonymous) lifetime on the struct.
 
     ss.r = b;
 }
 
-fn store1<'b>(ss: &mut SomeStruct, b: Box<SomeTrait+'b>) {
+fn store1<'b>(ss: &mut SomeStruct, b: Box<dyn SomeTrait+'b>) {
     // Here we override the lifetimes explicitly, and so naturally we get an error.
 
     ss.r = b; //~ ERROR explicit lifetime required in the type of `ss` [E0621]

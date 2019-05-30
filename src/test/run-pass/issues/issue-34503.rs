@@ -7,5 +7,5 @@ fn main() {
         where Option<T>: Ord { *x < *x }
     }
     impl Foo<X> for () {}
-    let _ = &() as &Foo<X>;
+    let _ = &() as &dyn Foo<X>;
 }

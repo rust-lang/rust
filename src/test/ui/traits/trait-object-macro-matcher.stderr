@@ -1,14 +1,14 @@
 error[E0224]: at least one non-builtin trait is required for an object type
-  --> $DIR/trait-object-macro-matcher.rs:10:8
+  --> $DIR/trait-object-macro-matcher.rs:11:8
    |
-LL |     m!('static +);
-   |        ^^^^^^^^^
+LL |     m!(dyn 'static +);
+   |        ^^^^^^^^^^^^^
 
 error[E0038]: the trait `std::marker::Copy` cannot be made into an object
   --> $DIR/trait-object-macro-matcher.rs:8:8
    |
-LL |     m!(Copy + Send + 'static);
-   |        ^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` cannot be made into an object
+LL |     m!(dyn Copy + Send + 'static);
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` cannot be made into an object
    |
    = note: the trait cannot require that `Self : Sized`
 

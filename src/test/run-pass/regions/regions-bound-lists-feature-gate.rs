@@ -9,7 +9,7 @@ trait Foo {
     fn dummy(&self) { }
 }
 
-fn foo<'a>(x: Box<Foo + 'a>) {
+fn foo<'a>(x: Box<dyn Foo + 'a>) {
 }
 
 fn bar<'a, T: 'a>() {

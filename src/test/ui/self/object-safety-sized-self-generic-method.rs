@@ -23,7 +23,7 @@ fn tick1<C:Counter>(c: &mut C) {
     c.with(|i| ());
 }
 
-fn tick2(c: &mut Counter) {
+fn tick2(c: &mut dyn Counter) {
     tick3(c);
 }
 

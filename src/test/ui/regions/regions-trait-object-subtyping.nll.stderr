@@ -1,7 +1,7 @@
 error: lifetime may not live long enough
   --> $DIR/regions-trait-object-subtyping.rs:15:5
    |
-LL | fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
+LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
    |         -- -- lifetime `'b` defined here
    |         |
    |         lifetime `'a` defined here
@@ -12,7 +12,7 @@ LL |     x
 error: lifetime may not live long enough
   --> $DIR/regions-trait-object-subtyping.rs:22:5
    |
-LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut Dummy>) -> Wrapper<&'b mut Dummy> {
+LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut dyn Dummy>) -> Wrapper<&'b mut dyn Dummy> {
    |         --    -- lifetime `'b` defined here
    |         |
    |         lifetime `'a` defined here

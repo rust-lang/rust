@@ -1,7 +1,7 @@
 // run-pass
 use std::ops::FnMut;
 
-fn make_adder(x: isize) -> Box<FnMut(isize)->isize + 'static> {
+fn make_adder(x: isize) -> Box<dyn FnMut(isize)->isize + 'static> {
     Box::new(move |y| { x + y })
 }
 

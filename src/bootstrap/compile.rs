@@ -70,20 +70,20 @@ impl Step for Std {
 
         builder.ensure(StartupObjects { compiler, target });
 
-        if builder.force_use_stage1(compiler, target) {
-            let from = builder.compiler(1, builder.config.build);
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        if compiler_to_use != compiler {
             builder.ensure(Std {
-                compiler: from,
+                compiler: compiler_to_use,
                 target,
             });
-            builder.info(&format!("Uplifting stage1 std ({} -> {})", from.host, target));
+            builder.info(&format!("Uplifting stage1 std ({} -> {})", compiler_to_use.host, target));
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
             copy_third_party_objects(builder, &compiler, target);
 
             builder.ensure(StdLink {
-                compiler: from,
+                compiler: compiler_to_use,
                 target_compiler: compiler,
                 target,
             });
@@ -403,15 +403,16 @@ impl Step for Test {
             return;
         }
 
-        if builder.force_use_stage1(compiler, target) {
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        if compiler_to_use != compiler {
             builder.ensure(Test {
-                compiler: builder.compiler(1, builder.config.build),
+                compiler: compiler_to_use,
                 target,
             });
             builder.info(
                 &format!("Uplifting stage1 test ({} -> {})", builder.config.build, target));
             builder.ensure(TestLink {
-                compiler: builder.compiler(1, builder.config.build),
+                compiler: compiler_to_use,
                 target_compiler: compiler,
                 target,
             });
@@ -529,15 +530,16 @@ impl Step for Rustc {
             return;
         }
 
-        if builder.force_use_stage1(compiler, target) {
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        if compiler_to_use != compiler {
             builder.ensure(Rustc {
-                compiler: builder.compiler(1, builder.config.build),
+                compiler: compiler_to_use,
                 target,
             });
             builder.info(&format!("Uplifting stage1 rustc ({} -> {})",
                 builder.config.build, target));
             builder.ensure(RustcLink {
-                compiler: builder.compiler(1, builder.config.build),
+                compiler: compiler_to_use,
                 target_compiler: compiler,
                 target,
             });
@@ -687,9 +689,10 @@ impl Step for CodegenBackend {
             return;
         }
 
-        if builder.force_use_stage1(compiler, target) {
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        if compiler_to_use != compiler {
             builder.ensure(CodegenBackend {
-                compiler: builder.compiler(1, builder.config.build),
+                compiler: compiler_to_use,
                 target,
                 backend,
             });

@@ -15,5 +15,5 @@ impl Trait for dyn X {}
 
 pub fn main() {
     // Check that this does not segfault.
-    <X as X>::foo(&());
+    <dyn X as X>::foo(&());
 }

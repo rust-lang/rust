@@ -16,5 +16,5 @@ impl A for B1 {}
 
 fn main() {
     let v: Box<_> = box B1;
-    let _c: Box<A> = v.clone();
+    let _c: Box<dyn A> = v.clone();
 }

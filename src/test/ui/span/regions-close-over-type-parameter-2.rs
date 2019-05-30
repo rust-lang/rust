@@ -10,8 +10,8 @@ impl<A> Foo for A {
     fn get(&self) { }
 }
 
-fn repeater3<'a,A:'a>(v: A) -> Box<Foo+'a> {
-    box v as Box<Foo+'a>
+fn repeater3<'a,A:'a>(v: A) -> Box<dyn Foo + 'a> {
+    box v as Box<dyn Foo+'a>
 }
 
 fn main() {

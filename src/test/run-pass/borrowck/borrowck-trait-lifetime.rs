@@ -12,7 +12,7 @@ use std::marker;
 fn main() {
     trait T { fn foo(&self) {} }
 
-    fn f<'a, V: T>(v: &'a V) -> &'a T {
-        v as &'a T
+    fn f<'a, V: T>(v: &'a V) -> &'a dyn T {
+        v as &'a dyn T
     }
 }

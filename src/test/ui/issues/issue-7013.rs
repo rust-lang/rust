@@ -19,10 +19,10 @@ impl Foo for B {
 }
 
 struct A {
-    v: Box<Foo + Send>,
+    v: Box<dyn Foo + Send>,
 }
 
 fn main() {
-    let a = A {v: box B{v: None} as Box<Foo+Send>};
+    let a = A {v: box B{v: None} as Box<dyn Foo + Send>};
     //~^ ERROR `std::rc::Rc<std::cell::RefCell<A>>` cannot be sent between threads safely
 }

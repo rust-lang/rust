@@ -17,6 +17,6 @@ impl<K> Map for K {
 
 fn main() {
     let _ = &()
-        as &Map<Key=u32,MapValue=u32>;
+        as &dyn Map<Key=u32,MapValue=u32>;
     //~^ ERROR E0038
 }

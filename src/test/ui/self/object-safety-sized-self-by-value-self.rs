@@ -23,7 +23,7 @@ fn tick1<C:Counter>(mut c: C) -> u32 {
     c.get()
 }
 
-fn tick2(c: &mut Counter) {
+fn tick2(c: &mut dyn Counter) {
     tick3(c);
 }
 

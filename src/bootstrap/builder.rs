@@ -581,6 +581,30 @@ impl<'a> Builder<'a> {
         })
     }
 
+    /// Similar to `compiler`, except handles the full-bootstrap option to
+    /// silently use the stage1 compiler instead of a stage2 compiler if one is
+    /// requested.
+    ///
+    /// Note that this does *not* have the side effect of creating
+    /// `compiler(stage, host)`, unlike `compiler` above which does have such
+    /// a side effect. The returned compiler here can only be used to compile
+    /// new artifacts, it can't be used to rely on the presence of a particular
+    /// sysroot.
+    ///
+    /// See `force_use_stage1` for documentation on what each argument is.
+    pub fn compiler_for(
+        &self,
+        stage: u32,
+        host: Interned<String>,
+        target: Interned<String>,
+    ) -> Compiler {
+        if self.build.force_use_stage1(Compiler { stage, host }, target) {
+            self.compiler(1, self.config.build)
+        } else {
+            self.compiler(stage, host)
+        }
+    }
+
     pub fn sysroot(&self, compiler: Compiler) -> Interned<PathBuf> {
         self.ensure(compile::Sysroot { compiler })
     }
@@ -754,11 +778,7 @@ impl<'a> Builder<'a> {
         // This is for the original compiler, but if we're forced to use stage 1, then
         // std/test/rustc stamps won't exist in stage 2, so we need to get those from stage 1, since
         // we copy the libs forward.
-        let cmp = if self.force_use_stage1(compiler, target) {
-            self.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let cmp = self.compiler_for(compiler.stage, compiler.host, target);
 
         let libstd_stamp = match cmd {
             "check" | "clippy" | "fix" => check::libstd_stamp(self, cmp, target),
@@ -1358,7 +1378,7 @@ mod __test {
 
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
-            &[dist::Docs { stage: 2, host: a },]
+            &[dist::Docs { host: a },]
         );
         assert_eq!(
             first(builder.cache.all::<dist::Mingw>()),
@@ -1373,7 +1393,7 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Std>()),
             &[dist::Std {
-                compiler: Compiler { host: a, stage: 2 },
+                compiler: Compiler { host: a, stage: 1 },
                 target: a,
             },]
         );
@@ -1392,8 +1412,8 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
             &[
-                dist::Docs { stage: 2, host: a },
-                dist::Docs { stage: 2, host: b },
+                dist::Docs { host: a },
+                dist::Docs { host: b },
             ]
         );
         assert_eq!(
@@ -1410,7 +1430,7 @@ mod __test {
             first(builder.cache.all::<dist::Std>()),
             &[
                 dist::Std {
-                    compiler: Compiler { host: a, stage: 2 },
+                    compiler: Compiler { host: a, stage: 1 },
                     target: a,
                 },
                 dist::Std {
@@ -1434,8 +1454,8 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
             &[
-                dist::Docs { stage: 2, host: a },
-                dist::Docs { stage: 2, host: b },
+                dist::Docs { host: a },
+                dist::Docs { host: b },
             ]
         );
         assert_eq!(
@@ -1457,16 +1477,50 @@ mod __test {
             first(builder.cache.all::<dist::Std>()),
             &[
                 dist::Std {
-                    compiler: Compiler { host: a, stage: 2 },
+                    compiler: Compiler { host: a, stage: 1 },
                     target: a,
                 },
                 dist::Std {
-                    compiler: Compiler { host: a, stage: 2 },
+                    compiler: Compiler { host: a, stage: 1 },
                     target: b,
                 },
             ]
         );
         assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+    }
+
+    #[test]
+    fn dist_only_cross_host() {
+        let a = INTERNER.intern_str("A");
+        let b = INTERNER.intern_str("B");
+        let mut build = Build::new(configure(&["B"], &[]));
+        build.config.docs = false;
+        build.config.extended = true;
+        build.hosts = vec![b];
+        let mut builder = Builder::new(&build);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
+
+        assert_eq!(
+            first(builder.cache.all::<dist::Rustc>()),
+            &[
+                dist::Rustc {
+                    compiler: Compiler { host: b, stage: 2 }
+                },
+            ]
+        );
+        assert_eq!(
+            first(builder.cache.all::<compile::Rustc>()),
+            &[
+                compile::Rustc {
+                    compiler: Compiler { host: a, stage: 0 },
+                    target: a,
+                },
+                compile::Rustc {
+                    compiler: Compiler { host: a, stage: 1 },
+                    target: b,
+                },
+            ]
+        );
     }
 
     #[test]
@@ -1482,9 +1536,9 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
             &[
-                dist::Docs { stage: 2, host: a },
-                dist::Docs { stage: 2, host: b },
-                dist::Docs { stage: 2, host: c },
+                dist::Docs { host: a },
+                dist::Docs { host: b },
+                dist::Docs { host: c },
             ]
         );
         assert_eq!(
@@ -1510,11 +1564,11 @@ mod __test {
             first(builder.cache.all::<dist::Std>()),
             &[
                 dist::Std {
-                    compiler: Compiler { host: a, stage: 2 },
+                    compiler: Compiler { host: a, stage: 1 },
                     target: a,
                 },
                 dist::Std {
-                    compiler: Compiler { host: a, stage: 2 },
+                    compiler: Compiler { host: a, stage: 1 },
                     target: b,
                 },
                 dist::Std {
@@ -1541,9 +1595,9 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
             &[
-                dist::Docs { stage: 2, host: a },
-                dist::Docs { stage: 2, host: b },
-                dist::Docs { stage: 2, host: c },
+                dist::Docs { host: a },
+                dist::Docs { host: b },
+                dist::Docs { host: c },
             ]
         );
         assert_eq!(
@@ -1559,11 +1613,11 @@ mod __test {
             first(builder.cache.all::<dist::Std>()),
             &[
                 dist::Std {
-                    compiler: Compiler { host: a, stage: 2 },
+                    compiler: Compiler { host: a, stage: 1 },
                     target: a,
                 },
                 dist::Std {
-                    compiler: Compiler { host: a, stage: 2 },
+                    compiler: Compiler { host: a, stage: 1 },
                     target: b,
                 },
                 dist::Std {
@@ -1587,8 +1641,8 @@ mod __test {
         assert_eq!(
             first(builder.cache.all::<dist::Docs>()),
             &[
-                dist::Docs { stage: 2, host: a },
-                dist::Docs { stage: 2, host: b },
+                dist::Docs { host: a },
+                dist::Docs { host: b },
             ]
         );
         assert_eq!(
@@ -1610,11 +1664,11 @@ mod __test {
             first(builder.cache.all::<dist::Std>()),
             &[
                 dist::Std {
-                    compiler: Compiler { host: a, stage: 2 },
+                    compiler: Compiler { host: a, stage: 1 },
                     target: a,
                 },
                 dist::Std {
-                    compiler: Compiler { host: a, stage: 2 },
+                    compiler: Compiler { host: a, stage: 1 },
                     target: b,
                 },
             ]
@@ -1662,10 +1716,6 @@ mod __test {
                 },
                 compile::Test {
                     compiler: Compiler { host: a, stage: 1 },
-                    target: b,
-                },
-                compile::Test {
-                    compiler: Compiler { host: a, stage: 2 },
                     target: b,
                 },
             ]
@@ -1721,10 +1771,6 @@ mod __test {
                     target: a,
                 },
                 compile::Rustc {
-                    compiler: Compiler { host: a, stage: 0 },
-                    target: b,
-                },
-                compile::Rustc {
                     compiler: Compiler { host: a, stage: 1 },
                     target: b,
                 },
@@ -1757,10 +1803,6 @@ mod __test {
                 compile::Test {
                     compiler: Compiler { host: b, stage: 2 },
                     target: a,
-                },
-                compile::Test {
-                    compiler: Compiler { host: a, stage: 0 },
-                    target: b,
                 },
                 compile::Test {
                     compiler: Compiler { host: a, stage: 1 },
@@ -1809,9 +1851,6 @@ mod __test {
                     target_compiler: Compiler { host: a, stage: 1 },
                 },
                 compile::Assemble {
-                    target_compiler: Compiler { host: b, stage: 1 },
-                },
-                compile::Assemble {
                     target_compiler: Compiler { host: a, stage: 2 },
                 },
                 compile::Assemble {
@@ -1829,10 +1868,6 @@ mod __test {
                 compile::Rustc {
                     compiler: Compiler { host: a, stage: 1 },
                     target: a,
-                },
-                compile::Rustc {
-                    compiler: Compiler { host: a, stage: 0 },
-                    target: b,
                 },
                 compile::Rustc {
                     compiler: Compiler { host: a, stage: 1 },
@@ -1859,10 +1894,6 @@ mod __test {
                 compile::Test {
                     compiler: Compiler { host: b, stage: 2 },
                     target: a,
-                },
-                compile::Test {
-                    compiler: Compiler { host: a, stage: 0 },
-                    target: b,
                 },
                 compile::Test {
                     compiler: Compiler { host: a, stage: 1 },

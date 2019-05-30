@@ -36,8 +36,8 @@ trait Setter<A> {
 
 #[rustc_variance]
 struct TestObject<A, R> { //~ ERROR [o, o]
-    n: Box<Setter<A>+Send>,
-    m: Box<Getter<R>+Send>,
+    n: Box<dyn Setter<A>+Send>,
+    m: Box<dyn Getter<R>+Send>,
 }
 
 fn main() {}

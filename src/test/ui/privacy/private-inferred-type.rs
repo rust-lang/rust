@@ -65,9 +65,9 @@ mod m {
     pub fn leak_anon2() -> impl TraitWithTyParam<Alias> { 0 }
     pub fn leak_anon3() -> impl TraitWithAssocTy<AssocTy = Alias> { 0 }
 
-    pub fn leak_dyn1() -> Box<Trait + 'static> { Box::new(0) }
-    pub fn leak_dyn2() -> Box<TraitWithTyParam<Alias>> { Box::new(0) }
-    pub fn leak_dyn3() -> Box<TraitWithAssocTy<AssocTy = Alias>> { Box::new(0) }
+    pub fn leak_dyn1() -> Box<dyn Trait + 'static> { Box::new(0) }
+    pub fn leak_dyn2() -> Box<dyn TraitWithTyParam<Alias>> { Box::new(0) }
+    pub fn leak_dyn3() -> Box<dyn TraitWithAssocTy<AssocTy = Alias>> { Box::new(0) }
 }
 
 mod adjust {

@@ -4,7 +4,7 @@ trait Future: 'static {
     // Future::forget in vtables, otherwise there's an infinite type
     // recursion through <Map<...> as Future>::forget.
     fn forget(self) where Self: Sized {
-        Box::new(Map(self)) as Box<Future>;
+        Box::new(Map(self)) as Box<dyn Future>;
     }
 }
 

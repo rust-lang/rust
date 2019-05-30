@@ -76,8 +76,8 @@ LL |     pub fn u128_type(p: u128);
 error: `extern` block uses type `dyn std::clone::Clone` which is not FFI-safe: trait objects have no C equivalent
   --> $DIR/lint-ctypes.rs:54:26
    |
-LL |     pub fn trait_type(p: &Clone);
-   |                          ^^^^^^
+LL |     pub fn trait_type(p: &dyn Clone);
+   |                          ^^^^^^^^^^
 
 error: `extern` block uses type `(i32, i32)` which is not FFI-safe: tuples have unspecified layout
   --> $DIR/lint-ctypes.rs:55:26

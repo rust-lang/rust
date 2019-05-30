@@ -5,9 +5,9 @@
 // pretty-expanded FIXME #23616
 
 fn main() {
-    send::<Box<Foo>>(Box::new(Output(0)));
-    Test::<Box<Foo>>::foo(Box::new(Output(0)));
-    Test::<Box<Foo>>::new().send(Box::new(Output(0)));
+    send::<Box<dyn Foo>>(Box::new(Output(0)));
+    Test::<Box<dyn Foo>>::foo(Box::new(Output(0)));
+    Test::<Box<dyn Foo>>::new().send(Box::new(Output(0)));
 }
 
 fn send<T>(_: T) {}

@@ -41,7 +41,7 @@ struct VTable {
     bar: for<'a> fn(&'a Foo) -> u32,
 }
 
-const FOO: &Bar = &Foo { foo: 128, bar: false };
+const FOO: &dyn Bar = &Foo { foo: 128, bar: false };
 const G: Fat = unsafe { Transmute { t: FOO }.u };
 const F: Option<for<'a> fn(&'a mut Foo)> = G.1.drop;
 const H: for<'a> fn(&'a Foo) -> u32 = G.1.bar;

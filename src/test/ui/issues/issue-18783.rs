@@ -18,11 +18,11 @@ fn ufcs() {
 }
 
 trait Push<'c> {
-    fn push<'f: 'c>(&self, push: Box<FnMut() + 'f>);
+    fn push<'f: 'c>(&self, push: Box<dyn FnMut() + 'f>);
 }
 
-impl<'c> Push<'c> for RefCell<Vec<Box<FnMut() + 'c>>> {
-    fn push<'f: 'c>(&self, fun: Box<FnMut() + 'f>) {
+impl<'c> Push<'c> for RefCell<Vec<Box<dyn FnMut() + 'c>>> {
+    fn push<'f: 'c>(&self, fun: Box<dyn FnMut() + 'f>) {
         self.borrow_mut().push(fun)
     }
 }

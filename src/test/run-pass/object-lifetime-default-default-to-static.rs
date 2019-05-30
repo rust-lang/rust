@@ -10,23 +10,23 @@ trait Test {
 }
 
 struct SomeStruct {
-    t: Box<Test>,
-    u: Box<Test+'static>,
+    t: Box<dyn Test>,
+    u: Box<dyn Test+'static>,
 }
 
-fn a(t: Box<Test>, mut ss: SomeStruct) {
+fn a(t: Box<dyn Test>, mut ss: SomeStruct) {
     ss.t = t;
 }
 
-fn b(t: Box<Test+'static>, mut ss: SomeStruct) {
+fn b(t: Box<dyn Test+'static>, mut ss: SomeStruct) {
     ss.t = t;
 }
 
-fn c(t: Box<Test>, mut ss: SomeStruct) {
+fn c(t: Box<dyn Test>, mut ss: SomeStruct) {
     ss.u = t;
 }
 
-fn d(t: Box<Test+'static>, mut ss: SomeStruct) {
+fn d(t: Box<dyn Test+'static>, mut ss: SomeStruct) {
     ss.u = t;
 }
 

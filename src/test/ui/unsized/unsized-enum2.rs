@@ -13,10 +13,10 @@ trait PathHelper2 {}
 trait PathHelper3 {}
 trait PathHelper4 {}
 
-struct Path1(PathHelper1);
-struct Path2(PathHelper2);
-struct Path3(PathHelper3);
-struct Path4(PathHelper4);
+struct Path1(dyn PathHelper1);
+struct Path2(dyn PathHelper2);
+struct Path3(dyn PathHelper3);
+struct Path4(dyn PathHelper4);
 
 enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
     // parameter
@@ -50,13 +50,13 @@ enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
     //~^ ERROR the size for values of type
 
     // plain trait
-    VM(Foo),
+    VM(dyn Foo),
     //~^ ERROR the size for values of type
-    VN{x: Bar},
+    VN{x: dyn Bar},
     //~^ ERROR the size for values of type
-    VO(isize, FooBar),
+    VO(isize, dyn FooBar),
     //~^ ERROR the size for values of type
-    VP{u: isize, x: BarFoo},
+    VP{u: isize, x: dyn BarFoo},
     //~^ ERROR the size for values of type
 
     // projected

@@ -25,8 +25,8 @@ fn main()
     // coercion-cast
     let mut it = vec![137].into_iter();
     let itr: &mut vec::IntoIter<u32> = &mut it;
-    assert_eq!((itr as &mut Iterator<Item=u32>).next(), Some(137));
-    assert_eq!((itr as &mut Iterator<Item=u32>).next(), None);
+    assert_eq!((itr as &mut dyn Iterator<Item=u32>).next(), Some(137));
+    assert_eq!((itr as &mut dyn Iterator<Item=u32>).next(), None);
 
     assert_eq!(Some(4u32) as Option<u32>, Some(4u32));
     assert_eq!((1u32,2u32) as (u32,u32), (1,2));

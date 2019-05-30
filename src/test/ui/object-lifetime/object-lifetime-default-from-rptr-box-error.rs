@@ -8,10 +8,10 @@ trait Test {
 }
 
 struct SomeStruct<'a> {
-    t: &'a Box<Test>,
+    t: &'a Box<dyn Test>,
 }
 
-fn c<'a>(t: &'a Box<Test+'a>, mut ss: SomeStruct<'a>) {
+fn c<'a>(t: &'a Box<dyn Test+'a>, mut ss: SomeStruct<'a>) {
     ss.t = t; //~ ERROR mismatched types
 }
 

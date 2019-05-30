@@ -17,7 +17,7 @@ enum Enum {
 }
 
 #[derive(Debug)]
-struct Pointers(*const Send, *mut Sync);
+struct Pointers(*const dyn Send, *mut dyn Sync);
 
 macro_rules! t {
     ($x:expr, $expected:expr) => {

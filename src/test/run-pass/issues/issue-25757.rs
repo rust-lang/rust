@@ -9,7 +9,7 @@ impl Foo {
     }
 }
 
-const FUNC: &'static Fn(&mut Foo) -> () = &Foo::x;
+const FUNC: &'static dyn Fn(&mut Foo) -> () = &Foo::x;
 
 fn main() {
     let mut foo = Foo { a: 137 };

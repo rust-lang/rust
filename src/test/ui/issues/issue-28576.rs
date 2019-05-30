@@ -4,7 +4,7 @@ pub trait Foo<RHS=Self> {
 
 pub trait Bar: Foo<Assoc=()> {
     fn new(&self, b: &
-           Bar //~ ERROR the trait `Bar` cannot be made into an object
+           dyn Bar //~ ERROR the trait `Bar` cannot be made into an object
               <Assoc=()>
     );
 }

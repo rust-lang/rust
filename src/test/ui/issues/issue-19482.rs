@@ -7,7 +7,7 @@ trait Foo {
     fn dummy(&self) { }
 }
 
-fn bar(x: &Foo) {}
+fn bar(x: &dyn Foo) {}
 //~^ ERROR the associated type `A` (from the trait `Foo`) must be specified
 
 pub fn main() {}

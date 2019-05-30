@@ -12,7 +12,7 @@ impl ToPrimitive for isize {}
 impl ToPrimitive for i32 {}
 impl ToPrimitive for usize {}
 
-fn doit<T>(val: T, f: &Fn(T)) { f(val) }
+fn doit<T>(val: T, f: &dyn Fn(T)) { f(val) }
 
 pub fn main() {
     doit(0, &|x /*: isize*/ | { x.to_int(); });

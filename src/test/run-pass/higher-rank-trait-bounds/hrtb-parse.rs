@@ -24,8 +24,8 @@ fn foo01<T: for<'a> Get<&'a i32, &'a i32>>(t: T)
 
 // Parse HRTB with explicit `for` in various sorts of types:
 
-fn foo10(t: Box<for<'a> Get<i32, i32>>) { }
-fn foo11(t: Box<for<'a> Fn(i32) -> i32>) { }
+fn foo10(t: Box<dyn for<'a> Get<i32, i32>>) { }
+fn foo11(t: Box<dyn for<'a> Fn(i32) -> i32>) { }
 
 fn foo20(t: for<'a> fn(i32) -> i32) { }
 fn foo21(t: for<'a> unsafe fn(i32) -> i32) { }

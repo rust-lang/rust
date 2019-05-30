@@ -519,14 +519,8 @@ impl Session {
     pub fn instrument_mcount(&self) -> bool {
         self.opts.debugging_opts.instrument_mcount
     }
-    pub fn count_llvm_insns(&self) -> bool {
-        self.opts.debugging_opts.count_llvm_insns
-    }
     pub fn time_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.time_llvm_passes
-    }
-    pub fn codegen_stats(&self) -> bool {
-        self.opts.debugging_opts.codegen_stats
     }
     pub fn meta_stats(&self) -> bool {
         self.opts.debugging_opts.meta_stats
@@ -1290,6 +1284,18 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             sess.err(&format!("File `{}` passed to `-Zpgo-use` does not exist.",
                               path.display()));
         }
+    }
+
+    // PGO does not work reliably with panic=unwind on Windows. Let's make it
+    // an error to combine the two for now. It always runs into an assertions
+    // if LLVM is built with assertions, but without assertions it sometimes
+    // does not crash and will probably generate a corrupted binary.
+    if sess.opts.debugging_opts.pgo_gen.enabled() &&
+       sess.target.target.options.is_like_msvc &&
+       sess.panic_strategy() == PanicStrategy::Unwind {
+        sess.err("Profile-guided optimization does not yet work in conjunction \
+                  with `-Cpanic=unwind` on Windows when targeting MSVC. \
+                  See https://github.com/rust-lang/rust/issues/61002 for details.");
     }
 }
 

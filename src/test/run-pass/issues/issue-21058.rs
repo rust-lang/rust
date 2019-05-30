@@ -13,7 +13,7 @@ fn main() {
         // str
         std::intrinsics::type_name::<str>(),
         // Trait
-        std::intrinsics::type_name::<Send>(),
+        std::intrinsics::type_name::<dyn Send>(),
         // Newtype
         std::intrinsics::type_name::<NT>(),
         // DST

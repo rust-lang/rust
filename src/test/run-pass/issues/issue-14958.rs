@@ -7,17 +7,17 @@ trait Foo { fn dummy(&self) { }}
 
 struct Bar;
 
-impl<'a> std::ops::Fn<(&'a (Foo+'a),)> for Bar {
-    extern "rust-call" fn call(&self, _: (&'a Foo,)) {}
+impl<'a> std::ops::Fn<(&'a (dyn Foo+'a),)> for Bar {
+    extern "rust-call" fn call(&self, _: (&'a dyn Foo,)) {}
 }
 
-impl<'a> std::ops::FnMut<(&'a (Foo+'a),)> for Bar {
-    extern "rust-call" fn call_mut(&mut self, a: (&'a Foo,)) { self.call(a) }
+impl<'a> std::ops::FnMut<(&'a (dyn Foo+'a),)> for Bar {
+    extern "rust-call" fn call_mut(&mut self, a: (&'a dyn Foo,)) { self.call(a) }
 }
 
-impl<'a> std::ops::FnOnce<(&'a (Foo+'a),)> for Bar {
+impl<'a> std::ops::FnOnce<(&'a (dyn Foo+'a),)> for Bar {
     type Output = ();
-    extern "rust-call" fn call_once(self, a: (&'a Foo,)) { self.call(a) }
+    extern "rust-call" fn call_once(self, a: (&'a dyn Foo,)) { self.call(a) }
 }
 
 struct Baz;

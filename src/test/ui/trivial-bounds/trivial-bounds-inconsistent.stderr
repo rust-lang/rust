@@ -64,10 +64,10 @@ LL | struct TwoStrs(str, str) where str: Sized;
    |                                     ^^^^^
 
 warning: Trait bound for<'a> Dst<(dyn A + 'a)>: std::marker::Sized does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:55:47
+  --> $DIR/trivial-bounds-inconsistent.rs:55:51
    |
-LL | fn unsized_local() where for<'a> Dst<A + 'a>: Sized {
-   |                                               ^^^^^
+LL | fn unsized_local() where for<'a> Dst<dyn A + 'a>: Sized {
+   |                                                   ^^^^^
 
 warning: Trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:59:35

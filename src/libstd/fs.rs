@@ -1976,7 +1976,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// use std::path::Path;
 ///
 /// // one possible implementation of walking a directory only visiting files
-/// fn visit_dirs(dir: &Path, cb: &Fn(&DirEntry)) -> io::Result<()> {
+/// fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
 ///     if dir.is_dir() {
 ///         for entry in fs::read_dir(dir)? {
 ///             let entry = entry?;

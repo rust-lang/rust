@@ -17,6 +17,6 @@ impl Foo for S {
 
 pub fn main() {
     let x = box S { x: 3 };
-    let y = x as Box<Foo>;
+    let y = x as Box<dyn Foo>;
     y.f();
 }

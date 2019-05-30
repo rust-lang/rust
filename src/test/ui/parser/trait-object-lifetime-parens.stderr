@@ -1,23 +1,23 @@
 error: parenthesized lifetime bounds are not supported
-  --> $DIR/trait-object-lifetime-parens.rs:5:21
+  --> $DIR/trait-object-lifetime-parens.rs:7:21
    |
 LL | fn f<'a, T: Trait + ('a)>() {}
    |                     ^^^^ help: remove the parentheses
 
 error: parenthesized lifetime bounds are not supported
-  --> $DIR/trait-object-lifetime-parens.rs:8:24
+  --> $DIR/trait-object-lifetime-parens.rs:10:24
    |
 LL |     let _: Box<Trait + ('a)>;
    |                        ^^^^ help: remove the parentheses
 
 error: expected `:`, found `)`
-  --> $DIR/trait-object-lifetime-parens.rs:9:19
+  --> $DIR/trait-object-lifetime-parens.rs:11:19
    |
 LL |     let _: Box<('a) + Trait>;
    |                   ^ expected `:`
 
 error: chained comparison operators require parentheses
-  --> $DIR/trait-object-lifetime-parens.rs:9:15
+  --> $DIR/trait-object-lifetime-parens.rs:11:15
    |
 LL |     let _: Box<('a) + Trait>;
    |               ^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     let _: Box<('a) + Trait>;
    = help: or use `(...)` if you meant to specify fn arguments
 
 error: expected type, found `'a`
-  --> $DIR/trait-object-lifetime-parens.rs:9:17
+  --> $DIR/trait-object-lifetime-parens.rs:11:17
    |
 LL |     let _: Box<('a) + Trait>;
    |         -       ^^

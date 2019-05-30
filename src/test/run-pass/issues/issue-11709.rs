@@ -9,7 +9,7 @@
 
 struct S {x:()}
 
-fn test(slot: &mut Option<Box<FnMut() -> Box<FnMut()>>>) -> () {
+fn test(slot: &mut Option<Box<dyn FnMut() -> Box<dyn FnMut()>>>) -> () {
   let a = slot.take();
   let _a = match a {
     // `{let .. a(); }` would break

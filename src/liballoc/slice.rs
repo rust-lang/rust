@@ -137,17 +137,16 @@ pub use hack::to_vec;
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
 mod hack {
-    use core::mem;
-
     use crate::boxed::Box;
     use crate::vec::Vec;
     #[cfg(test)]
     use crate::string::ToString;
 
-    pub fn into_vec<T>(mut b: Box<[T]>) -> Vec<T> {
+    pub fn into_vec<T>(b: Box<[T]>) -> Vec<T> {
         unsafe {
-            let xs = Vec::from_raw_parts(b.as_mut_ptr(), b.len(), b.len());
-            mem::forget(b);
+            let len = b.len();
+            let b = Box::into_raw(b);
+            let xs = Vec::from_raw_parts(b as *mut T, len, len);
             xs
         }
     }

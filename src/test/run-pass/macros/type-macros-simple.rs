@@ -16,7 +16,7 @@ fn issue_36540() {
 
     let x: m!() = m!();
     std::cell::Cell::<m!()>::new(m!());
-    impl<T> std::ops::Index<m!()> for Trait<(m!(), T)>
+    impl<T> std::ops::Index<m!()> for dyn Trait<(m!(), T)>
         where T: Trait<m!()>
     {
         type Output = m!();

@@ -475,12 +475,7 @@ impl Step for Std {
         builder.info(&format!("Documenting stage{} std ({})", stage, target));
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let compiler = builder.compiler_for(stage, builder.config.build, target);
 
         builder.ensure(compile::Std { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Std)
@@ -563,12 +558,7 @@ impl Step for Test {
         builder.info(&format!("Documenting stage{} test ({})", stage, target));
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let compiler = builder.compiler_for(stage, builder.config.build, target);
 
         // Build libstd docs so that we generate relative links
         builder.ensure(Std { stage, target });
@@ -632,12 +622,7 @@ impl Step for WhitelistedRustc {
         builder.info(&format!("Documenting stage{} whitelisted compiler ({})", stage, target));
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let compiler = builder.compiler_for(stage, builder.config.build, target);
 
         // Build libstd docs so that we generate relative links
         builder.ensure(Std { stage, target });
@@ -706,12 +691,7 @@ impl Step for Rustc {
         t!(fs::create_dir_all(&out));
 
         // Get the correct compiler for this stage.
-        let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let compiler = builder.compiler_for(stage, builder.config.build, target);
 
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
@@ -728,7 +708,7 @@ impl Step for Rustc {
 
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
-        cargo.env("RUSTDOCFLAGS", "--document-private-items");
+        cargo.env("RUSTDOCFLAGS", "--document-private-items --passes strip-hidden");
         compile::rustc_cargo(builder, &mut cargo);
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -807,12 +787,7 @@ impl Step for Rustdoc {
         t!(fs::create_dir_all(&out));
 
         // Get the correct compiler for this stage.
-        let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let compiler = builder.compiler_for(stage, builder.config.build, target);
 
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");

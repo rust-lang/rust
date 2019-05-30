@@ -102,8 +102,8 @@ LL | struct TwoStrs(str, str) where str: Sized;
 error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:55:1
    |
-LL | / fn unsized_local() where Dst<A>: Sized {
-LL | |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
+LL | / fn unsized_local() where Dst<dyn A>: Sized {
+LL | |     let x: Dst<dyn A> = *(Box::new(Dst { x: 1 }) as Box<Dst<dyn A>>);
 LL | | }
    | |_^ doesn't have a size known at compile-time
    |

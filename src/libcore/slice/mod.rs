@@ -4158,6 +4158,24 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
             Some(snd)
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &[];
+            None
+        } else {
+            let start = (len - 1 - n) * self.chunk_size;
+            let end = match start.checked_add(self.chunk_size) {
+                Some(res) => cmp::min(res, self.v.len()),
+                None => self.v.len(),
+            };
+            let nth_back = &self.v[start..end];
+            self.v = &self.v[..start];
+            Some(nth_back)
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -4649,6 +4667,23 @@ impl<'a, T> DoubleEndedIterator for RChunks<'a, T> {
             Some(fst)
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &[];
+            None
+        } else {
+            // can't underflow because `n < len`
+            let offset_from_end = (len - 1 - n) * self.chunk_size;
+            let end = self.v.len() - offset_from_end;
+            let start = end.saturating_sub(self.chunk_size);
+            let nth_back = &self.v[start..end];
+            self.v = &self.v[end..];
+            Some(nth_back)
+        }
+    }
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -4772,6 +4807,24 @@ impl<'a, T> DoubleEndedIterator for RChunksMut<'a, T> {
             let (head, tail) = tmp.split_at_mut(sz);
             self.v = tail;
             Some(head)
+        }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &mut [];
+            None
+        } else {
+            // can't underflow because `n < len`
+            let offset_from_end = (len - 1 - n) * self.chunk_size;
+            let end = self.v.len() - offset_from_end;
+            let start = end.saturating_sub(self.chunk_size);
+            let (tmp, tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
+            let (_, nth_back) = tmp.split_at_mut(start);
+            self.v = tail;
+            Some(nth_back)
         }
     }
 }
@@ -4898,6 +4951,24 @@ impl<'a, T> DoubleEndedIterator for RChunksExact<'a, T> {
             Some(fst)
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &[];
+            None
+        } else {
+            // now that we know that `n` corresponds to a chunk,
+            // none of these operations can underflow/overflow
+            let offset = (len - n) * self.chunk_size;
+            let start = self.v.len() - offset;
+            let end = start + self.chunk_size;
+            let nth_back = &self.v[start..end];
+            self.v = &self.v[end..];
+            Some(nth_back)
+        }
+    }
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -5014,6 +5085,25 @@ impl<'a, T> DoubleEndedIterator for RChunksExactMut<'a, T> {
             let (head, tail) = tmp.split_at_mut(self.chunk_size);
             self.v = tail;
             Some(head)
+        }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &mut [];
+            None
+        } else {
+            // now that we know that `n` corresponds to a chunk,
+            // none of these operations can underflow/overflow
+            let offset = (len - n) * self.chunk_size;
+            let start = self.v.len() - offset;
+            let end = start + self.chunk_size;
+            let (tmp, tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
+            let (_, nth_back) = tmp.split_at_mut(start);
+            self.v = tail;
+            Some(nth_back)
         }
     }
 }
