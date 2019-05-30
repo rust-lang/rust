@@ -12,7 +12,6 @@ use crate::{
     Function, Struct, Union, StructField, Enum, EnumVariant, Path, ModuleDef, TypeAlias, Const, Static,
     HirDatabase, BuiltinType,
     type_ref::TypeRef,
-    name::KnownName,
     nameres::Namespace,
     resolve::{Resolver, Resolution},
     path::{PathSegment, GenericArg},
@@ -22,7 +21,7 @@ use crate::{
     generics::{WherePredicate, GenericDef},
     ty::AdtDef,
 };
-use super::{Ty, primitive, FnSig, Substs, TypeCtor, TraitRef, GenericPredicate};
+use super::{Ty, FnSig, Substs, TypeCtor, TraitRef, GenericPredicate};
 
 impl Ty {
     pub(crate) fn from_hir(db: &impl HirDatabase, resolver: &Resolver, type_ref: &TypeRef) -> Self {

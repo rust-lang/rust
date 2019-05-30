@@ -1,6 +1,7 @@
 mod macros;
 mod globs;
 mod incremental;
+mod primitives;
 
 use std::sync::Arc;
 

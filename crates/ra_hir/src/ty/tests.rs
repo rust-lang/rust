@@ -2717,6 +2717,24 @@ fn test() { (S {}).method()<|>; }
     assert_eq!(t, "{unknown}");
 }
 
+#[test]
+fn shadowing_primitive() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct i32;
+struct Foo;
+
+impl i32 { fn foo(&self) -> Foo { Foo } }
+
+fn main() {
+    let x: i32 = i32;
+    x.foo()<|>;
+}"#,
+    );
+    assert_eq!(t, "Foo");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
