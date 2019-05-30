@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed
+error[E0282]: type annotations needed for `(std::sync::mpsc::Sender<Foo<_>>, std::sync::mpsc::Receiver<Foo<_>>)`
   --> $DIR/issue-25368.rs:11:17
    |
 LL |     let (tx, rx) = channel();

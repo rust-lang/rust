@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed
+error[E0282]: type annotations needed for `(std::vec::Vec<_>,)`
   --> $DIR/cannot_infer_local_or_vec_in_tuples.rs:2:18
    |
 LL |     let (x, ) = (vec![], );

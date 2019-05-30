@@ -15,17 +15,18 @@ struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     hir_map: &'a hir::map::Map<'gcx>,
     found_local_pattern: Option<&'gcx Pat>,
     found_arg_pattern: Option<&'gcx Pat>,
+    found_ty: Option<Ty<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
-    fn node_matches_type(&mut self, hir_id: HirId) -> bool {
+    fn node_matches_type(&mut self, hir_id: HirId) -> Option<Ty<'tcx>> {
         let ty_opt = self.infcx.in_progress_tables.and_then(|tables| {
             tables.borrow().node_type_opt(hir_id)
         });
         match ty_opt {
             Some(ty) => {
                 let ty = self.infcx.resolve_vars_if_possible(&ty);
-                ty.walk().any(|inner_ty| {
+                if ty.walk().any(|inner_ty| {
                     inner_ty == self.target_ty || match (&inner_ty.sty, &self.target_ty.sty) {
                         (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
                             self.infcx
@@ -35,9 +36,13 @@ impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
                         }
                         _ => false,
                     }
-                })
+                }) {
+                    Some(ty)
+                } else {
+                    None
+                }
             }
-            None => false,
+            None => None,
         }
     }
 }
@@ -48,16 +53,21 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_local(&mut self, local: &'gcx Local) {
-        if self.found_local_pattern.is_none() && self.node_matches_type(local.hir_id) {
+        if let (None, Some(ty)) = (self.found_local_pattern, self.node_matches_type(local.hir_id)) {
             self.found_local_pattern = Some(&*local.pat);
+            self.found_ty = Some(ty);
         }
         intravisit::walk_local(self, local);
     }
 
     fn visit_body(&mut self, body: &'gcx Body) {
         for argument in &body.arguments {
-            if self.found_arg_pattern.is_none() && self.node_matches_type(argument.hir_id) {
+            if let (None, Some(ty)) = (
+                self.found_arg_pattern,
+                self.node_matches_type(argument.hir_id),
+            ) {
                 self.found_arg_pattern = Some(&*argument.pat);
+                self.found_ty = Some(ty);
             }
         }
         intravisit::walk_body(self, body);
@@ -106,6 +116,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             hir_map: &self.tcx.hir(),
             found_local_pattern: None,
             found_arg_pattern: None,
+            found_ty: None,
         };
 
         if let Some(body_id) = body_id {
@@ -113,6 +124,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             local_visitor.visit_expr(expr);
         }
 
+        let ty_msg = match local_visitor.found_ty {
+            Some(ty) if &ty.to_string() != "_" => format!(" for `{}`", ty),
+            _ => String::new(),
+        };
         if let Some(pattern) = local_visitor.found_arg_pattern {
             err_span = pattern.span;
             // We don't want to show the default label for closures.
@@ -131,13 +146,35 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             //          ^ consider giving this closure parameter a type
             // ```
             labels.clear();
-            labels.push(
-                (pattern.span, "consider giving this closure parameter a type".to_owned()));
+            labels.push((pattern.span, format!(
+                "consider giving this closure parameter {}",
+                match local_visitor.found_ty {
+                    Some(ty) if &ty.to_string() != "_" => format!(
+                        "the type `{}` with the type parameter `{}` specified",
+                        ty,
+                        name,
+                    ),
+                    _ => "a type".to_owned(),
+                },
+            )));
         } else if let Some(pattern) = local_visitor.found_local_pattern {
             if let Some(simple_ident) = pattern.simple_ident() {
                 match pattern.span.compiler_desugaring_kind() {
-                    None => labels.push((pattern.span,
-                                         format!("consider giving `{}` a type", simple_ident))),
+                    None => labels.push((
+                        pattern.span,
+                        format!(
+                            "consider giving `{}` {}",
+                            simple_ident,
+                            match local_visitor.found_ty {
+                                Some(ty) if &ty.to_string() != "_" => format!(
+                                    "the type `{}` with the type parameter `{}` specified",
+                                    ty,
+                                    name,
+                                ),
+                                _ => "a type".to_owned(),
+                            },
+                        ),
+                    )),
                     Some(CompilerDesugaringKind::ForLoop) => labels.push((
                         pattern.span,
                         "the element type for this iterator is not specified".to_owned(),
@@ -147,12 +184,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             } else {
                 labels.push((pattern.span, "consider giving the pattern a type".to_owned()));
             }
-        }
+        };
 
-        let mut err = struct_span_err!(self.tcx.sess,
-                                       err_span,
-                                       E0282,
-                                       "type annotations needed");
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            err_span,
+            E0282,
+            "type annotations needed{}",
+            ty_msg,
+        );
 
         for (target_span, label_message) in labels {
             err.span_label(target_span, label_message);
