@@ -30,6 +30,7 @@ use rustc_data_structures::unify as ut;
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
+use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::symbol::InternedString;
 use syntax_pos::Span;
@@ -902,6 +903,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("sub_regions({:?} <: {:?})", a, b);
         self.borrow_region_constraints()
             .make_subregion(origin, a, b);
+    }
+
+    /// Require that the region `r` be equal to one of the regions in
+    /// the set `regions`.
+    pub fn in_constraint(
+        &self,
+        origin: SubregionOrigin<'tcx>,
+        region: ty::Region<'tcx>,
+        in_regions: &Rc<Vec<ty::Region<'tcx>>>,
+    ) {
+        debug!("sub_regions({:?} <: {:?})", region, in_regions);
+        self.borrow_region_constraints()
+            .in_constraint(origin, region, in_regions);
     }
 
     pub fn subtype_predicate(

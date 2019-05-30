@@ -9,6 +9,8 @@ use crate::ty::subst::{InternalSubsts, Kind, SubstsRef, UnpackedKind};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use crate::util::nodemap::DefIdMap;
 use rustc_data_structures::fx::FxHashMap;
+use std::rc::Rc;
+use syntax::source_map::Span;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
@@ -212,13 +214,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///
     /// # The Solution
     ///
-    /// We make use of the constraint that we *do* have in the `<=`
-    /// relation. To do that, we find the "minimum" of all the
-    /// arguments that appear in the substs: that is, some region
-    /// which is less than all the others. In the case of `Foo1<'a>`,
-    /// that would be `'a` (it's the only choice, after all). Then we
-    /// apply that as a least bound to the variables (e.g., `'a <=
-    /// '0`).
+    /// We generally prefer to make us our `<=` constraints, since
+    /// they integrate best into the region solve. To do that, we find
+    /// the "minimum" of all the arguments that appear in the substs:
+    /// that is, some region which is less than all the others. In the
+    /// case of `Foo1<'a>`, that would be `'a` (it's the only choice,
+    /// after all). Then we apply that as a least bound to the
+    /// variables (e.g., `'a <= '0`).
     ///
     /// In some cases, there is no minimum. Consider this example:
     ///
@@ -226,8 +228,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// fn baz<'a, 'b>() -> impl Trait<'a, 'b> { ... }
     /// ```
     ///
-    /// Here we would report an error, because `'a` and `'b` have no
-    /// relation to one another.
+    /// Here we would report a more complex "in constraint", like `'r
+    /// in ['a, 'b, 'static]` (where `'r` is some regon appearing in
+    /// the hidden type).
+    ///
+    /// # Constrain regions, not the hidden concrete type
+    ///
+    /// Note that generating constraints on each region `Rc` is *not*
+    /// the same as generating an outlives constraint on `Tc` iself.
+    /// For example, if we had a function like this:
+    ///
+    /// ```rust
+    /// fn foo<'a, T>(x: &'a u32, y: T) -> impl Foo<'a> {
+    ///   (x, y)
+    /// }
+    ///
+    /// // Equivalent to:
+    /// existential type FooReturn<'a, T>: Foo<'a>;
+    /// fn foo<'a, T>(..) -> FooReturn<'a, T> { .. }
+    /// ```
+    ///
+    /// then the hidden type `Tc` would be `(&'0 u32, T)` (where `'0`
+    /// is an inference variable). If we generated a constraint that
+    /// `Tc: 'a`, then this would incorrectly require that `T: 'a` --
+    /// but this is not necessary, because the existential type we
+    /// create will be allowed to reference `T`. So instead we just
+    /// generate a constraint that `'0: 'a`.
     ///
     /// # The `free_region_relations` parameter
     ///
@@ -270,6 +296,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// See `constrain_opaque_types` for docs
     pub fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
         &self,
         def_id: DefId,
@@ -323,6 +350,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 GenericParamDefKind::Lifetime => {}
                 _ => continue,
             }
+
             // Get the value supplied for this region from the substs.
             let subst_arg = opaque_defn.substs.region_at(param.index as usize);
 
@@ -339,45 +367,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         least_region = Some(subst_arg);
                     } else {
                         // There are two regions (`lr` and
-                        // `subst_arg`) which are not relatable. We can't
-                        // find a best choice.
-                        let context_name = match opaque_defn.origin {
-                            hir::ExistTyOrigin::ExistentialType => "existential type",
-                            hir::ExistTyOrigin::ReturnImplTrait => "impl Trait",
-                            hir::ExistTyOrigin::AsyncFn => "async fn",
-                        };
-                        let msg = format!("ambiguous lifetime bound in `{}`", context_name);
-                        let mut err = self.tcx.sess.struct_span_err(span, &msg);
-
-                        let lr_name = lr.to_string();
-                        let subst_arg_name = subst_arg.to_string();
-                        let label_owned;
-                        let label = match (&*lr_name, &*subst_arg_name) {
-                            ("'_", "'_") => "the elided lifetimes here do not outlive one another",
-                            _ => {
-                                label_owned = format!(
-                                    "neither `{}` nor `{}` outlives the other",
-                                    lr_name, subst_arg_name,
-                                );
-                                &label_owned
-                            }
-                        };
-                        err.span_label(span, label);
-
-                        if let hir::ExistTyOrigin::AsyncFn = opaque_defn.origin {
-                            err.note(
-                                "multiple unrelated lifetimes are not allowed in \
-                                 `async fn`.",
-                            );
-                            err.note(
-                                "if you're using argument-position elided lifetimes, consider \
-                                 switching to a single named lifetime.",
-                            );
-                        }
-                        err.emit();
-
-                        least_region = Some(self.tcx.mk_region(ty::ReEmpty));
-                        break;
+                        // `subst_arg`) which are not relatable. We
+                        // can't find a best choice. Therefore,
+                        // instead of creating a single bound like
+                        // `'r: 'a` (which is our preferred choice),
+                        // we will create a "in bound" like `'r in
+                        // ['a, 'b, 'c]`, where `'a..'c` are the
+                        // regions that appear in the impl trait.
+                        return self.generate_in_constraint(
+                            span,
+                            concrete_ty,
+                            abstract_type_generics,
+                            opaque_defn,
+                        );
                     }
                 }
             }
@@ -389,6 +391,37 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
             op: |r| self.sub_regions(infer::CallReturn(span), least_region, r),
+        });
+    }
+
+    /// As a fallback, we sometimes generate an "in constraint". For
+    /// case like `impl Foo<'a, 'b>`, where `'a` and `'b` cannot be
+    /// related, we would generate a constraint `'r in ['a, 'b,
+    /// 'static]` for each region `'r` that appears in the hidden type
+    /// (i.e., it must be equal to `'a`, `'b`, or `'static`).
+    fn generate_in_constraint(
+        &self,
+        span: Span,
+        concrete_ty: Ty<'tcx>,
+        abstract_type_generics: &ty::Generics,
+        opaque_defn: &OpaqueTypeDecl<'tcx>,
+    ) {
+        let in_regions: Rc<Vec<ty::Region<'tcx>>> = Rc::new(
+            abstract_type_generics
+                .params
+                .iter()
+                .filter(|param| match param.kind {
+                    GenericParamDefKind::Lifetime => true,
+                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => false,
+                })
+                .map(|param| opaque_defn.substs.region_at(param.index as usize))
+                .chain(std::iter::once(self.tcx.lifetimes.re_static))
+                .collect(),
+        );
+
+        concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+            tcx: self.tcx,
+            op: |r| self.in_constraint(infer::CallReturn(span), r, &in_regions),
         });
     }
 
