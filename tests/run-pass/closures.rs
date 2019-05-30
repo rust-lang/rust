@@ -44,10 +44,62 @@ fn boxed(f: Box<dyn FnOnce() -> i32>) -> i32 {
     f()
 }
 
+fn fn_item_as_closure_trait_object() {
+    fn foo() {}
+    let f: &dyn Fn() = &foo;
+    f();
+}
+
+fn fn_item_with_args_as_closure_trait_object() {
+    fn foo(i: i32) {
+        assert_eq!(i, 42);
+    }
+    let f: &dyn Fn(i32) = &foo;
+    f(42);
+}
+
+fn fn_item_with_multiple_args_as_closure_trait_object() {
+    fn foo(i: i32, j: i32) {
+        assert_eq!(i, 42);
+        assert_eq!(j, 55);
+    }
+
+    fn bar(i: i32, j: i32, k: f32) {
+        assert_eq!(i, 42);
+        assert_eq!(j, 55);
+        assert_eq!(k, 3.14159)
+    }
+    let f: &dyn Fn(i32, i32) = &foo;
+    f(42, 55);
+    let f: &dyn Fn(i32, i32, f32) = &bar;
+    f(42, 55, 3.14159);
+}
+
+fn fn_ptr_as_closure_trait_object() {
+    fn foo() {}
+    fn bar(u: u32) { assert_eq!(u, 42); }
+    fn baa(u: u32, f: f32) {
+        assert_eq!(u, 42);
+        assert_eq!(f, 3.141);
+    }
+    let f: &dyn Fn() = &(foo as fn());
+    f();
+    let f: &dyn Fn(u32) = &(bar as fn(u32));
+    f(42);
+    let f: &dyn Fn(u32, f32) = &(baa as fn(u32, f32));
+    f(42, 3.141);
+}
+
+
 fn main() {
     assert_eq!(simple(), 12);
     assert_eq!(crazy_closure(), (84, 10, 10));
     assert_eq!(closure_arg_adjustment_problem(), 3);
     assert_eq!(fn_once_closure_with_multiple_args(), 6);
     assert_eq!(boxed(Box::new({let x = 13; move || x})), 13);
+
+    fn_item_as_closure_trait_object();
+    fn_item_with_args_as_closure_trait_object();
+    fn_item_with_multiple_args_as_closure_trait_object();
+    fn_ptr_as_closure_trait_object();
 }
