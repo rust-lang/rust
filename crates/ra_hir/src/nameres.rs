@@ -64,7 +64,7 @@ use ra_syntax::ast;
 use ra_prof::profile;
 
 use crate::{
-    ModuleDef, Name, Crate, Module, MacroDef,
+    ModuleDef, Name, Crate, Module, MacroDef, KnownName, BuiltinType,
     DefDatabase, Path, PathKind, HirFileId, Trait,
     ids::MacroDefId,
     diagnostics::DiagnosticSink,

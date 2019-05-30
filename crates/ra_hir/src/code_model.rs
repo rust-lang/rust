@@ -4,12 +4,12 @@ use ra_db::{CrateId, SourceRootId, Edition, FileId};
 use ra_syntax::{ast::{self, NameOwner, TypeAscriptionOwner}, TreeArc};
 
 use crate::{
-    Name, AsName, AstId, Ty, HirFileId, Either,
+    Name, AsName, AstId, Ty, HirFileId, Either, KnownName,
     HirDatabase, DefDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
     expr::{Body, BodySourceMap, validation::ExprValidator},
-    ty::{TraitRef, InferenceResult, primitive::{IntTy, FloatTy}},
+    ty::{TraitRef, InferenceResult, primitive::{IntTy, FloatTy, Signedness, IntBitness, FloatBitness}},
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::HasGenericParams,
     docs::{Documentation, Docs, docs_from_ast},
@@ -82,6 +82,32 @@ pub enum BuiltinType {
     Str,
     Int(IntTy),
     Float(FloatTy),
+}
+
+impl BuiltinType {
+    #[rustfmt::skip]
+    pub(crate) const ALL: &'static [(KnownName, BuiltinType)] = &[
+        (KnownName::Char, BuiltinType::Char),
+        (KnownName::Bool, BuiltinType::Bool),
+        (KnownName::Str, BuiltinType::Str),
+
+        (KnownName::Isize, BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::Xsize })),
+        (KnownName::I8,    BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X8 })),
+        (KnownName::I16,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X16 })),
+        (KnownName::I32,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X32 })),
+        (KnownName::I64,   BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X64 })),
+        (KnownName::I128,  BuiltinType::Int(IntTy { signedness: Signedness::Signed, bitness: IntBitness::X128 })),
+
+        (KnownName::Usize, BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::Xsize })),
+        (KnownName::U8,    BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X8 })),
+        (KnownName::U16,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X16 })),
+        (KnownName::U32,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X32 })),
+        (KnownName::U64,   BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X64 })),
+        (KnownName::U128,  BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X128 })),
+
+        (KnownName::F32, BuiltinType::Float(FloatTy { bitness: FloatBitness::X32 })),
+        (KnownName::F64, BuiltinType::Float(FloatTy { bitness: FloatBitness::X32 })),
+    ];
 }
 
 /// The defs which can be visible in the module.
