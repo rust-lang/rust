@@ -12,7 +12,7 @@ fn main() {
     BAR(44, 45);
     let bar: unsafe fn(i32, i32) = BAR;
     unsafe { bar(46, 47) };
-    let boo: &Fn(i32, i32) = &BAR;
+    let boo: &dyn Fn(i32, i32) = &BAR;
     boo(48, 49);
 
     let f = magic(||{}) as fn();

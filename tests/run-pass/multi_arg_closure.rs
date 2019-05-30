@@ -1,4 +1,4 @@
-fn foo(f: &mut FnMut(isize, isize) -> isize) -> isize {
+fn foo(f: &mut dyn FnMut(isize, isize) -> isize) -> isize {
     f(1, 2)
 }
 

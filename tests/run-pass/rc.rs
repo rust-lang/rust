@@ -64,8 +64,8 @@ fn rc_from() {
 }
 
 fn rc_fat_ptr_eq() {
-    let p = Rc::new(1) as Rc<Debug>;
-    let a: *const Debug = &*p;
+    let p = Rc::new(1) as Rc<dyn Debug>;
+    let a: *const dyn Debug = &*p;
     let r = Rc::into_raw(p);
     assert!(a == r);
     drop(unsafe { Rc::from_raw(r) });

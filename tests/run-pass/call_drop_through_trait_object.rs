@@ -13,7 +13,7 @@ impl Drop for Bar {
 impl Foo for Bar {}
 
 fn main() {
-    let b: Box<Foo> = Box::new(Bar);
+    let b: Box<dyn Foo> = Box::new(Bar);
     assert!(unsafe { !DROP_CALLED });
     drop(b);
     assert!(unsafe { DROP_CALLED });

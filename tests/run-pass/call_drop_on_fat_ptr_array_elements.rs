@@ -13,7 +13,7 @@ impl Drop for Bar {
 }
 
 fn main() {
-    let b: [Box<Foo>; 4] = [Box::new(Bar), Box::new(Bar), Box::new(Bar), Box::new(Bar)];
+    let b: [Box<dyn Foo>; 4] = [Box::new(Bar), Box::new(Bar), Box::new(Bar), Box::new(Bar)];
     assert_eq!(unsafe { DROP_COUNT }, 0);
     drop(b);
     assert_eq!(unsafe { DROP_COUNT }, 4);

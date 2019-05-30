@@ -40,7 +40,7 @@ fn check_both(val: &Foo<[u8]>) {
     }
 }
 
-fn check_trait_obj(val: &Foo<Get>) {
+fn check_trait_obj(val: &Foo<dyn Get>) {
     match *val {
         Foo { a, ref inner } => {
             assert_eq!(a, 32);
@@ -55,6 +55,6 @@ fn main() {
     check_dst_val(foo);
     check_both(foo);
 
-    let foo: &Foo<Get> = &Foo { a: 32, inner: 32 };
+    let foo: &Foo<dyn Get> = &Foo { a: 32, inner: 32 };
     check_trait_obj(foo);
 }
