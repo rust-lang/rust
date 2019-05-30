@@ -32,8 +32,8 @@ fn main() {
     let e = Some(1u8).map(generic);
     let e = Some(1u8).map(generic);
     // See #515
-    let a: Option<Box<::std::ops::Deref<Target = [i32]>>> =
-        Some(vec![1i32, 2]).map(|v| -> Box<::std::ops::Deref<Target = [i32]>> { Box::new(v) });
+    let a: Option<Box<dyn (::std::ops::Deref<Target = [i32]>)>> =
+        Some(vec![1i32, 2]).map(|v| -> Box<dyn (::std::ops::Deref<Target = [i32]>)> { Box::new(v) });
 }
 
 trait TestTrait {
@@ -108,7 +108,7 @@ fn test_redundant_closures_containing_method_calls() {
     let _: Vec<_> = arr.iter().map(|x| x.map_err(some.take().unwrap())).collect();
 }
 
-struct Thunk<T>(Box<FnMut() -> T>);
+struct Thunk<T>(Box<dyn FnMut() -> T>);
 
 impl<T> Thunk<T> {
     fn new<F: 'static + FnOnce() -> T>(f: F) -> Thunk<T> {

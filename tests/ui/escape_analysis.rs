@@ -21,7 +21,7 @@ impl Z for A {
 
 fn main() {}
 
-fn ok_box_trait(boxed_trait: &Box<Z>) {
+fn ok_box_trait(boxed_trait: &Box<dyn Z>) {
     let boxed_local = boxed_trait;
     // done
 }

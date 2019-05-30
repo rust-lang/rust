@@ -45,10 +45,10 @@ LL |     arc_weak.clone();
    |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&arc_weak)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:47:29
+  --> $DIR/unnecessary_clone.rs:47:33
    |
-LL |     let _: Arc<SomeTrait> = x.clone();
-   |                             ^^^^^^^^^ help: try this: `Arc::<SomeImpl>::clone(&x)`
+LL |     let _: Arc<dyn SomeTrait> = x.clone();
+   |                                 ^^^^^^^^^ help: try this: `Arc::<SomeImpl>::clone(&x)`
 
 error: using `clone` on a `Copy` type
   --> $DIR/unnecessary_clone.rs:51:5

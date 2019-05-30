@@ -44,7 +44,7 @@ fn clone_on_ref_ptr() {
     sync::Weak::clone(&arc_weak);
 
     let x = Arc::new(SomeImpl);
-    let _: Arc<SomeTrait> = x.clone();
+    let _: Arc<dyn SomeTrait> = x.clone();
 }
 
 fn clone_on_copy_generic<T: Copy>(t: T) {

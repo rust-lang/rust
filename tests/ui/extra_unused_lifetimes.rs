@@ -25,7 +25,7 @@ fn lt_return_only<'a>() -> &'a u8 {
     panic!()
 }
 
-fn unused_lt_blergh<'a>(x: Option<Box<Send + 'a>>) {}
+fn unused_lt_blergh<'a>(x: Option<Box<dyn Send + 'a>>) {}
 
 trait Foo<'a> {
     fn x(&self, a: &'a u8);

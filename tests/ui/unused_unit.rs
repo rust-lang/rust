@@ -18,7 +18,7 @@ impl Unitter {
     pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) ->
         ()
     where G: Fn() -> () {
-        let _y: &Fn() -> () = &f;
+        let _y: &dyn Fn() -> () = &f;
         (); // this should not lint, as it's not in return type position
     }
 }
