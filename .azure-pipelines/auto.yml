@@ -127,17 +127,29 @@ jobs:
       asmjs:
         IMAGE: asmjs
 
-      i686-gnu:
+      i686-gnu-1:
         IMAGE: i686-gnu
+        SCRIPT: make ci-subset-1
+      i686-gnu-2:
+        IMAGE: i686-gnu
+        SCRIPT: make ci-subset-2
 
-      i686-gnu-nopt:
+      i686-gnu-nopt-1:
         IMAGE: i686-gnu-nopt
+        SCRIPT: make ci-subset-1
+      i686-gnu-nopt-2:
+        IMAGE: i686-gnu-nopt
+        SCRIPT: make ci-subset-2
 
       test-various:
         IMAGE: test-various
 
-      x86_64-gnu:
+      x86_64-gnu-1:
         IMAGE: x86_64-gnu
+        SCRIPT: make ci-subset-1
+      x86_64-gnu-2:
+        IMAGE: x86_64-gnu
+        SCRIPT: make ci-subset-2
 
       x86_64-gnu-full-bootstrap:
         IMAGE: x86_64-gnu-full-bootstrap
