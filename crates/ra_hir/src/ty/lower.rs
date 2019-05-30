@@ -65,22 +65,6 @@ impl Ty {
     }
 
     pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Self {
-        if let Some(name) = path.as_ident() {
-            // TODO: remove this
-            if let Some(int_ty) = primitive::IntTy::from_type_name(name) {
-                return Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Known(int_ty)));
-            } else if let Some(float_ty) = primitive::FloatTy::from_type_name(name) {
-                return Ty::simple(TypeCtor::Float(primitive::UncertainFloatTy::Known(float_ty)));
-            } else if let Some(known) = name.as_known_name() {
-                match known {
-                    KnownName::Bool => return Ty::simple(TypeCtor::Bool),
-                    KnownName::Char => return Ty::simple(TypeCtor::Char),
-                    KnownName::Str => return Ty::simple(TypeCtor::Str),
-                    _ => {}
-                }
-            }
-        }
-
         // Resolve the path (in type namespace)
         let resolution = resolver.resolve_path(db, path).take_types();
 

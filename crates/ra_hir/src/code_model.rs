@@ -106,7 +106,7 @@ impl BuiltinType {
         (KnownName::U128,  BuiltinType::Int(IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X128 })),
 
         (KnownName::F32, BuiltinType::Float(FloatTy { bitness: FloatBitness::X32 })),
-        (KnownName::F64, BuiltinType::Float(FloatTy { bitness: FloatBitness::X32 })),
+        (KnownName::F64, BuiltinType::Float(FloatTy { bitness: FloatBitness::X64 })),
     ];
 }
 
