@@ -156,6 +156,11 @@ jobs:
 
       x86_64-gnu-aux:
         IMAGE: x86_64-gnu-aux
+        SCRIPT: make check-aux EXCLUDE_CARGO=1
+
+      x86_64-gnu-cargo:
+        IMAGE: x86_64-gnu-aux
+        SCRIPT: ./x.py test src/tools/cargotest src/tools/cargo
 
       x86_64-gnu-tools:
         IMAGE: x86_64-gnu-tools
