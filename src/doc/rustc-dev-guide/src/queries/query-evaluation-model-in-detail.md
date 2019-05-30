@@ -204,7 +204,7 @@ OK as long as the mutation is not observable. This is achieved by two things:
 This is not an ideal setup because of the manual intervention needed, so it
 should be used sparingly and only when it is well known which queries might
 access a given result. In practice, however, stealing has not turned out to be
-much of a maintainance burden.
+much of a maintenance burden.
 
 To summarize: "Steal queries" break some of the rules in a controlled way.
 There are checks in place that make sure that nothing can go silently wrong.

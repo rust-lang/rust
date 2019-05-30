@@ -7,7 +7,7 @@ figuring out where moves occur and tracking those.
 ## Initialization and moves
 
 From a user's perspective, initialization -- giving a variable some
-value -- and moves -- transfering ownership to another place -- might
+value -- and moves -- transferring ownership to another place -- might
 seem like distinct topics. Indeed, our borrow checker error messages
 often talk about them differently. But **within the borrow checker**,
 they are not nearly as separate. Roughly speaking, the borrow checker

@@ -147,7 +147,7 @@ are both represented with an index.)
 
 For each strand, we also optionally store a *selected subgoal*. This
 is the subgoal after the turnstile (`:-`) that we are currently trying
-to prove in this strand. Initally, when a strand is first created,
+to prove in this strand. Initially, when a strand is first created,
 there is no selected subgoal.
 
 [`ExClause`]: https://rust-lang.github.io/chalk/doc/chalk_engine/struct.ExClause.html
