@@ -62,7 +62,7 @@ macro_rules! book {
 book!(
     EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::MdBook2;
     EmbeddedBook, "src/doc/embedded-book", "embedded-book", RustbookVersion::MdBook2;
-    Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::MdBook1;
+    Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::MdBook2;
     Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", RustbookVersion::MdBook1;
     RustcBook, "src/doc/rustc", "rustc", RustbookVersion::MdBook1;
