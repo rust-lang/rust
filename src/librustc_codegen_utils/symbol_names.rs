@@ -427,7 +427,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
         mut self,
         predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
-        let mut first = false;
+        let mut first = true;
         for p in predicates {
             if !first {
                 write!(self, "+")?;

@@ -32,3 +32,5 @@ pub use self::operand::{ScalarMaybeUndef, Immediate, ImmTy, Operand, OpTy};
 pub use self::visitor::{ValueVisitor, MutValueVisitor};
 
 pub use self::validity::RefTracking;
+
+pub use self::intrinsics::type_name;
