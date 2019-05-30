@@ -26,7 +26,7 @@ While the LLVM-specific code will be left in `rustc_codegen_llvm`, all the new t
 
 @irinagpopa started to parametrize the types of `rustc_codegen_llvm` by a generic `Value` type, implemented in LLVM by a reference `&'ll Value`. This work has been extended to all structures inside the `mir` folder and elsewhere, as well as for LLVM's `BasicBlock` and `Type` types.
 
-The two most important structures for the LLVM codegen are `CodegenCx` and `Builder`. They are parametrized by multiple liftime parameters and the type for `Value`.
+The two most important structures for the LLVM codegen are `CodegenCx` and `Builder`. They are parametrized by multiple lifetime parameters and the type for `Value`.
 
 ```rust
 struct CodegenCx<'ll, 'tcx: 'll> {
