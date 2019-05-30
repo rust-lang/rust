@@ -1,7 +1,7 @@
 error: unreachable pattern
   --> $DIR/match-range-fail-dominate.rs:12:7
    |
-LL |       5 ... 6 => { }
+LL |       5 ..= 6 => { }
    |       ^^^^^^^
    |
 note: lint level defined here
@@ -13,25 +13,25 @@ LL | #![deny(unreachable_patterns)]
 error: unreachable pattern
   --> $DIR/match-range-fail-dominate.rs:18:7
    |
-LL |       4 ... 6 => { }
+LL |       4 ..= 6 => { }
    |       ^^^^^^^
 
 error: unreachable pattern
   --> $DIR/match-range-fail-dominate.rs:24:7
    |
-LL |       4 ... 6 => { }
+LL |       4 ..= 6 => { }
    |       ^^^^^^^
 
 error: unreachable pattern
   --> $DIR/match-range-fail-dominate.rs:30:7
    |
-LL |       'a' ... 'z' => {}
+LL |       'a' ..= 'z' => {}
    |       ^^^^^^^^^^^
 
 warning: floating-point types cannot be used in patterns
   --> $DIR/match-range-fail-dominate.rs:35:7
    |
-LL |       0.01f64 ... 6.5f64 => {}
+LL |       0.01f64 ..= 6.5f64 => {}
    |       ^^^^^^^
    |
    = note: #[warn(illegal_floating_point_literal_pattern)] on by default
@@ -41,7 +41,7 @@ LL |       0.01f64 ... 6.5f64 => {}
 warning: floating-point types cannot be used in patterns
   --> $DIR/match-range-fail-dominate.rs:35:19
    |
-LL |       0.01f64 ... 6.5f64 => {}
+LL |       0.01f64 ..= 6.5f64 => {}
    |                   ^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -65,7 +65,7 @@ LL |       0.02f64 => {}
 warning: floating-point types cannot be used in patterns
   --> $DIR/match-range-fail-dominate.rs:35:7
    |
-LL |       0.01f64 ... 6.5f64 => {}
+LL |       0.01f64 ..= 6.5f64 => {}
    |       ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

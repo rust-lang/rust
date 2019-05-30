@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 fn test1(x: i8) -> i32 {
   match x {
-    1...10 => 0,
+    1..=10 => 0,
     _ => 1,
   }
 }
