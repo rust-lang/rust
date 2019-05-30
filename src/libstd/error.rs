@@ -314,7 +314,6 @@ impl From<String> for Box<dyn Error + Send + Sync> {
     ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(err: String) -> Box<dyn Error + Send + Sync> {
-        #[derive(Debug)]
         struct StringError(String);
 
         impl Error for StringError {
@@ -324,6 +323,13 @@ impl From<String> for Box<dyn Error + Send + Sync> {
         impl Display for StringError {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 Display::fmt(&self.0, f)
+            }
+        }
+
+        // Purposefully skip printing "StringError(..)"
+        impl Debug for StringError {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                Debug::fmt(&self.0, f)
             }
         }
 
