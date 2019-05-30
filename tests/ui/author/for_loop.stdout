@@ -11,10 +11,12 @@ if_chain! {
     // unimplemented: field checks
     if arms.len() == 1;
     if let ExprKind::Loop(ref body, ref label, LoopSource::ForLoop) = arms[0].body.node;
-    if let StmtKind::Local(ref local) = body.node;
+    if let Some(trailing_expr) = &body.expr;
+    if body.stmts.len() == 4;
+    if let StmtKind::Local(ref local) = body.stmts[0].node;
     if let PatKind::Binding(BindingAnnotation::Mutable, _, name, None) = local.pat.node;
     if name.node.as_str() == "__next";
-    if let StmtKind::Expr(ref e, _) = local.pat.node
+    if let StmtKind::Expr(ref e, _) = body.stmts[1].node
     if let ExprKind::Match(ref expr2, ref arms1, MatchSource::ForLoopDesugar) = e.node;
     if let ExprKind::Call(ref func1, ref args1) = expr2.node;
     if let ExprKind::Path(ref path2) = func1.node;
@@ -38,15 +40,17 @@ if_chain! {
     if arms1[1].pats.len() == 1;
     if let PatKind::Path(ref path7) = arms1[1].pats[0].node;
     if match_qpath(path7, &["{{root}}", "std", "option", "Option", "None"]);
-    if let StmtKind::Local(ref local1) = path7.node;
+    if let StmtKind::Local(ref local1) = body.stmts[2].node;
     if let Some(ref init) = local1.init;
     if let ExprKind::Path(ref path8) = init.node;
     if match_qpath(path8, &["__next"]);
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name1, None) = local1.pat.node;
     if name1.node.as_str() == "y";
-    if let StmtKind::Expr(ref e1, _) = local1.pat.node
+    if let StmtKind::Expr(ref e1, _) = body.stmts[3].node
     if let ExprKind::Block(ref block) = e1.node;
-    if let StmtKind::Local(ref local2) = block.node;
+    if let Some(trailing_expr1) = &block.expr;
+    if block.stmts.len() == 1;
+    if let StmtKind::Local(ref local2) = block.stmts[0].node;
     if let Some(ref init1) = local2.init;
     if let ExprKind::Path(ref path9) = init1.node;
     if match_qpath(path9, &["y"]);

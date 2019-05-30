@@ -1,0 +1,10 @@
+error: statement with no effect
+  --> $DIR/blocks.rs:14:5
+   |
+LL |     -x;
+   |     ^^^
+   |
+   = note: `-D clippy::no-effect` implied by `-D warnings`
+
+error: aborting due to previous error
+

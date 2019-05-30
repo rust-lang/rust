@@ -3,7 +3,9 @@ if_chain! {
     if let Some(ref init) = local.init;
     if let Some((ref cond, ref then, Some(else_))) = higher::if_block(&init);
     if let ExprKind::Block(ref block) = else_.node;
-    if let StmtKind::Semi(ref e, _) = block.node
+    if let Some(trailing_expr) = &block.expr;
+    if block.stmts.len() == 1;
+    if let StmtKind::Semi(ref e, _) = block.stmts[0].node
     if let ExprKind::Binary(ref op, ref left, ref right) = e.node;
     if BinOpKind::Eq == op.node;
     if let ExprKind::Lit(ref lit) = left.node;
@@ -13,7 +15,9 @@ if_chain! {
     if let ExprKind::Lit(ref lit2) = cond.node;
     if let LitKind::Bool(true) = lit2.node;
     if let ExprKind::Block(ref block1) = then.node;
-    if let StmtKind::Semi(ref e1, _) = block1.node
+    if let Some(trailing_expr1) = &block1.expr;
+    if block1.stmts.len() == 1;
+    if let StmtKind::Semi(ref e1, _) = block1.stmts[0].node
     if let ExprKind::Binary(ref op1, ref left1, ref right1) = e1.node;
     if BinOpKind::Eq == op1.node;
     if let ExprKind::Lit(ref lit3) = left1.node;
