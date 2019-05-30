@@ -81,7 +81,7 @@ steps:
 # Note that this is originally from the github releases patch of Ninja
 - script: |
     md ninja
-    powershell -Command "iwr -outf 2017-03-15-ninja-win.zip https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-15-ninja-win.zip"
+    powershell -Command "iwr -outf 2017-03-15-ninja-win.zip https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2017-03-15-ninja-win.zip"
     7z x -oninja 2017-03-15-ninja-win.zip
     del 2017-03-15-ninja-win.zip
     set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --enable-ninja
