@@ -3,7 +3,7 @@
 .PHONY : clean
 
 %-unopt.ll: %.c
-	../build/bin/clang -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math
+	../build/bin/clang -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -g -ggdb
 
 %-unopt.ll: %.cpp
 	../build/bin/clang++ -fno-exceptions -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math
@@ -17,9 +17,7 @@
 %-raw2.ll: %-unopt.ll
 	#../build/bin/opt $^ -indvars -lower-autodiff -simplifycfg -mem2reg -sroa -S -o $@
 	#../build/bin/opt $^ -indvars -lower-autodiff -simplifycfg -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@
-	../build/bin/opt $^ -indvars -lower-autodiff -S -o - | ../build/bin/opt - -S -o $@ 
-#-instsimplify -correlated-propagation
-#-early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce  
+	../build/bin/opt $^ -indvars -lower-autodiff -S -o - | ../build/bin/opt - -S -o $@ -adce -bdce -aggressive-instcombine -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -inline -O1
 	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - | ../build/bin/opt - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce  
 
 %-lowernovec.ll: %-unopt.ll
@@ -37,7 +35,7 @@
 	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -O3 -S -o $@
 
 %.o: %-lower.ll
-	../build/bin/clang $^ -o $@ -lm -ladept -lstdc++
+	../build/bin/clang $^ -o $@ -lm -ladept -lstdc++ -g -ggdb
 
 clean:
 	rm -f *.ll *.o
