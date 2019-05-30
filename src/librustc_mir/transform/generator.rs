@@ -66,7 +66,8 @@ use std::mem;
 use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
-use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
+use crate::dataflow::{DataflowResults};
+use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location, for_each_location};
 use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
 use crate::util::dump_mir;
 use crate::util::liveness;
@@ -400,6 +401,7 @@ fn locals_live_across_suspend_points(
     movable: bool,
 ) -> (
     liveness::LiveVarSet,
+    IndexVec<GeneratorSavedLocal, BitSet<GeneratorSavedLocal>>,
     FxHashMap<BasicBlock, liveness::LiveVarSet>,
     BitSet<BasicBlock>,
 ) {
@@ -503,7 +505,99 @@ fn locals_live_across_suspend_points(
     // The generator argument is ignored
     set.remove(self_arg());
 
-    (set, storage_liveness_map, suspending_blocks)
+    let storage_conflicts = compute_storage_conflicts(
+        body,
+        &set,
+        &ignored,
+        storage_live,
+        storage_live_analysis);
+
+    (set, storage_conflicts, storage_liveness_map, suspending_blocks)
+}
+
+/// For every saved local, looks for which locals are StorageLive at the same
+/// time. Generates a bitset for every local of all the other locals that may be
+/// StorageLive simultaneously with that local. This is used in the layout
+/// computation; see `GeneratorLayout` for more.
+fn compute_storage_conflicts(
+    body: &'mir Body<'tcx>,
+    stored_locals: &liveness::LiveVarSet,
+    ignored: &StorageIgnored,
+    storage_live: DataflowResults<'tcx, MaybeStorageLive<'mir, 'tcx>>,
+    storage_live_analysis: MaybeStorageLive<'mir, 'tcx>,
+) -> IndexVec<GeneratorSavedLocal, BitSet<GeneratorSavedLocal>> {
+    debug!("compute_storage_conflicts({:?})", body.span);
+    debug!("ignored = {:?}", ignored.0);
+
+    // Storage ignored locals are not eligible for overlap, since their storage
+    // is always live.
+    let mut ineligible_locals = ignored.0.clone();
+    ineligible_locals.intersect(&stored_locals);
+
+    // Of our remaining candidates, find out if any have overlapping storage
+    // liveness. Those that do must be in the same variant to remain candidates.
+    // FIXME(tmandry): Consider using sparse bitsets here once we have good
+    // benchmarks for generators.
+    let mut local_conflicts: IndexVec<Local, _> =
+        // Add conflicts for every ineligible local.
+        iter::repeat(ineligible_locals.clone())
+        .take(body.local_decls.len())
+        .collect();
+
+    for_each_location(body, &storage_live_analysis, &storage_live, |state, loc| {
+        let mut eligible_storage_live = state.clone().to_dense();
+        eligible_storage_live.intersect(&stored_locals);
+
+        for local in eligible_storage_live.iter() {
+            let mut overlaps = eligible_storage_live.clone();
+            overlaps.remove(local);
+            local_conflicts[local].union(&overlaps);
+
+            if !overlaps.is_empty() {
+                trace!("at {:?}, local {:?} conflicts with {:?}",
+                       loc, local, overlaps);
+            }
+        }
+    });
+
+    // NOTE: Today we store a full conflict bitset for every local. Technically
+    // this is twice as many bits as we need, since the relation is symmetric.
+    // However, in practice these bitsets are not usually large. The layout code
+    // also needs to keep track of how many conflicts each local has, so it's
+    // simpler to keep it this way for now.
+    let storage_conflicts: IndexVec<GeneratorSavedLocal, _> = stored_locals
+        .iter()
+        .map(|local_a| {
+            if ineligible_locals.contains(local_a) {
+                // Conflicts with everything.
+                BitSet::new_filled(stored_locals.count())
+            } else {
+                // Keep overlap information only for stored locals.
+                renumber_bitset(&local_conflicts[local_a], stored_locals)
+            }
+        })
+        .collect();
+
+    storage_conflicts
+}
+
+/// Renumbers the items present in `stored_locals` and applies the renumbering
+/// to 'input`.
+///
+/// For example, if `stored_locals = [1, 3, 5]`, this would be renumbered to
+/// `[0, 1, 2]`. Thus, if `input = [3, 5]` we would return `[1, 2]`.
+fn renumber_bitset(input: &BitSet<Local>, stored_locals: &liveness::LiveVarSet)
+-> BitSet<GeneratorSavedLocal> {
+    assert!(stored_locals.superset(&input), "{:?} not a superset of {:?}", stored_locals, input);
+    let mut out = BitSet::new_empty(stored_locals.count());
+    for (idx, local) in stored_locals.iter().enumerate() {
+        let saved_local = GeneratorSavedLocal::from(idx);
+        if input.contains(local) {
+            out.insert(saved_local);
+        }
+    }
+    debug!("renumber_bitset({:?}, {:?}) => {:?}", input, stored_locals, out);
+    out
 }
 
 fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -517,7 +611,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         FxHashMap<BasicBlock, liveness::LiveVarSet>)
 {
     // Use a liveness analysis to compute locals which are live across a suspension point
-    let (live_locals, storage_liveness, suspending_blocks) =
+    let (live_locals, storage_conflicts, storage_liveness, suspending_blocks) =
         locals_live_across_suspend_points(tcx, body, source, movable);
 
     // Erase regions from the types passed in from typeck so we can compare them with
@@ -547,7 +641,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let dummy_local = LocalDecl::new_internal(tcx.mk_unit(), body.span);
 
-    // Gather live locals and their indices replacing values in mir.local_decls with a dummy
+    // Gather live locals and their indices replacing values in body.local_decls with a dummy
     // to avoid changing local indices
     let live_decls = live_locals.iter().map(|local| {
         let var = mem::replace(&mut body.local_decls[local], dummy_local.clone());
@@ -568,6 +662,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         remap.insert(local, (var.ty, variant_index, idx));
         decls.push(var);
     }
+    debug!("generator saved local mappings: {:?}", decls);
     let field_tys = decls.iter().map(|field| field.ty).collect::<IndexVec<_, _>>();
 
     // Put every var in each variant, for now.
@@ -578,6 +673,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let layout = GeneratorLayout {
         field_tys,
         variant_fields: empty_variants.chain(state_variants).collect(),
+        storage_conflicts,
         __local_debuginfo_codegen_only_do_not_use: decls,
     };
 

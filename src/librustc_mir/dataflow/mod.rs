@@ -380,6 +380,62 @@ pub fn state_for_location<'tcx, T: BitDenotation<'tcx>>(loc: Location,
     gen_set.to_dense()
 }
 
+/// Calls `f` with the dataflow state at every location in `mir`.
+/// Ignores blocks that terminate in `unreachable`.
+pub fn for_each_location<'tcx, T: BitDenotation<'tcx>>(
+    mir: &Body<'tcx>,
+    analysis: &T,
+    result: &DataflowResults<'tcx, T>,
+    mut f: impl FnMut(&HybridBitSet<T::Idx>, Location)
+) {
+    for (block, bb_data) in mir.basic_blocks().iter_enumerated() {
+        if bb_data.is_unreachable() {
+            continue;
+        }
+        for_each_block_location(mir, block, bb_data, analysis, result, &mut f);
+    }
+}
+
+fn for_each_block_location<'tcx, T: BitDenotation<'tcx>>(
+    mir: &Body<'tcx>,
+    block: BasicBlock,
+    bb_data: &BasicBlockData<'tcx>,
+    analysis: &T,
+    result: &DataflowResults<'tcx, T>,
+    f: &mut impl FnMut(&HybridBitSet<T::Idx>, Location)
+) {
+    let statements = &bb_data.statements;
+
+    let mut on_entry = result.sets().on_entry_set_for(block.index()).to_owned();
+    let mut kill_set = on_entry.to_hybrid();
+    let mut gen_set = kill_set.clone();
+
+    {
+        let mut sets = BlockSets {
+            on_entry: &mut on_entry,
+            kill_set: &mut kill_set,
+            gen_set: &mut gen_set,
+        };
+        // FIXME: This location is technically wrong, but there isn't a way to
+        // denote the start of a block.
+        f(sets.gen_set, Location { block, statement_index: 0 });
+
+        for statement_index in 0..statements.len() {
+            let loc = Location { block, statement_index };
+            analysis.before_statement_effect(&mut sets, loc);
+            f(sets.gen_set, loc);
+            analysis.statement_effect(&mut sets, loc);
+            f(sets.gen_set, loc);
+        }
+
+        let term_loc = Location { block, statement_index: mir[block].statements.len() };
+        analysis.before_terminator_effect(&mut sets, term_loc);
+        f(sets.gen_set, term_loc);
+        analysis.before_statement_effect(&mut sets, term_loc);
+        f(sets.gen_set, term_loc);
+    }
+}
+
 pub struct DataflowAnalysis<'a, 'tcx: 'a, O> where O: BitDenotation<'tcx>
 {
     flow_state: DataflowState<'tcx, O>,
