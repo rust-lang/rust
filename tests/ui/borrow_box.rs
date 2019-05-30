@@ -27,46 +27,46 @@ impl<'a> Test4 for Test3<'a> {
 
 use std::any::Any;
 
-pub fn test5(foo: &mut Box<Any>) {
+pub fn test5(foo: &mut Box<dyn Any>) {
     println!("{:?}", foo)
 }
 
 pub fn test6() {
-    let foo: &Box<Any>;
+    let foo: &Box<dyn Any>;
 }
 
 struct Test7<'a> {
-    foo: &'a Box<Any>,
+    foo: &'a Box<dyn Any>,
 }
 
 trait Test8 {
-    fn test8(a: &Box<Any>);
+    fn test8(a: &Box<dyn Any>);
 }
 
 impl<'a> Test8 for Test7<'a> {
-    fn test8(a: &Box<Any>) {
+    fn test8(a: &Box<dyn Any>) {
         unimplemented!();
     }
 }
 
-pub fn test9(foo: &mut Box<Any + Send + Sync>) {
+pub fn test9(foo: &mut Box<dyn Any + Send + Sync>) {
     let _ = foo;
 }
 
 pub fn test10() {
-    let foo: &Box<Any + Send + 'static>;
+    let foo: &Box<dyn Any + Send + 'static>;
 }
 
 struct Test11<'a> {
-    foo: &'a Box<Any + Send>,
+    foo: &'a Box<dyn Any + Send>,
 }
 
 trait Test12 {
-    fn test4(a: &Box<Any + 'static>);
+    fn test4(a: &Box<dyn Any + 'static>);
 }
 
 impl<'a> Test12 for Test11<'a> {
-    fn test4(a: &Box<Any + 'static>) {
+    fn test4(a: &Box<dyn Any + 'static>) {
         unimplemented!();
     }
 }
@@ -74,8 +74,8 @@ impl<'a> Test12 for Test11<'a> {
 fn main() {
     test1(&mut Box::new(false));
     test2();
-    test5(&mut (Box::new(false) as Box<Any>));
+    test5(&mut (Box::new(false) as Box<dyn Any>));
     test6();
-    test9(&mut (Box::new(false) as Box<Any + Send + Sync>));
+    test9(&mut (Box::new(false) as Box<dyn Any + Send + Sync>));
     test10();
 }

@@ -41,7 +41,7 @@ trait Trait {}
 
 impl<'a> Trait for &'a str {}
 
-fn h(_: &Trait) {}
+fn h(_: &dyn Trait) {}
 #[warn(clippy::needless_borrow)]
 #[allow(dead_code)]
 fn issue_1432() {

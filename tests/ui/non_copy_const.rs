@@ -27,7 +27,7 @@ const STR: &str = "012345";
 const COW: Cow<str> = Cow::Borrowed("abcdef");
 //^ note: a const item of Cow is used in the `postgres` package.
 
-const NO_ANN: &Display = &70;
+const NO_ANN: &dyn Display = &70;
 
 static STATIC_TUPLE: (AtomicUsize, String) = (ATOMIC, STRING);
 //^ there should be no lints on this line

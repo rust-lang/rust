@@ -70,7 +70,7 @@ fn main() {
         println!("This should not happen either!");
     }
 
-    let z: &TraitsToo = &y;
+    let z: &dyn TraitsToo = &y;
     if z.len() > 0 {
         // No error; `TraitsToo` has no `.is_empty()` method.
         println!("Nor should this!");
@@ -125,7 +125,7 @@ fn main() {
     }
     assert!(!has_is_empty.is_empty());
 
-    let with_is_empty: &WithIsEmpty = &Wither;
+    let with_is_empty: &dyn WithIsEmpty = &Wither;
     if with_is_empty.len() == 0 {
         println!("Or this!");
     }

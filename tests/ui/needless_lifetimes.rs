@@ -166,16 +166,16 @@ fn struct_with_lt4<'a, 'b>(_foo: &'a Foo<'b>) -> &'a str {
 
 trait WithLifetime<'a> {}
 
-type WithLifetimeAlias<'a> = WithLifetime<'a>;
+type WithLifetimeAlias<'a> = dyn WithLifetime<'a>;
 
 // Should not warn because it won't build without the lifetime.
-fn trait_obj_elided<'a>(_arg: &'a WithLifetime) -> &'a str {
+fn trait_obj_elided<'a>(_arg: &'a dyn WithLifetime) -> &'a str {
     unimplemented!()
 }
 
 // Should warn because there is no lifetime on `Drop`, so this would be
 // unambiguous if we elided the lifetime.
-fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str {
+fn trait_obj_elided2<'a>(_arg: &'a dyn Drop) -> &'a str {
     unimplemented!()
 }
 
@@ -226,7 +226,7 @@ struct Test {
 }
 
 impl Test {
-    fn iter<'a>(&'a self) -> Box<Iterator<Item = usize> + 'a> {
+    fn iter<'a>(&'a self) -> Box<dyn Iterator<Item = usize> + 'a> {
         unimplemented!()
     }
 }

@@ -81,7 +81,7 @@ LL | | }
 error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
   --> $DIR/needless_lifetimes.rs:178:1
    |
-LL | / fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str {
+LL | / fn trait_obj_elided2<'a>(_arg: &'a dyn Drop) -> &'a str {
 LL | |     unimplemented!()
 LL | | }
    | |_^
