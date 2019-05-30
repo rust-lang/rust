@@ -33,7 +33,7 @@ steps:
     brew install xz
     brew install swig
   displayName: Install build dependencies (OSX)
-  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'), eq(variables['RUST_CHECK_TARGET'],'dist'))
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'), eq(variables['SCRIPT'],'./x.py dist'))
 
 # Switch to XCode 9.3 on OSX since it seems to be the last version that supports
 # i686-apple-darwin. We'll eventually want to upgrade this and it will probably

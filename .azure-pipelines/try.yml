@@ -35,7 +35,7 @@ jobs:
   strategy:
     matrix:
       dist-x86_64-apple:
-        RUST_CHECK_TARGET: dist
+        SCRIPT: ./x.py dist
         RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --enable-lldb --set rust.jemalloc
         DEPLOY: 1
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
@@ -45,7 +45,7 @@ jobs:
         DIST_REQUIRE_ALL_TOOLS: 1
 
       dist-x86_64-apple-alt:
-        RUST_CHECK_TARGET: dist
+        SCRIPT: ./x.py dist
         RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --enable-lldb --set rust.jemalloc
         DEPLOY_ALT: 1
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1

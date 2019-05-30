@@ -137,8 +137,6 @@ else
     return $retval
   }
 
-  do_make tidy
-  do_make all
   do_make "$RUST_CHECK_TARGET"
 fi
 
