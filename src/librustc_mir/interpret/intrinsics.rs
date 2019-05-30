@@ -14,6 +14,9 @@ use super::{
     Machine, PlaceTy, OpTy, InterpretCx,
 };
 
+mod type_name;
+
+pub use type_name::*;
 
 fn numeric_intrinsic<'tcx, Tag>(
     name: &str,

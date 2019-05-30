@@ -11,6 +11,6 @@ struct Foo<T> {
 pub fn main() {
     unsafe {
         assert_eq!(type_name::<isize>(), "isize");
-        assert_eq!(type_name::<Foo<usize>>(), "Foo<usize>");
+        assert_eq!(type_name::<Foo<usize>>(), "tydesc_name::Foo<usize>");
     }
 }

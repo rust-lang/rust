@@ -68,11 +68,11 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
     pub fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         val: &'tcx ty::Const<'tcx>
-    ) -> Result<Self, ErrorHandled> {
+    ) -> Self {
         let layout = bx.layout_of(val.ty);
 
         if layout.is_zst() {
-            return Ok(OperandRef::new_zst(bx, layout));
+            return OperandRef::new_zst(bx, layout);
         }
 
         let val = match val.val {
@@ -110,14 +110,14 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
                 OperandValue::Pair(a_llval, b_llval)
             },
             ConstValue::ByRef(ptr, alloc) => {
-                return Ok(bx.load_operand(bx.from_const_alloc(layout, alloc, ptr.offset)));
+                return bx.load_operand(bx.from_const_alloc(layout, alloc, ptr.offset));
             },
         };
 
-        Ok(OperandRef {
+        OperandRef {
             val,
             layout
-        })
+        }
     }
 
     /// Asserts that this operand refers to a scalar and returns
@@ -468,7 +468,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Operand::Constant(ref constant) => {
                 let ty = self.monomorphize(&constant.ty);
                 self.eval_mir_constant(constant)
-                    .and_then(|c| OperandRef::from_const(bx, c))
+                    .map(|c| OperandRef::from_const(bx, c))
                     .unwrap_or_else(|err| {
                         match err {
                             // errored or at least linted
