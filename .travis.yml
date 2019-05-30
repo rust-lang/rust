@@ -1,7 +1,7 @@
 cache: cargo
 before_cache:
     - find ./target/debug -maxdepth 1 -type f -delete
-    - rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*test*,*tools*,*gen_lsp*,*thread_worker*}
+    - rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*test*,*gen_lsp*,*thread_worker*}
     - rm -f  ./target/.rustc_info.json
 
 matrix:
