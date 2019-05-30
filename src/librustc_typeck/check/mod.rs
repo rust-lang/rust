@@ -3339,7 +3339,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
                     debug!("struct named {:?}",  base_t);
                     let (ident, def_scope) =
-                        self.tcx.adjust_ident(field, base_def.did, self.body_id);
+                        self.tcx.adjust_ident_and_get_scope(field, base_def.did, self.body_id);
                     let fields = &base_def.non_enum_variant().fields;
                     if let Some(index) = fields.iter().position(|f| f.ident.modern() == ident) {
                         let field = &fields[index];
@@ -3510,7 +3510,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn available_field_names(&self, variant: &'tcx ty::VariantDef) -> Vec<ast::Name> {
         variant.fields.iter().filter(|field| {
-            let def_scope = self.tcx.adjust_ident(field.ident, variant.def_id, self.body_id).1;
+            let def_scope =
+                self.tcx.adjust_ident_and_get_scope(field.ident, variant.def_id, self.body_id).1;
             field.vis.is_accessible_from(def_scope, self.tcx)
         })
         .map(|field| field.ident.name)
@@ -3628,7 +3629,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Type-check each field.
         for field in ast_fields {
-            let ident = tcx.adjust_ident(field.ident, variant.def_id, self.body_id).0;
+            let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
                 seen_fields.insert(ident, field.span);
                 self.write_field_index(field.hir_id, i);

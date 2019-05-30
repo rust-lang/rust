@@ -331,7 +331,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Check the `expn_info()` to see if this is a macro; if so, it's hard to
         // extract the text and make a good suggestion, so don't bother.
-        let is_macro = sp.ctxt().outer().expn_info().is_some();
+        let is_macro = sp.ctxt().outer_expn_info().is_some();
 
         match (&expr.node, &expected.sty, &checked_ty.sty) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {

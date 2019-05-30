@@ -880,7 +880,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 /// This is used to test whether a lint should not even begin to figure out whether it should
 /// be reported on the current node.
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
-    let info = match span.ctxt().outer().expn_info() {
+    let info = match span.ctxt().outer_expn_info() {
         Some(info) => info,
         // no ExpnInfo means this span doesn't come from a macro
         None => return false,
@@ -908,7 +908,7 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
 
 /// Returns whether `span` originates in a derive macro's expansion
 pub fn in_derive_expansion(span: Span) -> bool {
-    let info = match span.ctxt().outer().expn_info() {
+    let info = match span.ctxt().outer_expn_info() {
         Some(info) => info,
         // no ExpnInfo means this span doesn't come from a macro
         None => return false,

@@ -1184,7 +1184,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let mut inexistent_fields = vec![];
         // Typecheck each field.
         for &Spanned { node: ref field, span } in fields {
-            let ident = tcx.adjust_ident(field.ident, variant.def_id, self.body_id).0;
+            let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {
                     struct_span_err!(tcx.sess, span, E0025,

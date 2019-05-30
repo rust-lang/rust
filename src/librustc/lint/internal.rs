@@ -113,7 +113,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
                             .help("try using `Ty` instead")
                             .emit();
                         } else {
-                            if ty.span.ctxt().outer().expn_info().is_some() {
+                            if ty.span.ctxt().outer_expn_info().is_some() {
                                 return;
                             }
                             if let Some(t) = is_ty_or_ty_ctxt(cx, ty) {

@@ -762,7 +762,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones
-                    if item.span.ctxt().outer().expn_info().is_none() {
+                    if item.span.ctxt().outer_expn_info().is_none() {
                         self.span = Some(item.span.shrink_to_lo());
                         self.found_use = true;
                         return;
@@ -772,7 +772,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::ExternCrate(_) => {}
                 // but place them before the first other item
                 _ => if self.span.map_or(true, |span| item.span < span ) {
-                    if item.span.ctxt().outer().expn_info().is_none() {
+                    if item.span.ctxt().outer_expn_info().is_none() {
                         // don't insert between attributes and an item
                         if item.attrs.is_empty() {
                             self.span = Some(item.span.shrink_to_lo());
@@ -2308,7 +2308,7 @@ impl<'a> Resolver<'a> {
 
     fn hygienic_lexical_parent(&mut self, module: Module<'a>, span: &mut Span)
                                -> Option<Module<'a>> {
-        if !module.expansion.is_descendant_of(span.ctxt().outer()) {
+        if !module.expansion.outer_is_descendant_of(span.ctxt()) {
             return Some(self.macro_def_scope(span.remove_mark()));
         }
 
@@ -2344,7 +2344,7 @@ impl<'a> Resolver<'a> {
             module.expansion.is_descendant_of(parent.expansion) {
                 // The macro is a proc macro derive
                 if module.expansion.looks_like_proc_macro_derive() {
-                    if parent.expansion.is_descendant_of(span.ctxt().outer()) {
+                    if parent.expansion.outer_is_descendant_of(span.ctxt()) {
                         *poisoned = Some(node_id);
                         return module.parent;
                     }
