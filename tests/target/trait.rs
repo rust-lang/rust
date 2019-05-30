@@ -160,3 +160,54 @@ pub mod test {
     {
     }
 }
+
+// Trait aliases with where clauses.
+trait A = where for<'b> &'b Self: Send;
+
+trait B = where for<'b> &'b Self: Send + Clone + Copy + SomeTrait + AAAAAAAA + BBBBBBB + CCCCCCCCCC;
+trait B =
+    where for<'b> &'b Self: Send + Clone + Copy + SomeTrait + AAAAAAAA + BBBBBBB + CCCCCCCCCCC;
+trait B = where
+    for<'b> &'b Self:
+        Send + Clone + Copy + SomeTrait + AAAAAAAA + BBBBBBB + CCCCCCCCCCCCCCCCCCCCCCC;
+trait B = where
+    for<'b> &'b Self: Send
+        + Clone
+        + Copy
+        + SomeTrait
+        + AAAAAAAA
+        + BBBBBBB
+        + CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC;
+
+trait B = where
+    for<'b> &'b Self: Send
+        + Clone
+        + Copy
+        + SomeTrait
+        + AAAAAAAA
+        + BBBBBBB
+        + CCCCCCCCC
+        + DDDDDDD
+        + DDDDDDDD
+        + DDDDDDDDD
+        + EEEEEEE;
+
+trait A<'a, 'b, 'c> = Debug<T> + Foo where for<'b> &'b Self: Send;
+
+trait B<'a, 'b, 'c> = Debug<T> + Foo
+where
+    for<'b> &'b Self: Send + Clone + Copy + SomeTrait + AAAAAAAA + BBBBBBB + CCCCCCCCC + DDDDDDD;
+
+trait B<'a, 'b, 'c, T> = Debug<'a, T>
+where
+    for<'b> &'b Self: Send
+        + Clone
+        + Copy
+        + SomeTrait
+        + AAAAAAAA
+        + BBBBBBB
+        + CCCCCCCCC
+        + DDDDDDD
+        + DDDDDDDD
+        + DDDDDDDDD
+        + EEEEEEE;

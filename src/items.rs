@@ -693,7 +693,7 @@ pub(crate) fn format_impl(
         {
             option.suppress_comma();
             option.snuggle();
-            option.compress_where();
+            option.allow_single_line();
         }
 
         let misssing_span = mk_sp(self_ty.span.hi(), item.span.hi());
@@ -708,7 +708,6 @@ pub(crate) fn format_impl(
             where_span_end,
             self_ty.span.hi(),
             option,
-            false,
         )?;
 
         // If there is no where-clause, we may have missing comments between the trait name and
@@ -1068,7 +1067,6 @@ pub(crate) fn format_trait(
                 None,
                 pos_before_where,
                 option,
-                false,
             )?;
             // If the where-clause cannot fit on the same line,
             // put the where-clause on a new line
@@ -1156,6 +1154,45 @@ pub(crate) fn format_trait(
     }
 }
 
+pub(crate) struct TraitAliasBounds<'a> {
+    generic_bounds: &'a ast::GenericBounds,
+    generics: &'a ast::Generics,
+}
+
+impl<'a> Rewrite for TraitAliasBounds<'a> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        let generic_bounds_str = self.generic_bounds.rewrite(context, shape)?;
+
+        let mut option = WhereClauseOption::new(true, WhereClauseSpace::None);
+        option.allow_single_line();
+
+        let where_str = rewrite_where_clause(
+            context,
+            &self.generics.where_clause,
+            context.config.brace_style(),
+            shape,
+            Density::Compressed,
+            ";",
+            None,
+            self.generics.where_clause.span.lo(),
+            option,
+        )?;
+
+        let fits_single_line = !generic_bounds_str.contains('\n')
+            && !where_str.contains('\n')
+            && generic_bounds_str.len() + where_str.len() + 1 <= shape.width;
+        let space = if generic_bounds_str.is_empty() || where_str.is_empty() {
+            Cow::from("")
+        } else if fits_single_line {
+            Cow::from(" ")
+        } else {
+            shape.indent.to_string_with_newline(&context.config)
+        };
+
+        Some(format!("{}{}{}", generic_bounds_str, space, where_str))
+    }
+}
+
 pub(crate) fn format_trait_alias(
     context: &RewriteContext<'_>,
     ident: ast::Ident,
@@ -1171,7 +1208,11 @@ pub(crate) fn format_trait_alias(
     let vis_str = format_visibility(context, vis);
     let lhs = format!("{}trait {} =", vis_str, generics_str);
     // 1 = ";"
-    rewrite_assign_rhs(context, lhs, generic_bounds, shape.sub_width(1)?).map(|s| s + ";")
+    let trait_alias_bounds = TraitAliasBounds {
+        generics,
+        generic_bounds,
+    };
+    rewrite_assign_rhs(context, lhs, &trait_alias_bounds, shape.sub_width(1)?).map(|s| s + ";")
 }
 
 fn format_unit_struct(
@@ -1376,7 +1417,7 @@ fn format_tuple_struct(
             result.push_str(&generics_str);
 
             let where_budget = context.budget(last_line_width(&result));
-            let option = WhereClauseOption::new(true, false);
+            let option = WhereClauseOption::new(true, WhereClauseSpace::Newline);
             rewrite_where_clause(
                 context,
                 &generics.where_clause,
@@ -1387,7 +1428,6 @@ fn format_tuple_struct(
                 None,
                 body_hi,
                 option,
-                false,
             )?
         }
         None => "".to_owned(),
@@ -1464,7 +1504,6 @@ fn rewrite_type_prefix(
         None,
         generics.span.hi(),
         option,
-        false,
     )?;
     result.push_str(&where_clause_str);
 
@@ -2205,7 +2244,15 @@ fn rewrite_fn_base(
 
     let is_args_multi_lined = arg_str.contains('\n');
 
-    let option = WhereClauseOption::new(!has_body, put_args_in_block && ret_str.is_empty());
+    let space = if put_args_in_block && ret_str.is_empty() {
+        WhereClauseSpace::Space
+    } else {
+        WhereClauseSpace::Newline
+    };
+    let mut option = WhereClauseOption::new(!has_body, space);
+    if is_args_multi_lined {
+        option.veto_single_line();
+    }
     let where_clause_str = rewrite_where_clause(
         context,
         where_clause,
@@ -2216,7 +2263,6 @@ fn rewrite_fn_base(
         Some(span.hi()),
         pos_before_where,
         option,
-        is_args_multi_lined,
     )?;
     // If there are neither where-clause nor return type, we may be missing comments between
     // args and `{`.
@@ -2244,27 +2290,45 @@ fn rewrite_fn_base(
     Some((result, force_new_line_for_brace))
 }
 
+/// Kind of spaces to put before `where`.
+#[derive(Copy, Clone)]
+enum WhereClauseSpace {
+    /// A single space.
+    Space,
+    /// A new line.
+    Newline,
+    /// Nothing.
+    None,
+}
+
 #[derive(Copy, Clone)]
 struct WhereClauseOption {
     suppress_comma: bool, // Force no trailing comma
-    snuggle: bool,        // Do not insert newline before `where`
-    compress_where: bool, // Try single line where-clause instead of vertical layout
+    snuggle: WhereClauseSpace,
+    allow_single_line: bool, // Try single line where-clause instead of vertical layout
+    veto_single_line: bool,  // Disallow a single-line where-clause.
 }
 
 impl WhereClauseOption {
-    fn new(suppress_comma: bool, snuggle: bool) -> WhereClauseOption {
+    fn new(suppress_comma: bool, snuggle: WhereClauseSpace) -> WhereClauseOption {
         WhereClauseOption {
             suppress_comma,
             snuggle,
-            compress_where: false,
+            allow_single_line: false,
+            veto_single_line: false,
         }
     }
 
     fn snuggled(current: &str) -> WhereClauseOption {
         WhereClauseOption {
             suppress_comma: false,
-            snuggle: last_line_width(current) == 1,
-            compress_where: false,
+            snuggle: if last_line_width(current) == 1 {
+                WhereClauseSpace::Space
+            } else {
+                WhereClauseSpace::Newline
+            },
+            allow_single_line: false,
+            veto_single_line: false,
         }
     }
 
@@ -2272,12 +2336,16 @@ impl WhereClauseOption {
         self.suppress_comma = true
     }
 
-    fn compress_where(&mut self) {
-        self.compress_where = true
+    fn allow_single_line(&mut self) {
+        self.allow_single_line = true
     }
 
     fn snuggle(&mut self) {
-        self.snuggle = true
+        self.snuggle = WhereClauseSpace::Space
+    }
+
+    fn veto_single_line(&mut self) {
+        self.veto_single_line = true;
     }
 }
 
@@ -2467,25 +2535,104 @@ fn rewrite_where_clause_rfc_style(
     span_end: Option<BytePos>,
     span_end_before_where: BytePos,
     where_clause_option: WhereClauseOption,
-    is_args_multi_line: bool,
 ) -> Option<String> {
+    let (where_keyword, allow_single_line) = rewrite_where_keyword(
+        context,
+        where_clause,
+        shape,
+        span_end_before_where,
+        where_clause_option,
+    )?;
+
+    // 1 = `,`
+    let clause_shape = shape
+        .block()
+        .with_max_width(context.config)
+        .block_left(context.config.tab_spaces())?
+        .sub_width(1)?;
+    let force_single_line = context.config.where_single_line()
+        && where_clause.predicates.len() == 1
+        && !where_clause_option.veto_single_line;
+
+    let preds_str = rewrite_bounds_on_where_clause(
+        context,
+        where_clause,
+        clause_shape,
+        terminator,
+        span_end,
+        where_clause_option,
+        force_single_line,
+    )?;
+
+    // 6 = `where `
+    let clause_sep =
+        if allow_single_line && !preds_str.contains('\n') && 6 + preds_str.len() <= shape.width
+            || force_single_line
+        {
+            Cow::from(" ")
+        } else {
+            clause_shape.indent.to_string_with_newline(context.config)
+        };
+
+    Some(format!("{}{}{}", where_keyword, clause_sep, preds_str))
+}
+
+/// Rewrite `where` and comment around it.
+fn rewrite_where_keyword(
+    context: &RewriteContext<'_>,
+    where_clause: &ast::WhereClause,
+    shape: Shape,
+    span_end_before_where: BytePos,
+    where_clause_option: WhereClauseOption,
+) -> Option<(String, bool)> {
     let block_shape = shape.block().with_max_width(context.config);
+    // 1 = `,`
+    let clause_shape = block_shape
+        .block_left(context.config.tab_spaces())?
+        .sub_width(1)?;
+
+    let comment_separator = |comment: &str, shape: Shape| {
+        if comment.is_empty() {
+            Cow::from("")
+        } else {
+            shape.indent.to_string_with_newline(context.config)
+        }
+    };
 
     let (span_before, span_after) =
         missing_span_before_after_where(span_end_before_where, where_clause);
     let (comment_before, comment_after) =
         rewrite_comments_before_after_where(context, span_before, span_after, shape)?;
 
-    let starting_newline = if where_clause_option.snuggle && comment_before.is_empty() {
-        Cow::from(" ")
-    } else {
-        block_shape.indent.to_string_with_newline(context.config)
+    let starting_newline = match where_clause_option.snuggle {
+        WhereClauseSpace::Space if comment_before.is_empty() => Cow::from(" "),
+        WhereClauseSpace::None => Cow::from(""),
+        _ => block_shape.indent.to_string_with_newline(context.config),
     };
 
-    let clause_shape = block_shape.block_left(context.config.tab_spaces())?;
-    // 1 = `,`
-    let clause_shape = clause_shape.sub_width(1)?;
-    // each clause on one line, trailing comma (except if suppress_comma)
+    let newline_before_where = comment_separator(&comment_before, shape);
+    let newline_after_where = comment_separator(&comment_after, clause_shape);
+    let result = format!(
+        "{}{}{}where{}{}",
+        starting_newline, comment_before, newline_before_where, newline_after_where, comment_after
+    );
+    let allow_single_line = where_clause_option.allow_single_line
+        && comment_before.is_empty()
+        && comment_after.is_empty();
+
+    Some((result, allow_single_line))
+}
+
+/// Rewrite bounds on a where clause.
+fn rewrite_bounds_on_where_clause(
+    context: &RewriteContext<'_>,
+    where_clause: &ast::WhereClause,
+    shape: Shape,
+    terminator: &str,
+    span_end: Option<BytePos>,
+    where_clause_option: WhereClauseOption,
+    force_single_line: bool,
+) -> Option<String> {
     let span_start = where_clause.predicates[0].span().lo();
     // If we don't have the start of the next span, then use the end of the
     // predicates, but that means we miss comments.
@@ -2499,64 +2646,30 @@ fn rewrite_where_clause_rfc_style(
         ",",
         |pred| pred.span().lo(),
         |pred| pred.span().hi(),
-        |pred| pred.rewrite(context, clause_shape),
+        |pred| pred.rewrite(context, shape),
         span_start,
         span_end,
         false,
     );
-    let where_single_line = context.config.where_single_line() && len == 1 && !is_args_multi_line;
-    let comma_tactic = if where_clause_option.suppress_comma || where_single_line {
+    let comma_tactic = if where_clause_option.suppress_comma || force_single_line {
         SeparatorTactic::Never
     } else {
         context.config.trailing_comma()
     };
 
-    // shape should be vertical only and only if we have `where_single_line` option enabled
+    // shape should be vertical only and only if we have `force_single_line` option enabled
     // and the number of items of the where-clause is equal to 1
-    let shape_tactic = if where_single_line {
+    let shape_tactic = if force_single_line {
         DefinitiveListTactic::Horizontal
     } else {
         DefinitiveListTactic::Vertical
     };
 
-    let fmt = ListFormatting::new(clause_shape, context.config)
+    let fmt = ListFormatting::new(shape, context.config)
         .tactic(shape_tactic)
         .trailing_separator(comma_tactic)
         .preserve_newline(true);
-    let preds_str = write_list(&items.collect::<Vec<_>>(), &fmt)?;
-
-    let comment_separator = |comment: &str, shape: Shape| {
-        if comment.is_empty() {
-            Cow::from("")
-        } else {
-            shape.indent.to_string_with_newline(context.config)
-        }
-    };
-    let newline_before_where = comment_separator(&comment_before, shape);
-    let newline_after_where = comment_separator(&comment_after, clause_shape);
-
-    // 6 = `where `
-    let clause_sep = if where_clause_option.compress_where
-        && comment_before.is_empty()
-        && comment_after.is_empty()
-        && !preds_str.contains('\n')
-        && 6 + preds_str.len() <= shape.width
-        || where_single_line
-    {
-        Cow::from(" ")
-    } else {
-        clause_shape.indent.to_string_with_newline(context.config)
-    };
-    Some(format!(
-        "{}{}{}where{}{}{}{}",
-        starting_newline,
-        comment_before,
-        newline_before_where,
-        newline_after_where,
-        comment_after,
-        clause_sep,
-        preds_str
-    ))
+    write_list(&items.collect::<Vec<_>>(), &fmt)
 }
 
 fn rewrite_where_clause(
@@ -2569,7 +2682,6 @@ fn rewrite_where_clause(
     span_end: Option<BytePos>,
     span_end_before_where: BytePos,
     where_clause_option: WhereClauseOption,
-    is_args_multi_line: bool,
 ) -> Option<String> {
     if where_clause.predicates.is_empty() {
         return Some(String::new());
@@ -2584,7 +2696,6 @@ fn rewrite_where_clause(
             span_end,
             span_end_before_where,
             where_clause_option,
-            is_args_multi_line,
         );
     }
 
@@ -2742,7 +2853,6 @@ fn format_generics(
             Some(span.hi()),
             span_end_before_where,
             option,
-            false,
         )?;
         result.push_str(&where_clause_str);
         (
