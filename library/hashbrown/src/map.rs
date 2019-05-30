@@ -1119,6 +1119,11 @@ pub struct IterMut<'a, K, V> {
     marker: PhantomData<(&'a K, &'a mut V)>,
 }
 
+// We override the default Send impl which has K: Sync instead of K: Send. Both
+// are correct, but this one is more general since it allows keys which
+// implement Send but not Sync.
+unsafe impl<K: Send, V: Send> Send for IterMut<'_, K, V> {}
+
 impl<K, V> IterMut<'_, K, V> {
     /// Returns a iterator of references over the remaining items.
     #[inline]
