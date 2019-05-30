@@ -134,7 +134,7 @@ impl Step for UnstableBook {
             target: self.target,
             name: INTERNER.intern_str("unstable-book"),
             src: builder.md_doc_out(self.target),
-            version: RustbookVersion::MdBook1,
+            version: RustbookVersion::MdBook2,
         })
     }
 }

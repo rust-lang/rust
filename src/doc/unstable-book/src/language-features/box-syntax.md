@@ -4,7 +4,7 @@ The tracking issue for this feature is: [#49733]
 
 [#49733]: https://github.com/rust-lang/rust/issues/49733
 
-See also [`box_patterns`](language-features/box-patterns.html)
+See also [`box_patterns`](box-patterns.md)
 
 ------------------------
 

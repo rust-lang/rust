@@ -8,7 +8,7 @@ The tracking issue for this feature is: [#29597]
 This feature is part of "compiler plugins." It will often be used with the
 [`plugin_registrar`] and `rustc_private` features.
 
-[`plugin_registrar`]: language-features/plugin-registrar.html
+[`plugin_registrar`]: plugin-registrar.md
 
 ------------------------
 
@@ -39,7 +39,7 @@ of a library.
 
 Plugins can extend Rust's syntax in various ways. One kind of syntax extension
 is the procedural macro. These are invoked the same way as [ordinary
-macros](../book/macros.html), but the expansion is performed by arbitrary Rust
+macros](../../book/macros.md), but the expansion is performed by arbitrary Rust
 code that manipulates syntax trees at
 compile time.
 
@@ -130,7 +130,7 @@ The advantages over a simple `fn(&str) -> u32` are:
   a way to define new literal syntax for any data type.
 
 In addition to procedural macros, you can define new
-[`derive`](../reference/attributes/derive.html)-like attributes and other kinds
+[`derive`](../../reference/attributes/derive.md)-like attributes and other kinds
 of extensions.  See `Registry::register_syntax_extension` and the
 `SyntaxExtension` enum.  For a more involved macro example, see
 [`regex_macros`](https://github.com/rust-lang/regex/blob/master/regex_macros/src/lib.rs).
@@ -174,7 +174,7 @@ quasiquote as an ordinary plugin library.
 # Lint plugins
 
 Plugins can extend [Rust's lint
-infrastructure](../reference/attributes/diagnostics.html#lint-check-attributes) with
+infrastructure](../../reference/attributes/diagnostics.md#lint-check-attributes) with
 additional checks for code style, safety, etc. Now let's write a plugin
 [`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/ui-fulldeps/auxiliary/lint_plugin_test.rs)
 that warns about any item named `lintme`.
@@ -253,7 +253,7 @@ mostly use the same infrastructure as lint plugins, and provide examples of how
 to access type information.
 
 Lints defined by plugins are controlled by the usual [attributes and compiler
-flags](../reference/attributes/diagnostics.html#lint-check-attributes), e.g.
+flags](../../reference/attributes/diagnostics.md#lint-check-attributes), e.g.
 `#[allow(test_lint)]` or `-A test-lint`. These identifiers are derived from the
 first argument to `declare_lint!`, with appropriate case and punctuation
 conversion.
