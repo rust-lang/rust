@@ -1,10 +1,10 @@
-error[E0282]: type annotations needed for `std::vec::Vec<_>`
+error[E0282]: type annotations needed in `std::vec::Vec<_>`
   --> $DIR/vector-no-ann.rs:2:16
    |
 LL |     let _foo = Vec::new();
-   |         ----   ^^^^^^^^ cannot infer type for `T`
+   |         ----   ^^^^^^^^ cannot infer type for `T` in `std::vec::Vec<_>`
    |         |
-   |         consider giving `_foo` the type `std::vec::Vec<_>` with the type parameter `T` specified
+   |         consider giving `_foo` a type
 
 error: aborting due to previous error
 

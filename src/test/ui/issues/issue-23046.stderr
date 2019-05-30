@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `Expr<'_, _>`
+error[E0282]: type annotations needed in `Expr<'_, _>`
   --> $DIR/issue-23046.rs:17:15
    |
 LL |     let ex = |x| {

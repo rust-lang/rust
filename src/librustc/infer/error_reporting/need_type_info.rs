@@ -15,7 +15,7 @@ struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     hir_map: &'a hir::map::Map<'gcx>,
     found_local_pattern: Option<&'gcx Pat>,
     found_arg_pattern: Option<&'gcx Pat>,
-    found_ty: Option<Ty<'tcx>>,
+    found_ty: Option<String>,
 }
 
 impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
     fn visit_local(&mut self, local: &'gcx Local) {
         if let (None, Some(ty)) = (self.found_local_pattern, self.node_matches_type(local.hir_id)) {
             self.found_local_pattern = Some(&*local.pat);
-            self.found_ty = Some(ty);
+            self.found_ty = Some(ty.to_string());
         }
         intravisit::walk_local(self, local);
     }
@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
                 self.node_matches_type(argument.hir_id),
             ) {
                 self.found_arg_pattern = Some(&*argument.pat);
-                self.found_ty = Some(ty);
+                self.found_ty = Some(ty.to_string());
             }
         }
         intravisit::walk_body(self, body);
@@ -108,7 +108,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let name = self.extract_type_name(&ty, None);
 
         let mut err_span = span;
-        let mut labels = vec![(span, InferCtxt::missing_type_msg(&name))];
 
         let mut local_visitor = FindLocalByTypeVisitor {
             infcx: &self,
@@ -124,10 +123,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             local_visitor.visit_expr(expr);
         }
 
-        let ty_msg = match local_visitor.found_ty {
-            Some(ty) if &ty.to_string() != "_" => format!(" for `{}`", ty),
+        let ty_msg = match &local_visitor.found_ty {
+            Some(ty) if &ty[..] != "_" && ty != &name => format!(" in `{}`", ty),
             _ => String::new(),
         };
+        let mut labels = vec![(span, InferCtxt::missing_type_msg(&name, &ty_msg))];
+
         if let Some(pattern) = local_visitor.found_arg_pattern {
             err_span = pattern.span;
             // We don't want to show the default label for closures.
@@ -148,8 +149,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             labels.clear();
             labels.push((pattern.span, format!(
                 "consider giving this closure parameter {}",
-                match local_visitor.found_ty {
-                    Some(ty) if &ty.to_string() != "_" => format!(
+                match &local_visitor.found_ty {
+                    Some(ty) if &ty[..] != "_" && ty != &name => format!(
                         "the type `{}` with the type parameter `{}` specified",
                         ty,
                         name,
@@ -162,18 +163,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 match pattern.span.compiler_desugaring_kind() {
                     None => labels.push((
                         pattern.span,
-                        format!(
-                            "consider giving `{}` {}",
-                            simple_ident,
-                            match local_visitor.found_ty {
-                                Some(ty) if &ty.to_string() != "_" => format!(
-                                    "the type `{}` with the type parameter `{}` specified",
-                                    ty,
-                                    name,
-                                ),
-                                _ => "a type".to_owned(),
-                            },
-                        ),
+                        format!("consider giving `{}` a type", simple_ident),
                     )),
                     Some(CompilerDesugaringKind::ForLoop) => labels.push((
                         pattern.span,
@@ -213,15 +203,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        span,
                        E0698,
                        "type inside generator must be known in this context");
-        err.span_label(span, InferCtxt::missing_type_msg(&name));
+        err.span_label(span, InferCtxt::missing_type_msg(&name, ""));
         err
     }
 
-    fn missing_type_msg(type_name: &str) -> String {
+    fn missing_type_msg(type_name: &str, postfix: &str) -> String {
         if type_name == "_" {
             "cannot infer type".to_owned()
         } else {
-            format!("cannot infer type for `{}`", type_name)
+            format!("cannot infer type for `{}`{}", type_name, postfix)
         }
     }
 }

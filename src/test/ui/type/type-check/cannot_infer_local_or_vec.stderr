@@ -1,10 +1,10 @@
-error[E0282]: type annotations needed for `std::vec::Vec<_>`
+error[E0282]: type annotations needed in `std::vec::Vec<_>`
   --> $DIR/cannot_infer_local_or_vec.rs:2:13
    |
 LL |     let x = vec![];
-   |         -   ^^^^^^ cannot infer type for `T`
+   |         -   ^^^^^^ cannot infer type for `T` in `std::vec::Vec<_>`
    |         |
-   |         consider giving `x` the type `std::vec::Vec<_>` with the type parameter `T` specified
+   |         consider giving `x` a type
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
