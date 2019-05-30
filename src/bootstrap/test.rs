@@ -1987,7 +1987,7 @@ impl Step for Distcheck {
         );
         builder.run(
             Command::new(build_helper::make(&builder.config.build))
-                .arg("check")
+                .arg(builder.config.cmd.distcheck_make().unwrap_or("check"))
                 .current_dir(&dir),
         );
 

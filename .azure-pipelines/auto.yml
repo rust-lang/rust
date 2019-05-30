@@ -171,8 +171,12 @@ jobs:
       x86_64-gnu-nopt:
         IMAGE: x86_64-gnu-nopt
 
-      x86_64-gnu-distcheck:
+      x86_64-gnu-distcheck-1:
         IMAGE: x86_64-gnu-distcheck
+        SCRIPT: ./x.py test distcheck --distcheck-make ci-subset-1
+      x86_64-gnu-distcheck-2:
+        IMAGE: x86_64-gnu-distcheck
+        SCRIPT: ./x.py test distcheck --distcheck-make ci-subset-2
 
       mingw-check:
         IMAGE: mingw-check

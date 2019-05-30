@@ -63,6 +63,7 @@ pub enum Subcommand {
         fail_fast: bool,
         doc_tests: DocTests,
         rustfix_coverage: bool,
+        distcheck_make: Option<String>,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -204,6 +205,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
                     "rustfix-coverage",
                     "enable this to generate a Rustfix coverage file, which is saved in \
                         `/<build_base>/rustfix_missing_coverage.txt`",
+                );
+                opts.optopt(
+                    "",
+                    "distcheck-make",
+                    "the Makefile target to use for distcheck (default: check)",
+                    "MAKEFILE TARGET",
                 );
             }
             "bench" => {
@@ -412,6 +419,7 @@ Arguments:
                 } else {
                     DocTests::Yes
                 },
+                distcheck_make: matches.opt_str("distcheck-make"),
             },
             "bench" => Subcommand::Bench {
                 paths,
@@ -521,6 +529,15 @@ impl Subcommand {
             Subcommand::Test {
                 ref compare_mode, ..
             } => compare_mode.as_ref().map(|s| &s[..]),
+            _ => None,
+        }
+    }
+
+    pub fn distcheck_make(&self) -> Option<&str> {
+        match *self {
+            Subcommand::Test {
+                ref distcheck_make, ..
+            } => distcheck_make.as_ref().map(|s| s.as_str()),
             _ => None,
         }
     }
