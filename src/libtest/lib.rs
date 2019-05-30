@@ -1536,7 +1536,7 @@ fn calc_result(desc: &TestDesc, task_result: Result<(), Box<dyn Any + Send>>) ->
                 if desc.allow_fail {
                     TrAllowedFail
                 } else {
-                    TrFailedMsg(format!("Panic did not include expected string '{}'", msg))
+                    TrFailedMsg(format!("panic did not include expected string '{}'", msg))
                 }
             }
         }
@@ -1890,7 +1890,7 @@ mod tests {
             panic!("an error message");
         }
         let expected = "foobar";
-        let failed_msg = "Panic did not include expected string";
+        let failed_msg = "panic did not include expected string";
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
