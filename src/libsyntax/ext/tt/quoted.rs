@@ -123,6 +123,22 @@ impl TokenTree {
         }
     }
 
+    /// Returns `true` if the given token tree is delimited.
+    pub fn is_delimited(&self) -> bool {
+        match *self {
+            TokenTree::Delimited(..) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the given token tree is a token of the given kind.
+    pub fn is_token(&self, expected_kind: &TokenKind) -> bool {
+        match self {
+            TokenTree::Token(Token { kind: actual_kind, .. }) => actual_kind == expected_kind,
+            _ => false,
+        }
+    }
+
     /// Gets the `index`-th sub-token-tree. This only makes sense for delimited trees and sequences.
     pub fn get_tt(&self, index: usize) -> TokenTree {
         match (self, index) {
