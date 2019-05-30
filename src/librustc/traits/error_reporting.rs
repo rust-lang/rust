@@ -914,8 +914,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             // already reported in the query
-            ConstEvalFailure(_) => {
-                self.tcx.sess.delay_span_bug(span, "constant in type had an ignored error");
+            ConstEvalFailure(err) => {
+                self.tcx.sess.delay_span_bug(
+                    span,
+                    &format!("constant in type had an ignored error: {:?}", err),
+                );
                 return;
             }
 
