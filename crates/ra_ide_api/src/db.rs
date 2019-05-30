@@ -31,6 +31,11 @@ impl salsa::Database for RootDatabase {
     fn on_propagated_panic(&self) -> ! {
         Canceled::throw()
     }
+    fn salsa_event(&self, event: impl Fn() -> salsa::Event<RootDatabase>) {
+        if let salsa::EventKind::DidValidateMemoizedValue { .. } = event().kind {
+            self.check_canceled();
+        }
+    }
 }
 
 impl Default for RootDatabase {
