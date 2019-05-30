@@ -25,7 +25,6 @@
 #![feature(test)]
 #![feature(trusted_len)]
 #![feature(try_trait)]
-#![feature(reverse_bits)]
 #![feature(inner_deref)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
