@@ -332,8 +332,8 @@ fn place_base_conflict<'a, 'gcx: 'tcx, 'tcx>(
                 },
                 (StaticKind::Promoted(promoted_1), StaticKind::Promoted(promoted_2)) => {
                     if promoted_1 == promoted_2 {
-                        if let ty::Array(_, size) = s1.ty.sty {
-                            if size.unwrap_usize(tcx) == 0 {
+                        if let ty::Array(_, len) = s1.ty.sty {
+                            if let Some(0) = len.assert_usize(tcx) {
                                 // Ignore conflicts with promoted [T; 0].
                                 debug!("place_element_conflict: IGNORE-LEN-0-PROMOTED");
                                 return Overlap::Disjoint;
