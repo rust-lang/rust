@@ -54,9 +54,9 @@ steps:
 # Note that we don't literally overwrite the gdb.exe binary because it appears
 # to just use gdborig.exe, so that's the binary we deal with instead.
 - script: |
-    powershell -Command "iwr -outf %MINGW_ARCHIVE% %MINGW_URL%/%MINGW_ARCHIVE%"
+    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf %MINGW_ARCHIVE% %MINGW_URL%/%MINGW_ARCHIVE%"
     7z x -y %MINGW_ARCHIVE% > nul
-    powershell -Command "iwr -outf 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_URL%/2017-04-20-%MSYS_BITS%bit-gdborig.exe"
+    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_URL%/2017-04-20-%MSYS_BITS%bit-gdborig.exe"
     mv 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_DIR%\bin\gdborig.exe
     echo ##vso[task.prependpath]%CD%\%MINGW_DIR%\bin
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), ne(variables['MINGW_URL'],''))
@@ -81,7 +81,7 @@ steps:
 # Note that this is originally from the github releases patch of Ninja
 - script: |
     md ninja
-    powershell -Command "iwr -outf 2017-03-15-ninja-win.zip https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2017-03-15-ninja-win.zip"
+    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf 2017-03-15-ninja-win.zip https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2017-03-15-ninja-win.zip"
     7z x -oninja 2017-03-15-ninja-win.zip
     del 2017-03-15-ninja-win.zip
     set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --enable-ninja
