@@ -36,7 +36,7 @@ matrix:
       if: branch = try OR branch = auto
 
     - env: >
-        RUST_CHECK_TARGET=dist
+        SCRIPT="./x.py dist"
         RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler --enable-lldb --set rust.jemalloc"
         SRC=.
         DEPLOY_ALT=1
@@ -59,7 +59,7 @@ matrix:
     # Note that the compiler is compiled to target 10.8 here because the Xcode
     # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
     - env: >
-        RUST_CHECK_TARGET=check
+        SCRIPT="./x.py test"
         RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc"
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -73,7 +73,7 @@ matrix:
       if: branch = auto
 
     - env: >
-        RUST_CHECK_TARGET=check
+        SCRIPT="./x.py test"
         RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --set rust.jemalloc"
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -93,7 +93,7 @@ matrix:
     # `xcode8.2` image as above. That's because we want to build releases for
     # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
     - env: >
-        RUST_CHECK_TARGET=dist
+        SCRIPT="./x.py dist"
         RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-full-tools --enable-profiler --enable-lldb --set rust.jemalloc"
         SRC=.
         DEPLOY=1
@@ -108,7 +108,7 @@ matrix:
       if: branch = auto
 
     - env: >
-        RUST_CHECK_TARGET=dist
+        SCRIPT="./x.py dist"
         RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --enable-lldb --set rust.jemalloc"
         SRC=.
         DEPLOY=1
@@ -260,7 +260,7 @@ install:
             export PATH=$PATH:$HOME
           ;;
         osx)
-          if [[ "$RUST_CHECK_TARGET" == dist ]]; then
+          if [[ "$SCRIPT" == "./x.py dist" ]]; then
             travis_retry brew update &&
             travis_retry brew install xz &&
             travis_retry brew install swig;
