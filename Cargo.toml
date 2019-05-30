@@ -6,3 +6,4 @@ incremental = true
 debug = true
 
 [patch.'crates-io']
+salsa = {git = "https://github.com/salsa-rs/salsa", rev = "2485cb6" } # https://github.com/salsa-rs/salsa/pull/167

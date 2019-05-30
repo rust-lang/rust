@@ -17,7 +17,7 @@ log = "0.4.3"
 url_serde = "0.2.0"
 lsp-types = { version = "0.57.1", features = ["proposed"] }
 rustc-hash = "1.0"
-parking_lot = "0.7.0"
+parking_lot = "0.8.0"
 
 ra_vfs = "0.2.0"
 thread_worker = { path = "../thread_worker" }
