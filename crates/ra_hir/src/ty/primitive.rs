@@ -30,6 +30,12 @@ pub enum UncertainIntTy {
     Known(IntTy),
 }
 
+impl From<IntTy> for UncertainIntTy {
+    fn from(ty: IntTy) -> Self {
+        UncertainIntTy::Known(ty)
+    }
+}
+
 impl fmt::Display for UncertainIntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -43,6 +49,12 @@ impl fmt::Display for UncertainIntTy {
 pub enum UncertainFloatTy {
     Unknown,
     Known(FloatTy),
+}
+
+impl From<FloatTy> for UncertainFloatTy {
+    fn from(ty: FloatTy) -> Self {
+        UncertainFloatTy::Known(ty)
+    }
 }
 
 impl fmt::Display for UncertainFloatTy {

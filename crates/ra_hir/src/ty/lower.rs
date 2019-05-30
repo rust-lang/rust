@@ -10,7 +10,7 @@ use std::iter;
 
 use crate::{
     Function, Struct, Union, StructField, Enum, EnumVariant, Path, ModuleDef, TypeAlias, Const, Static,
-    HirDatabase,
+    HirDatabase, BuiltinType,
     type_ref::TypeRef,
     name::KnownName,
     nameres::Namespace,
@@ -66,7 +66,7 @@ impl Ty {
 
     pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Self {
         if let Some(name) = path.as_ident() {
-            // FIXME handle primitive type names in resolver as well?
+            // TODO: remove this
             if let Some(int_ty) = primitive::IntTy::from_type_name(name) {
                 return Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Known(int_ty)));
             } else if let Some(float_ty) = primitive::FloatTy::from_type_name(name) {
@@ -128,7 +128,7 @@ impl Ty {
             TypableDef::Enum(e) => Some(e.into()),
             TypableDef::EnumVariant(var) => Some(var.parent_enum(db).into()),
             TypableDef::TypeAlias(t) => Some(t.into()),
-            TypableDef::Const(_) | TypableDef::Static(_) => None,
+            TypableDef::Const(_) | TypableDef::Static(_) | TypableDef::BuiltinType(_) => None,
         };
         substs_from_path_segment(db, resolver, segment, def_generic, false)
     }
@@ -149,7 +149,8 @@ impl Ty {
             | TypableDef::Enum(_)
             | TypableDef::Const(_)
             | TypableDef::Static(_)
-            | TypableDef::TypeAlias(_) => last,
+            | TypableDef::TypeAlias(_)
+            | TypableDef::BuiltinType(_) => last,
             TypableDef::EnumVariant(_) => {
                 // the generic args for an enum variant may be either specified
                 // on the segment referring to the enum, or on the segment
@@ -299,6 +300,7 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
         (TypableDef::TypeAlias(t), Namespace::Types) => type_for_type_alias(db, t),
         (TypableDef::Const(c), Namespace::Values) => type_for_const(db, c),
         (TypableDef::Static(c), Namespace::Values) => type_for_static(db, c),
+        (TypableDef::BuiltinType(t), Namespace::Types) => type_for_builtin(t),
 
         // 'error' cases:
         (TypableDef::Function(_), Namespace::Types) => Ty::Unknown,
@@ -308,6 +310,7 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
         (TypableDef::TypeAlias(_), Namespace::Values) => Ty::Unknown,
         (TypableDef::Const(_), Namespace::Types) => Ty::Unknown,
         (TypableDef::Static(_), Namespace::Types) => Ty::Unknown,
+        (TypableDef::BuiltinType(_), Namespace::Values) => Ty::Unknown,
     }
 }
 
@@ -399,6 +402,17 @@ fn type_for_static(db: &impl HirDatabase, def: Static) -> Ty {
     Ty::from_hir(db, &resolver, signature.type_ref())
 }
 
+/// Build the declared type of a static.
+fn type_for_builtin(def: BuiltinType) -> Ty {
+    Ty::simple(match def {
+        BuiltinType::Char => TypeCtor::Char,
+        BuiltinType::Bool => TypeCtor::Bool,
+        BuiltinType::Str => TypeCtor::Str,
+        BuiltinType::Int(ty) => TypeCtor::Int(ty.into()),
+        BuiltinType::Float(ty) => TypeCtor::Float(ty.into()),
+    })
+}
+
 fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
     let var_data = def.variant_data(db);
     let fields = match var_data.fields() {
@@ -477,8 +491,19 @@ pub enum TypableDef {
     TypeAlias(TypeAlias),
     Const(Const),
     Static(Static),
+    BuiltinType(BuiltinType),
 }
-impl_froms!(TypableDef: Function, Struct, Union, Enum, EnumVariant, TypeAlias, Const, Static);
+impl_froms!(
+    TypableDef: Function,
+    Struct,
+    Union,
+    Enum,
+    EnumVariant,
+    TypeAlias,
+    Const,
+    Static,
+    BuiltinType
+);
 
 impl From<ModuleDef> for Option<TypableDef> {
     fn from(def: ModuleDef) -> Option<TypableDef> {
@@ -491,6 +516,7 @@ impl From<ModuleDef> for Option<TypableDef> {
             ModuleDef::TypeAlias(t) => t.into(),
             ModuleDef::Const(v) => v.into(),
             ModuleDef::Static(v) => v.into(),
+            ModuleDef::BuiltinType(t) => t.into(),
             ModuleDef::Module(_) | ModuleDef::Trait(_) => return None,
         };
         Some(res)

@@ -9,7 +9,7 @@ use crate::{
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
     expr::{Body, BodySourceMap, validation::ExprValidator},
-    ty::{TraitRef, InferenceResult},
+    ty::{TraitRef, InferenceResult, primitive::{IntTy, FloatTy}},
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::HasGenericParams,
     docs::{Documentation, Docs, docs_from_ast},
@@ -75,6 +75,15 @@ pub struct Module {
     pub(crate) module_id: CrateModuleId,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BuiltinType {
+    Char,
+    Bool,
+    Str,
+    Int(IntTy),
+    Float(FloatTy),
+}
+
 /// The defs which can be visible in the module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModuleDef {
@@ -89,6 +98,7 @@ pub enum ModuleDef {
     Static(Static),
     Trait(Trait),
     TypeAlias(TypeAlias),
+    BuiltinType(BuiltinType),
 }
 impl_froms!(
     ModuleDef: Module,
@@ -100,7 +110,8 @@ impl_froms!(
     Const,
     Static,
     Trait,
-    TypeAlias
+    TypeAlias,
+    BuiltinType
 );
 
 pub enum ModuleSource {

@@ -6,7 +6,7 @@
 //! applied. So, the relation between syntax and HIR is many-to-one.
 
 macro_rules! impl_froms {
-    ($e:ident: $($v:ident), *) => {
+    ($e:ident: $($v:ident),*) => {
         $(
             impl From<$v> for $e {
                 fn from(it: $v) -> $e {
@@ -80,5 +80,6 @@ pub use self::code_model::{
     Function, FnSignature,
     StructField, FieldSource,
     Static, Const, ConstSignature,
-    Trait, TypeAlias, MacroDef, Container
+    Trait, TypeAlias, MacroDef, Container,
+    BuiltinType,
 };
