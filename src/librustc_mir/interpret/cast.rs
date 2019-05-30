@@ -86,7 +86,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                             def_id,
                             substs,
                         ).ok_or_else(|| InterpError::TooGeneric.into());
-                        let fn_ptr = self.memory.create_fn_alloc(instance?).with_default_tag();
+                        let fn_ptr = self.memory.create_fn_alloc(instance?);
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
                     _ => bug!("reify fn pointer on {:?}", src.layout.ty),
@@ -115,7 +115,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                             substs,
                             ty::ClosureKind::FnOnce,
                         );
-                        let fn_ptr = self.memory.create_fn_alloc(instance).with_default_tag();
+                        let fn_ptr = self.memory.create_fn_alloc(instance);
                         let val = Immediate::Scalar(Scalar::Ptr(fn_ptr.into()).into());
                         self.write_immediate(val, dest)?;
                     }
