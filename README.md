@@ -1,4 +1,10 @@
-# The Rust Programming Language
+# The Rust Programming Language For Xtensa processors
+
+This fork enables projects to be built for the ESP32 and ESP8266 using [espressif's llvm fork](https://github.com/espressif/llvm-xtensa). The [esp-rs](https://github.com/esp-rs) organization has been formed to develop runtime, pac and hal crates for the esp32 and eventually esp8266.
+
+## Using this fork
+
+The [quickstart repo](https://github.com/MabezDev/xtensa-rust-quickstart) has more information on how to build this fork and use it to build xtensa compatible code.
 
 This is the main source code repository for [Rust]. It contains the compiler,
 standard library, and documentation.
