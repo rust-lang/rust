@@ -726,7 +726,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // Note that this code iterates scopes from the inner-most to the outer-most,
             // invalidating caches of each scope visited. This way bare minimum of the
             // caches gets invalidated. i.e., if a new drop is added into the middle scope, the
-            // cache of outer scpoe stays intact.
+            // cache of outer scope stays intact.
             scope.invalidate_cache(!needs_drop, self.is_generator, this_scope);
             if this_scope {
                 if let DropKind::Value = drop_kind {
