@@ -243,6 +243,14 @@ impl HygieneData {
         *ctxt = self.prev_ctxt(*ctxt);
         outer_mark
     }
+
+    fn adjust(&self, ctxt: &mut SyntaxContext, expansion: Mark) -> Option<Mark> {
+        let mut scope = None;
+        while !self.is_descendant_of(expansion, self.outer(*ctxt)) {
+            scope = Some(self.remove_mark(ctxt));
+        }
+        scope
+    }
 }
 
 pub fn clear_markings() {
@@ -455,11 +463,7 @@ impl SyntaxContext {
     /// This returns the expansion whose definition scope we use to privacy check the resolution,
     /// or `None` if we privacy check as usual (i.e., not w.r.t. a macro definition scope).
     pub fn adjust(&mut self, expansion: Mark) -> Option<Mark> {
-        let mut scope = None;
-        while !expansion.outer_is_descendant_of(*self) {
-            scope = Some(self.remove_mark());
-        }
-        scope
+        HygieneData::with(|data| data.adjust(self, expansion))
     }
 
     /// Adjust this context for resolution in a scope created by the given expansion
