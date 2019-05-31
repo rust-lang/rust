@@ -23,6 +23,8 @@ use rustc_data_structures::sync::{
 
 use errors::{DiagnosticBuilder, DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
+use errors::emitter::HumanReadableErrorType;
+use errors::annotate_rs_emitter::{AnnotateRsEmitterWriter};
 use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
 use syntax::feature_gate::{self, AttributeType};
@@ -1031,22 +1033,31 @@ fn default_emitter(
     match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(kind), dst) => {
             let (short, color_config) = kind.unzip();
-            let emitter = match dst {
-                None => EmitterWriter::stderr(
-                    color_config,
+
+            if let HumanReadableErrorType::AnnotateRs(_) = kind {
+                let emitter = AnnotateRsEmitterWriter::new(
                     Some(source_map.clone()),
                     short,
-                    sopts.debugging_opts.teach,
-                ),
-                Some(dst) => EmitterWriter::new(
-                    dst,
-                    Some(source_map.clone()),
-                    short,
-                    false, // no teach messages when writing to a buffer
-                    false, // no colors when writing to a buffer
-                ),
-            };
-            Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+                );
+                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+            } else {
+                let emitter = match dst {
+                    None => EmitterWriter::stderr(
+                        color_config,
+                        Some(source_map.clone()),
+                        short,
+                        sopts.debugging_opts.teach,
+                    ),
+                    Some(dst) => EmitterWriter::new(
+                        dst,
+                        Some(source_map.clone()),
+                        short,
+                        false, // no teach messages when writing to a buffer
+                        false, // no colors when writing to a buffer
+                    ),
+                };
+                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+            }
         },
         (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
             JsonEmitter::stderr(

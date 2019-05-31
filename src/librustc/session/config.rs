@@ -2002,6 +2002,9 @@ pub fn build_session_options_and_crate_config(
         match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
             None |
             Some("human") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
+            Some("human-annotate-rs") => {
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateRs(color))
+            },
             Some("json") => ErrorOutputType::Json { pretty: false, json_rendered },
             Some("pretty-json") => ErrorOutputType::Json { pretty: true, json_rendered },
             Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
@@ -2036,6 +2039,13 @@ pub fn build_session_options_and_crate_config(
             early_error(
                 ErrorOutputType::Json { pretty: false, json_rendered },
                 "--error-format=pretty-json is unstable",
+            );
+        }
+        if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateRs(_)) =
+            error_format {
+            early_error(
+                ErrorOutputType::Json { pretty: false, json_rendered },
+                "--error-format=human-annotate-rs is unstable",
             );
         }
     }
