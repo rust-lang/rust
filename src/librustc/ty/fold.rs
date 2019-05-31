@@ -91,6 +91,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_infer_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
     }
+    fn has_local_value(&self) -> bool {
+        self.has_type_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
+    }
     fn needs_infer(&self) -> bool {
         self.has_type_flags(
             TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER | TypeFlags::HAS_CT_INFER
@@ -922,6 +925,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     }
 }
 
+// FIXME: Optimize for checking for infer flags
 struct HasTypeFlagsVisitor {
     flags: ty::TypeFlags,
 }

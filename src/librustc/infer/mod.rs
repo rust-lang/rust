@@ -1456,7 +1456,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // Even if the type may have no inference variables, during
         // type-checking closure types are in local tables only.
         if !self.in_progress_tables.is_some() || !ty.has_closure_types() {
-            if let Some((param_env, ty)) = self.tcx.lift_to_global(&(param_env, ty)) {
+            if !(param_env, ty).has_local_value() {
                 return ty.is_copy_modulo_regions(self.tcx.global_tcx(), param_env, span);
             }
         }

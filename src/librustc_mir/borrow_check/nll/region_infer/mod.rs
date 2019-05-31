@@ -809,7 +809,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         ty: Ty<'tcx>,
     ) -> Option<ClosureOutlivesSubject<'tcx>> {
         let tcx = infcx.tcx;
-        let gcx = tcx.global_tcx();
 
         debug!("try_promote_type_test_subject(ty = {:?})", ty);
 
@@ -863,8 +862,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         });
         debug!("try_promote_type_test_subject: folded ty = {:?}", ty);
 
-        // `lift_to_global` will only fail if we failed to promote some region.
-        gcx.lift_to_global(&ty)?;
+        // `has_local_value` will only be true if we failed to promote some region.
+        if ty.has_local_value() {
+            return None;
+        }
 
         Some(ClosureOutlivesSubject::Ty(ty))
     }

@@ -399,7 +399,8 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         if let ConstValue::Unevaluated(def_id, substs) = constant.val {
             let tcx = self.selcx.tcx().global_tcx();
-            if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
+            let param_env = self.param_env;
+            if !param_env.has_local_value() {
                 if substs.needs_infer() || substs.has_placeholders() {
                     let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
                     let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
@@ -414,7 +415,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                         }
                     }
                 } else {
-                    if let Some(substs) = self.tcx().lift_to_global(&substs) {
+                    if !substs.has_local_value() {
                         let instance = ty::Instance::resolve(tcx, param_env, def_id, substs);
                         if let Some(instance) = instance {
                             let cid = GlobalId {

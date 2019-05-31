@@ -328,6 +328,23 @@ impl<'a, 'tcx> ty::Lift<'tcx> for SelectionCandidate<'a> {
     }
 }
 
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for SelectionCandidate<'tcx> {
+        (SelectionCandidate::BuiltinCandidate) { has_nested },
+        (SelectionCandidate::ParamCandidate)(poly_trait_ref),
+        (SelectionCandidate::ImplCandidate)(def_id),
+        (SelectionCandidate::AutoImplCandidate)(def_id),
+        (SelectionCandidate::ProjectionCandidate),
+        (SelectionCandidate::ClosureCandidate),
+        (SelectionCandidate::GeneratorCandidate),
+        (SelectionCandidate::FnPointerCandidate),
+        (SelectionCandidate::TraitAliasCandidate)(def_id),
+        (SelectionCandidate::ObjectCandidate),
+        (SelectionCandidate::BuiltinObjectCandidate),
+        (SelectionCandidate::BuiltinUnsizeCandidate),
+    }
+}
+
 struct SelectionCandidateSet<'tcx> {
     // a list of candidates that definitely apply to the current
     // obligation (meaning: types unify).
@@ -818,27 +835,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
                 let tcx = self.tcx();
-                match tcx.lift_to_global(&(obligation.param_env, substs)) {
-                    Some((param_env, substs)) => {
-                        let instance =
-                            ty::Instance::resolve(tcx.global_tcx(), param_env, def_id, substs);
-                        if let Some(instance) = instance {
-                            let cid = GlobalId {
-                                instance,
-                                promoted: None,
-                            };
-                            match self.tcx().const_eval(param_env.and(cid)) {
-                                Ok(_) => Ok(EvaluatedToOk),
-                                Err(_) => Ok(EvaluatedToErr),
-                            }
-                        } else {
-                            Ok(EvaluatedToErr)
+                if !(obligation.param_env, substs).has_local_value() {
+                    let param_env = obligation.param_env;
+                    let instance =
+                        ty::Instance::resolve(tcx, param_env, def_id, substs);
+                    if let Some(instance) = instance {
+                        let cid = GlobalId {
+                            instance,
+                            promoted: None,
+                        };
+                        match self.tcx().const_eval(param_env.and(cid)) {
+                            Ok(_) => Ok(EvaluatedToOk),
+                            Err(_) => Ok(EvaluatedToErr),
                         }
+                    } else {
+                        Ok(EvaluatedToErr)
                     }
-                    None => {
-                        // Inference variables still left in param_env or substs.
-                        Ok(EvaluatedToAmbig)
-                    }
+                } else {
+                    // Inference variables still left in param_env or substs.
+                    Ok(EvaluatedToAmbig)
                 }
             }
         }
@@ -1172,7 +1187,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if self.can_use_global_caches(param_env) {
-            if let Some(trait_ref) = self.tcx().lift_to_global(&trait_ref) {
+            if !trait_ref.has_local_value() {
                 debug!(
                     "insert_evaluation_cache(trait_ref={:?}, candidate={:?}) global",
                     trait_ref, result,
@@ -1645,8 +1660,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             if let Err(Overflow) = candidate {
                 // Don't cache overflow globally; we only produce this
                 // in certain modes.
-            } else if let Some(trait_ref) = tcx.lift_to_global(&trait_ref) {
-                if let Some(candidate) = tcx.lift_to_global(&candidate) {
+            } else if !trait_ref.has_local_value() {
+                if !candidate.has_local_value() {
                     debug!(
                         "insert_candidate_cache(trait_ref={:?}, candidate={:?}) global",
                         trait_ref, candidate,
