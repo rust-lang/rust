@@ -580,7 +580,7 @@ pub fn noop_visit_arg<T: MutVisitor>(Arg { id, pat, ty, source }: &mut Arg, vis:
 
 pub fn noop_visit_arg_source<T: MutVisitor>(source: &mut ArgSource, vis: &mut T) {
     match source {
-        ArgSource::Normal | ArgSource::Recovery => {},
+        ArgSource::Normal => {},
         ArgSource::AsyncFn(pat) => vis.visit_pat(pat),
     }
 }

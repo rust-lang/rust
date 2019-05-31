@@ -464,7 +464,7 @@ fn dummy_arg(ident: Ident) -> Arg {
         span: ident.span,
         id: ast::DUMMY_NODE_ID
     };
-    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID, source: ast::ArgSource::Recovery }
+    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID, source: ast::ArgSource::Normal }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -5619,8 +5619,8 @@ impl<'a> Parser<'a> {
         // Replace duplicated recovered arguments with `_` pattern to avoid unecessary errors.
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
-            let opt_ident = if let (PatKind::Ident(_, ident, _), ast::ArgSource::Recovery) = (
-                &input.pat.node, &input.source,
+            let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) = (
+                &input.pat.node, &input.ty,
             ) {
                 Some(*ident)
             } else {
