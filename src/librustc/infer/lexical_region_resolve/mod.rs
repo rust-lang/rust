@@ -500,7 +500,12 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     that is not used is not a problem, so if this rule
                     starts to create problems we'll have to revisit
                     this portion of the code and think hard about it. =) */
-                    self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
+                    self.collect_error_for_expanding_node(
+                        graph,
+                        &mut dup_vec,
+                        node_vid,
+                        errors,
+                    );
                 }
             }
         }
@@ -558,9 +563,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
         let (mut lower_bounds, lower_dup) =
-            self.collect_concrete_regions(graph, node_idx, INCOMING, dup_vec);
+            self.collect_concrete_regions(graph, node_idx, INCOMING, Some(dup_vec));
         let (mut upper_bounds, upper_dup) =
-            self.collect_concrete_regions(graph, node_idx, OUTGOING, dup_vec);
+            self.collect_concrete_regions(graph, node_idx, OUTGOING, Some(dup_vec));
 
         if lower_dup || upper_dup {
             return;
@@ -630,7 +635,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         graph: &RegionGraph<'tcx>,
         orig_node_idx: RegionVid,
         dir: Direction,
-        dup_vec: &mut [u32],
+        mut dup_vec: Option<&mut [u32]>,
     ) -> (Vec<RegionAndOrigin<'tcx>>, bool) {
         struct WalkState<'tcx> {
             set: FxHashSet<RegionVid>,
@@ -654,16 +659,18 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             let node_idx = state.stack.pop().unwrap();
 
             // check whether we've visited this node on some previous walk
-            if dup_vec[node_idx.index() as usize] == u32::MAX {
-                dup_vec[node_idx.index() as usize] = orig_node_idx.index() as u32;
-            } else if dup_vec[node_idx.index() as usize] != orig_node_idx.index() as u32 {
-                state.dup_found = true;
-            }
+            if let Some(dup_vec) = &mut dup_vec {
+                if dup_vec[node_idx.index() as usize] == u32::MAX {
+                    dup_vec[node_idx.index() as usize] = orig_node_idx.index() as u32;
+                } else if dup_vec[node_idx.index() as usize] != orig_node_idx.index() as u32 {
+                    state.dup_found = true;
+                }
 
-            debug!(
-                "collect_concrete_regions(orig_node_idx={:?}, node_idx={:?})",
-                orig_node_idx, node_idx
-            );
+                debug!(
+                    "collect_concrete_regions(orig_node_idx={:?}, node_idx={:?})",
+                    orig_node_idx, node_idx
+                );
+            }
 
             process_edges(&self.data, &mut state, graph, node_idx, dir);
         }
