@@ -499,18 +499,20 @@ impl SyntaxContext {
     /// This returns `None` if the context cannot be glob-adjusted.
     /// Otherwise, it returns the scope to use when privacy checking (see `adjust` for details).
     pub fn glob_adjust(&mut self, expansion: Mark, glob_span: Span) -> Option<Option<Mark>> {
-        let mut scope = None;
-        let mut glob_ctxt = glob_span.ctxt().modern();
-        while !expansion.outer_is_descendant_of(glob_ctxt) {
-            scope = Some(glob_ctxt.remove_mark());
-            if self.remove_mark() != scope.unwrap() {
+        HygieneData::with(|data| {
+            let mut scope = None;
+            let mut glob_ctxt = data.modern(glob_span.ctxt());
+            while !data.is_descendant_of(expansion, data.outer(glob_ctxt)) {
+                scope = Some(data.remove_mark(&mut glob_ctxt));
+                if data.remove_mark(self) != scope.unwrap() {
+                    return None;
+                }
+            }
+            if data.adjust(self, expansion).is_some() {
                 return None;
             }
-        }
-        if self.adjust(expansion).is_some() {
-            return None;
-        }
-        Some(scope)
+            Some(scope)
+        })
     }
 
     /// Undo `glob_adjust` if possible:
@@ -522,21 +524,23 @@ impl SyntaxContext {
     /// ```
     pub fn reverse_glob_adjust(&mut self, expansion: Mark, glob_span: Span)
                                -> Option<Option<Mark>> {
-        if self.adjust(expansion).is_some() {
-            return None;
-        }
+        HygieneData::with(|data| {
+            if data.adjust(self, expansion).is_some() {
+                return None;
+            }
 
-        let mut glob_ctxt = glob_span.ctxt().modern();
-        let mut marks = Vec::new();
-        while !expansion.outer_is_descendant_of(glob_ctxt) {
-            marks.push(glob_ctxt.remove_mark());
-        }
+            let mut glob_ctxt = data.modern(glob_span.ctxt());
+            let mut marks = Vec::new();
+            while !data.is_descendant_of(expansion, data.outer(glob_ctxt)) {
+                marks.push(data.remove_mark(&mut glob_ctxt));
+            }
 
-        let scope = marks.last().cloned();
-        while let Some(mark) = marks.pop() {
-            *self = self.apply_mark(mark);
-        }
-        Some(scope)
+            let scope = marks.last().cloned();
+            while let Some(mark) = marks.pop() {
+                *self = data.apply_mark(*self, mark);
+            }
+            Some(scope)
+        })
     }
 
     #[inline]
