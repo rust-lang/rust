@@ -42,7 +42,7 @@ rustc_queries! {
             load_cached(tcx, id) {
                 let generics: Option<ty::Generics> = tcx.queries.on_disk_cache
                                                         .try_load_query_result(tcx, id);
-                generics.map(|x| tcx.alloc_generics(x))
+                generics.map(|x| &*tcx.arena.alloc(x))
             }
         }
 
@@ -118,7 +118,7 @@ rustc_queries! {
             load_cached(tcx, id) {
                 let mir: Option<crate::mir::Body<'tcx>> = tcx.queries.on_disk_cache
                                                             .try_load_query_result(tcx, id);
-                mir.map(|x| tcx.alloc_mir(x))
+                mir.map(|x| &*tcx.arena.alloc(x))
             }
         }
     }
@@ -353,7 +353,7 @@ rustc_queries! {
                     .queries.on_disk_cache
                     .try_load_query_result(tcx, id);
 
-                typeck_tables.map(|tables| tcx.alloc_tables(tables))
+                typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
             }
         }
     }

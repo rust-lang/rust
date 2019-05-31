@@ -53,7 +53,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
-use arena::{TypedArena, SyncDroplessArena};
+use arena::SyncDroplessArena;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
 use std::any::Any;
@@ -79,35 +79,16 @@ use syntax_pos::Span;
 
 use crate::hir;
 
-pub struct AllArenas<'tcx> {
-    pub global: WorkerLocal<GlobalArenas<'tcx>>,
+pub struct AllArenas {
     pub interner: SyncDroplessArena,
 }
 
-impl<'tcx> AllArenas<'tcx> {
+impl AllArenas {
     pub fn new() -> Self {
         AllArenas {
-            global: WorkerLocal::new(|_| GlobalArenas::default()),
             interner: SyncDroplessArena::default(),
         }
     }
-}
-
-/// Internal storage
-#[derive(Default)]
-pub struct GlobalArenas<'tcx> {
-    // internings
-    layout: TypedArena<LayoutDetails>,
-
-    // references
-    generics: TypedArena<ty::Generics>,
-    trait_def: TypedArena<ty::TraitDef>,
-    adt_def: TypedArena<ty::AdtDef>,
-    steal_mir: TypedArena<Steal<Body<'tcx>>>,
-    mir: TypedArena<Body<'tcx>>,
-    tables: TypedArena<ty::TypeckTables<'tcx>>,
-    /// miri allocations
-    const_allocs: TypedArena<interpret::Allocation>,
 }
 
 type InternedSet<'tcx, T> = Lock<FxHashMap<Interned<'tcx, T>, ()>>;
@@ -1043,7 +1024,7 @@ impl<'gcx> Deref for TyCtxt<'_, 'gcx, '_> {
 
 pub struct GlobalCtxt<'tcx> {
     pub arena: WorkerLocal<Arena<'tcx>>,
-    global_arenas: &'tcx WorkerLocal<GlobalArenas<'tcx>>,
+
     global_interners: CtxtInterners<'tcx>,
 
     cstore: &'tcx CrateStoreDyn,
@@ -1150,24 +1131,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         &self.hir_map
     }
 
-    pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
-        self.global_arenas.generics.alloc(generics)
-    }
-
     pub fn alloc_steal_mir(self, mir: Body<'gcx>) -> &'gcx Steal<Body<'gcx>> {
-        self.global_arenas.steal_mir.alloc(Steal::new(mir))
-    }
-
-    pub fn alloc_mir(self, mir: Body<'gcx>) -> &'gcx Body<'gcx> {
-        self.global_arenas.mir.alloc(mir)
-    }
-
-    pub fn alloc_tables(self, tables: ty::TypeckTables<'gcx>) -> &'gcx ty::TypeckTables<'gcx> {
-        self.global_arenas.tables.alloc(tables)
-    }
-
-    pub fn alloc_trait_def(self, def: ty::TraitDef) -> &'gcx ty::TraitDef {
-        self.global_arenas.trait_def.alloc(def)
+        self.arena.alloc(Steal::new(mir))
     }
 
     pub fn alloc_adt_def(self,
@@ -1177,12 +1142,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                          repr: ReprOptions)
                          -> &'gcx ty::AdtDef {
         let def = ty::AdtDef::new(self, did, kind, variants, repr);
-        self.global_arenas.adt_def.alloc(def)
+        self.arena.alloc(def)
     }
 
     pub fn intern_const_alloc(self, alloc: Allocation) -> &'gcx Allocation {
         self.allocation_interner.borrow_mut().intern(alloc, |alloc| {
-            self.global_arenas.const_allocs.alloc(alloc)
+            self.arena.alloc(alloc)
         })
     }
 
@@ -1196,13 +1161,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {
         self.stability_interner.borrow_mut().intern(stab, |stab| {
-            self.global_interners.arena.alloc(stab)
+            self.arena.alloc(stab)
         })
     }
 
     pub fn intern_layout(self, layout: LayoutDetails) -> &'gcx LayoutDetails {
         self.layout_interner.borrow_mut().intern(layout, |layout| {
-            self.global_arenas.layout.alloc(layout)
+            self.arena.alloc(layout)
         })
     }
 
@@ -1250,7 +1215,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         cstore: &'tcx CrateStoreDyn,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
-        arenas: &'tcx AllArenas<'tcx>,
+        arenas: &'tcx AllArenas,
         resolutions: ty::Resolutions,
         hir: hir_map::Map<'tcx>,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
@@ -1319,7 +1284,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             sess: s,
             cstore,
             arena: WorkerLocal::new(|_| Arena::default()),
-            global_arenas: &arenas.global,
             global_interners: interners,
             dep_graph,
             common,

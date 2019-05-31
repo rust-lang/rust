@@ -290,5 +290,5 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         &add_call_guards::CriticalCallEdges,
         &dump_mir::Marker("PreCodegen"),
     ]);
-    tcx.alloc_mir(mir)
+    tcx.arena.alloc(mir)
 }

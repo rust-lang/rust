@@ -125,7 +125,7 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     debug!("make_shim({:?}) = {:?}", instance, result);
 
-    tcx.alloc_mir(result)
+    tcx.arena.alloc(result)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
