@@ -929,6 +929,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         true
     }
 
+    /// This helper takes a *converted* parameter type (`param_ty`)
+    /// and an *unconverted* list of bounds:
+    ///
+    /// ```
+    /// fn foo<T: Debug>
+    ///        ^  ^^^^^ `ast_bounds` parameter, in HIR form
+    ///        |
+    ///        `param_ty`, in ty form
+    /// ```
+    ///
+    /// It adds these `ast_bounds` into the `bounds` structure.
+    ///
+    /// **A note on binders:** There is an implied binder around
+    /// `param_ty` and `ast_bounds`. See `instantiate_poly_trait_ref`
+    /// for more details.
     fn add_bounds(&self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound],
@@ -962,9 +977,22 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         );
     }
 
-    /// Translates the AST's notion of ty param bounds (which are an enum consisting of a newtyped
-    /// `Ty` or a region) to ty's notion of ty param bounds (which can either be user-defined traits
-    /// or the built-in trait `Sized`).
+    /// Translates a list of bounds from the HIR into the `Bounds` data structure.
+    /// The self-type for the bounds is given by `param_ty`.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// fn foo<T: Bar + Baz>() { }
+    ///        ^  ^^^^^^^^^ ast_bounds
+    ///        param_ty
+    /// ```
+    ///
+    /// The `sized_by_default` parameter indicates if, in this context, the `param_ty` should be
+    /// considered `Sized` unless there is an explicit `?Sized` bound.  This would be true in the
+    /// example above, but is not true in supertrait listings like `trait Foo: Bar + Baz`.
+    ///
+    /// `span` should be the declaration size of the parameter.
     pub fn compute_bounds(&self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound],
