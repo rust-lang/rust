@@ -4525,7 +4525,7 @@ impl<'a> Resolver<'a> {
                 let mut ident = ident;
                 if ident.span.glob_adjust(
                     module.expansion,
-                    binding.span.ctxt().modern(),
+                    binding.span,
                 ).is_none() {
                     continue
                 }

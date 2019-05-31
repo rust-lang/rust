@@ -463,9 +463,9 @@ impl SyntaxContext {
     /// ```
     /// This returns `None` if the context cannot be glob-adjusted.
     /// Otherwise, it returns the scope to use when privacy checking (see `adjust` for details).
-    pub fn glob_adjust(&mut self, expansion: Mark, mut glob_ctxt: SyntaxContext)
-                       -> Option<Option<Mark>> {
+    pub fn glob_adjust(&mut self, expansion: Mark, glob_span: Span) -> Option<Option<Mark>> {
         let mut scope = None;
+        let mut glob_ctxt = glob_span.ctxt().modern();
         while !expansion.outer_is_descendant_of(glob_ctxt) {
             scope = Some(glob_ctxt.remove_mark());
             if self.remove_mark() != scope.unwrap() {
@@ -485,12 +485,13 @@ impl SyntaxContext {
     ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));
     /// }
     /// ```
-    pub fn reverse_glob_adjust(&mut self, expansion: Mark, mut glob_ctxt: SyntaxContext)
+    pub fn reverse_glob_adjust(&mut self, expansion: Mark, glob_span: Span)
                                -> Option<Option<Mark>> {
         if self.adjust(expansion).is_some() {
             return None;
         }
 
+        let mut glob_ctxt = glob_span.ctxt().modern();
         let mut marks = Vec::new();
         while !expansion.outer_is_descendant_of(glob_ctxt) {
             marks.push(glob_ctxt.remove_mark());
