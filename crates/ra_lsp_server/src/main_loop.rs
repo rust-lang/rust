@@ -315,14 +315,18 @@ fn on_request(
         request_received,
     };
     pool_dispatcher
-        .on_sync::<req::CollectGarbage>(|state, ()| Ok(state.collect_garbage()))?
+        .on_sync::<req::CollectGarbage>(|s, ()| Ok(s.collect_garbage()))?
+        .on_sync::<req::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
+        .on_sync::<req::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
+        .on_sync::<req::SelectionRangeRequest>(|s, p| {
+            handlers::handle_selection_range(s.snapshot(), p)
+        })?
+        .on_sync::<req::FindMatchingBrace>(|s, p| {
+            handlers::handle_find_matching_brace(s.snapshot(), p)
+        })?
         .on::<req::AnalyzerStatus>(handlers::handle_analyzer_status)?
         .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
         .on::<req::ExtendSelection>(handlers::handle_extend_selection)?
-        .on::<req::SelectionRangeRequest>(handlers::handle_selection_range)?
-        .on::<req::FindMatchingBrace>(handlers::handle_find_matching_brace)?
-        .on::<req::JoinLines>(handlers::handle_join_lines)?
-        .on::<req::OnEnter>(handlers::handle_on_enter)?
         .on::<req::OnTypeFormatting>(handlers::handle_on_type_formatting)?
         .on::<req::DocumentSymbolRequest>(handlers::handle_document_symbol)?
         .on::<req::WorkspaceSymbol>(handlers::handle_workspace_symbol)?
@@ -428,6 +432,7 @@ struct PoolDispatcher<'a> {
 }
 
 impl<'a> PoolDispatcher<'a> {
+    /// Dispatches the request onto the current thread
     fn on_sync<R>(
         &mut self,
         f: fn(&mut ServerWorldState, R::Params) -> Result<R::Result>,
@@ -449,6 +454,7 @@ impl<'a> PoolDispatcher<'a> {
         Ok(self)
     }
 
+    /// Dispatches the request onto thread pool
     fn on<R>(&mut self, f: fn(ServerWorld, R::Params) -> Result<R::Result>) -> Result<&mut Self>
     where
         R: req::Request + 'static,
