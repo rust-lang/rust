@@ -470,42 +470,16 @@ impl<'a> PoolDispatcher<'a> {
             self.world.cancel_requests();
         }
 
-        let world = self.world.snapshot();
-        let sender = self.sender.clone();
-        self.pool.execute(move || {
-            let response = match f(world, params) {
-                Ok(resp) => RawResponse::ok::<R>(id, &resp),
-                Err(e) => match e.downcast::<LspError>() {
-                    Ok(lsp_error) => RawResponse::err(id, lsp_error.code, lsp_error.message),
-                    Err(e) => {
-                        if is_canceled(&e) {
-                            // FIXME: When https://github.com/Microsoft/vscode-languageserver-node/issues/457
-                            // gets fixed, we can return the proper response.
-                            // This works around the issue where "content modified" error would continuously
-                            // show an message pop-up in VsCode
-                            // RawResponse::err(
-                            //     id,
-                            //     ErrorCode::ContentModified as i32,
-                            //     "content modified".to_string(),
-                            // )
-                            RawResponse {
-                                id,
-                                result: Some(serde_json::to_value(&()).unwrap()),
-                                error: None,
-                            }
-                        } else {
-                            RawResponse::err(
-                                id,
-                                ErrorCode::InternalError as i32,
-                                format!("{}\n{}", e, e.backtrace()),
-                            )
-                        }
-                    }
-                },
-            };
-            let task = Task::Respond(response);
-            sender.send(task).unwrap();
+        self.pool.execute({
+            let world = self.world.snapshot();
+            let sender = self.sender.clone();
+            move || {
+                let result = f(world, params);
+                let task = result_to_task::<R>(id, result);
+                sender.send(task).unwrap();
+            }
         });
+
         Ok(self)
     }
 
@@ -516,6 +490,45 @@ impl<'a> PoolDispatcher<'a> {
             _ => unreachable!(),
         }
     }
+}
+
+fn result_to_task<R>(id: u64, result: Result<R::Result>) -> Task
+where
+    R: req::Request + 'static,
+    R::Params: DeserializeOwned + Send + 'static,
+    R::Result: Serialize + 'static,
+{
+    let response = match result {
+        Ok(resp) => RawResponse::ok::<R>(id, &resp),
+        Err(e) => match e.downcast::<LspError>() {
+            Ok(lsp_error) => RawResponse::err(id, lsp_error.code, lsp_error.message),
+            Err(e) => {
+                if is_canceled(&e) {
+                    // FIXME: When https://github.com/Microsoft/vscode-languageserver-node/issues/457
+                    // gets fixed, we can return the proper response.
+                    // This works around the issue where "content modified" error would continuously
+                    // show an message pop-up in VsCode
+                    // RawResponse::err(
+                    //     id,
+                    //     ErrorCode::ContentModified as i32,
+                    //     "content modified".to_string(),
+                    // )
+                    RawResponse {
+                        id,
+                        result: Some(serde_json::to_value(&()).unwrap()),
+                        error: None,
+                    }
+                } else {
+                    RawResponse::err(
+                        id,
+                        ErrorCode::InternalError as i32,
+                        format!("{}\n{}", e, e.backtrace()),
+                    )
+                }
+            }
+        },
+    };
+    Task::Respond(response)
 }
 
 fn update_file_notifications_on_threadpool(
