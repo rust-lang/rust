@@ -29,7 +29,6 @@
 #![feature(inner_deref)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
-#![feature(copy_within)]
 #![feature(int_error_matching)]
 #![feature(const_fn)]
 #![warn(rust_2018_idioms)]

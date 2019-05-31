@@ -2146,14 +2146,13 @@ impl<T> [T] {
     /// Copying four bytes within a slice:
     ///
     /// ```
-    /// # #![feature(copy_within)]
     /// let mut bytes = *b"Hello, World!";
     ///
     /// bytes.copy_within(1..5, 8);
     ///
     /// assert_eq!(&bytes, b"Hello, Wello!");
     /// ```
-    #[unstable(feature = "copy_within", issue = "54236")]
+    #[stable(feature = "copy_within", since = "1.37.0")]
     pub fn copy_within<R: ops::RangeBounds<usize>>(&mut self, src: R, dest: usize)
     where
         T: Copy,
