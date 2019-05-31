@@ -1618,7 +1618,7 @@ impl ExplicitOutlivesRequirements {
             let mut from_start = true;
             for (i, bound_span) in bound_spans {
                 match last_merged_i {
-                    // If the first bound is inferable, our span should also eat the leading `+`
+                    // If the first bound is inferable, our span should also eat the leading `+`.
                     None if i == 0 => {
                         merged.push(bound_span.to(bounds[1].span().shrink_to_lo()));
                         last_merged_i = Some(0);
@@ -1732,15 +1732,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                             hir::TyKind::Path(hir::QPath::Resolved(
                                 None,
                                 ref path,
-                            )) => if let Res::Def(DefKind::TyParam, def_id) = path.res {
-                                let index = ty_generics.param_def_id_to_index[&def_id];
-                                (
-                                    Self::lifetimes_outliving_type(inferred_outlives, index),
-                                    &predicate.bounds,
-                                    predicate.span,
-                                )
-                            } else {
-                                continue
+                            )) => {
+                                if let Res::Def(DefKind::TyParam, def_id) = path.res {
+                                    let index = ty_generics.param_def_id_to_index[&def_id];
+                                    (
+                                        Self::lifetimes_outliving_type(inferred_outlives, index),
+                                        &predicate.bounds,
+                                        predicate.span,
+                                    )
+                                } else {
+                                    continue;
+                                }
                             },
                             _ => { continue; }
                         }
@@ -1762,9 +1764,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                 }
 
                 // If all the bounds on a predicate were inferable and there are
-                // further predicates, we want to eat the trailing comma
+                // further predicates, we want to eat the trailing comma.
                 if drop_predicate && i + 1 < num_predicates {
-                    let next_predicate_span = hir_generics.where_clause.predicates[i+1].span();
+                    let next_predicate_span = hir_generics.where_clause.predicates[i + 1].span();
                     where_lint_spans.push(
                         span.to(next_predicate_span.shrink_to_lo())
                     );
@@ -1787,13 +1789,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                 // Extend the where clause back to the closing `>` of the
                 // generics, except for tuple struct, which have the `where`
                 // after the fields of the struct.
-                let full_where_span = match item.node {
-                    hir::ItemKind::Struct(hir::VariantData::Tuple(..), _) => {
-                        where_span
-                    }
-                    _ => {
-                        hir_generics.span.shrink_to_hi().to(where_span)
-                    }
+                let full_where_span = if let hir::ItemKind::Struct(hir::VariantData::Tuple(..), _)
+                        = item.node
+                {
+                    where_span
+                } else {
+                    hir_generics.span.shrink_to_hi().to(where_span)
                 };
                 lint_spans.push(
                     full_where_span
