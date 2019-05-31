@@ -59,7 +59,7 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::bit_set::BitSet;
+use rustc_data_structures::bit_set::{BitSet, BitMatrix};
 use std::borrow::Cow;
 use std::iter;
 use std::mem;
@@ -408,7 +408,7 @@ struct LivenessInfo {
     /// For every saved local, the set of other saved locals that are
     /// storage-live at the same time as this local. We cannot overlap locals in
     /// the layout which have conflicting storage.
-    storage_conflicts: IndexVec<GeneratorSavedLocal, BitSet<GeneratorSavedLocal>>,
+    storage_conflicts: BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
 
     /// For every suspending block, the locals which are storage-live across
     /// that suspension point.
@@ -551,7 +551,9 @@ fn compute_storage_conflicts(
     ignored: &StorageIgnored,
     storage_live: DataflowResults<'tcx, MaybeStorageLive<'mir, 'tcx>>,
     storage_live_analysis: MaybeStorageLive<'mir, 'tcx>,
-) -> IndexVec<GeneratorSavedLocal, BitSet<GeneratorSavedLocal>> {
+) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
+    assert_eq!(body.local_decls.len(), ignored.0.domain_size());
+    assert_eq!(body.local_decls.len(), stored_locals.domain_size());
     debug!("compute_storage_conflicts({:?})", body.span);
     debug!("ignored = {:?}", ignored.0);
 
@@ -564,18 +566,15 @@ fn compute_storage_conflicts(
     // liveness. Those that do must be in the same variant to remain candidates.
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for generators.
-    let mut local_conflicts: IndexVec<Local, _> =
-        // Add conflicts for every ineligible local.
-        iter::repeat(ineligible_locals.clone())
-        .take(body.local_decls.len())
-        .collect();
+    let mut local_conflicts: BitMatrix<Local, Local> =
+        BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len());
 
     for_each_location(body, &storage_live_analysis, &storage_live, |state, loc| {
         let mut eligible_storage_live = state.clone().to_dense();
         eligible_storage_live.intersect(&stored_locals);
 
         for local in eligible_storage_live.iter() {
-            local_conflicts[local].union(&eligible_storage_live);
+            local_conflicts.union_row_with(&eligible_storage_live, local);
         }
 
         if eligible_storage_live.count() > 1 {
@@ -588,19 +587,22 @@ fn compute_storage_conflicts(
     // However, in practice these bitsets are not usually large. The layout code
     // also needs to keep track of how many conflicts each local has, so it's
     // simpler to keep it this way for now.
-    let storage_conflicts: IndexVec<GeneratorSavedLocal, _> = stored_locals
-        .iter()
-        .map(|local_a| {
-            if ineligible_locals.contains(local_a) {
-                // Conflicts with everything.
-                BitSet::new_filled(stored_locals.count())
-            } else {
-                // Keep overlap information only for stored locals.
-                renumber_bitset(&local_conflicts[local_a], stored_locals)
+    let mut storage_conflicts = BitMatrix::new(stored_locals.count(), stored_locals.count());
+    for (idx_a, local_a) in stored_locals.iter().enumerate() {
+        let saved_local_a = GeneratorSavedLocal::new(idx_a);
+        if ineligible_locals.contains(local_a) {
+            // Conflicts with everything.
+            storage_conflicts.insert_all_into_row(saved_local_a);
+        } else {
+            // Keep overlap information only for stored locals.
+            for (idx_b, local_b) in stored_locals.iter().enumerate() {
+                let saved_local_b = GeneratorSavedLocal::new(idx_b);
+                if local_conflicts.contains(local_a, local_b) {
+                    storage_conflicts.insert(saved_local_a, saved_local_b);
+                }
             }
-        })
-        .collect();
-
+        }
+    }
     storage_conflicts
 }
 
@@ -700,7 +702,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         variant_fields.push(fields);
     }
     debug!("generator variant_fields = {:?}", variant_fields);
-    debug!("generator storage_conflicts = {:?}", storage_conflicts);
+    debug!("generator storage_conflicts = {:#?}", storage_conflicts);
 
     let layout = GeneratorLayout {
         field_tys: tys,

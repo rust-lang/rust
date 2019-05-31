@@ -678,12 +678,13 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                 // Next, check every pair of eligible locals to see if they
                 // conflict.
-                for (local_a, conflicts_a) in info.storage_conflicts.iter_enumerated() {
+                for local_a in info.storage_conflicts.rows() {
+                    let conflicts_a = info.storage_conflicts.count(local_a);
                     if ineligible_locals.contains(local_a) {
                         continue;
                     }
 
-                    for local_b in conflicts_a.iter() {
+                    for local_b in info.storage_conflicts.iter(local_a) {
                         // local_a and local_b are storage live at the same time, therefore they
                         // cannot overlap in the generator layout. The only way to guarantee
                         // this is if they are in the same variant, or one is ineligible
@@ -697,8 +698,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         // If they conflict, we will choose one to make ineligible.
                         // This is not always optimal; it's just a greedy heuristic
                         // that seems to produce good results most of the time.
-                        let conflicts_b = &info.storage_conflicts[local_b];
-                        let (remove, other) = if conflicts_a.count() > conflicts_b.count() {
+                        let conflicts_b = info.storage_conflicts.count(local_b);
+                        let (remove, other) = if conflicts_a > conflicts_b {
                             (local_a, local_b)
                         } else {
                             (local_b, local_a)

@@ -9,7 +9,7 @@ use crate::hir::def_id::DefId;
 use crate::hir::{self, InlineAsm as HirInlineAsm};
 use crate::mir::interpret::{ConstValue, InterpError, Scalar};
 use crate::mir::visit::MirVisitable;
-use rustc_data_structures::bit_set::BitSet;
+use rustc_data_structures::bit_set::BitMatrix;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
@@ -3008,7 +3008,7 @@ pub struct GeneratorLayout<'tcx> {
     /// Which saved locals are storage-live at the same time. Locals that do not
     /// have conflicts with each other are allowed to overlap in the computed
     /// layout.
-    pub storage_conflicts: IndexVec<GeneratorSavedLocal, BitSet<GeneratorSavedLocal>>,
+    pub storage_conflicts: BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
 
     /// Names and scopes of all the stored generator locals.
     /// NOTE(tmandry) This is *strictly* a temporary hack for codegen
@@ -3586,7 +3586,7 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
     }
 }
 
-impl<'tcx, T: Idx> TypeFoldable<'tcx> for BitSet<T> {
+impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _: &mut F) -> Self {
         self.clone()
     }
