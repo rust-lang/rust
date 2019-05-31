@@ -5,7 +5,7 @@
 #![allow(dead_code)]
 
 const fn type_name_wrapper<T>(_: &T) -> &'static str {
-    unsafe { std::intrinsics::type_name::<T>() }
+    unsafe { core::intrinsics::type_name::<T>() }
 }
 
 struct Struct<TA, TB, TC> {
@@ -25,14 +25,13 @@ const CONST_STRUCT: StructInstantiation = StructInstantiation {
 const CONST_STRUCT_NAME: &'static str = type_name_wrapper(&CONST_STRUCT);
 
 fn main() {
-    println!("{}", CONST_STRUCT_NAME);
-
     let non_const_struct = StructInstantiation {
         a: 87,
         b: 65.99,
         c: true,
     };
+
     let non_const_struct_name = type_name_wrapper(&non_const_struct);
 
-    println!("{}", non_const_struct_name);
+    assert_eq!(CONST_STRUCT_NAME, non_const_struct_name);
 }
