@@ -1009,7 +1009,10 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             // ...but otherwise we want to use any supertype of the
             // discriminant. This is sort of a workaround, see note (*) in
             // `check_pat` for some details.
-            let discrim_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(discrim.span));
+            let discrim_ty = self.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::TypeInference,
+                span: discrim.span,
+            });
             self.check_expr_has_type_or_error(discrim, discrim_ty);
             discrim_ty
         }

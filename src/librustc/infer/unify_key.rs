@@ -79,13 +79,19 @@ impl ToType for FloatVarValue {
 
 // Generic consts.
 
+#[derive(Copy, Clone, Debug)]
+pub struct ConstVariableOrigin {
+    pub kind: ConstVariableOriginKind,
+    pub span: Span,
+}
+
 /// Reasons to create a const inference variable
 #[derive(Copy, Clone, Debug)]
-pub enum ConstVariableOrigin {
-    MiscVariable(Span),
-    ConstInference(Span),
-    ConstParameterDefinition(Span, InternedString),
-    SubstitutionPlaceholder(Span),
+pub enum ConstVariableOriginKind {
+    MiscVariable,
+    ConstInference,
+    ConstParameterDefinition(InternedString),
+    SubstitutionPlaceholder,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -159,7 +165,10 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
         }?;
 
         Ok(ConstVarValue {
-            origin: ConstVariableOrigin::ConstInference(DUMMY_SP),
+            origin: ConstVariableOrigin {
+                kind: ConstVariableOriginKind::ConstInference,
+                span: DUMMY_SP,
+            },
             val,
         })
     }

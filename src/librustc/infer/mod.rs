@@ -40,7 +40,7 @@ use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
 use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
 use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use self::unify_key::{ToType, ConstVariableOrigin};
+use self::unify_key::{ToType, ConstVariableOrigin, ConstVariableOriginKind};
 
 pub mod at;
 pub mod canonical;
@@ -1119,7 +1119,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.tcx.mk_ty_var(ty_var_id).into()
             }
             GenericParamDefKind::Const { .. } => {
-                let origin = ConstVariableOrigin::ConstParameterDefinition(span, param.name);
+                let origin = ConstVariableOrigin {
+                    kind: ConstVariableOriginKind::ConstParameterDefinition(param.name),
+                    span,
+                };
                 let const_var_id =
                     self.const_unification_table
                         .borrow_mut()
@@ -1421,7 +1424,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 span,
             })
         };
-        let fld_c = |_, ty| self.next_const_var(ty, ConstVariableOrigin::MiscVariable(span));
+        let fld_c = |_, ty| self.next_const_var(ty, ConstVariableOrigin {
+            kind: ConstVariableOriginKind:: MiscVariable,
+            span,
+        });
         self.tcx.replace_bound_vars(value, fld_r, fld_t, fld_c)
     }
 
