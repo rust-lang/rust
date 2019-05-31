@@ -78,6 +78,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 let id_val = Scalar::from_uint(type_id, dest.layout.size);
                 self.write_scalar(id_val, dest)?;
             }
+            
+            "type_name" => {
+                let ty = substs.type_at(0);
+                let ty_name = ty.to_string();
+                let value = self.str_to_immediate(&ty_name)?;
+                self.write_immediate(value, dest)?;
+            }            
             | "ctpop"
             | "cttz"
             | "cttz_nonzero"
