@@ -317,7 +317,7 @@ fn on_task(
     match task {
         Task::Respond(response) => {
             if let Some(pending) = pending_requests.remove(&response.id) {
-                let completed = CompletedRequest::from((response.id, pending));
+                let completed = CompletedRequest::from(pending);
                 log::info!("handled req#{} in {:?}", completed.id, completed.duration);
                 state.complete_request(completed);
                 msg_sender.send(response.into()).unwrap();
@@ -371,8 +371,8 @@ fn on_request(
         .finish();
     match req {
         Ok(id) => {
-            let prev =
-                pending_requests.insert(id, PendingRequest { method, received: request_received });
+            let prev = pending_requests
+                .insert(id, PendingRequest { id, method, received: request_received });
             assert!(prev.is_none(), "duplicate request: {}", id);
             Ok(None)
         }
