@@ -50,6 +50,7 @@ use errors::Applicability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::sync::Lrc;
 
 use std::collections::{BTreeSet, BTreeMap};
 use std::mem;
@@ -58,17 +59,17 @@ use syntax::attr;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::errors;
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::source_map::{respan, CompilerDesugaringKind, Spanned};
+use syntax::source_map::{self, respan, CompilerDesugaringKind, Spanned};
 use syntax::source_map::CompilerDesugaringKind::IfTemporary;
 use syntax::std_inject;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::Token;
 use syntax::visit::{self, Visitor};
-use syntax_pos::Span;
+use syntax_pos::{edition, Span};
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
@@ -829,6 +830,27 @@ impl<'a> LoweringContext<'a> {
         self.sess.diagnostic()
     }
 
+    /// Reuses the span but adds information like the kind of the desugaring and features that are
+    /// allowed inside this span.
+    fn mark_span_with_reason(
+        &self,
+        reason: CompilerDesugaringKind,
+        span: Span,
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    ) -> Span {
+        let mark = Mark::fresh(Mark::root());
+        mark.set_expn_info(source_map::ExpnInfo {
+            call_site: span,
+            def_site: Some(span),
+            format: source_map::CompilerDesugaring(reason),
+            allow_internal_unstable,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            edition: edition::Edition::from_session(),
+        });
+        span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
+    }
+
     fn with_anonymous_lifetime_mode<R>(
         &mut self,
         anonymous_lifetime_mode: AnonymousLifetimeMode,
@@ -1128,7 +1150,7 @@ impl<'a> LoweringContext<'a> {
             attrs: ThinVec::new(),
         };
 
-        let unstable_span = self.sess.source_map().mark_span_with_reason(
+        let unstable_span = self.mark_span_with_reason(
             CompilerDesugaringKind::Async,
             span,
             Some(vec![sym::gen_future].into()),
@@ -1535,7 +1557,7 @@ impl<'a> LoweringContext<'a> {
         // desugaring that explicitly states that we don't want to track that.
         // Not tracking it makes lints in rustc and clippy very fragile as
         // frequently opened issues show.
-        let exist_ty_span = self.sess.source_map().mark_span_with_reason(
+        let exist_ty_span = self.mark_span_with_reason(
             CompilerDesugaringKind::ExistentialReturnType,
             span,
             None,
@@ -2395,7 +2417,7 @@ impl<'a> LoweringContext<'a> {
     ) -> hir::FunctionRetTy {
         let span = output.span();
 
-        let exist_ty_span = self.sess.source_map().mark_span_with_reason(
+        let exist_ty_span = self.mark_span_with_reason(
             CompilerDesugaringKind::Async,
             span,
             None,
@@ -4038,10 +4060,7 @@ impl<'a> LoweringContext<'a> {
                 let else_arm = self.arm(hir_vec![else_pat], P(else_expr));
 
                 // Lower condition:
-                let span_block = self
-                    .sess
-                    .source_map()
-                    .mark_span_with_reason(IfTemporary, cond.span, None);
+                let span_block = self.mark_span_with_reason(IfTemporary, cond.span, None);
                 let cond = self.lower_expr(cond);
                 // Wrap in a construct equivalent to `{ let _t = $cond; _t }` to preserve drop
                 // semantics since `if cond { ... }` don't let temporaries live outside of `cond`.
@@ -4071,7 +4090,7 @@ impl<'a> LoweringContext<'a> {
             }),
             ExprKind::TryBlock(ref body) => {
                 self.with_catch_scope(body.id, |this| {
-                    let unstable_span = this.sess.source_map().mark_span_with_reason(
+                    let unstable_span = this.mark_span_with_reason(
                         CompilerDesugaringKind::TryBlock,
                         body.span,
                         Some(vec![sym::try_trait].into()),
@@ -4503,7 +4522,7 @@ impl<'a> LoweringContext<'a> {
                 // expand <head>
                 let mut head = self.lower_expr(head);
                 let head_sp = head.span;
-                let desugared_span = self.sess.source_map().mark_span_with_reason(
+                let desugared_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::ForLoop,
                     head_sp,
                     None,
@@ -4657,13 +4676,13 @@ impl<'a> LoweringContext<'a> {
                 //                 return Try::from_error(From::from(err)),
                 // }
 
-                let unstable_span = self.sess.source_map().mark_span_with_reason(
+                let unstable_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::QuestionMark,
                     e.span,
                     Some(vec![sym::try_trait].into()),
                 );
                 let try_span = self.sess.source_map().end_point(e.span);
-                let try_span = self.sess.source_map().mark_span_with_reason(
+                let try_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::QuestionMark,
                     try_span,
                     Some(vec![sym::try_trait].into()),
@@ -5460,12 +5479,12 @@ impl<'a> LoweringContext<'a> {
             err.emit();
             return hir::ExprKind::Err;
         }
-        let span = self.sess.source_map().mark_span_with_reason(
+        let span = self.mark_span_with_reason(
             CompilerDesugaringKind::Await,
             await_span,
             None,
         );
-        let gen_future_span = self.sess.source_map().mark_span_with_reason(
+        let gen_future_span = self.mark_span_with_reason(
             CompilerDesugaringKind::Await,
             await_span,
             Some(vec![sym::gen_future].into()),
