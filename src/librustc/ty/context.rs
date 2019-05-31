@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 //! Type context book-keeping.
 
 use crate::arena::Arena;
@@ -67,7 +65,6 @@ use std::ops::{Deref, Bound};
 use std::iter;
 use std::sync::mpsc;
 use std::sync::Arc;
-use std::marker::PhantomData;
 use rustc_target::spec::abi;
 use rustc_macros::HashStable;
 use syntax::ast;
@@ -81,14 +78,12 @@ use crate::hir;
 
 pub struct AllArenas {
     pub interner: SyncDroplessArena,
-    pub local_interner: SyncDroplessArena,
 }
 
 impl AllArenas {
     pub fn new() -> Self {
         AllArenas {
             interner: SyncDroplessArena::default(),
-            local_interner: SyncDroplessArena::default(),
         }
     }
 }
@@ -136,57 +131,21 @@ impl<'tcx> CtxtInterners<'tcx> {
 
     /// Intern a type
     #[inline(never)]
-    fn intern_ty(
-        local: &CtxtInterners<'tcx>,
-        global: &CtxtInterners<'tcx>,
-        st: TyKind<'tcx>,
+    fn intern_ty(&self,
+        st: TyKind<'tcx>
     ) -> Ty<'tcx> {
-        let flags = super::flags::FlagComputation::for_sty(&st);
+        self.type_.intern(st, |st| {
+            let flags = super::flags::FlagComputation::for_sty(&st);
 
-        // HACK(eddyb) Depend on flags being accurate to
-        // determine that all contents are in the global tcx.
-        // See comments on Lift for why we can't use that.
-        if flags.flags.intersects(ty::TypeFlags::KEEP_IN_LOCAL_TCX) {
-            local.type_.intern(st, |st| {
-                let ty_struct = TyS {
-                    sty: st,
-                    flags: flags.flags,
-                    outer_exclusive_binder: flags.outer_exclusive_binder,
-                };
+            let ty_struct = TyS {
+                sty: st,
+                flags: flags.flags,
+                outer_exclusive_binder: flags.outer_exclusive_binder,
+            };
 
-                // Make sure we don't end up with inference
-                // types/regions in the global interner
-                if ptr_eq(local, global) {
-                    bug!("Attempted to intern `{:?}` which contains \
-                        inference types/regions in the global type context",
-                        &ty_struct);
-                }
 
-                // This is safe because all the types the ty_struct can point to
-                // already is in the local arena or the global arena
-                let ty_struct: TyS<'tcx> = unsafe {
-                    mem::transmute(ty_struct)
-                };
-
-                Interned(local.arena.alloc(ty_struct))
-            }).0
-        } else {
-            global.type_.intern(st, |st| {
-                let ty_struct = TyS {
-                    sty: st,
-                    flags: flags.flags,
-                    outer_exclusive_binder: flags.outer_exclusive_binder,
-                };
-
-                // This is safe because all the types the ty_struct can point to
-                // already is in the global arena
-                let ty_struct: TyS<'tcx> = unsafe {
-                    mem::transmute(ty_struct)
-                };
-
-                Interned(global.arena.alloc(ty_struct))
-            }).0
-        }
+            Interned(self.arena.alloc(ty_struct))
+        }).0
     }
 }
 
@@ -935,7 +894,7 @@ EnumLiftImpl! {
 
 impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
-        let mk = |sty| CtxtInterners::intern_ty(interners, interners, sty);
+        let mk = |sty| interners.intern_ty(sty);
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -1017,8 +976,6 @@ pub struct FreeRegionInfo {
 #[derive(Copy, Clone)]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
-    interners: &'tcx CtxtInterners<'tcx>,
-    dummy: PhantomData<&'tcx ()>,
 }
 
 impl<'tcx> Deref for TyCtxt<'tcx> {
@@ -1032,8 +989,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
 pub struct GlobalCtxt<'tcx> {
     pub arena: WorkerLocal<Arena<'tcx>>,
 
-    global_interners: CtxtInterners<'tcx>,
-    local_interners: CtxtInterners<'tcx>,
+    interners: CtxtInterners<'tcx>,
 
     cstore: &'tcx CrateStoreDyn,
 
@@ -1124,8 +1080,6 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn global_tcx(self) -> TyCtxt<'tcx> {
         TyCtxt {
             gcx: self.gcx,
-            interners: &self.gcx.global_interners,
-            dummy: PhantomData,
         }
     }
 
@@ -1207,7 +1161,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `true` if self is the same as self.global_tcx().
     fn is_global(self) -> bool {
-        ptr_eq(self.interners, &self.global_interners)
+        panic!()
+        //FIXME: ptr_eq(self.interners, &self.global_interners)
     }
 
     /// Creates a type context and call the closure with a `TyCtxt` reference
@@ -1231,7 +1186,6 @@ impl<'tcx> TyCtxt<'tcx> {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(&arenas.interner);
-        let local_interners = CtxtInterners::new(&arenas.local_interner);
         let common = Common {
             empty_predicates: ty::GenericPredicates {
                 parent: None,
@@ -1289,8 +1243,7 @@ impl<'tcx> TyCtxt<'tcx> {
             sess: s,
             cstore,
             arena: WorkerLocal::new(|_| Arena::default()),
-            global_interners: interners,
-            local_interners: local_interners,
+            interners,
             dep_graph,
             common,
             types: common_types,
@@ -1684,8 +1637,6 @@ impl<'tcx> GlobalCtxt<'tcx> {
     {
         let tcx = TyCtxt {
             gcx: self,
-            interners: &self.local_interners,
-            dummy: PhantomData,
         };
         ty::tls::with_related_context(tcx.global_tcx(), |icx| {
             let new_icx = ty::tls::ImplicitCtxt {
@@ -1787,7 +1738,6 @@ pub mod tls {
 
     use std::fmt;
     use std::mem;
-    use std::marker::PhantomData;
     use syntax_pos;
     use crate::ty::query;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
@@ -1951,8 +1901,6 @@ pub mod tls {
 
         let tcx = TyCtxt {
             gcx,
-            interners: &gcx.global_interners,
-            dummy: PhantomData,
         };
         let icx = ImplicitCtxt {
             tcx,
@@ -1983,8 +1931,6 @@ pub mod tls {
         let gcx = &*(gcx as *const GlobalCtxt<'_>);
         let tcx = TyCtxt {
             gcx,
-            interners: &gcx.global_interners,
-            dummy: PhantomData,
         };
         let icx = ImplicitCtxt {
             query: None,
@@ -2037,26 +1983,6 @@ pub mod tls {
         with_context(|context| {
             unsafe {
                 assert!(ptr_eq(context.tcx.gcx, tcx.gcx));
-                let context: &ImplicitCtxt<'_, '_> = mem::transmute(context);
-                f(context)
-            }
-        })
-    }
-
-    /// Allows access to the current ImplicitCtxt whose tcx field has the same global
-    /// interner and local interner as the tcx argument passed in. This means the closure
-    /// is given an ImplicitCtxt with the same 'tcx and 'tcx lifetimes as the TyCtxt passed in.
-    /// This will panic if you pass it a TyCtxt which has a different global interner or
-    /// a different local interner from the current ImplicitCtxt's tcx field.
-    #[inline]
-    pub fn with_fully_related_context<'tcx, F, R>(tcx: TyCtxt<'tcx>, f: F) -> R
-    where
-        F: for<'b> FnOnce(&ImplicitCtxt<'b, 'tcx>) -> R,
-    {
-        with_context(|context| {
-            unsafe {
-                assert!(ptr_eq(context.tcx.gcx, tcx.gcx));
-                assert!(ptr_eq(context.tcx.interners, tcx.interners));
                 let context: &ImplicitCtxt<'_, '_> = mem::transmute(context);
                 f(context)
             }
@@ -2292,39 +2218,22 @@ impl<'tcx> Borrow<[Goal<'tcx>]> for Interned<'tcx, List<Goal<'tcx>>> {
 macro_rules! intern_method {
     ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
                                             $alloc_method:expr,
-                                            $alloc_to_key:expr,
-                                            $keep_in_local_tcx:expr) -> $ty:ty) => {
+                                            $alloc_to_key:expr) -> $ty:ty) => {
         impl<$lt_tcx> TyCtxt<$lt_tcx> {
             pub fn $method(self, v: $alloc) -> &$lt_tcx $ty {
                 let key = ($alloc_to_key)(&v);
 
-                // HACK(eddyb) Depend on flags being accurate to
-                // determine that all contents are in the global tcx.
-                // See comments on Lift for why we can't use that.
-                if ($keep_in_local_tcx)(&v) {
-                    self.interners.$name.intern_ref(key, || {
-                        // Make sure we don't end up with inference
-                        // types/regions in the global tcx.
-                        if self.is_global() {
-                            bug!("Attempted to intern `{:?}` which contains \
-                                inference types/regions in the global type context",
-                                v);
-                        }
+                self.interners.$name.intern_ref(key, || {
+                    Interned($alloc_method(&self.interners.arena, v))
 
-                        Interned($alloc_method(&self.interners.arena, v))
-                    }).0
-                } else {
-                    self.global_interners.$name.intern_ref(key, || {
-                        Interned($alloc_method(&self.global_interners.arena, v))
-                    }).0
-                }
+                }).0
             }
         }
     }
 }
 
 macro_rules! direct_interners {
-    ($lt_tcx:tt, $($name:ident: $method:ident($keep_in_local_tcx:expr) -> $ty:ty),+) => {
+    ($lt_tcx:tt, $($name:ident: $method:ident -> $ty:ty),+) => {
         $(impl<$lt_tcx> PartialEq for Interned<$lt_tcx, $ty> {
             fn eq(&self, other: &Self) -> bool {
                 self.0 == other.0
@@ -2343,8 +2252,7 @@ macro_rules! direct_interners {
             $lt_tcx,
             $name: $method($ty,
                            |a: &$lt_tcx SyncDroplessArena, v| -> &$lt_tcx $ty { a.alloc(v) },
-                           |x| x,
-                           $keep_in_local_tcx) -> $ty);)+
+                           |x| x) -> $ty);)+
     }
 }
 
@@ -2353,9 +2261,9 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 }
 
 direct_interners!('tcx,
-    region: mk_region(|r: &RegionKind| r.keep_in_local_tcx()) -> RegionKind,
-    goal: mk_goal(|c: &GoalKind<'_>| keep_local(c)) -> GoalKind<'tcx>,
-    const_: mk_const(|c: &Const<'_>| keep_local(&c)) -> Const<'tcx>
+    region: mk_region -> RegionKind,
+    goal: mk_goal -> GoalKind<'tcx>,
+    const_: mk_const -> Const<'tcx>
 );
 
 macro_rules! slice_interners {
@@ -2363,8 +2271,7 @@ macro_rules! slice_interners {
         $(intern_method!( 'tcx, $field: $method(
             &[$ty],
             |a, v| List::from_arena(a, v),
-            Deref::deref,
-            |xs: &[$ty]| xs.iter().any(keep_local)) -> List<$ty>);)+
+            Deref::deref) -> List<$ty>);)+
     );
 }
 
@@ -2388,8 +2295,7 @@ intern_method! {
     canonical_var_infos: _intern_canonical_var_infos(
         &[CanonicalVarInfo],
         |a, v| List::from_arena(a, v),
-        Deref::deref,
-        |_xs: &[CanonicalVarInfo]| -> bool { false }
+        Deref::deref
     ) -> List<CanonicalVarInfo>
 }
 
@@ -2435,7 +2341,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_ty(&self, st: TyKind<'tcx>) -> Ty<'tcx> {
-        CtxtInterners::intern_ty(&self.interners, &self.global_interners, st)
+        self.interners.intern_ty(st)
     }
 
     pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {
