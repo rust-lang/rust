@@ -7205,44 +7205,41 @@ impl<'a> Parser<'a> {
             return Ok(Some(item));
         }
 
-        // `unsafe async fn` or `async fn`
-        if (
-            self.check_keyword(kw::Unsafe) &&
-            self.is_keyword_ahead(1, &[kw::Async])
-        ) || (
-            self.check_keyword(kw::Async) &&
-            self.is_keyword_ahead(1, &[kw::Fn])
-        )
-        {
-            // ASYNC FUNCTION ITEM
-            let unsafety = self.parse_unsafety();
-            self.expect_keyword(kw::Async)?;
-            let async_span = self.prev_span;
-            self.expect_keyword(kw::Fn)?;
-            let fn_span = self.prev_span;
-            let (ident, item_, extra_attrs) =
-                self.parse_item_fn(unsafety,
-                                   respan(async_span, IsAsync::Async {
-                                       closure_id: ast::DUMMY_NODE_ID,
-                                       return_impl_trait_id: ast::DUMMY_NODE_ID,
-                                       arguments: Vec::new(),
-                                   }),
-                                   respan(fn_span, Constness::NotConst),
-                                   Abi::Rust)?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            if self.span.rust_2015() {
-                self.diagnostic().struct_span_err_with_code(
-                    async_span,
-                    "`async fn` is not permitted in the 2015 edition",
-                    DiagnosticId::Error("E0670".into())
-                ).emit();
+        // Parse `async unsafe? fn`.
+        if self.check_keyword(kw::Async) {
+            let async_span = self.span;
+            if self.is_keyword_ahead(1, &[kw::Fn])
+                || self.is_keyword_ahead(2, &[kw::Fn])
+            {
+                // ASYNC FUNCTION ITEM
+                self.bump(); // `async`
+                let unsafety = self.parse_unsafety(); // `unsafe`?
+                self.expect_keyword(kw::Fn)?; // `fn`
+                let fn_span = self.prev_span;
+                let (ident, item_, extra_attrs) =
+                    self.parse_item_fn(unsafety,
+                                    respan(async_span, IsAsync::Async {
+                                        closure_id: ast::DUMMY_NODE_ID,
+                                        return_impl_trait_id: ast::DUMMY_NODE_ID,
+                                        arguments: Vec::new(),
+                                    }),
+                                    respan(fn_span, Constness::NotConst),
+                                    Abi::Rust)?;
+                let prev_span = self.prev_span;
+                let item = self.mk_item(lo.to(prev_span),
+                                        ident,
+                                        item_,
+                                        visibility,
+                                        maybe_append(attrs, extra_attrs));
+                if self.span.rust_2015() {
+                    self.diagnostic().struct_span_err_with_code(
+                        async_span,
+                        "`async fn` is not permitted in the 2015 edition",
+                        DiagnosticId::Error("E0670".into())
+                    ).emit();
+                }
+                return Ok(Some(item));
             }
-            return Ok(Some(item));
         }
         if self.check_keyword(kw::Unsafe) &&
             self.is_keyword_ahead(1, &[kw::Trait, kw::Auto])
