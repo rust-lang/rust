@@ -1,7 +1,6 @@
-use crate::ast;
 use crate::ast::{
-    BlockCheckMode, BinOpKind, Expr, ExprKind, Item, ItemKind, Pat, PatKind, PathSegment, QSelf,
-    Ty, TyKind, VariantData, Ident,
+    self, Arg, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
+    Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
 };
 use crate::parse::{SeqSep, token, PResult, Parser};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
@@ -12,8 +11,24 @@ use crate::symbol::{kw, sym};
 use crate::ThinVec;
 use crate::util::parser::AssocOp;
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::{debug, trace};
+
+/// Creates a placeholder argument.
+crate fn dummy_arg(ident: Ident) -> Arg {
+    let pat = P(Pat {
+        id: ast::DUMMY_NODE_ID,
+        node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
+        span: ident.span,
+    });
+    let ty = Ty {
+        node: TyKind::Err,
+        span: ident.span,
+        id: ast::DUMMY_NODE_ID
+    };
+    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID, source: ast::ArgSource::Normal }
+}
 
 pub enum Error {
     FileNotFoundForModule {
@@ -1216,5 +1231,25 @@ impl<'a> Parser<'a> {
         }
         err.span_label(span, "expected expression");
         err
+    }
+
+    /// Replace duplicated recovered arguments with `_` pattern to avoid unecessary errors.
+    crate fn deduplicate_recovered_arg_names(&self, fn_inputs: &mut Vec<Arg>) {
+        let mut seen_inputs = FxHashSet::default();
+        for input in fn_inputs.iter_mut() {
+            let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) = (
+                &input.pat.node, &input.ty.node,
+            ) {
+                Some(*ident)
+            } else {
+                None
+            };
+            if let Some(ident) = opt_ident {
+                if seen_inputs.contains(&ident) {
+                    input.pat.node = PatKind::Wild;
+                }
+                seen_inputs.insert(ident);
+            }
+        }
     }
 }

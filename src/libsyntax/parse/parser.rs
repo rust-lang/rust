@@ -47,11 +47,10 @@ use crate::parse::PResult;
 use crate::ThinVec;
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::symbol::{kw, sym, Symbol};
-use crate::parse::diagnostics::Error;
+use crate::parse::diagnostics::{Error, dummy_arg};
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
-use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::{Span, BytePos, DUMMY_SP, FileName, hygiene::CompilerDesugaringKind};
 use log::debug;
 
@@ -450,21 +449,6 @@ impl From<P<Expr>> for LhsExpr {
     fn from(expr: P<Expr>) -> Self {
         LhsExpr::AlreadyParsed(expr)
     }
-}
-
-/// Creates a placeholder argument.
-fn dummy_arg(ident: Ident) -> Arg {
-    let pat = P(Pat {
-        id: ast::DUMMY_NODE_ID,
-        node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
-        span: ident.span,
-    });
-    let ty = Ty {
-        node: TyKind::Err,
-        span: ident.span,
-        id: ast::DUMMY_NODE_ID
-    };
-    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID, source: ast::ArgSource::Normal }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -5617,22 +5601,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::CloseDelim(token::Paren))?;
         }
         // Replace duplicated recovered arguments with `_` pattern to avoid unecessary errors.
-        let mut seen_inputs = FxHashSet::default();
-        for input in fn_inputs.iter_mut() {
-            let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) = (
-                &input.pat.node, &input.ty,
-            ) {
-                Some(*ident)
-            } else {
-                None
-            };
-            if let Some(ident) = opt_ident {
-                if seen_inputs.contains(&ident) {
-                    input.pat.node = PatKind::Wild;
-                }
-                seen_inputs.insert(ident);
-            }
-        }
+        self.deduplicate_recovered_arg_names(&mut fn_inputs);
 
         Ok(P(FnDecl {
             inputs: fn_inputs,
