@@ -363,8 +363,12 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             Rvalue::Use(ref op) => {
                 self.eval_operand(op, source_info)
             },
+            Rvalue::Ref(_, _, ref place) => {
+                let src = self.eval_place(place, source_info)?;
+                let mplace = src.try_as_mplace().ok()?;
+                Some(ImmTy::from_scalar(mplace.ptr.into(), place_layout).into())
+            },
             Rvalue::Repeat(..) |
-            Rvalue::Ref(..) |
             Rvalue::Aggregate(..) |
             Rvalue::NullaryOp(NullOp::Box, _) |
             Rvalue::Discriminant(..) => None,
