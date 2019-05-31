@@ -6,7 +6,7 @@
 #![feature(label_break_value)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(type_alias_enum_variants)]
+#![cfg_attr(bootstrap, feature(type_alias_enum_variants))]
 
 #![recursion_limit="256"]
 
