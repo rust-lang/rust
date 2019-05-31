@@ -503,6 +503,16 @@ impl<I: indexed_vec::Idx, CTX> HashStable<CTX> for bit_set::BitSet<I>
     }
 }
 
+impl<R: indexed_vec::Idx, C: indexed_vec::Idx, CTX> HashStable<CTX>
+for bit_set::BitMatrix<R, C>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        self.words().hash_stable(ctx, hasher);
+    }
+}
+
 impl_stable_hash_via_hash!(::std::path::Path);
 impl_stable_hash_via_hash!(::std::path::PathBuf);
 
