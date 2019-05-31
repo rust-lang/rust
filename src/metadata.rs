@@ -90,7 +90,12 @@ pub fn write_metadata<'a, 'gcx>(
     DeflateEncoder::new(&mut compressed, Compression::fast())
         .write_all(&metadata.raw_data).unwrap();
 
-    artifact.declare_with(".rustc", faerie::Decl::section(faerie::SectionKind::Data), compressed).unwrap();
+    artifact.declare(".rustc", faerie::Decl::section(faerie::SectionKind::Data)).unwrap();
+    artifact.define_with_symbols(".rustc", compressed, {
+        let mut map = std::collections::BTreeMap::new();
+        map.insert(rustc::middle::exported_symbols::metadata_symbol_name(tcx), 0);
+        map
+    }).unwrap();
 
     metadata
 }
