@@ -1,5 +1,3 @@
-
-
 struct X {
     a: u8,
     /// document

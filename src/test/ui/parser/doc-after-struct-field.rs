@@ -1,5 +1,3 @@
-
-
 struct X {
     a: u8 /** document a */,
     //~^ ERROR found a documentation comment that doesn't document anything

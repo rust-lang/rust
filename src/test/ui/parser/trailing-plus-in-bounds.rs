@@ -1,6 +1,5 @@
 // compile-pass
 
-
 #![feature(box_syntax)]
 #![allow(bare_trait_objects)]
 

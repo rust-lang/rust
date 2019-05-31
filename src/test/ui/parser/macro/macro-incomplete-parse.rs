@@ -1,5 +1,3 @@
-
-
 macro_rules! ignored_item {
     () => {
         fn foo() {}

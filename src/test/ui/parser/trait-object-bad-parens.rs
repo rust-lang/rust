@@ -1,5 +1,3 @@
-
-
 #![feature(optin_builtin_traits)]
 #![allow(bare_trait_objects)]
 

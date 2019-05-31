@@ -1,4 +1,3 @@
-
 // ignore-tidy-tab
 
 fn main() {

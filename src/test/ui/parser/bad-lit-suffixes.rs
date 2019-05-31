@@ -1,6 +1,3 @@
-
-
-
 extern
     "C"suffix //~ ERROR suffixes on an ABI spec are invalid
     fn foo() {}

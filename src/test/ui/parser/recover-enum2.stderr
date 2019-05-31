@@ -1,11 +1,11 @@
 error: expected type, found `{`
-  --> $DIR/recover-enum2.rs:8:18
+  --> $DIR/recover-enum2.rs:6:18
    |
 LL |             abc: {},
    |                  ^
 
 error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, or `<`, found `{`
-  --> $DIR/recover-enum2.rs:27:22
+  --> $DIR/recover-enum2.rs:25:22
    |
 LL |             Nope(i32 {})
    |                      ^ expected one of 7 possible tokens here

@@ -1,5 +1,3 @@
-
-
 #![allow(bare_trait_objects)]
 
 trait Trait {}

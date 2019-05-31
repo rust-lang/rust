@@ -1,5 +1,3 @@
-
-
 mod foo {
   struct Self;
   //~^ ERROR expected identifier, found keyword `Self`

@@ -1,5 +1,5 @@
 error: expected item, found keyword `where`
-  --> $DIR/issue-17904-2.rs:3:24
+  --> $DIR/issue-17904-2.rs:1:24
    |
 LL | struct Bar<T> { x: T } where T: Copy
    |                        ^^^^^ expected item

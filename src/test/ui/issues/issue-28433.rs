@@ -1,5 +1,3 @@
-
-
 enum Bird {
     pub Duck,
     //~^ ERROR unnecessary visibility qualifier
