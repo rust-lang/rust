@@ -218,10 +218,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     format!("the anonymous lifetime #{} defined on", idx + 1),
                     self.hir().span_by_hir_id(node),
                 ),
-                ty::BrFresh(_) => (
-                    "an anonymous lifetime defined on".to_owned(),
-                    self.hir().span_by_hir_id(node),
-                ),
                 _ => (
                     format!("the lifetime {} as defined on", region),
                     cm.def_span(self.hir().span_by_hir_id(node)),

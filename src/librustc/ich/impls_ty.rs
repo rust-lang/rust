@@ -100,7 +100,6 @@ for ty::RegionKind {
             ty::ReClosureBound(vid) => {
                 vid.hash_stable(hcx, hasher);
             }
-            ty::ReLateBound(..) |
             ty::ReVar(..) |
             ty::RePlaceholder(..) => {
                 bug!("StableHasher: unexpected region {:?}", *self)
