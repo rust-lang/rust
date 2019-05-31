@@ -200,10 +200,6 @@ impl HygieneData {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
 
-    fn outer(&self, ctxt: SyntaxContext) -> Mark {
-        self.syntax_contexts[ctxt.0 as usize].outer_mark
-    }
-
     fn expn_info(&self, mark: Mark) -> Option<ExpnInfo> {
         self.marks[mark.0 as usize].expn_info.clone()
     }
@@ -216,6 +212,26 @@ impl HygieneData {
             mark = self.marks[mark.0 as usize].parent;
         }
         true
+    }
+
+    fn modern(&self, ctxt: SyntaxContext) -> SyntaxContext {
+        self.syntax_contexts[ctxt.0 as usize].opaque
+    }
+
+    fn modern_and_legacy(&self, ctxt: SyntaxContext) -> SyntaxContext {
+        self.syntax_contexts[ctxt.0 as usize].opaque_and_semitransparent
+    }
+
+    fn outer(&self, ctxt: SyntaxContext) -> Mark {
+        self.syntax_contexts[ctxt.0 as usize].outer_mark
+    }
+
+    fn transparency(&self, ctxt: SyntaxContext) -> Transparency {
+        self.syntax_contexts[ctxt.0 as usize].transparency
+    }
+
+    fn prev_ctxt(&self, ctxt: SyntaxContext) -> SyntaxContext {
+        self.syntax_contexts[ctxt.0 as usize].prev_ctxt
     }
 }
 
@@ -388,7 +404,7 @@ impl SyntaxContext {
     pub fn remove_mark(&mut self) -> Mark {
         HygieneData::with(|data| {
             let outer_mark = data.syntax_contexts[self.0 as usize].outer_mark;
-            *self = data.syntax_contexts[self.0 as usize].prev_ctxt;
+            *self = data.prev_ctxt(*self);
             outer_mark
         })
     }
@@ -397,9 +413,11 @@ impl SyntaxContext {
         HygieneData::with(|data| {
             let mut marks = Vec::new();
             while self != SyntaxContext::empty() {
-                let ctxt_data = &data.syntax_contexts[self.0 as usize];
-                marks.push((ctxt_data.outer_mark, ctxt_data.transparency));
-                self = ctxt_data.prev_ctxt;
+                let outer_mark = data.outer(self);
+                let transparency = data.transparency(self);
+                let prev_ctxt = data.prev_ctxt(self);
+                marks.push((outer_mark, transparency));
+                self = prev_ctxt;
             }
             marks.reverse();
             marks
@@ -506,12 +524,12 @@ impl SyntaxContext {
 
     #[inline]
     pub fn modern(self) -> SyntaxContext {
-        HygieneData::with(|data| data.syntax_contexts[self.0 as usize].opaque)
+        HygieneData::with(|data| data.modern(self))
     }
 
     #[inline]
     pub fn modern_and_legacy(self) -> SyntaxContext {
-        HygieneData::with(|data| data.syntax_contexts[self.0 as usize].opaque_and_semitransparent)
+        HygieneData::with(|data| data.modern_and_legacy(self))
     }
 
     #[inline]
