@@ -1,5 +1,6 @@
 mod handlers;
 mod subscriptions;
+pub(crate) mod pending_requests;
 
 use std::{fmt, path::PathBuf, sync::Arc, time::Instant, any::TypeId};
 
@@ -12,16 +13,18 @@ use gen_lsp_server::{
 use lsp_types::NumberOrString;
 use ra_ide_api::{Canceled, FileId, LibraryData};
 use ra_vfs::VfsTask;
-use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 use ra_prof::profile;
 
 use crate::{
-    main_loop::subscriptions::Subscriptions,
+    main_loop::{
+        subscriptions::Subscriptions,
+        pending_requests::{PendingRequests, PendingRequest},
+    },
     project_model::workspace_loader,
     req,
-    server_world::{ServerWorld, ServerWorldState, CompletedRequest},
+    server_world::{ServerWorld, ServerWorldState},
     Result,
     InitializationOptions,
 };
@@ -42,37 +45,12 @@ impl LspError {
     }
 }
 
-#[derive(Debug)]
-enum Task {
-    Respond(RawResponse),
-    Notify(RawNotification),
-}
-
-struct PendingRequest {
-    id: u64,
-    received: Instant,
-    method: String,
-}
-
-impl From<PendingRequest> for CompletedRequest {
-    fn from(pending: PendingRequest) -> CompletedRequest {
-        CompletedRequest {
-            id: pending.id,
-            method: pending.method,
-            duration: pending.received.elapsed(),
-        }
-    }
-}
-
 pub fn main_loop(
     ws_roots: Vec<PathBuf>,
     options: InitializationOptions,
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
-    let pool = ThreadPool::new(THREADPOOL_SIZE);
-    let (task_sender, task_receiver) = unbounded::<Task>();
-
     // FIXME: support dynamic workspace loading.
     let workspaces = {
         let ws_worker = workspace_loader();
@@ -97,10 +75,12 @@ pub fn main_loop(
 
     let mut state = ServerWorldState::new(ws_roots, workspaces);
 
-    log::info!("server initialized, serving requests");
+    let pool = ThreadPool::new(THREADPOOL_SIZE);
+    let (task_sender, task_receiver) = unbounded::<Task>();
+    let mut pending_requests = PendingRequests::default();
+    let mut subs = Subscriptions::default();
 
-    let mut pending_requests = FxHashMap::default();
-    let mut subs = Subscriptions::new();
+    log::info!("server initialized, serving requests");
     let main_res = main_loop_inner(
         options,
         &pool,
@@ -126,6 +106,12 @@ pub fn main_loop(
     drop(vfs);
 
     main_res
+}
+
+#[derive(Debug)]
+enum Task {
+    Respond(RawResponse),
+    Notify(RawNotification),
 }
 
 enum Event {
@@ -178,7 +164,7 @@ fn main_loop_inner(
     task_sender: Sender<Task>,
     task_receiver: Receiver<Task>,
     state: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, PendingRequest>,
+    pending_requests: &mut PendingRequests,
     subs: &mut Subscriptions,
 ) -> Result<()> {
     // We try not to index more than MAX_IN_FLIGHT_LIBS libraries at the same
@@ -202,15 +188,16 @@ fn main_loop_inner(
             },
             recv(libdata_receiver) -> data => Event::Lib(data.unwrap())
         };
-        // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = profile("main_loop_inner/loop-turn");
         let loop_start = Instant::now();
 
+        // NOTE: don't count blocking select! call as a loop-turn time
+        let _p = profile("main_loop_inner/loop-turn");
         log::info!("loop turn = {:?}", event);
         let queue_count = pool.queued_count();
         if queue_count > 0 {
             log::info!("queued count = {}", queue_count);
         }
+
         let mut state_changed = false;
         match event {
             Event::Task(task) => {
@@ -311,13 +298,12 @@ fn main_loop_inner(
 fn on_task(
     task: Task,
     msg_sender: &Sender<RawMessage>,
-    pending_requests: &mut FxHashMap<u64, PendingRequest>,
+    pending_requests: &mut PendingRequests,
     state: &mut ServerWorldState,
 ) {
     match task {
         Task::Respond(response) => {
-            if let Some(pending) = pending_requests.remove(&response.id) {
-                let completed = CompletedRequest::from(pending);
+            if let Some(completed) = pending_requests.finish(response.id) {
                 log::info!("handled req#{} in {:?}", completed.id, completed.duration);
                 state.complete_request(completed);
                 msg_sender.send(response.into()).unwrap();
@@ -331,7 +317,7 @@ fn on_task(
 
 fn on_request(
     world: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, PendingRequest>,
+    pending_requests: &mut PendingRequests,
     pool: &ThreadPool,
     sender: &Sender<Task>,
     request_received: Instant,
@@ -371,9 +357,7 @@ fn on_request(
         .finish();
     match req {
         Ok(id) => {
-            let prev = pending_requests
-                .insert(id, PendingRequest { id, method, received: request_received });
-            assert!(prev.is_none(), "duplicate request: {}", id);
+            pending_requests.start(PendingRequest { id, method, received: request_received });
             Ok(None)
         }
         Err(req) => Ok(Some(req)),
@@ -383,7 +367,7 @@ fn on_request(
 fn on_notification(
     msg_sender: &Sender<RawMessage>,
     state: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, PendingRequest>,
+    pending_requests: &mut PendingRequests,
     subs: &mut Subscriptions,
     not: RawNotification,
 ) -> Result<()> {
@@ -395,7 +379,7 @@ fn on_notification(
                     panic!("string id's not supported: {:?}", id);
                 }
             };
-            if pending_requests.remove(&id).is_some() {
+            if pending_requests.cancel(id) {
                 let response = RawResponse::err(
                     id,
                     ErrorCode::RequestCanceled as i32,

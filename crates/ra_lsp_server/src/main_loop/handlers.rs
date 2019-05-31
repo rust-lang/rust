@@ -31,10 +31,10 @@ use crate::{
 pub fn handle_analyzer_status(world: ServerWorld, _: ()) -> Result<String> {
     let mut buf = world.status();
     writeln!(buf, "\n\nrequests:").unwrap();
-    let requests = world.latest_completed_requests.read();
-    for (idx, r) in requests.iter().enumerate() {
-        let current = if idx == world.request_idx { "*" } else { " " };
-        writeln!(buf, "{:4}{}{:<36}{}ms", r.id, current, r.method, r.duration.as_millis()).unwrap();
+    let requests = world.latest_requests.read();
+    for (is_last, r) in requests.iter() {
+        let mark = if is_last { "*" } else { " " };
+        writeln!(buf, "{}{:4} {:<36}{}ms", mark, r.id, r.method, r.duration.as_millis()).unwrap();
     }
     Ok(buf)
 }
