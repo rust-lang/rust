@@ -1275,7 +1275,7 @@ declare_lint_pass!(
 
 declare_lint! {
     pub ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
-    Allow,
+    Warn,
     "`...` range patterns are deprecated"
 }
 

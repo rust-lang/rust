@@ -1,5 +1,6 @@
 // run-pass
 #![allow(illegal_floating_point_literal_pattern)] // FIXME #41620
+#![allow(ellipsis_inclusive_range_patterns)]
 
 // regression test for the model lexer handling the DOTDOTDOT syntax (#15877)
 
