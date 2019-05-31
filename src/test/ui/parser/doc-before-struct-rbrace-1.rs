@@ -1,4 +1,4 @@
-// compile-flags: -Z continue-parse-after-error
+
 
 struct X {
     a: u8,

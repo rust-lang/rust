@@ -1,4 +1,4 @@
-// compile-flags: -Z continue-parse-after-error
+
 
 #![allow(bare_trait_objects)]
 

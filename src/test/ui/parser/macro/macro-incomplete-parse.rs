@@ -1,4 +1,4 @@
-// compile-flags: -Z continue-parse-after-error
+
 
 macro_rules! ignored_item {
     () => {

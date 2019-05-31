@@ -1,4 +1,4 @@
-// compile-flags: -Z continue-parse-after-error
+
 // ignore-tidy-tab
 
 fn main() {
