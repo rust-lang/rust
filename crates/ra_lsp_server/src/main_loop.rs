@@ -15,6 +15,7 @@ use ra_vfs::VfsTask;
 use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
+use ra_prof::profile;
 
 use crate::{
     main_loop::subscriptions::Subscriptions,
@@ -24,7 +25,6 @@ use crate::{
     Result,
     InitializationOptions,
 };
-use ra_prof::profile;
 
 #[derive(Debug, Fail)]
 #[fail(display = "Language Server request failed with {}. ({})", code, message)]
