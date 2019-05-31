@@ -26,6 +26,9 @@ use crate::{
     InitializationOptions,
 };
 
+const THREADPOOL_SIZE: usize = 8;
+const MAX_IN_FLIGHT_LIBS: usize = THREADPOOL_SIZE - 3;
+
 #[derive(Debug, Fail)]
 #[fail(display = "Language Server request failed with {}. ({})", code, message)]
 pub struct LspError {
@@ -46,17 +49,20 @@ enum Task {
 }
 
 struct PendingRequest {
+    id: u64,
     received: Instant,
     method: String,
 }
 
-impl From<(u64, PendingRequest)> for CompletedRequest {
-    fn from((id, pending): (u64, PendingRequest)) -> CompletedRequest {
-        CompletedRequest { id, method: pending.method, duration: pending.received.elapsed() }
+impl From<PendingRequest> for CompletedRequest {
+    fn from(pending: PendingRequest) -> CompletedRequest {
+        CompletedRequest {
+            id: pending.id,
+            method: pending.method,
+            duration: pending.received.elapsed(),
+        }
     }
 }
-
-const THREADPOOL_SIZE: usize = 8;
 
 pub fn main_loop(
     ws_roots: Vec<PathBuf>,
@@ -175,7 +181,7 @@ fn main_loop_inner(
     pending_requests: &mut FxHashMap<u64, PendingRequest>,
     subs: &mut Subscriptions,
 ) -> Result<()> {
-    // We try not to index more than THREADPOOL_SIZE - 3 libraries at the same
+    // We try not to index more than MAX_IN_FLIGHT_LIBS libraries at the same
     // time to always have a thread ready to react to input.
     let mut in_flight_libraries = 0;
     let mut pending_libraries = Vec::new();
@@ -264,7 +270,7 @@ fn main_loop_inner(
         };
 
         pending_libraries.extend(state.process_changes());
-        while in_flight_libraries < THREADPOOL_SIZE - 3 && !pending_libraries.is_empty() {
+        while in_flight_libraries < MAX_IN_FLIGHT_LIBS && !pending_libraries.is_empty() {
             let (root, files) = pending_libraries.pop().unwrap();
             in_flight_libraries += 1;
             let sender = libdata_sender.clone();
