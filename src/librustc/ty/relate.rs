@@ -550,7 +550,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         if let ConstValue::Unevaluated(def_id, substs) = x.val {
             // FIXME(eddyb) get the right param_env.
             let param_env = ty::ParamEnv::empty();
-            if let Some(substs) = tcx.lift_to_global(&substs) {
+            if !substs.has_local_value() {
                 let instance = ty::Instance::resolve(
                     tcx.global_tcx(),
                     param_env,

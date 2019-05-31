@@ -593,10 +593,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
 
-            if let Some(substs) = self.tcx().lift_to_global(&opaque_defn.substs) {
+            if opaque_defn.substs.has_local_value() {
+                self.tcx().sess.delay_span_bug(
+                    span,
+                    "`opaque_defn` is a local value",
+                );
+            } else {
                 let new = ty::ResolvedOpaqueTy {
                     concrete_type: definition_ty,
-                    substs,
+                    substs: opaque_defn.substs,
                 };
 
                 let old = self.tables
@@ -615,11 +620,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         );
                     }
                 }
-            } else {
-                self.tcx().sess.delay_span_bug(
-                    span,
-                    "cannot lift `opaque_defn` substs to global type context",
-                );
             }
         }
     }
