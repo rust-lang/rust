@@ -1,7 +1,8 @@
 mod handlers;
 mod subscriptions;
+pub(crate) mod pending_requests;
 
-use std::{fmt, path::PathBuf, sync::Arc, time::Instant, any::TypeId};
+use std::{fmt, path::PathBuf, sync::Arc, time::Instant};
 
 use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
 use failure::{bail, format_err};
@@ -12,19 +13,24 @@ use gen_lsp_server::{
 use lsp_types::NumberOrString;
 use ra_ide_api::{Canceled, FileId, LibraryData};
 use ra_vfs::VfsTask;
-use rustc_hash::FxHashMap;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
+use ra_prof::profile;
 
 use crate::{
-    main_loop::subscriptions::Subscriptions,
+    main_loop::{
+        subscriptions::Subscriptions,
+        pending_requests::{PendingRequests, PendingRequest},
+    },
     project_model::workspace_loader,
     req,
-    server_world::{ServerWorld, ServerWorldState, CompletedRequest},
+    server_world::{ServerWorld, ServerWorldState},
     Result,
     InitializationOptions,
 };
-use ra_prof::profile;
+
+const THREADPOOL_SIZE: usize = 8;
+const MAX_IN_FLIGHT_LIBS: usize = THREADPOOL_SIZE - 3;
 
 #[derive(Debug, Fail)]
 #[fail(display = "Language Server request failed with {}. ({})", code, message)]
@@ -39,34 +45,12 @@ impl LspError {
     }
 }
 
-#[derive(Debug)]
-enum Task {
-    Respond(RawResponse),
-    Notify(RawNotification),
-}
-
-struct PendingRequest {
-    received: Instant,
-    method: String,
-}
-
-impl From<(u64, PendingRequest)> for CompletedRequest {
-    fn from((id, pending): (u64, PendingRequest)) -> CompletedRequest {
-        CompletedRequest { id, method: pending.method, duration: pending.received.elapsed() }
-    }
-}
-
-const THREADPOOL_SIZE: usize = 8;
-
 pub fn main_loop(
     ws_roots: Vec<PathBuf>,
     options: InitializationOptions,
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
-    let pool = ThreadPool::new(THREADPOOL_SIZE);
-    let (task_sender, task_receiver) = unbounded::<Task>();
-
     // FIXME: support dynamic workspace loading.
     let workspaces = {
         let ws_worker = workspace_loader();
@@ -91,10 +75,12 @@ pub fn main_loop(
 
     let mut state = ServerWorldState::new(ws_roots, workspaces);
 
-    log::info!("server initialized, serving requests");
+    let pool = ThreadPool::new(THREADPOOL_SIZE);
+    let (task_sender, task_receiver) = unbounded::<Task>();
+    let mut pending_requests = PendingRequests::default();
+    let mut subs = Subscriptions::default();
 
-    let mut pending_requests = FxHashMap::default();
-    let mut subs = Subscriptions::new();
+    log::info!("server initialized, serving requests");
     let main_res = main_loop_inner(
         options,
         &pool,
@@ -120,6 +106,12 @@ pub fn main_loop(
     drop(vfs);
 
     main_res
+}
+
+#[derive(Debug)]
+enum Task {
+    Respond(RawResponse),
+    Notify(RawNotification),
 }
 
 enum Event {
@@ -172,10 +164,10 @@ fn main_loop_inner(
     task_sender: Sender<Task>,
     task_receiver: Receiver<Task>,
     state: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, PendingRequest>,
+    pending_requests: &mut PendingRequests,
     subs: &mut Subscriptions,
 ) -> Result<()> {
-    // We try not to index more than THREADPOOL_SIZE - 3 libraries at the same
+    // We try not to index more than MAX_IN_FLIGHT_LIBS libraries at the same
     // time to always have a thread ready to react to input.
     let mut in_flight_libraries = 0;
     let mut pending_libraries = Vec::new();
@@ -196,15 +188,16 @@ fn main_loop_inner(
             },
             recv(libdata_receiver) -> data => Event::Lib(data.unwrap())
         };
-        // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = profile("main_loop_inner/loop-turn");
         let loop_start = Instant::now();
 
+        // NOTE: don't count blocking select! call as a loop-turn time
+        let _p = profile("main_loop_inner/loop-turn");
         log::info!("loop turn = {:?}", event);
         let queue_count = pool.queued_count();
         if queue_count > 0 {
             log::info!("queued count = {}", queue_count);
         }
+
         let mut state_changed = false;
         match event {
             Event::Task(task) => {
@@ -226,34 +219,15 @@ fn main_loop_inner(
                         Some(req) => req,
                         None => return Ok(()),
                     };
-                    match req.cast::<req::CollectGarbage>() {
-                        Ok((id, ())) => {
-                            state.collect_garbage();
-                            let resp = RawResponse::ok::<req::CollectGarbage>(id, &());
-                            msg_sender.send(resp.into()).unwrap()
-                        }
-                        Err(req) => {
-                            match on_request(
-                                state,
-                                pending_requests,
-                                pool,
-                                &task_sender,
-                                loop_start,
-                                req,
-                            )? {
-                                None => (),
-                                Some(req) => {
-                                    log::error!("unknown request: {:?}", req);
-                                    let resp = RawResponse::err(
-                                        req.id,
-                                        ErrorCode::MethodNotFound as i32,
-                                        "unknown request".to_string(),
-                                    );
-                                    msg_sender.send(resp.into()).unwrap()
-                                }
-                            }
-                        }
-                    }
+                    on_request(
+                        state,
+                        pending_requests,
+                        pool,
+                        &task_sender,
+                        msg_sender,
+                        loop_start,
+                        req,
+                    )?
                 }
                 RawMessage::Notification(not) => {
                     on_notification(msg_sender, state, pending_requests, subs, not)?;
@@ -264,7 +238,7 @@ fn main_loop_inner(
         };
 
         pending_libraries.extend(state.process_changes());
-        while in_flight_libraries < THREADPOOL_SIZE - 3 && !pending_libraries.is_empty() {
+        while in_flight_libraries < MAX_IN_FLIGHT_LIBS && !pending_libraries.is_empty() {
             let (root, files) = pending_libraries.pop().unwrap();
             in_flight_libraries += 1;
             let sender = libdata_sender.clone();
@@ -305,13 +279,12 @@ fn main_loop_inner(
 fn on_task(
     task: Task,
     msg_sender: &Sender<RawMessage>,
-    pending_requests: &mut FxHashMap<u64, PendingRequest>,
+    pending_requests: &mut PendingRequests,
     state: &mut ServerWorldState,
 ) {
     match task {
         Task::Respond(response) => {
-            if let Some(pending) = pending_requests.remove(&response.id) {
-                let completed = CompletedRequest::from((response.id, pending));
+            if let Some(completed) = pending_requests.finish(response.id) {
                 log::info!("handled req#{} in {:?}", completed.id, completed.duration);
                 state.complete_request(completed);
                 msg_sender.send(response.into()).unwrap();
@@ -325,22 +298,35 @@ fn on_task(
 
 fn on_request(
     world: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, PendingRequest>,
+    pending_requests: &mut PendingRequests,
     pool: &ThreadPool,
     sender: &Sender<Task>,
+    msg_sender: &Sender<RawMessage>,
     request_received: Instant,
     req: RawRequest,
-) -> Result<Option<RawRequest>> {
-    let method = req.method.clone();
-    let mut pool_dispatcher = PoolDispatcher { req: Some(req), res: None, pool, world, sender };
-    let req = pool_dispatcher
+) -> Result<()> {
+    let mut pool_dispatcher = PoolDispatcher {
+        req: Some(req),
+        pool,
+        world,
+        sender,
+        msg_sender,
+        pending_requests,
+        request_received,
+    };
+    pool_dispatcher
+        .on_sync::<req::CollectGarbage>(|s, ()| Ok(s.collect_garbage()))?
+        .on_sync::<req::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
+        .on_sync::<req::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
+        .on_sync::<req::SelectionRangeRequest>(|s, p| {
+            handlers::handle_selection_range(s.snapshot(), p)
+        })?
+        .on_sync::<req::FindMatchingBrace>(|s, p| {
+            handlers::handle_find_matching_brace(s.snapshot(), p)
+        })?
         .on::<req::AnalyzerStatus>(handlers::handle_analyzer_status)?
         .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
         .on::<req::ExtendSelection>(handlers::handle_extend_selection)?
-        .on::<req::SelectionRangeRequest>(handlers::handle_selection_range)?
-        .on::<req::FindMatchingBrace>(handlers::handle_find_matching_brace)?
-        .on::<req::JoinLines>(handlers::handle_join_lines)?
-        .on::<req::OnEnter>(handlers::handle_on_enter)?
         .on::<req::OnTypeFormatting>(handlers::handle_on_type_formatting)?
         .on::<req::DocumentSymbolRequest>(handlers::handle_document_symbol)?
         .on::<req::WorkspaceSymbol>(handlers::handle_workspace_symbol)?
@@ -363,21 +349,13 @@ fn on_request(
         .on::<req::Formatting>(handlers::handle_formatting)?
         .on::<req::DocumentHighlightRequest>(handlers::handle_document_highlight)?
         .finish();
-    match req {
-        Ok(id) => {
-            let prev =
-                pending_requests.insert(id, PendingRequest { method, received: request_received });
-            assert!(prev.is_none(), "duplicate request: {}", id);
-            Ok(None)
-        }
-        Err(req) => Ok(Some(req)),
-    }
+    Ok(())
 }
 
 fn on_notification(
     msg_sender: &Sender<RawMessage>,
     state: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, PendingRequest>,
+    pending_requests: &mut PendingRequests,
     subs: &mut Subscriptions,
     not: RawNotification,
 ) -> Result<()> {
@@ -389,7 +367,7 @@ fn on_notification(
                     panic!("string id's not supported: {:?}", id);
                 }
             };
-            if pending_requests.remove(&id).is_some() {
+            if pending_requests.cancel(id) {
                 let response = RawResponse::err(
                     id,
                     ErrorCode::RequestCanceled as i32,
@@ -445,86 +423,138 @@ fn on_notification(
 
 struct PoolDispatcher<'a> {
     req: Option<RawRequest>,
-    res: Option<u64>,
     pool: &'a ThreadPool,
     world: &'a mut ServerWorldState,
+    pending_requests: &'a mut PendingRequests,
+    msg_sender: &'a Sender<RawMessage>,
     sender: &'a Sender<Task>,
+    request_received: Instant,
 }
 
 impl<'a> PoolDispatcher<'a> {
+    /// Dispatches the request onto the current thread
+    fn on_sync<R>(
+        &mut self,
+        f: fn(&mut ServerWorldState, R::Params) -> Result<R::Result>,
+    ) -> Result<&mut Self>
+    where
+        R: req::Request + 'static,
+        R::Params: DeserializeOwned + Send + 'static,
+        R::Result: Serialize + 'static,
+    {
+        let (id, params) = match self.parse::<R>() {
+            Some(it) => it,
+            None => {
+                return Ok(self);
+            }
+        };
+        let result = f(self.world, params);
+        let task = result_to_task::<R>(id, result);
+        on_task(task, self.msg_sender, self.pending_requests, self.world);
+        Ok(self)
+    }
+
+    /// Dispatches the request onto thread pool
     fn on<R>(&mut self, f: fn(ServerWorld, R::Params) -> Result<R::Result>) -> Result<&mut Self>
     where
         R: req::Request + 'static,
         R::Params: DeserializeOwned + Send + 'static,
         R::Result: Serialize + 'static,
     {
-        let req = match self.req.take() {
-            None => return Ok(self),
-            Some(req) => req,
-        };
-        match req.cast::<R>() {
-            Ok((id, params)) => {
-                // Real time requests block user typing, so we should react quickly to them.
-                // Currently this means that we try to cancel background jobs if we don't have
-                // a spare thread.
-                let is_real_time = TypeId::of::<R>() == TypeId::of::<req::JoinLines>()
-                    || TypeId::of::<R>() == TypeId::of::<req::OnEnter>();
-                if self.pool.queued_count() > 0 && is_real_time {
-                    self.world.cancel_requests();
-                }
-
-                let world = self.world.snapshot();
-                let sender = self.sender.clone();
-                self.pool.execute(move || {
-                    let response = match f(world, params) {
-                        Ok(resp) => RawResponse::ok::<R>(id, &resp),
-                        Err(e) => match e.downcast::<LspError>() {
-                            Ok(lsp_error) => {
-                                RawResponse::err(id, lsp_error.code, lsp_error.message)
-                            }
-                            Err(e) => {
-                                if is_canceled(&e) {
-                                    // FIXME: When https://github.com/Microsoft/vscode-languageserver-node/issues/457
-                                    // gets fixed, we can return the proper response.
-                                    // This works around the issue where "content modified" error would continuously
-                                    // show an message pop-up in VsCode
-                                    // RawResponse::err(
-                                    //     id,
-                                    //     ErrorCode::ContentModified as i32,
-                                    //     "content modified".to_string(),
-                                    // )
-                                    RawResponse {
-                                        id,
-                                        result: Some(serde_json::to_value(&()).unwrap()),
-                                        error: None,
-                                    }
-                                } else {
-                                    RawResponse::err(
-                                        id,
-                                        ErrorCode::InternalError as i32,
-                                        format!("{}\n{}", e, e.backtrace()),
-                                    )
-                                }
-                            }
-                        },
-                    };
-                    let task = Task::Respond(response);
-                    sender.send(task).unwrap();
-                });
-                self.res = Some(id);
+        let (id, params) = match self.parse::<R>() {
+            Some(it) => it,
+            None => {
+                return Ok(self);
             }
-            Err(req) => self.req = Some(req),
-        }
+        };
+
+        self.pool.execute({
+            let world = self.world.snapshot();
+            let sender = self.sender.clone();
+            move || {
+                let result = f(world, params);
+                let task = result_to_task::<R>(id, result);
+                sender.send(task).unwrap();
+            }
+        });
+
         Ok(self)
     }
 
-    fn finish(&mut self) -> std::result::Result<u64, RawRequest> {
-        match (self.res.take(), self.req.take()) {
-            (Some(res), None) => Ok(res),
-            (None, Some(req)) => Err(req),
-            _ => unreachable!(),
+    fn parse<R>(&mut self) -> Option<(u64, R::Params)>
+    where
+        R: req::Request + 'static,
+        R::Params: DeserializeOwned + Send + 'static,
+    {
+        let req = self.req.take()?;
+        let (id, params) = match req.cast::<R>() {
+            Ok(it) => it,
+            Err(req) => {
+                self.req = Some(req);
+                return None;
+            }
+        };
+        self.pending_requests.start(PendingRequest {
+            id,
+            method: R::METHOD.to_string(),
+            received: self.request_received,
+        });
+        Some((id, params))
+    }
+
+    fn finish(&mut self) {
+        match self.req.take() {
+            None => (),
+            Some(req) => {
+                log::error!("unknown request: {:?}", req);
+                let resp = RawResponse::err(
+                    req.id,
+                    ErrorCode::MethodNotFound as i32,
+                    "unknown request".to_string(),
+                );
+                self.msg_sender.send(resp.into()).unwrap();
+            }
         }
     }
+}
+
+fn result_to_task<R>(id: u64, result: Result<R::Result>) -> Task
+where
+    R: req::Request + 'static,
+    R::Params: DeserializeOwned + Send + 'static,
+    R::Result: Serialize + 'static,
+{
+    let response = match result {
+        Ok(resp) => RawResponse::ok::<R>(id, &resp),
+        Err(e) => match e.downcast::<LspError>() {
+            Ok(lsp_error) => RawResponse::err(id, lsp_error.code, lsp_error.message),
+            Err(e) => {
+                if is_canceled(&e) {
+                    // FIXME: When https://github.com/Microsoft/vscode-languageserver-node/issues/457
+                    // gets fixed, we can return the proper response.
+                    // This works around the issue where "content modified" error would continuously
+                    // show an message pop-up in VsCode
+                    // RawResponse::err(
+                    //     id,
+                    //     ErrorCode::ContentModified as i32,
+                    //     "content modified".to_string(),
+                    // )
+                    RawResponse {
+                        id,
+                        result: Some(serde_json::to_value(&()).unwrap()),
+                        error: None,
+                    }
+                } else {
+                    RawResponse::err(
+                        id,
+                        ErrorCode::InternalError as i32,
+                        format!("{}\n{}", e, e.backtrace()),
+                    )
+                }
+            }
+        },
+    };
+    Task::Respond(response)
 }
 
 fn update_file_notifications_on_threadpool(
