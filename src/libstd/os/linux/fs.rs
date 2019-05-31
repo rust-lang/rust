@@ -72,6 +72,10 @@ pub trait MetadataExt {
     ///     Ok(())
     /// }
     /// ```
+    #[unstable(feature = "metadata_linux_statx", issue = "59743")]
+    fn st_dev_major(&self) -> u32;
+    #[unstable(feature = "metadata_linux_statx", issue = "59743")]
+    fn st_dev_minor(&self) -> u32;
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_ino(&self) -> u64;
     /// Returns the file type and mode.
@@ -177,6 +181,10 @@ pub trait MetadataExt {
     ///     Ok(())
     /// }
     /// ```
+    #[unstable(feature = "metadata_linux_statx", issue = "59743")]
+    fn st_rdev_major(&self) -> u32;
+    #[unstable(feature = "metadata_linux_statx", issue = "59743")]
+    fn st_rdev_minor(&self) -> u32;
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_size(&self) -> u64;
     /// Returns the last access time of the file, in seconds since Unix Epoch.
@@ -230,6 +238,10 @@ pub trait MetadataExt {
     ///     Ok(())
     /// }
     /// ```
+    #[unstable(feature = "linux_statx", issue = "59743")]
+    fn st_btime(&self) -> i64;
+    #[unstable(feature = "linux_statx", issue= "59743")]
+    fn st_btime_nsec(&self) -> i64;
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_mtime(&self) -> i64;
     /// Returns the last modification time of the file, in nanoseconds since [`st_mtime`].
@@ -328,56 +340,74 @@ impl MetadataExt for Metadata {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat {
         unsafe {
-            &*(self.as_inner().as_inner() as *const libc::stat64
+            &*(self.as_inner().as_inner() as *const libc::statx
                                           as *const raw::stat)
         }
     }
     fn st_dev(&self) -> u64 {
-        self.as_inner().as_inner().st_dev as u64
+        (unsafe { libc::makedev(self.st_dev_major(), self.st_dev_minor()) }) as u64
+    }
+    fn st_dev_major(&self) -> u32 {
+        self.as_inner().as_inner().stx_dev_major as u32
+    }
+    fn st_dev_minor(&self) -> u32 {
+        self.as_inner().as_inner().stx_dev_minor as u32
     }
     fn st_ino(&self) -> u64 {
-        self.as_inner().as_inner().st_ino as u64
+        self.as_inner().as_inner().stx_ino as u64
     }
     fn st_mode(&self) -> u32 {
-        self.as_inner().as_inner().st_mode as u32
+        self.as_inner().as_inner().stx_mode as u32
     }
     fn st_nlink(&self) -> u64 {
-        self.as_inner().as_inner().st_nlink as u64
+        self.as_inner().as_inner().stx_nlink as u64
     }
     fn st_uid(&self) -> u32 {
-        self.as_inner().as_inner().st_uid as u32
+        self.as_inner().as_inner().stx_uid as u32
     }
     fn st_gid(&self) -> u32 {
-        self.as_inner().as_inner().st_gid as u32
+        self.as_inner().as_inner().stx_gid as u32
     }
     fn st_rdev(&self) -> u64 {
-        self.as_inner().as_inner().st_rdev as u64
+        (unsafe { libc::makedev(self.st_rdev_major(), self.st_rdev_minor()) }) as u64
+    }
+    fn st_rdev_major(&self) -> u32 {
+        self.as_inner().as_inner().stx_rdev_major as u32
+    }
+    fn st_rdev_minor(&self) -> u32 {
+        self.as_inner().as_inner().stx_rdev_minor as u32
     }
     fn st_size(&self) -> u64 {
-        self.as_inner().as_inner().st_size as u64
+        self.as_inner().as_inner().stx_size as u64
     }
     fn st_atime(&self) -> i64 {
-        self.as_inner().as_inner().st_atime as i64
+        self.as_inner().as_inner().stx_atime.tv_sec as i64
     }
     fn st_atime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_atime_nsec as i64
+        self.as_inner().as_inner().stx_atime.tv_nsec as i64
+    }
+    fn st_btime(&self) -> i64 {
+        self.as_inner().as_inner().stx_btime.tv_sec as i64
+    }
+    fn st_btime_nsec(&self) -> i64 {
+        self.as_inner().as_inner().stx_btime.tv_nsec as i64
     }
     fn st_mtime(&self) -> i64 {
-        self.as_inner().as_inner().st_mtime as i64
+        self.as_inner().as_inner().stx_mtime.tv_sec as i64
     }
     fn st_mtime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_mtime_nsec as i64
+        self.as_inner().as_inner().stx_mtime.tv_nsec as i64
     }
     fn st_ctime(&self) -> i64 {
-        self.as_inner().as_inner().st_ctime as i64
+        self.as_inner().as_inner().stx_ctime.tv_sec as i64
     }
     fn st_ctime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_ctime_nsec as i64
+        self.as_inner().as_inner().stx_ctime.tv_nsec as i64
     }
     fn st_blksize(&self) -> u64 {
-        self.as_inner().as_inner().st_blksize as u64
+        self.as_inner().as_inner().stx_blksize as u64
     }
     fn st_blocks(&self) -> u64 {
-        self.as_inner().as_inner().st_blocks as u64
+        self.as_inner().as_inner().stx_blocks as u64
     }
 }

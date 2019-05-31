@@ -14,9 +14,13 @@ use crate::sys_common::{AsInner, FromInner};
 
 use libc::{c_int, mode_t};
 
+#[cfg(target_os = "linux")]
+use libc::statx;
+#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
+use libc::{stat64, fstat64, lstat64};
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "l4re"))]
-use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64, dirent64, readdir64_r, open64};
-#[cfg(any(target_os = "linux", target_os = "emscripten"))]
+use libc::{off64_t, ftruncate64, lseek64, dirent64, readdir64_r, open64};
+#[cfg(target_os = "emscripten")]
 use libc::fstatat64;
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
 use libc::dirfd;
@@ -42,7 +46,10 @@ pub struct File(FileDesc);
 
 #[derive(Clone)]
 pub struct FileAttr {
+    #[cfg(not(target_os = "linux"))]
     stat: stat64,
+    #[cfg(target_os = "linux")]
+    stat: statx,
 }
 
 // all DirEntry's will have a reference to this struct
@@ -96,6 +103,7 @@ pub struct FileType { mode: mode_t }
 #[derive(Debug)]
 pub struct DirBuilder { mode: mode_t }
 
+#[cfg(not(target_os = "linux"))]
 impl FileAttr {
     pub fn size(&self) -> u64 { self.stat.st_size as u64 }
     pub fn perm(&self) -> FilePermissions {
@@ -104,6 +112,39 @@ impl FileAttr {
 
     pub fn file_type(&self) -> FileType {
         FileType { mode: self.stat.st_mode as mode_t }
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl FileAttr {
+    pub fn size(&self) -> u64 { self.stat.stx_size as u64 }
+    pub fn perm(&self) -> FilePermissions {
+        FilePermissions { mode: (self.stat.stx_mode as mode_t) }
+    }
+
+    pub fn file_type(&self) -> FileType {
+        FileType { mode: self.stat.stx_mode as mode_t }
+    }
+
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.stx_mtime.tv_sec as libc::time_t,
+            tv_nsec: self.stat.stx_mtime.tv_nsec as _,
+        }))
+    }
+
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.stx_atime.tv_sec as libc::time_t,
+            tv_nsec: self.stat.stx_atime.tv_nsec as _,
+        }))
+    }
+
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.stx_btime.tv_sec as libc::time_t,
+            tv_nsec: self.stat.stx_btime.tv_nsec as _,
+        }))
     }
 }
 
@@ -131,7 +172,7 @@ impl FileAttr {
     }
 }
 
-#[cfg(not(target_os = "netbsd"))]
+#[cfg(not(any(target_os = "netbsd", target_os = "linux")))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
@@ -169,8 +210,14 @@ impl FileAttr {
     }
 }
 
+#[cfg(not(target_os = "linux"))]
 impl AsInner<stat64> for FileAttr {
     fn as_inner(&self) -> &stat64 { &self.stat }
+}
+
+#[cfg(target_os = "linux")]
+impl AsInner<statx> for FileAttr {
+    fn as_inner(&self) -> &statx { &self.stat }
 }
 
 impl FilePermissions {
@@ -303,7 +350,23 @@ impl DirEntry {
         OsStr::from_bytes(self.name_bytes()).to_os_string()
     }
 
-    #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
+    #[cfg(target_os = "linux")]
+    pub fn metadata(&self) -> io::Result<FileAttr> {
+        let fd = cvt(unsafe {dirfd(self.dir.inner.dirp.0)})?;
+        let mut stat: statx = unsafe { mem::zeroed() };
+        cvt(unsafe {
+            statx(
+                fd,
+                self.entry.d_name.as_ptr(),
+                libc::AT_SYMLINK_NOFOLLOW,
+                libc::STATX_ALL,
+                &mut stat
+            )
+        })?;
+        Ok(FileAttr { stat })
+    }
+
+    #[cfg(any(target_os = "emscripten", target_os = "android"))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         let fd = cvt(unsafe {dirfd(self.dir.inner.dirp.0)})?;
         let mut stat: stat64 = unsafe { mem::zeroed() };
@@ -513,10 +576,27 @@ impl File {
         Ok(File(fd))
     }
 
+    #[cfg(not(target_os = "linux"))]
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         let mut stat: stat64 = unsafe { mem::zeroed() };
         cvt(unsafe {
             fstat64(self.0.raw(), &mut stat)
+        })?;
+        Ok(FileAttr { stat })
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn file_attr(&self) -> io::Result<FileAttr> {
+        let mut stat: statx = unsafe { mem::zeroed() };
+        cvt(unsafe {
+            statx(
+                self.0.raw(),
+                // empty_path.as_ptr() as *const libc::c_char,
+                &0i8 as *const libc::c_char,
+                libc::AT_SYMLINK_NOFOLLOW,
+                libc::STATX_ALL,
+                &mut stat
+            )
         })?;
         Ok(FileAttr { stat })
     }
@@ -787,6 +867,7 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_os = "linux"))]
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let p = cstr(p)?;
     let mut stat: stat64 = unsafe { mem::zeroed() };
@@ -796,11 +877,44 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     Ok(FileAttr { stat })
 }
 
+#[cfg(target_os = "linux")]
+pub fn stat(p: &Path) -> io::Result<FileAttr> {
+    let p = cstr(p)?;
+    let mut stat: statx = unsafe { mem::zeroed() };
+    cvt(unsafe {
+        statx(
+            0,
+            p.as_ptr(),
+            0,
+            libc::STATX_ALL,
+            &mut stat
+        )
+    })?;
+    Ok(FileAttr { stat })
+}
+
+#[cfg(not(target_os = "linux"))]
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     let p = cstr(p)?;
     let mut stat: stat64 = unsafe { mem::zeroed() };
     cvt(unsafe {
         lstat64(p.as_ptr(), &mut stat)
+    })?;
+    Ok(FileAttr { stat })
+}
+
+#[cfg(target_os = "linux")]
+pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+    let p = cstr(p)?;
+    let mut stat: statx = unsafe { mem::zeroed() };
+    cvt(unsafe {
+        statx(
+            0,
+            p.as_ptr(),
+            libc::AT_SYMLINK_NOFOLLOW,
+            libc::STATX_ALL,
+            &mut stat
+        )
     })?;
     Ok(FileAttr { stat })
 }
