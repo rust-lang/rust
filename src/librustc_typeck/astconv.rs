@@ -792,6 +792,25 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         (poly_trait_ref, potential_assoc_types)
     }
 
+    /// Given a trait bound like `Debug`, applies that trait bound the given self-type to construct
+    /// a full trait reference. The resulting trait reference is returned. This may also generate
+    /// auxiliary bounds, which are added to `bounds`.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// poly_trait_ref = Iterator<Item = u32>
+    /// self_ty = Foo
+    /// ```
+    ///
+    /// this would return `Foo: Iterator` and add `<Foo as Iterator>::Item = u32` into `bounds`.
+    ///
+    /// **A note on binders:** against our usual convention, there is an implied bounder around
+    /// the `self_ty` and `poly_trait_ref` parameters here. So they may reference bound regions.
+    /// If for example you had `for<'a> Foo<'a>: Bar<'a>`, then the `self_ty` would be `Foo<'a>`
+    /// where `'a` is a bound region at depth 0. Similarly, the `poly_trait_ref` would be
+    /// `Bar<'a>`. The returned poly-trait-ref will have this binder instantiated explicitly,
+    /// however.
     pub fn instantiate_poly_trait_ref(&self,
         poly_trait_ref: &hir::PolyTraitRef,
         self_ty: Ty<'tcx>,
