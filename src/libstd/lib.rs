@@ -338,6 +338,10 @@ extern crate alloc as alloc_crate;
 #[allow(unused_extern_crates)]
 extern crate libc;
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[allow(unused_extern_crates)]
+extern crate mach;
+
 // We always need an unwinder currently for backtraces
 #[doc(masked)]
 #[allow(unused_extern_crates)]

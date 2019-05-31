@@ -139,7 +139,7 @@ mod inner {
 
     impl Instant {
         pub fn now() -> Instant {
-            Instant { t: unsafe { libc::mach_absolute_time() } }
+            Instant { t: unsafe { mach::mach_time::mach_absolute_time() } }
         }
 
         pub const fn zero() -> Instant {
@@ -230,8 +230,9 @@ mod inner {
         Some(mul_div_u64(nanos, info.denom as u64, info.numer as u64))
     }
 
-    fn info() -> libc::mach_timebase_info {
-        static mut INFO: libc::mach_timebase_info = libc::mach_timebase_info {
+    fn info() -> mach::mach_time::mach_timebase_info {
+        static mut INFO: mach::mach_time::mach_timebase_info
+            = mach::mach_time::mach_timebase_info {
             numer: 0,
             denom: 0,
         };
@@ -245,7 +246,7 @@ mod inner {
 
             // ... otherwise learn for ourselves ...
             let mut info = mem::zeroed();
-            libc::mach_timebase_info(&mut info);
+            mach::mach_time::mach_timebase_info(&mut info);
 
             // ... and attempt to be the one thread that stores it globally for
             // all other threads
