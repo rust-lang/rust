@@ -709,7 +709,7 @@ impl<T: Clone> Bound<&T> {
     /// assert_eq!((1..12).start_bound().cloned(), Included(1));
     /// ```
     #[unstable(feature = "bound_cloned", issue = "61356")]
-    fn cloned(&self) -> Bound<T> {
+    pub fn cloned(&self) -> Bound<T> {
         match *self {
             Bound::Unbounded => Bound::Unbounded,
             Bound::Included(x) => Bound::Included(x.clone()),
