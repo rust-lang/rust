@@ -12,6 +12,7 @@ use std::ops::{Deref, DerefMut};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_macros::HashStable;
 use rustc_target::abi::HasDataLayout;
+use std::borrow::Cow;
 
 /// Used by `check_bounds` to indicate whether the pointer needs to be just inbounds
 /// or also inbounds of a *live* allocation.
@@ -112,10 +113,11 @@ impl AllocationExtra<()> for () { }
 
 impl<Tag, Extra> Allocation<Tag, Extra> {
     /// Creates a read-only allocation initialized by the given bytes
-    pub fn from_bytes(slice: &[u8], align: Align, extra: Extra) -> Self {
-        let undef_mask = UndefMask::new(Size::from_bytes(slice.len() as u64), true);
+    pub fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align, extra: Extra) -> Self {
+        let bytes = slice.into().into_owned();
+        let undef_mask = UndefMask::new(Size::from_bytes(bytes.len() as u64), true);
         Self {
-            bytes: slice.to_owned(),
+            bytes,
             relocations: Relocations::new(),
             undef_mask,
             align,
@@ -124,7 +126,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         }
     }
 
-    pub fn from_byte_aligned_bytes(slice: &[u8], extra: Extra) -> Self {
+    pub fn from_byte_aligned_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, extra: Extra) -> Self {
         Allocation::from_bytes(slice, Align::from_bytes(1).unwrap(), extra)
     }
 
