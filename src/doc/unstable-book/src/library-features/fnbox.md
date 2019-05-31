@@ -27,6 +27,6 @@ impl<A, F> Fn for &F where F: Fn<A> + ?Sized {}
 
 Before the introduction of [`unsized_locals`][unsized_locals], we had been unable to provide the former impls. That means, unlike `&dyn Fn()` or `&mut dyn FnMut()` we could not use `Box<dyn FnOnce()>` at that time.
 
-[unsized_locals]: language-features/unsized-locals.html
+[unsized_locals]: ../language-features/unsized-locals.md
 
 `FnBox()` is an alternative approach to `Box<dyn FnBox()>` is delegated to `FnBox::call_box` which doesn't need unsized locals. As we now have `Box<dyn FnOnce()>` working, the `fnbox` feature is going to be removed.

@@ -192,7 +192,7 @@ such as "```undefined reference to `__rust_probestack'```". Using this crate
 also requires enabling the library feature `compiler_builtins_lib`. You can read
 more about this [here][compiler-builtins-lib].
 
-[compiler-builtins-lib]: library-features/compiler-builtins-lib.html
+[compiler-builtins-lib]: ../library-features/compiler-builtins-lib.md
 
 ## More about the language items
 
