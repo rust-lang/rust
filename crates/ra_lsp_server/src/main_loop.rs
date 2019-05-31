@@ -452,59 +452,60 @@ impl<'a> PoolDispatcher<'a> {
             None => return Ok(self),
             Some(req) => req,
         };
-        match req.cast::<R>() {
-            Ok((id, params)) => {
-                // Real time requests block user typing, so we should react quickly to them.
-                // Currently this means that we try to cancel background jobs if we don't have
-                // a spare thread.
-                let is_real_time = TypeId::of::<R>() == TypeId::of::<req::JoinLines>()
-                    || TypeId::of::<R>() == TypeId::of::<req::OnEnter>();
-                if self.pool.queued_count() > 0 && is_real_time {
-                    self.world.cancel_requests();
-                }
-
-                let world = self.world.snapshot();
-                let sender = self.sender.clone();
-                self.pool.execute(move || {
-                    let response = match f(world, params) {
-                        Ok(resp) => RawResponse::ok::<R>(id, &resp),
-                        Err(e) => match e.downcast::<LspError>() {
-                            Ok(lsp_error) => {
-                                RawResponse::err(id, lsp_error.code, lsp_error.message)
-                            }
-                            Err(e) => {
-                                if is_canceled(&e) {
-                                    // FIXME: When https://github.com/Microsoft/vscode-languageserver-node/issues/457
-                                    // gets fixed, we can return the proper response.
-                                    // This works around the issue where "content modified" error would continuously
-                                    // show an message pop-up in VsCode
-                                    // RawResponse::err(
-                                    //     id,
-                                    //     ErrorCode::ContentModified as i32,
-                                    //     "content modified".to_string(),
-                                    // )
-                                    RawResponse {
-                                        id,
-                                        result: Some(serde_json::to_value(&()).unwrap()),
-                                        error: None,
-                                    }
-                                } else {
-                                    RawResponse::err(
-                                        id,
-                                        ErrorCode::InternalError as i32,
-                                        format!("{}\n{}", e, e.backtrace()),
-                                    )
-                                }
-                            }
-                        },
-                    };
-                    let task = Task::Respond(response);
-                    sender.send(task).unwrap();
-                });
-                self.res = Some(id);
+        let (id, params) = match req.cast::<R>() {
+            Ok(it) => it,
+            Err(req) => {
+                self.req = Some(req);
+                return Ok(self);
             }
-            Err(req) => self.req = Some(req),
+        };
+        self.res = Some(id);
+
+        // Real time requests block user typing, so we should react quickly to them.
+        // Currently this means that we try to cancel background jobs if we don't have
+        // a spare thread.
+        let is_real_time = TypeId::of::<R>() == TypeId::of::<req::JoinLines>()
+            || TypeId::of::<R>() == TypeId::of::<req::OnEnter>();
+        if self.pool.queued_count() > 0 && is_real_time {
+            self.world.cancel_requests();
         }
+
+        let world = self.world.snapshot();
+        let sender = self.sender.clone();
+        self.pool.execute(move || {
+            let response = match f(world, params) {
+                Ok(resp) => RawResponse::ok::<R>(id, &resp),
+                Err(e) => match e.downcast::<LspError>() {
+                    Ok(lsp_error) => RawResponse::err(id, lsp_error.code, lsp_error.message),
+                    Err(e) => {
+                        if is_canceled(&e) {
+                            // FIXME: When https://github.com/Microsoft/vscode-languageserver-node/issues/457
+                            // gets fixed, we can return the proper response.
+                            // This works around the issue where "content modified" error would continuously
+                            // show an message pop-up in VsCode
+                            // RawResponse::err(
+                            //     id,
+                            //     ErrorCode::ContentModified as i32,
+                            //     "content modified".to_string(),
+                            // )
+                            RawResponse {
+                                id,
+                                result: Some(serde_json::to_value(&()).unwrap()),
+                                error: None,
+                            }
+                        } else {
+                            RawResponse::err(
+                                id,
+                                ErrorCode::InternalError as i32,
+                                format!("{}\n{}", e, e.backtrace()),
+                            )
+                        }
+                    }
+                },
+            };
+            let task = Task::Respond(response);
+            sender.send(task).unwrap();
+        });
         Ok(self)
     }
 
