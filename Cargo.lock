@@ -2789,6 +2789,7 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
+ "annotate-snippets 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",

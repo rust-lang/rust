@@ -18,3 +18,4 @@ rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 unicode-width = "0.1.4"
 atty = "0.2"
 termcolor = "1.0"
+annotate-snippets = "0.5.0"

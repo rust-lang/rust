@@ -24,6 +24,7 @@ use termcolor::{WriteColor, Color, Buffer};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HumanReadableErrorType {
     Default(ColorConfig),
+    AnnotateRs(ColorConfig),
     Short(ColorConfig),
 }
 
@@ -33,6 +34,7 @@ impl HumanReadableErrorType {
         match self {
             HumanReadableErrorType::Default(cc) => (false, cc),
             HumanReadableErrorType::Short(cc) => (true, cc),
+            HumanReadableErrorType::AnnotateRs(cc) => (false, cc),
         }
     }
     pub fn new_emitter(
@@ -173,8 +175,8 @@ pub struct EmitterWriter {
 
 #[derive(Debug)]
 pub struct FileWithAnnotatedLines {
-    file: Lrc<SourceFile>,
-    lines: Vec<Line>,
+    pub file: Lrc<SourceFile>,
+    pub lines: Vec<Line>,
     multiline_depth: usize,
 }
 
