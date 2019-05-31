@@ -237,7 +237,7 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     target.parse().unwrap()
 }
 
-fn build_isa(sess: &Session) -> Box<isa::TargetIsa + 'static> {
+fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
     flags_builder.set("probestack_enabled", "false").unwrap(); // ___cranelift_probestack is not provided

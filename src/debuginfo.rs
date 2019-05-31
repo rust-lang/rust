@@ -229,7 +229,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'b, 'tcx, 'tcx>,
         debug_context: &'a mut DebugContext<'tcx>,
-        mir: &Mir,
+        mir: &Body,
         name: &str,
         _sig: &Signature,
     ) -> Self {
@@ -268,7 +268,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
         &mut self,
         tcx: TyCtxt,
         context: &Context,
-        isa: &cranelift::codegen::isa::TargetIsa,
+        isa: &dyn cranelift::codegen::isa::TargetIsa,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) {
         let line_program = &mut self.debug_context.dwarf.unit.line_program;

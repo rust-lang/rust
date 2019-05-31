@@ -359,7 +359,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         _: &[OpTy<'tcx>],
         _: Option<PlaceTy<'tcx>>,
         _: Option<BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir Mir<'tcx>>> {
+    ) -> EvalResult<'tcx, Option<&'mir Body<'tcx>>> {
         panic!();
     }
 

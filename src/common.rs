@@ -569,7 +569,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, B: Backend> {
     pub pointer_type: Type, // Cached from module
 
     pub instance: Instance<'tcx>,
-    pub mir: &'tcx Mir<'tcx>,
+    pub mir: &'tcx Body<'tcx>,
 
     pub bcx: FunctionBuilder<'a>,
     pub ebb_map: HashMap<BasicBlock, Ebb>,

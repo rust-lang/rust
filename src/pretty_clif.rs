@@ -117,7 +117,7 @@ impl<'a> FuncWriter for &'a CommentWriter {
         w: &mut dyn fmt::Write,
         _func: &Function,
         entity: AnyEntity,
-        value: &fmt::Display,
+        value: &dyn fmt::Display,
     ) -> fmt::Result {
         write!(w, "    {} = {}", entity, value)?;
 
