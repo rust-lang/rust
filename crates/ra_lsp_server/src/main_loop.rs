@@ -225,27 +225,15 @@ fn main_loop_inner(
                             let resp = RawResponse::ok::<req::CollectGarbage>(id, &());
                             msg_sender.send(resp.into()).unwrap()
                         }
-                        Err(req) => {
-                            match on_request(
-                                state,
-                                pending_requests,
-                                pool,
-                                &task_sender,
-                                loop_start,
-                                req,
-                            )? {
-                                None => (),
-                                Some(req) => {
-                                    log::error!("unknown request: {:?}", req);
-                                    let resp = RawResponse::err(
-                                        req.id,
-                                        ErrorCode::MethodNotFound as i32,
-                                        "unknown request".to_string(),
-                                    );
-                                    msg_sender.send(resp.into()).unwrap()
-                                }
-                            }
-                        }
+                        Err(req) => on_request(
+                            state,
+                            pending_requests,
+                            pool,
+                            &task_sender,
+                            msg_sender,
+                            loop_start,
+                            req,
+                        )?,
                     }
                 }
                 RawMessage::Notification(not) => {
@@ -320,12 +308,20 @@ fn on_request(
     pending_requests: &mut PendingRequests,
     pool: &ThreadPool,
     sender: &Sender<Task>,
+    msg_sender: &Sender<RawMessage>,
     request_received: Instant,
     req: RawRequest,
-) -> Result<Option<RawRequest>> {
-    let method = req.method.clone();
-    let mut pool_dispatcher = PoolDispatcher { req: Some(req), res: None, pool, world, sender };
-    let req = pool_dispatcher
+) -> Result<()> {
+    let mut pool_dispatcher = PoolDispatcher {
+        req: Some(req),
+        pool,
+        world,
+        sender,
+        msg_sender,
+        pending_requests,
+        request_received,
+    };
+    pool_dispatcher
         .on::<req::AnalyzerStatus>(handlers::handle_analyzer_status)?
         .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
         .on::<req::ExtendSelection>(handlers::handle_extend_selection)?
@@ -355,13 +351,7 @@ fn on_request(
         .on::<req::Formatting>(handlers::handle_formatting)?
         .on::<req::DocumentHighlightRequest>(handlers::handle_document_highlight)?
         .finish();
-    match req {
-        Ok(id) => {
-            pending_requests.start(PendingRequest { id, method, received: request_received });
-            Ok(None)
-        }
-        Err(req) => Ok(Some(req)),
-    }
+    Ok(())
 }
 
 fn on_notification(
@@ -435,10 +425,12 @@ fn on_notification(
 
 struct PoolDispatcher<'a> {
     req: Option<RawRequest>,
-    res: Option<u64>,
     pool: &'a ThreadPool,
     world: &'a mut ServerWorldState,
+    pending_requests: &'a mut PendingRequests,
+    msg_sender: &'a Sender<RawMessage>,
     sender: &'a Sender<Task>,
+    request_received: Instant,
 }
 
 impl<'a> PoolDispatcher<'a> {
@@ -459,7 +451,11 @@ impl<'a> PoolDispatcher<'a> {
                 return Ok(self);
             }
         };
-        self.res = Some(id);
+        self.pending_requests.start(PendingRequest {
+            id,
+            method: R::METHOD.to_string(),
+            received: self.request_received,
+        });
 
         // Real time requests block user typing, so we should react quickly to them.
         // Currently this means that we try to cancel background jobs if we don't have
@@ -483,11 +479,18 @@ impl<'a> PoolDispatcher<'a> {
         Ok(self)
     }
 
-    fn finish(&mut self) -> std::result::Result<u64, RawRequest> {
-        match (self.res.take(), self.req.take()) {
-            (Some(res), None) => Ok(res),
-            (None, Some(req)) => Err(req),
-            _ => unreachable!(),
+    fn finish(&mut self) {
+        match self.req.take() {
+            None => (),
+            Some(req) => {
+                log::error!("unknown request: {:?}", req);
+                let resp = RawResponse::err(
+                    req.id,
+                    ErrorCode::MethodNotFound as i32,
+                    "unknown request".to_string(),
+                );
+                self.msg_sender.send(resp.into()).unwrap();
+            }
         }
     }
 }
