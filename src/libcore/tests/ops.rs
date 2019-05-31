@@ -1,4 +1,4 @@
-use core::ops::{Range, RangeFull, RangeFrom, RangeTo, RangeInclusive};
+use core::ops::{Bound, Range, RangeFull, RangeFrom, RangeTo, RangeInclusive};
 
 // Test the Range structs without the syntactic sugar.
 
