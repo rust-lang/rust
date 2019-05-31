@@ -81,7 +81,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
 
             "type_name" => {
                 let ty = substs.type_at(0);
-                let ty_name = ty.to_string();
+                let ty_name = type_name(self.tcx, ty).ty.to_string();
                 let name_val = self.str_to_immediate(&ty_name)?;
                 self.write_immediate(name_val, dest)?;
             }
