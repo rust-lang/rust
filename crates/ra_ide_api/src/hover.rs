@@ -5,7 +5,11 @@ use ra_syntax::{
 };
 use hir::HirDisplay;
 
-use crate::{db::RootDatabase, RangeInfo, FilePosition, FileRange, display::{rust_code_markup, doc_text_for}};
+use crate::{
+    db::RootDatabase,
+    RangeInfo, FilePosition, FileRange,
+    display::{rust_code_markup, doc_text_for},
+};
 
 /// Contains the results when hovering over an item
 #[derive(Debug, Clone)]
@@ -155,9 +159,11 @@ mod tests {
     fn check_hover_result(fixture: &str, expected: &[&str]) {
         let (analysis, position) = analysis_and_position(fixture);
         let hover = analysis.hover(position).unwrap().unwrap();
+        let mut results = Vec::from(hover.info.results());
+        results.sort();
 
         for (markup, expected) in
-            hover.info.results().iter().zip(expected.iter().chain(std::iter::repeat(&"<missing>")))
+            results.iter().zip(expected.iter().chain(std::iter::repeat(&"<missing>")))
         {
             assert_eq!(trim_markup(&markup), *expected);
         }
