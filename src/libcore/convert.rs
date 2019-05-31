@@ -177,8 +177,8 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// Using `AsMut` as trait bound for a generic function we can accept all mutable references
 /// that can be converted to type `&mut T`. Because [`Box<T>`] implements `AsMut<T>` we can
-/// write a function `add_one`that takes all arguments that can be converted to `&mut u64`.
-/// Because [`Box<T>`] implements `AsMut<T>` `add_one` accepts arguments of type
+/// write a function `add_one` that takes all arguments that can be converted to `&mut u64`.
+/// Because [`Box<T>`] implements `AsMut<T>`, `add_one` accepts arguments of type
 /// `&mut Box<u64>` as well:
 ///
 /// ```
