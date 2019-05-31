@@ -136,10 +136,6 @@ impl ServerWorldState {
         self.analysis_host.apply_change(change);
     }
 
-    pub fn cancel_requests(&mut self) {
-        self.analysis_host.apply_change(AnalysisChange::new());
-    }
-
     pub fn snapshot(&self) -> ServerWorld {
         ServerWorld {
             workspaces: Arc::clone(&self.workspaces),
