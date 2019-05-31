@@ -98,7 +98,7 @@ impl Mark {
 
     #[inline]
     pub fn expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| data.marks[self.0 as usize].expn_info.clone())
+        HygieneData::with(|data| data.expn_info(self))
     }
 
     #[inline]
@@ -214,6 +214,10 @@ impl HygieneData {
         true
     }
 
+    fn default_transparency(&self, mark: Mark) -> Transparency {
+        self.marks[mark.0 as usize].default_transparency
+    }
+
     fn modern(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_contexts[ctxt.0 as usize].opaque
     }
@@ -287,7 +291,7 @@ impl SyntaxContext {
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
         assert_ne!(mark, Mark::root());
         self.apply_mark_with_transparency(
-            mark, HygieneData::with(|data| data.marks[mark.0 as usize].default_transparency)
+            mark, HygieneData::with(|data| data.default_transparency(mark))
         )
     }
 
