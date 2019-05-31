@@ -237,6 +237,12 @@ impl HygieneData {
     fn prev_ctxt(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_contexts[ctxt.0 as usize].prev_ctxt
     }
+
+    fn remove_mark(&self, ctxt: &mut SyntaxContext) -> Mark {
+        let outer_mark = self.syntax_contexts[ctxt.0 as usize].outer_mark;
+        *ctxt = self.prev_ctxt(*ctxt);
+        outer_mark
+    }
 }
 
 pub fn clear_markings() {
@@ -406,11 +412,7 @@ impl SyntaxContext {
     /// invocation of f that created g1.
     /// Returns the mark that was removed.
     pub fn remove_mark(&mut self) -> Mark {
-        HygieneData::with(|data| {
-            let outer_mark = data.syntax_contexts[self.0 as usize].outer_mark;
-            *self = data.prev_ctxt(*self);
-            outer_mark
-        })
+        HygieneData::with(|data| data.remove_mark(self))
     }
 
     pub fn marks(mut self) -> Vec<(Mark, Transparency)> {
