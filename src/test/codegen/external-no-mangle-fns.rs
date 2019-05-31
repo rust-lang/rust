@@ -33,7 +33,9 @@ const HIDDEN: () = {
 };
 
 // The surrounding item should not accidentally become external
-// CHECK: define internal{{.*}} void @_ZN22external_no_mangle_fns1x
+// CHECK-LABEL: ; external_no_mangle_fns::x
+// CHECK-NEXT: ; Function Attrs:
+// CHECK-NEXT: define internal
 #[inline(never)]
 fn x() {
     // CHECK: define void @g()

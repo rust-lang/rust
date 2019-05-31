@@ -8,6 +8,7 @@ use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary, ForeignMo
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::session::CrateDisambiguator;
+use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_data_structures::svh::Svh;
@@ -189,6 +190,7 @@ pub struct CrateRoot<'tcx> {
     pub panic_runtime: bool,
     pub profiler_runtime: bool,
     pub sanitizer_runtime: bool,
+    pub symbol_mangling_version: SymbolManglingVersion,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

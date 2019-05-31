@@ -20,7 +20,7 @@ use crate::mir::mono::CodegenUnit;
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::session::CrateDisambiguator;
-use crate::session::config::{EntryFnType, OutputFilenames, OptLevel};
+use crate::session::config::{EntryFnType, OutputFilenames, OptLevel, SymbolManglingVersion};
 use crate::traits::{self, Vtable};
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal,

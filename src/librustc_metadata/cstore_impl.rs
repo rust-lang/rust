@@ -176,6 +176,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         r.map(|c| &*tcx.arena.alloc(c))
     }
     is_no_builtins => { cdata.root.no_builtins }
+    symbol_mangling_version => { cdata.root.symbol_mangling_version }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     reachable_non_generics => {
         let reachable_non_generics = tcx
