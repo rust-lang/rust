@@ -11,7 +11,7 @@ use rustc::mir::interpret::{
 use rustc::mir::CastKind;
 use rustc_apfloat::Float;
 
-use super::{InterpretCx, Machine, PlaceTy, OpTy, ImmTy, Immediate};
+use super::{InterpretCx, Machine, PlaceTy, OpTy, Immediate};
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
     fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
@@ -306,6 +306,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         src: OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
+        trace!("Unsizing {:?} into {:?}", src, dest);
         match (&src.layout.ty.sty, &dest.layout.ty.sty) {
             (&ty::Ref(_, s, _), &ty::Ref(_, d, _)) |
             (&ty::Ref(_, s, _), &ty::RawPtr(TypeAndMut { ty: d, .. })) |
@@ -335,20 +336,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     if dst_field.layout.is_zst() {
                         continue;
                     }
-                    let src_field = match src.try_as_mplace() {
-                        Ok(mplace) => {
-                            let src_field = self.mplace_field(mplace, i as u64)?;
-                            src_field.into()
-                        }
-                        Err(..) => {
-                            let src_field_layout = src.layout.field(self, i)?;
-                            // this must be a field covering the entire thing
-                            assert_eq!(src.layout.fields.offset(i).bytes(), 0);
-                            assert_eq!(src_field_layout.size, src.layout.size);
-                            // just sawp out the layout
-                            OpTy::from(ImmTy { imm: src.to_immediate(), layout: src_field_layout })
-                        }
-                    };
+                    let src_field = self.operand_field(src, i as u64)?;
                     if src_field.layout.ty == dst_field.layout.ty {
                         self.copy_op(src_field, dst_field)?;
                     } else {
