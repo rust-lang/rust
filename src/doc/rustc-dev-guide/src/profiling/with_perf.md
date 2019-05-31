@@ -7,15 +7,15 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
 - Get a clean checkout of rust-lang/master, or whatever it is you want
   to profile.
 - Set the following settings in your `config.toml`:
-  - `debuginfo-lines = true`
-  - `use-jemalloc = false` — lets you do memory use profiling with valgrind 
+  - `debuginfo-level = 1` - enables line debuginfo
+  - `use-jemalloc = false` - lets you do memory use profiling with valgrind
   - leave everything else the defaults
 - Run `./x.py build` to get a full build
 - Make a rustup toolchain pointing to that result
   - see [the "build and run" section for instructions][b-a-r]
 
 [b-a-r]: ../how-to-build-and-run.html#toolchain
-  
+
 ## Gathering a perf profile
 
 perf is an excellent tool on linux that can be used to gather and
@@ -295,7 +295,7 @@ altogether ("total") and the percent of time spent in **just that
 function and not some callee of that function** (self). Usually
 "total" is the more interesting number, but not always.
 
-### Relative percentages 
+### Relative percentages
 
 By default, all in perf-focus are relative to the **total program
 execution**. This is useful to help you keep perspective — often as

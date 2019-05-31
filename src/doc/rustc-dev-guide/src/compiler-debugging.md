@@ -47,7 +47,7 @@ stack backtrace:
 ```
 
 If you want line numbers for the stack trace, you can enable
-`debuginfo-lines=true` or `debuginfo=true` in your config.toml and rebuild the
+`debuginfo-level = 1` or `debuginfo-level = 2` in your config.toml and rebuild the
 compiler. Then the backtrace will look like this:
 
 ```text
