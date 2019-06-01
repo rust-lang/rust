@@ -215,7 +215,250 @@ pub struct LayoutCx<'tcx, C> {
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
+#[derive(Copy, Clone, Debug)]
+enum StructKind {
+    /// A tuple, closure, or univariant which cannot be coerced to unsized.
+    AlwaysSized,
+    /// A univariant, the last field of which may be coerced to unsized.
+    MaybeUnsized,
+    /// A univariant, but with a prefix of an arbitrary size & alignment (e.g., enum tag).
+    Prefixed(Size, Align),
+}
+
 impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
+    fn scalar_pair(&self, a: Scalar, b: Scalar) -> LayoutDetails {
+        let dl = self.data_layout();
+        let b_align = b.value.align(dl);
+        let align = a.value.align(dl).max(b_align).max(dl.aggregate_align);
+        let b_offset = a.value.size(dl).align_to(b_align.abi);
+        let size = (b_offset + b.value.size(dl)).align_to(align.abi);
+        LayoutDetails {
+            variants: Variants::Single { index: VariantIdx::new(0) },
+            fields: FieldPlacement::Arbitrary {
+                offsets: vec![Size::ZERO, b_offset],
+                memory_index: vec![0, 1]
+            },
+            abi: Abi::ScalarPair(a, b),
+            align,
+            size
+        }
+    }
+
+    fn univariant_uninterned(&self,
+                             ty: Ty<'tcx>,
+                             fields: &[TyLayout<'_>],
+                             repr: &ReprOptions,
+                             kind: StructKind) -> Result<LayoutDetails, LayoutError<'tcx>> {
+        let dl = self.data_layout();
+        let packed = repr.packed();
+        if packed && repr.align > 0 {
+            bug!("struct cannot be packed and aligned");
+        }
+
+        let pack = Align::from_bytes(repr.pack as u64).unwrap();
+
+        let mut align = if packed {
+            dl.i8_align
+        } else {
+            dl.aggregate_align
+        };
+
+        let mut sized = true;
+        let mut offsets = vec![Size::ZERO; fields.len()];
+        let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
+
+        let mut optimize = !repr.inhibit_struct_field_reordering_opt();
+        if let StructKind::Prefixed(_, align) = kind {
+            optimize &= align.bytes() == 1;
+        }
+
+        if optimize {
+            let end = if let StructKind::MaybeUnsized = kind {
+                fields.len() - 1
+            } else {
+                fields.len()
+            };
+            let optimizing = &mut inverse_memory_index[..end];
+            let field_align = |f: &TyLayout<'_>| {
+                if packed { f.align.abi.min(pack) } else { f.align.abi }
+            };
+            match kind {
+                StructKind::AlwaysSized |
+                StructKind::MaybeUnsized => {
+                    optimizing.sort_by_key(|&x| {
+                        // Place ZSTs first to avoid "interesting offsets",
+                        // especially with only one or two non-ZST fields.
+                        let f = &fields[x as usize];
+                        (!f.is_zst(), cmp::Reverse(field_align(f)))
+                    });
+                }
+                StructKind::Prefixed(..) => {
+                    optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
+                }
+            }
+        }
+
+        // inverse_memory_index holds field indices by increasing memory offset.
+        // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
+        // We now write field offsets to the corresponding offset slot;
+        // field 5 with offset 0 puts 0 in offsets[5].
+        // At the bottom of this function, we use inverse_memory_index to produce memory_index.
+
+        let mut offset = Size::ZERO;
+
+        if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
+            let prefix_align = if packed {
+                prefix_align.min(pack)
+            } else {
+                prefix_align
+            };
+            align = align.max(AbiAndPrefAlign::new(prefix_align));
+            offset = prefix_size.align_to(prefix_align);
+        }
+
+        for &i in &inverse_memory_index {
+            let field = fields[i as usize];
+            if !sized {
+                bug!("univariant: field #{} of `{}` comes after unsized field",
+                     offsets.len(), ty);
+            }
+
+            if field.is_unsized() {
+                sized = false;
+            }
+
+            // Invariant: offset < dl.obj_size_bound() <= 1<<61
+            let field_align = if packed {
+                field.align.min(AbiAndPrefAlign::new(pack))
+            } else {
+                field.align
+            };
+            offset = offset.align_to(field_align.abi);
+            align = align.max(field_align);
+
+            debug!("univariant offset: {:?} field: {:#?}", offset, field);
+            offsets[i as usize] = offset;
+
+            offset = offset.checked_add(field.size, dl)
+                .ok_or(LayoutError::SizeOverflow(ty))?;
+        }
+
+        if repr.align > 0 {
+            let repr_align = repr.align as u64;
+            align = align.max(AbiAndPrefAlign::new(Align::from_bytes(repr_align).unwrap()));
+            debug!("univariant repr_align: {:?}", repr_align);
+        }
+
+        debug!("univariant min_size: {:?}", offset);
+        let min_size = offset;
+
+        // As stated above, inverse_memory_index holds field indices by increasing offset.
+        // This makes it an already-sorted view of the offsets vec.
+        // To invert it, consider:
+        // If field 5 has offset 0, offsets[0] is 5, and memory_index[5] should be 0.
+        // Field 5 would be the first element, so memory_index is i:
+        // Note: if we didn't optimize, it's already right.
+
+        let mut memory_index;
+        if optimize {
+            memory_index = vec![0; inverse_memory_index.len()];
+
+            for i in 0..inverse_memory_index.len() {
+                memory_index[inverse_memory_index[i] as usize]  = i as u32;
+            }
+        } else {
+            memory_index = inverse_memory_index;
+        }
+
+        let size = min_size.align_to(align.abi);
+        let mut abi = Abi::Aggregate { sized };
+
+        // Unpack newtype ABIs and find scalar pairs.
+        if sized && size.bytes() > 0 {
+            // All other fields must be ZSTs, and we need them to all start at 0.
+            let mut zst_offsets =
+                offsets.iter().enumerate().filter(|&(i, _)| fields[i].is_zst());
+            if zst_offsets.all(|(_, o)| o.bytes() == 0) {
+                let mut non_zst_fields =
+                    fields.iter().enumerate().filter(|&(_, f)| !f.is_zst());
+
+                match (non_zst_fields.next(), non_zst_fields.next(), non_zst_fields.next()) {
+                    // We have exactly one non-ZST field.
+                    (Some((i, field)), None, None) => {
+                        // Field fills the struct and it has a scalar or scalar pair ABI.
+                        if offsets[i].bytes() == 0 &&
+                           align.abi == field.align.abi &&
+                           size == field.size {
+                            match field.abi {
+                                // For plain scalars, or vectors of them, we can't unpack
+                                // newtypes for `#[repr(C)]`, as that affects C ABIs.
+                                Abi::Scalar(_) | Abi::Vector { .. } if optimize => {
+                                    abi = field.abi.clone();
+                                }
+                                // But scalar pairs are Rust-specific and get
+                                // treated as aggregates by C ABIs anyway.
+                                Abi::ScalarPair(..) => {
+                                    abi = field.abi.clone();
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    // Two non-ZST fields, and they're both scalars.
+                    (Some((i, &TyLayout {
+                        details: &LayoutDetails { abi: Abi::Scalar(ref a), .. }, ..
+                    })), Some((j, &TyLayout {
+                        details: &LayoutDetails { abi: Abi::Scalar(ref b), .. }, ..
+                    })), None) => {
+                        // Order by the memory placement, not source order.
+                        let ((i, a), (j, b)) = if offsets[i] < offsets[j] {
+                            ((i, a), (j, b))
+                        } else {
+                            ((j, b), (i, a))
+                        };
+                        let pair = self.scalar_pair(a.clone(), b.clone());
+                        let pair_offsets = match pair.fields {
+                            FieldPlacement::Arbitrary {
+                                ref offsets,
+                                ref memory_index
+                            } => {
+                                assert_eq!(memory_index, &[0, 1]);
+                                offsets
+                            }
+                            _ => bug!()
+                        };
+                        if offsets[i] == pair_offsets[0] &&
+                           offsets[j] == pair_offsets[1] &&
+                           align == pair.align &&
+                           size == pair.size {
+                            // We can use `ScalarPair` only when it matches our
+                            // already computed layout (including `#[repr(C)]`).
+                            abi = pair.abi;
+                        }
+                    }
+
+                    _ => {}
+                }
+            }
+        }
+
+        if sized && fields.iter().any(|f| f.abi.is_uninhabited()) {
+            abi = Abi::Uninhabited;
+        }
+
+        Ok(LayoutDetails {
+            variants: Variants::Single { index: VariantIdx::new(0) },
+            fields: FieldPlacement::Arbitrary {
+                offsets,
+                memory_index
+            },
+            abi,
+            align,
+            size
+        })
+    }
+
     fn layout_raw_uncached(&self, ty: Ty<'tcx>) -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
         let tcx = self.tcx;
         let param_env = self.param_env;
@@ -231,244 +474,9 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         let scalar = |value: Primitive| {
             tcx.intern_layout(LayoutDetails::scalar(self, scalar_unit(value)))
         };
-        let scalar_pair = |a: Scalar, b: Scalar| {
-            let b_align = b.value.align(dl);
-            let align = a.value.align(dl).max(b_align).max(dl.aggregate_align);
-            let b_offset = a.value.size(dl).align_to(b_align.abi);
-            let size = (b_offset + b.value.size(dl)).align_to(align.abi);
-            LayoutDetails {
-                variants: Variants::Single { index: VariantIdx::new(0) },
-                fields: FieldPlacement::Arbitrary {
-                    offsets: vec![Size::ZERO, b_offset],
-                    memory_index: vec![0, 1]
-                },
-                abi: Abi::ScalarPair(a, b),
-                align,
-                size
-            }
-        };
 
-        #[derive(Copy, Clone, Debug)]
-        enum StructKind {
-            /// A tuple, closure, or univariant which cannot be coerced to unsized.
-            AlwaysSized,
-            /// A univariant, the last field of which may be coerced to unsized.
-            MaybeUnsized,
-            /// A univariant, but with a prefix of an arbitrary size & alignment (e.g., enum tag).
-            Prefixed(Size, Align),
-        }
-
-        let univariant_uninterned = |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| {
-            let packed = repr.packed();
-            if packed && repr.align > 0 {
-                bug!("struct cannot be packed and aligned");
-            }
-
-            let pack = Align::from_bytes(repr.pack as u64).unwrap();
-
-            let mut align = if packed {
-                dl.i8_align
-            } else {
-                dl.aggregate_align
-            };
-
-            let mut sized = true;
-            let mut offsets = vec![Size::ZERO; fields.len()];
-            let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
-
-            let mut optimize = !repr.inhibit_struct_field_reordering_opt();
-            if let StructKind::Prefixed(_, align) = kind {
-                optimize &= align.bytes() == 1;
-            }
-
-            if optimize {
-                let end = if let StructKind::MaybeUnsized = kind {
-                    fields.len() - 1
-                } else {
-                    fields.len()
-                };
-                let optimizing = &mut inverse_memory_index[..end];
-                let field_align = |f: &TyLayout<'_>| {
-                    if packed { f.align.abi.min(pack) } else { f.align.abi }
-                };
-                match kind {
-                    StructKind::AlwaysSized |
-                    StructKind::MaybeUnsized => {
-                        optimizing.sort_by_key(|&x| {
-                            // Place ZSTs first to avoid "interesting offsets",
-                            // especially with only one or two non-ZST fields.
-                            let f = &fields[x as usize];
-                            (!f.is_zst(), cmp::Reverse(field_align(f)))
-                        });
-                    }
-                    StructKind::Prefixed(..) => {
-                        optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
-                    }
-                }
-            }
-
-            // inverse_memory_index holds field indices by increasing memory offset.
-            // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
-            // We now write field offsets to the corresponding offset slot;
-            // field 5 with offset 0 puts 0 in offsets[5].
-            // At the bottom of this function, we use inverse_memory_index to produce memory_index.
-
-            let mut offset = Size::ZERO;
-
-            if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
-                let prefix_align = if packed {
-                    prefix_align.min(pack)
-                } else {
-                    prefix_align
-                };
-                align = align.max(AbiAndPrefAlign::new(prefix_align));
-                offset = prefix_size.align_to(prefix_align);
-            }
-
-            for &i in &inverse_memory_index {
-                let field = fields[i as usize];
-                if !sized {
-                    bug!("univariant: field #{} of `{}` comes after unsized field",
-                         offsets.len(), ty);
-                }
-
-                if field.is_unsized() {
-                    sized = false;
-                }
-
-                // Invariant: offset < dl.obj_size_bound() <= 1<<61
-                let field_align = if packed {
-                    field.align.min(AbiAndPrefAlign::new(pack))
-                } else {
-                    field.align
-                };
-                offset = offset.align_to(field_align.abi);
-                align = align.max(field_align);
-
-                debug!("univariant offset: {:?} field: {:#?}", offset, field);
-                offsets[i as usize] = offset;
-
-                offset = offset.checked_add(field.size, dl)
-                    .ok_or(LayoutError::SizeOverflow(ty))?;
-            }
-
-            if repr.align > 0 {
-                let repr_align = repr.align as u64;
-                align = align.max(AbiAndPrefAlign::new(Align::from_bytes(repr_align).unwrap()));
-                debug!("univariant repr_align: {:?}", repr_align);
-            }
-
-            debug!("univariant min_size: {:?}", offset);
-            let min_size = offset;
-
-            // As stated above, inverse_memory_index holds field indices by increasing offset.
-            // This makes it an already-sorted view of the offsets vec.
-            // To invert it, consider:
-            // If field 5 has offset 0, offsets[0] is 5, and memory_index[5] should be 0.
-            // Field 5 would be the first element, so memory_index is i:
-            // Note: if we didn't optimize, it's already right.
-
-            let mut memory_index;
-            if optimize {
-                memory_index = vec![0; inverse_memory_index.len()];
-
-                for i in 0..inverse_memory_index.len() {
-                    memory_index[inverse_memory_index[i] as usize]  = i as u32;
-                }
-            } else {
-                memory_index = inverse_memory_index;
-            }
-
-            let size = min_size.align_to(align.abi);
-            let mut abi = Abi::Aggregate { sized };
-
-            // Unpack newtype ABIs and find scalar pairs.
-            if sized && size.bytes() > 0 {
-                // All other fields must be ZSTs, and we need them to all start at 0.
-                let mut zst_offsets =
-                    offsets.iter().enumerate().filter(|&(i, _)| fields[i].is_zst());
-                if zst_offsets.all(|(_, o)| o.bytes() == 0) {
-                    let mut non_zst_fields =
-                        fields.iter().enumerate().filter(|&(_, f)| !f.is_zst());
-
-                    match (non_zst_fields.next(), non_zst_fields.next(), non_zst_fields.next()) {
-                        // We have exactly one non-ZST field.
-                        (Some((i, field)), None, None) => {
-                            // Field fills the struct and it has a scalar or scalar pair ABI.
-                            if offsets[i].bytes() == 0 &&
-                               align.abi == field.align.abi &&
-                               size == field.size {
-                                match field.abi {
-                                    // For plain scalars, or vectors of them, we can't unpack
-                                    // newtypes for `#[repr(C)]`, as that affects C ABIs.
-                                    Abi::Scalar(_) | Abi::Vector { .. } if optimize => {
-                                        abi = field.abi.clone();
-                                    }
-                                    // But scalar pairs are Rust-specific and get
-                                    // treated as aggregates by C ABIs anyway.
-                                    Abi::ScalarPair(..) => {
-                                        abi = field.abi.clone();
-                                    }
-                                    _ => {}
-                                }
-                            }
-                        }
-
-                        // Two non-ZST fields, and they're both scalars.
-                        (Some((i, &TyLayout {
-                            details: &LayoutDetails { abi: Abi::Scalar(ref a), .. }, ..
-                        })), Some((j, &TyLayout {
-                            details: &LayoutDetails { abi: Abi::Scalar(ref b), .. }, ..
-                        })), None) => {
-                            // Order by the memory placement, not source order.
-                            let ((i, a), (j, b)) = if offsets[i] < offsets[j] {
-                                ((i, a), (j, b))
-                            } else {
-                                ((j, b), (i, a))
-                            };
-                            let pair = scalar_pair(a.clone(), b.clone());
-                            let pair_offsets = match pair.fields {
-                                FieldPlacement::Arbitrary {
-                                    ref offsets,
-                                    ref memory_index
-                                } => {
-                                    assert_eq!(memory_index, &[0, 1]);
-                                    offsets
-                                }
-                                _ => bug!()
-                            };
-                            if offsets[i] == pair_offsets[0] &&
-                               offsets[j] == pair_offsets[1] &&
-                               align == pair.align &&
-                               size == pair.size {
-                                // We can use `ScalarPair` only when it matches our
-                                // already computed layout (including `#[repr(C)]`).
-                                abi = pair.abi;
-                            }
-                        }
-
-                        _ => {}
-                    }
-                }
-            }
-
-            if sized && fields.iter().any(|f| f.abi.is_uninhabited()) {
-                abi = Abi::Uninhabited;
-            }
-
-            Ok(LayoutDetails {
-                variants: Variants::Single { index: VariantIdx::new(0) },
-                fields: FieldPlacement::Arbitrary {
-                    offsets,
-                    memory_index
-                },
-                abi,
-                align,
-                size
-            })
-        };
         let univariant = |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| {
-            Ok(tcx.intern_layout(univariant_uninterned(fields, repr, kind)?))
+            Ok(tcx.intern_layout(self.univariant_uninterned(ty, fields, repr, kind)?))
         };
         debug_assert!(!ty.has_infer_types());
 
@@ -540,7 +548,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 };
 
                 // Effectively a (ptr, meta) tuple.
-                tcx.intern_layout(scalar_pair(data_ptr, metadata))
+                tcx.intern_layout(self.scalar_pair(data_ptr, metadata))
             }
 
             // Arrays and slices.
@@ -605,7 +613,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?
             }
             ty::Dynamic(..) | ty::Foreign(..) => {
-                let mut unit = univariant_uninterned(&[], &ReprOptions::default(),
+                let mut unit = self.univariant_uninterned(ty, &[], &ReprOptions::default(),
                   StructKind::AlwaysSized)?;
                 match unit.abi {
                     Abi::Aggregate { ref mut sized } => *sized = false,
@@ -730,7 +738,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let prefix_tys = substs.prefix_tys(def_id, tcx)
                     .chain(iter::once(substs.discr_ty(tcx)))
                     .chain(promoted_tys);
-                let prefix = univariant_uninterned(
+                let prefix = self.univariant_uninterned(
+                    ty,
                     &prefix_tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
                     &ReprOptions::default(),
                     StructKind::AlwaysSized)?;
@@ -787,7 +796,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         })
                         .map(|local| subst_field(info.field_tys[*local]));
 
-                    let mut variant = univariant_uninterned(
+                    let mut variant = self.univariant_uninterned(
+                        ty,
                         &variant_only_tys
                             .map(|ty| self.layout_of(ty))
                             .collect::<Result<Vec<_>, _>>()?,
@@ -1049,7 +1059,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         else { StructKind::AlwaysSized }
                     };
 
-                    let mut st = univariant_uninterned(&variants[v], &def.repr, kind)?;
+                    let mut st = self.univariant_uninterned(ty, &variants[v], &def.repr, kind)?;
                     st.variants = Variants::Single { index: v };
                     let (start, end) = self.tcx.layout_scalar_valid_range(def.did);
                     match st.abi {
@@ -1128,7 +1138,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                             let mut align = dl.aggregate_align;
                             let st = variants.iter_enumerated().map(|(j, v)| {
-                                let mut st = univariant_uninterned(v,
+                                let mut st = self.univariant_uninterned(ty, v,
                                     &def.repr, StructKind::AlwaysSized)?;
                                 st.variants = Variants::Single { index: j };
 
@@ -1236,7 +1246,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                 // Create the set of structs that represent each variant.
                 let mut layout_variants = variants.iter_enumerated().map(|(i, field_layouts)| {
-                    let mut st = univariant_uninterned(&field_layouts,
+                    let mut st = self.univariant_uninterned(ty, &field_layouts,
                         &def.repr, StructKind::Prefixed(min_ity.size(), prefix_align))?;
                     st.variants = Variants::Single { index: i };
                     // Find the first field we can't move later
@@ -1368,7 +1378,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         }
                     }
                     if let Some((prim, offset)) = common_prim {
-                        let pair = scalar_pair(tag.clone(), scalar_unit(prim));
+                        let pair = self.scalar_pair(tag.clone(), scalar_unit(prim));
                         let pair_offsets = match pair.fields {
                             FieldPlacement::Arbitrary {
                                 ref offsets,
