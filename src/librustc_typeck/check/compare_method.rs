@@ -612,10 +612,11 @@ fn compare_number_of_generics<'a, 'tcx>(
                         .map(|p| p.span)
                         .collect();
                     let impl_trait_spans: Vec<Span> = trait_item.generics.params.iter()
-                        .filter_map(|p| if !trait_item.generics.span.overlaps(p.span) {
-                            Some(p.span)
-                        } else {
-                            None
+                        .filter_map(|p| match p.kind {
+                            GenericParamKind::Type {
+                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
+                            } => Some(p.span),
+                            _ => None,
                         }).collect();
                     (Some(arg_spans), impl_trait_spans)
                 }
@@ -626,10 +627,11 @@ fn compare_number_of_generics<'a, 'tcx>(
             let impl_hir_id = tcx.hir().as_local_hir_id(impl_.def_id).unwrap();
             let impl_item = tcx.hir().expect_impl_item(impl_hir_id);
             let impl_item_impl_trait_spans: Vec<Span> = impl_item.generics.params.iter()
-                .filter_map(|p| if !impl_item.generics.span.overlaps(p.span) {
-                    Some(p.span)
-                } else {
-                    None
+                .filter_map(|p| match p.kind {
+                    GenericParamKind::Type {
+                        synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
+                    } => Some(p.span),
+                    _ => None,
                 }).collect();
             let spans = impl_item.generics.spans();
             let span = spans.primary_span();
