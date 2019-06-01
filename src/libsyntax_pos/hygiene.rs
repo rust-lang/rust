@@ -264,6 +264,63 @@ impl HygieneData {
         }
         scope
     }
+
+    fn apply_mark_internal(&mut self, ctxt: SyntaxContext, mark: Mark, transparency: Transparency)
+                           -> SyntaxContext {
+        let syntax_contexts = &mut self.syntax_contexts;
+        let mut opaque = syntax_contexts[ctxt.0 as usize].opaque;
+        let mut opaque_and_semitransparent =
+            syntax_contexts[ctxt.0 as usize].opaque_and_semitransparent;
+
+        if transparency >= Transparency::Opaque {
+            let prev_ctxt = opaque;
+            opaque = *self.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
+                let new_opaque = SyntaxContext(syntax_contexts.len() as u32);
+                syntax_contexts.push(SyntaxContextData {
+                    outer_mark: mark,
+                    transparency,
+                    prev_ctxt,
+                    opaque: new_opaque,
+                    opaque_and_semitransparent: new_opaque,
+                    dollar_crate_name: kw::DollarCrate,
+                });
+                new_opaque
+            });
+        }
+
+        if transparency >= Transparency::SemiTransparent {
+            let prev_ctxt = opaque_and_semitransparent;
+            opaque_and_semitransparent =
+                    *self.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
+                let new_opaque_and_semitransparent =
+                    SyntaxContext(syntax_contexts.len() as u32);
+                syntax_contexts.push(SyntaxContextData {
+                    outer_mark: mark,
+                    transparency,
+                    prev_ctxt,
+                    opaque,
+                    opaque_and_semitransparent: new_opaque_and_semitransparent,
+                    dollar_crate_name: kw::DollarCrate,
+                });
+                new_opaque_and_semitransparent
+            });
+        }
+
+        let prev_ctxt = ctxt;
+        *self.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
+            let new_opaque_and_semitransparent_and_transparent =
+                SyntaxContext(syntax_contexts.len() as u32);
+            syntax_contexts.push(SyntaxContextData {
+                outer_mark: mark,
+                transparency,
+                prev_ctxt,
+                opaque,
+                opaque_and_semitransparent,
+                dollar_crate_name: kw::DollarCrate,
+            });
+            new_opaque_and_semitransparent_and_transparent
+        })
+    }
 }
 
 pub fn clear_markings() {
@@ -359,61 +416,7 @@ impl SyntaxContext {
     }
 
     fn apply_mark_internal(self, mark: Mark, transparency: Transparency) -> SyntaxContext {
-        HygieneData::with(|data| {
-            let syntax_contexts = &mut data.syntax_contexts;
-            let mut opaque = syntax_contexts[self.0 as usize].opaque;
-            let mut opaque_and_semitransparent =
-                syntax_contexts[self.0 as usize].opaque_and_semitransparent;
-
-            if transparency >= Transparency::Opaque {
-                let prev_ctxt = opaque;
-                opaque = *data.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
-                    let new_opaque = SyntaxContext(syntax_contexts.len() as u32);
-                    syntax_contexts.push(SyntaxContextData {
-                        outer_mark: mark,
-                        transparency,
-                        prev_ctxt,
-                        opaque: new_opaque,
-                        opaque_and_semitransparent: new_opaque,
-                        dollar_crate_name: kw::DollarCrate,
-                    });
-                    new_opaque
-                });
-            }
-
-            if transparency >= Transparency::SemiTransparent {
-                let prev_ctxt = opaque_and_semitransparent;
-                opaque_and_semitransparent =
-                        *data.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
-                    let new_opaque_and_semitransparent =
-                        SyntaxContext(syntax_contexts.len() as u32);
-                    syntax_contexts.push(SyntaxContextData {
-                        outer_mark: mark,
-                        transparency,
-                        prev_ctxt,
-                        opaque,
-                        opaque_and_semitransparent: new_opaque_and_semitransparent,
-                        dollar_crate_name: kw::DollarCrate,
-                    });
-                    new_opaque_and_semitransparent
-                });
-            }
-
-            let prev_ctxt = self;
-            *data.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
-                let new_opaque_and_semitransparent_and_transparent =
-                    SyntaxContext(syntax_contexts.len() as u32);
-                syntax_contexts.push(SyntaxContextData {
-                    outer_mark: mark,
-                    transparency,
-                    prev_ctxt,
-                    opaque,
-                    opaque_and_semitransparent,
-                    dollar_crate_name: kw::DollarCrate,
-                });
-                new_opaque_and_semitransparent_and_transparent
-            })
-        })
+        HygieneData::with(|data| data.apply_mark_internal(self, mark, transparency))
     }
 
     /// Pulls a single mark off of the syntax context. This effectively moves the
