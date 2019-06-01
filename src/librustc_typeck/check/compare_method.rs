@@ -385,7 +385,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
         let def_span = tcx.sess.source_map().def_span(span);
-        let span = tcx.hir().get_generics_span(impl_m.def_id).unwrap_or(def_span);
+        let span = tcx.hir().get_generics(impl_m.def_id).map(|g| g.span).unwrap_or(def_span);
         let mut err = struct_span_err!(
             tcx.sess,
             span,
@@ -396,7 +396,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         err.span_label(span, "lifetimes do not match method in trait");
         if let Some(sp) = tcx.hir().span_if_local(trait_m.def_id) {
             let def_sp = tcx.sess.source_map().def_span(sp);
-            let sp = tcx.hir().get_generics_span(trait_m.def_id).unwrap_or(def_sp);
+            let sp = tcx.hir().get_generics(trait_m.def_id).map(|g| g.span).unwrap_or(def_sp);
             err.span_label(sp, "lifetimes in impl do not match this method in trait");
         }
         err.emit();

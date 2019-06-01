@@ -36,13 +36,13 @@ LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d
    |                        ^^
 
 error[E0195]: lifetime parameters or bounds on method `wrong_bound2` do not match the trait declaration
-  --> $DIR/regions-bound-missing-bound-in-impl.rs:41:5
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:41:20
    |
 LL |     fn wrong_bound2<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
    |                    ---------------- lifetimes in impl do not match this method in trait
 ...
 LL |     fn wrong_bound2(self, b: Inv, c: Inv, d: Inv) {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetimes do not match method in trait
+   |                    ^ lifetimes do not match method in trait
 
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/regions-bound-missing-bound-in-impl.rs:48:5
