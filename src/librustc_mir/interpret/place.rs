@@ -346,8 +346,8 @@ where
         Ok(place)
     }
 
-    /// Offset a pointer to project to a field. Unlike place_field, this is always
-    /// possible without allocating, so it can take &self. Also return the field's layout.
+    /// Offset a pointer to project to a field. Unlike `place_field`, this is always
+    /// possible without allocating, so it can take `&self`. Also return the field's layout.
     /// This supports both struct and array fields.
     #[inline(always)]
     pub fn mplace_field(
@@ -722,7 +722,7 @@ where
     }
 
     /// Write an immediate to memory.
-    /// If you use this you are responsible for validating that things git copied at the
+    /// If you use this you are responsible for validating that things got copied at the
     /// right type.
     fn write_immediate_to_mplace_no_validate(
         &mut self,
@@ -805,7 +805,7 @@ where
 
     /// Copies the data from an operand to a place. This does not support transmuting!
     /// Use `copy_op_transmute` if the layouts could disagree.
-    /// Also, if you use this you are responsible for validating that things git copied at the
+    /// Also, if you use this you are responsible for validating that things get copied at the
     /// right type.
     fn copy_op_no_validate(
         &mut self,

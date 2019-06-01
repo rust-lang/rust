@@ -243,7 +243,7 @@ pub(super) fn from_known_layout<'tcx>(
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
-    /// Try reading an immediate in memory; this is interesting particularly for ScalarPair.
+    /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
     fn try_read_immediate_from_mplace(
         &self,
@@ -444,7 +444,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         Ok(OpTy { op, layout })
     }
 
-    /// Every place can be read from, so we can turm them into an operand
+    /// Every place can be read from, so we can turn them into an operand
     #[inline(always)]
     pub fn place_to_op(
         &self,
@@ -500,7 +500,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     }
 
     /// Evaluate the operand, returning a place where you can then find the data.
-    /// if you already know the layout, you can save two some table lookups
+    /// If you already know the layout, you can save two table lookups
     /// by passing it in here.
     pub fn eval_operand(
         &self,

@@ -613,7 +613,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     /// is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     ///
-    /// `ref_tracking` can be None to avoid recursive checking below references.
+    /// `ref_tracking` can be `None` to avoid recursive checking below references.
     /// This also toggles between "run-time" (no recursion) and "compile-time" (with recursion)
     /// validation (e.g., pointer values are fine in integers at runtime).
     pub fn validate_operand(
