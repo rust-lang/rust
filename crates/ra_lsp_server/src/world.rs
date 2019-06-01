@@ -22,8 +22,13 @@ use crate::{
     LspError,
 };
 
+/// `WorldState` is the primary mutable state of the language server
+///
+/// The most interesting components are `vfs`, which stores a consistent
+/// snapshot of the file systems, and `analysis_host`, which stores our
+/// incremental salsa database.
 #[derive(Debug)]
-pub struct ServerWorldState {
+pub struct WorldState {
     pub roots_to_scan: usize,
     pub roots: Vec<PathBuf>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
@@ -32,15 +37,16 @@ pub struct ServerWorldState {
     pub latest_requests: Arc<RwLock<LatestRequests>>,
 }
 
-pub struct ServerWorld {
+/// An immutable snapshot of the world's state at a point in time.
+pub struct WorldSnapshot {
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
     pub vfs: Arc<RwLock<Vfs>>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
 }
 
-impl ServerWorldState {
-    pub fn new(folder_roots: Vec<PathBuf>, workspaces: Vec<ProjectWorkspace>) -> ServerWorldState {
+impl WorldState {
+    pub fn new(folder_roots: Vec<PathBuf>, workspaces: Vec<ProjectWorkspace>) -> WorldState {
         let mut change = AnalysisChange::new();
 
         let mut roots = Vec::new();
@@ -70,7 +76,7 @@ impl ServerWorldState {
 
         let mut analysis_host = AnalysisHost::default();
         analysis_host.apply_change(change);
-        ServerWorldState {
+        WorldState {
             roots_to_scan,
             roots: folder_roots,
             workspaces: Arc::new(workspaces),
@@ -136,8 +142,8 @@ impl ServerWorldState {
         self.analysis_host.apply_change(change);
     }
 
-    pub fn snapshot(&self) -> ServerWorld {
-        ServerWorld {
+    pub fn snapshot(&self) -> WorldSnapshot {
+        WorldSnapshot {
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
@@ -158,7 +164,7 @@ impl ServerWorldState {
     }
 }
 
-impl ServerWorld {
+impl WorldSnapshot {
     pub fn analysis(&self) -> &Analysis {
         &self.analysis
     }
