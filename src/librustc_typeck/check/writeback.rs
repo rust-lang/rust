@@ -81,7 +81,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             item_def_id, wbcx.tables
         );
 
-        self.tcx.alloc_tables(wbcx.tables)
+        self.tcx.arena.alloc(wbcx.tables)
     }
 }
 

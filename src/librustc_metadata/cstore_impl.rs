@@ -94,7 +94,7 @@ impl IntoArgs for (CrateNum, DefId) {
 provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
     generics_of => {
-        tcx.alloc_generics(cdata.get_generics(def_id.index, tcx.sess))
+        tcx.arena.alloc(cdata.get_generics(def_id.index, tcx.sess))
     }
     predicates_of => { tcx.arena.alloc(cdata.get_predicates(def_id.index, tcx)) }
     predicates_defined_on => {
@@ -102,7 +102,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     super_predicates_of => { tcx.arena.alloc(cdata.get_super_predicates(def_id.index, tcx)) }
     trait_def => {
-        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx.sess))
+        tcx.arena.alloc(cdata.get_trait_def(def_id.index, tcx.sess))
     }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
@@ -129,7 +129,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
         });
 
-        let mir = tcx.alloc_mir(mir);
+        let mir = tcx.arena.alloc(mir);
 
         mir
     }

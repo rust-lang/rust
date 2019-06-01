@@ -111,7 +111,7 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
 }
 
 /// Represents the #[stable], #[unstable], #[rustc_{deprecated,const_unstable}] attributes.
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -127,7 +127,7 @@ pub struct Stability {
 }
 
 /// The available stability levels.
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
     Unstable { reason: Option<Symbol>, issue: u32 },
@@ -151,7 +151,7 @@ impl StabilityLevel {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
 pub struct RustcDeprecation {
     pub since: Symbol,
     pub reason: Symbol,
