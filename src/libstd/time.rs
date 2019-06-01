@@ -170,14 +170,14 @@ impl Instant {
         // * https://bugzilla.mozilla.org/show_bug.cgi?id=1487778 - a similar
         //   Firefox bug
         //
-        // It simply seems that this it just happens so that a lot in the wild
-        // we're seeing panics across various platforms where consecutive calls
+        // It seems that this is just happens a lot in the wild.
+        // We're seeing panics across various platforms where consecutive calls
         // to `Instant::now`, such as via the `elapsed` function, are panicking
         // as they're going backwards. Placed here is a last-ditch effort to try
         // to fix things up. We keep a global "latest now" instance which is
         // returned instead of what the OS says if the OS goes backwards.
         //
-        // To hopefully mitigate the impact of this though a few platforms are
+        // To hopefully mitigate the impact of this, a few platforms are
         // whitelisted as "these at least haven't gone backwards yet".
         if time::Instant::actually_monotonic() {
             return Instant(os_now)
