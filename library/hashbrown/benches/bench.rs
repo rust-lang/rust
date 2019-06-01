@@ -8,8 +8,8 @@ extern crate test;
 
 use test::{black_box, Bencher};
 
-use hashbrown::HashMap;
 use hashbrown::hash_map::DefaultHashBuilder;
+use hashbrown::HashMap;
 use std::collections::hash_map::RandomState;
 
 const SIZE: usize = 1000;
@@ -28,7 +28,7 @@ struct RandomKeys {
 
 impl RandomKeys {
     fn new(size: usize) -> Self {
-        RandomKeys{
+        RandomKeys {
             remaining: size,
             state: 1,
         }
@@ -36,7 +36,7 @@ impl RandomKeys {
 
     // Produce a different set of random values.
     fn new2(size: usize) -> Self {
-        RandomKeys{
+        RandomKeys {
             remaining: size,
             state: 2,
         }
@@ -70,13 +70,21 @@ macro_rules! bench_insert {
                 black_box(m);
             })
         }
-    }
+    };
 }
 
 bench_insert!(insert_fx_serial, FxHashMap, 0..SIZE);
 bench_insert!(insert_std_serial, StdHashMap, 0..SIZE);
-bench_insert!(insert_fx_highbits, FxHashMap, (0..SIZE).map(usize::swap_bytes));
-bench_insert!(insert_std_highbits, StdHashMap, (0..SIZE).map(usize::swap_bytes));
+bench_insert!(
+    insert_fx_highbits,
+    FxHashMap,
+    (0..SIZE).map(usize::swap_bytes)
+);
+bench_insert!(
+    insert_std_highbits,
+    StdHashMap,
+    (0..SIZE).map(usize::swap_bytes)
+);
 bench_insert!(insert_fx_random, FxHashMap, RandomKeys::new(SIZE));
 bench_insert!(insert_std_random, StdHashMap, RandomKeys::new(SIZE));
 
@@ -96,13 +104,21 @@ macro_rules! bench_insert_erase {
                 black_box(m);
             })
         }
-    }
+    };
 }
 
 bench_insert_erase!(insert_erase_fx_serial, FxHashMap, 0..SIZE);
 bench_insert_erase!(insert_erase_std_serial, StdHashMap, 0..SIZE);
-bench_insert_erase!(insert_erase_fx_highbits, FxHashMap, (0..SIZE).map(usize::swap_bytes));
-bench_insert_erase!(insert_erase_std_highbits, StdHashMap, (0..SIZE).map(usize::swap_bytes));
+bench_insert_erase!(
+    insert_erase_fx_highbits,
+    FxHashMap,
+    (0..SIZE).map(usize::swap_bytes)
+);
+bench_insert_erase!(
+    insert_erase_std_highbits,
+    StdHashMap,
+    (0..SIZE).map(usize::swap_bytes)
+);
 bench_insert_erase!(insert_erase_fx_random, FxHashMap, RandomKeys::new(SIZE));
 bench_insert_erase!(insert_erase_std_random, StdHashMap, RandomKeys::new(SIZE));
 
@@ -121,13 +137,21 @@ macro_rules! bench_lookup {
                 }
             })
         }
-    }
+    };
 }
 
 bench_lookup!(lookup_fx_serial, FxHashMap, 0..SIZE);
 bench_lookup!(lookup_std_serial, StdHashMap, 0..SIZE);
-bench_lookup!(lookup_fx_highbits, FxHashMap, (0..SIZE).map(usize::swap_bytes));
-bench_lookup!(lookup_std_highbits, StdHashMap, (0..SIZE).map(usize::swap_bytes));
+bench_lookup!(
+    lookup_fx_highbits,
+    FxHashMap,
+    (0..SIZE).map(usize::swap_bytes)
+);
+bench_lookup!(
+    lookup_std_highbits,
+    StdHashMap,
+    (0..SIZE).map(usize::swap_bytes)
+);
 bench_lookup!(lookup_fx_random, FxHashMap, RandomKeys::new(SIZE));
 bench_lookup!(lookup_std_random, StdHashMap, RandomKeys::new(SIZE));
 
@@ -146,17 +170,35 @@ macro_rules! bench_lookup_fail {
                 }
             })
         }
-    }
+    };
 }
 
-bench_lookup_fail!(lookup_fail_fx_serial, FxHashMap, 0..SIZE, SIZE..SIZE*2);
-bench_lookup_fail!(lookup_fail_std_serial, StdHashMap, 0..SIZE, SIZE..SIZE*2);
-bench_lookup_fail!(lookup_fail_fx_highbits, FxHashMap, (0..SIZE).map(usize::swap_bytes),
-              (SIZE..SIZE*2).map(usize::swap_bytes));
-bench_lookup_fail!(lookup_fail_std_highbits, StdHashMap, (0..SIZE).map(usize::swap_bytes),
-              (SIZE..SIZE*2).map(usize::swap_bytes));
-bench_lookup_fail!(lookup_fail_fx_random, FxHashMap, RandomKeys::new(SIZE), RandomKeys::new2(SIZE));
-bench_lookup_fail!(lookup_fail_std_random, StdHashMap, RandomKeys::new(SIZE), RandomKeys::new2(SIZE));
+bench_lookup_fail!(lookup_fail_fx_serial, FxHashMap, 0..SIZE, SIZE..SIZE * 2);
+bench_lookup_fail!(lookup_fail_std_serial, StdHashMap, 0..SIZE, SIZE..SIZE * 2);
+bench_lookup_fail!(
+    lookup_fail_fx_highbits,
+    FxHashMap,
+    (0..SIZE).map(usize::swap_bytes),
+    (SIZE..SIZE * 2).map(usize::swap_bytes)
+);
+bench_lookup_fail!(
+    lookup_fail_std_highbits,
+    StdHashMap,
+    (0..SIZE).map(usize::swap_bytes),
+    (SIZE..SIZE * 2).map(usize::swap_bytes)
+);
+bench_lookup_fail!(
+    lookup_fail_fx_random,
+    FxHashMap,
+    RandomKeys::new(SIZE),
+    RandomKeys::new2(SIZE)
+);
+bench_lookup_fail!(
+    lookup_fail_std_random,
+    StdHashMap,
+    RandomKeys::new(SIZE),
+    RandomKeys::new2(SIZE)
+);
 
 macro_rules! bench_iter {
     ($name:ident, $maptype:ident, $keydist:expr) => {
@@ -173,12 +215,20 @@ macro_rules! bench_iter {
                 }
             })
         }
-    }
+    };
 }
 
 bench_iter!(iter_fx_serial, FxHashMap, 0..SIZE);
 bench_iter!(iter_std_serial, StdHashMap, 0..SIZE);
-bench_iter!(iter_fx_highbits, FxHashMap, (0..SIZE).map(usize::swap_bytes));
-bench_iter!(iter_std_highbits, StdHashMap, (0..SIZE).map(usize::swap_bytes));
+bench_iter!(
+    iter_fx_highbits,
+    FxHashMap,
+    (0..SIZE).map(usize::swap_bytes)
+);
+bench_iter!(
+    iter_std_highbits,
+    StdHashMap,
+    (0..SIZE).map(usize::swap_bytes)
+);
 bench_iter!(iter_fx_random, FxHashMap, RandomKeys::new(SIZE));
 bench_iter!(iter_std_random, StdHashMap, RandomKeys::new(SIZE));
