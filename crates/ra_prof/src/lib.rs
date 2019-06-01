@@ -76,17 +76,16 @@ pub fn profile(desc: &str) -> Profiler {
                 }
             };
         }
-
         if stack.starts.len() > stack.filter_data.depth {
             return Profiler { desc: None };
         }
-
-        if stack.filter_data.allowed.is_empty() || stack.filter_data.allowed.contains(desc) {
-            stack.starts.push(Instant::now());
-            Profiler { desc: Some(desc.to_string()) }
-        } else {
-            Profiler { desc: None }
+        let allowed = &stack.filter_data.allowed;
+        if stack.starts.is_empty() && !allowed.is_empty() && !allowed.contains(desc) {
+            return Profiler { desc: None };
         }
+
+        stack.starts.push(Instant::now());
+        Profiler { desc: Some(desc.to_string()) }
     })
 }
 
