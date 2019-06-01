@@ -4,8 +4,10 @@ set -ex
 source shared.sh
 
 VERSION=7.51.0
+URL=http://cool.haxx.se/download/curl-$VERSION.tar.bz2
+SHA256=7f8240048907e5030f67be0a6129bc4b333783b9cca1391026d700835a788dde
 
-curl http://cool.haxx.se/download/curl-$VERSION.tar.bz2 | tar xjf -
+./secure-download.sh $URL $SHA256 | tar xjf -
 
 mkdir curl-build
 cd curl-build

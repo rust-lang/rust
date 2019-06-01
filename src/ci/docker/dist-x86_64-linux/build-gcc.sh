@@ -4,8 +4,10 @@ set -ex
 source shared.sh
 
 GCC=5.5.0
+URL=https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.xz
+SHA256=530cea139d82fe542b358961130c69cfde8b3d14556370b65823d2f91f0ced87
 
-curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.xz | xzcat | tar xf -
+./secure-download.sh $URL $SHA256 | xzcat | tar xf -
 cd gcc-$GCC
 
 # FIXME(#49246): Remove the `sed` below.
@@ -24,6 +26,7 @@ cd gcc-$GCC
 #
 sed -i'' 's|ftp://gcc\.gnu\.org/|http://gcc.gnu.org/|g' ./contrib/download_prerequisites
 
+# FIXME this doesn't verify hashes and is subject to software supply chain attacks.
 ./contrib/download_prerequisites
 mkdir ../gcc-build
 cd ../gcc-build

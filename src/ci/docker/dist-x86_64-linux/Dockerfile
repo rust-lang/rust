@@ -29,6 +29,7 @@ ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib
 ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
 WORKDIR /tmp
+COPY scripts/secure-download.sh /tmp/
 COPY dist-x86_64-linux/shared.sh /tmp/
 
 # We need a build of openssl which supports SNI to download artifacts from

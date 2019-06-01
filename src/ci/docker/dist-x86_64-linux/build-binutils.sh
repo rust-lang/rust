@@ -4,7 +4,10 @@ set -ex
 
 source shared.sh
 
-curl https://ftp.gnu.org/gnu/binutils/binutils-2.25.1.tar.bz2 | tar xfj -
+URL=https://ftp.gnu.org/gnu/binutils/binutils-2.25.1.tar.bz2
+SHA256=b5b14added7d78a8d1ca70b5cb75fef57ce2197264f4f5835326b0df22ac9f22
+
+./secure-download.sh $URL $SHA256 | tar xfj -
 
 mkdir binutils-build
 cd binutils-build

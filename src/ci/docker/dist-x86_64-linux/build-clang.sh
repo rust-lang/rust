@@ -5,12 +5,13 @@ set -ex
 source shared.sh
 
 LLVM=llvmorg-8.0.0-rc2
+URL=https://github.com/llvm/llvm-project/archive/$LLVM.tar.gz
+SHA256=1ff35c058e58274faea2dc92388baa31e51baff207070613e96489b4b2d9bdd9
 
 mkdir llvm-project
 cd llvm-project
 
-curl -L https://github.com/llvm/llvm-project/archive/$LLVM.tar.gz | \
-  tar xzf - --strip-components=1
+../secure-download.sh $URL $SHA256 | tar xzf - --strip-components=1
 
 mkdir clang-build
 cd clang-build

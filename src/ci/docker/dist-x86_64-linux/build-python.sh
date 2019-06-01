@@ -3,8 +3,10 @@
 set -ex
 source shared.sh
 
-curl https://www.python.org/ftp/python/2.7.12/Python-2.7.12.tgz | \
-  tar xzf -
+URL=https://www.python.org/ftp/python/2.7.12/Python-2.7.12.tgz
+SHA256=3cb522d17463dfa69a155ab18cffa399b358c966c0363d6c8b5b3bf1384da4b6
+
+./secure-download.sh $URL $SHA256 | tar xzf -
 
 mkdir python-build
 cd python-build

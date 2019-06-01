@@ -3,7 +3,10 @@
 set -ex
 source shared.sh
 
-curl https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.2.84.tar.xz | unxz | tar x
+URL=https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.2.84.tar.xz
+SHA256=66e329b56487a88f07274a4fa8ec1dfdab8a3df5c3812dd03589d393941b1d47
+
+./secure-download.sh $URL $SHA256 | unxz | tar x
 
 cd linux-3.2.84
 hide_output make mrproper

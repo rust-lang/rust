@@ -3,7 +3,10 @@
 set -ex
 source shared.sh
 
-curl -L https://www.kernel.org/pub/software/scm/git/git-2.10.0.tar.gz | tar xzf -
+URL=https://www.kernel.org/pub/software/scm/git/git-2.10.0.tar.gz
+SHA256=207cfce8cc0a36497abb66236817ef449a45f6ff9141f586bbe2aafd7bc3d90b
+
+./secure-download.sh $URL $SHA256 | tar xzf -
 
 cd git-2.10.0
 make configure
