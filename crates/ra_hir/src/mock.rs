@@ -13,7 +13,12 @@ use crate::{db, diagnostics::DiagnosticSink};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
-#[salsa::database(ra_db::SourceDatabaseStorage, db::HirDatabaseStorage, db::DefDatabaseStorage)]
+#[salsa::database(
+    ra_db::SourceDatabaseStorage,
+    db::AstDatabaseStorage,
+    db::DefDatabaseStorage,
+    db::HirDatabaseStorage
+)]
 #[derive(Debug)]
 pub struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,

@@ -7,7 +7,7 @@ use ra_syntax::{
     ast::{self, NameOwner, AttrsOwner},
 };
 
-use crate::{DefDatabase, Name, AsName, Path, HirFileId, ModuleSource, AstIdMap, FileAstId, Either};
+use crate::{DefDatabase, Name, AsName, Path, HirFileId, ModuleSource, AstIdMap, FileAstId, Either, AstDatabase};
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
 ///
@@ -56,12 +56,15 @@ impl ImportSourceMap {
 }
 
 impl RawItems {
-    pub(crate) fn raw_items_query(db: &impl DefDatabase, file_id: HirFileId) -> Arc<RawItems> {
+    pub(crate) fn raw_items_query(
+        db: &(impl DefDatabase + AstDatabase),
+        file_id: HirFileId,
+    ) -> Arc<RawItems> {
         db.raw_items_with_source_map(file_id).0
     }
 
     pub(crate) fn raw_items_with_source_map_query(
-        db: &impl DefDatabase,
+        db: &(impl DefDatabase + AstDatabase),
         file_id: HirFileId,
     ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {

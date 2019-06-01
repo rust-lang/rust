@@ -3,7 +3,7 @@ use std::{marker::PhantomData, sync::Arc, hash::{Hash, Hasher}};
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_syntax::{SyntaxNodePtr, TreeArc, SyntaxNode, AstNode, ast};
 
-use crate::{HirFileId, DefDatabase};
+use crate::{HirFileId, AstDatabase};
 
 /// `AstId` points to an AST node in any file.
 ///
@@ -38,7 +38,7 @@ impl<N: AstNode> AstId<N> {
         self.file_id
     }
 
-    pub(crate) fn to_node(&self, db: &impl DefDatabase) -> TreeArc<N> {
+    pub(crate) fn to_node(&self, db: &impl AstDatabase) -> TreeArc<N> {
         let syntax_node = db.ast_id_to_node(self.file_id, self.file_ast_id.raw);
         N::cast(&syntax_node).unwrap().to_owned()
     }
@@ -87,7 +87,7 @@ pub struct AstIdMap {
 }
 
 impl AstIdMap {
-    pub(crate) fn ast_id_map_query(db: &impl DefDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
+    pub(crate) fn ast_id_map_query(db: &impl AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
         let map = if let Some(node) = db.parse_or_expand(file_id) {
             AstIdMap::from_source(&*node)
         } else {
@@ -97,7 +97,7 @@ impl AstIdMap {
     }
 
     pub(crate) fn file_item_query(
-        db: &impl DefDatabase,
+        db: &impl AstDatabase,
         file_id: HirFileId,
         ast_id: ErasedFileAstId,
     ) -> TreeArc<SyntaxNode> {

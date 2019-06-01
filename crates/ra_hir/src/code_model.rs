@@ -5,7 +5,7 @@ use ra_syntax::{ast::{self, NameOwner, TypeAscriptionOwner}, TreeArc};
 
 use crate::{
     Name, AsName, AstId, Ty, HirFileId, Either, KnownName,
-    HirDatabase, DefDatabase,
+    HirDatabase, DefDatabase, AstDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
     expr::{Body, BodySourceMap, validation::ExprValidator},
@@ -147,7 +147,7 @@ pub enum ModuleSource {
 
 impl ModuleSource {
     pub(crate) fn new(
-        db: &impl DefDatabase,
+        db: &(impl DefDatabase + AstDatabase),
         file_id: Option<FileId>,
         decl_id: Option<AstId<ast::Module>>,
     ) -> ModuleSource {
@@ -168,7 +168,7 @@ impl ModuleSource {
 
 impl Module {
     /// Name of this module.
-    pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
         let def_map = db.crate_def_map(self.krate);
         let parent = def_map[self.module_id].parent?;
         def_map[parent].children.iter().find_map(|(name, module_id)| {
@@ -181,7 +181,10 @@ impl Module {
     }
 
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(self, db: &impl DefDatabase) -> (HirFileId, ModuleSource) {
+    pub fn definition_source(
+        self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, ModuleSource) {
         let def_map = db.crate_def_map(self.krate);
         let decl_id = def_map[self.module_id].declaration;
         let file_id = def_map[self.module_id].definition;
@@ -340,7 +343,7 @@ impl StructField {
         self.parent.variant_data(db).fields().unwrap()[self.id].name.clone()
     }
 
-    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, FieldSource) {
+    pub fn source(&self, db: &(impl DefDatabase + AstDatabase)) -> (HirFileId, FieldSource) {
         self.source_impl(db)
     }
 
@@ -368,7 +371,10 @@ pub struct Struct {
 }
 
 impl Struct {
-    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
+    pub fn source(
+        self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, TreeArc<ast::StructDef>) {
         self.id.source(db)
     }
 
@@ -376,7 +382,7 @@ impl Struct {
         self.id.module(db)
     }
 
-    pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
         db.struct_data(self).name.clone()
     }
 
@@ -432,11 +438,14 @@ pub struct Union {
 }
 
 impl Union {
-    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::StructDef>) {
+    pub fn source(
+        self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, TreeArc<ast::StructDef>) {
         self.id.source(db)
     }
 
-    pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
         db.struct_data(Struct { id: self.id }).name.clone()
     }
 
@@ -468,7 +477,10 @@ pub struct Enum {
 }
 
 impl Enum {
-    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::EnumDef>) {
+    pub fn source(
+        self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, TreeArc<ast::EnumDef>) {
         self.id.source(db)
     }
 
@@ -476,7 +488,7 @@ impl Enum {
         self.id.module(db)
     }
 
-    pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
         db.enum_data(self).name.clone()
     }
 
@@ -521,7 +533,10 @@ pub struct EnumVariant {
 }
 
 impl EnumVariant {
-    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::EnumVariant>) {
+    pub fn source(
+        &self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, TreeArc<ast::EnumVariant>) {
         self.source_impl(db)
     }
     pub fn module(&self, db: &impl HirDatabase) -> Module {
@@ -610,7 +625,10 @@ pub struct FnSignature {
 }
 
 impl FnSignature {
-    pub(crate) fn fn_signature_query(db: &impl DefDatabase, func: Function) -> Arc<FnSignature> {
+    pub(crate) fn fn_signature_query(
+        db: &(impl DefDatabase + AstDatabase),
+        func: Function,
+    ) -> Arc<FnSignature> {
         let (_, node) = func.source(db);
         let name = node.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
         let mut params = Vec::new();
@@ -668,7 +686,7 @@ impl FnSignature {
 }
 
 impl Function {
-    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::FnDef>) {
+    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> (HirFileId, TreeArc<ast::FnDef>) {
         self.id.source(db)
     }
 
@@ -752,7 +770,10 @@ pub struct Const {
 }
 
 impl Const {
-    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::ConstDef>) {
+    pub fn source(
+        self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, TreeArc<ast::ConstDef>) {
         self.id.source(db)
     }
 
@@ -809,7 +830,7 @@ impl ConstSignature {
     }
 
     pub(crate) fn const_signature_query(
-        db: &impl DefDatabase,
+        db: &(impl DefDatabase + AstDatabase),
         konst: Const,
     ) -> Arc<ConstSignature> {
         let (_, node) = konst.source(db);
@@ -817,7 +838,7 @@ impl ConstSignature {
     }
 
     pub(crate) fn static_signature_query(
-        db: &impl DefDatabase,
+        db: &(impl DefDatabase + AstDatabase),
         konst: Static,
     ) -> Arc<ConstSignature> {
         let (_, node) = konst.source(db);
@@ -838,7 +859,10 @@ pub struct Static {
 }
 
 impl Static {
-    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::StaticDef>) {
+    pub fn source(
+        self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, TreeArc<ast::StaticDef>) {
         self.id.source(db)
     }
 
@@ -873,7 +897,10 @@ pub struct Trait {
 }
 
 impl Trait {
-    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::TraitDef>) {
+    pub fn source(
+        self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, TreeArc<ast::TraitDef>) {
         self.id.source(db)
     }
 
@@ -922,7 +949,10 @@ pub struct TypeAlias {
 }
 
 impl TypeAlias {
-    pub fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::TypeAliasDef>) {
+    pub fn source(
+        self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, TreeArc<ast::TypeAliasDef>) {
         self.id.source(db)
     }
 

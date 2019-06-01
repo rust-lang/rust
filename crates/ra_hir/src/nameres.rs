@@ -65,7 +65,7 @@ use ra_prof::profile;
 use once_cell::sync::Lazy;
 
 use crate::{
-    ModuleDef, Name, Crate, Module, MacroDef, AsName, BuiltinType,
+    ModuleDef, Name, Crate, Module, MacroDef, AsName, BuiltinType, AstDatabase,
     DefDatabase, Path, PathKind, HirFileId, Trait,
     ids::MacroDefId,
     diagnostics::DiagnosticSink,
@@ -232,7 +232,10 @@ fn or(left: ItemOrMacro, right: ItemOrMacro) -> ItemOrMacro {
 }
 
 impl CrateDefMap {
-    pub(crate) fn crate_def_map_query(db: &impl DefDatabase, krate: Crate) -> Arc<CrateDefMap> {
+    pub(crate) fn crate_def_map_query(
+        db: &(impl DefDatabase + AstDatabase),
+        krate: Crate,
+    ) -> Arc<CrateDefMap> {
         db.check_canceled();
         let _p = profile("crate_def_map_query");
         let def_map = {
@@ -278,7 +281,7 @@ impl CrateDefMap {
 
     pub(crate) fn add_diagnostics(
         &self,
-        db: &impl DefDatabase,
+        db: &(impl DefDatabase + AstDatabase),
         module: CrateModuleId,
         sink: &mut DiagnosticSink,
     ) {
@@ -534,7 +537,7 @@ mod diagnostics {
     use ra_syntax::{AstPtr, ast};
 
     use crate::{
-        AstId, DefDatabase,
+        AstId, DefDatabase, AstDatabase,
         nameres::CrateModuleId,
         diagnostics::{DiagnosticSink, UnresolvedModule}
 };
@@ -551,7 +554,7 @@ mod diagnostics {
     impl DefDiagnostic {
         pub(super) fn add_to(
             &self,
-            db: &impl DefDatabase,
+            db: &(impl DefDatabase + AstDatabase),
             target_module: CrateModuleId,
             sink: &mut DiagnosticSink,
         ) {

@@ -5,7 +5,10 @@ use rustc_hash::FxHashMap;
 
 use ra_syntax::ast::{self, NameOwner};
 
-use crate::{Function, Const, TypeAlias, Name, DefDatabase, Trait, ids::LocationCtx, name::AsName, Module};
+use crate::{
+    Function, Const, TypeAlias, Name, DefDatabase, Trait, AstDatabase, Module,
+    ids::LocationCtx, name::AsName,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitData {
@@ -15,7 +18,10 @@ pub struct TraitData {
 }
 
 impl TraitData {
-    pub(crate) fn trait_data_query(db: &impl DefDatabase, tr: Trait) -> Arc<TraitData> {
+    pub(crate) fn trait_data_query(
+        db: &(impl DefDatabase + AstDatabase),
+        tr: Trait,
+    ) -> Arc<TraitData> {
         let (file_id, node) = tr.source(db);
         let name = node.name().map(|n| n.as_name());
         let module = tr.module(db);

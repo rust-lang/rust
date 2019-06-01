@@ -10,7 +10,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    Name, AsName, Struct, Union, Enum, EnumVariant, Crate,
+    Name, AsName, Struct, Union, Enum, EnumVariant, Crate, AstDatabase,
     HirDatabase, HirFileId, StructField, FieldSource,
     type_ref::TypeRef, DefDatabase,
 };
@@ -55,7 +55,10 @@ impl StructData {
         StructData { name, variant_data }
     }
 
-    pub(crate) fn struct_data_query(db: &impl DefDatabase, struct_: Struct) -> Arc<StructData> {
+    pub(crate) fn struct_data_query(
+        db: &(impl DefDatabase + AstDatabase),
+        struct_: Struct,
+    ) -> Arc<StructData> {
         let (_, struct_def) = struct_.source(db);
         Arc::new(StructData::new(&*struct_def))
     }
@@ -68,7 +71,7 @@ fn variants(enum_def: &ast::EnumDef) -> impl Iterator<Item = &ast::EnumVariant> 
 impl EnumVariant {
     pub(crate) fn source_impl(
         &self,
-        db: &impl DefDatabase,
+        db: &(impl DefDatabase + AstDatabase),
     ) -> (HirFileId, TreeArc<ast::EnumVariant>) {
         let (file_id, enum_def) = self.parent.source(db);
         let var = variants(&*enum_def)
@@ -91,7 +94,7 @@ pub struct EnumData {
 }
 
 impl EnumData {
-    pub(crate) fn enum_data_query(db: &impl DefDatabase, e: Enum) -> Arc<EnumData> {
+    pub(crate) fn enum_data_query(db: &(impl DefDatabase + AstDatabase), e: Enum) -> Arc<EnumData> {
         let (_file_id, enum_def) = e.source(db);
         let name = enum_def.name().map(|n| n.as_name());
         let variants = variants(&*enum_def)
@@ -198,7 +201,10 @@ impl VariantDef {
 }
 
 impl StructField {
-    pub(crate) fn source_impl(&self, db: &impl DefDatabase) -> (HirFileId, FieldSource) {
+    pub(crate) fn source_impl(
+        &self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, FieldSource) {
         let var_data = self.parent.variant_data(db);
         let fields = var_data.fields().unwrap();
         let ss;

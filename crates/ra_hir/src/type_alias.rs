@@ -2,9 +2,12 @@
 
 use std::sync::Arc;
 
-use crate::{TypeAlias, db::DefDatabase, type_ref::TypeRef};
+use crate::{TypeAlias, DefDatabase, AstDatabase, type_ref::TypeRef};
 
-pub(crate) fn type_alias_ref_query(db: &impl DefDatabase, typ: TypeAlias) -> Arc<TypeRef> {
+pub(crate) fn type_alias_ref_query(
+    db: &(impl DefDatabase + AstDatabase),
+    typ: TypeAlias,
+) -> Arc<TypeRef> {
     let (_, node) = typ.source(db);
     Arc::new(TypeRef::from_ast_opt(node.type_ref()))
 }
