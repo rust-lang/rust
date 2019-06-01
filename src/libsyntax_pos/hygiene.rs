@@ -265,6 +265,11 @@ impl HygieneData {
         scope
     }
 
+    fn apply_mark(&mut self, ctxt: SyntaxContext, mark: Mark) -> SyntaxContext {
+        assert_ne!(mark, Mark::root());
+        self.apply_mark_with_transparency(ctxt, mark, self.default_transparency(mark))
+    }
+
     fn apply_mark_with_transparency(&mut self, ctxt: SyntaxContext, mark: Mark,
                                     transparency: Transparency) -> SyntaxContext {
         assert_ne!(mark, Mark::root());
@@ -407,10 +412,7 @@ impl SyntaxContext {
 
     /// Extend a syntax context with a given mark and default transparency for that mark.
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
-        assert_ne!(mark, Mark::root());
-        self.apply_mark_with_transparency(
-            mark, HygieneData::with(|data| data.default_transparency(mark))
-        )
+        HygieneData::with(|data| data.apply_mark(self, mark))
     }
 
     /// Extend a syntax context with a given mark and transparency
