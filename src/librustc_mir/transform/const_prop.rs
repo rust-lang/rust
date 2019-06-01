@@ -357,6 +357,15 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         }
     }
 
+    fn opty_to_scalar(&self, opty: OpTy<'tcx>) -> Option<ScalarMaybeUndef> {
+        if let interpret::Operand::Immediate(
+                Immediate::Scalar(ScalarMaybeUndef::Scalar(s))) = *opty {
+            Some(ScalarMaybeUndef::Scalar(s))
+        } else {
+            None
+        }
+    }
+
     fn const_prop(
         &mut self,
         rvalue: &Rvalue<'tcx>,
@@ -374,9 +383,30 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 Some(ImmTy::from_scalar(mplace.ptr.into(), place_layout).into())
             },
             Rvalue::Repeat(..) |
-            Rvalue::Aggregate(..) |
             Rvalue::NullaryOp(NullOp::Box, _) |
             Rvalue::Discriminant(..) => None,
+
+            Rvalue::Aggregate(ref kind, ref operands) => {
+                match **kind {
+                    AggregateKind::Tuple => {
+                        if operands.len() == 2 {
+                            let one = self.eval_operand(&operands[0], source_info)?;
+                            let two = self.eval_operand(&operands[1], source_info)?;
+
+                            Some(ImmTy {
+                                imm: Immediate::ScalarPair(
+                                    self.opty_to_scalar(one)?,
+                                    self.opty_to_scalar(two)?
+                                ),
+                                layout: place_layout
+                            }.into())
+                        } else {
+                            None
+                        }
+                    },
+                    _ => None
+                }
+            }
 
             Rvalue::Cast(kind, ref operand, _) => {
                 let op = self.eval_operand(operand, source_info)?;
