@@ -244,6 +244,19 @@ impl HygieneData {
         outer_mark
     }
 
+    fn marks(&self, mut ctxt: SyntaxContext) -> Vec<(Mark, Transparency)> {
+        let mut marks = Vec::new();
+        while ctxt != SyntaxContext::empty() {
+            let outer_mark = self.outer(ctxt);
+            let transparency = self.transparency(ctxt);
+            let prev_ctxt = self.prev_ctxt(ctxt);
+            marks.push((outer_mark, transparency));
+            ctxt = prev_ctxt;
+        }
+        marks.reverse();
+        marks
+    }
+
     fn adjust(&self, ctxt: &mut SyntaxContext, expansion: Mark) -> Option<Mark> {
         let mut scope = None;
         while !self.is_descendant_of(expansion, self.outer(*ctxt)) {
@@ -423,19 +436,8 @@ impl SyntaxContext {
         HygieneData::with(|data| data.remove_mark(self))
     }
 
-    pub fn marks(mut self) -> Vec<(Mark, Transparency)> {
-        HygieneData::with(|data| {
-            let mut marks = Vec::new();
-            while self != SyntaxContext::empty() {
-                let outer_mark = data.outer(self);
-                let transparency = data.transparency(self);
-                let prev_ctxt = data.prev_ctxt(self);
-                marks.push((outer_mark, transparency));
-                self = prev_ctxt;
-            }
-            marks.reverse();
-            marks
-        })
+    pub fn marks(self) -> Vec<(Mark, Transparency)> {
+        HygieneData::with(|data| data.marks(self))
     }
 
     /// Adjust this context for resolution in a scope created by the given expansion.
