@@ -583,7 +583,7 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn compare_number_of_generics<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     impl_: &ty::AssocItem,
-    impl_span: Span,
+    _impl_span: Span,
     trait_: &ty::AssocItem,
     trait_span: Option<Span>,
 ) -> Result<(), ErrorReported> {
@@ -600,17 +600,25 @@ fn compare_number_of_generics<'a, 'tcx>(
         if impl_count != trait_count {
             err_occurred = true;
 
-            let impl_hir_id = tcx.hir().as_local_hir_id(impl_.def_id).unwrap();
-            let impl_item = tcx.hir().expect_impl_item(impl_hir_id);
-            let span = if impl_item.generics.params.is_empty()
-                || impl_item.generics.span.is_dummy() { // argument position impl Trait (#55374)
-                impl_span
+            let trait_spans = if let Some(trait_hir_id) = tcx.hir().as_local_hir_id(trait_.def_id) {
+                let trait_item = tcx.hir().expect_trait_item(trait_hir_id);
+                Some(if trait_item.generics.params.is_empty() {
+                    vec![trait_item.generics.span]
+                } else {
+                    trait_item.generics.params.iter().map(|p| p.span).collect::<Vec<Span>>()
+                })
             } else {
-                impl_item.generics.span
+                trait_span.map(|s| vec![s])
             };
 
+            let impl_hir_id = tcx.hir().as_local_hir_id(impl_.def_id).unwrap();
+            let impl_item = tcx.hir().expect_impl_item(impl_hir_id);
+            // let span = impl_item.generics.span;
+            let spans = impl_item.generics.spans();
+            let span = spans.primary_span();
+
             let mut err = tcx.sess.struct_span_err_with_code(
-                span,
+                spans,
                 &format!(
                     "method `{}` has {} {kind} parameter{} but its trait \
                      declaration has {} {kind} parameter{}",
@@ -626,22 +634,32 @@ fn compare_number_of_generics<'a, 'tcx>(
 
             let mut suffix = None;
 
-            if let Some(span) = trait_span {
-                err.span_label(
-                    span,
-                    format!("expected {} {} parameter{}", trait_count, kind,
-                        if trait_count != 1 { "s" } else { "" })
-                );
+            if let Some(spans) = trait_spans {
+                let mut spans = spans.iter();
+                if let Some(span) = spans.next() {
+                    err.span_label(*span, format!(
+                        "expected {} {} parameter{}",
+                        trait_count,
+                        kind,
+                        if trait_count != 1 { "s" } else { "" },
+                    ));
+                }
+                for span in spans {
+                    err.span_label(*span, "");
+                }
             } else {
                 suffix = Some(format!(", expected {}", trait_count));
             }
 
-            err.span_label(
-                span,
-                format!("found {} {} parameter{}{}", impl_count, kind,
+            if let Some(span) = span {
+                err.span_label(span, format!(
+                    "found {} {} parameter{}{}",
+                    impl_count,
+                    kind,
                     if impl_count != 1 { "s" } else { "" },
-                    suffix.unwrap_or_else(|| String::new())),
-            );
+                    suffix.unwrap_or_else(|| String::new()),
+                ));
+            }
 
             err.emit();
         }
