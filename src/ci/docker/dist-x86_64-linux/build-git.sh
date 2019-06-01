@@ -3,16 +3,17 @@
 set -ex
 source shared.sh
 
-URL=https://www.kernel.org/pub/software/scm/git/git-2.10.0.tar.gz
-SHA256=207cfce8cc0a36497abb66236817ef449a45f6ff9141f586bbe2aafd7bc3d90b
+VERSION=2.21.0
+URL=https://www.kernel.org/pub/software/scm/git/git-$VERSION.tar.gz
+SHA256=85eca51c7404da75e353eba587f87fea9481ba41e162206a6f70ad8118147bee
 
 ./secure-download.sh $URL $SHA256 | tar xzf -
 
-cd git-2.10.0
+cd git-$VERSION
 make configure
 hide_output ./configure --prefix=/rustroot
 hide_output make -j10
 hide_output make install
 
 cd ..
-rm -rf git-2.10.0
+rm -rf git-$VERSION
