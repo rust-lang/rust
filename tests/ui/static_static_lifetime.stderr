@@ -1,0 +1,82 @@
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:4:18
+   |
+LL | static VAR_ONE: &'static str = "Test static #1"; // ERROR Consider removing 'static.
+   |                 -^^^^^^^---- help: consider removing `'static`: `&str`
+   |
+   = note: `-D clippy::static-static-lifetime` implied by `-D warnings`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:8:22
+   |
+LL | static VAR_THREE: &[&'static str] = &["one", "two"]; // ERROR Consider removing 'static
+   |                     -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:10:33
+   |
+LL | static VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
+   |                                -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:10:48
+   |
+LL | static VAR_FOUR: (&str, (&str, &'static str), &'static str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
+   |                                               -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:12:19
+   |
+LL | static VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
+   |                  -^^^^^^^------------------ help: consider removing `'static`: `&[&[&'static str]]`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:12:31
+   |
+LL | static VAR_FIVE: &'static [&[&'static str]] = &[&["test"], &["other one"]]; // ERROR Consider removing 'static
+   |                              -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:14:18
+   |
+LL | static VAR_SIX: &'static u8 = &5;
+   |                 -^^^^^^^--- help: consider removing `'static`: `&u8`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:16:30
+   |
+LL | static VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
+   |                             -^^^^^^^--------------- help: consider removing `'static`: `&[&'static str]`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:16:40
+   |
+LL | static VAR_SEVEN: &[&(&str, &'static [&'static str])] = &[&("one", &["other one"])];
+   |                                       -^^^^^^^---- help: consider removing `'static`: `&str`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:18:21
+   |
+LL | static VAR_HEIGHT: &'static Foo = &Foo {};
+   |                    -^^^^^^^---- help: consider removing `'static`: `&Foo`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:20:20
+   |
+LL | static VAR_SLICE: &'static [u8] = b"Test static #3"; // ERROR Consider removing 'static.
+   |                   -^^^^^^^----- help: consider removing `'static`: `&[u8]`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:22:20
+   |
+LL | static VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR Consider removing 'static.
+   |                   -^^^^^^^--------- help: consider removing `'static`: `&(u8, u8)`
+
+error: Statics have by default a `'static` lifetime
+  --> $DIR/static_static_lifetime.rs:24:20
+   |
+LL | static VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.
+   |                   -^^^^^^^-------- help: consider removing `'static`: `&[u8; 1]`
+
+error: aborting due to 13 previous errors
+

@@ -256,6 +256,7 @@ pub mod returns;
 pub mod serde_api;
 pub mod shadow;
 pub mod slow_vector_initialization;
+pub mod static_static_lifetime;
 pub mod strings;
 pub mod suspicious_trait_impl;
 pub mod swap;
@@ -554,6 +555,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box identity_conversion::IdentityConversion::default());
     reg.register_late_lint_pass(box types::ImplicitHasher);
     reg.register_early_lint_pass(box const_static_lifetime::StaticConst);
+    reg.register_early_lint_pass(box static_static_lifetime::StaticStatic);
     reg.register_late_lint_pass(box fallible_impl_from::FallibleImplFrom);
     reg.register_late_lint_pass(box replace_consts::ReplaceConsts);
     reg.register_late_lint_pass(box types::UnitArg);
@@ -844,6 +846,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         returns::UNUSED_UNIT,
         serde_api::SERDE_API_MISUSE,
         slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
+        static_static_lifetime::STATIC_STATIC_LIFETIME,
         strings::STRING_LIT_AS_BYTES,
         suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL,
         suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
@@ -962,6 +965,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         returns::UNUSED_UNIT,
+        static_static_lifetime::STATIC_STATIC_LIFETIME,
         strings::STRING_LIT_AS_BYTES,
         types::FN_TO_NUMERIC_CAST,
         types::FN_TO_NUMERIC_CAST_WITH_TRUNCATION,

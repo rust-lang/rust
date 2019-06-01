@@ -1088,6 +1088,7 @@ All notable changes to this project will be documented in this file.
 [`single_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match
 [`single_match_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match_else
 [`slow_vector_initialization`]: https://rust-lang.github.io/rust-clippy/master/index.html#slow_vector_initialization
+[`static_static_lifetime`]: https://rust-lang.github.io/rust-clippy/master/index.html#static_static_lifetime
 [`str_to_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#str_to_string
 [`string_add`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_add
 [`string_add_assign`]: https://rust-lang.github.io/rust-clippy/master/index.html#string_add_assign
