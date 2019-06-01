@@ -45,7 +45,7 @@ semver = "0.9"
 rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util"}
 
 [dev-dependencies]
-cargo_metadata = "0.7.1"
+cargo_metadata = "0.8.0"
 compiletest_rs = { version = "0.3.22", features = ["tmp"] }
 lazy_static = "1.0"
 clippy-mini-macro-test = { version = "0.2", path = "mini-macro" }
