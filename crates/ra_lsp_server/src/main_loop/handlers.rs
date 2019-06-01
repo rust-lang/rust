@@ -24,11 +24,11 @@ use crate::{
     cargo_target_spec::{runnable_args, CargoTargetSpec},
     conv::{to_location, to_location_link, Conv, ConvWith, MapConvWith, TryConvWith},
     req::{self, Decoration},
-    server_world::ServerWorld,
+    world::WorldSnapshot,
     LspError, Result,
 };
 
-pub fn handle_analyzer_status(world: ServerWorld, _: ()) -> Result<String> {
+pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
     let mut buf = world.status();
     writeln!(buf, "\n\nrequests:").unwrap();
     let requests = world.latest_requests.read();
@@ -39,7 +39,7 @@ pub fn handle_analyzer_status(world: ServerWorld, _: ()) -> Result<String> {
     Ok(buf)
 }
 
-pub fn handle_syntax_tree(world: ServerWorld, params: req::SyntaxTreeParams) -> Result<String> {
+pub fn handle_syntax_tree(world: WorldSnapshot, params: req::SyntaxTreeParams) -> Result<String> {
     let id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(id);
     let text_range = params.range.map(|p| p.conv_with(&line_index));
@@ -49,7 +49,7 @@ pub fn handle_syntax_tree(world: ServerWorld, params: req::SyntaxTreeParams) -> 
 
 // FIXME: drop this API
 pub fn handle_extend_selection(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::ExtendSelectionParams,
 ) -> Result<req::ExtendSelectionResult> {
     log::error!(
@@ -69,7 +69,7 @@ pub fn handle_extend_selection(
 }
 
 pub fn handle_selection_range(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::SelectionRangeParams,
 ) -> Result<Vec<req::SelectionRange>> {
     let _p = profile("handle_selection_range");
@@ -110,7 +110,7 @@ pub fn handle_selection_range(
 }
 
 pub fn handle_find_matching_brace(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::FindMatchingBraceParams,
 ) -> Result<Vec<Position>> {
     let _p = profile("handle_find_matching_brace");
@@ -129,7 +129,7 @@ pub fn handle_find_matching_brace(
 }
 
 pub fn handle_join_lines(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::JoinLinesParams,
 ) -> Result<req::SourceChange> {
     let _p = profile("handle_join_lines");
@@ -138,7 +138,7 @@ pub fn handle_join_lines(
 }
 
 pub fn handle_on_enter(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::SourceChange>> {
     let _p = profile("handle_on_enter");
@@ -150,7 +150,7 @@ pub fn handle_on_enter(
 }
 
 pub fn handle_on_type_formatting(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::DocumentOnTypeFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
     let _p = profile("handle_on_type_formatting");
@@ -181,7 +181,7 @@ pub fn handle_on_type_formatting(
 }
 
 pub fn handle_document_symbol(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::DocumentSymbolParams,
 ) -> Result<Option<req::DocumentSymbolResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
@@ -219,7 +219,7 @@ pub fn handle_document_symbol(
 }
 
 pub fn handle_workspace_symbol(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::WorkspaceSymbolParams,
 ) -> Result<Option<Vec<SymbolInformation>>> {
     let all_symbols = params.query.contains('#');
@@ -245,7 +245,7 @@ pub fn handle_workspace_symbol(
 
     return Ok(Some(res));
 
-    fn exec_query(world: &ServerWorld, query: Query) -> Result<Vec<SymbolInformation>> {
+    fn exec_query(world: &WorldSnapshot, query: Query) -> Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();
         for nav in world.analysis().symbol_search(query)? {
             let info = SymbolInformation {
@@ -262,7 +262,7 @@ pub fn handle_workspace_symbol(
 }
 
 pub fn handle_goto_definition(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
     let position = params.try_conv_with(&world)?;
@@ -282,7 +282,7 @@ pub fn handle_goto_definition(
 }
 
 pub fn handle_goto_implementation(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoImplementationResponse>> {
     let position = params.try_conv_with(&world)?;
@@ -302,7 +302,7 @@ pub fn handle_goto_implementation(
 }
 
 pub fn handle_goto_type_definition(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoTypeDefinitionResponse>> {
     let position = params.try_conv_with(&world)?;
@@ -322,7 +322,7 @@ pub fn handle_goto_type_definition(
 }
 
 pub fn handle_parent_module(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Vec<Location>> {
     let position = params.try_conv_with(&world)?;
@@ -335,7 +335,7 @@ pub fn handle_parent_module(
 }
 
 pub fn handle_runnables(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::RunnablesParams,
 ) -> Result<Vec<req::Runnable>> {
     let file_id = params.text_document.try_conv_with(&world)?;
@@ -396,7 +396,7 @@ pub fn handle_runnables(
 }
 
 pub fn handle_decorations(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: TextDocumentIdentifier,
 ) -> Result<Vec<Decoration>> {
     let file_id = params.try_conv_with(&world)?;
@@ -404,7 +404,7 @@ pub fn handle_decorations(
 }
 
 pub fn handle_completion(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::CompletionParams,
 ) -> Result<Option<req::CompletionResponse>> {
     let _p = profile("handle_completion");
@@ -447,7 +447,7 @@ pub fn handle_completion(
 }
 
 pub fn handle_folding_range(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: FoldingRangeParams,
 ) -> Result<Option<Vec<FoldingRange>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
@@ -481,7 +481,7 @@ pub fn handle_folding_range(
 }
 
 pub fn handle_signature_help(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::SignatureHelp>> {
     let position = params.try_conv_with(&world)?;
@@ -500,7 +500,7 @@ pub fn handle_signature_help(
 }
 
 pub fn handle_hover(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<Hover>> {
     let position = params.try_conv_with(&world)?;
@@ -522,7 +522,7 @@ pub fn handle_hover(
 
 /// Test doc comment
 pub fn handle_prepare_rename(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
     let position = params.try_conv_with(&world)?;
@@ -543,7 +543,7 @@ pub fn handle_prepare_rename(
     Ok(Some(PrepareRenameResponse::Range(loc.range)))
 }
 
-pub fn handle_rename(world: ServerWorld, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.conv_with(&line_index);
@@ -569,7 +569,7 @@ pub fn handle_rename(world: ServerWorld, params: RenameParams) -> Result<Option<
 }
 
 pub fn handle_references(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::ReferenceParams,
 ) -> Result<Option<Vec<Location>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
@@ -597,7 +597,7 @@ pub fn handle_references(
 }
 
 pub fn handle_formatting(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<TextEdit>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
@@ -641,7 +641,7 @@ pub fn handle_formatting(
 }
 
 pub fn handle_code_action(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::CodeActionParams,
 ) -> Result<Option<CodeActionResponse>> {
     let _p = profile("handle_code_action");
@@ -704,7 +704,7 @@ pub fn handle_code_action(
 }
 
 pub fn handle_code_lens(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
@@ -781,7 +781,7 @@ enum CodeLensResolveData {
     Impls(req::TextDocumentPositionParams),
 }
 
-pub fn handle_code_lens_resolve(world: ServerWorld, code_lens: CodeLens) -> Result<CodeLens> {
+pub fn handle_code_lens_resolve(world: WorldSnapshot, code_lens: CodeLens) -> Result<CodeLens> {
     let data = code_lens.data.unwrap();
     let resolve = serde_json::from_value(data)?;
     match resolve {
@@ -826,7 +826,7 @@ pub fn handle_code_lens_resolve(world: ServerWorld, code_lens: CodeLens) -> Resu
 }
 
 pub fn handle_document_highlight(
-    world: ServerWorld,
+    world: WorldSnapshot,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<Vec<DocumentHighlight>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
@@ -845,7 +845,7 @@ pub fn handle_document_highlight(
 }
 
 pub fn publish_diagnostics(
-    world: &ServerWorld,
+    world: &WorldSnapshot,
     file_id: FileId,
 ) -> Result<req::PublishDiagnosticsParams> {
     let uri = world.file_id_to_uri(file_id)?;
@@ -867,14 +867,14 @@ pub fn publish_diagnostics(
 }
 
 pub fn publish_decorations(
-    world: &ServerWorld,
+    world: &WorldSnapshot,
     file_id: FileId,
 ) -> Result<req::PublishDecorationsParams> {
     let uri = world.file_id_to_uri(file_id)?;
     Ok(req::PublishDecorationsParams { uri, decorations: highlight(&world, file_id)? })
 }
 
-fn highlight(world: &ServerWorld, file_id: FileId) -> Result<Vec<Decoration>> {
+fn highlight(world: &WorldSnapshot, file_id: FileId) -> Result<Vec<Decoration>> {
     let line_index = world.analysis().file_line_index(file_id);
     let res = world
         .analysis()

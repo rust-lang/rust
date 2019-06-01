@@ -12,7 +12,7 @@ use ra_ide_api::{
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 
-use crate::{req, server_world::ServerWorld, Result};
+use crate::{req, world::WorldSnapshot, Result};
 
 pub trait Conv {
     type Output;
@@ -228,49 +228,49 @@ impl<T: ConvWith> ConvWith for Option<T> {
 }
 
 impl<'a> TryConvWith for &'a Url {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = FileId;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<FileId> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         world.uri_to_file_id(self)
     }
 }
 
 impl TryConvWith for FileId {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = Url;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<Url> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<Url> {
         world.file_id_to_uri(self)
     }
 }
 
 impl<'a> TryConvWith for &'a TextDocumentItem {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = FileId;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<FileId> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         self.uri.try_conv_with(world)
     }
 }
 
 impl<'a> TryConvWith for &'a VersionedTextDocumentIdentifier {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = FileId;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<FileId> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         self.uri.try_conv_with(world)
     }
 }
 
 impl<'a> TryConvWith for &'a TextDocumentIdentifier {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = FileId;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<FileId> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         world.uri_to_file_id(&self.uri)
     }
 }
 
 impl<'a> TryConvWith for &'a TextDocumentPositionParams {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = FilePosition;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<FilePosition> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<FilePosition> {
         let file_id = self.text_document.try_conv_with(world)?;
         let line_index = world.analysis().file_line_index(file_id);
         let offset = self.position.conv_with(&line_index);
@@ -279,9 +279,9 @@ impl<'a> TryConvWith for &'a TextDocumentPositionParams {
 }
 
 impl<'a> TryConvWith for (&'a TextDocumentIdentifier, Range) {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = FileRange;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<FileRange> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileRange> {
         let file_id = self.0.try_conv_with(world)?;
         let line_index = world.analysis().file_line_index(file_id);
         let range = self.1.conv_with(&line_index);
@@ -302,9 +302,9 @@ impl<T: TryConvWith> TryConvWith for Vec<T> {
 }
 
 impl TryConvWith for SourceChange {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = req::SourceChange;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<req::SourceChange> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<req::SourceChange> {
         let cursor_position = match self.cursor_position {
             None => None,
             Some(pos) => {
@@ -342,9 +342,9 @@ impl TryConvWith for SourceChange {
 }
 
 impl TryConvWith for SourceFileEdit {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = TextDocumentEdit;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<TextDocumentEdit> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<TextDocumentEdit> {
         let text_document = VersionedTextDocumentIdentifier {
             uri: self.file_id.try_conv_with(world)?,
             version: None,
@@ -356,9 +356,9 @@ impl TryConvWith for SourceFileEdit {
 }
 
 impl TryConvWith for FileSystemEdit {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = ResourceOp;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<ResourceOp> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<ResourceOp> {
         let res = match self {
             FileSystemEdit::CreateFile { source_root, path } => {
                 let uri = world.path_to_uri(source_root, &path)?;
@@ -375,9 +375,9 @@ impl TryConvWith for FileSystemEdit {
 }
 
 impl TryConvWith for &NavigationTarget {
-    type Ctx = ServerWorld;
+    type Ctx = WorldSnapshot;
     type Output = Location;
-    fn try_conv_with(self, world: &ServerWorld) -> Result<Location> {
+    fn try_conv_with(self, world: &WorldSnapshot) -> Result<Location> {
         let line_index = world.analysis().file_line_index(self.file_id());
         let range = self.range();
         to_location(self.file_id(), range, &world, &line_index)
@@ -386,7 +386,7 @@ impl TryConvWith for &NavigationTarget {
 
 pub fn to_location_link(
     target: &RangeInfo<NavigationTarget>,
-    world: &ServerWorld,
+    world: &WorldSnapshot,
     // line index for original range file
     line_index: &LineIndex,
 ) -> Result<LocationLink> {
@@ -410,7 +410,7 @@ pub fn to_location_link(
 pub fn to_location(
     file_id: FileId,
     range: TextRange,
-    world: &ServerWorld,
+    world: &WorldSnapshot,
     line_index: &LineIndex,
 ) -> Result<Location> {
     let url = file_id.try_conv_with(world)?;

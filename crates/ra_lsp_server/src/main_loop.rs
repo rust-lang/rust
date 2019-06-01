@@ -24,7 +24,7 @@ use crate::{
     },
     project_model::workspace_loader,
     req,
-    server_world::{ServerWorld, ServerWorldState},
+    world::{WorldSnapshot, WorldState},
     Result,
     InitializationOptions,
 };
@@ -73,7 +73,7 @@ pub fn main_loop(
         loaded_workspaces
     };
 
-    let mut state = ServerWorldState::new(ws_roots, workspaces);
+    let mut state = WorldState::new(ws_roots, workspaces);
 
     let pool = ThreadPool::new(THREADPOOL_SIZE);
     let (task_sender, task_receiver) = unbounded::<Task>();
@@ -161,7 +161,7 @@ fn main_loop_inner(
     msg_receiver: &Receiver<RawMessage>,
     task_sender: Sender<Task>,
     task_receiver: Receiver<Task>,
-    state: &mut ServerWorldState,
+    state: &mut WorldState,
     pending_requests: &mut PendingRequests,
 ) -> Result<()> {
     let mut subs = Subscriptions::default();
@@ -278,7 +278,7 @@ fn on_task(
     task: Task,
     msg_sender: &Sender<RawMessage>,
     pending_requests: &mut PendingRequests,
-    state: &mut ServerWorldState,
+    state: &mut WorldState,
 ) {
     match task {
         Task::Respond(response) => {
@@ -295,7 +295,7 @@ fn on_task(
 }
 
 fn on_request(
-    world: &mut ServerWorldState,
+    world: &mut WorldState,
     pending_requests: &mut PendingRequests,
     pool: &ThreadPool,
     sender: &Sender<Task>,
@@ -352,7 +352,7 @@ fn on_request(
 
 fn on_notification(
     msg_sender: &Sender<RawMessage>,
-    state: &mut ServerWorldState,
+    state: &mut WorldState,
     pending_requests: &mut PendingRequests,
     subs: &mut Subscriptions,
     not: RawNotification,
@@ -422,7 +422,7 @@ fn on_notification(
 struct PoolDispatcher<'a> {
     req: Option<RawRequest>,
     pool: &'a ThreadPool,
-    world: &'a mut ServerWorldState,
+    world: &'a mut WorldState,
     pending_requests: &'a mut PendingRequests,
     msg_sender: &'a Sender<RawMessage>,
     sender: &'a Sender<Task>,
@@ -433,7 +433,7 @@ impl<'a> PoolDispatcher<'a> {
     /// Dispatches the request onto the current thread
     fn on_sync<R>(
         &mut self,
-        f: fn(&mut ServerWorldState, R::Params) -> Result<R::Result>,
+        f: fn(&mut WorldState, R::Params) -> Result<R::Result>,
     ) -> Result<&mut Self>
     where
         R: req::Request + 'static,
@@ -453,7 +453,7 @@ impl<'a> PoolDispatcher<'a> {
     }
 
     /// Dispatches the request onto thread pool
-    fn on<R>(&mut self, f: fn(ServerWorld, R::Params) -> Result<R::Result>) -> Result<&mut Self>
+    fn on<R>(&mut self, f: fn(WorldSnapshot, R::Params) -> Result<R::Result>) -> Result<&mut Self>
     where
         R: req::Request + 'static,
         R::Params: DeserializeOwned + Send + 'static,
@@ -557,7 +557,7 @@ where
 
 fn update_file_notifications_on_threadpool(
     pool: &ThreadPool,
-    world: ServerWorld,
+    world: WorldSnapshot,
     publish_decorations: bool,
     sender: Sender<Task>,
     subscriptions: Vec<FileId>,

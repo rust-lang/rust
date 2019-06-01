@@ -1,13 +1,13 @@
 use crate::{
     project_model::{self, TargetKind},
-    server_world::ServerWorld,
+    world::WorldSnapshot,
     Result
 };
 
 use ra_ide_api::{FileId, RunnableKind};
 
 pub(crate) fn runnable_args(
-    world: &ServerWorld,
+    world: &WorldSnapshot,
     file_id: FileId,
     kind: &RunnableKind,
 ) -> Result<Vec<String>> {
@@ -58,7 +58,7 @@ pub struct CargoTargetSpec {
 }
 
 impl CargoTargetSpec {
-    pub fn for_file(world: &ServerWorld, file_id: FileId) -> Result<Option<CargoTargetSpec>> {
+    pub fn for_file(world: &WorldSnapshot, file_id: FileId) -> Result<Option<CargoTargetSpec>> {
         let &crate_id = match world.analysis().crate_for(file_id)?.first() {
             Some(crate_id) => crate_id,
             None => return Ok(None),
