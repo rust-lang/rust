@@ -408,7 +408,28 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                                 layout: place_layout
                             }.into())
                         } else {
-                            None
+                            let mplace = self.use_ecx(source_info, |this| {
+                                Ok(this.ecx.allocate(place_layout, MemoryKind::Stack))
+                            }).unwrap();
+
+                            for (i, operand) in operands.iter().enumerate() {
+                                let op = self.eval_operand(operand, source_info)?;
+                                let should_continue = self.use_ecx(source_info, |this| {
+                                    if let Ok(imm) = this.ecx.try_read_immediate(op)? {
+                                        let field = this.ecx.mplace_field(mplace, i as u64)?;
+                                        this.ecx.write_immediate_to_mplace(imm, field)?;
+                                        Ok(true)
+                                    } else {
+                                        Ok(false)
+                                    }
+                                })?;
+
+                                if !should_continue {
+                                    return None;
+                                }
+                            }
+
+                            Some(mplace.into())
                         }
                     },
                     _ => None

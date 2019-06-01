@@ -50,10 +50,10 @@ fn main() {
 //     _3 = const 1i32;
 //     ...
 //     _6 = (const 0i32, const 1i32, const 2i32);
-//     _5 = (_6.2: i32);
+//     _5 = const 2i32;
 //     ...
 //     _8 = (const 0i32, const 1i32, const 2i32, const 3i32);
-//     _7 = (_8.3: i32);
+//     _7 = const 3i32;
 //     ...
 // }
 // END rustc.foo.ConstProp.after.mir
@@ -99,10 +99,10 @@ fn main() {
 //  bb1: {
 //      ...
 //      _4 = (const 32u32, const 16u32, const 8u32);
-//      _3 = (_4.2: u32);
-//      _2 = Eq(move _3, const 8u32);
+//      _3 = const 8u32;
+//      _2 = const true;
 //      ...
-//      switchInt(_2) -> [false: bb7, otherwise: bb2];
+//      switchInt(const true) -> [false: bb7, otherwise: bb2];
 //  }
 //  bb2: {
 //      ...
@@ -139,12 +139,8 @@ fn main() {
 //     (_4.0: u32) = const 32u32;
 //     (_4.1: u32) = const 16u32;
 //     (_4.2: u32) = const 8u32;
-//     _3 = (_4.2: u32);
-//     _2 = Eq(move _3, const 8u32);
-//     ...
-//     switchInt(_2) -> [false: bb3, otherwise: bb2];
-// }
-// bb2: {
+//     _3 = const 8u32;
+//     _2 = const true;
 //     ...
 //     (_7.0: u32) = const 1u32;
 //     (_7.1: u32) = const 42u32;
@@ -156,8 +152,5 @@ fn main() {
 //     _8 = const true;
 //     ...
 //     const std::process::exit(const 0i32);
-// }
-// bb3: {
-//     const std::process::exit(const 3i32);
 // }
 // END rustc.main.SimplifyCfg-final.after.mir
