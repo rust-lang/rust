@@ -283,8 +283,13 @@ impl SourceAnalyzer {
         self.infer.as_ref()?.field_resolution(expr_id)
     }
 
-    pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroByExampleDef> {
-        let id = self.resolver.resolve_macro_call(macro_call.path().and_then(Path::from_ast))?;
+    pub fn resolve_macro_call(
+        &self,
+        db: &impl HirDatabase,
+        macro_call: &ast::MacroCall,
+    ) -> Option<MacroByExampleDef> {
+        let id =
+            self.resolver.resolve_macro_call(db, macro_call.path().and_then(Path::from_ast))?;
         Some(MacroByExampleDef { id })
     }
 

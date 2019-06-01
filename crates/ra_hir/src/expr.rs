@@ -828,7 +828,7 @@ where
                     .ast_id(e)
                     .with_file_id(self.current_file_id);
 
-                if let Some(def) = self.resolver.resolve_macro_call(path) {
+                if let Some(def) = self.resolver.resolve_macro_call(self.db, path) {
                     let call_id = MacroCallLoc { def, ast_id }.id(self.db);
                     let file_id = call_id.as_file(MacroFileKind::Expr);
                     if let Some(node) = self.db.parse_or_expand(file_id) {
