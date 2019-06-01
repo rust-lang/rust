@@ -265,6 +265,40 @@ impl HygieneData {
         scope
     }
 
+    fn apply_mark_with_transparency(&mut self, ctxt: SyntaxContext, mark: Mark,
+                                    transparency: Transparency) -> SyntaxContext {
+        assert_ne!(mark, Mark::root());
+        if transparency == Transparency::Opaque {
+            return self.apply_mark_internal(ctxt, mark, transparency);
+        }
+
+        let call_site_ctxt =
+            self.expn_info(mark).map_or(SyntaxContext::empty(), |info| info.call_site.ctxt());
+        let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
+            self.modern(call_site_ctxt)
+        } else {
+            self.modern_and_legacy(call_site_ctxt)
+        };
+
+        if call_site_ctxt == SyntaxContext::empty() {
+            return self.apply_mark_internal(ctxt, mark, transparency);
+        }
+
+        // Otherwise, `mark` is a macros 1.0 definition and the call site is in a
+        // macros 2.0 expansion, i.e., a macros 1.0 invocation is in a macros 2.0 definition.
+        //
+        // In this case, the tokens from the macros 1.0 definition inherit the hygiene
+        // at their invocation. That is, we pretend that the macros 1.0 definition
+        // was defined at its invocation (i.e., inside the macros 2.0 definition)
+        // so that the macros 2.0 definition remains hygienic.
+        //
+        // See the example at `test/run-pass/hygiene/legacy_interaction.rs`.
+        for (mark, transparency) in self.marks(ctxt) {
+            call_site_ctxt = self.apply_mark_internal(call_site_ctxt, mark, transparency);
+        }
+        self.apply_mark_internal(call_site_ctxt, mark, transparency)
+    }
+
     fn apply_mark_internal(&mut self, ctxt: SyntaxContext, mark: Mark, transparency: Transparency)
                            -> SyntaxContext {
         let syntax_contexts = &mut self.syntax_contexts;
@@ -382,41 +416,7 @@ impl SyntaxContext {
     /// Extend a syntax context with a given mark and transparency
     pub fn apply_mark_with_transparency(self, mark: Mark, transparency: Transparency)
                                         -> SyntaxContext {
-        assert_ne!(mark, Mark::root());
-        if transparency == Transparency::Opaque {
-            return self.apply_mark_internal(mark, transparency);
-        }
-
-        let call_site_ctxt =
-            mark.expn_info().map_or(SyntaxContext::empty(), |info| info.call_site.ctxt());
-        let call_site_ctxt = if transparency == Transparency::SemiTransparent {
-            call_site_ctxt.modern()
-        } else {
-            call_site_ctxt.modern_and_legacy()
-        };
-
-        if call_site_ctxt == SyntaxContext::empty() {
-            return self.apply_mark_internal(mark, transparency);
-        }
-
-        // Otherwise, `mark` is a macros 1.0 definition and the call site is in a
-        // macros 2.0 expansion, i.e., a macros 1.0 invocation is in a macros 2.0 definition.
-        //
-        // In this case, the tokens from the macros 1.0 definition inherit the hygiene
-        // at their invocation. That is, we pretend that the macros 1.0 definition
-        // was defined at its invocation (i.e., inside the macros 2.0 definition)
-        // so that the macros 2.0 definition remains hygienic.
-        //
-        // See the example at `test/run-pass/hygiene/legacy_interaction.rs`.
-        let mut ctxt = call_site_ctxt;
-        for (mark, transparency) in self.marks() {
-            ctxt = ctxt.apply_mark_internal(mark, transparency);
-        }
-        ctxt.apply_mark_internal(mark, transparency)
-    }
-
-    fn apply_mark_internal(self, mark: Mark, transparency: Transparency) -> SyntaxContext {
-        HygieneData::with(|data| data.apply_mark_internal(self, mark, transparency))
+        HygieneData::with(|data| data.apply_mark_with_transparency(self, mark, transparency))
     }
 
     /// Pulls a single mark off of the syntax context. This effectively moves the
