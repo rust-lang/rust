@@ -142,24 +142,28 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // trying to infer. In the following example, `ty_msg` contains
         // " in `std::result::Result<i32, E>`":
         // ```
-        // error[E0282]: type annotations needed in `std::result::Result<i32, E>`
+        // error[E0282]: type annotations needed for `std::result::Result<i32, E>`
         //  --> file.rs:L:CC
         //   |
         // L |     let b = Ok(4);
         //   |         -   ^^ cannot infer type for `E` in `std::result::Result<i32, E>`
         //   |         |
-        //   |         consider giving `b` the type `std::result::Result<i32, E>` with the type
-        //   |         parameter `E` specified
+        //   |         consider giving `b` the explicit type `std::result::Result<i32, E>`, where
+        //   |         the type parameter `E` is specified
         // ```
         let (ty_msg, suffix) = match &local_visitor.found_ty {
             Some(ty) if &ty.to_string() != "_" && ty.to_string() != name => {
                 let ty = ty_to_string(ty);
-                (format!(" in `{}`", ty),
-                 format!( "the type `{}` with the type parameter `{}` specified", ty, name))
+                (format!(" for `{}`", ty),
+                 format!(
+                     "the explicit type `{}`, where the type parameter `{}` is specified",
+                    ty,
+                    name,
+                 ))
             }
             _ => (String::new(), "a type".to_owned()),
         };
-        let mut labels = vec![(span, InferCtxt::missing_type_msg(&name, &ty_msg))];
+        let mut labels = vec![(span, InferCtxt::missing_type_msg(&name))];
 
         if let Some(pattern) = local_visitor.found_arg_pattern {
             err_span = pattern.span;
@@ -229,15 +233,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        span,
                        E0698,
                        "type inside generator must be known in this context");
-        err.span_label(span, InferCtxt::missing_type_msg(&name, ""));
+        err.span_label(span, InferCtxt::missing_type_msg(&name));
         err
     }
 
-    fn missing_type_msg(type_name: &str, postfix: &str) -> String {
+    fn missing_type_msg(type_name: &str) -> String {
         if type_name == "_" {
             "cannot infer type".to_owned()
         } else {
-            format!("cannot infer type for `{}`{}", type_name, postfix)
+            format!("cannot infer type for `{}`", type_name)
         }
     }
 }

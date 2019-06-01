@@ -1,11 +1,11 @@
-error[E0282]: type annotations needed in `&T`
+error[E0282]: type annotations needed for `&T`
   --> $DIR/issue-12187-2.rs:6:10
    |
 LL |     let &v = new();
    |         -^
    |         ||
    |         |cannot infer type
-   |         consider giving this pattern the type `&T` with the type parameter `_` specified
+   |         consider giving this pattern the explicit type `&T`, where the type parameter `_` is specified
 
 error: aborting due to previous error
 
