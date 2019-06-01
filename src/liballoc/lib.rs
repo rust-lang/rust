@@ -141,7 +141,7 @@ mod boxed {
     pub use std::boxed::Box;
 }
 #[cfg(test)]
-mod boxed_test;
+mod tests;
 pub mod collections;
 #[cfg(all(target_has_atomic = "ptr", target_has_atomic = "cas"))]
 pub mod sync;
