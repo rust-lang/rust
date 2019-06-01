@@ -74,6 +74,7 @@ pub trait DefDatabase: SourceDatabase {
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
     #[salsa::invoke(crate::source_id::AstIdMap::file_item_query)]
+    #[salsa::transparent]
     fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> TreeArc<SyntaxNode>;
 
     #[salsa::invoke(RawItems::raw_items_query)]
@@ -90,9 +91,6 @@ pub trait DefDatabase: SourceDatabase {
 
     #[salsa::invoke(crate::impl_block::impls_in_module)]
     fn impls_in_module(&self, module: Module) -> Arc<ModuleImplBlocks>;
-
-    #[salsa::invoke(crate::impl_block::impls_in_module_source_map_query)]
-    fn impls_in_module_source_map(&self, module: Module) -> Arc<ImplSourceMap>;
 
     #[salsa::invoke(crate::impl_block::impls_in_module_with_source_map_query)]
     fn impls_in_module_with_source_map(

@@ -59,7 +59,7 @@ impl ImplBlock {
 
     /// Returns the syntax of the impl block
     pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::ImplBlock>) {
-        let source_map = db.impls_in_module_source_map(self.module);
+        let source_map = db.impls_in_module_with_source_map(self.module).1;
         let (file_id, source) = self.module.definition_source(db);
         (file_id, source_map.get(&source, self.impl_id))
     }
@@ -230,11 +230,4 @@ pub(crate) fn impls_in_module_with_source_map_query(
 
 pub(crate) fn impls_in_module(db: &impl DefDatabase, module: Module) -> Arc<ModuleImplBlocks> {
     db.impls_in_module_with_source_map(module).0
-}
-
-pub(crate) fn impls_in_module_source_map_query(
-    db: &impl DefDatabase,
-    module: Module,
-) -> Arc<ImplSourceMap> {
-    db.impls_in_module_with_source_map(module).1
 }
