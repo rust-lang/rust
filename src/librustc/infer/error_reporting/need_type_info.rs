@@ -148,13 +148,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // L |     let b = Ok(4);
         //   |         -   ^^ cannot infer type for `E` in `std::result::Result<i32, E>`
         //   |         |
-        //   |         consider giving `b` a type
+        //   |         consider giving `b` the type `std::result::Result<i32, E>` with the type
+        //   |         parameter `E` specified
         // ```
-        let ty_msg = match &local_visitor.found_ty {
+        let (ty_msg, suffix) = match &local_visitor.found_ty {
             Some(ty) if &ty.to_string() != "_" && ty.to_string() != name => {
-                format!(" in `{}`", ty_to_string(ty))
+                let ty = ty_to_string(ty);
+                (format!(" in `{}`", ty),
+                 format!( "the type `{}` with the type parameter `{}` specified", ty, name))
             }
-            _ => String::new(),
+            _ => (String::new(), "a type".to_owned()),
         };
         let mut labels = vec![(span, InferCtxt::missing_type_msg(&name, &ty_msg))];
 
@@ -177,25 +180,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             //            with the type parameter `_` specified
             // ```
             labels.clear();
-            labels.push((pattern.span, format!(
-                "consider giving this closure parameter {}",
-                match &local_visitor.found_ty {
-                    Some(ty) if &ty.to_string() != "_" && ty.to_string() != name => {
-                        format!(
-                            "the type `{}` with the type parameter `{}` specified",
-                            ty_to_string(ty),
-                            name,
-                        )
-                    }
-                    _ => "a type".to_owned(),
-                },
-            )));
+            labels.push((
+                pattern.span,
+                format!("consider giving this closure parameter {}", suffix),
+            ));
         } else if let Some(pattern) = local_visitor.found_local_pattern {
             if let Some(simple_ident) = pattern.simple_ident() {
                 match pattern.span.compiler_desugaring_kind() {
                     None => labels.push((
                         pattern.span,
-                        format!("consider giving `{}` a type", simple_ident),
+                        format!("consider giving `{}` {}", simple_ident, suffix),
                     )),
                     Some(CompilerDesugaringKind::ForLoop) => labels.push((
                         pattern.span,
@@ -204,7 +198,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     _ => {}
                 }
             } else {
-                labels.push((pattern.span, "consider giving the pattern a type".to_owned()));
+                labels.push((pattern.span, format!("consider giving this pattern {}", suffix)));
             }
         };
 

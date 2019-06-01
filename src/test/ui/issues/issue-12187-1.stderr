@@ -5,7 +5,7 @@ LL |     let &v = new();
    |         -^
    |         ||
    |         |cannot infer type
-   |         consider giving the pattern a type
+   |         consider giving this pattern the type `&T` with the type parameter `_` specified
 
 error: aborting due to previous error
 

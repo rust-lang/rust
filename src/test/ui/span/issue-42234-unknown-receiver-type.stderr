@@ -2,7 +2,7 @@ error[E0282]: type annotations needed in `std::option::Option<_>`
   --> $DIR/issue-42234-unknown-receiver-type.rs:7:5
    |
 LL |     let x: Option<_> = None;
-   |         - consider giving `x` a type
+   |         - consider giving `x` the type `std::option::Option<_>` with the type parameter `T` specified
 LL |     x.unwrap().method_that_could_exist_on_some_type();
    |     ^^^^^^^^^^ cannot infer type for `T` in `std::option::Option<_>`
    |
