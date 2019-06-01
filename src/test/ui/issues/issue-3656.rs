@@ -12,13 +12,13 @@
 #![feature(rustc_private)]
 
 extern crate libc;
-use libc::{c_uint, uint32_t, c_void};
+use libc::{c_uint, c_void};
 
 pub struct KEYGEN {
     hash_algorithm: [c_uint; 2],
-    count: uint32_t,
+    count: u32,
     salt: *const c_void,
-    salt_size: uint32_t,
+    salt_size: u32,
 }
 
 extern {
