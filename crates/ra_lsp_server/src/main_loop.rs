@@ -78,7 +78,6 @@ pub fn main_loop(
     let pool = ThreadPool::new(THREADPOOL_SIZE);
     let (task_sender, task_receiver) = unbounded::<Task>();
     let mut pending_requests = PendingRequests::default();
-    let mut subs = Subscriptions::default();
 
     log::info!("server initialized, serving requests");
     let main_res = main_loop_inner(
@@ -90,7 +89,6 @@ pub fn main_loop(
         task_receiver.clone(),
         &mut state,
         &mut pending_requests,
-        &mut subs,
     );
 
     log::info!("waiting for tasks to finish...");
@@ -165,8 +163,8 @@ fn main_loop_inner(
     task_receiver: Receiver<Task>,
     state: &mut ServerWorldState,
     pending_requests: &mut PendingRequests,
-    subs: &mut Subscriptions,
 ) -> Result<()> {
+    let mut subs = Subscriptions::default();
     // We try not to index more than MAX_IN_FLIGHT_LIBS libraries at the same
     // time to always have a thread ready to react to input.
     let mut in_flight_libraries = 0;
@@ -230,7 +228,7 @@ fn main_loop_inner(
                     )?
                 }
                 RawMessage::Notification(not) => {
-                    on_notification(msg_sender, state, pending_requests, subs, not)?;
+                    on_notification(msg_sender, state, pending_requests, &mut subs, not)?;
                     state_changed = true;
                 }
                 RawMessage::Response(resp) => log::error!("unexpected response: {:?}", resp),
