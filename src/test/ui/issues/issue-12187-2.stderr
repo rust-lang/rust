@@ -5,7 +5,7 @@ LL |     let &v = new();
    |         -^
    |         ||
    |         |cannot infer type
-   |         consider giving this pattern the explicit type `&T`, where the type parameter `_` is specified
+   |         consider giving this pattern the explicit type `&T`, with the type parameters specified
 
 error: aborting due to previous error
 

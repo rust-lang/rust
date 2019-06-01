@@ -4,7 +4,7 @@ error[E0282]: type annotations needed for `&[_; 0]`
 LL |     let v = &[];
    |         -   ^^^ cannot infer type
    |         |
-   |         consider giving `v` the explicit type `&[_; 0]`, where the type parameter `_` is specified
+   |         consider giving `v` the explicit type `&[_; 0]`, with the type parameters specified
 
 error: aborting due to previous error
 

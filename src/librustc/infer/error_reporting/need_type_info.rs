@@ -152,6 +152,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         //   |         the type parameter `E` is specified
         // ```
         let (ty_msg, suffix) = match &local_visitor.found_ty {
+            Some(ty) if &ty.to_string() != "_" && name == "_" => {
+                let ty = ty_to_string(ty);
+                (format!(" for `{}`", ty),
+                 format!("the explicit type `{}`, with the type parameters specified", ty))
+            }
             Some(ty) if &ty.to_string() != "_" && ty.to_string() != name => {
                 let ty = ty_to_string(ty);
                 (format!(" for `{}`", ty),
