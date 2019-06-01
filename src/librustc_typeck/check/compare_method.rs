@@ -600,20 +600,37 @@ fn compare_number_of_generics<'a, 'tcx>(
         if impl_count != trait_count {
             err_occurred = true;
 
-            let trait_spans = if let Some(trait_hir_id) = tcx.hir().as_local_hir_id(trait_.def_id) {
+            let (
+                trait_spans,
+                impl_trait_spans,
+            ) = if let Some(trait_hir_id) = tcx.hir().as_local_hir_id(trait_.def_id) {
                 let trait_item = tcx.hir().expect_trait_item(trait_hir_id);
-                Some(if trait_item.generics.params.is_empty() {
-                    vec![trait_item.generics.span]
+                if trait_item.generics.params.is_empty() {
+                    (Some(vec![trait_item.generics.span]), vec![])
                 } else {
-                    trait_item.generics.params.iter().map(|p| p.span).collect::<Vec<Span>>()
-                })
+                    let arg_spans: Vec<Span> = trait_item.generics.params.iter()
+                        .map(|p| p.span)
+                        .collect();
+                    let impl_trait_spans: Vec<Span> = trait_item.generics.params.iter()
+                        .filter_map(|p| if !trait_item.generics.span.overlaps(p.span) {
+                            Some(p.span)
+                        } else {
+                            None
+                        }).collect();
+                    (Some(arg_spans), impl_trait_spans)
+                }
             } else {
-                trait_span.map(|s| vec![s])
+                (trait_span.map(|s| vec![s]), vec![])
             };
 
             let impl_hir_id = tcx.hir().as_local_hir_id(impl_.def_id).unwrap();
             let impl_item = tcx.hir().expect_impl_item(impl_hir_id);
-            // let span = impl_item.generics.span;
+            let impl_item_impl_trait_spans: Vec<Span> = impl_item.generics.params.iter()
+                .filter_map(|p| if !impl_item.generics.span.overlaps(p.span) {
+                    Some(p.span)
+                } else {
+                    None
+                }).collect();
             let spans = impl_item.generics.spans();
             let span = spans.primary_span();
 
@@ -659,6 +676,10 @@ fn compare_number_of_generics<'a, 'tcx>(
                     if impl_count != 1 { "s" } else { "" },
                     suffix.unwrap_or_else(|| String::new()),
                 ));
+            }
+
+            for span in impl_trait_spans.iter().chain(impl_item_impl_trait_spans.iter()) {
+                err.span_label(*span, "`impl Trait` introduces an implicit type parameter");
             }
 
             err.emit();

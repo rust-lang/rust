@@ -5,7 +5,10 @@ LL |     fn foo(&self, t: Self::T);
    |           - expected 0 type parameters
 ...
 LL |     fn foo(&self, t: impl Clone) {}
-   |                      ^^^^^^^^^^ found 1 type parameter
+   |                      ^^^^^^^^^^
+   |                      |
+   |                      found 1 type parameter
+   |                      `impl Trait` introduces an implicit type parameter
 
 error: aborting due to previous error
 
