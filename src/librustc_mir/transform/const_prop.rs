@@ -400,6 +400,13 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                                 ),
                                 layout: place_layout
                             }.into())
+                        } else if operands.len() == 1 {
+                            let opty = self.eval_operand(&operands[0], source_info)?;
+
+                            Some(ImmTy {
+                                imm: Immediate::Scalar(self.opty_to_scalar(opty)?),
+                                layout: place_layout
+                            }.into())
                         } else {
                             None
                         }

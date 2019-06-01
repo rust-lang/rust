@@ -43,8 +43,8 @@ fn main() {
 // START rustc.foo.ConstProp.after.mir
 // bb0: {
 //     ...
-//     _2 = (const 0i32,);
-//     _1 = (_2.0: i32);
+//     _2 = const Scalar(0x00000000) : (i32,);
+//     _1 = const 0i32;
 //     ...
 //     _4 = (const 0i32, const 1i32);
 //     _3 = const 1i32;
@@ -114,11 +114,11 @@ fn main() {
 //  }
 //  bb3: {
 //      ...
-//      _10 = (const 2u32,);
-//      _9 = (_10.0: u32);
-//      _8 = Eq(move _9, const 2u32);
+//      _10 = const Scalar(0x00000002) : (u32,);
+//      _9 = const 2u32;
+//      _8 = const true;
 //      ...
-//      switchInt(_8) -> [false: bb5, otherwise: bb4];
+//      switchInt(const true) -> [false: bb5, otherwise: bb4];
 //  }
 //  bb4: {
 //      const std::process::exit(const 0i32);
@@ -142,7 +142,7 @@ fn main() {
 //     _3 = (_4.2: u32);
 //     _2 = Eq(move _3, const 8u32);
 //     ...
-//     switchInt(_2) -> [false: bb5, otherwise: bb2];
+//     switchInt(_2) -> [false: bb3, otherwise: bb2];
 // }
 // bb2: {
 //     ...
@@ -151,19 +151,13 @@ fn main() {
 //     _6 = const 42u32;
 //     _5 = const true;
 //     ...
-//     (_10.0: u32) = const 2u32;
-//     _9 = (_10.0: u32);
-//     _8 = Eq(move _9, const 2u32);
+//     _10 = const Scalar(0x00000002) : (u32,);
+//     _9 = const 2u32;
+//     _8 = const true;
 //     ...
-//     switchInt(_8) -> [false: bb4, otherwise: bb3];
-// }
-// bb3: {
 //     const std::process::exit(const 0i32);
 // }
-// bb4: {
-//     const std::process::exit(const 1i32);
-// }
-// bb5: {
+// bb3: {
 //     const std::process::exit(const 3i32);
 // }
 // END rustc.main.SimplifyCfg-final.after.mir
