@@ -1,6 +1,7 @@
 //! Trait solving using Chalk.
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
+use parking_lot::Mutex;
 use rustc_hash::FxHashSet;
 use log::debug;
 use chalk_ir::cast::Cast;
@@ -61,7 +62,7 @@ fn solve(
     let context = ChalkContext { db, krate };
     let solver = db.solver(krate);
     debug!("solve goal: {:?}", goal);
-    let solution = solver.lock().unwrap().solve_with_fuel(&context, goal, Some(1000));
+    let solution = solver.lock().solve_with_fuel(&context, goal, Some(1000));
     debug!("solve({:?}) => {:?}", goal, solution);
     solution
 }
