@@ -89,7 +89,7 @@ error: expected type, found `4`
 LL |     println!("{}", a: &mut 4);
    |                            ^ expecting a type here because of type ascription
    |
-   = note: type ascription is a nightly-only feature that lets you annotate an expression with a type: `<expr>: <type>`
+   = note: #![feature(type_ascription)] lets you annotate an expression with a type: `<expr>: <type>`
 note: this expression expects an ascribed type after the colon
   --> $DIR/issue-22644.rs:34:20
    |
