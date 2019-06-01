@@ -52,7 +52,7 @@ struct GatherUsedMutsVisitor<'visit, 'cx: 'visit, 'gcx: 'tcx, 'tcx: 'cx> {
     mbcx: &'visit mut MirBorrowckCtxt<'cx, 'gcx, 'tcx>,
 }
 
-impl<'visit, 'cx, 'gcx, 'tcx> GatherUsedMutsVisitor<'visit, 'cx, 'gcx, 'tcx> {
+impl GatherUsedMutsVisitor<'_, '_, '_, '_> {
     fn remove_never_initialized_mut_locals(into: &Place) {
         // Remove any locals that we found were initialized from the
         // `never_initialized_mut_locals` set. At the end, the only remaining locals will
