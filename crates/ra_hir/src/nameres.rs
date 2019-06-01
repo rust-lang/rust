@@ -320,8 +320,22 @@ impl CrateDefMap {
         (res.resolved_def, res.segment_index)
     }
 
-    pub(crate) fn find_macro(&self, name: &Name) -> Option<MacroDefId> {
-        self.public_macros.get(name).or(self.local_macros.get(name)).map(|it| *it)
+    pub(crate) fn find_macro(
+        &self,
+        db: &impl DefDatabase,
+        original_module: CrateModuleId,
+        path: &Path,
+    ) -> Option<MacroDefId> {
+        let name = path.expand_macro_expr()?;
+        // search local first
+        // FIXME: Remove public_macros check when we have a correct local_macors implementation
+        let local = self.public_macros.get(&name).or(self.local_macros.get(&name)).map(|it| *it);
+        if local.is_some() {
+            return local;
+        }
+
+        let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
+        res.resolved_def.right().map(|m| m.id)
     }
 
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change

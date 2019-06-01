@@ -217,6 +217,29 @@ mod tests {
     }
 
     #[test]
+    fn goto_definition_works_for_macros_from_other_crates() {
+        covers!(goto_definition_works_for_macros);
+        check_goto(
+            "
+            //- /lib.rs
+            use foo::foo;
+            fn bar() {
+                <|>foo!();
+            }
+
+            //- /foo/lib.rs
+            #[macro_export]
+            macro_rules! foo {
+                () => {             
+                    {}
+                };
+            }            
+            ",
+            "foo MACRO_CALL FileId(2) [0; 79) [29; 32)",
+        );
+    }
+
+    #[test]
     fn goto_definition_works_for_methods() {
         covers!(goto_definition_works_for_methods);
         check_goto(

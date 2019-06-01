@@ -130,9 +130,13 @@ impl Resolver {
         resolution
     }
 
-    pub(crate) fn resolve_macro_call(&self, path: Option<Path>) -> Option<MacroDefId> {
-        let name = path.and_then(|path| path.expand_macro_expr()).unwrap_or_else(Name::missing);
-        self.module()?.0.find_macro(&name)
+    pub(crate) fn resolve_macro_call(
+        &self,
+        db: &impl HirDatabase,
+        path: Option<Path>,
+    ) -> Option<MacroDefId> {
+        let m = self.module()?;
+        m.0.find_macro(db, m.1, &path?)
     }
 
     /// Returns the resolved path segments

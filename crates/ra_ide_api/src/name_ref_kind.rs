@@ -39,7 +39,7 @@ pub(crate) fn classify_name_ref(
         .and_then(ast::MacroCall::cast)
     {
         tested_by!(goto_definition_works_for_macros);
-        if let Some(mac) = analyzer.resolve_macro_call(macro_call) {
+        if let Some(mac) = analyzer.resolve_macro_call(db, macro_call) {
             return Some(Macro(mac));
         }
     }
