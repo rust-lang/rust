@@ -569,7 +569,7 @@ pub mod debuginfo {
     bitflags! {
         #[repr(transparent)]
         #[derive(Default)]
-        pub struct DIFlags: ::libc::uint32_t {
+        pub struct DIFlags: u32 {
             const FlagZero                = 0;
             const FlagPrivate             = 1;
             const FlagProtected           = 2;
@@ -598,7 +598,7 @@ pub mod debuginfo {
     bitflags! {
         #[repr(transparent)]
         #[derive(Default)]
-        pub struct DISPFlags: ::libc::uint32_t {
+        pub struct DISPFlags: u32 {
             const SPFlagZero              = 0;
             const SPFlagVirtual           = 1;
             const SPFlagPureVirtual       = 2;
