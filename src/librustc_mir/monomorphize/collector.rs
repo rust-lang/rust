@@ -187,7 +187,7 @@ use rustc::session::config::EntryFnType;
 use rustc::mir::{self, Location, Place, PlaceBase, Promoted, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
-use rustc::mir::interpret::{Scalar, GlobalId, AllocKind, ErrorHandled};
+use rustc::mir::interpret::{Scalar, GlobalId, GlobalAlloc, ErrorHandled};
 
 use crate::monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
@@ -1183,20 +1183,20 @@ fn collect_miri<'a, 'tcx>(
 ) {
     let alloc_kind = tcx.alloc_map.lock().get(alloc_id);
     match alloc_kind {
-        Some(AllocKind::Static(did)) => {
-            let instance = Instance::mono(tcx, did);
+        Some(GlobalAlloc::Static(def_id)) => {
+            let instance = Instance::mono(tcx, def_id);
             if should_monomorphize_locally(tcx, &instance) {
-                trace!("collecting static {:?}", did);
-                output.push(MonoItem::Static(did));
+                trace!("collecting static {:?}", def_id);
+                output.push(MonoItem::Static(def_id));
             }
         }
-        Some(AllocKind::Memory(alloc)) => {
+        Some(GlobalAlloc::Memory(alloc)) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
             for &((), inner) in alloc.relocations.values() {
                 collect_miri(tcx, inner, output);
             }
         },
-        Some(AllocKind::Function(fn_instance)) => {
+        Some(GlobalAlloc::Function(fn_instance)) => {
             if should_monomorphize_locally(tcx, &fn_instance) {
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push(create_fn_mono_item(fn_instance));
@@ -1263,7 +1263,7 @@ fn collect_const<'a, 'tcx>(
                 collect_miri(tcx, id, output);
             }
         }
-        ConstValue::Unevaluated(did, substs) => {
+        ConstValue::Unevaluated(def_id, substs) => {
             let param_env = ty::ParamEnv::reveal_all();
             let substs = tcx.subst_and_normalize_erasing_regions(
                 param_substs,
@@ -1272,7 +1272,7 @@ fn collect_const<'a, 'tcx>(
             );
             let instance = ty::Instance::resolve(tcx,
                                                 param_env,
-                                                did,
+                                                def_id,
                                                 substs).unwrap();
 
             let cid = GlobalId {
@@ -1283,7 +1283,7 @@ fn collect_const<'a, 'tcx>(
                 Ok(val) => collect_const(tcx, val, param_substs, output),
                 Err(ErrorHandled::Reported) => {},
                 Err(ErrorHandled::TooGeneric) => span_bug!(
-                    tcx.def_span(did), "collection encountered polymorphic constant",
+                    tcx.def_span(def_id), "collection encountered polymorphic constant",
                 ),
             }
         }

@@ -18,7 +18,7 @@ use syntax::ast::Mutability;
 
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
-    EvalResult, Scalar, InterpError, AllocKind, PointerArithmetic,
+    EvalResult, Scalar, InterpError, GlobalAlloc, PointerArithmetic,
     Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg, InboundsCheck,
 };
 
@@ -193,12 +193,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             None => {
                 // Deallocating static memory -- always an error
                 return match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
-                    Some(AllocKind::Function(..)) => err!(DeallocatedWrongMemoryKind(
+                    Some(GlobalAlloc::Function(..)) => err!(DeallocatedWrongMemoryKind(
                         "function".to_string(),
                         format!("{:?}", kind),
                     )),
-                    Some(AllocKind::Static(..)) |
-                    Some(AllocKind::Memory(..)) => err!(DeallocatedWrongMemoryKind(
+                    Some(GlobalAlloc::Static(..)) |
+                    Some(GlobalAlloc::Memory(..)) => err!(DeallocatedWrongMemoryKind(
                         "static".to_string(),
                         format!("{:?}", kind),
                     )),
@@ -313,15 +313,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
         let def_id = match alloc {
-            Some(AllocKind::Memory(mem)) => {
+            Some(GlobalAlloc::Memory(mem)) => {
                 // We got tcx memory. Let the machine figure out whether and how to
                 // turn that into memory with the right pointer tag.
                 return Ok(M::adjust_static_allocation(mem, memory_extra))
             }
-            Some(AllocKind::Function(..)) => {
+            Some(GlobalAlloc::Function(..)) => {
                 return err!(DerefFunctionPointer)
             }
-            Some(AllocKind::Static(did)) => {
+            Some(GlobalAlloc::Static(did)) => {
                 did
             }
             None =>
@@ -429,8 +429,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
         // Could also be a fn ptr or extern static
         match self.tcx.alloc_map.lock().get(id) {
-            Some(AllocKind::Function(..)) => Ok((Size::ZERO, Align::from_bytes(1).unwrap())),
-            Some(AllocKind::Static(did)) => {
+            Some(GlobalAlloc::Function(..)) => Ok((Size::ZERO, Align::from_bytes(1).unwrap())),
+            Some(GlobalAlloc::Static(did)) => {
                 // The only way `get` couldn't have worked here is if this is an extern static
                 assert!(self.tcx.is_foreign_item(did));
                 // Use size and align of the type
@@ -456,7 +456,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
         trace!("reading fn ptr: {}", ptr.alloc_id);
         match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
-            Some(AllocKind::Function(instance)) => Ok(instance),
+            Some(GlobalAlloc::Function(instance)) => Ok(instance),
             _ => Err(InterpError::ExecuteMemory.into()),
         }
     }
@@ -554,16 +554,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 Err(()) => {
                     // static alloc?
                     match self.tcx.alloc_map.lock().get(id) {
-                        Some(AllocKind::Memory(alloc)) => {
+                        Some(GlobalAlloc::Memory(alloc)) => {
                             self.dump_alloc_helper(
                                 &mut allocs_seen, &mut allocs_to_print,
                                 msg, alloc, " (immutable)".to_owned()
                             );
                         }
-                        Some(AllocKind::Function(func)) => {
+                        Some(GlobalAlloc::Function(func)) => {
                             trace!("{} {}", msg, func);
                         }
-                        Some(AllocKind::Static(did)) => {
+                        Some(GlobalAlloc::Static(did)) => {
                             trace!("{} {:?}", msg, did);
                         }
                         None => {
