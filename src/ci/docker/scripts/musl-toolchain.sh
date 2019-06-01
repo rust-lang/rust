@@ -33,8 +33,11 @@ shift
 # Apparently applying `-fPIC` everywhere allows them to link successfully.
 export CFLAGS="-fPIC $CFLAGS"
 
-git clone https://github.com/richfelker/musl-cross-make -b v0.9.8
+git clone https://github.com/richfelker/musl-cross-make
 cd musl-cross-make
+# A full hash is used because unlike branch names and tags, hashes are immutable over time.
+# Corresponds to v0.9.8.
+git reset --hard 629189831f61b73ba1053624eee12ff6a816438f
 
 hide_output make -j$(nproc) TARGET=$TARGET
 hide_output make install TARGET=$TARGET OUTPUT=$OUTPUT
