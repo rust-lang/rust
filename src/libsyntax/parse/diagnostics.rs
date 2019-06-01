@@ -1234,6 +1234,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Replace duplicated recovered arguments with `_` pattern to avoid unecessary errors.
+    ///
+    /// This is necessary because at this point we don't know whether we parsed a function with
+    /// anonymous arguments or a function with names but no types. In order to minimize
+    /// unecessary errors, we assume the arguments are in the shape of `fn foo(a, b, c)` where
+    /// the arguments are *names* (so we don't emit errors about not being able to find `b` in
+    /// the local scope), but if we find the same name multiple times, like in `fn foo(i8, i8)`,
+    /// we deduplicate them to not complain about duplicated argument names.
     crate fn deduplicate_recovered_arg_names(&self, fn_inputs: &mut Vec<Arg>) {
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
