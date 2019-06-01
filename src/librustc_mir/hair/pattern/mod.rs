@@ -1058,7 +1058,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 }
 
-impl UserAnnotatedTyHelpers<'tcx, 'tcx> for PatternContext<'_, 'tcx> {
+impl UserAnnotatedTyHelpers<'tcx> for PatternContext<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
@@ -1246,8 +1246,8 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
     }
 }
 
-pub fn compare_const_vals<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn compare_const_vals<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
     ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,

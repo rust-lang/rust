@@ -10,7 +10,7 @@ use rustc::ty::{CanonicalUserTypeAnnotation, Variance};
 
 use rustc_data_structures::indexed_vec::Idx;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a place that we can move from etc.
     pub fn as_place<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Place<'tcx>>
     where

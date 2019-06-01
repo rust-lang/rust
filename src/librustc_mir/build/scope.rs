@@ -257,7 +257,7 @@ impl<'tcx> Scope<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Adding and removing scopes
     // ==========================
     /// Start a breakable scope, which tracks where `continue` and `break`
@@ -269,7 +269,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                     break_block: BasicBlock,
                                     break_destination: Place<'tcx>,
                                     f: F) -> R
-        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> R
+        where F: FnOnce(&mut Builder<'a, 'tcx>) -> R
     {
         let region_scope = self.topmost_scope();
         let scope = BreakableScope {
@@ -289,7 +289,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                               opt_scope: Option<(region::Scope, SourceInfo)>,
                               f: F)
                               -> BlockAnd<R>
-        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_opt_scope(opt_scope={:?})", opt_scope);
         if let Some(region_scope) = opt_scope { self.push_scope(region_scope); }
@@ -309,7 +309,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                           lint_level: LintLevel,
                           f: F)
                           -> BlockAnd<R>
-        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(region_scope={:?})", region_scope);
         let source_scope = self.source_scope;

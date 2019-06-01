@@ -27,7 +27,7 @@ mod util;
 
 use std::convert::TryFrom;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Generates MIR for a `match` expression.
     ///
     /// The MIR that we generate for a match looks like this.
@@ -768,7 +768,7 @@ pub(crate) struct ArmHasGuard(pub bool);
 ///////////////////////////////////////////////////////////////////////////
 // Main matching algorithm
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// The main match algorithm. It begins with a set of candidates
     /// `candidates` and has the job of generating code to determine
     /// which of these candidates, if any, is the correct one. The
@@ -1296,7 +1296,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Pattern binding - used for `let` and function parameters as well.
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Initializes each of the bindings from the candidate by
     /// moving/copying/ref'ing the source as appropriate. Tests the guard, if
     /// any, and then branches to the arm. Returns the block for the case where

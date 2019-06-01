@@ -6,7 +6,7 @@ use rustc::mir::*;
 use rustc::hir;
 use syntax_pos::Span;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn ast_block(&mut self,
                      destination: &Place<'tcx>,
                      block: BasicBlock,

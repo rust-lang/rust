@@ -6,7 +6,7 @@ use crate::hair::*;
 use rustc::middle::region;
 use rustc::mir::*;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
     pub fn as_temp<M>(

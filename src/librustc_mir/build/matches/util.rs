@@ -5,7 +5,7 @@ use rustc::mir::*;
 use std::u32;
 use std::convert::TryInto;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn field_match_pairs<'pat>(&mut self,
                                    place: Place<'tcx>,
                                    subpatterns: &'pat [FieldPattern<'tcx>])

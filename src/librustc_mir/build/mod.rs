@@ -9,13 +9,10 @@ use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::mir::*;
-use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::SubstsRef;
 use rustc::util::nodemap::HirIdMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use std::mem;
 use std::u32;
 use rustc_target::spec::abi::Abi;
 use syntax::attr::{self, UnwindAttr};
@@ -66,7 +63,7 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Body<'tcx> {
 
     tcx.infer_ctxt().enter(|infcx| {
         let cx = Cx::new(&infcx, id);
-        let mut body = if cx.tables().tainted_by_errors {
+        let body = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
         } else if cx.body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
@@ -162,16 +159,6 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Body<'tcx> {
             build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
 
-        // Convert the `mir::Body` to global types.
-        let mut globalizer = GlobalizeMir {
-            tcx,
-            span: body.span
-        };
-        globalizer.visit_body(&mut body);
-        let body = unsafe {
-            mem::transmute::<Body<'_>, Body<'tcx>>(body)
-        };
-
         mir_util::dump_mir(tcx, None, "mir_map", &0,
                            MirSource::item(def_id), &body, |_, _| Ok(()) );
 
@@ -181,61 +168,11 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Body<'tcx> {
     })
 }
 
-/// A pass to lift all the types and substitutions in a MIR
-/// to the global tcx. Sadly, we don't have a "folder" that
-/// can change `'tcx` so we have to transmute afterwards.
-struct GlobalizeMir<'gcx> {
-    tcx: TyCtxt<'gcx, 'gcx>,
-    span: Span,
-}
-
-impl<'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'gcx> {
-    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
-        if let Some(lifted) = self.tcx.lift(ty) {
-            *ty = lifted;
-        } else {
-            span_bug!(self.span,
-                      "found type `{:?}` with inference types/regions in MIR",
-                      ty);
-        }
-    }
-
-    fn visit_region(&mut self, region: &mut ty::Region<'tcx>, _: Location) {
-        if let Some(lifted) = self.tcx.lift(region) {
-            *region = lifted;
-        } else {
-            span_bug!(self.span,
-                      "found region `{:?}` with inference types/regions in MIR",
-                      region);
-        }
-    }
-
-    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _: Location) {
-        if let Some(lifted) = self.tcx.lift(constant) {
-            *constant = lifted;
-        } else {
-            span_bug!(self.span,
-                      "found constant `{:?}` with inference types/regions in MIR",
-                      constant);
-        }
-    }
-
-    fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, _: Location) {
-        if let Some(lifted) = self.tcx.lift(substs) {
-            *substs = lifted;
-        } else {
-            span_bug!(self.span,
-                      "found substs `{:?}` with inference types/regions in MIR",
-                      substs);
-        }
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-fn liberated_closure_env_ty<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+fn liberated_closure_env_ty<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     closure_expr_id: hir::HirId,
     body_id: hir::BodyId,
 ) -> Ty<'tcx> {
@@ -304,8 +241,8 @@ impl BlockFrame {
 #[derive(Debug)]
 struct BlockContext(Vec<BlockFrame>);
 
-struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    hir: Cx<'a, 'gcx, 'tcx>,
+struct Builder<'a, 'tcx: 'a> {
+    hir: Cx<'a, 'tcx>,
     cfg: CFG<'tcx>,
 
     fn_span: Span,
@@ -370,7 +307,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     cached_unreachable_block: Option<BasicBlock>,
 }
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn is_bound_var_in_guard(&self, id: hir::HirId) -> bool {
         self.guard_context.iter().any(|frame| frame.locals.iter().any(|local| local.id == id))
     }
@@ -552,7 +489,7 @@ macro_rules! unpack {
     };
 }
 
-fn should_abort_on_panic<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>, fn_def_id: DefId, abi: Abi) -> bool {
+fn should_abort_on_panic<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, fn_def_id: DefId, abi: Abi) -> bool {
     // Not callable from C, so we can safely unwind through these
     if abi == Abi::Rust || abi == Abi::RustCall { return false; }
 
@@ -580,17 +517,19 @@ fn should_abort_on_panic<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>, fn_def_id: DefId, 
 
 struct ArgInfo<'gcx>(Ty<'gcx>, Option<Span>, Option<&'gcx hir::Pat>, Option<ImplicitSelfKind>);
 
-fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
-                                   fn_id: hir::HirId,
-                                   arguments: A,
-                                   safety: Safety,
-                                   abi: Abi,
-                                   return_ty: Ty<'gcx>,
-                                   yield_ty: Option<Ty<'gcx>>,
-                                   return_ty_span: Span,
-                                   body: &'gcx hir::Body)
-                                   -> Body<'tcx>
-    where A: Iterator<Item=ArgInfo<'gcx>>
+fn construct_fn<'a, 'tcx, A>(
+    hir: Cx<'a, 'tcx>,
+    fn_id: hir::HirId,
+    arguments: A,
+    safety: Safety,
+    abi: Abi,
+    return_ty: Ty<'tcx>,
+    yield_ty: Option<Ty<'tcx>>,
+    return_ty_span: Span,
+    body: &'tcx hir::Body,
+) -> Body<'tcx>
+where
+    A: Iterator<Item=ArgInfo<'tcx>>
 {
     let arguments: Vec<_> = arguments.collect();
 
@@ -703,8 +642,8 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     body
 }
 
-fn construct_const<'a, 'gcx, 'tcx>(
-    hir: Cx<'a, 'gcx, 'tcx>,
+fn construct_const<'a, 'tcx>(
+    hir: Cx<'a, 'tcx>,
     body_id: hir::BodyId,
     const_ty: Ty<'tcx>,
     const_ty_span: Span,
@@ -745,9 +684,10 @@ fn construct_const<'a, 'gcx, 'tcx>(
     builder.finish(None)
 }
 
-fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
-                                   body_id: hir::BodyId)
-                                   -> Body<'tcx> {
+fn construct_error<'a, 'tcx>(
+    hir: Cx<'a, 'tcx>,
+    body_id: hir::BodyId
+) -> Body<'tcx> {
     let owner_id = hir.tcx().hir().body_owner(body_id);
     let span = hir.tcx().hir().span(owner_id);
     let ty = hir.tcx().types.err;
@@ -757,8 +697,8 @@ fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     builder.finish(None)
 }
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    fn new(hir: Cx<'a, 'gcx, 'tcx>,
+impl<'a, 'tcx> Builder<'a, 'tcx> {
+    fn new(hir: Cx<'a, 'tcx>,
            span: Span,
            arg_count: usize,
            safety: Safety,
@@ -767,7 +707,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
            __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
            upvar_mutbls: Vec<Mutability>,
            is_generator: bool)
-           -> Builder<'a, 'gcx, 'tcx> {
+           -> Builder<'a, 'tcx> {
         let lint_level = LintLevel::Explicit(hir.root_lint_level);
         let mut builder = Builder {
             hir,
@@ -833,9 +773,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn args_and_body(&mut self,
                      mut block: BasicBlock,
-                     arguments: &[ArgInfo<'gcx>],
+                     arguments: &[ArgInfo<'tcx>],
                      argument_scope: region::Scope,
-                     ast_body: &'gcx hir::Expr)
+                     ast_body: &'tcx hir::Expr)
                      -> BlockAnd<()>
     {
         // Allocate locals for the function arguments
