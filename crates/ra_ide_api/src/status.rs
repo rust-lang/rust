@@ -4,11 +4,12 @@ use std::{
     sync::Arc,
 };
 
-use ra_syntax::{AstNode, Parse};
+use ra_syntax::{TreeArc, SyntaxNode};
 use ra_db::{
-    ParseQuery, FileTextQuery, SourceRootId,
+    FileTextQuery, SourceRootId,
     salsa::{Database, debug::{DebugQueryTable, TableEntry}},
 };
+use hir::HirFileId;
 
 use crate::{
     FileId, db::RootDatabase,
@@ -16,7 +17,7 @@ use crate::{
 };
 
 pub(crate) fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
-    db.query(ParseQuery).entries::<SyntaxTreeStats>()
+    db.query(hir::db::ParseOrExpandQuery).entries::<SyntaxTreeStats>()
 }
 
 pub(crate) fn status(db: &RootDatabase) -> String {
@@ -72,17 +73,17 @@ impl fmt::Display for SyntaxTreeStats {
     }
 }
 
-impl FromIterator<TableEntry<FileId, Parse>> for SyntaxTreeStats {
+impl FromIterator<TableEntry<HirFileId, Option<TreeArc<SyntaxNode>>>> for SyntaxTreeStats {
     fn from_iter<T>(iter: T) -> SyntaxTreeStats
     where
-        T: IntoIterator<Item = TableEntry<FileId, Parse>>,
+        T: IntoIterator<Item = TableEntry<HirFileId, Option<TreeArc<SyntaxNode>>>>,
     {
         let mut res = SyntaxTreeStats::default();
         for entry in iter {
             res.total += 1;
-            if let Some(value) = entry.value {
+            if let Some(tree) = entry.value.and_then(|it| it) {
                 res.retained += 1;
-                res.retained_size += value.tree.syntax().memory_size_of_subtree();
+                res.retained_size += tree.memory_size_of_subtree();
             }
         }
         res
