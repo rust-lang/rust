@@ -1080,8 +1080,18 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             let msg = format!("expected tuple struct/variant, found {} `{}`",
                               res.descr(),
                               hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
-            struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
-                .span_label(pat.span, "not a tuple variant or struct").emit();
+            let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
+            match (res, &pat.node) {
+                (Res::Def(DefKind::Fn, _), _) | (Res::Def(DefKind::Method, _), _) => {
+                    err.span_label(pat.span, "`fn` calls are not allowed in patterns");
+                    err.help("for more information, visit \
+                              https://doc.rust-lang.org/book/ch18-00-patterns.html");
+                }
+                _ => {
+                    err.span_label(pat.span, "not a tuple variant or struct");
+                }
+            }
+            err.emit();
             on_error();
         };
 
