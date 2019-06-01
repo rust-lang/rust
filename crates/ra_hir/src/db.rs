@@ -1,5 +1,6 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
+use parking_lot::Mutex;
 use ra_syntax::{SyntaxNode, TreeArc, SmolStr, ast};
 use ra_db::{SourceDatabase, salsa};
 
