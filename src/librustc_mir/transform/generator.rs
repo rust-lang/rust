@@ -66,8 +66,8 @@ use std::mem;
 use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
-use crate::dataflow::{DataflowResults};
-use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location, for_each_location};
+use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
+use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
 use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
 use crate::util::dump_mir;
 use crate::util::liveness;
@@ -541,6 +541,25 @@ fn locals_live_across_suspend_points(
     }
 }
 
+/// Renumbers the items present in `stored_locals` and applies the renumbering
+/// to 'input`.
+///
+/// For example, if `stored_locals = [1, 3, 5]`, this would be renumbered to
+/// `[0, 1, 2]`. Thus, if `input = [3, 5]` we would return `[1, 2]`.
+fn renumber_bitset(input: &BitSet<Local>, stored_locals: &liveness::LiveVarSet)
+-> BitSet<GeneratorSavedLocal> {
+    assert!(stored_locals.superset(&input), "{:?} not a superset of {:?}", stored_locals, input);
+    let mut out = BitSet::new_empty(stored_locals.count());
+    for (idx, local) in stored_locals.iter().enumerate() {
+        let saved_local = GeneratorSavedLocal::from(idx);
+        if input.contains(local) {
+            out.insert(saved_local);
+        }
+    }
+    debug!("renumber_bitset({:?}, {:?}) => {:?}", input, stored_locals, out);
+    out
+}
+
 /// For every saved local, looks for which locals are StorageLive at the same
 /// time. Generates a bitset for every local of all the other locals that may be
 /// StorageLive simultaneously with that local. This is used in the layout
@@ -550,7 +569,7 @@ fn compute_storage_conflicts(
     stored_locals: &liveness::LiveVarSet,
     ignored: &StorageIgnored,
     storage_live: DataflowResults<'tcx, MaybeStorageLive<'mir, 'tcx>>,
-    storage_live_analysis: MaybeStorageLive<'mir, 'tcx>,
+    _storage_live_analysis: MaybeStorageLive<'mir, 'tcx>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), ignored.0.domain_size());
     assert_eq!(body.local_decls.len(), stored_locals.domain_size());
@@ -562,26 +581,18 @@ fn compute_storage_conflicts(
     let mut ineligible_locals = ignored.0.clone();
     ineligible_locals.intersect(&stored_locals);
 
-    // Of our remaining candidates, find out if any have overlapping storage
-    // liveness. Those that do must be in the same variant to remain candidates.
-    // FIXME(tmandry): Consider using sparse bitsets here once we have good
-    // benchmarks for generators.
-    let mut local_conflicts: BitMatrix<Local, Local> =
-        BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len());
+    // Compute the storage conflicts for all eligible locals.
+    let mut visitor = StorageConflictVisitor {
+        body,
+        stored_locals: &stored_locals,
+        local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len())
+    };
+    let mut state = FlowAtLocation::new(storage_live);
+    visitor.analyze_results(&mut state);
+    let local_conflicts = visitor.local_conflicts;
 
-    for_each_location(body, &storage_live_analysis, &storage_live, |state, loc| {
-        let mut eligible_storage_live = state.clone().to_dense();
-        eligible_storage_live.intersect(&stored_locals);
-
-        for local in eligible_storage_live.iter() {
-            local_conflicts.union_row_with(&eligible_storage_live, local);
-        }
-
-        if eligible_storage_live.count() > 1 {
-            trace!("at {:?}, eligible_storage_live={:?}", loc, eligible_storage_live);
-        }
-    });
-
+    // Compress the matrix using only stored locals (Local -> GeneratorSavedLocal).
+    //
     // NOTE: Today we store a full conflict bitset for every local. Technically
     // this is twice as many bits as we need, since the relation is symmetric.
     // However, in practice these bitsets are not usually large. The layout code
@@ -606,23 +617,64 @@ fn compute_storage_conflicts(
     storage_conflicts
 }
 
-/// Renumbers the items present in `stored_locals` and applies the renumbering
-/// to 'input`.
-///
-/// For example, if `stored_locals = [1, 3, 5]`, this would be renumbered to
-/// `[0, 1, 2]`. Thus, if `input = [3, 5]` we would return `[1, 2]`.
-fn renumber_bitset(input: &BitSet<Local>, stored_locals: &liveness::LiveVarSet)
--> BitSet<GeneratorSavedLocal> {
-    assert!(stored_locals.superset(&input), "{:?} not a superset of {:?}", stored_locals, input);
-    let mut out = BitSet::new_empty(stored_locals.count());
-    for (idx, local) in stored_locals.iter().enumerate() {
-        let saved_local = GeneratorSavedLocal::from(idx);
-        if input.contains(local) {
-            out.insert(saved_local);
+struct StorageConflictVisitor<'body, 'tcx: 'body, 's> {
+    body: &'body Body<'tcx>,
+    stored_locals: &'s liveness::LiveVarSet,
+    // FIXME(tmandry): Consider using sparse bitsets here once we have good
+    // benchmarks for generators.
+    local_conflicts: BitMatrix<Local, Local>,
+}
+
+impl<'body, 'tcx: 'body, 's> DataflowResultsConsumer<'body, 'tcx>
+for StorageConflictVisitor<'body, 'tcx, 's> {
+    type FlowState = FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>;
+
+    fn body(&self) -> &'body Body<'tcx> {
+        self.body
+    }
+
+    fn visit_block_entry(&mut self,
+                         block: BasicBlock,
+                         flow_state: &Self::FlowState) {
+        // statement_index is only used for logging, so this is fine.
+        self.apply_state(flow_state, Location { block, statement_index: 0 });
+    }
+
+    fn visit_statement_entry(&mut self,
+                             loc: Location,
+                             _stmt: &Statement<'tcx>,
+                             flow_state: &Self::FlowState) {
+        self.apply_state(flow_state, loc);
+    }
+
+    fn visit_terminator_entry(&mut self,
+                              loc: Location,
+                              _term: &Terminator<'tcx>,
+                              flow_state: &Self::FlowState) {
+        self.apply_state(flow_state, loc);
+    }
+}
+
+impl<'body, 'tcx: 'body, 's> StorageConflictVisitor<'body, 'tcx, 's> {
+    fn apply_state(&mut self,
+                   flow_state: &FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>,
+                   loc: Location) {
+        // Ignore unreachable blocks.
+        if self.body.basic_blocks()[loc.block].is_unreachable() {
+            return;
+        }
+
+        let mut eligible_storage_live = flow_state.as_dense().clone();
+        eligible_storage_live.intersect(&self.stored_locals);
+
+        for local in eligible_storage_live.iter() {
+            self.local_conflicts.union_row_with(&eligible_storage_live, local);
+        }
+
+        if eligible_storage_live.count() > 1 {
+            trace!("at {:?}, eligible_storage_live={:?}", loc, eligible_storage_live);
         }
     }
-    debug!("renumber_bitset({:?}, {:?}) => {:?}", input, stored_locals, out);
-    out
 }
 
 fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
