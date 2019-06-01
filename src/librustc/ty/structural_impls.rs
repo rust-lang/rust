@@ -94,7 +94,6 @@ impl fmt::Debug for ty::BoundRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::BrAnon(n) => write!(f, "BrAnon({:?})", n),
-            ty::BrFresh(n) => write!(f, "BrFresh({:?})", n),
             ty::BrNamed(did, name) => {
                 write!(f, "BrNamed({:?}:{:?}, {})",
                         did.krate, did.index, name)

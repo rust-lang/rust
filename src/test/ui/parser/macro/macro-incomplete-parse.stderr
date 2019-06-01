@@ -1,5 +1,5 @@
 error: macro expansion ignores token `,` and any following
-  --> $DIR/macro-incomplete-parse.rs:7:9
+  --> $DIR/macro-incomplete-parse.rs:5:9
    |
 LL |         ,
    |         ^
@@ -10,7 +10,7 @@ LL | ignored_item!();
    = note: the usage of `ignored_item!` is likely invalid in item context
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
-  --> $DIR/macro-incomplete-parse.rs:12:14
+  --> $DIR/macro-incomplete-parse.rs:10:14
    |
 LL |     () => ( 1,
    |              ^ expected one of `.`, `;`, `?`, `}`, or an operator here
@@ -19,7 +19,7 @@ LL |     ignored_expr!();
    |     ---------------- in this macro invocation
 
 error: macro expansion ignores token `,` and any following
-  --> $DIR/macro-incomplete-parse.rs:18:14
+  --> $DIR/macro-incomplete-parse.rs:16:14
    |
 LL |     () => ( 1, 2 )
    |              ^

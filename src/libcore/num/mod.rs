@@ -463,15 +463,12 @@ assert_eq!(m, ", $swapped, ");
 Basic usage:
 
 ```
-#![feature(reverse_bits)]
-
 let n = ", $swap_op, stringify!($SelfT), ";
 let m = n.reverse_bits();
 
 assert_eq!(m, ", $reversed, ");
 ```"),
-            #[unstable(feature = "reverse_bits", issue = "48763")]
-            #[rustc_const_unstable(feature = "const_int_conversion")]
+            #[stable(feature = "reverse_bits", since = "1.37.0")]
             #[inline]
             #[must_use]
             pub const fn reverse_bits(self) -> Self {
@@ -2514,14 +2511,12 @@ assert_eq!(m, ", $swapped, ");
 Basic usage:
 
 ```
-#![feature(reverse_bits)]
-
 let n = ", $swap_op, stringify!($SelfT), ";
 let m = n.reverse_bits();
 
 assert_eq!(m, ", $reversed, ");
 ```"),
-            #[unstable(feature = "reverse_bits", issue = "48763")]
+            #[stable(feature = "reverse_bits", since = "1.37.0")]
             #[inline]
             #[must_use]
             pub const fn reverse_bits(self) -> Self {

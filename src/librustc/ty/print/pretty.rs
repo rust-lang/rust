@@ -1441,7 +1441,6 @@ impl<F: fmt::Write> FmtPrinter<'_, 'gcx, 'tcx, F> {
                     br
                 }
                 ty::BrAnon(_) |
-                ty::BrFresh(_) |
                 ty::BrEnv => {
                     let name = loop {
                         let name = name_by_region_index(region_index);

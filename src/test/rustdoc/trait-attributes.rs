@@ -3,7 +3,7 @@
 // ignore-tidy-linelength
 
 pub trait Foo {
-    // @has foo/trait.Foo.html '//h3[@id="tymethod.foo"]//div[@class="docblock attributes"]' '#[must_use]'
+    // @has foo/trait.Foo.html '//h3[@id="tymethod.foo"]//span[@class="docblock attributes"]' '#[must_use]'
     #[must_use]
     fn foo();
 }
@@ -12,11 +12,11 @@ pub trait Foo {
 pub struct Bar;
 
 impl Bar {
-    // @has foo/struct.Bar.html '//h4[@id="method.bar"]//div[@class="docblock attributes"]' '#[must_use]'
+    // @has foo/struct.Bar.html '//h4[@id="method.bar"]//span[@class="docblock attributes"]' '#[must_use]'
     #[must_use]
     pub fn bar() {}
 
-    // @has foo/struct.Bar.html '//h4[@id="method.bar2"]//div[@class="docblock attributes"]' '#[must_use]'
+    // @has foo/struct.Bar.html '//h4[@id="method.bar2"]//span[@class="docblock attributes"]' '#[must_use]'
     #[must_use]
     pub fn bar2() {}
 }

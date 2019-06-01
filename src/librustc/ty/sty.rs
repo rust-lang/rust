@@ -56,9 +56,6 @@ pub enum BoundRegion {
     /// the event of shadowing.
     BrNamed(DefId, InternedString),
 
-    /// Fresh bound identifiers created during GLB computations.
-    BrFresh(u32),
-
     /// Anonymous region for the implicit env pointer parameter
     /// to a closure
     BrEnv,

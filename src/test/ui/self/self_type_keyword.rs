@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 mod foo {
   struct Self;
   //~^ ERROR expected identifier, found keyword `Self`

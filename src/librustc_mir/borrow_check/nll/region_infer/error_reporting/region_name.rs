@@ -274,7 +274,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     }
                 }
 
-                ty::BoundRegion::BrAnon(_) | ty::BoundRegion::BrFresh(_) => None,
+                ty::BoundRegion::BrAnon(_) => None,
             },
 
             ty::ReLateBound(..)

@@ -1,5 +1,5 @@
 error[E0585]: found a documentation comment that doesn't document anything
-  --> $DIR/doc-before-struct-rbrace-1.rs:5:5
+  --> $DIR/doc-before-struct-rbrace-1.rs:3:5
    |
 LL |     /// document
    |     ^^^^^^^^^^^^

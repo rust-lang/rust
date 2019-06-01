@@ -3804,7 +3804,7 @@ fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item, top: bool) -> fmt
         }
     }
     if attrs.len() > 0 {
-        write!(w, "<div class=\"docblock attributes{}\">{}</div>",
+        write!(w, "<span class=\"docblock attributes{}\">{}</span>",
                if top { " top-attr" } else { "" }, &attrs)?;
     }
     Ok(())
