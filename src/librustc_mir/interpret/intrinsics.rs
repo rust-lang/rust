@@ -80,10 +80,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             }
 
             "type_name" => {
-                let ty = substs.type_at(0);
-                let ty_name = type_name(self.tcx.tcx, ty).ty.to_string();
-                let name_val = self.str_to_immediate(&ty_name)?;
-                self.write_immediate(name_val, dest)?;
+                let const_val = type_name(self.tcx.tcx, substs.type_at(0)).val;
+                if let ConstValue::Slice {
+                    data: slice_val,
+                    start: _,
+                    end: _,
+                } = const_val
+                {
+                    // unsafe for from_utf8_unchecked()
+                    unsafe {
+                        let str_val = core::str::from_utf8_unchecked(&slice_val.bytes);
+                        let name_val = self.str_to_immediate(str_val)?;
+                        self.write_immediate(name_val, dest)?;
+                    }
+                } else {
+                    bug!("type_name() somehow failed to return a ConstValue::Slice");
+                }
             }
             | "ctpop"
             | "cttz"
