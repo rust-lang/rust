@@ -1,11 +1,11 @@
 error: unnecessary visibility qualifier
-  --> $DIR/issue-28433.rs:4:5
+  --> $DIR/issue-28433.rs:2:5
    |
 LL |     pub Duck,
    |     ^^^ `pub` not permitted here
 
 error: unnecessary visibility qualifier
-  --> $DIR/issue-28433.rs:7:5
+  --> $DIR/issue-28433.rs:5:5
    |
 LL |     pub(crate) Dove
    |     ^^^^^^^^^^ `pub` not permitted here

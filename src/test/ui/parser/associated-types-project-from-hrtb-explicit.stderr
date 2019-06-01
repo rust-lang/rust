@@ -1,5 +1,5 @@
 error: expected identifier, found keyword `for`
-  --> $DIR/associated-types-project-from-hrtb-explicit.rs:12:21
+  --> $DIR/associated-types-project-from-hrtb-explicit.rs:10:21
    |
 LL | fn foo2<I>(x: <I as for<'x> Foo<&'x isize>>::A)
    |                     ^^^ expected identifier, found keyword
@@ -9,7 +9,7 @@ LL | fn foo2<I>(x: <I as r#for<'x> Foo<&'x isize>>::A)
    |                     ^^^^^
 
 error: expected one of `::` or `>`, found `Foo`
-  --> $DIR/associated-types-project-from-hrtb-explicit.rs:12:29
+  --> $DIR/associated-types-project-from-hrtb-explicit.rs:10:29
    |
 LL | fn foo2<I>(x: <I as for<'x> Foo<&'x isize>>::A)
    |                             ^^^ expected one of `::` or `>` here

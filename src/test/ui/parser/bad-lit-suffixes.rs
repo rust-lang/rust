@@ -1,6 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
-
 extern
     "C"suffix //~ ERROR suffixes on an ABI spec are invalid
     fn foo() {}
