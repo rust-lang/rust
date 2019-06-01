@@ -148,8 +148,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
             then {
                 let span = expr.span
                     .ctxt()
-                    .outer()
-                    .expn_info()
+                    .outer_expn_info()
                     .map_or(expr.span, |info| info.call_site);
                 span_lint_and_then(
                     cx,
