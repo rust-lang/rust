@@ -204,7 +204,10 @@ impl AnnotateRsEmitterWriter {
         if let Some(snippet) = converter.to_annotation_snippet() {
             let dl = DisplayList::from(snippet);
             let dlf = DisplayListFormatter::new(true);
-            print!("{}", dlf.format(&dl));
+            // FIXME(#59346): Figure out if we can _always_ print to stderr or not.
+            // `emitter.rs` has the `Destination` enum that lists various possible output
+            // destinations.
+            eprint!("{}", dlf.format(&dl));
         };
     }
 }
