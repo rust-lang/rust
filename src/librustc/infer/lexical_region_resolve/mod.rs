@@ -2,6 +2,7 @@
 
 use crate::infer::region_constraints::Constraint;
 use crate::infer::region_constraints::GenericKind;
+use crate::infer::region_constraints::InConstraint;
 use crate::infer::region_constraints::RegionConstraintData;
 use crate::infer::region_constraints::VarInfos;
 use crate::infer::region_constraints::VerifyBound;
@@ -117,6 +118,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         let graph = self.construct_graph();
         self.expand_givens(&graph);
+        self.enforce_in_constraints(&graph, &mut var_data);
         self.expansion(&mut var_data);
         self.collect_errors(&mut var_data, errors);
         self.collect_var_errors(&var_data, &graph, errors);
@@ -176,6 +178,87 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 }
             }
         }
+    }
+
+    /// Enforce constraints of the form:
+    ///
+    /// ```
+    /// 'r0 in ['o1...'oN]
+    /// ```
+    ///
+    /// such a constraint simply means that `'r0` must be equal to one
+    /// of the regions `'o1...'oN`. This is an annoying constraint to
+    /// integrate into our inference, which generally works by
+    /// iteratively growing regions until we find a match -- that's
+    /// not an option here.
+    ///
+    /// What we currently do:
+    ///
+    /// - Search forward in the graph from `'r0` to find each region `'b`
+    ///   where `'r0 <= 'b` must hold.
+    ///   - Try to rule out some of the `'o1..'oN` options:
+    ///     - if `'o[i] <= 'b` is false, then `'o[i]` is not an option
+    ///
+    /// Hopefully this narrows it down to just one option.
+    fn enforce_in_constraints(
+        &self,
+        graph: &RegionGraph<'tcx>,
+        var_values: &mut LexicalRegionResolutions<'tcx>,
+    ) {
+        for in_constraint in &self.data.in_constraints {
+            let _ = self.enforce_in_constraint(graph, in_constraint, var_values);
+        }
+    }
+
+    fn enforce_in_constraint(
+        &self,
+        graph: &RegionGraph<'tcx>,
+        in_constraint: &InConstraint<'tcx>,
+        var_values: &mut LexicalRegionResolutions<'tcx>,
+    ) -> Result<(), ()> {
+        debug!("enforce_in_constraint(in_constraint={:#?})", in_constraint);
+
+        // the constraint is some inference variable (`vid`) which
+        // must be equal to one of the options
+        let vid = match in_constraint.region {
+            ty::ReVar(vid) => *vid,
+            _ => return Err(()),
+        };
+
+        // find all the "bounds" -- that is, each region `b` such that
+        // `r0 <= b` must hold.
+        let (bounds, _) = self.collect_concrete_regions(graph, vid, OUTGOING, None);
+
+        // get an iterator over the *available options* -- that is,
+        // each constraint regions `o` where `o <= b` for all the
+        // bounds `b`.
+        debug!("enforce_in_constraint: bounds={:#?}", bounds);
+        let mut options = in_constraint.in_regions.iter().filter(|option| {
+            bounds.iter().all(|bound| self.sub_concrete_regions(option, bound.region))
+        });
+
+        // if there >1 option, we only make a choice if there is a
+        // single *least* choice -- i.e., some available region that
+        // is `<=` all the others.
+        let mut least_choice = options.next().ok_or(())?;
+        debug!("enforce_in_constraint: least_choice={:?}", least_choice);
+        for option in options {
+            debug!("enforce_in_constraint: option={:?}", option);
+            if !self.sub_concrete_regions(least_choice, option) {
+                if self.sub_concrete_regions(option, least_choice) {
+                    debug!("enforce_in_constraint: new least choice");
+                    least_choice = option;
+                } else {
+                    debug!("enforce_in_constraint: no least choice");
+                    return Err(());
+                }
+            }
+        }
+
+        debug!("enforce_in_constraint: final least choice = {:?}", least_choice);
+        *var_values.value_mut(vid) = VarValue::Value(least_choice);
+
+        Ok(())
     }
 
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
@@ -275,6 +358,12 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
     }
 
+    /// True if `a <= b`, but not defined over inference variables.
+    fn sub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> bool {
+        self.lub_concrete_regions(a, b) == b
+    }
+
+    /// Returns the smallest region `c` such that `a <= c` and `b <= c`.
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         let tcx = self.tcx();
 
@@ -500,12 +589,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     that is not used is not a problem, so if this rule
                     starts to create problems we'll have to revisit
                     this portion of the code and think hard about it. =) */
-                    self.collect_error_for_expanding_node(
-                        graph,
-                        &mut dup_vec,
-                        node_vid,
-                        errors,
-                    );
+                    self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
                 }
             }
         }

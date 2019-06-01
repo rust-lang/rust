@@ -445,6 +445,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// # Parameters
     ///
     /// - `def_id`, the `impl Trait` type
+
     /// - `opaque_defn`, the opaque definition created in `instantiate_opaque_types`
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
@@ -648,25 +649,34 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                              does not appear in bounds",
                         );
 
-                        // Assuming regionck succeeded, then we must
-                        // be capturing *some* region from the fn
-                        // header, and hence it must be free, so it's
-                        // ok to invoke this fn (which doesn't accept
-                        // all regions, and would ICE if an
-                        // inappropriate region is given). We check
-                        // `is_tainted_by_errors` by errors above, so
-                        // we don't get in here unless regionck
-                        // succeeded. (Note also that if regionck
-                        // failed, then the regions we are attempting
-                        // to map here may well be giving errors
-                        // *because* the constraints were not
-                        // satisfiable.)
-                        self.tcx.note_and_explain_free_region(
-                            &mut err,
-                            &format!("hidden type `{}` captures ", hidden_ty),
-                            r,
-                            "",
-                        );
+                        // Explain the region we are capturing.
+                        match r {
+                            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty => {
+                                // Assuming regionck succeeded (*), we
+                                // ought to always be capturing *some* region
+                                // from the fn header, and hence it ought to
+                                // be free. So under normal circumstances, we will
+                                // go down this path which gives a decent human readable
+                                // explanation.
+                                //
+                                // (*) if not, the `tainted_by_errors`
+                                // flag would be set to true in any
+                                // case, so we wouldn't be here at
+                                // all.
+                                self.tcx.note_and_explain_free_region(
+                                    &mut err,
+                                    &format!("hidden type `{}` captures ", hidden_ty),
+                                    r,
+                                    "",
+                                );
+                            }
+                            _ => {
+                                // This case should not happen: it indicates that regionck
+                                // failed to enforce an "in constraint".
+                                err.note(&format!("hidden type `{}` captures `{:?}`", hidden_ty, r));
+                                err.note(&format!("this is likely a bug in the compiler, please file an issue on github"));
+                            }
+                        }
 
                         err.emit();
                     }
