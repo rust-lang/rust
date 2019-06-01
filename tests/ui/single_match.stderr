@@ -33,10 +33,10 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
   --> $DIR/single_match.rs:25:5
    |
 LL | /     match z {
-LL | |         (2...3, 7...9) => dummy(),
+LL | |         (2..=3, 7..=9) => dummy(),
 LL | |         _ => {},
 LL | |     };
-   | |_____^ help: try this: `if let (2...3, 7...9) = z { dummy() }`
+   | |_____^ help: try this: `if let (2..=3, 7..=9) = z { dummy() }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:54:5

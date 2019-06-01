@@ -23,7 +23,7 @@ fn single_match() {
 
     let z = (1u8, 1u8);
     match z {
-        (2...3, 7...9) => dummy(),
+        (2..=3, 7..=9) => dummy(),
         _ => {},
     };
 
@@ -35,7 +35,7 @@ fn single_match() {
 
     // Not linted (no block with statements in the single arm)
     match z {
-        (2...3, 7...9) => println!("{:?}", z),
+        (2..=3, 7..=9) => println!("{:?}", z),
         _ => println!("nope"),
     }
 }
