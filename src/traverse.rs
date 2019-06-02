@@ -25,8 +25,8 @@ use rustc::{
     },
     ty::{
         subst::{InternalSubsts, Subst},
-        AssocItem, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt,
-        Visibility,
+        AssocItem, GenericParamDef, GenericParamDefKind, Generics, TraitRef, Ty, TyCtxt, TyKind,
+        TypeAndMut, Visibility,
         Visibility::Public,
     },
 };
@@ -544,7 +544,7 @@ fn diff_traits<'a, 'tcx>(
 ) {
     use rustc::hir::Unsafety::Unsafe;
     use rustc::ty::subst::UnpackedKind::Type;
-    use rustc::ty::{ParamTy, Predicate, TyKind, TyS};
+    use rustc::ty::{ParamTy, Predicate, TyS};
 
     debug!(
         "diff_traits: old: {:?}, new: {:?}, output: {:?}",
@@ -1038,6 +1038,42 @@ fn diff_inherent_impls<'a, 'tcx>(
     }
 }
 
+// There doesn't seem to be a way to get the visibility of impl traits from rustc
+// (CC rust-lang/rust#61464), so we implement the logic here.  Note that this implementation is far
+// from perfect and will cause false positives in some cases (see comment in the inner function).
+fn is_impl_trait_public<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_def_id: DefId) -> bool {
+    fn type_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty) -> Visibility {
+        match ty.sty {
+            TyKind::Adt(def, _) => tcx.visibility(def.did),
+            TyKind::Array(t, _) => type_visibility(tcx, t),
+            TyKind::Slice(t) => type_visibility(tcx, t),
+            TyKind::RawPtr(TypeAndMut { ty: t, .. }) => type_visibility(tcx, t),
+            TyKind::Ref(_, t, _) => type_visibility(tcx, t),
+            TyKind::Bool | TyKind::Char | TyKind::Int(_) | TyKind::Uint(_) | TyKind::Float(_)
+            | TyKind::Str | TyKind:: Never => Visibility::Public,
+
+            // FIXME We assume everything else is public which is, of course, not always the case.
+            //       This means we will have false positives.  We need to improve this.
+            _ => Visibility::Public,
+        }
+    }
+
+    let trait_ref: TraitRef<'tcx> = tcx.impl_trait_ref(impl_def_id).unwrap();
+    let trait_def_id = trait_ref.def_id;
+
+    if tcx.visibility(trait_def_id) != Visibility::Public {
+        return false;
+    }
+
+    // Check if all input types of the trait implementation are public (including `Self`).
+    let is_public = trait_ref
+        .input_types()
+        .map(|t| type_visibility(tcx, t))
+        .all(|v| v == Visibility::Public);
+
+    is_public
+}
+
 /// Compare the implementations of all matching traits.
 fn diff_trait_impls<'a, 'tcx>(
     changes: &mut ChangeSet<'tcx>,
@@ -1053,11 +1089,9 @@ fn diff_trait_impls<'a, 'tcx>(
         .all_trait_implementations(id_mapping.get_old_crate())
         .iter()
     {
-
         let old_trait_def_id = tcx.impl_trait_ref(*old_impl_def_id).unwrap().def_id;
-        if !to_new.can_translate(old_trait_def_id)
-            || tcx.visibility(*old_impl_def_id) != Public
-        {
+
+        if !to_new.can_translate(old_trait_def_id) || !is_impl_trait_public(tcx, *old_impl_def_id) {
             continue;
         }
 
@@ -1077,9 +1111,7 @@ fn diff_trait_impls<'a, 'tcx>(
     {
         let new_trait_def_id = tcx.impl_trait_ref(*new_impl_def_id).unwrap().def_id;
 
-        if !to_old.can_translate(new_trait_def_id)
-            || tcx.visibility(*new_impl_def_id) != Public
-        {
+        if !to_old.can_translate(new_trait_def_id) || !is_impl_trait_public(tcx, *new_impl_def_id) {
             continue;
         }
 

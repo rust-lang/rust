@@ -71,18 +71,6 @@ warning: technically breaking changes in `<new::LogMetadata<'a> as std::fmt::Deb
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `<new::NopLogger as new::Log>`
-   --> log-0.3.8/src/lib.rs:591:1
-    |
-591 | / impl Log for NopLogger {
-592 | |     fn enabled(&self, _: &LogMetadata) -> bool { false }
-593 | |
-594 | |     fn log(&self, _: &LogRecord) {}
-595 | | }
-    | |_^
-    |
-    = note: trait impl generalized or newly added (technically breaking)
-
 warning: technically breaking changes in `<new::LogLocation as std::cmp::Eq>`
    --> log-0.3.8/src/lib.rs:604:30
     |
