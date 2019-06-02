@@ -3039,12 +3039,15 @@ impl<'a> LoweringContext<'a> {
             // Async function arguments are lowered into the closure body so that they are
             // captured and so that the drop order matches the equivalent non-async functions.
             //
+            // from:
+            //
             //     async fn foo(<pattern>: <ty>, <pattern>: <ty>, <pattern>: <ty>) {
             //       async move {
             //       }
             //     }
             //
-            //     // ...becomes...
+            // into:
+            //
             //     fn foo(__arg0: <ty>, __arg1: <ty>, __arg2: <ty>) {
             //       async move {
             //         let __arg2 = __arg2;
@@ -3076,61 +3079,29 @@ impl<'a> LoweringContext<'a> {
                     },
                 };
 
+                let desugared_span =
+                    this.mark_span_with_reason(CompilerDesugaringKind::Async, span, None);
+
                 // Construct an argument representing `__argN: <ty>` to replace the argument of the
                 // async function.
                 //
                 // If this is the simple case, this argument will end up being the same as the
                 // original argument, but with a different pattern id.
-                let new_argument_id = this.next_id();
-                let desugared_span =
-                    this.mark_span_with_reason(CompilerDesugaringKind::Async, span, None);
+                let (new_argument_pat, new_argument_id) = this.pat_ident(desugared_span, ident);
                 let new_argument = hir::Arg {
                     hir_id: argument.hir_id,
-                    pat: P(hir::Pat {
-                        hir_id: new_argument_id,
-                        node: hir::PatKind::Binding(hir::BindingAnnotation::Unannotated,
-                                                   new_argument_id, ident, None),
-                        span: desugared_span,
-                    }),
-                    source: hir::ArgSource::AsyncFn,
-                };
-
-                let construct_stmt = |this: &mut LoweringContext<'_>, pat: P<hir::Pat>,
-                                      init_pat_id: hir::HirId| {
-                    hir::Stmt {
-                        hir_id: this.next_id(),
-                        node: hir::StmtKind::Local(P(hir::Local {
-                            pat,
-                            // We explicitly do not specify the type for any statements. When the
-                            // user's argument type is `impl Trait` then this would require the
-                            // `impl_trait_in_bindings` feature to also be present for that same
-                            // type to be valid in this binding. At the time of writing (13 Mar 19),
-                            // `impl_trait_in_bindings` is not stable.
-                            ty: None,
-                            init: Some(P(hir::Expr {
-                                span,
-                                node: hir::ExprKind::Path(hir::QPath::Resolved(None, P(hir::Path {
-                                    span,
-                                    res: Res::Local(init_pat_id),
-                                    segments: hir_vec![ hir::PathSegment::from_ident(ident) ],
-                                }))),
-                                attrs: ThinVec::new(),
-                                hir_id: this.next_id(),
-                            })),
-                            hir_id: this.next_id(),
-                            span: desugared_span,
-                            attrs: ThinVec::new(),
-                            source: hir::LocalSource::AsyncFn,
-                        })),
-                        span: desugared_span,
-                    }
+                    pat: new_argument_pat,
+                    source: hir::ArgSource::AsyncFn
                 };
 
                 let new_statements = if is_simple_argument {
                     // If this is the simple case, then we only insert one statement that is
                     // `let <pat> = <pat>;`. We re-use the original argument's pattern so that
                     // `HirId`s are densely assigned.
-                    (construct_stmt(this, argument.pat, new_argument_id), None)
+                    let expr = this.expr_ident(desugared_span, ident, new_argument_id);
+                    let stmt = this.stmt_let_pat(
+                        desugared_span, Some(P(expr)), argument.pat, hir::LocalSource::AsyncFn);
+                    (stmt, None)
                 } else {
                     // If this is not the simple case, then we construct two statements:
                     //
@@ -3147,21 +3118,19 @@ impl<'a> LoweringContext<'a> {
                     // Construct the `let mut __argN = __argN;` statement. It must be a mut binding
                     // because the user may have specified a `ref mut` binding in the next
                     // statement.
-                    let hir_id = this.next_id();
-                    let move_stmt = construct_stmt(
-                        this,
-                        P(hir::Pat {
-                            hir_id,
-                            node: hir::PatKind::Binding(hir::BindingAnnotation::Mutable,
-                                                        hir_id, ident, None),
-                            span: desugared_span,
-                        }),
-                        new_argument_id,
-                    );
+                    let (move_pat, move_id) = this.pat_ident_binding_mode(
+                        desugared_span, ident, hir::BindingAnnotation::Mutable);
+                    let move_expr = this.expr_ident(desugared_span, ident, new_argument_id);
+                    let move_stmt = this.stmt_let_pat(
+                        desugared_span, Some(P(move_expr)), move_pat, hir::LocalSource::AsyncFn);
 
                     // Construct the `let <pat> = __argN;` statement. We re-use the original
                     // argument's pattern so that `HirId`s are densely assigned.
-                    let pattern_stmt = construct_stmt(this, argument.pat, hir_id);
+                    let pattern_expr = this.expr_ident(desugared_span, ident, move_id);
+                    let pattern_stmt = this.stmt_let_pat(
+                        desugared_span, Some(P(pattern_expr)), argument.pat,
+                        hir::LocalSource::AsyncFn);
+
                     (move_stmt, Some(pattern_stmt))
                 };
 
@@ -5249,6 +5218,10 @@ impl<'a> LoweringContext<'a> {
             span,
             attrs,
         }
+    }
+
+    fn arg(&mut self, hir_id: hir::HirId, pat: P<hir::Pat>, source: hir::ArgSource) -> hir::Arg {
+        hir::Arg { hir_id, pat, source }
     }
 
     fn stmt(&mut self, span: Span, node: hir::StmtKind) -> hir::Stmt {
