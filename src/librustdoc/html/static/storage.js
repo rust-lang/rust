@@ -64,13 +64,11 @@ function usableLocalStorage() {
     // preferences deny access to localStorage, e.g., to prevent storage of
     // "cookies" (or cookie-likes, as is the case here).
     try {
-        window.localStorage;
+        return window.localStorage !== null && window.localStorage !== undefined;
     } catch(err) {
         // Storage is supported, but browser preferences deny access to it.
         return false;
     }
-
-    return true;
 }
 
 function updateLocalStorage(name, value) {
