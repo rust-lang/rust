@@ -53,7 +53,7 @@ struct GatherUsedMutsVisitor<'visit, 'cx: 'visit, 'gcx: 'tcx, 'tcx: 'cx> {
 }
 
 impl GatherUsedMutsVisitor<'_, '_, '_, '_> {
-    fn remove_never_initialized_mut_locals(&mut self, into: &Place) {
+    fn remove_never_initialized_mut_locals(&mut self, into: &Place<'_>) {
         // Remove any locals that we found were initialized from the
         // `never_initialized_mut_locals` set. At the end, the only remaining locals will
         // be those that were never initialized - we will consider those as being used as
