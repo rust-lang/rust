@@ -108,22 +108,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> Pointer {
-        Pointer::from(self.tcx.alloc_map.lock().create_fn_alloc(instance))
+    #[inline]
+    pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
+        ptr.with_tag(M::tag_static_base_pointer(ptr.alloc_id, &self.extra))
     }
 
-    pub fn allocate_static_bytes(&mut self, bytes: &[u8]) -> Pointer {
-        Pointer::from(self.tcx.allocate_bytes(bytes))
-    }
-
-    pub fn allocate_with(
-        &mut self,
-        alloc: Allocation<M::PointerTag, M::AllocExtra>,
-        kind: MemoryKind<M::MemoryKinds>,
-    ) -> AllocId {
-        let id = self.tcx.alloc_map.lock().reserve();
-        self.alloc_map.insert(id, (kind, alloc));
-        id
+    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> Pointer<M::PointerTag> {
+        let id = self.tcx.alloc_map.lock().create_fn_alloc(instance);
+        self.tag_static_base_pointer(Pointer::from(id))
     }
 
     pub fn allocate(
@@ -132,8 +124,28 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         align: Align,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> Pointer<M::PointerTag> {
-        let (extra, tag) = M::new_allocation(size, &self.extra, kind);
-        Pointer::from(self.allocate_with(Allocation::undef(size, align, extra), kind)).with_tag(tag)
+        let alloc = Allocation::undef(size, align);
+        self.allocate_with(alloc, kind)
+    }
+
+    pub fn allocate_static_bytes(
+        &mut self,
+        bytes: &[u8],
+        kind: MemoryKind<M::MemoryKinds>,
+    ) -> Pointer<M::PointerTag> {
+        let alloc = Allocation::from_byte_aligned_bytes(bytes);
+        self.allocate_with(alloc, kind)
+    }
+
+    pub fn allocate_with(
+        &mut self,
+        alloc: Allocation,
+        kind: MemoryKind<M::MemoryKinds>,
+    ) -> Pointer<M::PointerTag> {
+        let id = self.tcx.alloc_map.lock().reserve();
+        let (alloc, tag) = M::tag_allocation(id, Cow::Owned(alloc), Some(kind), &self.extra);
+        self.alloc_map.insert(id, (kind, alloc.into_owned()));
+        Pointer::from(id).with_tag(tag)
     }
 
     pub fn reallocate(
@@ -305,53 +317,68 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// This attempts to return a reference to an existing allocation if
     /// one can be found in `tcx`. That, however, is only possible if `tcx` and
     /// this machine use the same pointer tag, so it is indirected through
-    /// `M::static_with_default_tag`.
+    /// `M::tag_allocation`.
+    ///
+    /// Notice that every static has two `AllocId` that will resolve to the same
+    /// thing here: one maps to `GlobalAlloc::Static`, this is the "lazy" ID,
+    /// and the other one is maps to `GlobalAlloc::Memory`, this is returned by
+    /// `const_eval_raw` and it is the "resolved" ID.
+    /// The resolved ID is never used by the interpreted progrma, it is hidden.
+    /// The `GlobalAlloc::Memory` branch here is still reachable though; when a static
+    /// contains a reference to memory that was created during its evaluation (i.e., not to
+    /// another static), those inner references only exist in "resolved" form.
     fn get_static_alloc(
         id: AllocId,
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         memory_extra: &M::MemoryExtra,
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
-        let def_id = match alloc {
-            Some(GlobalAlloc::Memory(mem)) => {
-                // We got tcx memory. Let the machine figure out whether and how to
-                // turn that into memory with the right pointer tag.
-                return Ok(M::adjust_static_allocation(mem, memory_extra))
-            }
-            Some(GlobalAlloc::Function(..)) => {
-                return err!(DerefFunctionPointer)
-            }
-            Some(GlobalAlloc::Static(did)) => {
-                did
-            }
+        let alloc = match alloc {
+            Some(GlobalAlloc::Memory(mem)) =>
+                Cow::Borrowed(mem),
+            Some(GlobalAlloc::Function(..)) =>
+                return err!(DerefFunctionPointer),
             None =>
                 return err!(DanglingPointerDeref),
-        };
-        // We got a "lazy" static that has not been computed yet, do some work
-        trace!("static_alloc: Need to compute {:?}", def_id);
-        if tcx.is_foreign_item(def_id) {
-            return M::find_foreign_static(def_id, tcx, memory_extra);
-        }
-        let instance = Instance::mono(tcx.tcx, def_id);
-        let gid = GlobalId {
-            instance,
-            promoted: None,
-        };
-        // use the raw query here to break validation cycles. Later uses of the static will call the
-        // full query anyway
-        tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
-            // no need to report anything, the const_eval call takes care of that for statics
-            assert!(tcx.is_static(def_id));
-            match err {
-                ErrorHandled::Reported => InterpError::ReferencedConstant.into(),
-                ErrorHandled::TooGeneric => InterpError::TooGeneric.into(),
+            Some(GlobalAlloc::Static(def_id)) => {
+                // We got a "lazy" static that has not been computed yet.
+                if tcx.is_foreign_item(def_id) {
+                    trace!("static_alloc: foreign item {:?}", def_id);
+                    M::find_foreign_static(def_id, tcx)?
+                } else {
+                    trace!("static_alloc: Need to compute {:?}", def_id);
+                    let instance = Instance::mono(tcx.tcx, def_id);
+                    let gid = GlobalId {
+                        instance,
+                        promoted: None,
+                    };
+                    // use the raw query here to break validation cycles. Later uses of the static
+                    // will call the full query anyway
+                    let raw_const = tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid))
+                        .map_err(|err| {
+                            // no need to report anything, the const_eval call takes care of that
+                            // for statics
+                            assert!(tcx.is_static(def_id));
+                            match err {
+                                ErrorHandled::Reported => InterpError::ReferencedConstant,
+                                ErrorHandled::TooGeneric => InterpError::TooGeneric,
+                            }
+                        })?;
+                    // Make sure we use the ID of the resolved memory, not the lazy one!
+                    let id = raw_const.alloc_id;
+                    let allocation = tcx.alloc_map.lock().unwrap_memory(id);
+                    Cow::Borrowed(allocation)
+                }
             }
-        }).map(|raw_const| {
-            let allocation = tcx.alloc_map.lock().unwrap_memory(raw_const.alloc_id);
-            // We got tcx memory. Let the machine figure out whether and how to
-            // turn that into memory with the right pointer tag.
-            M::adjust_static_allocation(allocation, memory_extra)
-        })
+        };
+        // We got tcx memory. Let the machine figure out whether and how to
+        // turn that into memory with the right pointer tag.
+        Ok(M::tag_allocation(
+            id, // always use the ID we got as input, not the "hidden" one.
+            alloc,
+            M::STATIC_KIND.map(MemoryKind::Machine),
+            memory_extra
+        ).0)
     }
 
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::PointerTag, M::AllocExtra>> {

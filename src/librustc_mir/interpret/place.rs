@@ -5,7 +5,6 @@
 use std::convert::TryFrom;
 use std::hash::Hash;
 
-use rustc::hir;
 use rustc::mir;
 use rustc::mir::interpret::truncate;
 use rustc::ty::{self, Ty};
@@ -294,7 +293,7 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
 impl<'a, 'mir, 'tcx, Tag, M> InterpretCx<'a, 'mir, 'tcx, M>
 where
     // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
-    Tag: ::std::fmt::Debug+Default+Copy+Eq+Hash+'static,
+    Tag: ::std::fmt::Debug + Copy + Eq + Hash + 'static,
     M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>,
     // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
@@ -325,25 +324,13 @@ where
 
     // Take an operand, representing a pointer, and dereference it to a place -- that
     // will always be a MemPlace.  Lives in `place.rs` because it creates a place.
-    // This calls the "deref" machine hook, and counts as a deref as far as
-    // Stacked Borrows is concerned.
     pub fn deref_operand(
         &self,
         src: OpTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
-        let mut place = self.ref_to_mplace(val)?;
-        // Pointer tag tracking might want to adjust the tag.
-        let mutbl = match val.layout.ty.sty {
-            // `builtin_deref` considers boxes immutable, that's useless for our purposes
-            ty::Ref(_, _, mutbl) => Some(mutbl),
-            ty::Adt(def, _) if def.is_box() => Some(hir::MutMutable),
-            ty::RawPtr(_) => None,
-            _ => bug!("Unexpected pointer type {}", val.layout.ty),
-        };
-        place.mplace.ptr = M::tag_dereference(self, place, mutbl)?;
-        Ok(place)
+        self.ref_to_mplace(val)
     }
 
     /// Offset a pointer to project to a field. Unlike `place_field`, this is always
@@ -587,18 +574,23 @@ where
                     promoted: None
                 };
                 // Just create a lazy reference, so we can support recursive statics.
-                // tcx takes are of assigning every static one and only one unique AllocId.
+                // tcx takes care of assigning every static one and only one unique AllocId.
                 // When the data here is ever actually used, memory will notice,
                 // and it knows how to deal with alloc_id that are present in the
                 // global table but not in its local memory: It calls back into tcx through
                 // a query, triggering the CTFE machinery to actually turn this lazy reference
                 // into a bunch of bytes.  IOW, statics are evaluated with CTFE even when
                 // this InterpretCx uses another Machine (e.g., in miri).  This is what we
-                // want!  This way, computing statics works concistently between codegen
+                // want!  This way, computing statics works consistently between codegen
                 // and miri: They use the same query to eventually obtain a `ty::Const`
                 // and use that for further computation.
-                let alloc = self.tcx.alloc_map.lock().create_static_alloc(cid.instance.def_id());
-                MPlaceTy::from_aligned_ptr(Pointer::from(alloc).with_default_tag(), layout)
+                //
+                // Notice that statics have *two* AllocIds: the lazy one, and the resolved
+                // one.  Here we make sure that the interpreted program never sees the
+                // resolved ID.  Also see the doc comment of `Memory::get_static_alloc`.
+                let alloc_id = self.tcx.alloc_map.lock().create_static_alloc(cid.instance.def_id());
+                let ptr = self.tag_static_base_pointer(Pointer::from(alloc_id));
+                MPlaceTy::from_aligned_ptr(ptr, layout)
             }
         })
     }
@@ -1032,11 +1024,9 @@ where
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // This must be an allocation in `tcx`
         assert!(self.tcx.alloc_map.lock().get(raw.alloc_id).is_some());
+        let ptr = self.tag_static_base_pointer(Pointer::from(raw.alloc_id));
         let layout = self.layout_of(raw.ty)?;
-        Ok(MPlaceTy::from_aligned_ptr(
-            Pointer::new(raw.alloc_id, Size::ZERO).with_default_tag(),
-            layout,
-        ))
+        Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
     }
 
     /// Turn a place with a `dyn Trait` type into a place with the actual dynamic type.

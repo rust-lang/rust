@@ -138,6 +138,9 @@ impl<'tcx> Scalar<()> {
                          "Scalar value {:#x} exceeds size of {} bytes", data, size);
     }
 
+    /// Tag this scalar with `new_tag` if it is a pointer, leave it unchanged otherwise.
+    ///
+    /// Used by `MemPlace::replace_tag`.
     #[inline]
     pub fn with_tag<Tag>(self, new_tag: Tag) -> Scalar<Tag> {
         match self {
@@ -145,16 +148,12 @@ impl<'tcx> Scalar<()> {
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
         }
     }
-
-    #[inline(always)]
-    pub fn with_default_tag<Tag>(self) -> Scalar<Tag>
-        where Tag: Default
-    {
-        self.with_tag(Tag::default())
-    }
 }
 
 impl<'tcx, Tag> Scalar<Tag> {
+    /// Erase the tag from the scalar, if any.
+    ///
+    /// Used by error reporting code to avoid having the error type depend on `Tag`.
     #[inline]
     pub fn erase_tag(self) -> Scalar {
         match self {
@@ -476,24 +475,10 @@ impl<Tag> fmt::Display for ScalarMaybeUndef<Tag> {
     }
 }
 
-impl<'tcx> ScalarMaybeUndef<()> {
-    #[inline]
-    pub fn with_tag<Tag>(self, new_tag: Tag) -> ScalarMaybeUndef<Tag> {
-        match self {
-            ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.with_tag(new_tag)),
-            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
-        }
-    }
-
-    #[inline(always)]
-    pub fn with_default_tag<Tag>(self) -> ScalarMaybeUndef<Tag>
-        where Tag: Default
-    {
-        self.with_tag(Tag::default())
-    }
-}
-
 impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
+    /// Erase the tag from the scalar, if any.
+    ///
+    /// Used by error reporting code to avoid having the error type depend on `Tag`.
     #[inline]
     pub fn erase_tag(self) -> ScalarMaybeUndef
     {

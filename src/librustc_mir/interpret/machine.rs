@@ -5,13 +5,13 @@
 use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
-use rustc::hir::{self, def_id::DefId};
+use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::{self, query::TyCtxtAt, layout::Size};
+use rustc::ty::{self, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
-    InterpretCx, PlaceTy, MPlaceTy, OpTy, ImmTy, MemoryKind,
+    InterpretCx, PlaceTy, OpTy, ImmTy, MemoryKind,
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -65,7 +65,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// Tag tracked alongside every pointer. This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
     /// The `default()` is used for pointers to consts, statics, vtables and functions.
-    type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
+    type PointerTag: ::std::fmt::Debug + Copy + Eq + Hash + 'static;
 
     /// Extra data stored in every call frame.
     type FrameExtra;
@@ -90,7 +90,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// The memory kind to use for copied statics -- or None if statics should not be mutated
     /// and thus any such attempt will cause a `ModifiedStatic` error to be raised.
     /// Statics are copied under two circumstances: When they are mutated, and when
-    /// `static_with_default_tag` or `find_foreign_static` (see below) returns an owned allocation
+    /// `tag_allocation` or `find_foreign_static` (see below) returns an owned allocation
     /// that is added to the memory so that the work is not done twice.
     const STATIC_KIND: Option<Self::MemoryKinds>;
 
@@ -133,11 +133,12 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// This will only be called once per static and machine; the result is cached in
     /// the machine memory. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
+    ///
+    /// This allocation will then be fed to `tag_allocation` to initialize the "extra" state.
     fn find_foreign_static(
         def_id: DefId,
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-        memory_extra: &Self::MemoryExtra,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation>>;
 
     /// Called for all binary operations on integer(-like) types when one operand is a pointer
     /// value, and for the `Offset` operation that is inherently about pointers.
@@ -156,36 +157,38 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
 
-    /// Called to turn an allocation obtained from the `tcx` into one that has
-    /// the right type for this machine.
+    /// Called to initialize the "extra" state of an allocation and make the pointers
+    /// it contains (in relocations) tagged.  The way we construct allocations is
+    /// to always first construct it without extra and then add the extra.
+    /// This keeps uniform code paths for handling both allocations created by CTFE
+    /// for statics, and allocations ceated by Miri during evaluation.
+    ///
+    /// `kind` is the kind of the allocation being tagged; it can be `None` when
+    /// it's a static and `STATIC_KIND` is `None`.
     ///
     /// This should avoid copying if no work has to be done! If this returns an owned
     /// allocation (because a copy had to be done to add tags or metadata), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
-    fn adjust_static_allocation<'b>(
-        alloc: &'b Allocation,
+    ///
+    /// For static allocations, the tag returned must be the same as the one returned by
+    /// `tag_static_base_pointer`.
+    fn tag_allocation<'b>(
+        id: AllocId,
+        alloc: Cow<'b, Allocation>,
+        kind: Option<MemoryKind<Self::MemoryKinds>>,
         memory_extra: &Self::MemoryExtra,
-    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>;
+    ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
 
-    /// Computes the extra state and the tag for a new allocation.
-    fn new_allocation(
-        size: Size,
-        extra: &Self::MemoryExtra,
-        kind: MemoryKind<Self::MemoryKinds>,
-    ) -> (Self::AllocExtra, Self::PointerTag);
-
-    /// Executed when evaluating the `*` operator: Following a reference.
-    /// This has the chance to adjust the tag. It should not change anything else!
-    /// `mutability` can be `None` in case a raw ptr is being dereferenced.
-    #[inline]
-    fn tag_dereference(
-        _ecx: &InterpretCx<'a, 'mir, 'tcx, Self>,
-        place: MPlaceTy<'tcx, Self::PointerTag>,
-        _mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Scalar<Self::PointerTag>> {
-        Ok(place.ptr)
-    }
+    /// Return the "base" tag for the given static allocation: the one that is used for direct
+    /// accesses to this static/const/fn allocation.
+    ///
+    /// Be aware that requesting the `Allocation` for that `id` will lead to cycles
+    /// for cyclic statics!
+    fn tag_static_base_pointer(
+        id: AllocId,
+        memory_extra: &Self::MemoryExtra,
+    ) -> Self::PointerTag;
 
     /// Executes a retagging operation
     #[inline]

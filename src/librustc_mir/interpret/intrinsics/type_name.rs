@@ -215,7 +215,7 @@ impl Write for AbsolutePathPrinter<'_, '_> {
 pub fn type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
     let path = AbsolutePathPrinter { tcx, path: String::new() }.print_type(ty).unwrap().path;
     let len = path.len();
-    let alloc = Allocation::from_byte_aligned_bytes(path.into_bytes(), ());
+    let alloc = Allocation::from_byte_aligned_bytes(path.into_bytes());
     let alloc = tcx.intern_const_alloc(alloc);
     tcx.mk_const(ty::Const {
         val: ConstValue::Slice {
