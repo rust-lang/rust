@@ -2707,28 +2707,28 @@ impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
     }
 }
 
-/// Turn a `Vec` into a `VecDeque`.
+/// Turn a `Vec<T>` into a `VecDeque<T>`.
 ///
 /// This avoids reallocating where possible, but the conditions for that are
-/// strict, and subject to change, so shouldn't be relied upon unless the
-/// `Vec` came from `From<VecDeque>` has hasn't been reallocated.
+/// strict, and subject to change, and so shouldn't be relied upon unless the
+/// `Vec<T>` came from `From<VecDeque<T>>` has hasn't been reallocated.
 ///
 /// # Examples
 ///
 /// ```
 /// use std::collections::VecDeque;
 ///
-/// // Start with a VecDeque
+/// // Start with a `VecDeque<i32>`.
 /// let deque: VecDeque<_> = (1..5).collect();
 ///
-/// // Turn it into a Vec (no allocation needed)
+/// // Turn it into a `Vec<i32>` with no allocation needed.
 /// let mut vec = Vec::from(deque);
 ///
-/// // modify it, being careful to not trigger reallocation
+/// // Modify it, being careful not to trigger reallocation.
 /// vec.pop();
 /// vec.push(100);
 ///
-/// // Turn it back into a VecDeque (no allocation needed)
+/// // Turn it back into a `VecDeque<i32>` with no allocation needed.
 /// let ptr = vec.as_ptr();
 /// let deque = VecDeque::from(vec);
 /// assert_eq!(deque, [1, 2, 3, 100]);
@@ -2760,7 +2760,7 @@ impl<T> From<Vec<T>> for VecDeque<T> {
     }
 }
 
-/// Turn a `VecDeque` into a `Vec`.
+/// Turn a `VecDeque<T>` into a `Vec<T>`.
 ///
 /// This never needs to re-allocate, but does need to do O(n) data movement if
 /// the circular buffer doesn't happen to be at the beginning of the allocation.
@@ -2770,14 +2770,14 @@ impl<T> From<Vec<T>> for VecDeque<T> {
 /// ```
 /// use std::collections::VecDeque;
 ///
-/// // This one is O(1)
+/// // This one is O(1).
 /// let deque: VecDeque<_> = (1..5).collect();
 /// let ptr = deque.as_slices().0.as_ptr();
 /// let vec = Vec::from(deque);
 /// assert_eq!(vec, [1, 2, 3, 4]);
 /// assert_eq!(vec.as_ptr(), ptr);
 ///
-/// // This one need data rearranging
+/// // This one needs data rearranging.
 /// let mut deque: VecDeque<_> = (1..5).collect();
 /// deque.push_front(9);
 /// deque.push_front(8);
