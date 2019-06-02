@@ -246,7 +246,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
 
             let err = self
                 .infcx
-                .resolve_type_vars_if_possible(&err)
+                .resolve_vars_if_possible(&err)
                 .fold_with(&mut self.folder.clone())
                 .lift_to_tcx(lift_tcx)
                 .unwrap();
@@ -279,7 +279,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                 .iter()
                 .map(|err| {
                     self.infcx
-                        .resolve_type_vars_if_possible(&err.obligation.predicate)
+                        .resolve_vars_if_possible(&err.obligation.predicate)
                         .fold_with(&mut self.folder.clone())
                         .lift_to_tcx(lift_tcx)
                         .unwrap()
