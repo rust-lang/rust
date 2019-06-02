@@ -327,8 +327,9 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                 dst_layout,
             ),
             CPlace::NoPlace(layout) => {
-                assert_eq!(layout.size.bytes(), 0);
-                assert_eq!(from.layout().size.bytes(), 0);
+                if layout.abi != Abi::Uninhabited {
+                    assert_eq!(layout.size.bytes(), 0, "{:?}", layout);
+                }
                 return;
             }
             CPlace::Addr(_, _, _) => bug!("Can't write value to unsized place {:?}", self),
