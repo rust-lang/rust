@@ -10,7 +10,7 @@ struct OffsetTokenSink<'a> {
 }
 
 impl<'a> OffsetTokenSink<'a> {
-    pub fn collect(&self, begin: Cursor<'a>) -> Vec<tt::TokenTree> {
+    pub fn collect(&self, begin: Cursor<'a>) -> Vec<&'a tt::TokenTree> {
         if !self.cursor.is_root() {
             return vec![];
         }
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
             1 => Some(res[0].clone()),
             _ => Some(tt::TokenTree::Subtree(tt::Subtree {
                 delimiter: tt::Delimiter::None,
-                token_trees: res,
+                token_trees: res.into_iter().cloned().collect(),
             })),
         }
     }

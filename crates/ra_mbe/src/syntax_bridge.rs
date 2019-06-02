@@ -49,7 +49,8 @@ fn token_tree_to_syntax_node<F>(tt: &tt::Subtree, f: F) -> Result<TreeArc<Syntax
 where
     F: Fn(&mut ra_parser::TokenSource, &mut ra_parser::TreeSink),
 {
-    let buffer = TokenBuffer::new(&[tt.clone().into()]);
+    let tokens = [tt.clone().into()];
+    let buffer = TokenBuffer::new(&tokens);
     let mut token_source = SubtreeTokenSource::new(&buffer);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
     f(&mut token_source, &mut tree_sink);
@@ -385,7 +386,8 @@ mod tests {
             "#,
         );
         let expansion = expand(&rules, "literals!(foo);");
-        let buffer = tt::buffer::TokenBuffer::new(&[expansion.clone().into()]);
+        let tts = &[expansion.clone().into()];
+        let buffer = tt::buffer::TokenBuffer::new(tts);
         let mut tt_src = SubtreeTokenSource::new(&buffer);
         let mut tokens = vec![];
         while tt_src.current().kind != EOF {
