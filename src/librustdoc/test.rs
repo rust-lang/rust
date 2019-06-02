@@ -44,8 +44,7 @@ pub fn run(options: Options) -> i32 {
     let input = config::Input::File(options.input.clone());
 
     let sessopts = config::Options {
-        maybe_sysroot: options.maybe_sysroot.clone().or_else(
-            || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
+        maybe_sysroot: options.maybe_sysroot.clone(),
         search_paths: options.libs.clone(),
         crate_types: vec![config::CrateType::Dylib],
         cg: options.codegen_options.clone(),
@@ -225,8 +224,7 @@ fn run_test(
     let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
 
     let sessopts = config::Options {
-        maybe_sysroot: maybe_sysroot.or_else(
-            || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
+        maybe_sysroot,
         search_paths: libs,
         crate_types: vec![config::CrateType::Executable],
         output_types: outputs,
