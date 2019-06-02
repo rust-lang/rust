@@ -8,7 +8,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    Const, TypeAlias, Function, HirFileId,
+    Const, TypeAlias, Function, HirFileId, AstDatabase,
     HirDatabase, DefDatabase, TraitRef,
     type_ref::TypeRef,
     ids::LocationCtx,
@@ -58,7 +58,10 @@ impl ImplBlock {
     }
 
     /// Returns the syntax of the impl block
-    pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::ImplBlock>) {
+    pub fn source(
+        &self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, TreeArc<ast::ImplBlock>) {
         let source_map = db.impls_in_module_with_source_map(self.module).1;
         let (file_id, source) = self.module.definition_source(db);
         (file_id, source_map.get(&source, self.impl_id))
@@ -117,7 +120,7 @@ pub struct ImplData {
 
 impl ImplData {
     pub(crate) fn from_ast(
-        db: &impl DefDatabase,
+        db: &(impl DefDatabase + AstDatabase),
         file_id: HirFileId,
         module: Module,
         node: &ast::ImplBlock,
@@ -187,7 +190,11 @@ pub struct ModuleImplBlocks {
 }
 
 impl ModuleImplBlocks {
-    fn collect(db: &impl DefDatabase, module: Module, source_map: &mut ImplSourceMap) -> Self {
+    fn collect(
+        db: &(impl DefDatabase + AstDatabase),
+        module: Module,
+        source_map: &mut ImplSourceMap,
+    ) -> Self {
         let mut m = ModuleImplBlocks {
             module,
             impls: Arena::default(),
@@ -218,7 +225,7 @@ impl ModuleImplBlocks {
 }
 
 pub(crate) fn impls_in_module_with_source_map_query(
-    db: &impl DefDatabase,
+    db: &(impl DefDatabase + AstDatabase),
     module: Module,
 ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>) {
     let mut source_map = ImplSourceMap::default();

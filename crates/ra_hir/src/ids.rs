@@ -9,7 +9,7 @@ use ra_prof::profile;
 use mbe::MacroRules;
 
 use crate::{
-    Module, DefDatabase, AstId, FileAstId,
+    Module, DefDatabase, AstId, FileAstId, AstDatabase,
 };
 
 /// hir makes heavy use of ids: integer (u32) handlers to various things. You
@@ -37,7 +37,7 @@ pub struct HirFileId(HirFileIdRepr);
 impl HirFileId {
     /// For macro-expansion files, returns the file original source file the
     /// expansion originated from.
-    pub fn original_file(self, db: &impl DefDatabase) -> FileId {
+    pub fn original_file(self, db: &impl AstDatabase) -> FileId {
         match self.0 {
             HirFileIdRepr::File(file_id) => file_id,
             HirFileIdRepr::Macro(macro_file) => {
@@ -58,7 +58,7 @@ impl HirFileId {
     }
 
     pub(crate) fn parse_or_expand_query(
-        db: &impl DefDatabase,
+        db: &impl AstDatabase,
         file_id: HirFileId,
     ) -> Option<TreeArc<SyntaxNode>> {
         db.check_canceled();
@@ -120,7 +120,7 @@ impl From<FileId> for HirFileId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId(pub(crate) AstId<ast::MacroCall>);
 
-pub(crate) fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
+pub(crate) fn macro_def_query(db: &impl AstDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
     let macro_call = id.0.to_node(db);
     let arg = macro_call.token_tree()?;
     let (tt, _) = mbe::ast_to_token_tree(arg).or_else(|| {
@@ -134,7 +134,7 @@ pub(crate) fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<A
     Some(Arc::new(rules))
 }
 
-pub(crate) fn macro_arg_query(db: &impl DefDatabase, id: MacroCallId) -> Option<Arc<tt::Subtree>> {
+pub(crate) fn macro_arg_query(db: &impl AstDatabase, id: MacroCallId) -> Option<Arc<tt::Subtree>> {
     let loc = id.loc(db);
     let macro_call = loc.ast_id.to_node(db);
     let arg = macro_call.token_tree()?;
@@ -143,7 +143,7 @@ pub(crate) fn macro_arg_query(db: &impl DefDatabase, id: MacroCallId) -> Option<
 }
 
 pub(crate) fn macro_expand_query(
-    db: &impl DefDatabase,
+    db: &impl AstDatabase,
     id: MacroCallId,
 ) -> Result<Arc<tt::Subtree>, String> {
     let loc = id.loc(db);
@@ -185,7 +185,7 @@ pub struct MacroCallLoc {
 }
 
 impl MacroCallId {
-    pub(crate) fn loc(self, db: &impl DefDatabase) -> MacroCallLoc {
+    pub(crate) fn loc(self, db: &impl AstDatabase) -> MacroCallLoc {
         db.lookup_intern_macro(self)
     }
 
@@ -196,7 +196,7 @@ impl MacroCallId {
 }
 
 impl MacroCallLoc {
-    pub(crate) fn id(self, db: &impl DefDatabase) -> MacroCallId {
+    pub(crate) fn id(self, db: &impl AstDatabase) -> MacroCallId {
         db.intern_macro(self)
     }
 }
@@ -233,7 +233,7 @@ pub(crate) struct LocationCtx<DB> {
     file_id: HirFileId,
 }
 
-impl<'a, DB: DefDatabase> LocationCtx<&'a DB> {
+impl<'a, DB: DefDatabase + AstDatabase> LocationCtx<&'a DB> {
     pub(crate) fn new(db: &'a DB, module: Module, file_id: HirFileId) -> LocationCtx<&'a DB> {
         LocationCtx { db, module, file_id }
     }
@@ -250,16 +250,19 @@ pub(crate) trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
     fn intern(db: &impl DefDatabase, loc: ItemLoc<N>) -> Self;
     fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<N>;
 
-    fn from_ast(ctx: LocationCtx<&impl DefDatabase>, ast: &N) -> Self {
+    fn from_ast(ctx: LocationCtx<&(impl AstDatabase + DefDatabase)>, ast: &N) -> Self {
         let items = ctx.db.ast_id_map(ctx.file_id);
         let item_id = items.ast_id(ast);
         Self::from_ast_id(ctx, item_id)
     }
-    fn from_ast_id(ctx: LocationCtx<&impl DefDatabase>, ast_id: FileAstId<N>) -> Self {
+    fn from_ast_id(
+        ctx: LocationCtx<&(impl AstDatabase + DefDatabase)>,
+        ast_id: FileAstId<N>,
+    ) -> Self {
         let loc = ItemLoc { module: ctx.module, ast_id: ast_id.with_file_id(ctx.file_id) };
         Self::intern(ctx.db, loc)
     }
-    fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<N>) {
+    fn source(self, db: &(impl AstDatabase + DefDatabase)) -> (HirFileId, TreeArc<N>) {
         let loc = self.lookup_intern(db);
         let ast = loc.ast_id.to_node(db);
         (loc.ast_id.file_id(), ast)
@@ -356,7 +359,7 @@ impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
 }
 
 impl MacroCallId {
-    pub fn debug_dump(&self, db: &impl DefDatabase) -> String {
+    pub fn debug_dump(&self, db: &impl AstDatabase) -> String {
         let loc = self.clone().loc(db);
         let node = loc.ast_id.to_node(db);
         let syntax_str = node.syntax().text().chunks().collect::<Vec<_>>().join(" ");
@@ -367,7 +370,7 @@ impl MacroCallId {
         let macro_rules = db.macro_def(loc.def);
 
         format!(
-            "macro call [file: {:#?}] : {}\nhas rules: {}",
+            "macro call [file: {:?}] : {}\nhas rules: {}",
             db.file_relative_path(original),
             syntax_str,
             macro_rules.is_some()

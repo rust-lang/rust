@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 use ra_syntax::{SmolStr, ast::AttrsOwner};
 
 use crate::{
-    Crate, DefDatabase, Enum, Function, HirDatabase, ImplBlock, Module, Static, Struct, Trait
+    Crate, DefDatabase, Enum, Function, HirDatabase, ImplBlock, Module, Static, Struct, Trait, AstDatabase,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -41,7 +41,10 @@ impl LangItems {
     }
 
     /// Salsa query. This will look for lang items in a specific crate.
-    pub(crate) fn lang_items_query(db: &impl DefDatabase, krate: Crate) -> Arc<LangItems> {
+    pub(crate) fn lang_items_query(
+        db: &(impl DefDatabase + AstDatabase),
+        krate: Crate,
+    ) -> Arc<LangItems> {
         let mut lang_items = LangItems { items: FxHashMap::default() };
 
         if let Some(module) = krate.root_module(db) {
@@ -74,7 +77,11 @@ impl LangItems {
         }
     }
 
-    fn collect_lang_items_recursive(&mut self, db: &impl DefDatabase, module: &Module) {
+    fn collect_lang_items_recursive(
+        &mut self,
+        db: &(impl DefDatabase + AstDatabase),
+        module: &Module,
+    ) {
         // Look for impl targets
         let (impl_blocks, source_map) = db.impls_in_module_with_source_map(module.clone());
         let source = module.definition_source(db).1;

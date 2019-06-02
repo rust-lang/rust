@@ -8,7 +8,7 @@ use ra_syntax::ast;
 
 use crate::{
     Function, Module, Struct, Union, Enum, Const, Static, Trait, TypeAlias, MacroDef,
-    DefDatabase, HirFileId, Name, Path,
+    DefDatabase, HirFileId, Name, Path, AstDatabase,
     KnownName,
     nameres::{
         Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode,
@@ -20,7 +20,10 @@ use crate::{
     AstId,
 };
 
-pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
+pub(super) fn collect_defs(
+    db: &(impl DefDatabase + AstDatabase),
+    mut def_map: CrateDefMap,
+) -> CrateDefMap {
     // populate external prelude
     for dep in def_map.krate.dependencies(db) {
         log::debug!("crate dep {:?} -> {:?}", dep.name, dep.krate);
@@ -93,7 +96,7 @@ struct DefCollector<DB> {
 
 impl<'a, DB> DefCollector<&'a DB>
 where
-    DB: DefDatabase,
+    DB: DefDatabase + AstDatabase,
 {
     fn collect(&mut self) {
         let crate_graph = self.db.crate_graph();
@@ -470,7 +473,7 @@ struct ModCollector<'a, D> {
 
 impl<DB> ModCollector<'_, &'_ mut DefCollector<&'_ DB>>
 where
-    DB: DefDatabase,
+    DB: DefDatabase + AstDatabase,
 {
     fn collect(&mut self, items: &[raw::RawItem]) {
         for item in items {
@@ -615,7 +618,7 @@ fn is_macro_rules(path: &Path) -> bool {
 }
 
 fn resolve_submodule(
-    db: &impl DefDatabase,
+    db: &(impl DefDatabase + AstDatabase),
     file_id: HirFileId,
     name: &Name,
     is_root: bool,
@@ -658,7 +661,7 @@ mod tests {
     use rustc_hash::FxHashSet;
 
     fn do_collect_defs(
-        db: &impl DefDatabase,
+        db: &(impl DefDatabase + AstDatabase),
         def_map: CrateDefMap,
         monitor: MacroStackMonitor,
     ) -> CrateDefMap {

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use ra_syntax::ast::{self, NameOwner, TypeParamsOwner, TypeBoundsOwner, DefaultTypeParamOwner};
 
 use crate::{
-    db::{ HirDatabase, DefDatabase},
+    db::{HirDatabase, DefDatabase, AstDatabase},
     Name, AsName, Function, Struct, Union, Enum, Trait, TypeAlias, ImplBlock, Container, path::Path, type_ref::TypeRef, AdtDef
 };
 
@@ -52,7 +52,7 @@ impl_froms!(GenericDef: Function, Struct, Union, Enum, Trait, TypeAlias, ImplBlo
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
-        db: &impl DefDatabase,
+        db: &(impl DefDatabase + AstDatabase),
         def: GenericDef,
     ) -> Arc<GenericParams> {
         let mut generics = GenericParams::default();

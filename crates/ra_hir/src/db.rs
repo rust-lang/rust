@@ -21,10 +21,35 @@ use crate::{
     lang_item::{LangItems, LangItemTarget},
 };
 
-#[salsa::query_group(DefDatabaseStorage)]
-pub trait DefDatabase: SourceDatabase {
+// This database has access to source code, so queries here are not really
+// incremental.
+#[salsa::query_group(AstDatabaseStorage)]
+pub trait AstDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_macro(&self, macro_call: MacroCallLoc) -> ids::MacroCallId;
+
+    #[salsa::invoke(crate::source_id::AstIdMap::ast_id_map_query)]
+    fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
+    #[salsa::transparent]
+    #[salsa::invoke(crate::source_id::AstIdMap::file_item_query)]
+    fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> TreeArc<SyntaxNode>;
+    #[salsa::invoke(crate::ids::HirFileId::parse_or_expand_query)]
+    fn parse_or_expand(&self, file_id: HirFileId) -> Option<TreeArc<SyntaxNode>>;
+
+    #[salsa::invoke(crate::ids::macro_def_query)]
+    fn macro_def(&self, macro_id: MacroDefId) -> Option<Arc<mbe::MacroRules>>;
+
+    #[salsa::invoke(crate::ids::macro_arg_query)]
+    fn macro_arg(&self, macro_call: ids::MacroCallId) -> Option<Arc<tt::Subtree>>;
+
+    #[salsa::invoke(crate::ids::macro_expand_query)]
+    fn macro_expand(&self, macro_call: ids::MacroCallId) -> Result<Arc<tt::Subtree>, String>;
+}
+
+// This database uses `AstDatabase` internally,
+#[salsa::query_group(DefDatabaseStorage)]
+#[salsa::requires(AstDatabase)]
+pub trait DefDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_function(&self, loc: ids::ItemLoc<ast::FnDef>) -> ids::FunctionId;
     #[salsa::interned]
@@ -46,18 +71,6 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_impl_block(&self, impl_block: ImplBlock) -> ids::GlobalImplId;
 
-    #[salsa::invoke(crate::ids::macro_def_query)]
-    fn macro_def(&self, macro_id: MacroDefId) -> Option<Arc<mbe::MacroRules>>;
-
-    #[salsa::invoke(crate::ids::macro_arg_query)]
-    fn macro_arg(&self, macro_call: ids::MacroCallId) -> Option<Arc<tt::Subtree>>;
-
-    #[salsa::invoke(crate::ids::macro_expand_query)]
-    fn macro_expand(&self, macro_call: ids::MacroCallId) -> Result<Arc<tt::Subtree>, String>;
-
-    #[salsa::invoke(crate::ids::HirFileId::parse_or_expand_query)]
-    fn parse_or_expand(&self, file_id: HirFileId) -> Option<TreeArc<SyntaxNode>>;
-
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
     fn struct_data(&self, s: Struct) -> Arc<StructData>;
 
@@ -69,13 +82,6 @@ pub trait DefDatabase: SourceDatabase {
 
     #[salsa::invoke(crate::traits::TraitItemsIndex::trait_items_index)]
     fn trait_items_index(&self, module: Module) -> crate::traits::TraitItemsIndex;
-
-    #[salsa::invoke(crate::source_id::AstIdMap::ast_id_map_query)]
-    fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
-
-    #[salsa::invoke(crate::source_id::AstIdMap::file_item_query)]
-    #[salsa::transparent]
-    fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> TreeArc<SyntaxNode>;
 
     #[salsa::invoke(RawItems::raw_items_query)]
     fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
@@ -121,7 +127,7 @@ pub trait DefDatabase: SourceDatabase {
 }
 
 #[salsa::query_group(HirDatabaseStorage)]
-pub trait HirDatabase: DefDatabase {
+pub trait HirDatabase: DefDatabase + AstDatabase {
     #[salsa::invoke(ExprScopes::expr_scopes_query)]
     fn expr_scopes(&self, def: DefWithBody) -> Arc<ExprScopes>;
 
