@@ -15,6 +15,6 @@ pub fn b() -> a::Opq {
 }
 
 pub struct Hij<'a> {
-    pub field: &'a a::Def,
-    pub field2: ::std::rc::Rc<a::Def>,
+    pub field: &'a dyn a::Def,
+    pub field2: ::std::rc::Rc<dyn a::Def>,
 }

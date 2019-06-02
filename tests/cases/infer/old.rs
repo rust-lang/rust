@@ -15,6 +15,6 @@ pub fn b() -> a::Klm {
 }
 
 pub struct Hij<'a> {
-    pub field: &'a a::Abc,
-    pub field2: ::std::rc::Rc<a::Abc>,
+    pub field: &'a dyn a::Abc,
+    pub field2: ::std::rc::Rc<dyn a::Abc>,
 }

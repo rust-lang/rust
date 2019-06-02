@@ -6,8 +6,8 @@ pub struct Def;
 
 impl Abc for Def { }
 
-pub fn a(_: &Abc) { }
+pub fn a(_: &dyn Abc) { }
 
 pub trait A<T> { }
 
-pub type Something = A<()>;
+pub type Something = dyn A<()>;

@@ -4,7 +4,7 @@ error: breaking changes in `Def`
   |
 5 | / pub struct Def<'a> {
 6 | |     pub field1: Abc,
-7 | |     pub field2: &'a Bcd,
+7 | |     pub field2: &'a dyn Bcd,
 8 | | }
   | |_^
   |

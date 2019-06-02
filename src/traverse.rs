@@ -1044,8 +1044,6 @@ fn diff_trait_impls<'a, 'tcx>(
     id_mapping: &IdMapping,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 ) {
-    // use rustc::ty::TyKind;
-
     debug!("diffing trait impls");
 
     let to_new = TranslationContext::target_new(tcx, id_mapping, false);

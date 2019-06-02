@@ -343,7 +343,7 @@ pub struct SourceInfo<'a> {
     /// The source id to be used.
     id: SourceId,
     /// The source to be used.
-    source: Box<Source + 'a>,
+    source: Box<dyn Source + 'a>,
 }
 
 impl<'a> SourceInfo<'a> {

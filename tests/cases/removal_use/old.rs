@@ -4,5 +4,5 @@ pub trait Bcd {}
 
 pub struct Def<'a> {
     pub field1: Abc,
-    pub field2: &'a Bcd,
+    pub field2: &'a dyn Bcd,
 }
