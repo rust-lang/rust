@@ -66,6 +66,12 @@ declare_clippy_lint! {
     ///     println!("{}", vec[i]);
     /// }
     /// ```
+    /// Could be written as:
+    /// ```ignore
+    /// for i in vec {
+    ///     println!("{}", i);
+    /// }
+    /// ```
     pub NEEDLESS_RANGE_LOOP,
     style,
     "for-looping over a range of indices where an iterator over items would do"
