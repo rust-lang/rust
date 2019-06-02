@@ -368,6 +368,11 @@ mod serde_impls {
     }
 }
 
+#[cfg(feature = "deepsize")]
+mod deepsize_impls {
+    deepsize::known_deep_size!(0, crate::TextUnit, crate::TextRange);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
