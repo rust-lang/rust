@@ -7,7 +7,7 @@ description = "small-string optimized string type with O(1) clone"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-serde = { version = "1", optional = true }
+serde = { version = "1", optional = true, default_features = false }
 
 [dev-dependencies]
 proptest = "0.8.3"
