@@ -1,3 +1,5 @@
+// This should fail even without validation
+// compile-flags: -Zmiri-disable-validation
 
 fn main() {
     let x = &1; // the `&1` is promoted to a constant, but it used to be that only the pointer is marked static, not the pointee
