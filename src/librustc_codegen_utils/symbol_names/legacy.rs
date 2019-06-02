@@ -440,7 +440,7 @@ impl fmt::Write for SymbolPrinter<'_, '_> {
                 '-' | ':' => self.path.temp_buf.push('.'),
 
                 // Avoid crashing LLVM in certain (LTO-related) situations, see #60925.
-                'm' if self.path.temp_buf.ends_with(".llv") => self.path.temp_buf.push_str("$6d$"),
+                'm' if self.path.temp_buf.ends_with(".llv") => self.path.temp_buf.push_str("$u6d$"),
 
                 // These are legal symbols
                 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '$' => self.path.temp_buf.push(c),
