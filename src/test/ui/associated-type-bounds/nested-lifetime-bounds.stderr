@@ -1,8 +1,0 @@
-error[E0316]: nested quantification of lifetimes
-  --> $DIR/nested-lifetime-bounds.rs:20:37
-   |
-LL |     for<'a> <_2 as Iterator>::Item: for<'b> Lam<&'a &'b u8, App = _0>,
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
