@@ -340,9 +340,8 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let ptr = place.place_field(fx, mir::Field::new(discr_index));
                     let to = layout
                         .ty
-                        .ty_adt_def()
-                        .unwrap()
                         .discriminant_for_variant(fx.tcx, *variant_index)
+                        .unwrap()
                         .val;
                     let discr = CValue::const_val(fx, ptr.layout().ty, to as u64 as i64);
                     ptr.write_cvalue(fx, discr);
