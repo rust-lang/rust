@@ -405,7 +405,7 @@ mod builtin {
     ///
     /// ```compile_fail
     /// #[cfg(not(any(feature = "foo", feature = "bar")))]
-    /// compile_error!("Either feature \"foo\" or \"bar\" must be enabled for this crate.")
+    /// compile_error!("Either feature \"foo\" or \"bar\" must be enabled for this crate.");
     /// ```
     ///
     /// [`panic!`]: ../std/macro.panic.html
