@@ -702,6 +702,7 @@ impl<T: Clone> Bound<&T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(bound_cloned)]
     /// use std::ops::Bound::*;
     /// use std::ops::RangeBounds;
     ///
