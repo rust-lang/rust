@@ -1,4 +1,4 @@
-use crate::{TokenTree, Subtree, Leaf};
+use crate::{TokenTree, Subtree};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 struct EntryId(usize);
@@ -9,10 +9,10 @@ struct EntryPtr(EntryId, usize);
 /// Internal type which is used instead of `TokenTree` to represent a token tree
 /// within a `TokenBuffer`.
 #[derive(Debug)]
-enum Entry {
+enum Entry<'t> {
     // Mimicking types from proc-macro.
-    Subtree(Subtree, EntryId),
-    Leaf(Leaf),
+    Subtree(&'t TokenTree, EntryId),
+    Leaf(&'t TokenTree),
     // End entries contain a pointer to the entry from the containing
     // token tree, or None if this is the outermost level.
     End(Option<EntryPtr>),
@@ -21,12 +21,12 @@ enum Entry {
 /// A token tree buffer
 /// The safe version of `syn` [`TokenBuffer`](https://github.com/dtolnay/syn/blob/6533607f91686545cb034d2838beea338d9d0742/src/buffer.rs#L41)
 #[derive(Debug)]
-pub struct TokenBuffer {
-    buffers: Vec<Box<[Entry]>>,
+pub struct TokenBuffer<'t> {
+    buffers: Vec<Box<[Entry<'t>]>>,
 }
 
-impl TokenBuffer {
-    pub fn new(tokens: &[TokenTree]) -> TokenBuffer {
+impl<'t> TokenBuffer<'t> {
+    pub fn new(tokens: &'t [TokenTree]) -> TokenBuffer<'t> {
         let mut buffers = vec![];
 
         let idx = TokenBuffer::new_inner(tokens, &mut buffers, None);
@@ -36,21 +36,21 @@ impl TokenBuffer {
     }
 
     fn new_inner(
-        tokens: &[TokenTree],
-        buffers: &mut Vec<Box<[Entry]>>,
+        tokens: &'t [TokenTree],
+        buffers: &mut Vec<Box<[Entry<'t>]>>,
         next: Option<EntryPtr>,
     ) -> usize {
         let mut entries = vec![];
         let mut children = vec![];
 
-        for (idx, tt) in tokens.iter().cloned().enumerate() {
+        for (idx, tt) in tokens.iter().enumerate() {
             match tt {
-                TokenTree::Leaf(leaf) => {
-                    entries.push(Entry::Leaf(leaf));
+                TokenTree::Leaf(_) => {
+                    entries.push(Entry::Leaf(tt));
                 }
                 TokenTree::Subtree(subtree) => {
                     entries.push(Entry::End(None));
-                    children.push((idx, subtree));
+                    children.push((idx, (subtree, tt)));
                 }
             }
         }
@@ -59,13 +59,13 @@ impl TokenBuffer {
         let res = buffers.len();
         buffers.push(entries.into_boxed_slice());
 
-        for (child_idx, subtree) in children {
+        for (child_idx, (subtree, tt)) in children {
             let idx = TokenBuffer::new_inner(
                 &subtree.token_trees,
                 buffers,
                 Some(EntryPtr(EntryId(res), child_idx + 1)),
             );
-            buffers[res].as_mut()[child_idx] = Entry::Subtree(subtree, EntryId(idx));
+            buffers[res].as_mut()[child_idx] = Entry::Subtree(tt, EntryId(idx));
         }
 
         res
@@ -86,7 +86,7 @@ impl TokenBuffer {
 /// A safe version of `Cursor` from `syn` crate https://github.com/dtolnay/syn/blob/6533607f91686545cb034d2838beea338d9d0742/src/buffer.rs#L125
 #[derive(Copy, Clone, Debug)]
 pub struct Cursor<'a> {
-    buffer: &'a TokenBuffer,
+    buffer: &'a TokenBuffer<'a>,
     ptr: EntryPtr,
 }
 
@@ -113,7 +113,7 @@ impl<'a> Cursor<'a> {
         match self.entry() {
             Some(Entry::End(Some(ptr))) => {
                 let idx = ptr.1;
-                if let Some(Entry::Subtree(subtree, _)) =
+                if let Some(Entry::Subtree(TokenTree::Subtree(subtree), _)) =
                     self.buffer.entry(&EntryPtr(ptr.0, idx - 1))
                 {
                     return Some(subtree);
@@ -125,7 +125,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn entry(self) -> Option<(&'a Entry)> {
+    fn entry(self) -> Option<(&'a Entry<'a>)> {
         self.buffer.entry(&self.ptr)
     }
 
@@ -141,10 +141,10 @@ impl<'a> Cursor<'a> {
     }
 
     /// If the cursor is pointing at a `TokenTree`, returns it
-    pub fn token_tree(self) -> Option<(TokenTree)> {
+    pub fn token_tree(self) -> Option<&'a TokenTree> {
         match self.entry() {
-            Some(Entry::Leaf(leaf)) => Some(leaf.clone().into()),
-            Some(Entry::Subtree(subtree, _)) => Some(subtree.clone().into()),
+            Some(Entry::Leaf(tt)) => Some(tt),
+            Some(Entry::Subtree(tt, _)) => Some(tt),
             Some(Entry::End(_)) => None,
             None => None,
         }
