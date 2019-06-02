@@ -549,8 +549,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     }
                 }
 
+                let count = count.assert_usize(tcx).ok_or(LayoutError::Unknown(ty))?;
                 let element = self.layout_of(element)?;
-                let count = count.unwrap_usize(tcx);
                 let size = element.size.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
 
