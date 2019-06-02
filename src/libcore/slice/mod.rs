@@ -2177,8 +2177,8 @@ impl<T> [T] {
         assert!(dest <= self.len() - count, "dest is out of bounds");
         unsafe {
             ptr::copy(
-                self.get_unchecked(src_start),
-                self.get_unchecked_mut(dest),
+                self.as_ptr().add(src_start),
+                self.as_mut_ptr().add(dest),
                 count,
             );
         }
