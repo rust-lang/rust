@@ -16,7 +16,16 @@ pub fn mutated_variables<'a, 'tcx: 'a>(expr: &'tcx Expr, cx: &'a LateContext<'a,
     };
     let def_id = def_id::DefId::local(expr.hir_id.owner);
     let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
-    ExprUseVisitor::new(&mut delegate, cx.tcx, def_id, cx.param_env, region_scope_tree, cx.tables, None).walk_expr(expr);
+    ExprUseVisitor::new(
+        &mut delegate,
+        cx.tcx,
+        def_id,
+        cx.param_env,
+        region_scope_tree,
+        cx.tables,
+        None,
+    )
+    .walk_expr(expr);
 
     if delegate.skip {
         return None;
@@ -32,7 +41,7 @@ pub fn is_potentially_mutated<'a, 'tcx: 'a>(
     if let Res::Local(id) = variable.res {
         mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&id))
     } else {
-        return true
+        return true;
     }
 }
 

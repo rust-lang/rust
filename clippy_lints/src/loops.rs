@@ -1662,7 +1662,16 @@ fn check_for_mutation(
     };
     let def_id = def_id::DefId::local(body.hir_id.owner);
     let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
-    ExprUseVisitor::new(&mut delegate, cx.tcx, def_id, cx.param_env, region_scope_tree, cx.tables, None).walk_expr(body);
+    ExprUseVisitor::new(
+        &mut delegate,
+        cx.tcx,
+        def_id,
+        cx.param_env,
+        region_scope_tree,
+        cx.tables,
+        None,
+    )
+    .walk_expr(body);
     delegate.mutation_span()
 }
 

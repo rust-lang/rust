@@ -79,7 +79,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
 
         let fn_def_id = cx.tcx.hir().local_def_id_from_hir_id(hir_id);
         let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
-        ExprUseVisitor::new(&mut v, cx.tcx, fn_def_id, cx.param_env, region_scope_tree, cx.tables, None).consume_body(body);
+        ExprUseVisitor::new(
+            &mut v,
+            cx.tcx,
+            fn_def_id,
+            cx.param_env,
+            region_scope_tree,
+            cx.tables,
+            None,
+        )
+        .consume_body(body);
 
         for node in v.set {
             span_lint(
