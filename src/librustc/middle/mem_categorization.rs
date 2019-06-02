@@ -78,6 +78,7 @@ use syntax_pos::Span;
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::rc::Rc;
 use crate::util::nodemap::ItemLocalSet;
@@ -288,6 +289,8 @@ impl HirNode for hir::Pat {
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub body_owner: DefId,
+    pub upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
     rvalue_promotable_map: Option<&'tcx ItemLocalSet>,
@@ -398,12 +401,15 @@ impl MutabilityCategory {
 
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               body_owner: DefId,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
                rvalue_promotable_map: Option<&'tcx ItemLocalSet>)
                -> MemCategorizationContext<'a, 'tcx, 'tcx> {
         MemCategorizationContext {
             tcx,
+            body_owner,
+            upvars: tcx.upvars(body_owner),
             region_scope_tree,
             tables,
             rvalue_promotable_map,
@@ -423,6 +429,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     /// - similarly, as the results of upvar analysis are not yet
     ///   known, the results around upvar accesses may be incorrect.
     pub fn with_infer(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                      body_owner: DefId,
                       region_scope_tree: &'a region::ScopeTree,
                       tables: &'a ty::TypeckTables<'tcx>)
                       -> MemCategorizationContext<'a, 'gcx, 'tcx> {
@@ -436,6 +443,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         MemCategorizationContext {
             tcx,
+            body_owner,
+            upvars: tcx.upvars(body_owner),
             region_scope_tree,
             tables,
             rvalue_promotable_map,
@@ -737,21 +746,20 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 })
             }
 
-            Res::Upvar(var_id, _, fn_node_id) => {
+            Res::Local(var_id) => {
                 let var_nid = self.tcx.hir().hir_to_node_id(var_id);
-                self.cat_upvar(hir_id, span, var_nid, fn_node_id)
-            }
-
-            Res::Local(vid) => {
-                let vnid = self.tcx.hir().hir_to_node_id(vid);
-                Ok(cmt_ {
-                    hir_id,
-                    span,
-                    cat: Categorization::Local(vid),
-                    mutbl: MutabilityCategory::from_local(self.tcx, self.tables, vnid),
-                    ty: expr_ty,
-                    note: NoteNone
-                })
+                if self.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)) {
+                    self.cat_upvar(hir_id, span, var_nid)
+                } else {
+                    Ok(cmt_ {
+                        hir_id,
+                        span,
+                        cat: Categorization::Local(var_id),
+                        mutbl: MutabilityCategory::from_local(self.tcx, self.tables, var_nid),
+                        ty: expr_ty,
+                        note: NoteNone
+                    })
+                }
             }
 
             def => span_bug!(span, "unexpected definition in memory categorization: {:?}", def)
@@ -760,15 +768,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     // Categorize an upvar, complete with invisible derefs of closure
     // environment and upvar reference as appropriate.
-    fn cat_upvar(&self,
-                 hir_id: hir::HirId,
-                 span: Span,
-                 var_id: ast::NodeId,
-                 fn_node_id: ast::NodeId)
-                 -> McResult<cmt_<'tcx>>
-    {
-        let fn_hir_id = self.tcx.hir().node_to_hir_id(fn_node_id);
-
+    fn cat_upvar(
+        &self,
+        hir_id: hir::HirId,
+        span: Span,
+        var_id: ast::NodeId,
+    ) -> McResult<cmt_<'tcx>> {
         // An upvar can have up to 3 components. We translate first to a
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
         // field from the environment.
@@ -792,6 +797,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // FnMut          | copied -> &'env mut  | upvar -> &'env mut -> &'up bk
         // FnOnce         | copied               | upvar -> &'up bk
 
+        let closure_expr_def_id = self.body_owner;
+        let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(
+            LocalDefId::from_def_id(closure_expr_def_id),
+        );
         let ty = self.node_ty(fn_hir_id)?;
         let kind = match ty.sty {
             ty::Generator(..) => ty::ClosureKind::FnOnce,
@@ -813,7 +822,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             _ => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", ty),
         };
 
-        let closure_expr_def_id = self.tcx.hir().local_def_id(fn_node_id);
         let var_hir_id = self.tcx.hir().node_to_hir_id(var_id);
         let upvar_id = ty::UpvarId {
             var_path: ty::UpvarPath { hir_id: var_hir_id },

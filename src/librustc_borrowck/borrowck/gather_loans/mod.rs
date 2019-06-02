@@ -44,6 +44,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let rvalue_promotable_map = bccx.tcx.rvalue_promotable_map(def_id);
     euv::ExprUseVisitor::new(&mut glcx,
                              bccx.tcx,
+                             def_id,
                              param_env,
                              &bccx.region_scope_tree,
                              bccx.tables,

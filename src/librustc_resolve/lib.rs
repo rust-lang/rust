@@ -29,7 +29,7 @@ use rustc::hir::def::{
 };
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
-use rustc::hir::{Upvar, UpvarMap, TraitCandidate, TraitMap, GlobMap};
+use rustc::hir::{TraitCandidate, TraitMap, GlobMap};
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::{bug, span_bug};
@@ -612,7 +612,6 @@ impl<'a> PathSource<'a> {
                 | Res::Def(DefKind::Const, _)
                 | Res::Def(DefKind::Static, _)
                 | Res::Local(..)
-                | Res::Upvar(..)
                 | Res::Def(DefKind::Fn, _)
                 | Res::Def(DefKind::Method, _)
                 | Res::Def(DefKind::AssocConst, _)
@@ -853,7 +852,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 function_kind: FnKind<'tcx>,
                 declaration: &'tcx FnDecl,
                 _: Span,
-                node_id: NodeId)
+                _: NodeId)
     {
         debug!("(resolving function) entering function");
         let (rib_kind, asyncness) = match function_kind {
@@ -864,7 +863,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
             FnKind::Closure(_) =>
                 // Async closures aren't resolved through `visit_fn`-- they're
                 // processed separately
-                (ClosureRibKind(node_id), &IsAsync::NotAsync),
+                (NormalRibKind, &IsAsync::NotAsync),
         };
 
         // Create a value rib for the function.
@@ -898,12 +897,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         visit::walk_fn_ret_ty(self, &declaration.output);
 
         // Resolve the function body, potentially inside the body of an async closure
-        if let IsAsync::Async { closure_id, .. } = asyncness {
-            let rib_kind = ClosureRibKind(*closure_id);
-            self.ribs[ValueNS].push(Rib::new(rib_kind));
-            self.label_ribs.push(Rib::new(rib_kind));
-        }
-
         match function_kind {
             FnKind::ItemFn(.., body) | FnKind::Method(.., body) => {
                 if let IsAsync::Async { ref arguments, .. } = asyncness {
@@ -925,12 +918,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 self.visit_expr(body);
             }
         };
-
-        // Leave the body of the async closure
-        if asyncness.is_async() {
-            self.label_ribs.pop();
-            self.ribs[ValueNS].pop();
-        }
 
         debug!("(resolving function) leaving function");
 
@@ -1018,16 +1005,12 @@ enum GenericParameters<'a, 'b> {
                       RibKind<'a>),
 }
 
-/// The rib kind controls the translation of local
-/// definitions (`Res::Local`) to upvars (`Res::Upvar`).
+/// The rib kind restricts certain accesses,
+/// e.g. to a `Res::Local` of an outer item.
 #[derive(Copy, Clone, Debug)]
 enum RibKind<'a> {
-    /// No translation needs to be applied.
+    /// No restriction needs to be applied.
     NormalRibKind,
-
-    /// We passed through a closure scope at the given `NodeId`.
-    /// Translate upvars as appropriate.
-    ClosureRibKind(NodeId /* func id */),
 
     /// We passed through an impl or trait and are now in one of its
     /// methods or associated types. Allow references to ty params that impl or trait
@@ -1668,8 +1651,6 @@ pub struct Resolver<'a> {
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     label_res_map: NodeMap<NodeId>,
 
-    pub upvars: UpvarMap,
-    upvars_seen: NodeMap<NodeMap<usize>>,
     pub export_map: ExportMap<NodeId>,
     pub trait_map: TraitMap,
 
@@ -2032,8 +2013,6 @@ impl<'a> Resolver<'a> {
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             label_res_map: Default::default(),
-            upvars: Default::default(),
-            upvars_seen: Default::default(),
             export_map: FxHashMap::default(),
             trait_map: Default::default(),
             module_map,
@@ -2206,7 +2185,7 @@ impl<'a> Resolver<'a> {
             if let Some(res) = self.ribs[ns][i].bindings.get(&ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Res(
-                    self.adjust_local_res(ns, i, res, record_used, path_span)
+                    self.validate_res_from_ribs(ns, i, res, record_used, path_span),
                 ));
             }
 
@@ -4008,14 +3987,16 @@ impl<'a> Resolver<'a> {
             diag);
     }
 
-    // Resolve a local definition, potentially adjusting for closures.
-    fn adjust_local_res(&mut self,
-                        ns: Namespace,
-                        rib_index: usize,
-                        mut res: Res,
-                        record_used: bool,
-                        span: Span) -> Res {
-        debug!("adjust_local_res");
+    // Validate a local resolution (from ribs).
+    fn validate_res_from_ribs(
+        &mut self,
+        ns: Namespace,
+        rib_index: usize,
+        res: Res,
+        record_used: bool,
+        span: Span,
+    ) -> Res {
+        debug!("validate_res_from_ribs({:?})", res);
         let ribs = &self.ribs[ns][rib_index + 1..];
 
         // An invalid forward use of a type parameter from a previous default.
@@ -4037,10 +4018,7 @@ impl<'a> Resolver<'a> {
         }
 
         match res {
-            Res::Upvar(..) => {
-                span_bug!(span, "unexpected {:?} in bindings", res)
-            }
-            Res::Local(node_id) => {
+            Res::Local(_) => {
                 use ResolutionError::*;
                 let mut res_err = None;
 
@@ -4049,30 +4027,6 @@ impl<'a> Resolver<'a> {
                         NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) |
                         ForwardTyParamBanRibKind | TyParamAsConstParamTy => {
                             // Nothing to do. Continue.
-                        }
-                        ClosureRibKind(function_id) => {
-                            let prev_res = res;
-
-                            let seen = self.upvars_seen
-                                           .entry(function_id)
-                                           .or_default();
-                            if let Some(&index) = seen.get(&node_id) {
-                                res = Res::Upvar(node_id, index, function_id);
-                                continue;
-                            }
-                            let vec = self.upvars
-                                          .entry(function_id)
-                                          .or_default();
-                            let depth = vec.len();
-                            res = Res::Upvar(node_id, depth, function_id);
-
-                            if record_used {
-                                vec.push(Upvar {
-                                    res: prev_res,
-                                    span,
-                                });
-                                seen.insert(node_id, depth);
-                            }
                         }
                         ItemRibKind | FnItemRibKind | AssocItemRibKind => {
                             // This was an attempt to access an upvar inside a
@@ -4103,7 +4057,7 @@ impl<'a> Resolver<'a> {
             Res::Def(DefKind::TyParam, _) | Res::SelfTy(..) => {
                 for rib in ribs {
                     match rib.kind {
-                        NormalRibKind | AssocItemRibKind | ClosureRibKind(..) |
+                        NormalRibKind | AssocItemRibKind |
                         ModuleRibKind(..) | MacroDefinition(..) | ForwardTyParamBanRibKind |
                         ConstantItemRibKind | TyParamAsConstParamTy => {
                             // Nothing to do. Continue.
@@ -4483,25 +4437,15 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
                 self.current_type_ascription.pop();
             }
-            // Resolve the body of async exprs inside the async closure to which they desugar
-            ExprKind::Async(_, async_closure_id, ref block) => {
-                let rib_kind = ClosureRibKind(async_closure_id);
-                self.ribs[ValueNS].push(Rib::new(rib_kind));
-                self.label_ribs.push(Rib::new(rib_kind));
-                self.visit_block(&block);
-                self.label_ribs.pop();
-                self.ribs[ValueNS].pop();
-            }
             // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
             // resolve the arguments within the proper scopes so that usages of them inside the
             // closure are detected as upvars rather than normal closure arg usages.
             ExprKind::Closure(
-                _, IsAsync::Async { closure_id: inner_closure_id, .. }, _,
+                _, IsAsync::Async { .. }, _,
                 ref fn_decl, ref body, _span,
             ) => {
-                let rib_kind = ClosureRibKind(expr.id);
+                let rib_kind = NormalRibKind;
                 self.ribs[ValueNS].push(Rib::new(rib_kind));
-                self.label_ribs.push(Rib::new(rib_kind));
                 // Resolve arguments:
                 let mut bindings_list = FxHashMap::default();
                 for argument in &fn_decl.inputs {
@@ -4513,18 +4457,12 @@ impl<'a> Resolver<'a> {
 
                 // Now resolve the inner closure
                 {
-                    let rib_kind = ClosureRibKind(inner_closure_id);
-                    self.ribs[ValueNS].push(Rib::new(rib_kind));
-                    self.label_ribs.push(Rib::new(rib_kind));
                     // No need to resolve arguments: the inner closure has none.
                     // Resolve the return type:
                     visit::walk_fn_ret_ty(self, &fn_decl.output);
                     // Resolve the body
                     self.visit_expr(body);
-                    self.label_ribs.pop();
-                    self.ribs[ValueNS].pop();
                 }
-                self.label_ribs.pop();
                 self.ribs[ValueNS].pop();
             }
             _ => {

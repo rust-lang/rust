@@ -63,6 +63,7 @@ pub mod lowering;
 pub mod map;
 pub mod pat_util;
 pub mod print;
+pub mod upvars;
 
 /// Uniquely identifies a node in the HIR of the current crate. It is
 /// composed of the `owner`, which is the `DefIndex` of the directly enclosing
@@ -1408,7 +1409,6 @@ impl Expr {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
                 match path.res {
                     Res::Local(..)
-                    | Res::Upvar(..)
                     | Res::Def(DefKind::Static, _)
                     | Res::Err => true,
                     _ => false,
@@ -2493,31 +2493,10 @@ impl ForeignItemKind {
 
 /// A variable captured by a closure.
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub struct Upvar<Id = HirId> {
-    /// The variable being captured.
-    pub res: Res<Id>,
-
+pub struct Upvar {
     // First span where it is accessed (there can be multiple).
     pub span: Span
 }
-
-impl<Id: fmt::Debug + Copy> Upvar<Id> {
-    pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Upvar<R> {
-        Upvar {
-            res: self.res.map_id(map),
-            span: self.span,
-        }
-    }
-
-    pub fn var_id(&self) -> Id {
-        match self.res {
-            Res::Local(id) | Res::Upvar(id, ..) => id,
-            _ => bug!("Upvar::var_id: bad res ({:?})", self.res)
-        }
-    }
-}
-
-pub type UpvarMap = NodeMap<Vec<Upvar<ast::NodeId>>>;
 
 pub type CaptureModeMap = NodeMap<CaptureClause>;
 
@@ -2537,10 +2516,10 @@ pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 // imported.
 pub type GlobMap = NodeMap<FxHashSet<Name>>;
 
-
 pub fn provide(providers: &mut Providers<'_>) {
     check_attr::provide(providers);
-    providers.def_kind = map::def_kind;
+    map::provide(providers);
+    upvars::provide(providers);
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]

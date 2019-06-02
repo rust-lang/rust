@@ -515,7 +515,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let upvars = cx.tcx.upvars(def_id).iter()
                 .flat_map(|upvars| upvars.iter())
                 .zip(substs.upvar_tys(def_id, cx.tcx))
-                .map(|(upvar, ty)| capture_upvar(cx, expr, upvar, ty))
+                .map(|((&var_hir_id, _), ty)| capture_upvar(cx, expr, var_hir_id, ty))
                 .collect();
             ExprKind::Closure {
                 closure_id: def_id,
@@ -960,36 +960,44 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         Res::Def(DefKind::Static, id) => ExprKind::StaticRef { id },
 
-        Res::Local(..) | Res::Upvar(..) => convert_var(cx, expr, res),
+        Res::Local(var_hir_id) => convert_var(cx, expr, var_hir_id),
 
         _ => span_bug!(expr.span, "res `{:?}` not yet implemented", res),
     }
 }
 
-fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                               expr: &'tcx hir::Expr,
-                               res: Res)
-                               -> ExprKind<'tcx> {
+fn convert_var(
+    cx: &mut Cx<'_, '_, 'tcx>,
+    expr: &'tcx hir::Expr,
+    var_hir_id: hir::HirId,
+) -> ExprKind<'tcx> {
+    let upvar_index = cx.tables().upvar_list.get(&cx.body_owner)
+        .and_then(|upvars| upvars.get_full(&var_hir_id).map(|(i, _, _)| i));
+
+    debug!("convert_var({:?}): upvar_index={:?}, body_owner={:?}",
+           var_hir_id, upvar_index, cx.body_owner);
+
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
-    match res {
-        Res::Local(id) => ExprKind::VarRef { id },
+    match upvar_index {
+        None => ExprKind::VarRef { id: var_hir_id },
 
-        Res::Upvar(var_hir_id, index, closure_expr_id) => {
-            debug!("convert_var(upvar({:?}, {:?}, {:?}))",
-                   var_hir_id,
-                   index,
-                   closure_expr_id);
+        Some(upvar_index) => {
+            let closure_def_id = cx.body_owner;
+            let upvar_id = ty::UpvarId {
+                var_path: ty::UpvarPath {hir_id: var_hir_id},
+                closure_expr_id: LocalDefId::from_def_id(closure_def_id),
+            };
             let var_ty = cx.tables().node_type(var_hir_id);
 
             // FIXME free regions in closures are not right
-            let closure_ty = cx.tables()
-                               .node_type(cx.tcx.hir().node_to_hir_id(closure_expr_id));
+            let closure_ty = cx.tables().node_type(
+                cx.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id),
+            );
 
             // FIXME we're just hard-coding the idea that the
             // signature will be &self or &mut self and hence will
             // have a bound region with number 0
-            let closure_def_id = cx.tcx.hir().local_def_id(closure_expr_id);
             let region = ty::ReFree(ty::FreeRegion {
                 scope: closure_def_id,
                 bound_region: ty::BoundRegion::BrAnon(0),
@@ -1060,15 +1068,11 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // at this point we have `self.n`, which loads up the upvar
             let field_kind = ExprKind::Field {
                 lhs: self_expr.to_ref(),
-                name: Field::new(index),
+                name: Field::new(upvar_index),
             };
 
             // ...but the upvar might be an `&T` or `&mut T` capture, at which
             // point we need an implicit deref
-            let upvar_id = ty::UpvarId {
-                var_path: ty::UpvarPath {hir_id: var_hir_id},
-                closure_expr_id: LocalDefId::from_def_id(closure_def_id),
-            };
             match cx.tables().upvar_capture(upvar_id) {
                 ty::UpvarCapture::ByValue => field_kind,
                 ty::UpvarCapture::ByRef(borrow) => {
@@ -1087,8 +1091,6 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 }
             }
         }
-
-        _ => span_bug!(expr.span, "type of & not region"),
     }
 }
 
@@ -1178,10 +1180,9 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
 
 fn capture_upvar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    closure_expr: &'tcx hir::Expr,
-                                   upvar: &hir::Upvar,
+                                   var_hir_id: hir::HirId,
                                    upvar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let var_hir_id = upvar.var_id();
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
         closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),
@@ -1193,7 +1194,7 @@ fn capture_upvar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         temp_lifetime,
         ty: var_ty,
         span: closure_expr.span,
-        kind: convert_var(cx, closure_expr, upvar.res),
+        kind: convert_var(cx, closure_expr, var_hir_id),
     };
     match upvar_capture {
         ty::UpvarCapture::ByValue => captured_var.to_ref(),

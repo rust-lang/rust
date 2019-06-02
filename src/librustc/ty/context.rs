@@ -1062,11 +1062,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub queries: query::Queries<'tcx>,
 
-    // Records the captured variables referenced by every closure
-    // expression. Do not track deps for this, just recompute it from
-    // scratch every time.
-    upvars: FxHashMap<DefId, Vec<hir::Upvar>>,
-
     maybe_unused_trait_imports: FxHashSet<DefId>,
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
     /// A map of glob use to a set of names it actually imports. Currently only
@@ -1296,12 +1291,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     e.map_id(|id| hir.node_to_hir_id(id))
                 }).collect();
                 (k, exports)
-            }).collect(),
-            upvars: resolutions.upvars.into_iter().map(|(k, v)| {
-                let vars: Vec<_> = v.into_iter().map(|e| {
-                    e.map_id(|id| hir.node_to_hir_id(id))
-                }).collect();
-                (hir.local_def_id(k), vars)
             }).collect(),
             maybe_unused_trait_imports:
                 resolutions.maybe_unused_trait_imports
@@ -3023,7 +3012,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(id, LOCAL_CRATE);
         tcx.arena.alloc(middle::lang_items::collect(tcx))
     };
-    providers.upvars = |tcx, id| tcx.gcx.upvars.get(&id).map(|v| &v[..]);
     providers.maybe_unused_trait_import = |tcx, id| {
         tcx.maybe_unused_trait_imports.contains(&id)
     };

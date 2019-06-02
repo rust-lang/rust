@@ -174,8 +174,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
                     if let Some(upvars) = tables.upvar_list.get(&def_id) {
                         // Sometimes the index is beyond the number of upvars (seen
                         // for a generator).
-                        if let Some(upvar_id) = upvars.get(field) {
-                            let var_hir_id = upvar_id.var_path.hir_id;
+                        if let Some((&var_hir_id, _)) = upvars.get_index(field) {
                             let var_node_id = self.ecx.tcx.hir().hir_to_node_id(var_hir_id);
                             if let hir::Node::Binding(pat) = self.ecx.tcx.hir().get(var_node_id) {
                                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
