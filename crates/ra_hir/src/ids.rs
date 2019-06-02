@@ -62,32 +62,35 @@ impl HirFileId {
         file_id: HirFileId,
     ) -> Option<TreeArc<SyntaxNode>> {
         db.check_canceled();
-        let _p = profile("parse_or_expand_query");
         match file_id.0 {
             HirFileIdRepr::File(file_id) => Some(db.parse(file_id).tree.syntax().to_owned()),
-            HirFileIdRepr::Macro(macro_file) => {
-                let macro_call_id = macro_file.macro_call_id;
-                let tt = db
-                    .macro_expand(macro_call_id)
-                    .map_err(|err| {
-                        // Note:
-                        // The final goal we would like to make all parse_macro success,
-                        // such that the following log will not call anyway.
-                        log::warn!(
-                            "fail on macro_parse: (reason: {}) {}",
-                            err,
-                            macro_call_id.debug_dump(db)
-                        );
-                    })
-                    .ok()?;
-                match macro_file.macro_file_kind {
-                    MacroFileKind::Items => {
-                        Some(mbe::token_tree_to_ast_item_list(&tt).syntax().to_owned())
-                    }
-                    MacroFileKind::Expr => {
-                        mbe::token_tree_to_expr(&tt).ok().map(|it| it.syntax().to_owned())
-                    }
-                }
+            HirFileIdRepr::Macro(macro_file) => db.parse_macro(macro_file),
+        }
+    }
+
+    pub(crate) fn parse_macro_query(
+        db: &impl AstDatabase,
+        macro_file: MacroFile,
+    ) -> Option<TreeArc<SyntaxNode>> {
+        let _p = profile("parse_macro_query");
+        let macro_call_id = macro_file.macro_call_id;
+        let tt = db
+            .macro_expand(macro_call_id)
+            .map_err(|err| {
+                // Note:
+                // The final goal we would like to make all parse_macro success,
+                // such that the following log will not call anyway.
+                log::warn!(
+                    "fail on macro_parse: (reason: {}) {}",
+                    err,
+                    macro_call_id.debug_dump(db)
+                );
+            })
+            .ok()?;
+        match macro_file.macro_file_kind {
+            MacroFileKind::Items => Some(mbe::token_tree_to_ast_item_list(&tt).syntax().to_owned()),
+            MacroFileKind::Expr => {
+                mbe::token_tree_to_expr(&tt).ok().map(|it| it.syntax().to_owned())
             }
         }
     }
@@ -100,7 +103,7 @@ enum HirFileIdRepr {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct MacroFile {
+pub struct MacroFile {
     macro_call_id: MacroCallId,
     macro_file_kind: MacroFileKind,
 }

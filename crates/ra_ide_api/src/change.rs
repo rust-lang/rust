@@ -226,7 +226,7 @@ impl RootDatabase {
 
         self.query(ra_db::ParseQuery).sweep(sweep);
 
-        self.query(hir::db::ParseOrExpandQuery).sweep(sweep);
+        self.query(hir::db::ParseMacroQuery).sweep(sweep);
         self.query(hir::db::MacroDefQuery).sweep(sweep);
         self.query(hir::db::MacroArgQuery).sweep(sweep);
         self.query(hir::db::MacroExpandQuery).sweep(sweep);
