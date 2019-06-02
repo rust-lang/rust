@@ -1496,6 +1496,13 @@ impl GenericParamDefKind {
             GenericParamDefKind::Lifetime => None,
         }
     }
+
+    pub fn is_const(&self) -> bool {
+        match *self {
+            GenericParamDefKind::Const { .. } => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]

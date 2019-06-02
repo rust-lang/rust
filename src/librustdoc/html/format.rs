@@ -166,6 +166,10 @@ impl fmt::Display for clean::Generics {
         if real_params.is_empty() {
             return Ok(());
         }
+        let (const_params, not_const_params) = real_params
+            .into_iter()
+            .partition::<Vec<_>, _>(|x| x.kind.is_const());
+        let real_params = not_const_params.iter().chain(const_params.iter()).collect::<Vec<_>>();
         if f.alternate() {
             write!(f, "<{:#}>", CommaSep(&real_params))
         } else {
