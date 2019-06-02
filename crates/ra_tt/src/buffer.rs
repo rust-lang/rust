@@ -141,7 +141,7 @@ impl<'a> Cursor<'a> {
     }
 
     /// If the cursor is pointing at a `TokenTree`, returns it
-    pub fn token_tree(self) -> Option<(&'a TokenTree)> {
+    pub fn token_tree(self) -> Option<&'a TokenTree> {
         match self.entry() {
             Some(Entry::Leaf(tt)) => Some(tt),
             Some(Entry::Subtree(tt, _)) => Some(tt),
