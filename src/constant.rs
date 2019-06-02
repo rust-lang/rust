@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc::mir::interpret::{
-    read_target_uint, AllocId, AllocKind, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
+    read_target_uint, AllocId, GlobalAlloc, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
 };
 use rustc::ty::Const;
 use rustc_mir::interpret::{
@@ -171,7 +171,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
     let alloc = result().expect("unable to convert ConstValue to Allocation");
 
     //println!("const value: {:?} allocation: {:?}", value, alloc);
-    let alloc_id = fx.tcx.alloc_map.lock().allocate(alloc);
+    let alloc_id = fx.tcx.alloc_map.lock().create_memory_alloc(alloc);
     fx.constants.todo.insert(TodoItem::Alloc(alloc_id));
     let data_id = data_id_for_alloc_id(fx.module, alloc_id);
     cplace_for_dataid(fx, const_.ty, data_id)
@@ -296,18 +296,18 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
             };
 
             let data_id = match tcx.alloc_map.lock().get(reloc).unwrap() {
-                AllocKind::Function(instance) => {
+                GlobalAlloc::Function(instance) => {
                     assert_eq!(addend, 0);
                     let func_id = crate::abi::import_function(tcx, module, instance);
                     let local_func_id = module.declare_func_in_data(func_id, &mut data_ctx);
                     data_ctx.write_function_addr(offset.bytes() as u32, local_func_id);
                     continue;
                 }
-                AllocKind::Memory(_) => {
+                GlobalAlloc::Memory(_) => {
                     cx.todo.insert(TodoItem::Alloc(reloc));
                     data_id_for_alloc_id(module, reloc)
                 }
-                AllocKind::Static(def_id) => {
+                GlobalAlloc::Static(def_id) => {
                     cx.todo.insert(TodoItem::Static(def_id));
                     let linkage = crate::linkage::get_static_ref_linkage(tcx, def_id);
                     data_id_for_static(tcx, module, def_id, linkage)
