@@ -400,27 +400,36 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
                 let (inner_ty, slice_ty) = match expected_ty.sty {
                     ty::Array(inner_ty, size) => {
-                        let size = size.unwrap_usize(tcx);
-                        let min_len = before.len() as u64 + after.len() as u64;
-                        if slice.is_none() {
-                            if min_len != size {
-                                struct_span_err!(
-                                    tcx.sess, pat.span, E0527,
-                                    "pattern requires {} elements but array has {}",
-                                    min_len, size)
-                                    .span_label(pat.span, format!("expected {} elements", size))
+                        if let Some(size) = size.assert_usize(tcx) {
+                            let min_len = before.len() as u64 + after.len() as u64;
+                            if slice.is_none() {
+                                if min_len != size {
+                                    struct_span_err!(
+                                        tcx.sess, pat.span, E0527,
+                                        "pattern requires {} elements but array has {}",
+                                        min_len, size)
+                                        .span_label(pat.span, format!("expected {} elements", size))
+                                        .emit();
+                                }
+                                (inner_ty, tcx.types.err)
+                            } else if let Some(rest) = size.checked_sub(min_len) {
+                                (inner_ty, tcx.mk_array(inner_ty, rest))
+                            } else {
+                                struct_span_err!(tcx.sess, pat.span, E0528,
+                                        "pattern requires at least {} elements but array has {}",
+                                        min_len, size)
+                                    .span_label(pat.span,
+                                        format!("pattern cannot match array of {} elements", size))
                                     .emit();
+                                (inner_ty, tcx.types.err)
                             }
-                            (inner_ty, tcx.types.err)
-                        } else if let Some(rest) = size.checked_sub(min_len) {
-                            (inner_ty, tcx.mk_array(inner_ty, rest))
                         } else {
-                            struct_span_err!(tcx.sess, pat.span, E0528,
-                                    "pattern requires at least {} elements but array has {}",
-                                    min_len, size)
-                                .span_label(pat.span,
-                                    format!("pattern cannot match array of {} elements", size))
-                                .emit();
+                            struct_span_err!(
+                                tcx.sess,
+                                pat.span,
+                                E0730,
+                                "cannot pattern-match on an array without a fixed length",
+                            ).emit();
                             (inner_ty, tcx.types.err)
                         }
                     }
@@ -1080,8 +1089,18 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             let msg = format!("expected tuple struct/variant, found {} `{}`",
                               res.descr(),
                               hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
-            struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
-                .span_label(pat.span, "not a tuple variant or struct").emit();
+            let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
+            match (res, &pat.node) {
+                (Res::Def(DefKind::Fn, _), _) | (Res::Def(DefKind::Method, _), _) => {
+                    err.span_label(pat.span, "`fn` calls are not allowed in patterns");
+                    err.help("for more information, visit \
+                              https://doc.rust-lang.org/book/ch18-00-patterns.html");
+                }
+                _ => {
+                    err.span_label(pat.span, "not a tuple variant or struct");
+                }
+            }
+            err.emit();
             on_error();
         };
 

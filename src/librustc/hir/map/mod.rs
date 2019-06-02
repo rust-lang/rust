@@ -628,10 +628,6 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    pub fn get_generics_span(&self, id: DefId) -> Option<Span> {
-        self.get_generics(id).map(|generics| generics.span).filter(|sp| *sp != DUMMY_SP)
-    }
-
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn find(&self, id: NodeId) -> Option<Node<'hir>> {
         let hir_id = self.node_to_hir_id(id);

@@ -1,0 +1,6 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/issue-61422.rs:3:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+

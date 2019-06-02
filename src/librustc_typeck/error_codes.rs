@@ -4648,6 +4648,38 @@ fn make_recursive_type() -> impl Sized {
 ```
 "##,
 
+E0730: r##"
+An array without a fixed length was pattern-matched.
+
+Example of erroneous code:
+
+```compile_fail,E0730
+#![feature(const_generics)]
+
+fn is_123<const N: usize>(x: [u32; N]) -> bool {
+    match x {
+        [1, 2, 3] => true, // error: cannot pattern-match on an
+                           //        array without a fixed length
+        _ => false
+    }
+}
+```
+
+Ensure that the pattern is consistent with the size of the matched
+array. Additional elements can be matched with `..`:
+
+```
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4];
+match r {
+    &[a, b, ..] => { // ok!
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+"##,
+
 }
 
 register_diagnostics! {

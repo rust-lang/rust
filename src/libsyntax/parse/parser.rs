@@ -5050,21 +5050,22 @@ impl<'a> Parser<'a> {
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
     fn parse_generics(&mut self) -> PResult<'a, ast::Generics> {
         let span_lo = self.span;
-        if self.eat_lt() {
+        let (params, span) = if self.eat_lt() {
             let params = self.parse_generic_params()?;
             self.expect_gt()?;
-            Ok(ast::Generics {
-                params,
-                where_clause: WhereClause {
-                    id: ast::DUMMY_NODE_ID,
-                    predicates: Vec::new(),
-                    span: DUMMY_SP,
-                },
-                span: span_lo.to(self.prev_span),
-            })
+            (params, span_lo.to(self.prev_span))
         } else {
-            Ok(ast::Generics::default())
-        }
+            (vec![], self.prev_span.between(self.span))
+        };
+        Ok(ast::Generics {
+            params,
+            where_clause: WhereClause {
+                id: ast::DUMMY_NODE_ID,
+                predicates: Vec::new(),
+                span: DUMMY_SP,
+            },
+            span,
+        })
     }
 
     /// Parses generic args (within a path segment) with recovery for extra leading angle brackets.

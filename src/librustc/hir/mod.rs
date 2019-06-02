@@ -16,7 +16,7 @@ use crate::util::nodemap::{NodeMap, FxHashSet};
 use crate::mir::mono::Linkage;
 
 use errors::FatalError;
-use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
+use syntax_pos::{Span, DUMMY_SP, symbol::InternedString, MultiSpan};
 use syntax::source_map::Spanned;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
@@ -624,6 +624,14 @@ impl Generics {
             }
         }
         None
+    }
+
+    pub fn spans(&self) -> MultiSpan {
+        if self.params.is_empty() {
+            self.span.into()
+        } else {
+            self.params.iter().map(|p| p.span).collect::<Vec<Span>>().into()
+        }
     }
 }
 
