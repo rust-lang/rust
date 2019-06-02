@@ -2707,6 +2707,33 @@ impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
     }
 }
 
+/// Turn a `Vec` into a `VecDeque`.
+///
+/// This avoids reallocating where possible, but the conditions for that are
+/// strict, and subject to change, so shouldn't be relied upon unless the
+/// `Vec` came from `From<VecDeque>` has hasn't been reallocated.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::VecDeque;
+///
+/// // Start with a VecDeque
+/// let deque: VecDeque<_> = (1..5).collect();
+///
+/// // Turn it into a Vec (no allocation needed)
+/// let mut vec = Vec::from(deque);
+///
+/// // modify it, being careful to not trigger reallocation
+/// vec.pop();
+/// vec.push(100);
+///
+/// // Turn it back into a VecDeque (no allocation needed)
+/// let ptr = vec.as_ptr();
+/// let deque = VecDeque::from(vec);
+/// assert_eq!(deque, [1, 2, 3, 100]);
+/// assert_eq!(deque.as_slices().0.as_ptr(), ptr);
+/// ```
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
 impl<T> From<Vec<T>> for VecDeque<T> {
     fn from(mut other: Vec<T>) -> Self {
@@ -2733,6 +2760,32 @@ impl<T> From<Vec<T>> for VecDeque<T> {
     }
 }
 
+/// Turn a `VecDeque` into a `Vec`.
+///
+/// This never needs to re-allocate, but does need to do O(n) data movement if
+/// the circular buffer doesn't happen to be at the beginning of the allocation.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::VecDeque;
+///
+/// // This one is O(1)
+/// let deque: VecDeque<_> = (1..5).collect();
+/// let ptr = deque.as_slices().0.as_ptr();
+/// let vec = Vec::from(deque);
+/// assert_eq!(vec, [1, 2, 3, 4]);
+/// assert_eq!(vec.as_ptr(), ptr);
+///
+/// // This one need data rearranging
+/// let mut deque: VecDeque<_> = (1..5).collect();
+/// deque.push_front(9);
+/// deque.push_front(8);
+/// let ptr = deque.as_slices().1.as_ptr();
+/// let vec = Vec::from(deque);
+/// assert_eq!(vec, [8, 9, 1, 2, 3, 4]);
+/// assert_eq!(vec.as_ptr(), ptr);
+/// ```
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
 impl<T> From<VecDeque<T>> for Vec<T> {
     fn from(other: VecDeque<T>) -> Self {
