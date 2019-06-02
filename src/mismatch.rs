@@ -63,18 +63,18 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
             // FIXME: this is odd, see if we can lift the restriction on traits
             let (old_def_id, new_def_id) = match (old_res, new_res) {
                 (Res::Def(k1, o), Res::Def(k2, n)) => {
-                     match k1 {
-                         DefKind::Trait | DefKind::Macro(_) => continue,
-                         _ => (),
-                     };
+                    match k1 {
+                        DefKind::Trait | DefKind::Macro(_) => continue,
+                        _ => (),
+                    };
 
-                     match k2 {
-                         DefKind::Trait | DefKind::Macro(_) => continue,
-                         _ => (),
-                     };
+                    match k2 {
+                        DefKind::Trait | DefKind::Macro(_) => continue,
+                        _ => (),
+                    };
 
-                     (o, n)
-                },
+                    (o, n)
+                }
                 _ => continue,
             };
 
@@ -165,7 +165,9 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
                         Res::Def(DefKind::Struct, a_def.did)
                     } else if a_def.is_union() {
                         Res::Def(DefKind::Union, a_def.did)
-                    } else /* if a_def.is_enum() */ {
+                    } else
+                    /* if a_def.is_enum() */
+                    {
                         Res::Def(DefKind::Enum, a_def.did)
                     };
 
@@ -173,7 +175,9 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
                         Res::Def(DefKind::Struct, b_def.did)
                     } else if b_def.is_union() {
                         Res::Def(DefKind::Union, b_def.did)
-                    } else /* if b_def.is_enum() */ {
+                    } else
+                    /* if b_def.is_enum() */
+                    {
                         Res::Def(DefKind::Enum, b_def.did)
                     };
 
@@ -286,9 +290,11 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
         Ok(a)
     }
 
-    fn consts(&mut self, a: &'tcx ty::Const<'tcx>, _: &'tcx ty::Const<'tcx>)
-        -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>
-    {
+    fn consts(
+        &mut self,
+        a: &'tcx ty::Const<'tcx>,
+        _: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         Ok(a) // TODO
     }
 

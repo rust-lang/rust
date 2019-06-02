@@ -11,6 +11,7 @@ extern crate serde_json;
 use cargo::core::{Package, PackageId, PackageSet, Source, SourceId, SourceMap, Workspace};
 use curl::easy::Easy;
 use log::debug;
+use rand::Rng;
 use std::{
     env,
     fs::File,
@@ -19,7 +20,6 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
-use rand::Rng;
 
 pub type Result<T> = cargo::util::CargoResult<T>;
 
@@ -432,7 +432,12 @@ impl<'a> WorkInfo<'a> {
 
         let mut outdir = env::temp_dir();
         // The filename is randomized to avoid clashes when multiple cargo semver are running.
-        outdir.push(&format!("cargo_semver_{}_{}_{}", name, current, rand::thread_rng().gen::<u32>()));
+        outdir.push(&format!(
+            "cargo_semver_{}_{}_{}",
+            name,
+            current,
+            rand::thread_rng().gen::<u32>()
+        ));
 
         // redirection gang
         let outfile = File::create(&outdir)?;

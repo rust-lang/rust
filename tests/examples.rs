@@ -70,7 +70,11 @@ mod features {
             cmd.args(target_args);
         }
 
-        if expected_path.to_str().unwrap().contains("stdout_api_guidelines") {
+        if expected_path
+            .to_str()
+            .unwrap()
+            .contains("stdout_api_guidelines")
+        {
             cmd.env("RUST_SEMVER_API_GUIDELINES", "true");
         }
 
@@ -97,10 +101,12 @@ mod features {
                     None => line,
                 }) + "\n"
             })
-            .map(|l| if cfg!(target_os = "windows") {
-                l.replace('\\', "/")
-            } else {
-                l
+            .map(|l| {
+                if cfg!(target_os = "windows") {
+                    l.replace('\\', "/")
+                } else {
+                    l
+                }
             })
             .collect::<String>();
 
@@ -120,7 +126,8 @@ mod features {
         }
 
         assert_eq!(
-            output.status.success(), expected_result,
+            output.status.success(),
+            expected_result,
             "rust-semverver returned an unexpected exit status"
         );
 

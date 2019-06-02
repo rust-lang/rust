@@ -245,10 +245,7 @@ impl IdMapping {
 
     /// Construct a queue of toplevel item pairs' `DefId`s.
     pub fn toplevel_queue(&self) -> VecDeque<(Res, Res)> {
-        self.toplevel_mapping
-            .values()
-            .map(|t| *t)
-            .collect()
+        self.toplevel_mapping.values().map(|t| *t).collect()
     }
 
     /// Iterate over the toplevel and trait item pairs.
@@ -315,8 +312,8 @@ pub struct NameMapping {
 impl NameMapping {
     /// Insert a single export in the appropriate map, at the appropriate position.
     fn insert(&mut self, item: Export<HirId>, old: bool) {
-        use rustc::hir::def::Res::*;
         use rustc::hir::def::DefKind::*;
+        use rustc::hir::def::Res::*;
 
         let map = match item.res {
             Def(kind, _) => match kind {

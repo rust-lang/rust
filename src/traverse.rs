@@ -176,15 +176,13 @@ fn diff_structure<'a, 'tcx>(
                         }
 
                         let (o_kind, n_kind) = match (o.res, n.res) {
-                            (Res::Def(o_kind, _), Res::Def(n_kind, _)) => {
-                                (o_kind, n_kind)
-                            },
+                            (Res::Def(o_kind, _), Res::Def(n_kind, _)) => (o_kind, n_kind),
                             _ => {
                                 // a non-matching item pair (seriously broken though) -
                                 // register the change and abort further analysis of it
                                 // changes.add_change(ChangeType::KindDifference, o_def_id, None);
                                 continue;
-                            },
+                            }
                         };
 
                         match (o_kind, n_kind) {
@@ -326,10 +324,7 @@ fn diff_structure<'a, 'tcx>(
 }
 
 /// Given two fn items, perform structural checks.
-fn diff_fn<'a, 'tcx>(changes: &mut ChangeSet,
-                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                     old: Res,
-                     new: Res) {
+fn diff_fn<'a, 'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: Res, new: Res) {
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
 
@@ -385,21 +380,16 @@ fn diff_method<'a, 'tcx>(
 ///
 /// This establishes the needed correspondence between non-toplevel items such as enum variants,
 /// struct- and enum fields etc.
-fn diff_adts(changes: &mut ChangeSet,
-             id_mapping: &mut IdMapping,
-             tcx: TyCtxt,
-             old: Res,
-             new: Res) {
+fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, old: Res, new: Res) {
     use rustc::hir::def::DefKind::*;
 
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
 
-
     let (old_def, new_def) = match (old, new) {
-        (Def(Struct, _), Def(Struct, _)) | (Def(Union, _), Def(Union, _)) | (Def(Enum, _), Def(Enum, _)) => {
-            (tcx.adt_def(old_def_id), tcx.adt_def(new_def_id))
-        }
+        (Def(Struct, _), Def(Struct, _))
+        | (Def(Union, _), Def(Union, _))
+        | (Def(Enum, _), Def(Enum, _)) => (tcx.adt_def(old_def_id), tcx.adt_def(new_def_id)),
         _ => return,
     };
 
@@ -588,13 +578,13 @@ fn diff_traits<'a, 'tcx>(
     for old_def_id in tcx.associated_item_def_ids(old).iter() {
         let item = tcx.associated_item(*old_def_id);
         items.entry(item.ident.name).or_insert((None, None)).0 = Some(item);
-            // tcx.describe_def(*old_def_id).map(|d| (d, item));
+        // tcx.describe_def(*old_def_id).map(|d| (d, item));
     }
 
     for new_def_id in tcx.associated_item_def_ids(new).iter() {
         let item = tcx.associated_item(*new_def_id);
         items.entry(item.ident.name).or_insert((None, None)).1 = Some(item);
-            // tcx.describe_def(*new_def_id).map(|d| (d, item));
+        // tcx.describe_def(*new_def_id).map(|d| (d, item));
     }
 
     for (name, item_pair) in &items {
@@ -1049,8 +1039,13 @@ fn is_impl_trait_public<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_def_id: DefI
             TyKind::Slice(t) => type_visibility(tcx, t),
             TyKind::RawPtr(TypeAndMut { ty: t, .. }) => type_visibility(tcx, t),
             TyKind::Ref(_, t, _) => type_visibility(tcx, t),
-            TyKind::Bool | TyKind::Char | TyKind::Int(_) | TyKind::Uint(_) | TyKind::Float(_)
-            | TyKind::Str | TyKind:: Never => Visibility::Public,
+            TyKind::Bool
+            | TyKind::Char
+            | TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
+            | TyKind::Str
+            | TyKind::Never => Visibility::Public,
 
             // FIXME We assume everything else is public which is, of course, not always the case.
             //       This means we will have false positives.  We need to improve this.
@@ -1211,8 +1206,7 @@ fn match_inherent_impl<'a, 'tcx>(
 
         // prepare the item type for comparison, as we do for toplevel items' types
         let (orig, target) = match (orig_item.kind, target_item.kind) {
-            (AssocKind::Const, AssocKind::Const)
-            | (AssocKind::Type, AssocKind::Type) => (
+            (AssocKind::Const, AssocKind::Const) | (AssocKind::Type, AssocKind::Type) => (
                 infcx.tcx.type_of(orig_item_def_id),
                 infcx.tcx.type_of(target_item_def_id),
             ),
