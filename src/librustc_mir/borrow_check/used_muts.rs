@@ -60,11 +60,6 @@ impl GatherUsedMutsVisitor<'_, '_, '_, '_> {
         // they will either have been removed by unreachable code optimizations; or linted
         // as unused variables.
         if let Some(local) = into.base_local() {
-            debug!(
-                "visit_statement: statement={:?} local={:?} \
-                 never_initialized_mut_locals={:?}",
-                statement, local, self.never_initialized_mut_locals
-            );
             let _ = self.never_initialized_mut_locals.remove(&local);
         }
     }
@@ -95,6 +90,13 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
     ) {
         match &statement.kind {
             StatementKind::Assign(into, _) => {
+                if let Some(local) = into.base_local() {
+                    debug!(
+                        "visit_statement: statement={:?} local={:?} \
+                         never_initialized_mut_locals={:?}",
+                        statement, local, self.never_initialized_mut_locals
+                    );
+                }
                 self.remove_never_initialized_mut_locals(into);
             },
             _ => {},
