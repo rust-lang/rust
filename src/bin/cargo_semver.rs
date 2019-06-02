@@ -19,6 +19,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
+use rand::Rng;
 
 pub type Result<T> = cargo::util::CargoResult<T>;
 
@@ -430,7 +431,8 @@ impl<'a> WorkInfo<'a> {
         );
 
         let mut outdir = env::temp_dir();
-        outdir.push(&format!("cargo_semver_{}_{}", name, current));
+        // The filename is randomized to avoid clashes when multiple cargo semver are running.
+        outdir.push(&format!("cargo_semver_{}_{}_{}", name, current, rand::thread_rng().gen::<u32>()));
 
         // redirection gang
         let outfile = File::create(&outdir)?;
