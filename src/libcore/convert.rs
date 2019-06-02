@@ -129,7 +129,7 @@ pub const fn identity<T>(x: T) -> T { x }
 /// # Examples
 ///
 /// By using trait bounds we can accept arguments of different types as long as they can be
-/// converted a the specified type `T`.
+/// converted to the specified type `T`.
 ///
 /// For example: By creating a generic function that takes an `AsRef<str>` we express that we
 /// want to accept all references that can be converted to `&str` as an argument.
