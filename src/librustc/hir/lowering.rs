@@ -3092,7 +3092,7 @@ impl<'a> LoweringContext<'a> {
                                                    new_argument_id, ident, None),
                         span: desugared_span,
                     }),
-                    source: hir::ArgSource::AsyncFn(argument.pat.hir_id),
+                    source: hir::ArgSource::AsyncFn,
                 };
 
                 let construct_stmt = |this: &mut LoweringContext<'_>, pat: P<hir::Pat>,

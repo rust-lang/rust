@@ -2414,10 +2414,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 have_bound_regions,
             } = info;
 
-            let help_name = if let Some(body) = parent {
-                let arg = &self.tcx.hir().body(body).arguments[index];
-                let original_pat = self.tcx.hir().original_pat_of_argument(arg);
-                format!("`{}`", self.tcx.hir().hir_to_pretty_string(original_pat.hir_id))
+            let help_name = if let Some(ident) = parent.and_then(|body| {
+                self.tcx.hir().body(body).arguments[index].pat.simple_ident()
+            }) {
+                format!("`{}`", ident)
             } else {
                 format!("argument {}", index + 1)
             };

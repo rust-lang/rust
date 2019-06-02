@@ -1937,8 +1937,8 @@ pub struct Arg {
 pub enum ArgSource {
     /// Argument as specified by the user.
     Normal,
-    /// Generated argument from `async fn` lowering, `HirId` is the original pattern.
-    AsyncFn(HirId),
+    /// Generated argument from `async fn` lowering.
+    AsyncFn,
 }
 
 /// Represents the header (not the body) of a function declaration.
