@@ -130,7 +130,7 @@ LL | |                 );
    | |_________________^
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:214:13
+  --> $DIR/methods.rs:229:13
    |
 LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -139,7 +139,7 @@ LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:217:13
+  --> $DIR/methods.rs:232:13
    |
 LL |       let _ = v.iter().filter(|&x| {
    |  _____________^
@@ -149,7 +149,7 @@ LL | |                    ).next();
    | |___________________________^
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:233:13
+  --> $DIR/methods.rs:248:13
    |
 LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -158,7 +158,7 @@ LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    = note: replace `find(|&x| *x < 0).is_some()` with `any(|x| *x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:236:13
+  --> $DIR/methods.rs:251:13
    |
 LL |       let _ = v.iter().find(|&x| {
    |  _____________^
@@ -168,7 +168,7 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:242:13
+  --> $DIR/methods.rs:257:13
    |
 LL |     let _ = v.iter().position(|&x| x < 0).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -176,7 +176,7 @@ LL |     let _ = v.iter().position(|&x| x < 0).is_some();
    = note: replace `position(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:245:13
+  --> $DIR/methods.rs:260:13
    |
 LL |       let _ = v.iter().position(|&x| {
    |  _____________^
@@ -186,7 +186,7 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:251:13
+  --> $DIR/methods.rs:266:13
    |
 LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -194,7 +194,7 @@ LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
    = note: replace `rposition(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:254:13
+  --> $DIR/methods.rs:269:13
    |
 LL |       let _ = v.iter().rposition(|&x| {
    |  _____________^
@@ -204,7 +204,7 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-  --> $DIR/methods.rs:269:13
+  --> $DIR/methods.rs:284:13
    |
 LL |     let _ = opt.unwrap();
    |             ^^^^^^^^^^^^

@@ -203,6 +203,21 @@ fn option_methods() {
     // Macro case.
     // Should not lint.
     let _ = opt_map!(opt, |x| x + 1).unwrap_or_else(|| 0);
+
+    // Issue #4144
+    {
+        let mut frequencies = HashMap::new();
+        let word = "foo";
+
+        frequencies
+            .get_mut(word)
+            .map(|count| {
+                *count += 1;
+            })
+            .unwrap_or_else(|| {
+                frequencies.insert(word.to_owned(), 1);
+            });
+    }
 }
 
 /// Checks implementation of `FILTER_NEXT` lint.
