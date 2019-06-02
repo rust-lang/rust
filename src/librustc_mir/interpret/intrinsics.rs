@@ -194,7 +194,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 let raw_shift_bits = self.read_scalar(args[1])?.to_bits(layout.size)?;
                 let width_bits = layout.size.bits() as u128;
                 let shift_bits = raw_shift_bits % width_bits;
-                let inv_shift_bits = (width_bits - raw_shift_bits) % width_bits;
+                let inv_shift_bits = (width_bits - shift_bits) % width_bits;
                 let result_bits = if intrinsic_name == "rotate_left" {
                     (val_bits << shift_bits) | (val_bits >> inv_shift_bits)
                 } else {
