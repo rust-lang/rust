@@ -1031,14 +1031,18 @@ fn diff_inherent_impls<'a, 'tcx>(
 // There doesn't seem to be a way to get the visibility of impl traits from rustc
 // (CC rust-lang/rust#61464), so we implement the logic here.  Note that this implementation is far
 // from perfect and will cause false positives in some cases (see comment in the inner function).
+#[allow(clippy::let_and_return)]
+#[allow(clippy::match_same_arms)]
 fn is_impl_trait_public<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_def_id: DefId) -> bool {
     fn type_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty) -> Visibility {
         match ty.sty {
             TyKind::Adt(def, _) => tcx.visibility(def.did),
-            TyKind::Array(t, _) => type_visibility(tcx, t),
-            TyKind::Slice(t) => type_visibility(tcx, t),
-            TyKind::RawPtr(TypeAndMut { ty: t, .. }) => type_visibility(tcx, t),
-            TyKind::Ref(_, t, _) => type_visibility(tcx, t),
+
+            TyKind::Array(t, _)
+            | TyKind::Slice(t)
+            | TyKind::RawPtr(TypeAndMut { ty: t, .. })
+            | TyKind::Ref(_, t, _) => type_visibility(tcx, t),
+
             TyKind::Bool
             | TyKind::Char
             | TyKind::Int(_)

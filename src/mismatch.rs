@@ -165,9 +165,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
                         Res::Def(DefKind::Struct, a_def.did)
                     } else if a_def.is_union() {
                         Res::Def(DefKind::Union, a_def.did)
-                    } else
-                    /* if a_def.is_enum() */
-                    {
+                    } else {
                         Res::Def(DefKind::Enum, a_def.did)
                     };
 
@@ -175,9 +173,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
                         Res::Def(DefKind::Struct, b_def.did)
                     } else if b_def.is_union() {
                         Res::Def(DefKind::Union, b_def.did)
-                    } else
-                    /* if b_def.is_enum() */
-                    {
+                    } else {
                         Res::Def(DefKind::Enum, b_def.did)
                     };
 

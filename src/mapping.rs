@@ -245,7 +245,7 @@ impl IdMapping {
 
     /// Construct a queue of toplevel item pairs' `DefId`s.
     pub fn toplevel_queue(&self) -> VecDeque<(Res, Res)> {
-        self.toplevel_mapping.values().map(|t| *t).collect()
+        self.toplevel_mapping.values().copied().collect()
     }
 
     /// Iterate over the toplevel and trait item pairs.
