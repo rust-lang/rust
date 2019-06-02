@@ -12,6 +12,7 @@ use cargo::core::{Package, PackageId, PackageSet, Source, SourceId, SourceMap, W
 use curl::easy::Easy;
 use log::debug;
 use rand::Rng;
+use std::collections::HashSet;
 use std::{
     env,
     fs::File,
@@ -351,7 +352,7 @@ impl<'a> SourceInfo<'a> {
     /// Construct a new source info for `crates.io`.
     pub fn new(config: &'a cargo::Config) -> Result<SourceInfo<'a>> {
         let source_id = SourceId::crates_io(config)?;
-        let source = source_id.load(config)?;
+        let source = source_id.load(config, &HashSet::new())?;
 
         debug!("source id loaded: {:?}", source_id);
 
@@ -387,7 +388,7 @@ impl<'a> WorkInfo<'a> {
     ) -> Result<WorkInfo<'a>> {
         // TODO: fall back to locally cached package instance, or better yet, search for it
         // first.
-        let package_ids = [PackageId::new(name, version, &source.id)?];
+        let package_ids = [PackageId::new(name, version, source.id)?];
         debug!("(remote) package id: {:?}", package_ids[0]);
         let sources = {
             let mut s = SourceMap::new();
@@ -396,7 +397,7 @@ impl<'a> WorkInfo<'a> {
         };
 
         let package_set = PackageSet::new(&package_ids, sources, config)?;
-        let package = package_set.get_one(&package_ids[0])?;
+        let package = package_set.get_one(package_ids[0])?;
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
 
         Ok(Self {
