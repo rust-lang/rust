@@ -1662,7 +1662,16 @@ fn check_for_mutation(
     };
     let def_id = def_id::DefId::local(body.hir_id.owner);
     let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
-    ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).walk_expr(body);
+    ExprUseVisitor::new(
+        &mut delegate,
+        cx.tcx,
+        def_id,
+        cx.param_env,
+        region_scope_tree,
+        cx.tables,
+        None,
+    )
+    .walk_expr(body);
     delegate.mutation_span()
 }
 
@@ -1769,7 +1778,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                     }
                     let res = self.cx.tables.qpath_res(seqpath, seqexpr.hir_id);
                     match res {
-                        Res::Local(hir_id) | Res::Upvar(hir_id, ..) => {
+                        Res::Local(hir_id) => {
                             let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
                             let parent_def_id = self.cx.tcx.hir().local_def_id_from_hir_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
@@ -1829,24 +1838,13 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             if let QPath::Resolved(None, ref path) = *qpath;
             if path.segments.len() == 1;
             then {
-                match self.cx.tables.qpath_res(qpath, expr.hir_id) {
-                    Res::Upvar(local_id, ..) => {
-                        if local_id == self.var {
-                            // we are not indexing anything, record that
-                            self.nonindex = true;
-                        }
+                if let Res::Local(local_id) = self.cx.tables.qpath_res(qpath, expr.hir_id) {
+                    if local_id == self.var {
+                        self.nonindex = true;
+                    } else {
+                        // not the correct variable, but still a variable
+                        self.referenced.insert(path.segments[0].ident.name);
                     }
-                    Res::Local(local_id) =>
-                    {
-
-                        if local_id == self.var {
-                            self.nonindex = true;
-                        } else {
-                            // not the correct variable, but still a variable
-                            self.referenced.insert(path.segments[0].ident.name);
-                        }
-                    }
-                    _ => {}
                 }
             }
         }
@@ -2378,7 +2376,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
             let res = self.cx.tables.qpath_res(qpath, ex.hir_id);
             then {
                 match res {
-                    Res::Local(node_id) | Res::Upvar(node_id, ..) => {
+                    Res::Local(node_id) => {
                         self.ids.insert(node_id);
                     },
                     Res::Def(DefKind::Static, def_id) => {
