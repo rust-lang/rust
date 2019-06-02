@@ -543,6 +543,14 @@ impl SyntaxContext {
         })
     }
 
+    pub fn hygienic_eq(self, other: SyntaxContext, mark: Mark) -> bool {
+        HygieneData::with(|data| {
+            let mut self_modern = data.modern(self);
+            data.adjust(&mut self_modern, mark);
+            self_modern == data.modern(other)
+        })
+    }
+
     #[inline]
     pub fn modern(self) -> SyntaxContext {
         HygieneData::with(|data| data.modern(self))

@@ -3089,7 +3089,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // comparison fails frequently, and we want to avoid the expensive
         // `modern()` calls required for the span comparison whenever possible.
         use_name.name == def_name.name &&
-        self.adjust_ident(use_name, def_parent_def_id).span.ctxt() == def_name.modern().span.ctxt()
+        use_name.span.ctxt().hygienic_eq(def_name.span.ctxt(),
+                                         self.expansion_that_defined(def_parent_def_id))
     }
 
     fn expansion_that_defined(self, scope: DefId) -> Mark {
