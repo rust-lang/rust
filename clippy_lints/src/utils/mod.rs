@@ -94,12 +94,12 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
 
 /// Returns `true` if this `expn_info` was expanded by any macro or desugaring
 pub fn in_macro_or_desugar(span: Span) -> bool {
-    span.ctxt().outer().expn_info().is_some()
+    span.ctxt().outer_expn_info().is_some()
 }
 
 /// Returns `true` if this `expn_info` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
-    if let Some(info) = span.ctxt().outer().expn_info() {
+    if let Some(info) = span.ctxt().outer_expn_info() {
         if let ExpnFormat::CompilerDesugaring(..) = info.format {
             false
         } else {
@@ -691,11 +691,7 @@ pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
 /// See also `is_direct_expn_of`.
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
-        let span_name_span = span
-            .ctxt()
-            .outer()
-            .expn_info()
-            .map(|ei| (ei.format.name(), ei.call_site));
+        let span_name_span = span.ctxt().outer_expn_info().map(|ei| (ei.format.name(), ei.call_site));
 
         match span_name_span {
             Some((mac_name, new_span)) if mac_name.as_str() == name => return Some(new_span),
@@ -715,11 +711,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// `bar!` by
 /// `is_direct_expn_of`.
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
-    let span_name_span = span
-        .ctxt()
-        .outer()
-        .expn_info()
-        .map(|ei| (ei.format.name(), ei.call_site));
+    let span_name_span = span.ctxt().outer_expn_info().map(|ei| (ei.format.name(), ei.call_site));
 
     match span_name_span {
         Some((mac_name, new_span)) if mac_name.as_str() == name => Some(new_span),

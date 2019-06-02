@@ -594,8 +594,7 @@ fn is_used(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 fn in_attributes_expansion(expr: &Expr) -> bool {
     expr.span
         .ctxt()
-        .outer()
-        .expn_info()
+        .outer_expn_info()
         .map_or(false, |info| matches!(info.format, ExpnFormat::MacroAttribute(_)))
 }
 

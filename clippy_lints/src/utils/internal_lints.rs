@@ -156,8 +156,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
             // actual span that invoked `declare_tool_lint!`:
             let lint_span = lint_span
                 .ctxt()
-                .outer()
-                .expn_info()
+                .outer_expn_info()
                 .map(|ei| ei.call_site)
                 .expect("unable to get call_site");
 

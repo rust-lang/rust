@@ -69,8 +69,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
 
 fn get_outer_span(expr: &Expr) -> Span {
     if_chain! {
-        if let Some(first) = expr.span.ctxt().outer().expn_info();
-        if let Some(second) = first.call_site.ctxt().outer().expn_info();
+        if let Some(first) = expr.span.ctxt().outer_expn_info();
+        if let Some(second) = first.call_site.ctxt().outer_expn_info();
         then {
             second.call_site
         } else {

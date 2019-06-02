@@ -49,13 +49,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessVec {
                 // report the error around the `vec!` not inside `<std macros>:`
                 let span = arg.span
                     .ctxt()
-                    .outer()
-                    .expn_info()
+                    .outer_expn_info()
                     .map(|info| info.call_site)
                     .expect("unable to get call_site")
                     .ctxt()
-                    .outer()
-                    .expn_info()
+                    .outer_expn_info()
                     .map(|info| info.call_site)
                     .expect("unable to get call_site");
                 check_vec_macro(cx, &vec_args, span);
