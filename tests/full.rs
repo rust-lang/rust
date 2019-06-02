@@ -93,11 +93,24 @@ mod full {
             let mut new_file = File::create(&new_path).unwrap();
             new_file.write_all(new_output.as_bytes()).unwrap();
 
-            eprintln!(
-                "For details, try this command: \n\n    diff {} {}\n\n",
-                expected_path.display(),
-                new_path.display()
-            );
+            match std::env::var_os("CI") {
+                None => {
+                    eprintln!(
+                        "For details, try this command: \n\n    diff {} {}\n\n",
+                        expected_path.display(),
+                        new_path.display()
+                    );
+                }
+                Some(_) => {
+                    eprintln!("=== Expected output ===");
+                    eprint!("{}", expected_output);
+                    eprintln!("=== End of expected output ===");
+                    eprintln!("=== Actual output ===");
+                    eprint!("{}", new_output);
+                    eprintln!("=== End of actual output ===");
+                }
+            };
+
             panic!("unexpected output diff");
         }
 
