@@ -2713,7 +2713,7 @@ impl<T> From<Vec<T>> for VecDeque<T> {
     ///
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
-    /// `Vec<T>` came from `From<VecDeque<T>>` has hasn't been reallocated.
+    /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
     ///
     /// # Examples
     ///
