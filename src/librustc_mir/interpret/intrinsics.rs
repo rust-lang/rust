@@ -85,8 +85,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     data: slice_val,
                     start: _,
                     end: _,
-                } = const_val
-                {
+                } = const_val {
                     // unsafe for from_utf8_unchecked()
                     unsafe {
                         let str_val = core::str::from_utf8_unchecked(&slice_val.bytes);
@@ -94,7 +93,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                         self.write_immediate(name_val, dest)?;
                     }
                 } else {
-                    bug!("type_name() somehow failed to return a ConstValue::Slice");
+                    bug!("type_name::type_name() somehow failed to return a ConstValue::Slice");
                 }
             }
             | "ctpop"
