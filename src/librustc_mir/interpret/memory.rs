@@ -453,8 +453,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         if let Ok(alloc) = self.get(id) {
             return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
         }
+        // can't do this in the match argument, we may get cycle errors since the lock would get
+        // dropped after the match.
+        let alloc = self.tcx.alloc_map.lock().get(id);
         // Could also be a fn ptr or extern static
-        match self.tcx.alloc_map.lock().get(id) {
+        match alloc {
             Some(GlobalAlloc::Function(..)) => Ok((Size::ZERO, Align::from_bytes(1).unwrap())),
             // `self.get` would also work, but can cause cycles if a static refers to itself
             Some(GlobalAlloc::Static(did)) => {
