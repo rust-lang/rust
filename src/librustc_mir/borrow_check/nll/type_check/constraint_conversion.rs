@@ -3,7 +3,7 @@ use crate::borrow_check::nll::region_infer::TypeTest;
 use crate::borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::borrow_check::nll::universal_regions::UniversalRegions;
 use crate::borrow_check::nll::ToRegionVid;
-use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::canonical::QueryOutlivesConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
@@ -49,13 +49,13 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
-    pub(super) fn convert_all(&mut self, query_constraints: &[QueryRegionConstraint<'tcx>]) {
+    pub(super) fn convert_all(&mut self, query_constraints: &[QueryOutlivesConstraint<'tcx>]) {
         for query_constraint in query_constraints {
             self.convert(query_constraint);
         }
     }
 
-    pub(super) fn convert(&mut self, query_constraint: &QueryRegionConstraint<'tcx>) {
+    pub(super) fn convert(&mut self, query_constraint: &QueryOutlivesConstraint<'tcx>) {
         debug!("generate: constraints at: {:#?}", self.locations);
 
         // Extract out various useful fields we'll need below.

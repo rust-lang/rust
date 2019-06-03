@@ -8,7 +8,7 @@ use crate::borrow_check::Upvar;
 use crate::borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
 use crate::borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
-use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::canonical::QueryOutlivesConstraint;
 use rustc::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
 use rustc::mir::{
@@ -1372,7 +1372,7 @@ pub trait ClosureRegionRequirementsExt<'tcx> {
         tcx: TyCtxt<'tcx>,
         closure_def_id: DefId,
         closure_substs: SubstsRef<'tcx>,
-    ) -> Vec<QueryRegionConstraint<'tcx>>;
+    ) -> Vec<QueryOutlivesConstraint<'tcx>>;
 
     fn subst_closure_mapping<T>(
         &self,
@@ -1402,7 +1402,7 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
         tcx: TyCtxt<'tcx>,
         closure_def_id: DefId,
         closure_substs: SubstsRef<'tcx>,
-    ) -> Vec<QueryRegionConstraint<'tcx>> {
+    ) -> Vec<QueryOutlivesConstraint<'tcx>> {
         debug!(
             "apply_requirements(closure_def_id={:?}, closure_substs={:?})",
             closure_def_id, closure_substs

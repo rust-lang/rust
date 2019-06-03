@@ -23,7 +23,7 @@ use crate::dataflow::MaybeInitializedPlaces;
 use either::Either;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::canonical::QueryOutlivesConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1093,7 +1093,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         locations: Locations,
         category: ConstraintCategory,
-        data: &[QueryRegionConstraint<'tcx>],
+        data: &[QueryOutlivesConstraint<'tcx>],
     ) {
         debug!(
             "push_region_constraints: constraints generated at {:?} are {:#?}",

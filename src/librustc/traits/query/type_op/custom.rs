@@ -3,7 +3,7 @@ use std::fmt;
 use crate::traits::query::Fallible;
 
 use crate::infer::canonical::query_response;
-use crate::infer::canonical::QueryRegionConstraint;
+use crate::infer::canonical::QueryOutlivesConstraint;
 use std::rc::Rc;
 use syntax::source_map::DUMMY_SP;
 use crate::traits::{ObligationCause, TraitEngine, TraitEngineExt};
@@ -39,7 +39,7 @@ where
     fn fully_perform(
         self,
         infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
+    ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryOutlivesConstraint<'tcx>>>>)> {
         if cfg!(debug_assertions) {
             info!("fully_perform({:?})", self);
         }
@@ -62,7 +62,7 @@ where
 fn scrape_region_constraints<'tcx, R>(
     infcx: &InferCtxt<'_, 'tcx>,
     op: impl FnOnce() -> Fallible<InferOk<'tcx, R>>,
-) -> Fallible<(R, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
+) -> Fallible<(R, Option<Rc<Vec<QueryOutlivesConstraint<'tcx>>>>)> {
     let mut fulfill_cx = TraitEngine::new(infcx.tcx);
     let dummy_body_id = ObligationCause::dummy().body_id;
 

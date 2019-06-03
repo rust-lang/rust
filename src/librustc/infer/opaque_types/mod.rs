@@ -500,7 +500,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 }
 
 pub fn report_unexpected_hidden_region(
-    tcx: TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     region_scope_tree: Option<&region::ScopeTree>,
     opaque_type_def_id: DefId,
     hidden_ty: Ty<'tcx>,

@@ -189,7 +189,7 @@ pub enum CanonicalTyVarKind {
 #[derive(Clone, Debug, HashStable)]
 pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
-    pub region_constraints: Vec<QueryRegionConstraint<'tcx>>,
+    pub region_constraints: Vec<QueryOutlivesConstraint<'tcx>>,
     pub certainty: Certainty,
     pub value: R,
 }
@@ -292,7 +292,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
     }
 }
 
-pub type QueryRegionConstraint<'tcx> = ty::Binder<ty::OutlivesPredicate<Kind<'tcx>, Region<'tcx>>>;
+pub type QueryOutlivesConstraint<'tcx> = ty::Binder<ty::OutlivesPredicate<Kind<'tcx>, Region<'tcx>>>;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Creates a substitution S for the canonical value with fresh
