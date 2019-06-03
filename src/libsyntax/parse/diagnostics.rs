@@ -1,7 +1,6 @@
-use crate::ast;
 use crate::ast::{
-    BlockCheckMode, BinOpKind, Expr, ExprKind, Item, ItemKind, Pat, PatKind, PathSegment, QSelf,
-    Ty, TyKind, VariantData,
+    self, Arg, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
+    Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
 };
 use crate::parse::{SeqSep, token, PResult, Parser};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
@@ -12,8 +11,24 @@ use crate::symbol::{kw, sym};
 use crate::ThinVec;
 use crate::util::parser::AssocOp;
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::{debug, trace};
+
+/// Creates a placeholder argument.
+crate fn dummy_arg(ident: Ident) -> Arg {
+    let pat = P(Pat {
+        id: ast::DUMMY_NODE_ID,
+        node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
+        span: ident.span,
+    });
+    let ty = Ty {
+        node: TyKind::Err,
+        span: ident.span,
+        id: ast::DUMMY_NODE_ID
+    };
+    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID, source: ast::ArgSource::Normal }
+}
 
 pub enum Error {
     FileNotFoundForModule {
@@ -1092,12 +1107,12 @@ impl<'a> Parser<'a> {
         pat: P<ast::Pat>,
         require_name: bool,
         is_trait_item: bool,
-    ) {
+    ) -> Option<Ident> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
         // C-style parameter declaration.
         if self.check_ident() && self.look_ahead(1, |t| {
             *t == token::Comma || *t == token::CloseDelim(token::Paren)
-        }) {
+        }) { // `fn foo(String s) {}`
             let ident = self.parse_ident().unwrap();
             let span = pat.span.with_hi(ident.span.hi());
 
@@ -1107,18 +1122,30 @@ impl<'a> Parser<'a> {
                 String::from("<identifier>: <type>"),
                 Applicability::HasPlaceholders,
             );
-        } else if require_name && is_trait_item {
-            if let PatKind::Ident(_, ident, _) = pat.node {
+            return Some(ident);
+        } else if let PatKind::Ident(_, ident, _) = pat.node {
+            if require_name && (
+                is_trait_item ||
+                self.token == token::Comma ||
+                self.token == token::CloseDelim(token::Paren)
+            ) { // `fn foo(a, b) {}` or `fn foo(usize, usize) {}`
                 err.span_suggestion(
                     pat.span,
-                    "explicitly ignore parameter",
+                    "if this was a parameter name, give it a type",
+                    format!("{}: TypeName", ident),
+                    Applicability::HasPlaceholders,
+                );
+                err.span_suggestion(
+                    pat.span,
+                    "if this is a type, explicitly ignore the parameter name",
                     format!("_: {}", ident),
                     Applicability::MachineApplicable,
                 );
+                err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
+                return Some(ident);
             }
-
-            err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
         }
+        None
     }
 
     crate fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
@@ -1204,5 +1231,32 @@ impl<'a> Parser<'a> {
         }
         err.span_label(span, "expected expression");
         err
+    }
+
+    /// Replace duplicated recovered arguments with `_` pattern to avoid unecessary errors.
+    ///
+    /// This is necessary because at this point we don't know whether we parsed a function with
+    /// anonymous arguments or a function with names but no types. In order to minimize
+    /// unecessary errors, we assume the arguments are in the shape of `fn foo(a, b, c)` where
+    /// the arguments are *names* (so we don't emit errors about not being able to find `b` in
+    /// the local scope), but if we find the same name multiple times, like in `fn foo(i8, i8)`,
+    /// we deduplicate them to not complain about duplicated argument names.
+    crate fn deduplicate_recovered_arg_names(&self, fn_inputs: &mut Vec<Arg>) {
+        let mut seen_inputs = FxHashSet::default();
+        for input in fn_inputs.iter_mut() {
+            let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) = (
+                &input.pat.node, &input.ty.node,
+            ) {
+                Some(*ident)
+            } else {
+                None
+            };
+            if let Some(ident) = opt_ident {
+                if seen_inputs.contains(&ident) {
+                    input.pat.node = PatKind::Wild;
+                }
+                seen_inputs.insert(ident);
+            }
+        }
     }
 }

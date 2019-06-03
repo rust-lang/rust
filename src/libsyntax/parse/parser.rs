@@ -47,7 +47,7 @@ use crate::parse::PResult;
 use crate::ThinVec;
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use crate::symbol::{kw, sym, Symbol};
-use crate::parse::diagnostics::Error;
+use crate::parse::diagnostics::{Error, dummy_arg};
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
@@ -449,22 +449,6 @@ impl From<P<Expr>> for LhsExpr {
     fn from(expr: P<Expr>) -> Self {
         LhsExpr::AlreadyParsed(expr)
     }
-}
-
-/// Creates a placeholder argument.
-fn dummy_arg(span: Span) -> Arg {
-    let ident = Ident::new(kw::Invalid, span);
-    let pat = P(Pat {
-        id: ast::DUMMY_NODE_ID,
-        node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
-        span,
-    });
-    let ty = Ty {
-        node: TyKind::Err,
-        span,
-        id: ast::DUMMY_NODE_ID
-    };
-    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID, source: ast::ArgSource::Normal }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -1528,8 +1512,17 @@ impl<'a> Parser<'a> {
             let pat = self.parse_pat(Some("argument name"))?;
 
             if let Err(mut err) = self.expect(&token::Colon) {
-                self.argument_without_type(&mut err, pat, require_name, is_trait_item);
-                return Err(err);
+                if let Some(ident) = self.argument_without_type(
+                    &mut err,
+                    pat,
+                    require_name,
+                    is_trait_item,
+                ) {
+                    err.emit();
+                    return Ok(dummy_arg(ident));
+                } else {
+                    return Err(err);
+                }
             }
 
             self.eat_incorrect_doc_comment("a method argument's type");
@@ -5432,7 +5425,7 @@ impl<'a> Parser<'a> {
                             p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
                             // Create a placeholder argument for proper arg count (issue #34264).
                             let span = lo.to(p.prev_span);
-                            Ok(Some(dummy_arg(span)))
+                            Ok(Some(dummy_arg(Ident::new(kw::Invalid, span))))
                         }
                     }
                 }
@@ -5585,7 +5578,7 @@ impl<'a> Parser<'a> {
 
         // Parse the rest of the function parameter list.
         let sep = SeqSep::trailing_allowed(token::Comma);
-        let (fn_inputs, recovered) = if let Some(self_arg) = self_arg {
+        let (mut fn_inputs, recovered) = if let Some(self_arg) = self_arg {
             if self.check(&token::CloseDelim(token::Paren)) {
                 (vec![self_arg], false)
             } else if self.eat(&token::Comma) {
@@ -5608,6 +5601,9 @@ impl<'a> Parser<'a> {
             // Parse closing paren and return type.
             self.expect(&token::CloseDelim(token::Paren))?;
         }
+        // Replace duplicated recovered arguments with `_` pattern to avoid unecessary errors.
+        self.deduplicate_recovered_arg_names(&mut fn_inputs);
+
         Ok(P(FnDecl {
             inputs: fn_inputs,
             output: self.parse_ret_ty(true)?,
