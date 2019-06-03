@@ -4,8 +4,17 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e>
    |                                                                          ^^^^^^^^^^^^^^^^^^
    |
-   = note: hidden type `Ordinary<'_>` captures `ReScope(CallSite(24))`
-   = note: this is likely a bug in the compiler, please file an issue on github
+note: hidden type `Ordinary<'_>` captures the scope of call-site for function at 23:1
+  --> $DIR/ordinary-bounds-unrelated.rs:23:1
+   |
+LL | / {
+LL | |     // Hidden type `Ordinary<'0>` with constraints:
+LL | |     //
+LL | |     // ```
+...  |
+LL | |     if condition() { a } else { b }
+LL | | }
+   | |_^
 
 error: aborting due to previous error
 

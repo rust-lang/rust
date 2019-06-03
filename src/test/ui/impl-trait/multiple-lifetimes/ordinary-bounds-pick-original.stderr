@@ -1,0 +1,48 @@
+error: impl Trait captures unexpected lifetime
+  --> $DIR/ordinary-bounds-pick-original.rs:11:50
+   |
+LL | fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
+   |                                                  ^^^^^^^^^^^^^^^^^^ only lifetimes that appear in the impl Trait bounds may be captured
+   |
+note: hidden type captures the lifetime 'a as defined on the function body at 11:17
+  --> $DIR/ordinary-bounds-pick-original.rs:11:17
+   |
+LL | fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
+   |                 ^^
+note: hidden type would be allowed to capture the lifetime 'a as defined on the function body at 11:17
+  --> $DIR/ordinary-bounds-pick-original.rs:11:17
+   |
+LL | fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
+   |                 ^^
+note: hidden type would be allowed to capture the lifetime 'b as defined on the function body at 11:21
+  --> $DIR/ordinary-bounds-pick-original.rs:11:21
+   |
+LL | fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
+   |                     ^^
+   = note: hidden type would be allowed to capture the static lifetime
+
+error: impl Trait captures unexpected lifetime
+  --> $DIR/ordinary-bounds-pick-original.rs:11:50
+   |
+LL | fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
+   |                                                  ^^^^^^^^^^^^^^^^^^ only lifetimes that appear in the impl Trait bounds may be captured
+   |
+note: hidden type captures the lifetime 'b as defined on the function body at 11:21
+  --> $DIR/ordinary-bounds-pick-original.rs:11:21
+   |
+LL | fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
+   |                     ^^
+note: hidden type would be allowed to capture the lifetime 'a as defined on the function body at 11:17
+  --> $DIR/ordinary-bounds-pick-original.rs:11:17
+   |
+LL | fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
+   |                 ^^
+note: hidden type would be allowed to capture the lifetime 'b as defined on the function body at 11:21
+  --> $DIR/ordinary-bounds-pick-original.rs:11:21
+   |
+LL | fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
+   |                     ^^
+   = note: hidden type would be allowed to capture the static lifetime
+
+error: aborting due to 2 previous errors
+

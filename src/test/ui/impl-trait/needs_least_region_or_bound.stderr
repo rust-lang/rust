@@ -1,8 +1,48 @@
-error: ambiguous lifetime bound in `impl Trait`
+error: impl Trait captures unexpected lifetime
   --> $DIR/needs_least_region_or_bound.rs:6:55
    |
 LL | fn no_least_region<'a, 'b>(x: &'a u32, y: &'b u32) -> impl MultiRegionTrait<'a, 'b> {
-   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ neither `'a` nor `'b` outlives the other
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ only lifetimes that appear in the impl Trait bounds may be captured
+   |
+note: hidden type captures the lifetime 'a as defined on the function body at 6:20
+  --> $DIR/needs_least_region_or_bound.rs:6:20
+   |
+LL | fn no_least_region<'a, 'b>(x: &'a u32, y: &'b u32) -> impl MultiRegionTrait<'a, 'b> {
+   |                    ^^
+note: hidden type would be allowed to capture the lifetime 'a as defined on the function body at 6:20
+  --> $DIR/needs_least_region_or_bound.rs:6:20
+   |
+LL | fn no_least_region<'a, 'b>(x: &'a u32, y: &'b u32) -> impl MultiRegionTrait<'a, 'b> {
+   |                    ^^
+note: hidden type would be allowed to capture the lifetime 'b as defined on the function body at 6:24
+  --> $DIR/needs_least_region_or_bound.rs:6:24
+   |
+LL | fn no_least_region<'a, 'b>(x: &'a u32, y: &'b u32) -> impl MultiRegionTrait<'a, 'b> {
+   |                        ^^
+   = note: hidden type would be allowed to capture the static lifetime
 
-error: aborting due to previous error
+error: impl Trait captures unexpected lifetime
+  --> $DIR/needs_least_region_or_bound.rs:6:55
+   |
+LL | fn no_least_region<'a, 'b>(x: &'a u32, y: &'b u32) -> impl MultiRegionTrait<'a, 'b> {
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ only lifetimes that appear in the impl Trait bounds may be captured
+   |
+note: hidden type captures the lifetime 'b as defined on the function body at 6:24
+  --> $DIR/needs_least_region_or_bound.rs:6:24
+   |
+LL | fn no_least_region<'a, 'b>(x: &'a u32, y: &'b u32) -> impl MultiRegionTrait<'a, 'b> {
+   |                        ^^
+note: hidden type would be allowed to capture the lifetime 'a as defined on the function body at 6:20
+  --> $DIR/needs_least_region_or_bound.rs:6:20
+   |
+LL | fn no_least_region<'a, 'b>(x: &'a u32, y: &'b u32) -> impl MultiRegionTrait<'a, 'b> {
+   |                    ^^
+note: hidden type would be allowed to capture the lifetime 'b as defined on the function body at 6:24
+  --> $DIR/needs_least_region_or_bound.rs:6:24
+   |
+LL | fn no_least_region<'a, 'b>(x: &'a u32, y: &'b u32) -> impl MultiRegionTrait<'a, 'b> {
+   |                        ^^
+   = note: hidden type would be allowed to capture the static lifetime
+
+error: aborting due to 2 previous errors
 

@@ -9,6 +9,7 @@ use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::unify as ut;
+use crate::hir::def_id::DefId;
 use crate::ty::ReStatic;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{ReLateBound, ReVar};
@@ -151,8 +152,16 @@ impl Constraint<'_> {
 /// ```
 #[derive(Debug, Clone)]
 pub struct PickConstraint<'tcx> {
-    pub origin: SubregionOrigin<'tcx>,
+    /// the def-id of the opaque type causing this constraint: used for error reporting
+    pub opaque_type_def_id: DefId,
+
+    /// the hidden type in which `pick_region` appears: used for error reporting
+    pub hidden_ty: Ty<'tcx>,
+
+    /// the region R0
     pub pick_region: Region<'tcx>,
+
+    /// the options O1..On
     pub option_regions: Rc<Vec<Region<'tcx>>>,
 }
 
@@ -664,7 +673,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn pick_constraint(
         &mut self,
-        origin: SubregionOrigin<'tcx>,
+        opaque_type_def_id: DefId,
+        hidden_ty: Ty<'tcx>,
         pick_region: ty::Region<'tcx>,
         option_regions: &Rc<Vec<ty::Region<'tcx>>>,
     ) {
@@ -675,7 +685,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
 
         self.data.pick_constraints.push(PickConstraint {
-            origin, pick_region, option_regions: option_regions.clone()
+            opaque_type_def_id,
+            hidden_ty,
+            pick_region,
+            option_regions: option_regions.clone()
         });
 
     }

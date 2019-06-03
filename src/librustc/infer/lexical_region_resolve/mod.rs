@@ -1,5 +1,6 @@
 //! Lexical region resolution.
 
+use crate::hir::def_id::DefId;
 use crate::infer::region_constraints::Constraint;
 use crate::infer::region_constraints::GenericKind;
 use crate::infer::region_constraints::PickConstraint;
@@ -22,6 +23,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use std::fmt;
 use std::u32;
+use syntax_pos::Span;
 
 mod graphviz;
 
@@ -81,6 +83,17 @@ pub enum RegionResolutionError<'tcx> {
         SubregionOrigin<'tcx>,
         Region<'tcx>,
     ),
+
+    /// Indicates a failure of a `PickConstraint`. These arise during
+    /// impl trait processing explicitly -- basically, the impl trait's hidden type
+    /// included some region that it was not supposed to.
+    PickConstraintFailure {
+        span: Span,
+        opaque_type_def_id: DefId,
+        hidden_ty: Ty<'tcx>,
+        pick_region: Region<'tcx>,
+        option_regions: Vec<Region<'tcx>>,
+    },
 }
 
 struct RegionAndOrigin<'tcx> {
@@ -547,6 +560,24 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         *a_data = VarValue::ErrorValue;
                     }
                 }
+            }
+        }
+
+        for pick_constraint in &self.data.pick_constraints {
+            let pick_region = var_data.normalize(self.tcx(), pick_constraint.pick_region);
+            let option_regions = pick_constraint
+                .option_regions
+                .iter()
+                .map(|&option_region| var_data.normalize(self.tcx(), option_region));
+            if !option_regions.clone().any(|option_region| pick_region == option_region) {
+                let span = self.tcx().def_span(pick_constraint.opaque_type_def_id);
+                errors.push(RegionResolutionError::PickConstraintFailure {
+                    span,
+                    opaque_type_def_id: pick_constraint.opaque_type_def_id,
+                    hidden_ty: pick_constraint.hidden_ty,
+                    pick_region,
+                    option_regions: option_regions.collect(),
+                });
             }
         }
 

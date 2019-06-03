@@ -3,6 +3,7 @@ use crate::hir::def_id::DefId;
 use crate::hir::Node;
 use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
+use crate::middle::region;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{InternalSubsts, Kind, SubstsRef, UnpackedKind};
@@ -10,7 +11,6 @@ use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use crate::util::nodemap::DefIdMap;
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
-use syntax::source_map::Span;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
@@ -374,11 +374,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // we will create a "in bound" like `'r in
                         // ['a, 'b, 'c]`, where `'a..'c` are the
                         // regions that appear in the impl trait.
-                        return self.generate_in_constraint(
-                            span,
+                        return self.generate_pick_constraint(
                             concrete_ty,
                             abstract_type_generics,
                             opaque_defn,
+                            def_id,
                         );
                     }
                 }
@@ -399,14 +399,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// related, we would generate a constraint `'r in ['a, 'b,
     /// 'static]` for each region `'r` that appears in the hidden type
     /// (i.e., it must be equal to `'a`, `'b`, or `'static`).
-    fn generate_in_constraint(
+    fn generate_pick_constraint(
         &self,
-        span: Span,
         concrete_ty: Ty<'tcx>,
         abstract_type_generics: &ty::Generics,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
+        opaque_type_def_id: DefId,
     ) {
-        let in_regions: Rc<Vec<ty::Region<'tcx>>> = Rc::new(
+        // Create the set of option regions: each region in the hidden
+        // type can be equal to any of the region parameters of the
+        // opaque type definition.
+        let option_regions: Rc<Vec<ty::Region<'tcx>>> = Rc::new(
             abstract_type_generics
                 .params
                 .iter()
@@ -421,7 +424,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
-            op: |r| self.pick_constraint(infer::CallReturn(span), r, &in_regions),
+            op: |r| self.pick_constraint(
+                opaque_type_def_id,
+                concrete_ty,
+                r,
+                &option_regions,
+            ),
         });
     }
 
@@ -445,7 +453,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// # Parameters
     ///
     /// - `def_id`, the `impl Trait` type
-
     /// - `opaque_defn`, the opaque definition created in `instantiate_opaque_types`
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
@@ -490,6 +497,83 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         definition_ty
     }
+}
+
+pub fn report_unexpected_hidden_region(
+    tcx: TyCtxt<'_, '_, 'tcx>,
+    region_scope_tree: Option<&region::ScopeTree>,
+    opaque_type_def_id: DefId,
+    hidden_ty: Ty<'tcx>,
+    hidden_region: ty::Region<'tcx>,
+) {
+    let span = tcx.def_span(opaque_type_def_id);
+    let mut err = struct_span_err!(
+        tcx.sess,
+        span,
+        E0700,
+        "hidden type for `impl Trait` captures lifetime that does not appear in bounds",
+    );
+
+    // Explain the region we are capturing.
+    if let ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty = hidden_region {
+        // Assuming regionck succeeded (*), we ought to always be
+        // capturing *some* region from the fn header, and hence it
+        // ought to be free. So under normal circumstances, we will go
+        // down this path which gives a decent human readable
+        // explanation.
+        //
+        // (*) if not, the `tainted_by_errors` flag would be set to
+        // true in any case, so we wouldn't be here at all.
+        tcx.note_and_explain_free_region(
+            &mut err,
+            &format!("hidden type `{}` captures ", hidden_ty),
+            hidden_region,
+            "",
+        );
+    } else {
+        // Ugh. This is a painful case: the hidden region is not one
+        // that we can easily summarize or explain. This can happens
+        // in a case like
+        // `src/test/ui/multiple-lifetimes/ordinary-bounds-unsuited.rs`:
+        //
+        // ```
+        // fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b> {
+        //   if condition() { a } else { b }
+        // }
+        // ```
+        //
+        // Here the captured lifetime is the intersection of `'a` and
+        // `'b`, which we can't quite express. This prticulararticular
+        // is kind of an unfortunate error anyway.
+
+        if let Some(region_scope_tree) = region_scope_tree {
+            // If the `region_scope_tree` is available, this is being
+            // invoked from the "region inferencer error". We can at
+            // least report a really cryptic error for now.
+            tcx.note_and_explain_region(
+                region_scope_tree,
+                &mut err,
+                &format!("hidden type `{}` captures ", hidden_ty),
+                hidden_region,
+                "",
+            );
+        } else {
+            // If the `region_scope_tree` is *unavailable*, this is
+            // being invoked by the code that comes *after* region
+            // inferencing. This is a bug, as the region inferencer
+            // ought to have noticed the failed constraint and invoked
+            // error reporting, which in turn should have prevented us
+            // from getting trying to infer the hidden type
+            // completely.
+            span_bug!(
+                span,
+                "hidden type captures unexpected lifetime `{:?}` but no region inference failure",
+                hidden_region,
+            );
+        }
+    }
+
+    err.emit();
 }
 
 // Visitor that requires that (almost) all regions in the type visited outlive
@@ -640,45 +724,13 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
             None => {
                 if !self.map_missing_regions_to_empty && !self.tainted_by_errors {
                     if let Some(hidden_ty) = self.hidden_ty.take() {
-                        let span = self.tcx.def_span(self.opaque_type_def_id);
-                        let mut err = struct_span_err!(
-                            self.tcx.sess,
-                            span,
-                            E0700,
-                            "hidden type for `impl Trait` captures lifetime that \
-                             does not appear in bounds",
+                        report_unexpected_hidden_region(
+                            self.tcx,
+                            None,
+                            self.opaque_type_def_id,
+                            hidden_ty,
+                            r,
                         );
-
-                        // Explain the region we are capturing.
-                        match r {
-                            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty => {
-                                // Assuming regionck succeeded (*), we
-                                // ought to always be capturing *some* region
-                                // from the fn header, and hence it ought to
-                                // be free. So under normal circumstances, we will
-                                // go down this path which gives a decent human readable
-                                // explanation.
-                                //
-                                // (*) if not, the `tainted_by_errors`
-                                // flag would be set to true in any
-                                // case, so we wouldn't be here at
-                                // all.
-                                self.tcx.note_and_explain_free_region(
-                                    &mut err,
-                                    &format!("hidden type `{}` captures ", hidden_ty),
-                                    r,
-                                    "",
-                                );
-                            }
-                            _ => {
-                                // This case should not happen: it indicates that regionck
-                                // failed to enforce an "in constraint".
-                                err.note(&format!("hidden type `{}` captures `{:?}`", hidden_ty, r));
-                                err.note(&format!("this is likely a bug in the compiler, please file an issue on github"));
-                            }
-                        }
-
-                        err.emit();
                     }
                 }
                 self.tcx.lifetimes.re_empty

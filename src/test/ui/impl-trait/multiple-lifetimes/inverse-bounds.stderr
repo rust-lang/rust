@@ -1,15 +1,25 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+error: impl Trait captures unexpected lifetime
   --> $DIR/inverse-bounds.rs:15:70
    |
 LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Invert<'a>, b: Invert<'b>) -> impl Trait<'d, 'e>
-   |                                                                      ^^^^^^^^^^^^^^^^^^
+   |                                                                      ^^^^^^^^^^^^^^^^^^ only lifetimes that appear in the impl Trait bounds may be captured
    |
-note: hidden type `Invert<'c>` captures the lifetime 'c as defined on the function body at 15:25
-  --> $DIR/inverse-bounds.rs:15:25
+note: hidden type captures the lifetime 'd as defined on the function body at 15:29
+  --> $DIR/inverse-bounds.rs:15:29
    |
 LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Invert<'a>, b: Invert<'b>) -> impl Trait<'d, 'e>
-   |                         ^^
+   |                             ^^
+note: hidden type would be allowed to capture the lifetime 'd as defined on the function body at 15:29
+  --> $DIR/inverse-bounds.rs:15:29
+   |
+LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Invert<'a>, b: Invert<'b>) -> impl Trait<'d, 'e>
+   |                             ^^
+note: hidden type would be allowed to capture the lifetime 'e as defined on the function body at 15:33
+  --> $DIR/inverse-bounds.rs:15:33
+   |
+LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Invert<'a>, b: Invert<'b>) -> impl Trait<'d, 'e>
+   |                                 ^^
+   = note: hidden type would be allowed to capture the static lifetime
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0700`.
