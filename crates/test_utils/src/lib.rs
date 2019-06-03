@@ -318,7 +318,7 @@ pub fn project_dir() -> PathBuf {
 /// so this should always be correct.
 pub fn read_text(path: &Path) -> String {
     fs::read_to_string(path)
-        .expect(&format!("File at {:?} should be valid", path))
+        .unwrap_or_else(|_| panic!("File at {:?} should be valid", path))
         .replace("\r\n", "\n")
 }
 
