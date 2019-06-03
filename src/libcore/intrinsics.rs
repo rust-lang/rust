@@ -1240,6 +1240,21 @@ extern "rust-intrinsic" {
     /// y < 0 or y >= N, where N is the width of T in bits.
     pub fn unchecked_shr<T>(x: T, y: T) -> T;
 
+    /// Returns the result of an unchecked addition, resulting in
+    /// undefined behavior when `x + y > T::max_value()` or `x + y < T::min_value()`.
+    #[cfg(not(stage0))]
+    pub fn unchecked_add<T>(x: T, y: T) -> T;
+
+    /// Returns the result of an unchecked substraction, resulting in
+    /// undefined behavior when `x - y > T::max_value()` or `x - y < T::min_value()`.
+    #[cfg(not(stage0))]
+    pub fn unchecked_sub<T>(x: T, y: T) -> T;
+
+    /// Returns the result of an unchecked multiplication, resulting in
+    /// undefined behavior when `x * y > T::max_value()` or `x * y < T::min_value()`.
+    #[cfg(not(stage0))]
+    pub fn unchecked_mul<T>(x: T, y: T) -> T;
+
     /// Performs rotate left.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_left` method. For example,
