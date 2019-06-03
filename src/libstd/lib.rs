@@ -223,7 +223,8 @@
 #![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
             feature(global_asm, slice_index_methods,
                     decl_macro, coerce_unsized, sgx_platform, ptr_wrapping_offset_from))]
-#![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"), feature(fixed_size_array))]
+#![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"),
+            feature(fixed_size_array, maybe_uninit_extra))]
 
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
