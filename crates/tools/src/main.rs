@@ -84,7 +84,7 @@ fn fix_path_for_mac() -> Result<()> {
 
         [ROOT_DIR, &home_dir]
             .iter()
-            .map(|dir| String::from(dir.clone()) + COMMON_APP_PATH)
+            .map(|dir| String::from(*dir) + COMMON_APP_PATH)
             .map(PathBuf::from)
             .filter(|path| path.exists())
             .collect()
