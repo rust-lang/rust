@@ -482,7 +482,12 @@ pub fn const_field<'tcx>(
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     // get the operand again
-    let op = ecx.eval_const_to_op(value, None).unwrap();
+    let mut op = ecx.eval_const_to_op(value, None).unwrap();
+    // adjust the alignment of `op` to the one of the allocation, since it may be a field of a
+    // packed struct and thus end up causing an alignment error if we read from it.
+    if let ConstValue::ByRef(_, alloc) = value.val {
+        op.force_alignment(alloc.align);
+    }
     // downcast
     let down = match variant {
         None => op,

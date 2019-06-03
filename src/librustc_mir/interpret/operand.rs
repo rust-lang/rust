@@ -4,7 +4,9 @@
 use std::convert::TryInto;
 
 use rustc::{mir, ty};
-use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx};
+use rustc::ty::layout::{
+    self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx, Align,
+};
 
 use rustc::mir::interpret::{
     GlobalId, AllocId, CheckInAllocMsg,
@@ -173,6 +175,21 @@ impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
         OpTy {
             op: Operand::Immediate(val.imm),
             layout: val.layout
+        }
+    }
+}
+
+impl<'tcx, Tag> OpTy<'tcx, Tag> {
+    /// This function exists solely for pattern matching. If we pattern match a packed struct with
+    /// an ADT field, the constant representing that field will have lost the information about the
+    /// packedness. We could clone the allocation and adjust the alignment, but that seems wasteful,
+    /// since the alignment is already encoded in the allocation. We know it is alright, because
+    /// validation checked everything before the initial constant entered match checking.
+    pub(crate) fn force_alignment(&mut self, align: Align) {
+        if let Operand::Indirect(mplace) = &mut self.op {
+            if align < mplace.align {
+                mplace.align = align;
+            }
         }
     }
 }
