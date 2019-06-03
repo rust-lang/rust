@@ -21,6 +21,7 @@ pub use self::memory::*;
 /// Generates the trap instruction `UNREACHABLE`
 #[cfg_attr(test, assert_instr(unreachable))]
 #[inline]
+#[stable(feature = "unreachable_wasm32", since = "1.37.0")]
 pub unsafe fn unreachable() -> ! {
     crate::intrinsics::abort()
 }
