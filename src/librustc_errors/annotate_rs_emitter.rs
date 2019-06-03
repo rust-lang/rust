@@ -206,7 +206,7 @@ impl AnnotateRsEmitterWriter {
             // FIXME(#59346): Figure out if we can _always_ print to stderr or not.
             // `emitter.rs` has the `Destination` enum that lists various possible output
             // destinations.
-            eprint!("{}", dlf.format(&dl));
+            eprintln!("{}", dlf.format(&dl));
         };
     }
 }
