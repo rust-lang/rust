@@ -57,9 +57,9 @@ impl A {
 
 // Default trait methods
 trait B {
-    pub fn fo(&self) {}
-    pub fn foo(&self) {}
-    pub fn food(&self) {}
+    fn fo(&self) {}
+    fn foo(&self) {}
+    fn food(&self) {}
 }
 
 // Plain functions
