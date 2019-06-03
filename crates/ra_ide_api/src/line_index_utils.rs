@@ -133,9 +133,9 @@ impl<'a> Edits<'a> {
     }
 
     fn next_steps(&mut self, step: &Step) -> NextSteps {
-        let step_pos = match step {
-            &Step::Newline(n) => n,
-            &Step::Utf16Char(r) => r.end(),
+        let step_pos = match *step {
+            Step::Newline(n) => n,
+            Step::Utf16Char(r) => r.end(),
         };
         let res = match &mut self.current {
             Some(edit) => {
@@ -181,9 +181,9 @@ impl<'a> Edits<'a> {
         if self.acc_diff == 0 {
             x.clone()
         } else {
-            match x {
-                &Step::Newline(n) => Step::Newline(self.translate(n)),
-                &Step::Utf16Char(r) => Step::Utf16Char(self.translate_range(r)),
+            match *x {
+                Step::Newline(n) => Step::Newline(self.translate(n)),
+                Step::Utf16Char(r) => Step::Utf16Char(self.translate_range(r)),
             }
         }
     }

@@ -42,8 +42,8 @@ pub fn arb_text_edit(text: &str) -> BoxedStrategy<TextEdit> {
         .prop_flat_map(|cuts| {
             let strategies: Vec<_> = cuts
                 .chunks(2)
-                .map(|chunk| match chunk {
-                    &[from, to] => {
+                .map(|chunk| match *chunk {
+                    [from, to] => {
                         let range = TextRange::from_to(from, to);
                         Just(AtomTextEdit::delete(range))
                             .boxed()
@@ -54,7 +54,7 @@ pub fn arb_text_edit(text: &str) -> BoxedStrategy<TextEdit> {
                             )
                             .boxed()
                     }
-                    &[x] => arb_text().prop_map(move |text| AtomTextEdit::insert(x, text)).boxed(),
+                    [x] => arb_text().prop_map(move |text| AtomTextEdit::insert(x, text)).boxed(),
                     _ => unreachable!(),
                 })
                 .collect();
