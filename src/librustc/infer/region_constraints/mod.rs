@@ -79,10 +79,10 @@ pub struct RegionConstraintData<'tcx> {
     /// be a region variable (or neither, as it happens).
     pub constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
 
-    /// Constraints of the form `R0 in [R1, ..., Rn]`, meaning that
+    /// Constraints of the form `pick R0 from [R1, ..., Rn]`, meaning that
     /// `R0` must be equal to one of the regions `R1..Rn`. These occur
     /// with `impl Trait` quite frequently.
-    pub in_constraints: Vec<InConstraint<'tcx>>,
+    pub pick_constraints: Vec<PickConstraint<'tcx>>,
 
     /// A "verify" is something that we need to verify after inference
     /// is done, but which does not directly affect inference in any
@@ -143,12 +143,17 @@ impl Constraint<'_> {
     }
 }
 
-/// Requires that `region` must be equal to one of the regions in `in_regions`.
+/// Requires that `region` must be equal to one of the regions in `option_regions`.
+/// We often denote this using the syntax:
+///
+/// ```
+/// pick R0 from [O1..On]
+/// ```
 #[derive(Debug, Clone)]
-pub struct InConstraint<'tcx> {
+pub struct PickConstraint<'tcx> {
     pub origin: SubregionOrigin<'tcx>,
-    pub region: Region<'tcx>,
-    pub in_regions: Rc<Vec<Region<'tcx>>>,
+    pub pick_region: Region<'tcx>,
+    pub option_regions: Rc<Vec<Region<'tcx>>>,
 }
 
 /// `VerifyGenericBound(T, _, R, RS)`: the parameter type `T` (or
@@ -657,20 +662,20 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn in_constraint(
+    pub fn pick_constraint(
         &mut self,
         origin: SubregionOrigin<'tcx>,
-        region: ty::Region<'tcx>,
-        in_regions: &Rc<Vec<ty::Region<'tcx>>>,
+        pick_region: ty::Region<'tcx>,
+        option_regions: &Rc<Vec<ty::Region<'tcx>>>,
     ) {
-        debug!("in_constraint({:?} in {:#?})", region, in_regions);
+        debug!("pick_constraint({:?} in {:#?})", pick_region, option_regions);
 
-        if in_regions.iter().any(|&r| r == region) {
+        if option_regions.iter().any(|&r| r == pick_region) {
             return;
         }
 
-        self.data.in_constraints.push(InConstraint {
-            origin, region, in_regions: in_regions.clone()
+        self.data.pick_constraints.push(PickConstraint {
+            origin, pick_region, option_regions: option_regions.clone()
         });
 
     }
@@ -938,10 +943,10 @@ impl<'tcx> RegionConstraintData<'tcx> {
     pub fn is_empty(&self) -> bool {
         let RegionConstraintData {
             constraints,
-            in_constraints,
+            pick_constraints,
             verifys,
             givens,
         } = self;
-        constraints.is_empty() && in_constraints.is_empty() && verifys.is_empty() && givens.is_empty()
+        constraints.is_empty() && pick_constraints.is_empty() && verifys.is_empty() && givens.is_empty()
     }
 }

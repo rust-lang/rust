@@ -907,7 +907,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Require that the region `r` be equal to one of the regions in
     /// the set `regions`.
-    pub fn in_constraint(
+    pub fn pick_constraint(
         &self,
         origin: SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
@@ -915,7 +915,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) {
         debug!("sub_regions({:?} <: {:?})", region, in_regions);
         self.borrow_region_constraints()
-            .in_constraint(origin, region, in_regions);
+            .pick_constraint(origin, region, in_regions);
     }
 
     pub fn subtype_predicate(

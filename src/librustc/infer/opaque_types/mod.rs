@@ -421,7 +421,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
-            op: |r| self.in_constraint(infer::CallReturn(span), r, &in_regions),
+            op: |r| self.pick_constraint(infer::CallReturn(span), r, &in_regions),
         });
     }
 

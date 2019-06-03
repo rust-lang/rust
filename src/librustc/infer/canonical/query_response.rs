@@ -654,14 +654,14 @@ pub fn make_query_outlives<'tcx>(
         constraints,
         verifys,
         givens,
-        in_constraints,
+        pick_constraints,
     } = region_constraints;
 
     assert!(verifys.is_empty());
     assert!(givens.is_empty());
 
     // FIXME(ndm) -- we have to think about what to do here, perhaps
-    assert!(in_constraints.is_empty());
+    assert!(pick_constraints.is_empty());
 
     let outlives: Vec<_> = constraints
         .into_iter()
