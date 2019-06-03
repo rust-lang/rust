@@ -3034,7 +3034,7 @@ impl<'a> LoweringContext<'a> {
 
         self.lower_body(|this| {
             let mut arguments: Vec<hir::Arg> = Vec::new();
-            let mut statements: Vec<(hir::Stmt, Option<hir::Stmt>)> = Vec::new();
+            let mut statements: Vec<hir::Stmt> = Vec::new();
 
             // Async function arguments are lowered into the closure body so that they are
             // captured and so that the drop order matches the equivalent non-async functions.
@@ -3094,14 +3094,14 @@ impl<'a> LoweringContext<'a> {
                     source: hir::ArgSource::AsyncFn
                 };
 
-                let new_statements = if is_simple_argument {
+                if is_simple_argument {
                     // If this is the simple case, then we only insert one statement that is
                     // `let <pat> = <pat>;`. We re-use the original argument's pattern so that
                     // `HirId`s are densely assigned.
                     let expr = this.expr_ident(desugared_span, ident, new_argument_id);
                     let stmt = this.stmt_let_pat(
                         desugared_span, Some(P(expr)), argument.pat, hir::LocalSource::AsyncFn);
-                    (stmt, None)
+                    statements.push(stmt);
                 } else {
                     // If this is not the simple case, then we construct two statements:
                     //
@@ -3131,26 +3131,17 @@ impl<'a> LoweringContext<'a> {
                         desugared_span, Some(P(pattern_expr)), argument.pat,
                         hir::LocalSource::AsyncFn);
 
-                    (move_stmt, Some(pattern_stmt))
+                    statements.push(move_stmt);
+                    statements.push(pattern_stmt);
                 };
 
                 arguments.push(new_argument);
-                statements.push(new_statements);
             }
 
             let async_expr = this.make_async_expr(
                 CaptureBy::Value, closure_id, None, body.span,
                 |this| {
-                    let mut stmts = vec![];
-                    for (move_stmt, pattern_stmt) in statements.drain(..) {
-                        // Insert the `let __argN = __argN` statement first.
-                        stmts.push(move_stmt);
-                        // Then insert the `let <pat> = __argN` statement, if there is one.
-                        if let Some(pattern_stmt) = pattern_stmt {
-                            stmts.push(pattern_stmt);
-                        }
-                    }
-                    let body = this.lower_block_with_stmts(body, false, stmts);
+                    let body = this.lower_block_with_stmts(body, false, statements);
                     this.expr_block(body, ThinVec::new())
                 });
             (HirVec::from(arguments), this.expr(body.span, async_expr, ThinVec::new()))
@@ -5218,10 +5209,6 @@ impl<'a> LoweringContext<'a> {
             span,
             attrs,
         }
-    }
-
-    fn arg(&mut self, hir_id: hir::HirId, pat: P<hir::Pat>, source: hir::ArgSource) -> hir::Arg {
-        hir::Arg { hir_id, pat, source }
     }
 
     fn stmt(&mut self, span: Span, node: hir::StmtKind) -> hir::Stmt {
