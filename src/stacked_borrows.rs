@@ -356,23 +356,6 @@ impl<'tcx> Stack {
         Ok(())
     }
 
-    /// `reborrow` helper function: test that the stack invariants are still maintained.
-    fn test_invariants(&self) {
-        let mut saw_shared_read_only = false;
-        for item in self.borrows.iter() {
-            match item.perm {
-                Permission::SharedReadOnly => {
-                    saw_shared_read_only = true;
-                }
-                // Otherwise, if we saw one before, that's a bug.
-                perm if saw_shared_read_only => {
-                    bug!("Found {:?} on top of a SharedReadOnly!", perm);
-                }
-                _ => {}
-            }
-        }
-    }
-
     /// Derived a new pointer from one with the given tag.
     /// `weak` controls whether this operation is weak or strong: weak granting does not act as
     /// an access, and they add the new item directly on top of the one it is derived
@@ -426,11 +409,6 @@ impl<'tcx> Stack {
         } else {
             trace!("reborrow: adding item {:?}", new);
             self.borrows.insert(new_idx, new);
-        }
-
-        // Make sure that after all this, the stack's invariant is still maintained.
-        if cfg!(debug_assertions) {
-            self.test_invariants();
         }
 
         Ok(())
