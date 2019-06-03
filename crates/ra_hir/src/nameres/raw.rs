@@ -69,7 +69,7 @@ impl RawItems {
     ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
-            source_ast_id_map: db.ast_id_map(file_id.into()),
+            source_ast_id_map: db.ast_id_map(file_id),
             source_map: ImportSourceMap::default(),
         };
         if let Some(node) = db.parse_or_expand(file_id) {

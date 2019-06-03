@@ -468,7 +468,7 @@ impl CrateDefMap {
                     );
 
                     return ResolvePathResult::with(
-                        Either::Left(PerNs::types((*s).into())),
+                        Either::Left(PerNs::types(*s)),
                         ReachedFixedPoint::Yes,
                         Some(i),
                     );

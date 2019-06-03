@@ -34,10 +34,10 @@ impl salsa::Database for BatchDatabase {
 }
 
 fn vfs_file_to_id(f: ra_vfs::VfsFile) -> FileId {
-    FileId(f.0.into())
+    FileId(f.0)
 }
 fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
-    SourceRootId(r.0.into())
+    SourceRootId(r.0)
 }
 
 impl BatchDatabase {

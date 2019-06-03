@@ -384,7 +384,7 @@ fn on_notification(
             if let Some(file_id) =
                 state.vfs.write().add_file_overlay(&path, params.text_document.text)
             {
-                subs.add_sub(FileId(file_id.0.into()));
+                subs.add_sub(FileId(file_id.0));
             }
             return Ok(());
         }
@@ -406,7 +406,7 @@ fn on_notification(
             let uri = params.text_document.uri;
             let path = uri.to_file_path().map_err(|()| format_err!("invalid uri: {}", uri))?;
             if let Some(file_id) = state.vfs.write().remove_file_overlay(path.as_path()) {
-                subs.remove_sub(FileId(file_id.0.into()));
+                subs.remove_sub(FileId(file_id.0));
             }
             let params = req::PublishDiagnosticsParams { uri, diagnostics: Vec::new() };
             let not = RawNotification::new::<req::PublishDiagnostics>(&params);

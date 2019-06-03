@@ -155,9 +155,10 @@ fn convert_doc_comment<'a>(token: &ra_syntax::SyntaxToken<'a>) -> Option<Vec<tt:
     if let ast::CommentPlacement::Inner = doc {
         token_trees.push(mk_punct('!'));
     }
-    token_trees.push(tt::TokenTree::from(tt::Subtree::from(
-        tt::Subtree { delimiter: tt::Delimiter::Bracket, token_trees: meta_tkns }.into(),
-    )));
+    token_trees.push(tt::TokenTree::from(tt::Subtree {
+        delimiter: tt::Delimiter::Bracket,
+        token_trees: meta_tkns,
+    }));
 
     return Some(token_trees);
 

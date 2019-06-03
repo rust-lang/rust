@@ -202,7 +202,6 @@ impl ModuleImplBlocks {
         };
 
         let (file_id, module_source) = m.module.definition_source(db);
-        let file_id: HirFileId = file_id.into();
         let node = match &module_source {
             ModuleSource::SourceFile(node) => node.syntax(),
             ModuleSource::Module(node) => {

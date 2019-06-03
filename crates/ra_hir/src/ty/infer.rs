@@ -539,7 +539,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             })?;
 
-            resolved = Resolution::Def(item.into());
+            resolved = Resolution::Def(item);
         }
 
         match resolved {
@@ -762,7 +762,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     _ => &Ty::Unknown,
                 };
                 let subty = self.infer_pat(*pat, expectation, default_bm);
-                Ty::apply_one(TypeCtor::Ref(*mutability), subty.into())
+                Ty::apply_one(TypeCtor::Ref(*mutability), subty)
             }
             Pat::TupleStruct { path: ref p, args: ref subpats } => {
                 self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm)
@@ -790,7 +790,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 let bound_ty = match mode {
                     BindingMode::Ref(mutability) => {
-                        Ty::apply_one(TypeCtor::Ref(mutability), inner_ty.clone().into())
+                        Ty::apply_one(TypeCtor::Ref(mutability), inner_ty.clone())
                     }
                     BindingMode::Move => inner_ty.clone(),
                 };

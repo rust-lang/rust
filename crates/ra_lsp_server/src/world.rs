@@ -60,14 +60,14 @@ impl WorldState {
         for r in vfs_roots {
             let vfs_root_path = vfs.root2path(r);
             let is_local = folder_roots.iter().any(|it| vfs_root_path.starts_with(it));
-            change.add_root(SourceRootId(r.0.into()), is_local);
+            change.add_root(SourceRootId(r.0), is_local);
         }
 
         // Create crate graph from all the workspaces
         let mut crate_graph = CrateGraph::default();
         let mut load = |path: &std::path::Path| {
             let vfs_file = vfs.load(path);
-            vfs_file.map(|f| FileId(f.0.into()))
+            vfs_file.map(|f| FileId(f.0))
         };
         for ws in workspaces.iter() {
             crate_graph.extend(ws.to_crate_graph(&mut load));
@@ -105,29 +105,24 @@ impl WorldState {
                     if is_local {
                         self.roots_to_scan -= 1;
                         for (file, path, text) in files {
-                            change.add_file(
-                                SourceRootId(root.0.into()),
-                                FileId(file.0.into()),
-                                path,
-                                text,
-                            );
+                            change.add_file(SourceRootId(root.0), FileId(file.0), path, text);
                         }
                     } else {
                         let files = files
                             .into_iter()
-                            .map(|(vfsfile, path, text)| (FileId(vfsfile.0.into()), path, text))
+                            .map(|(vfsfile, path, text)| (FileId(vfsfile.0), path, text))
                             .collect();
-                        libs.push((SourceRootId(root.0.into()), files));
+                        libs.push((SourceRootId(root.0), files));
                     }
                 }
                 VfsChange::AddFile { root, file, path, text } => {
-                    change.add_file(SourceRootId(root.0.into()), FileId(file.0.into()), path, text);
+                    change.add_file(SourceRootId(root.0), FileId(file.0), path, text);
                 }
                 VfsChange::RemoveFile { root, file, path } => {
-                    change.remove_file(SourceRootId(root.0.into()), FileId(file.0.into()), path)
+                    change.remove_file(SourceRootId(root.0), FileId(file.0), path)
                 }
                 VfsChange::ChangeFile { file, text } => {
-                    change.change_file(FileId(file.0.into()), text);
+                    change.change_file(FileId(file.0), text);
                 }
             }
         }
@@ -178,18 +173,18 @@ impl WorldSnapshot {
                 message: "Rust file outside current workspace is not supported yet.".to_string(),
             })
         })?;
-        Ok(FileId(file.0.into()))
+        Ok(FileId(file.0))
     }
 
     pub fn file_id_to_uri(&self, id: FileId) -> Result<Url> {
-        let path = self.vfs.read().file2path(VfsFile(id.0.into()));
+        let path = self.vfs.read().file2path(VfsFile(id.0));
         let url = Url::from_file_path(&path)
             .map_err(|_| format_err!("can't convert path to url: {}", path.display()))?;
         Ok(url)
     }
 
     pub fn path_to_uri(&self, root: SourceRootId, path: &RelativePathBuf) -> Result<Url> {
-        let base = self.vfs.read().root2path(VfsRoot(root.0.into()));
+        let base = self.vfs.read().root2path(VfsRoot(root.0));
         let path = path.to_path(base);
         let url = Url::from_file_path(&path)
             .map_err(|_| format_err!("can't convert path to url: {}", path.display()))?;
@@ -212,7 +207,7 @@ impl WorldSnapshot {
     }
 
     pub fn workspace_root_for(&self, file_id: FileId) -> Option<&Path> {
-        let path = self.vfs.read().file2path(VfsFile(file_id.0.into()));
+        let path = self.vfs.read().file2path(VfsFile(file_id.0));
         self.workspaces.iter().find_map(|ws| ws.workspace_root_for(&path))
     }
 }
