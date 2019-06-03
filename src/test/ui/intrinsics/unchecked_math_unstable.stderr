@@ -1,0 +1,27 @@
+error[E0658]: use of unstable library feature 'core_intrinsics': intrinsics are unlikely to ever be stabilized, instead they should be used through stabilized interfaces in the rest of the standard library
+  --> $DIR/unchecked_math_unstable.rs:4:19
+   |
+LL |         let add = std::intrinsics::unchecked_add(x, y);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(core_intrinsics)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'core_intrinsics': intrinsics are unlikely to ever be stabilized, instead they should be used through stabilized interfaces in the rest of the standard library
+  --> $DIR/unchecked_math_unstable.rs:5:19
+   |
+LL |         let sub = std::intrinsics::unchecked_sub(x, y);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(core_intrinsics)] to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'core_intrinsics': intrinsics are unlikely to ever be stabilized, instead they should be used through stabilized interfaces in the rest of the standard library
+  --> $DIR/unchecked_math_unstable.rs:6:19
+   |
+LL |         let mul = std::intrinsics::unchecked_mul(x, y);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(core_intrinsics)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
