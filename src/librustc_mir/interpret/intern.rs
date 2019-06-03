@@ -168,6 +168,8 @@ for
                 // We do not have any `frozen` logic here, because it's essentially equivalent to
                 // the mutability except for the outermost item. Only `UnsafeCell` can "unfreeze",
                 // and we check that in `visit_aggregate`.
+                // This is not an inherent limitation, but one that we know to be true, because
+                // const qualification enforces it. We can lift it in the future.
                 match (self.mode, mutability) {
                     // all is "good and well" in the unsoundness of `static mut`
                     (InternMode::StaticMut, _) => {},
