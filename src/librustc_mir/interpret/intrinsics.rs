@@ -80,21 +80,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             }
 
             "type_name" => {
-                let const_val = type_name(self.tcx.tcx, substs.type_at(0)).val;
-                if let ConstValue::Slice {
-                    data: slice_val,
-                    start: _,
-                    end: _,
-                } = const_val {
-                    // unsafe for from_utf8_unchecked()
-                    unsafe {
-                        let str_val = core::str::from_utf8_unchecked(&slice_val.bytes);
-                        let name_val = self.str_to_immediate(str_val)?;
-                        self.write_immediate(name_val, dest)?;
-                    }
-                } else {
-                    bug!("type_name::type_name() somehow failed to return a ConstValue::Slice");
-                }
+                let alloc = alloc_type_name(self.tcx.tcx, substs.type_at(0));
+                let name_id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
+                let id_ptr = self.memory.tag_static_base_pointer(Pointer::new(name_id, Size::ZERO));
+                let name_val = Immediate::new_slice(Scalar::Ptr(id_ptr), alloc.bytes.len() as u64, self);
+                self.write_immediate(name_val, dest)?;
             }
             | "ctpop"
             | "cttz"
