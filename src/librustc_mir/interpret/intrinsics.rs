@@ -87,6 +87,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 let name_val = Immediate::new_slice(Scalar::Ptr(id_ptr), alloc_len, self);
                 self.write_immediate(name_val, dest)?;
             }
+
             | "ctpop"
             | "cttz"
             | "cttz_nonzero"
