@@ -2083,13 +2083,6 @@ impl<'a> Parser<'a> {
                     hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
-                if self.span.rust_2018() && self.check_keyword(kw::Async) {
-                    return if self.is_async_block() { // check for `async {` and `async move {`
-                        self.parse_async_block(attrs)
-                    } else {
-                        self.parse_lambda_expr(attrs)
-                    };
-                }
                 if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
                     return self.parse_lambda_expr(attrs);
                 }
@@ -2161,6 +2154,16 @@ impl<'a> Parser<'a> {
                     assert!(self.eat_keyword(kw::Try));
                     return self.parse_try_block(lo, attrs);
                 }
+
+                // Span::rust_2018() is somewhat expensive; don't get it repeatedly.
+                let is_span_rust_2018 = self.span.rust_2018();
+                if is_span_rust_2018 && self.check_keyword(kw::Async) {
+                    return if self.is_async_block() { // check for `async {` and `async move {`
+                        self.parse_async_block(attrs)
+                    } else {
+                        self.parse_lambda_expr(attrs)
+                    };
+                }
                 if self.eat_keyword(kw::Return) {
                     if self.token.can_begin_expr() {
                         let e = self.parse_expr()?;
@@ -2196,7 +2199,7 @@ impl<'a> Parser<'a> {
                     db.span_label(self.span, "expected expression");
                     db.note("variable declaration using `let` is a statement");
                     return Err(db);
-                } else if self.span.rust_2018() && self.eat_keyword(kw::Await) {
+                } else if is_span_rust_2018 && self.eat_keyword(kw::Await) {
                     let (await_hi, e_kind) = self.parse_await_macro_or_alt(lo, self.prev_span)?;
                     hi = await_hi;
                     ex = e_kind;
