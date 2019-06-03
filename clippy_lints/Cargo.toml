@@ -17,7 +17,7 @@ keywords = ["clippy", "lint", "plugin"]
 edition = "2018"
 
 [dependencies]
-cargo_metadata = "0.7.1"
+cargo_metadata = "0.8.0"
 itertools = "0.8"
 lazy_static = "1.0.2"
 matches = "0.1.7"

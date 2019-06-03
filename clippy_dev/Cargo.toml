@@ -5,7 +5,7 @@ authors = ["Philipp Hansch <dev@phansch.net>"]
 edition = "2018"
 
 [dependencies]
-clap = "~2.32"
+clap = "2.33"
 itertools = "0.8"
 regex = "1"
 lazy_static = "1.0"
