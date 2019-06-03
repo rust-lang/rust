@@ -4,13 +4,14 @@ use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::parse::{parser, DirectoryOwnership};
 use syntax::source_map;
+use syntax::symbol::sym;
 use syntax_pos::symbol::Symbol;
 
 use crate::config::FileName;
 use crate::items::is_mod_decl;
 use crate::utils::contains_skip;
 
-type FileModMap<'a> = BTreeMap<FileName, (&'a ast::Mod, &'a str)>;
+type FileModMap<'a> = BTreeMap<FileName, (&'a ast::Mod, String)>;
 
 /// Maps each module to the corresponding file.
 pub(crate) struct ModResolver<'a, 'b> {
@@ -61,7 +62,7 @@ impl<'a, 'b> ModResolver<'a, 'b> {
         }
 
         self.file_map
-            .insert(root_filename.into(), (&krate.module, ""));
+            .insert(root_filename.into(), (&krate.module, String::new()));
         Ok(self.file_map)
     }
 
@@ -80,7 +81,7 @@ impl<'a, 'b> ModResolver<'a, 'b> {
                         self.find_external_module(item.ident, &item.attrs)?;
                     self.file_map.insert(
                         FileName::Real(mod_path.clone()),
-                        (sub_mod, item.ident.name.as_str().get()),
+                        (sub_mod, item.ident.as_str().get().to_owned()),
                     );
                     self.directory = Directory {
                         path: mod_path.parent().unwrap().to_path_buf(),
@@ -161,7 +162,7 @@ impl<'a, 'b> ModResolver<'a, 'b> {
 }
 
 fn path_value(attr: &ast::Attribute) -> Option<Symbol> {
-    if attr.name() == "path" {
+    if attr.check_name(sym::path) {
         attr.value_str()
     } else {
         None

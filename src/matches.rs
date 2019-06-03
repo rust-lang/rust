@@ -111,7 +111,7 @@ pub(crate) fn rewrite_match(
             .snippet_provider
             .span_after(mk_sp(cond.span.hi(), hi), "{")
     } else {
-        inner_attrs[inner_attrs.len() - 1].span().hi()
+        inner_attrs[inner_attrs.len() - 1].span.hi()
     };
 
     if arms.is_empty() {

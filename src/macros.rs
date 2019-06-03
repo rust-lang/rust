@@ -17,10 +17,11 @@ use syntax::parse::parser::Parser;
 use syntax::parse::token::{BinOpToken, DelimToken, Token};
 use syntax::print::pprust;
 use syntax::source_map::{BytePos, Span};
-use syntax::symbol::keywords;
+use syntax::symbol::kw;
 use syntax::tokenstream::{Cursor, TokenStream, TokenTree};
 use syntax::ThinVec;
 use syntax::{ast, parse, ptr};
+use syntax_pos::Symbol;
 
 use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
@@ -149,7 +150,7 @@ fn rewrite_macro_name(
         format!("{}!", path)
     };
     match extra_ident {
-        Some(ident) if ident != keywords::Invalid.ident() => format!("{} {}", name, ident),
+        Some(ident) if ident.name != kw::Invalid => format!("{} {}", name, ident),
         _ => name,
     }
 }
@@ -231,7 +232,7 @@ pub(crate) fn rewrite_macro(
 }
 
 fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
-    for &keyword in RUST_KEYWORDS.iter() {
+    for &keyword in RUST_KW.iter() {
         if parser.token.is_keyword(keyword)
             && parser.look_ahead(1, |t| {
                 *t == Token::Eof
@@ -239,7 +240,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
                     || *t == Token::CloseDelim(DelimToken::NoDelim)
             })
         {
-            let macro_arg = MacroArg::Keyword(keyword.ident(), parser.span);
+            let macro_arg = MacroArg::Keyword(ast::Ident::with_empty_ctxt(keyword), parser.span);
             parser.bump();
             return Some(macro_arg);
         }
@@ -1425,8 +1426,8 @@ fn format_lazy_static(
     while parser.token != Token::Eof {
         // Parse a `lazy_static!` item.
         let vis = crate::utils::format_visibility(context, &parse_or!(parse_visibility, false));
-        parser.eat_keyword(keywords::Static);
-        parser.eat_keyword(keywords::Ref);
+        parser.eat_keyword(kw::Static);
+        parser.eat_keyword(kw::Ref);
         let id = parse_or!(parse_ident);
         parser.eat(&Token::Colon);
         let ty = parse_or!(parse_ty);
@@ -1502,65 +1503,65 @@ fn rewrite_macro_with_items(
     Some(result)
 }
 
-const RUST_KEYWORDS: [keywords::Keyword; 60] = [
-    keywords::PathRoot,
-    keywords::DollarCrate,
-    keywords::Underscore,
-    keywords::As,
-    keywords::Box,
-    keywords::Break,
-    keywords::Const,
-    keywords::Continue,
-    keywords::Crate,
-    keywords::Else,
-    keywords::Enum,
-    keywords::Extern,
-    keywords::False,
-    keywords::Fn,
-    keywords::For,
-    keywords::If,
-    keywords::Impl,
-    keywords::In,
-    keywords::Let,
-    keywords::Loop,
-    keywords::Match,
-    keywords::Mod,
-    keywords::Move,
-    keywords::Mut,
-    keywords::Pub,
-    keywords::Ref,
-    keywords::Return,
-    keywords::SelfLower,
-    keywords::SelfUpper,
-    keywords::Static,
-    keywords::Struct,
-    keywords::Super,
-    keywords::Trait,
-    keywords::True,
-    keywords::Type,
-    keywords::Unsafe,
-    keywords::Use,
-    keywords::Where,
-    keywords::While,
-    keywords::Abstract,
-    keywords::Become,
-    keywords::Do,
-    keywords::Final,
-    keywords::Macro,
-    keywords::Override,
-    keywords::Priv,
-    keywords::Typeof,
-    keywords::Unsized,
-    keywords::Virtual,
-    keywords::Yield,
-    keywords::Dyn,
-    keywords::Async,
-    keywords::Try,
-    keywords::UnderscoreLifetime,
-    keywords::StaticLifetime,
-    keywords::Auto,
-    keywords::Catch,
-    keywords::Default,
-    keywords::Existential,
-    keywords::Union,
+const RUST_KW: [Symbol; 60] = [
+    kw::PathRoot,
+    kw::DollarCrate,
+    kw::Underscore,
+    kw::As,
+    kw::Box,
+    kw::Break,
+    kw::Const,
+    kw::Continue,
+    kw::Crate,
+    kw::Else,
+    kw::Enum,
+    kw::Extern,
+    kw::False,
+    kw::Fn,
+    kw::For,
+    kw::If,
+    kw::Impl,
+    kw::In,
+    kw::Let,
+    kw::Loop,
+    kw::Match,
+    kw::Mod,
+    kw::Move,
+    kw::Mut,
+    kw::Pub,
+    kw::Ref,
+    kw::Return,
+    kw::SelfLower,
+    kw::SelfUpper,
+    kw::Static,
+    kw::Struct,
+    kw::Super,
+    kw::Trait,
+    kw::True,
+    kw::Type,
+    kw::Unsafe,
+    kw::Use,
+    kw::Where,
+    kw::While,
+    kw::Abstract,
+    kw::Become,
+    kw::Do,
+    kw::Final,
+    kw::Macro,
+    kw::Override,
+    kw::Priv,
+    kw::Typeof,
+    kw::Unsized,
+    kw::Virtual,
+    kw::Yield,
+    kw::Dyn,
+    kw::Async,
+    kw::Try,
+    kw::UnderscoreLifetime,
+    kw::StaticLifetime,
+    kw::Auto,
+    kw::Catch,
+    kw::Default,
+    kw::Existential,
+    kw::Union,
 ];

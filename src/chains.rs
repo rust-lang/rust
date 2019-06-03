@@ -118,6 +118,7 @@ enum ChainItemKind {
     ),
     StructField(ast::Ident),
     TupleField(ast::Ident, bool),
+    Await,
     Comment(String, CommentPosition),
 }
 
@@ -128,6 +129,7 @@ impl ChainItemKind {
             ChainItemKind::MethodCall(..)
             | ChainItemKind::StructField(..)
             | ChainItemKind::TupleField(..)
+            | ChainItemKind::Await
             | ChainItemKind::Comment(..) => false,
         }
     }
@@ -166,6 +168,10 @@ impl ChainItemKind {
                 let span = mk_sp(nested.span.hi(), field.span.hi());
                 (kind, span)
             }
+            ast::ExprKind::Await(_, ref nested) => {
+                let span = mk_sp(nested.span.hi(), expr.span.hi());
+                (ChainItemKind::Await, span)
+            }
             _ => return (ChainItemKind::Parent(expr.clone()), expr.span),
         };
 
@@ -189,6 +195,7 @@ impl Rewrite for ChainItem {
                 if nested { " " } else { "" },
                 rewrite_ident(context, ident)
             ),
+            ChainItemKind::Await => ".await".to_owned(),
             ChainItemKind::Comment(ref comment, _) => {
                 rewrite_comment(comment, false, shape, context.config)?
             }
@@ -387,9 +394,9 @@ impl Chain {
             ast::ExprKind::MethodCall(_, ref expressions) => {
                 Some(Self::convert_try(&expressions[0], context))
             }
-            ast::ExprKind::Field(ref subexpr, _) | ast::ExprKind::Try(ref subexpr) => {
-                Some(Self::convert_try(subexpr, context))
-            }
+            ast::ExprKind::Field(ref subexpr, _)
+            | ast::ExprKind::Try(ref subexpr)
+            | ast::ExprKind::Await(_, ref subexpr) => Some(Self::convert_try(subexpr, context)),
             _ => None,
         }
     }

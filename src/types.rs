@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use syntax::ast::{self, FunctionRetTy, Mutability};
 use syntax::source_map::{self, BytePos, Span};
-use syntax::symbol::keywords;
+use syntax::symbol::kw;
 
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity};
@@ -106,7 +106,7 @@ where
 
     for segment in iter {
         // Indicates a global path, shouldn't be rendered.
-        if segment.ident.name == keywords::PathRoot.name() {
+        if segment.ident.name == kw::PathRoot {
             continue;
         }
         if first {

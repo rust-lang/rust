@@ -8,11 +8,11 @@ pub async fn baz() -> Result<(), ()> {
     Ok(())
 }
 
-unsafe async fn foo() {
+async unsafe fn foo() {
     async move { Ok(()) }
 }
 
-unsafe async fn rust() {
+async unsafe fn rust() {
     async move {
         // comment
         Ok(())

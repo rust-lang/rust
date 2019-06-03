@@ -4,6 +4,7 @@ use std::fmt;
 
 use syntax::ast::{self, UseTreeKind};
 use syntax::source_map::{self, BytePos, Span, DUMMY_SP};
+use syntax::symbol::sym;
 
 use crate::comment::combine_strs_with_missing_comments;
 use crate::config::lists::*;
@@ -249,7 +250,7 @@ impl UseTree {
         match self.attrs {
             Some(ref attrs) if !attrs.is_empty() => {
                 let attr_str = attrs.rewrite(context, shape)?;
-                let lo = attrs.last().as_ref()?.span().hi();
+                let lo = attrs.last().as_ref()?.span.hi();
                 let hi = self.span.lo();
                 let span = mk_sp(lo, hi);
 
@@ -395,7 +396,7 @@ impl UseTree {
                     rewrite_ident(context, path_to_imported_ident(&a.prefix)).to_owned()
                 };
                 let alias = rename.and_then(|ident| {
-                    if ident.name == "_" {
+                    if ident.name == sym::underscore_imports {
                         // for impl-only-use
                         Some("_".to_owned())
                     } else if ident == path_to_imported_ident(&a.prefix) {

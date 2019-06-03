@@ -4,11 +4,12 @@ use bytecount;
 
 use rustc_target::spec::abi;
 use syntax::ast::{
-    self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind,
-    NodeId, Path, Visibility, VisibilityKind,
+    self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
+    VisibilityKind,
 };
 use syntax::ptr;
 use syntax::source_map::{BytePos, Span, NO_EXPANSION};
+use syntax::symbol::{sym, Symbol};
 use syntax_pos::Mark;
 use unicode_width::UnicodeWidthStr;
 
@@ -17,8 +18,15 @@ use crate::config::{Config, Version};
 use crate::rewrite::RewriteContext;
 use crate::shape::{Indent, Shape};
 
-pub(crate) const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
-pub(crate) const SKIP_ANNOTATION: &str = "rustfmt::skip";
+#[inline]
+pub(crate) fn depr_skip_annotation() -> Symbol {
+    Symbol::intern("rustfmt_skip")
+}
+
+#[inline]
+pub(crate) fn skip_annotation() -> Symbol {
+    Symbol::intern("rustfmt::skip")
+}
 
 pub(crate) fn rewrite_ident<'a>(context: &'a RewriteContext<'_>, ident: ast::Ident) -> &'a str {
     context.snippet(ident.span)
@@ -81,7 +89,7 @@ pub(crate) fn format_visibility(
 }
 
 #[inline]
-pub(crate) fn format_async(is_async: ast::IsAsync) -> &'static str {
+pub(crate) fn format_async(is_async: &ast::IsAsync) -> &'static str {
     match is_async {
         ast::IsAsync::Async { .. } => "async ",
         ast::IsAsync::NotAsync => "",
@@ -237,11 +245,11 @@ pub(crate) fn last_line_extendable(s: &str) -> bool {
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.node {
         MetaItemKind::Word => {
-            let path_str = meta_item.ident.to_string();
-            path_str == SKIP_ANNOTATION || path_str == DEPR_SKIP_ANNOTATION
+            let path_str = meta_item.path.to_string();
+            path_str == skip_annotation().as_str() || path_str == depr_skip_annotation().as_str()
         }
         MetaItemKind::List(ref l) => {
-            meta_item.name() == "cfg_attr" && l.len() == 2 && is_skip_nested(&l[1])
+            meta_item.check_name(sym::cfg_attr) && l.len() == 2 && is_skip_nested(&l[1])
         }
         _ => false,
     }
@@ -249,9 +257,9 @@ fn is_skip(meta_item: &MetaItem) -> bool {
 
 #[inline]
 fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
-    match meta_item.node {
-        NestedMetaItemKind::MetaItem(ref mi) => is_skip(mi),
-        NestedMetaItemKind::Literal(_) => false,
+    match meta_item {
+        NestedMetaItem::MetaItem(ref mi) => is_skip(mi),
+        NestedMetaItem::Literal(_) => false,
     }
 }
 
@@ -625,8 +633,8 @@ pub(crate) fn get_skip_macro_names(attrs: &[ast::Attribute]) -> Vec<String> {
         }
 
         if let Some(list) = attr.meta_item_list() {
-            for spanned in list {
-                if let Some(name) = spanned.name() {
+            for nested_meta_item in list {
+                if let Some(name) = nested_meta_item.ident() {
                     skip_macro_names.push(name.to_string());
                 }
             }

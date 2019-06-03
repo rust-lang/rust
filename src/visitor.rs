@@ -21,8 +21,8 @@ use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::utils::{
-    self, contains_skip, count_newlines, get_skip_macro_names, inner_attributes, mk_sp,
-    ptr_vec_to_ref_vec, rewrite_ident, stmt_expr, DEPR_SKIP_ANNOTATION,
+    self, contains_skip, count_newlines, depr_skip_annotation, get_skip_macro_names,
+    inner_attributes, mk_sp, ptr_vec_to_ref_vec, rewrite_ident, stmt_expr,
 };
 use crate::{ErrorKind, FormatReport, FormattingError};
 
@@ -593,7 +593,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         // do not take into account the lines with attributes as part of the skipped range
         let attrs_end = attrs
             .iter()
-            .map(|attr| self.source_map.lookup_char_pos(attr.span().hi()).line)
+            .map(|attr| self.source_map.lookup_char_pos(attr.span.hi()).line)
             .max()
             .unwrap_or(1);
         let first_line = self.source_map.lookup_char_pos(main_span.lo()).line;
@@ -656,7 +656,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     // Returns true if we should skip the following item.
     pub(crate) fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
         for attr in attrs {
-            if attr.name() == DEPR_SKIP_ANNOTATION {
+            if attr.check_name(depr_skip_annotation()) {
                 let file_name = self.source_map.span_to_filename(attr.span).into();
                 self.report.append(
                     file_name,

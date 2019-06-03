@@ -161,7 +161,7 @@ pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
     abi: abi::Abi,
-    is_async: ast::IsAsync,
+    is_async: Cow<'a, ast::IsAsync>,
     constness: ast::Constness,
     defaultness: ast::Defaultness,
     unsafety: ast::Unsafety,
@@ -178,7 +178,7 @@ impl<'a> FnSig<'a> {
             decl,
             generics,
             abi: abi::Abi::Rust,
-            is_async: ast::IsAsync::NotAsync,
+            is_async: Cow::Owned(ast::IsAsync::NotAsync),
             constness: ast::Constness::NotConst,
             defaultness: ast::Defaultness::Final,
             unsafety: ast::Unsafety::Normal,
@@ -192,7 +192,7 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         FnSig {
             unsafety: method_sig.header.unsafety,
-            is_async: method_sig.header.asyncness.node,
+            is_async: Cow::Borrowed(&method_sig.header.asyncness.node),
             constness: method_sig.header.constness.node,
             defaultness: ast::Defaultness::Final,
             abi: method_sig.header.abi,
@@ -214,7 +214,7 @@ impl<'a> FnSig<'a> {
                 generics,
                 abi: fn_header.abi,
                 constness: fn_header.constness.node,
-                is_async: fn_header.asyncness.node,
+                is_async: Cow::Borrowed(&fn_header.asyncness.node),
                 defaultness,
                 unsafety: fn_header.unsafety,
                 visibility: visibility.clone(),
@@ -237,8 +237,8 @@ impl<'a> FnSig<'a> {
         result.push_str(&*format_visibility(context, &self.visibility));
         result.push_str(format_defaultness(self.defaultness));
         result.push_str(format_constness(self.constness));
+        result.push_str(format_async(&self.is_async));
         result.push_str(format_unsafety(self.unsafety));
-        result.push_str(format_async(self.is_async));
         result.push_str(&format_abi(
             self.abi,
             context.config.force_explicit_abi(),
@@ -422,7 +422,10 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub(crate) fn visit_struct(&mut self, struct_parts: &StructParts<'_>) {
-        let is_tuple = struct_parts.def.is_tuple();
+        let is_tuple = match struct_parts.def {
+            ast::VariantData::Tuple(..) => true,
+            _ => false,
+        };
         let rewrite = format_struct(&self.get_context(), struct_parts, self.block_indent, None)
             .map(|s| if is_tuple { s + ";" } else { s });
         self.push_rewrite(struct_parts.span, rewrite);
@@ -1982,7 +1985,7 @@ pub(crate) fn span_hi_for_arg(context: &RewriteContext<'_>, arg: &ast::Arg) -> B
 
 pub(crate) fn is_named_arg(arg: &ast::Arg) -> bool {
     if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
-        ident != symbol::keywords::Invalid.ident()
+        ident.name != symbol::kw::Invalid
     } else {
         true
     }
@@ -2931,11 +2934,11 @@ impl Rewrite for ast::ForeignItem {
                 false,
             )
             .map(|(s, _)| format!("{};", s)),
-            ast::ForeignItemKind::Static(ref ty, is_mutable) => {
+            ast::ForeignItemKind::Static(ref ty, mutability) => {
                 // FIXME(#21): we're dropping potential comments in between the
-                // function keywords here.
+                // function kw here.
                 let vis = format_visibility(context, &self.vis);
-                let mut_str = if is_mutable { "mut " } else { "" };
+                let mut_str = format_mutability(mutability);
                 let prefix = format!(
                     "{}static {}{}:",
                     vis,

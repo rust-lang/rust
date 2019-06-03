@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::cmp::min;
+use std::iter;
 
 use itertools::Itertools;
 use syntax::parse::token::DelimToken;
@@ -183,9 +184,9 @@ pub(crate) fn format_expr(
                 Some("yield".to_string())
             }
         }
-        ast::ExprKind::Closure(capture, asyncness, movability, ref fn_decl, ref body, _) => {
+        ast::ExprKind::Closure(capture, ref is_async, movability, ref fn_decl, ref body, _) => {
             closures::rewrite_closure(
-                capture, asyncness, movability, fn_decl, body, expr.span, context, shape,
+                capture, is_async, movability, fn_decl, body, expr.span, context, shape,
             )
         }
         ast::ExprKind::Try(..) | ast::ExprKind::Field(..) | ast::ExprKind::MethodCall(..) => {
@@ -335,10 +336,6 @@ pub(crate) fn format_expr(
                 ))
             }
         }
-        ast::ExprKind::ObsoleteInPlace(ref lhs, ref rhs) => lhs
-            .rewrite(context, shape)
-            .map(|s| s + " <-")
-            .and_then(|lhs| rewrite_assign_rhs(context, lhs, &**rhs, shape)),
         ast::ExprKind::Async(capture_by, _node_id, ref block) => {
             let mover = if capture_by == ast::CaptureBy::Value {
                 "move "
@@ -370,6 +367,18 @@ pub(crate) fn format_expr(
                     )?
                 ))
             }
+        }
+        ast::ExprKind::Await(ast::AwaitOrigin::FieldLike, _) => rewrite_chain(expr, context, shape),
+        ast::ExprKind::Await(ast::AwaitOrigin::MacroLike, ref nested) => {
+            overflow::rewrite_with_parens(
+                context,
+                "await!",
+                iter::once(nested),
+                shape,
+                expr.span,
+                context.config.max_width(),
+                None,
+            )
         }
         ast::ExprKind::Err => None,
     };

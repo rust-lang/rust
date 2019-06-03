@@ -1,4 +1,3 @@
-use syntax::parse::classify;
 use syntax::source_map::Span;
 use syntax::{ast, ptr};
 
@@ -25,7 +24,7 @@ use crate::utils::{last_line_width, left_most_sub_expr, stmt_expr, NodeIdExt};
 
 pub(crate) fn rewrite_closure(
     capture: ast::CaptureBy,
-    asyncness: ast::IsAsync,
+    is_async: &ast::IsAsync,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -36,7 +35,7 @@ pub(crate) fn rewrite_closure(
     debug!("rewrite_closure {:?}", body);
 
     let (prefix, extra_offset) = rewrite_closure_fn_decl(
-        capture, asyncness, movability, fn_decl, body, span, context, shape,
+        capture, is_async, movability, fn_decl, body, span, context, shape,
     )?;
     // 1 = space between `|...|` and body.
     let body_shape = shape.offset_left(extra_offset)?;
@@ -134,7 +133,7 @@ fn rewrite_closure_with_block(
     shape: Shape,
 ) -> Option<String> {
     let left_most = left_most_sub_expr(body);
-    let veto_block = veto_block(body) && !classify::expr_requires_semi_to_be_stmt(left_most);
+    let veto_block = veto_block(body) && !expr_requires_semi_to_be_stmt(left_most);
     if veto_block {
         return None;
     }
@@ -207,7 +206,7 @@ fn rewrite_closure_block(
 // Return type is (prefix, extra_offset)
 fn rewrite_closure_fn_decl(
     capture: ast::CaptureBy,
-    asyncness: ast::IsAsync,
+    asyncness: &ast::IsAsync,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -291,7 +290,7 @@ pub(crate) fn rewrite_last_closure(
     expr: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
-    if let ast::ExprKind::Closure(capture, asyncness, movability, ref fn_decl, ref body, _) =
+    if let ast::ExprKind::Closure(capture, ref is_async, movability, ref fn_decl, ref body, _) =
         expr.node
     {
         let body = match body.node {
@@ -305,7 +304,7 @@ pub(crate) fn rewrite_last_closure(
             _ => body,
         };
         let (prefix, extra_offset) = rewrite_closure_fn_decl(
-            capture, asyncness, movability, fn_decl, body, expr.span, context, shape,
+            capture, is_async, movability, fn_decl, body, expr.span, context, shape,
         )?;
         // If the closure goes multi line before its body, do not overflow the closure.
         if prefix.contains('\n') {
@@ -385,5 +384,28 @@ fn is_block_closure_forced_inner(expr: &ast::Expr, version: Version) -> bool {
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced_inner(expr, version),
         _ => false,
+    }
+}
+
+/// Does this expression require a semicolon to be treated
+/// as a statement? The negation of this: 'can this expression
+/// be used as a statement without a semicolon' -- is used
+/// as an early-bail-out in the parser so that, for instance,
+///     if true {...} else {...}
+///      |x| 5
+/// isn't parsed as (if true {...} else {...} | x) | 5
+// From https://github.com/rust-lang/rust/blob/master/src/libsyntax/parse/classify.rs.
+fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
+    match e.node {
+        ast::ExprKind::If(..)
+        | ast::ExprKind::IfLet(..)
+        | ast::ExprKind::Match(..)
+        | ast::ExprKind::Block(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::TryBlock(..) => false,
+        _ => true,
     }
 }
