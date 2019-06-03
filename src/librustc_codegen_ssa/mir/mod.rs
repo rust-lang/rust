@@ -128,14 +128,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // Walk up the macro expansion chain until we reach a non-expanded span.
             // We also stop at the function body level because no line stepping can occur
             // at the level above that.
-            let mut span = source_info.span;
-            while span.ctxt() != NO_EXPANSION && span.ctxt() != self.mir.span.ctxt() {
-                if let Some(info) = span.ctxt().outer_expn_info() {
-                    span = info.call_site;
-                } else {
-                    break;
-                }
-            }
+            let span = syntax_pos::hygiene::walk_chain(source_info.span, self.mir.span.ctxt());
             let scope = self.scope_metadata_for_loc(source_info.scope, span.lo());
             // Use span of the outermost expansion site, while keeping the original lexical scope.
             (scope, span)

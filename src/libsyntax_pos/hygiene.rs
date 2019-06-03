@@ -257,6 +257,17 @@ impl HygieneData {
         marks
     }
 
+    fn walk_chain(&self, mut span: Span, to: SyntaxContext) -> Span {
+        while span.ctxt() != crate::NO_EXPANSION && span.ctxt() != to {
+            if let Some(info) = self.expn_info(self.outer(span.ctxt())) {
+                span = info.call_site;
+            } else {
+                break;
+            }
+        }
+        span
+    }
+
     fn adjust(&self, ctxt: &mut SyntaxContext, expansion: Mark) -> Option<Mark> {
         let mut scope = None;
         while !self.is_descendant_of(expansion, self.outer(*ctxt)) {
@@ -364,6 +375,10 @@ impl HygieneData {
 
 pub fn clear_markings() {
     HygieneData::with(|data| data.markings = FxHashMap::default());
+}
+
+pub fn walk_chain(span: Span, to: SyntaxContext) -> Span {
+    HygieneData::with(|data| data.walk_chain(span, to))
 }
 
 impl SyntaxContext {
