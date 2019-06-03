@@ -7,11 +7,11 @@ use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::mir::BinOp;
 use rustc::mir::interpret::{
-    EvalResult, InterpError, Scalar, Immediate, Pointer
+    EvalResult, InterpError, Scalar
 };
 
 use super::{
-    Machine, PlaceTy, OpTy, InterpretCx,
+    Machine, PlaceTy, OpTy, InterpretCx, Immediate, Pointer
 };
 
 mod type_name;
