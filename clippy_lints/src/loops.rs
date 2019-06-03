@@ -61,9 +61,17 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// let vec = vec!['a', 'b', 'c'];
     /// for i in 0..vec.len() {
     ///     println!("{}", vec[i]);
+    /// }
+    /// ```
+    /// Could be written as:
+    /// ```rust
+    /// let vec = vec!['a', 'b', 'c'];
+    /// for i in vec {
+    ///     println!("{}", i);
     /// }
     /// ```
     pub NEEDLESS_RANGE_LOOP,
