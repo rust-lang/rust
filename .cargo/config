@@ -12,6 +12,9 @@ install-code = "run --package tools --bin tools -- install-code"
 # Formats the full repository or installs the git hook to do it automatically.
 format       = "run --package tools --bin tools -- format"
 format-hook  = "run --package tools --bin tools -- format-hook"
+# Run clippy
+lint         = "run --package tools --bin tools -- lint"
+
 # Runs the fuzzing test suite (currently only parser)
 fuzz-tests   = "run --package tools --bin tools -- fuzz-tests"
 
