@@ -22,40 +22,39 @@ type StdHashMap<K, V> = HashMap<K, V, RandomState>;
 // A random key iterator.
 #[derive(Clone, Copy)]
 struct RandomKeys {
-    remaining: usize,
     state: usize,
 }
 
 impl RandomKeys {
-    fn new(size: usize) -> Self {
-        RandomKeys {
-            remaining: size,
-            state: 1,
-        }
-    }
-
-    // Produce a different set of random values.
-    fn new2(size: usize) -> Self {
-        RandomKeys {
-            remaining: size,
-            state: 2,
-        }
+    fn new() -> Self {
+        RandomKeys { state: 0 }
     }
 }
 
 impl Iterator for RandomKeys {
     type Item = usize;
     fn next(&mut self) -> Option<usize> {
-        if self.remaining == 0 {
-            None
-        } else {
-            self.remaining -= 1;
-            // Multiply by some 32 bit prime.
-            self.state = self.state.wrapping_mul(3787392781);
-            // Mix in to the bottom bits which are constant mod powers of 2.
-            Some(self.state ^ (self.state >> 4))
-        }
+        // Add 1 then multiply by some 32 bit prime.
+        self.state = self.state.wrapping_add(1).wrapping_mul(3787392781);
+        Some(self.state)
     }
+}
+
+macro_rules! bench_suite {
+    ($bench_macro:ident, $bench_fx_serial:ident, $bench_std_serial:ident,
+     $bench_fx_highbits:ident, $bench_std_highbits:ident,
+     $bench_fx_random:ident, $bench_std_random:ident) => {
+        $bench_macro!($bench_fx_serial, FxHashMap, 0..);
+        $bench_macro!($bench_std_serial, StdHashMap, 0..);
+        $bench_macro!($bench_fx_highbits, FxHashMap, (0..).map(usize::swap_bytes));
+        $bench_macro!(
+            $bench_std_highbits,
+            StdHashMap,
+            (0..).map(usize::swap_bytes)
+        );
+        $bench_macro!($bench_fx_random, FxHashMap, RandomKeys::new());
+        $bench_macro!($bench_std_random, StdHashMap, RandomKeys::new());
+    };
 }
 
 macro_rules! bench_insert {
@@ -64,7 +63,7 @@ macro_rules! bench_insert {
         fn $name(b: &mut Bencher) {
             b.iter(|| {
                 let mut m = $maptype::default();
-                for i in $keydist {
+                for i in ($keydist).take(SIZE) {
                     m.insert(i, i);
                 }
                 black_box(m);
@@ -73,66 +72,59 @@ macro_rules! bench_insert {
     };
 }
 
-bench_insert!(insert_fx_serial, FxHashMap, 0..SIZE);
-bench_insert!(insert_std_serial, StdHashMap, 0..SIZE);
-bench_insert!(
+bench_suite!(
+    bench_insert,
+    insert_fx_serial,
+    insert_std_serial,
     insert_fx_highbits,
-    FxHashMap,
-    (0..SIZE).map(usize::swap_bytes)
-);
-bench_insert!(
     insert_std_highbits,
-    StdHashMap,
-    (0..SIZE).map(usize::swap_bytes)
+    insert_fx_random,
+    insert_std_random
 );
-bench_insert!(insert_fx_random, FxHashMap, RandomKeys::new(SIZE));
-bench_insert!(insert_std_random, StdHashMap, RandomKeys::new(SIZE));
 
 macro_rules! bench_insert_erase {
     ($name:ident, $maptype:ident, $keydist:expr) => {
         #[bench]
         fn $name(b: &mut Bencher) {
+            let mut m = $maptype::default();
+            let mut add_iter = $keydist;
+            for i in (&mut add_iter).take(SIZE) {
+                m.insert(i, i);
+            }
+            let mut remove_iter = $keydist;
             b.iter(|| {
-                let mut m = $maptype::default();
-                for i in $keydist {
-                    m.insert(i, i);
+                // While keeping the size constant,
+                // replace the first keydist with the second.
+                for (add, remove) in (&mut add_iter).zip(&mut remove_iter).take(SIZE) {
+                    m.insert(add, add);
+                    black_box(m.remove(&remove));
                 }
-                black_box(&mut m);
-                for i in $keydist {
-                    m.remove(&i);
-                }
-                black_box(m);
             })
         }
     };
 }
 
-bench_insert_erase!(insert_erase_fx_serial, FxHashMap, 0..SIZE);
-bench_insert_erase!(insert_erase_std_serial, StdHashMap, 0..SIZE);
-bench_insert_erase!(
+bench_suite!(
+    bench_insert_erase,
+    insert_erase_fx_serial,
+    insert_erase_std_serial,
     insert_erase_fx_highbits,
-    FxHashMap,
-    (0..SIZE).map(usize::swap_bytes)
-);
-bench_insert_erase!(
     insert_erase_std_highbits,
-    StdHashMap,
-    (0..SIZE).map(usize::swap_bytes)
+    insert_erase_fx_random,
+    insert_erase_std_random
 );
-bench_insert_erase!(insert_erase_fx_random, FxHashMap, RandomKeys::new(SIZE));
-bench_insert_erase!(insert_erase_std_random, StdHashMap, RandomKeys::new(SIZE));
 
 macro_rules! bench_lookup {
     ($name:ident, $maptype:ident, $keydist:expr) => {
         #[bench]
         fn $name(b: &mut Bencher) {
             let mut m = $maptype::default();
-            for i in $keydist {
+            for i in $keydist.take(SIZE) {
                 m.insert(i, i);
             }
 
             b.iter(|| {
-                for i in $keydist {
+                for i in $keydist.take(SIZE) {
                     black_box(m.get(&i));
                 }
             })
@@ -140,32 +132,28 @@ macro_rules! bench_lookup {
     };
 }
 
-bench_lookup!(lookup_fx_serial, FxHashMap, 0..SIZE);
-bench_lookup!(lookup_std_serial, StdHashMap, 0..SIZE);
-bench_lookup!(
+bench_suite!(
+    bench_lookup,
+    lookup_fx_serial,
+    lookup_std_serial,
     lookup_fx_highbits,
-    FxHashMap,
-    (0..SIZE).map(usize::swap_bytes)
-);
-bench_lookup!(
     lookup_std_highbits,
-    StdHashMap,
-    (0..SIZE).map(usize::swap_bytes)
+    lookup_fx_random,
+    lookup_std_random
 );
-bench_lookup!(lookup_fx_random, FxHashMap, RandomKeys::new(SIZE));
-bench_lookup!(lookup_std_random, StdHashMap, RandomKeys::new(SIZE));
 
 macro_rules! bench_lookup_fail {
-    ($name:ident, $maptype:ident, $keydist:expr, $keydist2:expr) => {
+    ($name:ident, $maptype:ident, $keydist:expr) => {
         #[bench]
         fn $name(b: &mut Bencher) {
             let mut m = $maptype::default();
-            for i in $keydist {
+            let mut iter = $keydist;
+            for i in (&mut iter).take(SIZE) {
                 m.insert(i, i);
             }
 
             b.iter(|| {
-                for i in $keydist2 {
+                for i in (&mut iter).take(SIZE) {
                     black_box(m.get(&i));
                 }
             })
@@ -173,31 +161,14 @@ macro_rules! bench_lookup_fail {
     };
 }
 
-bench_lookup_fail!(lookup_fail_fx_serial, FxHashMap, 0..SIZE, SIZE..SIZE * 2);
-bench_lookup_fail!(lookup_fail_std_serial, StdHashMap, 0..SIZE, SIZE..SIZE * 2);
-bench_lookup_fail!(
+bench_suite!(
+    bench_lookup_fail,
+    lookup_fail_fx_serial,
+    lookup_fail_std_serial,
     lookup_fail_fx_highbits,
-    FxHashMap,
-    (0..SIZE).map(usize::swap_bytes),
-    (SIZE..SIZE * 2).map(usize::swap_bytes)
-);
-bench_lookup_fail!(
     lookup_fail_std_highbits,
-    StdHashMap,
-    (0..SIZE).map(usize::swap_bytes),
-    (SIZE..SIZE * 2).map(usize::swap_bytes)
-);
-bench_lookup_fail!(
     lookup_fail_fx_random,
-    FxHashMap,
-    RandomKeys::new(SIZE),
-    RandomKeys::new2(SIZE)
-);
-bench_lookup_fail!(
-    lookup_fail_std_random,
-    StdHashMap,
-    RandomKeys::new(SIZE),
-    RandomKeys::new2(SIZE)
+    lookup_fail_std_random
 );
 
 macro_rules! bench_iter {
@@ -205,7 +176,7 @@ macro_rules! bench_iter {
         #[bench]
         fn $name(b: &mut Bencher) {
             let mut m = $maptype::default();
-            for i in $keydist {
+            for i in ($keydist).take(SIZE) {
                 m.insert(i, i);
             }
 
@@ -218,17 +189,12 @@ macro_rules! bench_iter {
     };
 }
 
-bench_iter!(iter_fx_serial, FxHashMap, 0..SIZE);
-bench_iter!(iter_std_serial, StdHashMap, 0..SIZE);
-bench_iter!(
+bench_suite!(
+    bench_iter,
+    iter_fx_serial,
+    iter_std_serial,
     iter_fx_highbits,
-    FxHashMap,
-    (0..SIZE).map(usize::swap_bytes)
-);
-bench_iter!(
     iter_std_highbits,
-    StdHashMap,
-    (0..SIZE).map(usize::swap_bytes)
+    iter_fx_random,
+    iter_std_random
 );
-bench_iter!(iter_fx_random, FxHashMap, RandomKeys::new(SIZE));
-bench_iter!(iter_std_random, StdHashMap, RandomKeys::new(SIZE));
