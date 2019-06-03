@@ -5,6 +5,26 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 <https://doi.org/10.1017/S0956796812000093>
 
+// Hygiene data is stored in a global variable and accessed via TLS, which
+// means that accesses are somewhat expensive. (`HygieneData::with`
+// encapsulates a single access.) Therefore, on hot code paths it is worth
+// ensuring that multiple HygieneData accesses are combined into a single
+// `HygieneData::with`.
+//
+// This explains why `HygieneData`, `SyntaxContext` and `Mark` have interfaces
+// with a certain amount of redundancy in them. For example,
+// `SyntaxContext::outer_expn_info` combines `SyntaxContext::outer` and
+// `Mark::expn_info` so that two `HygieneData` accesses can be performed within
+// a single `HygieneData::with` call.
+//
+// It also explains why many functions appear in `HygieneData` and again in
+// `SyntaxContext` or `Mark`. For example, `HygieneData::outer` and
+// `SyntaxContext::outer` do the same thing, but the former is for use within a
+// `HygieneData::with` call while the latter is for use outside such a call.
+// When modifying this file it is important to understand this distinction,
+// because getting it wrong can lead to nested `HygieneData::with` calls that
+// trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
+
 use crate::GLOBALS;
 use crate::Span;
 use crate::edition::Edition;
