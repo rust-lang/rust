@@ -2285,7 +2285,6 @@ impl<'a> LoweringContext<'a> {
         hir::Arg {
             hir_id: self.lower_node_id(arg.id),
             pat: self.lower_pat(&arg.pat),
-            source: hir::ArgSource::Normal,
         }
     }
 
@@ -3091,7 +3090,6 @@ impl<'a> LoweringContext<'a> {
                 let new_argument = hir::Arg {
                     hir_id: argument.hir_id,
                     pat: new_argument_pat,
-                    source: hir::ArgSource::AsyncFn
                 };
 
                 if is_simple_argument {

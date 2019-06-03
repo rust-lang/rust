@@ -1929,16 +1929,6 @@ pub struct InlineAsm {
 pub struct Arg {
     pub pat: P<Pat>,
     pub hir_id: HirId,
-    pub source: ArgSource,
-}
-
-/// Represents the source of an argument in a function header.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum ArgSource {
-    /// Argument as specified by the user.
-    Normal,
-    /// Generated argument from `async fn` lowering.
-    AsyncFn,
 }
 
 /// Represents the header (not the body) of a function declaration.
