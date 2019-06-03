@@ -9,6 +9,7 @@ use std::borrow::Cow;
 use std::fmt;
 
 use rustc::hir::def_id::DefId;
+use rustc::util::nodemap::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;
 
@@ -107,8 +108,10 @@ impl<'a, T: fmt::Display> fmt::Display for CommaSep<'a, T> {
 
 impl<'a> fmt::Display for GenericBounds<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut bounds_dup = FxHashSet::default();
         let &GenericBounds(bounds) = self;
-        for (i, bound) in bounds.iter().enumerate() {
+
+        for (i, bound) in bounds.iter().filter(|b| bounds_dup.insert(b.to_string())).enumerate() {
             if i > 0 {
                 f.write_str(" + ")?;
             }
@@ -206,16 +209,13 @@ impl<'a> fmt::Display for WhereClause<'a> {
                         clause.push_str(&format!("{}: {}", ty, GenericBounds(bounds)));
                     }
                 }
-                &clean::WherePredicate::RegionPredicate { ref lifetime,
-                                                          ref bounds } => {
-                    clause.push_str(&format!("{}: ", lifetime));
-                    for (i, lifetime) in bounds.iter().enumerate() {
-                        if i > 0 {
-                            clause.push_str(" + ");
-                        }
-
-                        clause.push_str(&lifetime.to_string());
-                    }
+                &clean::WherePredicate::RegionPredicate { ref lifetime, ref bounds } => {
+                    clause.push_str(&format!("{}: {}",
+                                             lifetime,
+                                             bounds.iter()
+                                                   .map(|b| b.to_string())
+                                                   .collect::<Vec<_>>()
+                                                   .join(" + ")));
                 }
                 &clean::WherePredicate::EqPredicate { ref lhs, ref rhs } => {
                     if f.alternate() {
