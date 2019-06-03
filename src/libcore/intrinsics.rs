@@ -1242,17 +1242,17 @@ extern "rust-intrinsic" {
 
     /// Returns the result of an unchecked addition, resulting in
     /// undefined behavior when `x + y > T::max_value()` or `x + y < T::min_value()`.
-    #[cfg(not(stage0))]
+    #[cfg(not(bootstrap))]
     pub fn unchecked_add<T>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked substraction, resulting in
     /// undefined behavior when `x - y > T::max_value()` or `x - y < T::min_value()`.
-    #[cfg(not(stage0))]
+    #[cfg(not(bootstrap))]
     pub fn unchecked_sub<T>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked multiplication, resulting in
     /// undefined behavior when `x * y > T::max_value()` or `x * y < T::min_value()`.
-    #[cfg(not(stage0))]
+    #[cfg(not(bootstrap))]
     pub fn unchecked_mul<T>(x: T, y: T) -> T;
 
     /// Performs rotate left.
