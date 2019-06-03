@@ -483,7 +483,17 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             ty::FnPtr(ref bare_fn) => {
                 p!(print(bare_fn))
             }
-            ty::Infer(infer_ty) => p!(write("{}", infer_ty)),
+            ty::Infer(infer_ty) => {
+                if let ty::TyVar(ty_vid) = infer_ty {
+                    if let Some(name) = self.infer_ty_name(ty_vid) {
+                        p!(write("{}", name))
+                    } else {
+                        p!(write("{}", infer_ty))
+                    }
+                } else {
+                    p!(write("{}", infer_ty))
+                }
+            },
             ty::Error => p!(write("[type error]")),
             ty::Param(ref param_ty) => p!(write("{}", param_ty)),
             ty::Bound(debruijn, bound_ty) => {
@@ -679,6 +689,10 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
         }
 
         Ok(self)
+    }
+
+    fn infer_ty_name(&self, _: ty::TyVid) -> Option<String> {
+        None
     }
 
     fn pretty_print_dyn_existential(
@@ -931,6 +945,8 @@ pub struct FmtPrinterData<'a, 'gcx, 'tcx, F> {
     binder_depth: usize,
 
     pub region_highlight_mode: RegionHighlightMode,
+
+    pub name_resolver: Option<Box<&'a dyn Fn(ty::sty::TyVid) -> Option<String>>>,
 }
 
 impl<F> Deref for FmtPrinter<'a, 'gcx, 'tcx, F> {
@@ -957,6 +973,7 @@ impl<F> FmtPrinter<'a, 'gcx, 'tcx, F> {
             region_index: 0,
             binder_depth: 0,
             region_highlight_mode: RegionHighlightMode::default(),
+            name_resolver: None,
         }))
     }
 }
@@ -1206,6 +1223,10 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
 }
 
 impl<F: fmt::Write> PrettyPrinter<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
+    fn infer_ty_name(&self, id: ty::TyVid) -> Option<String> {
+        self.0.name_resolver.as_ref().and_then(|func| func(id))
+    }
+
     fn print_value_path(
         mut self,
         def_id: DefId,

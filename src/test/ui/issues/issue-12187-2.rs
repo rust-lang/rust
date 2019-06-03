@@ -4,5 +4,5 @@ fn new<'r, T>() -> &'r T {
 
 fn main() {
     let &v = new();
-    //~^ ERROR type annotations needed [E0282]
+    //~^ ERROR type annotations needed
 }

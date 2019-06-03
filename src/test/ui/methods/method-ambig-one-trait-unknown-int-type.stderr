@@ -1,10 +1,10 @@
-error[E0282]: type annotations needed
+error[E0282]: type annotations needed for `std::vec::Vec<T>`
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:24:17
    |
 LL |     let mut x = Vec::new();
    |         -----   ^^^^^^^^ cannot infer type for `T`
    |         |
-   |         consider giving `x` a type
+   |         consider giving `x` the explicit type `std::vec::Vec<T>`, where the type parameter `T` is specified
 
 error[E0308]: mismatched types
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:33:20
