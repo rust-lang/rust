@@ -19,13 +19,10 @@ impl Drop for ScopedThread {
         log::info!(".. {} terminated with {}", name, if res.is_ok() { "ok" } else { "err" });
 
         // escalate panic, but avoid aborting the process
-        match res {
-            Err(e) => {
-                if !thread::panicking() {
-                    panic!(e)
-                }
+        if let Err(e) = res {
+            if !thread::panicking() {
+                panic!(e)
             }
-            _ => (),
         }
     }
 }

@@ -77,13 +77,10 @@ impl TraitItemsIndex {
     pub(crate) fn trait_items_index(db: &impl DefDatabase, module: Module) -> TraitItemsIndex {
         let mut index = TraitItemsIndex { traits_by_def: FxHashMap::default() };
         for decl in module.declarations(db) {
-            match decl {
-                crate::ModuleDef::Trait(tr) => {
-                    for item in tr.trait_data(db).items() {
-                        index.traits_by_def.insert(*item, tr);
-                    }
+            if let crate::ModuleDef::Trait(tr) = decl {
+                for item in tr.trait_data(db).items() {
+                    index.traits_by_def.insert(*item, tr);
                 }
-                _ => {}
             }
         }
         index

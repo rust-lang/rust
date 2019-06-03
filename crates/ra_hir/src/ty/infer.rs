@@ -848,28 +848,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
-        match callable_ty {
-            Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::FnDef(def) => {
-                    // add obligation for trait implementation, if this is a trait method
-                    // FIXME also register obligations from where clauses from the trait or impl and method
-                    match def {
-                        CallableDef::Function(f) => {
-                            if let Some(trait_) = f.parent_trait(self.db) {
-                                // construct a TraitDef
-                                let substs = a_ty.parameters.prefix(
-                                    trait_.generic_params(self.db).count_params_including_parent(),
-                                );
-                                self.obligations
-                                    .push(Obligation::Trait(TraitRef { trait_, substs }));
-                            }
+        if let Ty::Apply(a_ty) = callable_ty {
+            if let TypeCtor::FnDef(def) = a_ty.ctor {
+                // add obligation for trait implementation, if this is a trait method
+                // FIXME also register obligations from where clauses from the trait or impl and method
+                match def {
+                    CallableDef::Function(f) => {
+                        if let Some(trait_) = f.parent_trait(self.db) {
+                            // construct a TraitDef
+                            let substs = a_ty.parameters.prefix(
+                                trait_.generic_params(self.db).count_params_including_parent(),
+                            );
+                            self.obligations.push(Obligation::Trait(TraitRef { trait_, substs }));
                         }
-                        CallableDef::Struct(_) | CallableDef::EnumVariant(_) => {}
                     }
+                    CallableDef::Struct(_) | CallableDef::EnumVariant(_) => {}
                 }
-                _ => {}
-            },
-            _ => {}
+            }
         }
     }
 

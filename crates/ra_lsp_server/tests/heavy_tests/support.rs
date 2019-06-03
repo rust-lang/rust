@@ -141,15 +141,14 @@ impl Server {
         R::Params: Serialize,
     {
         let actual = self.send_request::<R>(params);
-        match find_mismatch(&expected_resp, &actual) {
-            Some((expected_part, actual_part)) => panic!(
+        if let Some((expected_part, actual_part)) = find_mismatch(&expected_resp, &actual) {
+            panic!(
                 "JSON mismatch\nExpected:\n{}\nWas:\n{}\nExpected part:\n{}\nActual part:\n{}\n",
                 to_string_pretty(&expected_resp).unwrap(),
                 to_string_pretty(&actual).unwrap(),
                 to_string_pretty(expected_part).unwrap(),
                 to_string_pretty(actual_part).unwrap(),
-            ),
-            None => {}
+            );
         }
     }
 
