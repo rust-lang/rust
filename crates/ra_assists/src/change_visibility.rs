@@ -59,7 +59,7 @@ fn vis_offset(node: &SyntaxNode) -> TextUnit {
         })
         .next()
         .map(|it| it.range().start())
-        .unwrap_or(node.range().start())
+        .unwrap_or_else(|| node.range().start())
 }
 
 fn change_vis(mut ctx: AssistCtx<impl HirDatabase>, vis: &ast::Visibility) -> Option<Assist> {

@@ -10,7 +10,7 @@ pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     let names = ctx.analyzer.all_names(ctx.db);
     for (name, res) in names.into_iter() {
         let r = res.as_ref();
-        let def = match r.take_types().or(r.take_values()) {
+        let def = match r.take_types().or_else(|| r.take_values()) {
             Some(hir::Resolution::Def(def)) => def,
             _ => continue,
         };

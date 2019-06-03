@@ -95,7 +95,7 @@ impl LangItems {
                 .nth(0);
             if let Some(lang_item_name) = lang_item_name {
                 let imp = ImplBlock::from_id(*module, impl_id);
-                self.items.entry(lang_item_name).or_insert(LangItemTarget::ImplBlock(imp));
+                self.items.entry(lang_item_name).or_insert_with(|| LangItemTarget::ImplBlock(imp));
             }
         }
 

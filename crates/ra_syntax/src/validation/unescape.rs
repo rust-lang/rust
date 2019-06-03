@@ -255,7 +255,7 @@ where
         let first_non_space = str
             .bytes()
             .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
-            .unwrap_or(str.len());
+            .unwrap_or_else(|| str.len());
         *chars = str[first_non_space..].chars()
     }
 }

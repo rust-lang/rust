@@ -332,7 +332,8 @@ impl CrateDefMap {
         let name = path.expand_macro_expr()?;
         // search local first
         // FIXME: Remove public_macros check when we have a correct local_macors implementation
-        let local = self.public_macros.get(&name).or(self.local_macros.get(&name)).map(|it| *it);
+        let local =
+            self.public_macros.get(&name).or_else(|| self.local_macros.get(&name)).map(|it| *it);
         if local.is_some() {
             return local;
         }
@@ -479,8 +480,10 @@ impl CrateDefMap {
     }
 
     fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> ItemOrMacro {
-        let from_crate_root =
-            self[self.root].scope.get_item_or_macro(name).unwrap_or(Either::Left(PerNs::none()));
+        let from_crate_root = self[self.root]
+            .scope
+            .get_item_or_macro(name)
+            .unwrap_or_else(|| Either::Left(PerNs::none()));
         let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
 
         or(from_crate_root, Either::Left(from_extern_prelude))
@@ -505,8 +508,10 @@ impl CrateDefMap {
         //  - current module / scope
         //  - extern prelude
         //  - std prelude
-        let from_scope =
-            self[module].scope.get_item_or_macro(name).unwrap_or(Either::Left(PerNs::none()));;
+        let from_scope = self[module]
+            .scope
+            .get_item_or_macro(name)
+            .unwrap_or_else(|| Either::Left(PerNs::none()));;
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
         let from_prelude = self.resolve_in_prelude(db, name);
@@ -525,7 +530,7 @@ impl CrateDefMap {
             } else {
                 db.crate_def_map(prelude.krate)[prelude.module_id].scope.get_item_or_macro(name)
             };
-            resolution.unwrap_or(Either::Left(PerNs::none()))
+            resolution.unwrap_or_else(|| Either::Left(PerNs::none()))
         } else {
             Either::Left(PerNs::none())
         }

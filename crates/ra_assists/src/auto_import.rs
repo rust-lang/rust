@@ -334,7 +334,7 @@ fn best_action_for_target<'b, 'a: 'b>(
         .filter_map(ast::UseItem::use_tree)
         .map(|u| walk_use_tree_for_best_action(&mut storage, None, u, target))
         .fold(None, |best, a| {
-            best.and_then(|best| Some(*ImportAction::better(&best, &a))).or(Some(a))
+            best.and_then(|best| Some(*ImportAction::better(&best, &a))).or_else(|| Some(a))
         });
 
     match best_action {
@@ -347,7 +347,7 @@ fn best_action_for_target<'b, 'a: 'b>(
             let anchor = container
                 .children()
                 .find(|n| n.range().start() < anchor.range().start())
-                .or(Some(anchor));
+                .or_else(|| Some(anchor));
 
             return ImportAction::add_new_use(anchor, false);
         }

@@ -105,17 +105,15 @@ impl Bindings {
     }
 
     fn get(&self, name: &SmolStr, nesting: &[usize]) -> Result<&tt::TokenTree, ExpandError> {
-        let mut b = self
-            .inner
-            .get(name)
-            .ok_or(ExpandError::BindingError(format!("could not find binding `{}`", name)))?;
+        let mut b = self.inner.get(name).ok_or_else(|| {
+            ExpandError::BindingError(format!("could not find binding `{}`", name))
+        })?;
         for &idx in nesting.iter() {
             b = match b {
                 Binding::Simple(_) => break,
-                Binding::Nested(bs) => bs.get(idx).ok_or(ExpandError::BindingError(format!(
-                    "could not find nested binding `{}`",
-                    name
-                )))?,
+                Binding::Nested(bs) => bs.get(idx).ok_or_else(|| {
+                    ExpandError::BindingError(format!("could not find nested binding `{}`", name))
+                })?,
                 Binding::Empty => {
                     return Err(ExpandError::BindingError(format!(
                         "could not find empty binding `{}`",

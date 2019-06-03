@@ -462,7 +462,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let mut resolved =
             if remaining_index.is_none() { def.take_values()? } else { def.take_types()? };
 
-        let remaining_index = remaining_index.unwrap_or(path.segments.len());
+        let remaining_index = remaining_index.unwrap_or_else(|| path.segments.len());
         let mut actual_def_ty: Option<Ty> = None;
 
         let krate = resolver.krate()?;

@@ -49,7 +49,7 @@ fn main_inner() -> Result<()> {
         let opts = params
             .initialization_options
             .and_then(|v| InitializationOptions::deserialize(v).ok())
-            .unwrap_or(InitializationOptions::default());
+            .unwrap_or_default();
 
         ra_lsp_server::main_loop(workspace_roots, opts, r, s)
     })?;

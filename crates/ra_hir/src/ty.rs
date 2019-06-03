@@ -451,7 +451,7 @@ impl Ty {
     /// Substitutes `Ty::Bound` vars (as opposed to type parameters).
     pub fn subst_bound_vars(self, substs: &Substs) -> Ty {
         self.fold(&mut |ty| match ty {
-            Ty::Bound(idx) => substs.get(idx as usize).cloned().unwrap_or(Ty::Bound(idx)),
+            Ty::Bound(idx) => substs.get(idx as usize).cloned().unwrap_or_else(|| Ty::Bound(idx)),
             ty => ty,
         })
     }
