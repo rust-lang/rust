@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::fmt;
 use std::num::NonZeroU64;
@@ -10,7 +10,7 @@ use rustc::mir::RetagKind;
 
 use crate::{
     EvalResult, InterpError, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
-    MemoryKind, MiriMemoryKind, RangeMap, Allocation, AllocationExtra, CheckInAllocMsg,
+    MemoryKind, MiriMemoryKind, RangeMap, Allocation, AllocationExtra, AllocId, CheckInAllocMsg,
     Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
@@ -92,10 +92,18 @@ pub struct Stacks {
 /// Extra global state, available to the memory access hooks.
 #[derive(Debug)]
 pub struct GlobalState {
+    /// Next unused pointer ID (tag).
     next_ptr_id: PtrId,
+    /// Table storing the "base" tag for each allocation.
+    /// The base tag is the one used for the initial pointer.
+    /// We need this in a separate table to handle cyclic statics.
+    base_ptr_ids: HashMap<AllocId, Tag>,
+    /// Next unused call ID (for protectors).
     next_call_id: CallId,
+    /// Those call IDs corresponding to functions that are still running.
     active_calls: HashSet<CallId>,
 }
+/// Memory extra state gives us interior mutable access to the global state.
 pub type MemoryState = Rc<RefCell<GlobalState>>;
 
 /// Indicates which kind of access is being performed.
@@ -144,6 +152,7 @@ impl Default for GlobalState {
     fn default() -> Self {
         GlobalState {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
+            base_ptr_ids: HashMap::default(),
             next_call_id: NonZeroU64::new(1).unwrap(),
             active_calls: HashSet::default(),
         }
@@ -151,7 +160,7 @@ impl Default for GlobalState {
 }
 
 impl GlobalState {
-    pub fn new_ptr(&mut self) -> PtrId {
+    fn new_ptr(&mut self) -> PtrId {
         let id = self.next_ptr_id;
         self.next_ptr_id = NonZeroU64::new(id.get() + 1).unwrap();
         id
@@ -172,6 +181,15 @@ impl GlobalState {
     fn is_active(&self, id: CallId) -> bool {
         self.active_calls.contains(&id)
     }
+
+    pub fn static_base_ptr(&mut self, id: AllocId) -> Tag {
+        self.base_ptr_ids.get(&id).copied().unwrap_or_else(|| {
+            let tag = Tag::Tagged(self.new_ptr());
+            trace!("New allocation {:?} has base tag {:?}", id, tag);
+            self.base_ptr_ids.insert(id, tag);
+            tag
+        })
+    }
 }
 
 // # Stacked Borrows Core Begin
@@ -189,14 +207,6 @@ impl GlobalState {
 ///     F2b: No `SharedReadWrite` or `Unique` will ever be added on top of our `SharedReadOnly`.
 /// F3: If an access happens with an `&` outside `UnsafeCell`,
 ///     it requires the `SharedReadOnly` to still be in the stack.
-
-impl Default for Tag {
-    #[inline(always)]
-    fn default() -> Tag {
-        Tag::Untagged
-    }
-}
-
 
 /// Core relation on `Permission` to define which accesses are allowed
 impl Permission {
@@ -409,12 +419,13 @@ impl<'tcx> Stack {
 /// Map per-stack operations to higher-level per-location-range operations.
 impl<'tcx> Stacks {
     /// Creates new stack with initial tag.
-    pub(crate) fn new(
+    fn new(
         size: Size,
+        perm: Permission,
         tag: Tag,
         extra: MemoryState,
     ) -> Self {
-        let item = Item { perm: Permission::Unique, tag, protector: None };
+        let item = Item { perm, tag, protector: None };
         let stack = Stack {
             borrows: vec![item],
         };
@@ -443,27 +454,25 @@ impl<'tcx> Stacks {
 /// Glue code to connect with Miri Machine Hooks
 impl Stacks {
     pub fn new_allocation(
+        id: AllocId,
         size: Size,
-        extra: &MemoryState,
+        extra: MemoryState,
         kind: MemoryKind<MiriMemoryKind>,
     ) -> (Self, Tag) {
-        let tag = match kind {
-            MemoryKind::Stack => {
-                // New unique borrow. This `Uniq` is not accessible by the program,
+        let (tag, perm) = match kind {
+            MemoryKind::Stack =>
+                // New unique borrow. This tag is not accessible by the program,
                 // so it will only ever be used when using the local directly (i.e.,
-                // not through a pointer). That is, whenever we directly use a local, this will pop
+                // not through a pointer). That is, whenever we directly write to a local, this will pop
                 // everything else off the stack, invalidating all previous pointers,
-                // and in particular, *all* raw pointers. This subsumes the explicit
-                // `reset` which the blog post [1] says to perform when accessing a local.
-                //
-                // [1]: <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>
-                Tag::Tagged(extra.borrow_mut().new_ptr())
-            }
-            _ => {
-                Tag::Untagged
-            }
+                // and in particular, *all* raw pointers.
+                (Tag::Tagged(extra.borrow_mut().new_ptr()), Permission::Unique),
+            MemoryKind::Machine(MiriMemoryKind::Static) =>
+                (extra.borrow_mut().static_base_ptr(id), Permission::SharedReadWrite),
+            _ =>
+                (Tag::Untagged, Permission::SharedReadWrite),
         };
-        let stack = Stacks::new(size, tag, Rc::clone(extra));
+        let stack = Stacks::new(size, perm, tag, extra);
         (stack, tag)
     }
 }

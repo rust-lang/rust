@@ -30,7 +30,7 @@ use rand::SeedableRng;
 
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{LayoutOf, Size, Align};
-use rustc::hir::{self, def_id::DefId};
+use rustc::hir::def_id::DefId;
 use rustc::mir;
 pub use rustc_mir::interpret::*;
 // Resolve ambiguity.
@@ -113,7 +113,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 
     // Return value (in static memory so that it does not count as leak).
     let ret = ecx.layout_of(start_mir.return_ty())?;
-    let ret_ptr = ecx.allocate(ret, MiriMemoryKind::MutStatic.into());
+    let ret_ptr = ecx.allocate(ret, MiriMemoryKind::Static.into());
 
     // Push our stack frame.
     ecx.push_stack_frame(
@@ -128,7 +128,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     let mut args = ecx.frame().mir.args_iter();
 
     // First argument: pointer to `main()`.
-    let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance).with_default_tag();
+    let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
     let dest = ecx.eval_place(&mir::Place::Base(mir::PlaceBase::Local(args.next().unwrap())))?;
     ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
 
@@ -162,7 +162,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         // Add `0` terminator.
         let mut arg = arg.into_bytes();
         arg.push(0);
-        argvs.push(ecx.memory_mut().allocate_static_bytes(arg.as_slice()).with_default_tag());
+        argvs.push(ecx.memory_mut().allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Static.into()));
     }
     // Make an array with all these pointers, in the Miri memory.
     let argvs_layout = ecx.layout_of(ecx.tcx.mk_array(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8), argvs.len() as u64))?;
@@ -299,8 +299,8 @@ pub enum MiriMemoryKind {
     C,
     /// Part of env var emulation.
     Env,
-    /// Mutable statics.
-    MutStatic,
+    /// Statics.
+    Static,
 }
 
 impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
@@ -316,7 +316,7 @@ impl MayLeak for MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             Rust | C => false,
-            Env | MutStatic => true,
+            Env | Static => true,
         }
     }
 }
@@ -392,7 +392,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Tag, Self::AllocExtra>)>;
 
-    const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
+    const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Static);
 
     #[inline(always)]
     fn enforce_validity(ecx: &InterpretCx<'a, 'mir, 'tcx, Self>) -> bool {
@@ -476,8 +476,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     fn find_foreign_static(
         def_id: DefId,
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-        memory_extra: &Self::MemoryExtra,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Tag, Self::AllocExtra>>> {
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation>> {
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
             Some(name) => name.as_str(),
@@ -489,8 +488,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
                 // This should be all-zero, pointer-sized.
                 let size = tcx.data_layout.pointer_size;
                 let data = vec![0; size.bytes() as usize];
-                let extra = Stacks::new(size, Tag::default(), Rc::clone(memory_extra));
-                Allocation::from_bytes(&data, tcx.data_layout.pointer_align.abi, extra)
+                Allocation::from_bytes(&data, tcx.data_layout.pointer_align.abi)
             }
             _ => return err!(Unimplemented(
                     format!("can't access foreign static: {}", link_name),
@@ -506,47 +504,48 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         Ok(())
     }
 
-    fn adjust_static_allocation<'b>(
-        alloc: &'b Allocation,
+    fn tag_allocation<'b>(
+        id: AllocId,
+        alloc: Cow<'b, Allocation>,
+        kind: Option<MemoryKind<Self::MemoryKinds>>,
         memory_extra: &Self::MemoryExtra,
-    ) -> Cow<'b, Allocation<Tag, Self::AllocExtra>> {
-        let extra = Stacks::new(
+    ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
+        let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
+        let alloc = alloc.into_owned();
+        let (extra, base_tag) = Stacks::new_allocation(
+            id,
             Size::from_bytes(alloc.bytes.len() as u64),
-            Tag::default(),
             Rc::clone(memory_extra),
+            kind,
         );
+        if kind != MiriMemoryKind::Static.into() {
+            assert!(alloc.relocations.is_empty(), "Only statics can come initialized with inner pointers");
+            // Now we can rely on the inner pointers being static, too.
+        }
+        let mut memory_extra = memory_extra.borrow_mut();
         let alloc: Allocation<Tag, Self::AllocExtra> = Allocation {
-            bytes: alloc.bytes.clone(),
+            bytes: alloc.bytes,
             relocations: Relocations::from_presorted(
                 alloc.relocations.iter()
-                    .map(|&(offset, ((), alloc))| (offset, (Tag::default(), alloc)))
+                    // The allocations in the relocations (pointers stored *inside* this allocation)
+                    // all get the base pointer tag.
+                    .map(|&(offset, ((), alloc))| (offset, (memory_extra.static_base_ptr(alloc), alloc)))
                     .collect()
             ),
-            undef_mask: alloc.undef_mask.clone(),
+            undef_mask: alloc.undef_mask,
             align: alloc.align,
             mutability: alloc.mutability,
             extra,
         };
-        Cow::Owned(alloc)
+        (Cow::Owned(alloc), base_tag)
     }
 
     #[inline(always)]
-    fn new_allocation(
-        size: Size,
-        extra: &Self::MemoryExtra,
-        kind: MemoryKind<MiriMemoryKind>,
-    ) -> (Self::AllocExtra, Self::PointerTag) {
-        Stacks::new_allocation(size, extra, kind)
-    }
-
-    #[inline(always)]
-    fn tag_dereference(
-        _ecx: &InterpretCx<'a, 'mir, 'tcx, Self>,
-        place: MPlaceTy<'tcx, Tag>,
-        _mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Scalar<Tag>> {
-        // Nothing happens.
-        Ok(place.ptr)
+    fn tag_static_base_pointer(
+        id: AllocId,
+        memory_extra: &Self::MemoryExtra,
+    ) -> Self::PointerTag {
+        memory_extra.borrow_mut().static_base_ptr(id)
     }
 
     #[inline(always)]

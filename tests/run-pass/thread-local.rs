@@ -56,7 +56,7 @@ fn main() {
         create(None); // check that the no-dtor case works
 
         // Initialize the keys we use to check destructor ordering
-        for (key, global) in KEYS.iter_mut().zip(GLOBALS.iter()) {
+        for (key, global) in KEYS.iter_mut().zip(GLOBALS.iter_mut()) {
             *key = create(Some(mem::transmute(dtor as unsafe extern fn(*mut u64))));
             set(*key, global as *const _ as *mut _);
         }
