@@ -13,9 +13,6 @@ impl<T> Trait<'_, '_> for T {}
 struct Invert<'a>(fn(&'a u8));
 
 fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Invert<'a>, b: Invert<'b>) -> impl Trait<'d, 'e>
-//~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
-// FIXME -- we ought to be able to pick `'d` here, but our handling of in constraints
-// is not smart enough
 where
     'c: 'a,
     'c: 'b,

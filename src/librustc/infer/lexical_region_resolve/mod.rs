@@ -118,8 +118,12 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         let graph = self.construct_graph();
         self.expand_givens(&graph);
-        self.enforce_pick_constraints(&graph, &mut var_data);
-        self.expansion(&mut var_data);
+        loop {
+            self.expansion(&mut var_data);
+            if !self.enforce_pick_constraints(&graph, &mut var_data) {
+                break;
+            }
+        }
         self.collect_errors(&mut var_data, errors);
         self.collect_var_errors(&var_data, &graph, errors);
         var_data
@@ -204,43 +208,75 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         &self,
         graph: &RegionGraph<'tcx>,
         var_values: &mut LexicalRegionResolutions<'tcx>,
-    ) {
+    ) -> bool {
+        let mut any_changed = false;
         for pick_constraint in &self.data.pick_constraints {
-            let _ = self.enforce_pick_constraint(graph, pick_constraint, var_values);
+            if self.enforce_pick_constraint(graph, pick_constraint, var_values) {
+                any_changed = true;
+            }
         }
+        any_changed
     }
 
+    /// Enforce a constraint like
+    ///
+    /// ```
+    /// pick 'r from ['o...]
+    /// ```
+    ///
+    /// We look to see if there is a unique option `'o` from the list of options
+    /// that:
+    ///
+    /// (a) is greater than the current value of `'r` (which is a lower bound)
+    ///
+    /// and
+    ///
+    /// (b) is compatible with the upper bounds of `'r` that we can
+    /// find by traversing the graph.
     fn enforce_pick_constraint(
         &self,
         graph: &RegionGraph<'tcx>,
         pick_constraint: &PickConstraint<'tcx>,
         var_values: &mut LexicalRegionResolutions<'tcx>,
-    ) -> Result<(), ()> {
+    ) -> bool {
         debug!("enforce_pick_constraint(pick_constraint={:#?})", pick_constraint);
 
         // the constraint is some inference variable (`vid`) which
         // must be equal to one of the options
         let pick_vid = match pick_constraint.pick_region {
             ty::ReVar(vid) => *vid,
-            _ => return Err(()),
+            _ => return false,
         };
 
-        // find all the "bounds" -- that is, each region `b` such that
+        // The current value of `vid` is a lower bound LB -- i.e., we
+        // know that `LB <= vid` must be true.
+        let pick_lower_bound = match var_values.value(pick_vid) {
+            VarValue::ErrorValue => return false,
+            VarValue::Value(r) => r,
+        };
+
+        // find all the "upper bounds" -- that is, each region `b` such that
         // `r0 <= b` must hold.
-        let (pick_bounds, _) = self.collect_concrete_regions(graph, pick_vid, OUTGOING, None);
+        let (pick_upper_bounds, _) = self.collect_concrete_regions(graph, pick_vid, OUTGOING, None);
 
         // get an iterator over the *available options* -- that is,
-        // each constraint regions `o` where `o <= b` for all the
-        // bounds `b`.
-        debug!("enforce_pick_constraint: bounds={:#?}", pick_bounds);
+        // each constraint regions `o` where `lb <= o` and `o <= ub` for all the
+        // upper bounds `ub`.
+        debug!("enforce_pick_constraint: upper_bounds={:#?}", pick_upper_bounds);
         let mut options = pick_constraint.option_regions.iter().filter(|option| {
-            pick_bounds.iter().all(|bound| self.sub_concrete_regions(option, bound.region))
+            self.sub_concrete_regions(pick_lower_bound, option)
+                && pick_upper_bounds
+                    .iter()
+                    .all(|upper_bound| self.sub_concrete_regions(option, upper_bound.region))
         });
 
         // if there >1 option, we only make a choice if there is a
         // single *least* choice -- i.e., some available region that
         // is `<=` all the others.
-        let mut least_choice = options.next().ok_or(())?;
+        let mut least_choice = match options.next() {
+            Some(r) => r,
+            None => return false,
+        };
         debug!("enforce_pick_constraint: least_choice={:?}", least_choice);
         for option in options {
             debug!("enforce_pick_constraint: option={:?}", option);
@@ -250,15 +286,18 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     least_choice = option;
                 } else {
                     debug!("enforce_pick_constraint: no least choice");
-                    return Err(());
+                    return false;
                 }
             }
         }
 
         debug!("enforce_pick_constraint: final least choice = {:?}", least_choice);
-        *var_values.value_mut(pick_vid) = VarValue::Value(least_choice);
-
-        Ok(())
+        if least_choice != pick_lower_bound {
+            *var_values.value_mut(pick_vid) = VarValue::Value(least_choice);
+            true
+        } else {
+            false
+        }
     }
 
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
