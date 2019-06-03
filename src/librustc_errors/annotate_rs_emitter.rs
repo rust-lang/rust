@@ -138,13 +138,11 @@ impl<'a>  DiagnosticConverter<'a> {
     }
 
     /// Provides the source string for the given `line` of `file`
-    fn source_string(file: Lrc<SourceFile>,
-                     line: &Line) -> String {
-        let source_string = match file.get_line(line.line_index - 1) {
-            Some(s) => s.clone(),
-            None => return String::new(),
-        };
-        source_string.to_string()
+    fn source_string(
+        file: Lrc<SourceFile>,
+        line: &Line
+    ) -> String {
+        file.get_line(line.line_index - 1).map(|a| a.to_string()).unwrap_or(String::new())
     }
 
     /// Maps `Diagnostic::Level` to `snippet::AnnotationType`
@@ -184,13 +182,14 @@ impl AnnotateRsEmitterWriter {
         self
     }
 
-    fn emit_messages_default(&mut self,
-                             level: &Level,
-                             message: String,
-                             code: &Option<DiagnosticId>,
-                             msp: &MultiSpan,
-                             children: &[SubDiagnostic],
-                             suggestions: &[CodeSuggestion]
+    fn emit_messages_default(
+        &mut self,
+        level: &Level,
+        message: String,
+        code: &Option<DiagnosticId>,
+        msp: &MultiSpan,
+        children: &[SubDiagnostic],
+        suggestions: &[CodeSuggestion]
     ) {
         let converter = DiagnosticConverter {
             source_map: self.source_map.clone(),
