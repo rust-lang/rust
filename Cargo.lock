@@ -2684,7 +2684,6 @@ dependencies = [
  "rustc_errors 0.0.0",
  "rustc_fs_util 0.0.0",
  "rustc_incremental 0.0.0",
- "rustc_mir 0.0.0",
  "rustc_target 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",

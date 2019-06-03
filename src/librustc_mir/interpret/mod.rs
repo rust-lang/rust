@@ -33,4 +33,4 @@ pub use self::visitor::{ValueVisitor, MutValueVisitor};
 
 pub use self::validity::RefTracking;
 
-pub use self::intrinsics::type_name;
+pub(super) use self::intrinsics::type_name;
