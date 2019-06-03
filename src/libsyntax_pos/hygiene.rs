@@ -508,6 +508,14 @@ impl SyntaxContext {
         HygieneData::with(|data| data.adjust(self, expansion))
     }
 
+    /// Like `SyntaxContext::adjust`, but also modernizes `self`.
+    pub fn modernize_and_adjust(&mut self, expansion: Mark) -> Option<Mark> {
+        HygieneData::with(|data| {
+            *self = data.modern(*self);
+            data.adjust(self, expansion)
+        })
+    }
+
     /// Adjust this context for resolution in a scope created by the given expansion
     /// via a glob import with the given `SyntaxContext`.
     /// For example:
