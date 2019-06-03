@@ -651,10 +651,9 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         .get(&fn_def_id)
         .into_iter()
         .flatten()
-        .map(|upvar_id| {
-            let var_hir_id = upvar_id.var_path.hir_id;
+        .map(|(&var_hir_id, &upvar_id)| {
             let var_node_id = tcx_hir.hir_to_node_id(var_hir_id);
-            let capture = hir_tables.upvar_capture(*upvar_id);
+            let capture = hir_tables.upvar_capture(upvar_id);
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,
                 ty::UpvarCapture::ByRef(..) => true,

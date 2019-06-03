@@ -182,7 +182,10 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
 }
 
 fn check_mod_liveness<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx).as_deep_visitor());
+    tcx.hir().visit_item_likes_in_module(
+        module_def_id,
+        &mut IrMaps::new(tcx, module_def_id).as_deep_visitor(),
+    );
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -255,6 +258,7 @@ enum VarKind {
 
 struct IrMaps<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    body_owner: DefId,
     num_live_nodes: usize,
     num_vars: usize,
     live_node_map: HirIdMap<LiveNode>,
@@ -265,9 +269,10 @@ struct IrMaps<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> IrMaps<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> IrMaps<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, body_owner: DefId) -> IrMaps<'a, 'tcx> {
         IrMaps {
             tcx,
+            body_owner,
             num_live_nodes: 0,
             num_vars: 0,
             live_node_map: HirIdMap::default(),
@@ -356,7 +361,8 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     debug!("visit_fn");
 
     // swap in a new set of IR maps for this function body:
-    let mut fn_maps = IrMaps::new(ir.tcx);
+    let def_id = ir.tcx.hir().local_def_id_from_hir_id(id);
+    let mut fn_maps = IrMaps::new(ir.tcx, def_id);
 
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
@@ -468,8 +474,11 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       // live nodes required for uses or definitions of variables:
       hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
         debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
-        if let Res::Local(..) = path.res {
-            ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+        if let Res::Local(var_hir_id) = path.res {
+            let upvars = ir.tcx.upvars(ir.body_owner);
+            if !upvars.map_or(false, |upvars| upvars.contains_key(&var_hir_id)) {
+                ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+            }
         }
         intravisit::walk_expr(ir, expr);
       }
@@ -485,18 +494,23 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         let mut call_caps = Vec::new();
         let closure_def_id = ir.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
         if let Some(upvars) = ir.tcx.upvars(closure_def_id) {
-            call_caps.extend(upvars.iter().filter_map(|upvar| {
-                if let Res::Local(rv) = upvar.res {
+            let parent_upvars = ir.tcx.upvars(ir.body_owner);
+            call_caps.extend(upvars.iter().filter_map(|(&var_id, upvar)| {
+                let has_parent = parent_upvars
+                    .map_or(false, |upvars| upvars.contains_key(&var_id));
+                if !has_parent {
                     let upvar_ln = ir.add_live_node(UpvarNode(upvar.span));
-                    Some(CaptureInfo { ln: upvar_ln, var_hid: rv })
+                    Some(CaptureInfo { ln: upvar_ln, var_hid: var_id })
                 } else {
                     None
                 }
             }));
         }
         ir.set_captures(expr.hir_id, call_caps);
-
+        let old_body_owner = ir.body_owner;
+        ir.body_owner = closure_def_id;
         intravisit::walk_expr(ir, expr);
+        ir.body_owner = old_body_owner;
       }
 
       // live nodes required for interesting control flow:
@@ -1327,8 +1341,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                    -> LiveNode {
         match path.res {
             Res::Local(hid) => {
-              let nid = self.ir.tcx.hir().hir_to_node_id(hid);
-              self.access_var(hir_id, nid, succ, acc, path.span)
+                let upvars = self.ir.tcx.upvars(self.ir.body_owner);
+                if !upvars.map_or(false, |upvars| upvars.contains_key(&hid)) {
+                    let nid = self.ir.tcx.hir().hir_to_node_id(hid);
+                    self.access_var(hir_id, nid, succ, acc, path.span)
+                } else {
+                    succ
+                }
             }
             _ => succ
         }
@@ -1520,13 +1539,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match expr.node {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 if let Res::Local(var_hid) = path.res {
-                    // Assignment to an immutable variable or argument: only legal
-                    // if there is no later assignment. If this local is actually
-                    // mutable, then check for a reassignment to flag the mutability
-                    // as being used.
-                    let ln = self.live_node(expr.hir_id, expr.span);
-                    let var = self.variable(var_hid, expr.span);
-                    self.warn_about_dead_assign(expr.span, expr.hir_id, ln, var);
+                    let upvars = self.ir.tcx.upvars(self.ir.body_owner);
+                    if !upvars.map_or(false, |upvars| upvars.contains_key(&var_hid)) {
+                        // Assignment to an immutable variable or argument: only legal
+                        // if there is no later assignment. If this local is actually
+                        // mutable, then check for a reassignment to flag the mutability
+                        // as being used.
+                        let ln = self.live_node(expr.hir_id, expr.span);
+                        let var = self.variable(var_hid, expr.span);
+                        self.warn_about_dead_assign(expr.span, expr.hir_id, ln, var);
+                    }
                 }
             }
             _ => {

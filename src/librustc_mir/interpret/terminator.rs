@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use rustc::{mir, ty};
+use rustc::ty::Instance;
 use rustc::ty::layout::{self, TyLayout, LayoutOf};
 use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
@@ -112,7 +113,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 let ty = place.layout.ty;
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
-                let instance = crate::monomorphize::resolve_drop_in_place(*self.tcx, ty);
+                let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
                 self.drop_in_place(
                     place,
                     instance,

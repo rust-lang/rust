@@ -8,7 +8,7 @@ use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocKind, EvalResult, InterpError, CheckInAllocMsg,
+    Scalar, GlobalAlloc, EvalResult, InterpError, CheckInAllocMsg,
 };
 
 use super::{
@@ -174,8 +174,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
                     if let Some(upvars) = tables.upvar_list.get(&def_id) {
                         // Sometimes the index is beyond the number of upvars (seen
                         // for a generator).
-                        if let Some(upvar_id) = upvars.get(field) {
-                            let var_hir_id = upvar_id.var_path.hir_id;
+                        if let Some((&var_hir_id, _)) = upvars.get_index(field) {
                             let var_node_id = self.ecx.tcx.hir().hir_to_node_id(var_hir_id);
                             if let hir::Node::Binding(pat) = self.ecx.tcx.hir().get(var_node_id) {
                                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
@@ -403,7 +402,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                             "integer pointer in non-ZST reference", self.path);
                         // Skip validation entirely for some external statics
                         let alloc_kind = self.ecx.tcx.alloc_map.lock().get(ptr.alloc_id);
-                        if let Some(AllocKind::Static(did)) = alloc_kind {
+                        if let Some(GlobalAlloc::Static(did)) = alloc_kind {
                             // `extern static` cannot be validated as they have no body.
                             // FIXME: Statics from other crates are also skipped.
                             // They might be checked at a different type, but for now we
@@ -613,7 +612,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     /// is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     ///
-    /// `ref_tracking` can be None to avoid recursive checking below references.
+    /// `ref_tracking` can be `None` to avoid recursive checking below references.
     /// This also toggles between "run-time" (no recursion) and "compile-time" (with recursion)
     /// validation (e.g., pointer values are fine in integers at runtime).
     pub fn validate_operand(

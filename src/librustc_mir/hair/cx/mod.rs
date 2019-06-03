@@ -38,6 +38,9 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// `const`, or the body of a `const fn`.
     constness: hir::Constness,
 
+    /// The `DefId` of the owner of this body.
+    body_owner: DefId,
+
     /// What kind of body is being compiled.
     pub body_owner_kind: hir::BodyOwnerKind,
 
@@ -53,6 +56,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                src_id: hir::HirId) -> Cx<'a, 'gcx, 'tcx> {
         let tcx = infcx.tcx;
         let src_def_id = tcx.hir().local_def_id_from_hir_id(src_id);
+        let tables = tcx.typeck_tables_of(src_def_id);
         let body_owner_kind = tcx.hir().body_owner_kind_by_hir_id(src_id);
 
         let constness = match body_owner_kind {
@@ -82,8 +86,9 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             param_env: tcx.param_env(src_def_id),
             identity_substs: InternalSubsts::identity_for_item(tcx.global_tcx(), src_def_id),
             region_scope_tree: tcx.region_scope_tree(src_def_id),
-            tables: tcx.typeck_tables_of(src_def_id),
+            tables,
             constness,
+            body_owner: src_def_id,
             body_owner_kind,
             check_overflow,
             control_flow_destroyed: Vec::new(),

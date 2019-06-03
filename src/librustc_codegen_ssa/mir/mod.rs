@@ -1,8 +1,7 @@
-use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
+use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts, Instance};
 use rustc::ty::layout::{TyLayout, HasTyCtxt, FnTypeExt};
 use rustc::mir::{self, Body};
 use rustc::session::config::DebugInfo;
-use rustc_mir::monomorphize::Instance;
 use rustc_target::abi::call::{FnType, PassMode, IgnoreMode};
 use rustc_target::abi::{Variants, VariantIdx};
 use crate::base;

@@ -199,8 +199,15 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         let param_env = self.param_env;
         let region_scope_tree = self.tcx.region_scope_tree(item_def_id);
         let tables = self.tables;
-        euv::ExprUseVisitor::new(self, tcx, param_env, &region_scope_tree, tables, None)
-            .consume_body(body);
+        euv::ExprUseVisitor::new(
+            self,
+            tcx,
+            item_def_id,
+            param_env,
+            &region_scope_tree,
+            tables,
+            None,
+        ).consume_body(body);
 
         let body_promotable = self.check_expr(&body.value);
         self.in_fn = outer_in_fn;

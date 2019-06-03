@@ -4,7 +4,7 @@ use crate::type_::Type;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, Align, LayoutOf, FnTypeExt, PointeeInfo, Size, TyLayout};
 use rustc_target::abi::{FloatTy, TyLayoutMethods};
-use rustc_mir::monomorphize::item::DefPathBasedNames;
+use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc_codegen_ssa::traits::*;
 
 use std::fmt::Write;

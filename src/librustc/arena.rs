@@ -19,6 +19,14 @@ use smallvec::SmallVec;
 macro_rules! arena_types {
     ($macro:path, $args:tt, $tcx:lifetime) => (
         $macro!($args, [
+            [] layouts: rustc::ty::layout::LayoutDetails,
+            [] generics: rustc::ty::Generics,
+            [] trait_def: rustc::ty::TraitDef,
+            [] adt_def: rustc::ty::AdtDef,
+            [] steal_mir: rustc::ty::steal::Steal<rustc::mir::Body<$tcx>>,
+            [] mir: rustc::mir::Body<$tcx>,
+            [] tables: rustc::ty::TypeckTables<$tcx>,
+            [] const_allocs: rustc::mir::interpret::Allocation,
             [] vtable_method: Option<(
                 rustc::hir::def_id::DefId,
                 rustc::ty::subst::SubstsRef<$tcx>
@@ -101,6 +109,7 @@ macro_rules! arena_types {
             >,
             [few] crate_variances: rustc::ty::CrateVariancesMap<'tcx>,
             [few] inferred_outlives_crate: rustc::ty::CratePredicatesMap<'tcx>,
+            [] upvars: rustc_data_structures::fx::FxIndexMap<rustc::hir::HirId, rustc::hir::Upvar>,
         ], $tcx);
     )
 }

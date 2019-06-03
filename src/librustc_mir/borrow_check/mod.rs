@@ -149,7 +149,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         .upvar_list
         .get(&def_id)
         .into_iter()
-        .flatten()
+        .flat_map(|v| v.values())
         .map(|upvar_id| {
             let var_hir_id = upvar_id.var_path.hir_id;
             let var_node_id = tcx.hir().hir_to_node_id(var_hir_id);

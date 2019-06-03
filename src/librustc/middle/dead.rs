@@ -78,7 +78,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             }
             _ if self.in_pat => {},
             Res::PrimTy(..) | Res::SelfTy(..) | Res::SelfCtor(..) |
-            Res::Local(..) | Res::Upvar(..) => {}
+            Res::Local(..) => {}
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
                 let variant_id = self.tcx.parent(ctor_def_id).unwrap();
                 let enum_id = self.tcx.parent(variant_id).unwrap();

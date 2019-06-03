@@ -316,8 +316,9 @@ impl Qualif for HasMutInterior {
                     } else if let ty::Array(_, len) = ty.sty {
                         // FIXME(eddyb) the `cx.mode == Mode::Fn` condition
                         // seems unnecessary, given that this is merely a ZST.
-                        if !(len.unwrap_usize(cx.tcx) == 0 && cx.mode == Mode::Fn) {
-                            return true;
+                        match len.assert_usize(cx.tcx) {
+                            Some(0) if cx.mode == Mode::Fn => {},
+                            _ => return true,
                         }
                     } else {
                         return true;

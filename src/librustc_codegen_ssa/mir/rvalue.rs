@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty, adjustment::{PointerCast}};
+use rustc::ty::{self, Ty, adjustment::{PointerCast}, Instance};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc::mir;
@@ -11,7 +11,6 @@ use crate::base;
 use crate::MemFlags;
 use crate::callee;
 use crate::common::{self, RealPredicate, IntPredicate};
-use rustc_mir::monomorphize;
 
 use crate::traits::*;
 
@@ -196,7 +195,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_)) => {
                         match operand.layout.ty.sty {
                             ty::Closure(def_id, substs) => {
-                                let instance = monomorphize::resolve_closure(
+                                let instance = Instance::resolve_closure(
                                     bx.cx().tcx(), def_id, substs, ty::ClosureKind::FnOnce);
                                 OperandValue::Immediate(bx.cx().get_fn(instance))
                             }

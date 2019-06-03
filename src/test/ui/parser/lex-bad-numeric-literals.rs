@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 fn main() {
     0o1.0; //~ ERROR: octal float literal is not supported
     0o2f32; //~ ERROR: octal float literal is not supported

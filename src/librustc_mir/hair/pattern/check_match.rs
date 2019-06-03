@@ -35,6 +35,7 @@ pub(crate) fn check_match<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) 
 
     MatchVisitor {
         tcx,
+        body_owner: def_id,
         tables: tcx.body_tables(body_id),
         region_scope_tree: &tcx.region_scope_tree(def_id),
         param_env: tcx.param_env(def_id),
@@ -48,6 +49,7 @@ fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> Diagn
 
 struct MatchVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    body_owner: DefId,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: SubstsRef<'tcx>,
@@ -632,6 +634,7 @@ fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard) {
         hir::Guard::If(expr) =>
             ExprUseVisitor::new(&mut checker,
                                 cx.tcx,
+                                cx.body_owner,
                                 cx.param_env,
                                 cx.region_scope_tree,
                                 cx.tables,

@@ -5264,7 +5264,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Err(ErrorReported) => return (tcx.types.err, res),
         };
         let path_segs = match res {
-            Res::Local(_) | Res::Upvar(..) => Vec::new(),
+            Res::Local(_) => vec![],
             Res::Def(kind, def_id) =>
                 AstConv::def_ids_for_value_path_segments(self, segments, self_ty, kind, def_id),
             _ => bug!("instantiate_value_path on {:?}", res),
@@ -5325,14 +5325,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }));
 
-        match res {
-            Res::Local(hid) | Res::Upvar(hid, ..) => {
-                let ty = self.local_ty(span, hid).decl_ty;
-                let ty = self.normalize_associated_types_in(span, &ty);
-                self.write_ty(hir_id, ty);
-                return (ty, res);
-            }
-            _ => {}
+        if let Res::Local(hid) = res {
+            let ty = self.local_ty(span, hid).decl_ty;
+            let ty = self.normalize_associated_types_in(span, &ty);
+            self.write_ty(hir_id, ty);
+            return (ty, res);
         }
 
         if generics_has_err {

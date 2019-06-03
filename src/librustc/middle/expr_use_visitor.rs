@@ -268,6 +268,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
     /// See also `with_infer`, which is used *during* typeck.
     pub fn new(delegate: &'a mut (dyn Delegate<'tcx>+'a),
                tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               body_owner: DefId,
                param_env: ty::ParamEnv<'tcx>,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
@@ -276,6 +277,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
     {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::new(tcx,
+                                                  body_owner,
                                                   region_scope_tree,
                                                   tables,
                                                   rvalue_promotable_map),
@@ -288,13 +290,19 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn with_infer(delegate: &'a mut (dyn Delegate<'tcx>+'a),
                       infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                      body_owner: DefId,
                       param_env: ty::ParamEnv<'tcx>,
                       region_scope_tree: &'a region::ScopeTree,
                       tables: &'a ty::TypeckTables<'tcx>)
                       -> Self
     {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::with_infer(infcx, region_scope_tree, tables),
+            mc: mc::MemCategorizationContext::with_infer(
+                infcx,
+                body_owner,
+                region_scope_tree,
+                tables,
+            ),
             delegate,
             param_env,
         }
@@ -924,16 +932,15 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_expr.hir_id);
         if let Some(upvars) = self.tcx().upvars(closure_def_id) {
-            for upvar in upvars.iter() {
-                let var_hir_id = upvar.var_id();
+            for (&var_id, upvar) in upvars.iter() {
                 let upvar_id = ty::UpvarId {
-                    var_path: ty::UpvarPath { hir_id: var_hir_id },
+                    var_path: ty::UpvarPath { hir_id: var_id },
                     closure_expr_id: closure_def_id.to_local(),
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.hir_id,
                                                                    fn_decl_span,
-                                                                   upvar));
+                                                                   var_id));
                 match upvar_capture {
                     ty::UpvarCapture::ByValue => {
                         let mode = copy_or_move(&self.mc,
@@ -958,13 +965,12 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn cat_captured_var(&mut self,
                         closure_hir_id: hir::HirId,
                         closure_span: Span,
-                        upvar: &hir::Upvar)
+                        var_id: hir::HirId)
                         -> mc::McResult<mc::cmt_<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
-        // caller's perspective
-        let var_hir_id = upvar.var_id();
-        let var_ty = self.mc.node_ty(var_hir_id)?;
-        self.mc.cat_res(closure_hir_id, closure_span, var_ty, upvar.res)
+        // perspective of the creator (parent) of the closure.
+        let var_ty = self.mc.node_ty(var_id)?;
+        self.mc.cat_res(closure_hir_id, closure_span, var_ty, Res::Local(var_id))
     }
 }
 

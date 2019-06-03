@@ -1,8 +1,8 @@
-error[E0282]: type annotations needed
+error[E0282]: type annotations needed for `(std::sync::mpsc::Sender<Foo<T>>, std::sync::mpsc::Receiver<Foo<T>>)`
   --> $DIR/issue-25368.rs:11:17
    |
 LL |     let (tx, rx) = channel();
-   |         -------- consider giving the pattern a type
+   |         -------- consider giving this pattern the explicit type `(std::sync::mpsc::Sender<Foo<T>>, std::sync::mpsc::Receiver<Foo<T>>)`, where the type parameter `T` is specified
 ...
 LL |         tx.send(Foo{ foo: PhantomData });
    |                 ^^^ cannot infer type for `T`

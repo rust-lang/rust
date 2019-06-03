@@ -75,4 +75,4 @@ usages and placed the larger, single usage in the crate root.
 If you don't need quite as much power and flexibility as
 `global_asm!` provides, and you don't mind restricting your inline
 assembly to `fn` bodies only, you might try the
-[asm](language-features/asm.html) feature instead.
+[asm](asm.md) feature instead.

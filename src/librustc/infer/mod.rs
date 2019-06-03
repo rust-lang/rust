@@ -21,11 +21,10 @@ use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use crate::ty::fold::{TypeFolder, TypeFoldable};
 use crate::ty::relate::RelateResult;
 use crate::ty::subst::{Kind, InternalSubsts, SubstsRef};
-use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners, InferConst};
+use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, InferConst};
 use crate::ty::{FloatVid, IntVid, TyVid, ConstVid};
 use crate::util::nodemap::FxHashMap;
 
-use arena::SyncDroplessArena;
 use errors::DiagnosticBuilder;
 use rustc_data_structures::unify as ut;
 use std::cell::{Cell, Ref, RefCell, RefMut};
@@ -468,8 +467,6 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 /// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>)`.
 pub struct InferCtxtBuilder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    arena: SyncDroplessArena,
-    interners: Option<CtxtInterners<'tcx>>,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
 }
 
@@ -477,8 +474,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
     pub fn infer_ctxt(self) -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
-            arena: SyncDroplessArena::default(),
-            interners: None,
             fresh_tables: None,
         }
     }
@@ -518,14 +513,10 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     pub fn enter<R>(&'tcx mut self, f: impl for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
-            ref arena,
-            ref mut interners,
             ref fresh_tables,
         } = *self;
         let in_progress_tables = fresh_tables.as_ref();
-        // Check that we haven't entered before
-        assert!(interners.is_none());
-        global_tcx.enter_local(arena, interners, |tcx| {
+        global_tcx.enter_local(|tcx| {
             f(InferCtxt {
                 tcx,
                 in_progress_tables,

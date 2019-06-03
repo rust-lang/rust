@@ -120,7 +120,6 @@
 #![feature(const_str_len)]
 #![feature(const_int_conversion)]
 #![feature(const_transmute)]
-#![feature(reverse_bits)]
 #![feature(non_exhaustive)]
 #![feature(structural_match)]
 #![feature(abi_unadjusted)]

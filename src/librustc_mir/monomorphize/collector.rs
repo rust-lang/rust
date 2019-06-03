@@ -181,19 +181,18 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
+use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind, Instance};
+use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::session::config::EntryFnType;
 use rustc::mir::{self, Location, Place, PlaceBase, Promoted, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
-use rustc::mir::mono::MonoItem;
-use rustc::mir::interpret::{Scalar, GlobalId, AllocKind, ErrorHandled};
+use rustc::mir::mono::{MonoItem, InstantiationMode};
+use rustc::mir::interpret::{Scalar, GlobalId, GlobalAlloc, ErrorHandled};
 
-use crate::monomorphize::{self, Instance};
+use crate::monomorphize;
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use rustc::util::common::time;
-
-use crate::monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};
@@ -580,7 +579,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 );
                 match source_ty.sty {
                     ty::Closure(def_id, substs) => {
-                        let instance = monomorphize::resolve_closure(
+                        let instance = Instance::resolve_closure(
                             self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
                         if should_monomorphize_locally(self.tcx, &instance) {
                             self.output.push(create_fn_mono_item(instance));
@@ -684,7 +683,7 @@ fn visit_drop_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             is_direct_call: bool,
                             output: &mut Vec<MonoItem<'tcx>>)
 {
-    let instance = monomorphize::resolve_drop_in_place(tcx, ty);
+    let instance = Instance::resolve_drop_in_place(tcx, ty);
     visit_instance_use(tcx, instance, is_direct_call, output);
 }
 
@@ -1183,20 +1182,20 @@ fn collect_miri<'a, 'tcx>(
 ) {
     let alloc_kind = tcx.alloc_map.lock().get(alloc_id);
     match alloc_kind {
-        Some(AllocKind::Static(did)) => {
-            let instance = Instance::mono(tcx, did);
+        Some(GlobalAlloc::Static(def_id)) => {
+            let instance = Instance::mono(tcx, def_id);
             if should_monomorphize_locally(tcx, &instance) {
-                trace!("collecting static {:?}", did);
-                output.push(MonoItem::Static(did));
+                trace!("collecting static {:?}", def_id);
+                output.push(MonoItem::Static(def_id));
             }
         }
-        Some(AllocKind::Memory(alloc)) => {
+        Some(GlobalAlloc::Memory(alloc)) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
             for &((), inner) in alloc.relocations.values() {
                 collect_miri(tcx, inner, output);
             }
         },
-        Some(AllocKind::Function(fn_instance)) => {
+        Some(GlobalAlloc::Function(fn_instance)) => {
             if should_monomorphize_locally(tcx, &fn_instance) {
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push(create_fn_mono_item(fn_instance));
@@ -1263,7 +1262,7 @@ fn collect_const<'a, 'tcx>(
                 collect_miri(tcx, id, output);
             }
         }
-        ConstValue::Unevaluated(did, substs) => {
+        ConstValue::Unevaluated(def_id, substs) => {
             let param_env = ty::ParamEnv::reveal_all();
             let substs = tcx.subst_and_normalize_erasing_regions(
                 param_substs,
@@ -1272,7 +1271,7 @@ fn collect_const<'a, 'tcx>(
             );
             let instance = ty::Instance::resolve(tcx,
                                                 param_env,
-                                                did,
+                                                def_id,
                                                 substs).unwrap();
 
             let cid = GlobalId {
@@ -1283,7 +1282,7 @@ fn collect_const<'a, 'tcx>(
                 Ok(val) => collect_const(tcx, val, param_substs, output),
                 Err(ErrorHandled::Reported) => {},
                 Err(ErrorHandled::TooGeneric) => span_bug!(
-                    tcx.def_span(did), "collection encountered polymorphic constant",
+                    tcx.def_span(def_id), "collection encountered polymorphic constant",
                 ),
             }
         }

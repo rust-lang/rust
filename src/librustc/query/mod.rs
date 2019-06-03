@@ -4,6 +4,7 @@ use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use crate::ty::subst::SubstsRef;
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
+use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::traits;
 use crate::traits::query::{
@@ -42,7 +43,7 @@ rustc_queries! {
             load_cached(tcx, id) {
                 let generics: Option<ty::Generics> = tcx.queries.on_disk_cache
                                                         .try_load_query_result(tcx, id);
-                generics.map(|x| tcx.alloc_generics(x))
+                generics.map(|x| &*tcx.arena.alloc(x))
             }
         }
 
@@ -118,7 +119,7 @@ rustc_queries! {
             load_cached(tcx, id) {
                 let mir: Option<crate::mir::Body<'tcx>> = tcx.queries.on_disk_cache
                                                             .try_load_query_result(tcx, id);
-                mir.map(|x| tcx.alloc_mir(x))
+                mir.map(|x| &*tcx.arena.alloc(x))
             }
         }
     }
@@ -353,7 +354,7 @@ rustc_queries! {
                     .queries.on_disk_cache
                     .try_load_query_result(tcx, id);
 
-                typeck_tables.map(|tables| tcx.alloc_tables(tables))
+                typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
             }
         }
     }
@@ -431,6 +432,24 @@ rustc_queries! {
                 tcx.queries.on_disk_cache.try_load_query_result(tcx, id).map(Ok)
             }
         }
+
+        /// Extracts a field of a (variant of a) const.
+        query const_field(
+            key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field)>
+        ) -> &'tcx ty::Const<'tcx> {
+            eval_always
+            no_force
+            desc { "extract field of const" }
+        }
+
+        /// Produces an absolute path representation of the given type. See also the documentation
+        /// on `std::any::type_name`.
+        query type_name(key: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
+            eval_always
+            no_force
+            desc { "get absolute path of type" }
+        }
+
     }
 
     TypeChecking {
@@ -623,6 +642,10 @@ rustc_queries! {
         query is_no_builtins(_: CrateNum) -> bool {
             fatal_cycle
             desc { "test whether a crate has #![no_builtins]" }
+        }
+        query symbol_mangling_version(_: CrateNum) -> SymbolManglingVersion {
+            fatal_cycle
+            desc { "query a crate's symbol mangling version" }
         }
 
         query extern_crate(_: DefId) -> Option<&'tcx ExternCrate> {
@@ -822,7 +845,7 @@ rustc_queries! {
             desc { "generating a postorder list of CrateNums" }
         }
 
-        query upvars(_: DefId) -> Option<&'tcx [hir::Upvar]> {
+        query upvars(_: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
             eval_always
         }
         query maybe_unused_trait_import(_: DefId) -> bool {

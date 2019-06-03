@@ -348,9 +348,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     // `tcx.upvars(def_id)` returns an `Option`, which is `None` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
-                    let upvar = self.infcx.tcx.upvars(def_id).unwrap()[field.index()];
+                    let (&var_id, _) = self.infcx.tcx.upvars(def_id).unwrap()
+                        .get_index(field.index()).unwrap();
 
-                    self.infcx.tcx.hir().name_by_hir_id(upvar.var_id()).to_string()
+                    self.infcx.tcx.hir().name_by_hir_id(var_id).to_string()
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
@@ -645,12 +646,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if let hir::ExprKind::Closure(
             .., args_span, _
         ) = expr {
-            for (v, place) in self.infcx.tcx.upvars(def_id)?.iter().zip(places) {
+            for (upvar, place) in self.infcx.tcx.upvars(def_id)?.values().zip(places) {
                 match place {
                     Operand::Copy(place) |
                     Operand::Move(place) if target_place == place => {
                         debug!("closure_span: found captured local {:?}", place);
-                        return Some((*args_span, v.span));
+                        return Some((*args_span, upvar.span));
                     },
                     _ => {}
                 }

@@ -37,16 +37,6 @@ impl<'tcx, Tag> Immediate<Tag> {
         Immediate::Scalar(ScalarMaybeUndef::Scalar(val))
     }
 
-    #[inline]
-    pub fn erase_tag(self) -> Immediate
-    {
-        match self {
-            Immediate::Scalar(x) => Immediate::Scalar(x.erase_tag()),
-            Immediate::ScalarPair(x, y) =>
-                Immediate::ScalarPair(x.erase_tag(), y.erase_tag()),
-        }
-    }
-
     pub fn new_slice(
         val: Scalar<Tag>,
         len: u64,
@@ -131,15 +121,6 @@ pub enum Operand<Tag=(), Id=AllocId> {
 
 impl<Tag> Operand<Tag> {
     #[inline]
-    pub fn erase_tag(self) -> Operand
-    {
-        match self {
-            Operand::Immediate(x) => Operand::Immediate(x.erase_tag()),
-            Operand::Indirect(x) => Operand::Indirect(x.erase_tag()),
-        }
-    }
-
-    #[inline]
     pub fn to_mem_place(self) -> MemPlace<Tag>
         where Tag: ::std::fmt::Debug
     {
@@ -209,18 +190,6 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag>
     }
 }
 
-impl<'tcx, Tag> OpTy<'tcx, Tag>
-{
-    #[inline]
-    pub fn erase_tag(self) -> OpTy<'tcx>
-    {
-        OpTy {
-            op: self.op.erase_tag(),
-            layout: self.layout,
-        }
-    }
-}
-
 // Use the existing layout if given (but sanity check in debug mode),
 // or compute the layout.
 #[inline(always)]
@@ -243,7 +212,7 @@ pub(super) fn from_known_layout<'tcx>(
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
-    /// Try reading an immediate in memory; this is interesting particularly for ScalarPair.
+    /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
     fn try_read_immediate_from_mplace(
         &self,
@@ -444,7 +413,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         Ok(OpTy { op, layout })
     }
 
-    /// Every place can be read from, so we can turm them into an operand
+    /// Every place can be read from, so we can turn them into an operand
     #[inline(always)]
     pub fn place_to_op(
         &self,
@@ -500,7 +469,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     }
 
     /// Evaluate the operand, returning a place where you can then find the data.
-    /// if you already know the layout, you can save two some table lookups
+    /// If you already know the layout, you can save two table lookups
     /// by passing it in here.
     pub fn eval_operand(
         &self,
@@ -537,44 +506,55 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         val: &'tcx ty::Const<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let op = match val.val {
-            ConstValue::Param(_) => return err!(TooGeneric),
-            ConstValue::Infer(_) | ConstValue::Placeholder(_) => bug!(),
-            ConstValue::ByRef(ptr, alloc) => {
-                // We rely on mutability being set correctly in that allocation to prevent writes
-                // where none should happen -- and for `static mut`, we copy on demand anyway.
-                Operand::Indirect(
-                    MemPlace::from_ptr(ptr.with_default_tag(), alloc.align)
-                )
-            },
-            ConstValue::Slice { data, start, end } =>
-                Operand::Immediate(Immediate::ScalarPair(
-                    Scalar::from(Pointer::new(
-                        self.tcx.alloc_map.lock().allocate(data),
-                        Size::from_bytes(start as u64),
-                    )).with_default_tag().into(),
-                    Scalar::from_uint(
-                        (end - start) as u64,
-                        self.tcx.data_layout.pointer_size,
-                    ).with_default_tag().into(),
-                )),
-            ConstValue::Scalar(x) =>
-                Operand::Immediate(Immediate::Scalar(x.with_default_tag().into())),
+        let tag_scalar = |scalar| match scalar {
+            Scalar::Ptr(ptr) => Scalar::Ptr(self.tag_static_base_pointer(ptr)),
+            Scalar::Raw { data, size } => Scalar::Raw { data, size },
+        };
+        // Early-return cases.
+        match val.val {
+            ConstValue::Param(_) => return err!(TooGeneric), // FIXME(oli-obk): try to monomorphize
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 return Ok(OpTy::from(self.const_eval_raw(GlobalId {
                     instance,
                     promoted: None,
                 })?));
-            },
-        };
+            }
+            _ => {}
+        }
+        // Other cases need layout.
         let layout = from_known_layout(layout, || {
             self.layout_of(self.monomorphize(val.ty)?)
         })?;
-        Ok(OpTy {
-            op,
-            layout,
-        })
+        let op = match val.val {
+            ConstValue::ByRef(ptr, _alloc) => {
+                // We rely on mutability being set correctly in that allocation to prevent writes
+                // where none should happen.
+                let ptr = self.tag_static_base_pointer(ptr);
+                Operand::Indirect(MemPlace::from_ptr(ptr, layout.align.abi))
+            },
+            ConstValue::Scalar(x) =>
+                Operand::Immediate(Immediate::Scalar(tag_scalar(x).into())),
+            ConstValue::Slice { data, start, end } => {
+                // We rely on mutability being set correctly in `data` to prevent writes
+                // where none should happen.
+                let ptr = Pointer::new(
+                    self.tcx.alloc_map.lock().create_memory_alloc(data),
+                    Size::from_bytes(start as u64), // offset: `start`
+                );
+                Operand::Immediate(Immediate::new_slice(
+                    self.tag_static_base_pointer(ptr).into(),
+                    (end - start) as u64, // len: `end - start`
+                    self,
+                ))
+            }
+            ConstValue::Param(..) |
+            ConstValue::Infer(..) |
+            ConstValue::Placeholder(..) |
+            ConstValue::Unevaluated(..) =>
+                bug!("eval_const_to_op: Unexpected ConstValue {:?}", val),
+        };
+        Ok(OpTy { op, layout })
     }
 
     /// Read discriminant, return the runtime value as well as the variant index.

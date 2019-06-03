@@ -53,7 +53,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
-use arena::{TypedArena, SyncDroplessArena};
+use arena::SyncDroplessArena;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
 use std::any::Any;
@@ -79,35 +79,18 @@ use syntax_pos::Span;
 
 use crate::hir;
 
-pub struct AllArenas<'tcx> {
-    pub global: WorkerLocal<GlobalArenas<'tcx>>,
+pub struct AllArenas {
     pub interner: SyncDroplessArena,
+    pub local_interner: SyncDroplessArena,
 }
 
-impl<'tcx> AllArenas<'tcx> {
+impl AllArenas {
     pub fn new() -> Self {
         AllArenas {
-            global: WorkerLocal::new(|_| GlobalArenas::default()),
             interner: SyncDroplessArena::default(),
+            local_interner: SyncDroplessArena::default(),
         }
     }
-}
-
-/// Internal storage
-#[derive(Default)]
-pub struct GlobalArenas<'tcx> {
-    // internings
-    layout: TypedArena<LayoutDetails>,
-
-    // references
-    generics: TypedArena<ty::Generics>,
-    trait_def: TypedArena<ty::TraitDef>,
-    adt_def: TypedArena<ty::AdtDef>,
-    steal_mir: TypedArena<Steal<Body<'tcx>>>,
-    mir: TypedArena<Body<'tcx>>,
-    tables: TypedArena<ty::TypeckTables<'tcx>>,
-    /// miri allocations
-    const_allocs: TypedArena<interpret::Allocation>,
 }
 
 type InternedSet<'tcx, T> = Lock<FxHashMap<Interned<'tcx, T>, ()>>;
@@ -154,7 +137,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
     /// Intern a type
     #[inline(never)]
     fn intern_ty(
-        local: &CtxtInterners<'tcx>,
+        local: &CtxtInterners<'gcx>,
         global: &CtxtInterners<'gcx>,
         st: TyKind<'tcx>
     ) -> Ty<'tcx> {
@@ -178,6 +161,12 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
                         inference types/regions in the global type context",
                         &ty_struct);
                 }
+
+                // This is safe because all the types the ty_struct can point to
+                // already is in the local arena or the global arena
+                let ty_struct: TyS<'gcx> = unsafe {
+                    mem::transmute(ty_struct)
+                };
 
                 Interned(local.arena.alloc(ty_struct))
             }).0
@@ -1029,8 +1018,8 @@ pub struct FreeRegionInfo {
 #[derive(Copy, Clone)]
 pub struct TyCtxt<'a, 'gcx: 'tcx, 'tcx: 'a> {
     gcx: &'gcx GlobalCtxt<'gcx>,
-    interners: &'tcx CtxtInterners<'tcx>,
-    dummy: PhantomData<&'a ()>,
+    interners: &'gcx CtxtInterners<'gcx>,
+    dummy: PhantomData<(&'a (), &'tcx ())>,
 }
 
 impl<'gcx> Deref for TyCtxt<'_, 'gcx, '_> {
@@ -1043,8 +1032,9 @@ impl<'gcx> Deref for TyCtxt<'_, 'gcx, '_> {
 
 pub struct GlobalCtxt<'tcx> {
     pub arena: WorkerLocal<Arena<'tcx>>,
-    global_arenas: &'tcx WorkerLocal<GlobalArenas<'tcx>>,
+
     global_interners: CtxtInterners<'tcx>,
+    local_interners: CtxtInterners<'tcx>,
 
     cstore: &'tcx CrateStoreDyn,
 
@@ -1080,11 +1070,6 @@ pub struct GlobalCtxt<'tcx> {
     pub def_path_hash_to_def_id: Option<FxHashMap<DefPathHash, DefId>>,
 
     pub queries: query::Queries<'tcx>,
-
-    // Records the captured variables referenced by every closure
-    // expression. Do not track deps for this, just recompute it from
-    // scratch every time.
-    upvars: FxHashMap<DefId, Vec<hir::Upvar>>,
 
     maybe_unused_trait_imports: FxHashSet<DefId>,
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
@@ -1150,24 +1135,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         &self.hir_map
     }
 
-    pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
-        self.global_arenas.generics.alloc(generics)
-    }
-
     pub fn alloc_steal_mir(self, mir: Body<'gcx>) -> &'gcx Steal<Body<'gcx>> {
-        self.global_arenas.steal_mir.alloc(Steal::new(mir))
-    }
-
-    pub fn alloc_mir(self, mir: Body<'gcx>) -> &'gcx Body<'gcx> {
-        self.global_arenas.mir.alloc(mir)
-    }
-
-    pub fn alloc_tables(self, tables: ty::TypeckTables<'gcx>) -> &'gcx ty::TypeckTables<'gcx> {
-        self.global_arenas.tables.alloc(tables)
-    }
-
-    pub fn alloc_trait_def(self, def: ty::TraitDef) -> &'gcx ty::TraitDef {
-        self.global_arenas.trait_def.alloc(def)
+        self.arena.alloc(Steal::new(mir))
     }
 
     pub fn alloc_adt_def(self,
@@ -1177,32 +1146,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                          repr: ReprOptions)
                          -> &'gcx ty::AdtDef {
         let def = ty::AdtDef::new(self, did, kind, variants, repr);
-        self.global_arenas.adt_def.alloc(def)
+        self.arena.alloc(def)
     }
 
     pub fn intern_const_alloc(self, alloc: Allocation) -> &'gcx Allocation {
         self.allocation_interner.borrow_mut().intern(alloc, |alloc| {
-            self.global_arenas.const_allocs.alloc(alloc)
+            self.arena.alloc(alloc)
         })
     }
 
     /// Allocates a byte or string literal for `mir::interpret`, read-only
     pub fn allocate_bytes(self, bytes: &[u8]) -> interpret::AllocId {
         // create an allocation that just contains these bytes
-        let alloc = interpret::Allocation::from_byte_aligned_bytes(bytes, ());
+        let alloc = interpret::Allocation::from_byte_aligned_bytes(bytes);
         let alloc = self.intern_const_alloc(alloc);
-        self.alloc_map.lock().allocate(alloc)
+        self.alloc_map.lock().create_memory_alloc(alloc)
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {
         self.stability_interner.borrow_mut().intern(stab, |stab| {
-            self.global_interners.arena.alloc(stab)
+            self.arena.alloc(stab)
         })
     }
 
     pub fn intern_layout(self, layout: LayoutDetails) -> &'gcx LayoutDetails {
         self.layout_interner.borrow_mut().intern(layout, |layout| {
-            self.global_arenas.layout.alloc(layout)
+            self.arena.alloc(layout)
         })
     }
 
@@ -1250,7 +1219,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         cstore: &'tcx CrateStoreDyn,
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
-        arenas: &'tcx AllArenas<'tcx>,
+        arenas: &'tcx AllArenas,
         resolutions: ty::Resolutions,
         hir: hir_map::Map<'tcx>,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
@@ -1262,6 +1231,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(&arenas.interner);
+        let local_interners = CtxtInterners::new(&arenas.local_interner);
         let common = Common {
             empty_predicates: ty::GenericPredicates {
                 parent: None,
@@ -1319,8 +1289,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             sess: s,
             cstore,
             arena: WorkerLocal::new(|_| Arena::default()),
-            global_arenas: &arenas.global,
             global_interners: interners,
+            local_interners: local_interners,
             dep_graph,
             common,
             types: common_types,
@@ -1332,12 +1302,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     e.map_id(|id| hir.node_to_hir_id(id))
                 }).collect();
                 (k, exports)
-            }).collect(),
-            upvars: resolutions.upvars.into_iter().map(|(k, v)| {
-                let vars: Vec<_> = v.into_iter().map(|e| {
-                    e.map_id(|id| hir.node_to_hir_id(id))
-                }).collect();
-                (hir.local_def_id(k), vars)
             }).collect(),
             maybe_unused_trait_imports:
                 resolutions.maybe_unused_trait_imports
@@ -1716,18 +1680,15 @@ impl<'gcx> GlobalCtxt<'gcx> {
     /// with the same lifetime as `arena`.
     pub fn enter_local<'tcx, F, R>(
         &'gcx self,
-        arena: &'tcx SyncDroplessArena,
-        interners: &'tcx mut Option<CtxtInterners<'tcx>>,
         f: F
     ) -> R
     where
         F: FnOnce(TyCtxt<'tcx, 'gcx, 'tcx>) -> R,
         'gcx: 'tcx,
     {
-        *interners = Some(CtxtInterners::new(&arena));
         let tcx = TyCtxt {
             gcx: self,
-            interners: interners.as_ref().unwrap(),
+            interners: &self.local_interners,
             dummy: PhantomData,
         };
         ty::tls::with_related_context(tcx.global_tcx(), |icx| {
@@ -2333,6 +2294,17 @@ macro_rules! intern_method {
             pub fn $method(self, v: $alloc) -> &$lt_tcx $ty {
                 let key = ($alloc_to_key)(&v);
 
+                let alloc = |v, interners: &'gcx CtxtInterners<'gcx>| {
+                    // This transmutes $alloc<'tcx> to $alloc<'gcx>
+                    let v = unsafe {
+                        mem::transmute(v)
+                    };
+                    let i: &$lt_tcx $ty = $alloc_method(&interners.arena, v);
+                    // Cast to 'gcx
+                    let i = unsafe { mem::transmute(i) };
+                    Interned(i)
+                };
+
                 // HACK(eddyb) Depend on flags being accurate to
                 // determine that all contents are in the global tcx.
                 // See comments on Lift for why we can't use that.
@@ -2346,18 +2318,11 @@ macro_rules! intern_method {
                                 v);
                         }
 
-                        Interned($alloc_method(&self.interners.arena, v))
+                        alloc(v, &self.interners)
                     }).0
                 } else {
                     self.global_interners.$name.borrow_mut().intern_ref(key, || {
-                        // This transmutes $alloc<'tcx> to $alloc<'gcx>
-                        let v = unsafe {
-                            mem::transmute(v)
-                        };
-                        let i: &$lt_tcx $ty = $alloc_method(&self.global_interners.arena, v);
-                        // Cast to 'gcx
-                        let i = unsafe { mem::transmute(i) };
-                        Interned(i)
+                        alloc(v, &self.global_interners)
                     }).0
                 }
             }
@@ -3059,7 +3024,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(id, LOCAL_CRATE);
         tcx.arena.alloc(middle::lang_items::collect(tcx))
     };
-    providers.upvars = |tcx, id| tcx.gcx.upvars.get(&id).map(|v| &v[..]);
     providers.maybe_unused_trait_import = |tcx, id| {
         tcx.maybe_unused_trait_imports.contains(&id)
     };

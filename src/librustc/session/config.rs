@@ -131,6 +131,14 @@ impl SwitchWithOptPath {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub enum SymbolManglingVersion {
+    Legacy,
+    V0,
+}
+
+impl_stable_hash_via_hash!(SymbolManglingVersion);
+
 #[derive(Clone, Copy, PartialEq, Hash)]
 pub enum DebugInfo {
     None,
@@ -838,11 +846,14 @@ macro_rules! options {
             Some("an optional path to the profiling data output directory");
         pub const parse_merge_functions: Option<&str> =
             Some("one of: `disabled`, `trampolines`, or `aliases`");
+        pub const parse_symbol_mangling_version: Option<&str> =
+            Some("either `legacy` or `v0` (RFC 2603)");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath};
+        use super::{$struct_name, Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath,
+            SymbolManglingVersion};
         use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
         use std::str::FromStr;
@@ -1110,6 +1121,18 @@ macro_rules! options {
                 Some(mergefunc) => *slot = Some(mergefunc),
                 _ => return false,
             }
+            true
+        }
+
+        fn parse_symbol_mangling_version(
+            slot: &mut SymbolManglingVersion,
+            v: Option<&str>,
+        ) -> bool {
+            *slot = match v {
+                Some("legacy") => SymbolManglingVersion::Legacy,
+                Some("v0") => SymbolManglingVersion::V0,
+                _ => return false,
+            };
             true
         }
     }
@@ -1457,6 +1480,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "only allow the listed language features to be enabled in code (space separated)"),
     emit_artifact_notifications: bool = (false, parse_bool, [UNTRACKED],
         "emit notifications after each artifact has been output (only in the JSON format)"),
+    symbol_mangling_version: SymbolManglingVersion = (SymbolManglingVersion::Legacy,
+        parse_symbol_mangling_version, [TRACKED],
+        "which mangling version to use for symbol names"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -2551,7 +2577,8 @@ mod dep_tracking {
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
     use super::{CrateType, DebugInfo, ErrorOutputType, OptLevel, OutputTypes,
-                Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath};
+                Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath,
+                SymbolManglingVersion};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
@@ -2620,6 +2647,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Edition);
     impl_dep_tracking_hash_via_hash!(LinkerPluginLto);
     impl_dep_tracking_hash_via_hash!(SwitchWithOptPath);
+    impl_dep_tracking_hash_via_hash!(SymbolManglingVersion);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
@@ -2693,7 +2721,7 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
     use std::iter::FromIterator;
     use std::path::PathBuf;
-    use super::{Externs, OutputType, OutputTypes};
+    use super::{Externs, OutputType, OutputTypes, SymbolManglingVersion};
     use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
     use syntax::symbol::sym;
     use syntax::edition::{Edition, DEFAULT_EDITION};
@@ -3366,6 +3394,10 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.allow_features = Some(vec![String::from("lang_items")]);
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.symbol_mangling_version = SymbolManglingVersion::V0;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 
