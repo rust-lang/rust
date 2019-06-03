@@ -11,7 +11,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    Machine, PlaceTy, OpTy, InterpretCx,
+    Machine, PlaceTy, OpTy, InterpretCx, Immediate,
 };
 
 mod type_name;
