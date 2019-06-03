@@ -20,9 +20,9 @@ crate struct RegionValueElements {
 }
 
 impl RegionValueElements {
-    crate fn new(mir: &Body<'_>) -> Self {
+    crate fn new(body: &Body<'_>) -> Self {
         let mut num_points = 0;
-        let statements_before_block: IndexVec<BasicBlock, usize> = mir.basic_blocks()
+        let statements_before_block: IndexVec<BasicBlock, usize> = body.basic_blocks()
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -37,7 +37,7 @@ impl RegionValueElements {
         debug!("RegionValueElements: num_points={:#?}", num_points);
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
-        for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
+        for (bb, bb_data) in body.basic_blocks().iter_enumerated() {
             basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
         }
 
@@ -92,7 +92,7 @@ impl RegionValueElements {
     /// Pushes all predecessors of `index` onto `stack`.
     crate fn push_predecessors(
         &self,
-        mir: &Body<'_>,
+        body: &Body<'_>,
         index: PointIndex,
         stack: &mut Vec<PointIndex>,
     ) {
@@ -104,9 +104,9 @@ impl RegionValueElements {
             // If this is a basic block head, then the predecessors are
             // the terminators of other basic blocks
             stack.extend(
-                mir.predecessors_for(block)
+                body.predecessors_for(block)
                     .iter()
-                    .map(|&pred_bb| mir.terminator_loc(pred_bb))
+                    .map(|&pred_bb| body.terminator_loc(pred_bb))
                     .map(|pred_loc| self.point_from_location(pred_loc)),
             );
         } else {

@@ -25,7 +25,7 @@ pub(super) enum Control {
 pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     s: &mut S,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     _location: Location,
     access_place: (AccessDepth, &Place<'tcx>),
     borrow_set: &BorrowSet<'tcx>,
@@ -47,7 +47,7 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
 
         if places_conflict::borrow_conflicts_with_place(
             tcx,
-            mir,
+            body,
             &borrowed.borrowed_place,
             borrowed.kind,
             place,

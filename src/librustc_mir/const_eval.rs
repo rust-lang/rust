@@ -55,12 +55,12 @@ pub(crate) fn mk_eval_cx<'a, 'mir, 'tcx>(
 pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cid: GlobalId<'tcx>,
-    mir: &'mir mir::Body<'tcx>,
+    body: &'mir mir::Body<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = mk_eval_cx(tcx, span, param_env);
-    eval_body_using_ecx(&mut ecx, cid, mir, param_env)
+    eval_body_using_ecx(&mut ecx, cid, body, param_env)
 }
 
 fn mplace_to_const<'tcx>(
@@ -139,23 +139,23 @@ fn op_to_const<'tcx>(
 fn eval_body_using_ecx<'mir, 'tcx>(
     ecx: &mut CompileTimeEvalContext<'_, 'mir, 'tcx>,
     cid: GlobalId<'tcx>,
-    mir: &'mir mir::Body<'tcx>,
+    body: &'mir mir::Body<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
-    let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
+    let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
 
     let name = ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
-    assert!(mir.arg_count == 0);
+    assert!(body.arg_count == 0);
     ecx.push_stack_frame(
         cid.instance,
-        mir.span,
-        mir,
+        body.span,
+        body,
         Some(ret.into()),
         StackPopCleanup::None { cleanup: false },
     )?;
@@ -165,7 +165,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
     // Intern the result
     let mutability = if tcx.is_mutable_static(cid.instance.def_id()) ||
-                     !layout.ty.is_freeze(tcx, param_env, mir.span) {
+                     !layout.ty.is_freeze(tcx, param_env, body.span) {
         Mutability::Mutable
     } else {
         Mutability::Immutable
@@ -354,7 +354,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         }
         // This is a const fn. Call it.
         Ok(Some(match ecx.load_mir(instance.def) {
-            Ok(mir) => mir,
+            Ok(body) => body,
             Err(err) => {
                 if let InterpError::NoMirFor(ref path) = err.kind {
                     return Err(
@@ -628,14 +628,14 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     let mut ecx = InterpretCx::new(tcx.at(span), key.param_env, CompileTimeInterpreter::new());
 
     let res = ecx.load_mir(cid.instance.def);
-    res.map(|mir| {
+    res.map(|body| {
         if let Some(index) = cid.promoted {
-            &mir.promoted[index]
+            &body.promoted[index]
         } else {
-            mir
+            body
         }
     }).and_then(
-        |mir| eval_body_using_ecx(&mut ecx, cid, mir, key.param_env)
+        |body| eval_body_using_ecx(&mut ecx, cid, body, key.param_env)
     ).and_then(|place| {
         Ok(RawConst {
             alloc_id: place.to_ptr().expect("we allocated this ptr!").alloc_id,

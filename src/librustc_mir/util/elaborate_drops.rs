@@ -74,7 +74,7 @@ pub trait DropElaborator<'a, 'tcx: 'a> : fmt::Debug {
     type Path : Copy + fmt::Debug;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
-    fn mir(&self) -> &'a Body<'tcx>;
+    fn body(&self) -> &'a Body<'tcx>;
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
@@ -122,7 +122,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     where D: DropElaborator<'b, 'tcx>
 {
     fn place_ty(&self, place: &Place<'tcx>) -> Ty<'tcx> {
-        place.ty(self.elaborator.mir(), self.tcx()).ty
+        place.ty(self.elaborator.body(), self.tcx()).ty
     }
 
     fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
@@ -799,7 +799,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             // within that own generator's resume function.
             // This should only happen for the self argument on the resume function.
             // It effetively only contains upvars until the generator transformation runs.
-            // See librustc_mir/transform/generator.rs for more details.
+            // See librustc_body/transform/generator.rs for more details.
             ty::Generator(def_id, substs, _) => {
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
@@ -966,8 +966,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     }
 
     fn terminator_loc(&mut self, bb: BasicBlock) -> Location {
-        let mir = self.elaborator.mir();
-        self.elaborator.patch().terminator_loc(mir, bb)
+        let body = self.elaborator.body();
+        self.elaborator.patch().terminator_loc(body, bb)
     }
 
     fn constant_usize(&self, val: u16) -> Operand<'tcx> {

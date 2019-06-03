@@ -38,7 +38,7 @@ impl<'tcx> IsPrefixOf<'tcx> for Place<'tcx> {
 
 
 pub(super) struct Prefixes<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    mir: &'cx Body<'tcx>,
+    body: &'cx Body<'tcx>,
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     kind: PrefixSet,
     next: Option<&'cx Place<'tcx>>,
@@ -68,7 +68,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         Prefixes {
             next: Some(place),
             kind,
-            mir: self.mir,
+            body: self.body,
             tcx: self.infcx.tcx,
         }
     }
@@ -139,7 +139,7 @@ impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
             // derefs, except we stop at the deref of a shared
             // reference.
 
-            let ty = proj.base.ty(self.mir, self.tcx).ty;
+            let ty = proj.base.ty(self.body, self.tcx).ty;
             match ty.sty {
                 ty::RawPtr(_) |
                 ty::Ref(

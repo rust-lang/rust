@@ -612,7 +612,7 @@ where
                         PlaceTy {
                             place: *return_place,
                             layout: self
-                                .layout_of(self.monomorphize(self.frame().mir.return_ty())?)?,
+                                .layout_of(self.monomorphize(self.frame().body.return_ty())?)?,
                         }
                     }
                     None => return err!(InvalidNullPointerUsage),

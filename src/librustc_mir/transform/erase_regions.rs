@@ -53,7 +53,7 @@ impl MirPass for EraseRegions {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _: MirSource<'tcx>,
-                          mir: &mut Body<'tcx>) {
-        EraseRegionsVisitor::new(tcx).visit_body(mir);
+                          body: &mut Body<'tcx>) {
+        EraseRegionsVisitor::new(tcx).visit_body(body);
     }
 }

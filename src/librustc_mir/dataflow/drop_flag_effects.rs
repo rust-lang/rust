@@ -47,9 +47,9 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 //
 // FIXME: we have to do something for moving slice patterns.
 fn place_contents_drop_state_cannot_differ<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                            mir: &Body<'tcx>,
+                                                            body: &Body<'tcx>,
                                                             place: &mir::Place<'tcx>) -> bool {
-    let ty = place.ty(mir, tcx).ty;
+    let ty = place.ty(body, tcx).ty;
     match ty.sty {
         ty::Array(..) => {
             debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} => false",
@@ -74,7 +74,7 @@ fn place_contents_drop_state_cannot_differ<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx,
 
 pub(crate) fn on_lookup_result_bits<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     move_data: &MoveData<'tcx>,
     lookup_result: LookupResult,
     each_child: F)
@@ -85,14 +85,14 @@ pub(crate) fn on_lookup_result_bits<'a, 'gcx, 'tcx, F>(
             // access to untracked value - do not touch children
         }
         LookupResult::Exact(e) => {
-            on_all_children_bits(tcx, mir, move_data, e, each_child)
+            on_all_children_bits(tcx, body, move_data, e, each_child)
         }
     }
 }
 
 pub(crate) fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     move_data: &MoveData<'tcx>,
     move_path_index: MovePathIndex,
     mut each_child: F)
@@ -100,17 +100,17 @@ pub(crate) fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
 {
     fn is_terminal_path<'a, 'gcx, 'tcx>(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         move_data: &MoveData<'tcx>,
         path: MovePathIndex) -> bool
     {
         place_contents_drop_state_cannot_differ(
-            tcx, mir, &move_data.move_paths[path].place)
+            tcx, body, &move_data.move_paths[path].place)
     }
 
     fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         move_data: &MoveData<'tcx>,
         move_path_index: MovePathIndex,
         each_child: &mut F)
@@ -118,30 +118,30 @@ pub(crate) fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
     {
         each_child(move_path_index);
 
-        if is_terminal_path(tcx, mir, move_data, move_path_index) {
+        if is_terminal_path(tcx, body, move_data, move_path_index) {
             return
         }
 
         let mut next_child_index = move_data.move_paths[move_path_index].first_child;
         while let Some(child_index) = next_child_index {
-            on_all_children_bits(tcx, mir, move_data, child_index, each_child);
+            on_all_children_bits(tcx, body, move_data, child_index, each_child);
             next_child_index = move_data.move_paths[child_index].next_sibling;
         }
     }
-    on_all_children_bits(tcx, mir, move_data, move_path_index, &mut each_child);
+    on_all_children_bits(tcx, body, move_data, move_path_index, &mut each_child);
 }
 
 pub(crate) fn on_all_drop_children_bits<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     ctxt: &MoveDataParamEnv<'gcx, 'tcx>,
     path: MovePathIndex,
     mut each_child: F)
     where F: FnMut(MovePathIndex)
 {
-    on_all_children_bits(tcx, mir, &ctxt.move_data, path, |child| {
+    on_all_children_bits(tcx, body, &ctxt.move_data, path, |child| {
         let place = &ctxt.move_data.move_paths[path].place;
-        let ty = place.ty(mir, tcx).ty;
+        let ty = place.ty(body, tcx).ty;
         debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, place, ty);
 
         let gcx = tcx.global_tcx();
@@ -156,16 +156,16 @@ pub(crate) fn on_all_drop_children_bits<'a, 'gcx, 'tcx, F>(
 
 pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     ctxt: &MoveDataParamEnv<'gcx, 'tcx>,
     mut callback: F)
     where F: FnMut(MovePathIndex, DropFlagState)
 {
     let move_data = &ctxt.move_data;
-    for arg in mir.args_iter() {
+    for arg in body.args_iter() {
         let place = mir::Place::Base(mir::PlaceBase::Local(arg));
         let lookup_result = move_data.rev_lookup.find(&place);
-        on_lookup_result_bits(tcx, mir, move_data,
+        on_lookup_result_bits(tcx, body, move_data,
                               lookup_result,
                               |mpi| callback(mpi, DropFlagState::Present));
     }
@@ -173,7 +173,7 @@ pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
 
 pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     ctxt: &MoveDataParamEnv<'gcx, 'tcx>,
     loc: Location,
     mut callback: F)
@@ -187,7 +187,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
         let path = mi.move_path_index(move_data);
         debug!("moving out of path {:?}", move_data.move_paths[path]);
 
-        on_all_children_bits(tcx, mir, move_data,
+        on_all_children_bits(tcx, body, move_data,
                              path,
                              |mpi| callback(mpi, DropFlagState::Absent))
     }
@@ -196,7 +196,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
 
     for_location_inits(
         tcx,
-        mir,
+        body,
         move_data,
         loc,
         |mpi| callback(mpi, DropFlagState::Present)
@@ -205,7 +205,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'gcx, 'tcx, F>(
 
 pub(crate) fn for_location_inits<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     move_data: &MoveData<'tcx>,
     loc: Location,
     mut callback: F)
@@ -217,7 +217,7 @@ pub(crate) fn for_location_inits<'a, 'gcx, 'tcx, F>(
             InitKind::Deep => {
                 let path = init.path;
 
-                on_all_children_bits(tcx, mir, move_data,
+                on_all_children_bits(tcx, body, move_data,
                                     path,
                                     &mut callback)
             },

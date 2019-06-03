@@ -44,12 +44,12 @@ impl SimplifyCfg {
     }
 }
 
-pub fn simplify_cfg(mir: &mut Body<'_>) {
-    CfgSimplifier::new(mir).simplify();
-    remove_dead_blocks(mir);
+pub fn simplify_cfg(body: &mut Body<'_>) {
+    CfgSimplifier::new(body).simplify();
+    remove_dead_blocks(body);
 
     // FIXME: Should probably be moved into some kind of pass manager
-    mir.basic_blocks_mut().raw.shrink_to_fit();
+    body.basic_blocks_mut().raw.shrink_to_fit();
 }
 
 impl MirPass for SimplifyCfg {
@@ -60,9 +60,9 @@ impl MirPass for SimplifyCfg {
     fn run_pass<'a, 'tcx>(&self,
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
-                          mir: &mut Body<'tcx>) {
-        debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, mir);
-        simplify_cfg(mir);
+                          body: &mut Body<'tcx>) {
+        debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body);
+        simplify_cfg(body);
     }
 }
 
@@ -72,14 +72,14 @@ pub struct CfgSimplifier<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
-    pub fn new(mir: &'a mut Body<'tcx>) -> Self {
-        let mut pred_count = IndexVec::from_elem(0u32, mir.basic_blocks());
+    pub fn new(body: &'a mut Body<'tcx>) -> Self {
+        let mut pred_count = IndexVec::from_elem(0u32, body.basic_blocks());
 
         // we can't use mir.predecessors() here because that counts
         // dead blocks, which we don't want to.
         pred_count[START_BLOCK] = 1;
 
-        for (_, data) in traversal::preorder(mir) {
+        for (_, data) in traversal::preorder(body) {
             if let Some(ref term) = data.terminator {
                 for &tgt in term.successors() {
                     pred_count[tgt] += 1;
@@ -87,7 +87,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
             }
         }
 
-        let basic_blocks = mir.basic_blocks_mut();
+        let basic_blocks = body.basic_blocks_mut();
 
         CfgSimplifier {
             basic_blocks,
@@ -263,13 +263,13 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
     }
 }
 
-pub fn remove_dead_blocks(mir: &mut Body<'_>) {
-    let mut seen = BitSet::new_empty(mir.basic_blocks().len());
-    for (bb, _) in traversal::preorder(mir) {
+pub fn remove_dead_blocks(body: &mut Body<'_>) {
+    let mut seen = BitSet::new_empty(body.basic_blocks().len());
+    for (bb, _) in traversal::preorder(body) {
         seen.insert(bb.index());
     }
 
-    let basic_blocks = mir.basic_blocks_mut();
+    let basic_blocks = body.basic_blocks_mut();
 
     let num_blocks = basic_blocks.len();
     let mut replacements : Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
@@ -299,26 +299,26 @@ impl MirPass for SimplifyLocals {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _: MirSource<'tcx>,
-                          mir: &mut Body<'tcx>) {
-        let mut marker = DeclMarker { locals: BitSet::new_empty(mir.local_decls.len()) };
-        marker.visit_body(mir);
+                          body: &mut Body<'tcx>) {
+        let mut marker = DeclMarker { locals: BitSet::new_empty(body.local_decls.len()) };
+        marker.visit_body(body);
         // Return pointer and arguments are always live
         marker.locals.insert(RETURN_PLACE);
-        for arg in mir.args_iter() {
+        for arg in body.args_iter() {
             marker.locals.insert(arg);
         }
 
         // We may need to keep dead user variables live for debuginfo.
         if tcx.sess.opts.debuginfo == DebugInfo::Full {
-            for local in mir.vars_iter() {
+            for local in body.vars_iter() {
                 marker.locals.insert(local);
             }
         }
 
-        let map = make_local_map(&mut mir.local_decls, marker.locals);
+        let map = make_local_map(&mut body.local_decls, marker.locals);
         // Update references to all vars and tmps now
-        LocalUpdater { map }.visit_body(mir);
-        mir.local_decls.shrink_to_fit();
+        LocalUpdater { map }.visit_body(body);
+        body.local_decls.shrink_to_fit();
     }
 }
 

@@ -11,7 +11,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn get_var_name_and_span_for_region(
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         upvars: &[Upvar],
         fr: RegionVid,
     ) -> Option<(Option<Symbol>, Span)> {
@@ -28,7 +28,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .or_else(|| {
                 debug!("get_var_name_and_span_for_region: attempting argument");
                 self.get_argument_index_for_region(tcx, fr)
-                    .map(|index| self.get_argument_name_and_span_for_region(mir, index))
+                    .map(|index| self.get_argument_name_and_span_for_region(body, index))
             })
     }
 
@@ -120,15 +120,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// declared.
     crate fn get_argument_name_and_span_for_region(
         &self,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         argument_index: usize,
     ) -> (Option<Symbol>, Span) {
         let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
         let argument_local = Local::new(implicit_inputs + argument_index + 1);
         debug!("get_argument_name_and_span_for_region: argument_local={:?}", argument_local);
 
-        let argument_name = mir.local_decls[argument_local].name;
-        let argument_span = mir.local_decls[argument_local].source_info.span;
+        let argument_name = body.local_decls[argument_local].name;
+        let argument_span = body.local_decls[argument_local].source_info.span;
         debug!("get_argument_name_and_span_for_region: argument_name={:?} argument_span={:?}",
                argument_name, argument_span);
 

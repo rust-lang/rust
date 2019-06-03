@@ -138,9 +138,9 @@ impl<T> IndexMut<Location> for LocationMap<T> {
 }
 
 impl<T> LocationMap<T> where T: Default + Clone {
-    fn new(mir: &Body<'_>) -> Self {
+    fn new(body: &Body<'_>) -> Self {
         LocationMap {
-            map: mir.basic_blocks().iter().map(|block| {
+            map: body.basic_blocks().iter().map(|block| {
                 vec![T::default(); block.statements.len()+1]
             }).collect()
         }
@@ -205,10 +205,10 @@ impl fmt::Debug for Init {
 }
 
 impl Init {
-    crate fn span<'gcx>(&self, mir: &Body<'gcx>) -> Span {
+    crate fn span<'gcx>(&self, body: &Body<'gcx>) -> Span {
         match self.location {
-            InitLocation::Argument(local) => mir.local_decls[local].source_info.span,
-            InitLocation::Statement(location) => mir.source_info(location).span,
+            InitLocation::Argument(local) => body.local_decls[local].source_info.span,
+            InitLocation::Statement(location) => body.source_info(location).span,
         }
     }
 }
@@ -306,9 +306,9 @@ impl<'tcx> MoveError<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> MoveData<'tcx> {
-    pub fn gather_moves(mir: &Body<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
+    pub fn gather_moves(body: &Body<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                         -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
-        builder::gather_moves(mir, tcx)
+        builder::gather_moves(body, tcx)
     }
 
     /// For the move path `mpi`, returns the root local variable (if any) that starts the path.

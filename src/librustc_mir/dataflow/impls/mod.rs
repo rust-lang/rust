@@ -65,17 +65,17 @@ pub(super) mod borrows;
 /// places that would require a dynamic drop-flag at that statement.
 pub struct MaybeInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               mir: &'a Body<'tcx>,
+               body: &'a Body<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
-        MaybeInitializedPlaces { tcx: tcx, mir: mir, mdpe: mdpe }
+        MaybeInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
 
@@ -120,17 +120,17 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 'tcx
 /// places that would require a dynamic drop-flag at that statement.
 pub struct MaybeUninitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               mir: &'a Body<'tcx>,
+               body: &'a Body<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
-        MaybeUninitializedPlaces { tcx: tcx, mir: mir, mdpe: mdpe }
+        MaybeUninitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
 
@@ -174,17 +174,17 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 't
 /// that would require a dynamic drop-flag at that statement.
 pub struct DefinitelyInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               mir: &'a Body<'tcx>,
+               body: &'a Body<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
-        DefinitelyInitializedPlaces { tcx: tcx, mir: mir, mdpe: mdpe }
+        DefinitelyInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
 
@@ -223,17 +223,17 @@ impl<'a, 'gcx, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, '
 /// ```
 pub struct EverInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx: 'a> EverInitializedPlaces<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               mir: &'a Body<'tcx>,
+               body: &'a Body<'tcx>,
                mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
                -> Self
     {
-        EverInitializedPlaces { tcx: tcx, mir: mir, mdpe: mdpe }
+        EverInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
 
@@ -284,7 +284,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 't
 
     fn start_block_effect(&self, entry_set: &mut BitSet<MovePathIndex>) {
         drop_flag_effects_for_function_entry(
-            self.tcx, self.mir, self.mdpe,
+            self.tcx, self.body, self.mdpe,
             |path, s| {
                 assert!(s == DropFlagState::Present);
                 entry_set.insert(path);
@@ -296,7 +296,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 't
                         location: Location)
     {
         drop_flag_effects_for_location(
-            self.tcx, self.mir, self.mdpe,
+            self.tcx, self.body, self.mdpe,
             location,
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -307,7 +307,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 't
                          location: Location)
     {
         drop_flag_effects_for_location(
-            self.tcx, self.mir, self.mdpe,
+            self.tcx, self.body, self.mdpe,
             location,
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -322,7 +322,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 't
     ) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 1 (initialized).
-        on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
+        on_lookup_result_bits(self.tcx, self.body, self.move_data(),
                               self.move_data().rev_lookup.find(dest_place),
                               |mpi| { in_out.insert(mpi); });
     }
@@ -342,7 +342,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 
         entry_set.insert_all();
 
         drop_flag_effects_for_function_entry(
-            self.tcx, self.mir, self.mdpe,
+            self.tcx, self.body, self.mdpe,
             |path, s| {
                 assert!(s == DropFlagState::Present);
                 entry_set.remove(path);
@@ -354,7 +354,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 
                         location: Location)
     {
         drop_flag_effects_for_location(
-            self.tcx, self.mir, self.mdpe,
+            self.tcx, self.body, self.mdpe,
             location,
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -365,7 +365,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 
                          location: Location)
     {
         drop_flag_effects_for_location(
-            self.tcx, self.mir, self.mdpe,
+            self.tcx, self.body, self.mdpe,
             location,
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -380,7 +380,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 
     ) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 0 (initialized).
-        on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
+        on_lookup_result_bits(self.tcx, self.body, self.move_data(),
                               self.move_data().rev_lookup.find(dest_place),
                               |mpi| { in_out.remove(mpi); });
     }
@@ -398,7 +398,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'gc
         entry_set.clear();
 
         drop_flag_effects_for_function_entry(
-            self.tcx, self.mir, self.mdpe,
+            self.tcx, self.body, self.mdpe,
             |path, s| {
                 assert!(s == DropFlagState::Present);
                 entry_set.insert(path);
@@ -410,7 +410,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'gc
                         location: Location)
     {
         drop_flag_effects_for_location(
-            self.tcx, self.mir, self.mdpe,
+            self.tcx, self.body, self.mdpe,
             location,
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -421,7 +421,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'gc
                          location: Location)
     {
         drop_flag_effects_for_location(
-            self.tcx, self.mir, self.mdpe,
+            self.tcx, self.body, self.mdpe,
             location,
             |path, s| Self::update_bits(sets, path, s)
         )
@@ -436,7 +436,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'gc
     ) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 1 (initialized).
-        on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
+        on_lookup_result_bits(self.tcx, self.body, self.move_data(),
                               self.move_data().rev_lookup.find(dest_place),
                               |mpi| { in_out.insert(mpi); });
     }
@@ -450,7 +450,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tc
     }
 
     fn start_block_effect(&self, entry_set: &mut BitSet<InitIndex>) {
-        for arg_init in 0..self.mir.arg_count {
+        for arg_init in 0..self.body.arg_count {
             entry_set.insert(InitIndex::new(arg_init));
         }
     }
@@ -458,8 +458,8 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tc
     fn statement_effect(&self,
                         sets: &mut BlockSets<'_, InitIndex>,
                         location: Location) {
-        let (_, mir, move_data) = (self.tcx, self.mir, self.move_data());
-        let stmt = &mir[location.block].statements[location.statement_index];
+        let (_, body, move_data) = (self.tcx, self.body, self.move_data());
+        let stmt = &body[location.block].statements[location.statement_index];
         let init_path_map = &move_data.init_path_map;
         let init_loc_map = &move_data.init_loc_map;
         let rev_lookup = &move_data.rev_lookup;
@@ -485,8 +485,8 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tc
                          sets: &mut BlockSets<'_, InitIndex>,
                          location: Location)
     {
-        let (mir, move_data) = (self.mir, self.move_data());
-        let term = mir[location.block].terminator();
+        let (body, move_data) = (self.body, self.move_data());
+        let term = body[location.block].terminator();
         let init_loc_map = &move_data.init_loc_map;
         debug!("terminator {:?} at loc {:?} initializes move_indexes {:?}",
                term, location, &init_loc_map[location]);
@@ -510,7 +510,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tc
 
         let call_loc = Location {
             block: call_bb,
-            statement_index: self.mir[call_bb].statements.len(),
+            statement_index: self.body[call_bb].statements.len(),
         };
         for init_index in &init_loc_map[call_loc] {
             assert!(init_index.index() < bits_per_block);

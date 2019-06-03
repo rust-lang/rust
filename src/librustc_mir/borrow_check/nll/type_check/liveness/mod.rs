@@ -27,7 +27,7 @@ mod trace;
 /// performed before
 pub(super) fn generate<'gcx, 'tcx>(
     typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -44,7 +44,7 @@ pub(super) fn generate<'gcx, 'tcx>(
         // of the `live_locals`.
         // FIXME: Review "live" terminology past this point, we should
         // not be naming the `Local`s as live.
-        mir.local_decls.indices().collect()
+        body.local_decls.indices().collect()
     } else {
         let free_regions = {
             regions_that_outlive_free_regions(
@@ -53,13 +53,13 @@ pub(super) fn generate<'gcx, 'tcx>(
                 &typeck.borrowck_context.constraints.outlives_constraints,
             )
         };
-        compute_live_locals(typeck.tcx(), &free_regions, mir)
+        compute_live_locals(typeck.tcx(), &free_regions, body)
     };
 
     if !live_locals.is_empty() {
         trace::trace(
             typeck,
-            mir,
+            body,
             elements,
             flow_inits,
             move_data,
@@ -77,9 +77,9 @@ pub(super) fn generate<'gcx, 'tcx>(
 fn compute_live_locals(
     tcx: TyCtxt<'_, '_, 'tcx>,
     free_regions: &FxHashSet<RegionVid>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
 ) -> Vec<Local> {
-    let live_locals: Vec<Local> = mir
+    let live_locals: Vec<Local> = body
         .local_decls
         .iter_enumerated()
         .filter_map(|(local, local_decl)| {
@@ -93,7 +93,7 @@ fn compute_live_locals(
         })
         .collect();
 
-    debug!("{} total variables", mir.local_decls.len());
+    debug!("{} total variables", body.local_decls.len());
     debug!("{} variables need liveness", live_locals.len());
     debug!("{} regions outlive free regions", free_regions.len());
 

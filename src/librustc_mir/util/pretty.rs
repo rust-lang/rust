@@ -68,7 +68,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
     pass_name: &str,
     disambiguator: &dyn Display,
     source: MirSource<'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     extra_data: F,
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
@@ -88,7 +88,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
         &node_path,
         disambiguator,
         source,
-        mir,
+        body,
         extra_data,
     );
 }
@@ -124,7 +124,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
     node_path: &str,
     disambiguator: &dyn Display,
     source: MirSource<'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     mut extra_data: F,
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
@@ -135,13 +135,13 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
         writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
         writeln!(file, "// disambiguator = {}", disambiguator)?;
-        if let Some(ref layout) = mir.generator_layout {
+        if let Some(ref layout) = body.generator_layout {
             writeln!(file, "// generator_layout = {:?}", layout)?;
         }
         writeln!(file, "")?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
-        write_user_type_annotations(mir, &mut file)?;
-        write_mir_fn(tcx, source, mir, &mut extra_data, &mut file)?;
+        write_user_type_annotations(body, &mut file)?;
+        write_mir_fn(tcx, source, body, &mut extra_data, &mut file)?;
         extra_data(PassWhere::AfterCFG, &mut file)?;
     };
 
@@ -149,7 +149,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
         let _: io::Result<()> = try {
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
-            write_mir_fn_graphviz(tcx, source.def_id(), mir, &mut file)?;
+            write_mir_fn_graphviz(tcx, source.def_id(), body, &mut file)?;
         };
     }
 }
@@ -256,7 +256,7 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
 
     let mut first = true;
     for def_id in dump_mir_def_ids(tcx, single) {
-        let mir = &tcx.optimized_mir(def_id);
+        let body = &tcx.optimized_mir(def_id);
 
         if first {
             first = false;
@@ -265,15 +265,15 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
             writeln!(w, "")?;
         }
 
-        write_mir_fn(tcx, MirSource::item(def_id), mir, &mut |_, _| Ok(()), w)?;
+        write_mir_fn(tcx, MirSource::item(def_id), body, &mut |_, _| Ok(()), w)?;
 
-        for (i, mir) in mir.promoted.iter_enumerated() {
+        for (i, body) in body.promoted.iter_enumerated() {
             writeln!(w, "")?;
             let src = MirSource {
                 instance: ty::InstanceDef::Item(def_id),
                 promoted: Some(i),
             };
-            write_mir_fn(tcx, src, mir, &mut |_, _| Ok(()), w)?;
+            write_mir_fn(tcx, src, body, &mut |_, _| Ok(()), w)?;
         }
     }
     Ok(())
@@ -282,18 +282,18 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
 pub fn write_mir_fn<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     src: MirSource<'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     extra_data: &mut F,
     w: &mut dyn Write,
 ) -> io::Result<()>
 where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
-    write_mir_intro(tcx, src, mir, w)?;
-    for block in mir.basic_blocks().indices() {
+    write_mir_intro(tcx, src, body, w)?;
+    for block in body.basic_blocks().indices() {
         extra_data(PassWhere::BeforeBlock(block), w)?;
-        write_basic_block(tcx, block, mir, extra_data, w)?;
-        if block.index() + 1 != mir.basic_blocks().len() {
+        write_basic_block(tcx, block, body, extra_data, w)?;
+        if block.index() + 1 != body.basic_blocks().len() {
             writeln!(w, "")?;
         }
     }
@@ -306,14 +306,14 @@ where
 pub fn write_basic_block<'cx, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     block: BasicBlock,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     extra_data: &mut F,
     w: &mut dyn Write,
 ) -> io::Result<()>
 where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
-    let data = &mir[block];
+    let data = &body[block];
 
     // Basic block label at the top.
     let cleanup_text = if data.is_cleanup { " (cleanup)" } else { "" };
@@ -326,11 +326,11 @@ where
     };
     for statement in &data.statements {
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
-        let indented_mir = format!("{0}{0}{1:?};", INDENT, statement);
+        let indented_body = format!("{0}{0}{1:?};", INDENT, statement);
         writeln!(
             w,
             "{:A$} // {:?}: {}",
-            indented_mir,
+            indented_body,
             current_location,
             comment(tcx, statement.source_info),
             A = ALIGN,
@@ -464,7 +464,7 @@ fn comment(tcx: TyCtxt<'_, '_, '_>, SourceInfo { span, scope }: SourceInfo) -> S
 /// Prints local variables in a scope tree.
 fn write_scope_tree(
     tcx: TyCtxt<'_, '_, '_>,
-    mir: &Body<'_>,
+    body: &Body<'_>,
     scope_tree: &FxHashMap<SourceScope, Vec<SourceScope>>,
     w: &mut dyn Write,
     parent: SourceScope,
@@ -473,8 +473,8 @@ fn write_scope_tree(
     let indent = depth * INDENT.len();
 
     // Local variable types (including the user's name in a comment).
-    for (local, local_decl) in mir.local_decls.iter_enumerated() {
-        if (1..mir.arg_count+1).contains(&local.index()) {
+    for (local, local_decl) in body.local_decls.iter_enumerated() {
+        if (1..body.arg_count+1).contains(&local.index()) {
             // Skip over argument locals, they're printed in the signature.
             continue;
         }
@@ -527,9 +527,9 @@ fn write_scope_tree(
     };
 
     for &child in children {
-        assert_eq!(mir.source_scopes[child].parent_scope, Some(parent));
+        assert_eq!(body.source_scopes[child].parent_scope, Some(parent));
         writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
-        write_scope_tree(tcx, mir, scope_tree, w, child, depth + 1)?;
+        write_scope_tree(tcx, body, scope_tree, w, child, depth + 1)?;
         writeln!(w, "{0:1$}}}", "", depth * INDENT.len())?;
     }
 
@@ -541,15 +541,15 @@ fn write_scope_tree(
 pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     src: MirSource<'tcx>,
-    mir: &Body<'_>,
+    body: &Body<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
-    write_mir_sig(tcx, src, mir, w)?;
+    write_mir_sig(tcx, src, body, w)?;
     writeln!(w, "{{")?;
 
     // construct a scope tree and write it out
     let mut scope_tree: FxHashMap<SourceScope, Vec<SourceScope>> = Default::default();
-    for (index, scope_data) in mir.source_scopes.iter().enumerate() {
+    for (index, scope_data) in body.source_scopes.iter().enumerate() {
         if let Some(parent) = scope_data.parent_scope {
             scope_tree
                 .entry(parent)
@@ -561,7 +561,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
         }
     }
 
-    write_scope_tree(tcx, mir, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1)?;
+    write_scope_tree(tcx, body, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1)?;
 
     // Add an empty line before the first block is printed.
     writeln!(w, "")?;
@@ -572,7 +572,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
 fn write_mir_sig(
     tcx: TyCtxt<'_, '_, '_>,
     src: MirSource<'tcx>,
-    mir: &Body<'_>,
+    body: &Body<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
     use rustc::hir::def::DefKind;
@@ -605,20 +605,20 @@ fn write_mir_sig(
         write!(w, "(")?;
 
         // fn argument types.
-        for (i, arg) in mir.args_iter().enumerate() {
+        for (i, arg) in body.args_iter().enumerate() {
             if i != 0 {
                 write!(w, ", ")?;
             }
-            write!(w, "{:?}: {}", Place::Base(PlaceBase::Local(arg)), mir.local_decls[arg].ty)?;
+            write!(w, "{:?}: {}", Place::Base(PlaceBase::Local(arg)), body.local_decls[arg].ty)?;
         }
 
-        write!(w, ") -> {}", mir.return_ty())?;
+        write!(w, ") -> {}", body.return_ty())?;
     } else {
-        assert_eq!(mir.arg_count, 0);
-        write!(w, ": {} =", mir.return_ty())?;
+        assert_eq!(body.arg_count, 0);
+        write!(w, ": {} =", body.return_ty())?;
     }
 
-    if let Some(yield_ty) = mir.yield_ty {
+    if let Some(yield_ty) = body.yield_ty {
         writeln!(w)?;
         writeln!(w, "yields {}", yield_ty)?;
     }
@@ -629,14 +629,14 @@ fn write_mir_sig(
     Ok(())
 }
 
-fn write_user_type_annotations(mir: &Body<'_>, w: &mut dyn Write) -> io::Result<()> {
-    if !mir.user_type_annotations.is_empty() {
+fn write_user_type_annotations(body: &Body<'_>, w: &mut dyn Write) -> io::Result<()> {
+    if !body.user_type_annotations.is_empty() {
         writeln!(w, "| User Type Annotations")?;
     }
-    for (index, annotation) in mir.user_type_annotations.iter_enumerated() {
+    for (index, annotation) in body.user_type_annotations.iter_enumerated() {
         writeln!(w, "| {:?}: {:?} at {:?}", index.index(), annotation.user_ty, annotation.span)?;
     }
-    if !mir.user_type_annotations.is_empty() {
+    if !body.user_type_annotations.is_empty() {
         writeln!(w, "|")?;
     }
     Ok(())

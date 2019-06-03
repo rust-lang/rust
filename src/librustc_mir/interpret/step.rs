@@ -51,8 +51,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
 
         let block = self.frame().block;
         let stmt_id = self.frame().stmt;
-        let mir = self.mir();
-        let basic_block = &mir.basic_blocks()[block];
+        let body = self.body();
+        let basic_block = &body.basic_blocks()[block];
 
         let old_frames = self.cur_frame();
 

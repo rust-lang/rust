@@ -21,27 +21,27 @@ use super::*;
 /// A preorder traversal of this graph is either `A B D C` or `A C D B`
 #[derive(Clone)]
 pub struct Preorder<'a, 'tcx: 'a> {
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
     visited: BitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
     root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Preorder<'a, 'tcx> {
-    pub fn new(mir: &'a Body<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
+    pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
         Preorder {
-            mir,
-            visited: BitSet::new_empty(mir.basic_blocks().len()),
+            body,
+            visited: BitSet::new_empty(body.basic_blocks().len()),
             worklist,
             root_is_start_block: root == START_BLOCK,
         }
     }
 }
 
-pub fn preorder<'a, 'tcx>(mir: &'a Body<'tcx>) -> Preorder<'a, 'tcx> {
-    Preorder::new(mir, START_BLOCK)
+pub fn preorder<'a, 'tcx>(body: &'a Body<'tcx>) -> Preorder<'a, 'tcx> {
+    Preorder::new(body, START_BLOCK)
 }
 
 impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
@@ -53,7 +53,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
                 continue;
             }
 
-            let data = &self.mir[idx];
+            let data = &self.body[idx];
 
             if let Some(ref term) = data.terminator {
                 self.worklist.extend(term.successors());
@@ -67,7 +67,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         // All the blocks, minus the number of blocks we've visited.
-        let upper = self.mir.basic_blocks().len() - self.visited.count();
+        let upper = self.body.basic_blocks().len() - self.visited.count();
 
         let lower = if self.root_is_start_block {
             // We will visit all remaining blocks exactly once.
@@ -99,23 +99,23 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 ///
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
 pub struct Postorder<'a, 'tcx: 'a> {
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
     visited: BitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>,
     root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Postorder<'a, 'tcx> {
-    pub fn new(mir: &'a Body<'tcx>, root: BasicBlock) -> Postorder<'a, 'tcx> {
+    pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {
-            mir,
-            visited: BitSet::new_empty(mir.basic_blocks().len()),
+            body,
+            visited: BitSet::new_empty(body.basic_blocks().len()),
             visit_stack: Vec::new(),
             root_is_start_block: root == START_BLOCK,
         };
 
 
-        let data = &po.mir[root];
+        let data = &po.body[root];
 
         if let Some(ref term) = data.terminator {
             po.visited.insert(root);
@@ -186,7 +186,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
             };
 
             if self.visited.insert(bb) {
-                if let Some(term) = &self.mir[bb].terminator {
+                if let Some(term) = &self.body[bb].terminator {
                     self.visit_stack.push((bb, term.successors()));
                 }
             }
@@ -194,8 +194,8 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
     }
 }
 
-pub fn postorder<'a, 'tcx>(mir: &'a Body<'tcx>) -> Postorder<'a, 'tcx> {
-    Postorder::new(mir, START_BLOCK)
+pub fn postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> Postorder<'a, 'tcx> {
+    Postorder::new(body, START_BLOCK)
 }
 
 impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
@@ -207,12 +207,12 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
             self.traverse_successor();
         }
 
-        next.map(|(bb, _)| (bb, &self.mir[bb]))
+        next.map(|(bb, _)| (bb, &self.body[bb]))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         // All the blocks, minus the number of blocks we've visited.
-        let upper = self.mir.basic_blocks().len() - self.visited.count();
+        let upper = self.body.basic_blocks().len() - self.visited.count();
 
         let lower = if self.root_is_start_block {
             // We will visit all remaining blocks exactly once.
@@ -252,19 +252,19 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 /// to re-use the traversal
 #[derive(Clone)]
 pub struct ReversePostorder<'a, 'tcx: 'a> {
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
     blocks: Vec<BasicBlock>,
     idx: usize
 }
 
 impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
-    pub fn new(mir: &'a Body<'tcx>, root: BasicBlock) -> ReversePostorder<'a, 'tcx> {
-        let blocks : Vec<_> = Postorder::new(mir, root).map(|(bb, _)| bb).collect();
+    pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> ReversePostorder<'a, 'tcx> {
+        let blocks : Vec<_> = Postorder::new(body, root).map(|(bb, _)| bb).collect();
 
         let len = blocks.len();
 
         ReversePostorder {
-            mir,
+            body,
             blocks,
             idx: len
         }
@@ -276,8 +276,8 @@ impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
 }
 
 
-pub fn reverse_postorder<'a, 'tcx>(mir: &'a Body<'tcx>) -> ReversePostorder<'a, 'tcx> {
-    ReversePostorder::new(mir, START_BLOCK)
+pub fn reverse_postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> ReversePostorder<'a, 'tcx> {
+    ReversePostorder::new(body, START_BLOCK)
 }
 
 impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
@@ -287,7 +287,7 @@ impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
         if self.idx == 0 { return None; }
         self.idx -= 1;
 
-        self.blocks.get(self.idx).map(|&bb| (bb, &self.mir[bb]))
+        self.blocks.get(self.idx).map(|&bb| (bb, &self.body[bb]))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

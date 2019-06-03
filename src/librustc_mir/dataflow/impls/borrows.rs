@@ -31,7 +31,7 @@ newtype_index! {
 /// borrows in compact bitvectors.
 pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
 
     borrow_set: Rc<BorrowSet<'tcx>>,
     borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
@@ -48,7 +48,7 @@ struct StackEntry {
 }
 
 fn precompute_borrows_out_of_scope<'tcx>(
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
     borrows_out_of_scope_at_location: &mut FxHashMap<Location, Vec<BorrowIndex>>,
     borrow_index: BorrowIndex,
@@ -72,7 +72,7 @@ fn precompute_borrows_out_of_scope<'tcx>(
     stack.push(StackEntry {
         bb: location.block,
         lo: location.statement_index,
-        hi: mir[location.block].statements.len(),
+        hi: body[location.block].statements.len(),
         first_part_only: false,
     });
 
@@ -95,7 +95,7 @@ fn precompute_borrows_out_of_scope<'tcx>(
 
         if !finished_early {
             // Add successor BBs to the work list, if necessary.
-            let bb_data = &mir[bb];
+            let bb_data = &body[bb];
             assert!(hi == bb_data.statements.len());
             for &succ_bb in bb_data.terminator.as_ref().unwrap().successors() {
                 visited.entry(succ_bb)
@@ -121,7 +121,7 @@ fn precompute_borrows_out_of_scope<'tcx>(
                         stack.push(StackEntry {
                             bb: succ_bb,
                             lo: 0,
-                            hi: mir[succ_bb].statements.len(),
+                            hi: body[succ_bb].statements.len(),
                             first_part_only: false,
                         });
                         // Insert 0 for this BB, to represent the whole BB
@@ -136,7 +136,7 @@ fn precompute_borrows_out_of_scope<'tcx>(
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        mir: &'a Body<'tcx>,
+        body: &'a Body<'tcx>,
         nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
         borrow_set: &Rc<BorrowSet<'tcx>>,
     ) -> Self {
@@ -145,14 +145,14 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             let borrow_region = borrow_data.region.to_region_vid();
             let location = borrow_set.borrows[borrow_index].reserve_location;
 
-            precompute_borrows_out_of_scope(mir, &nonlexical_regioncx,
+            precompute_borrows_out_of_scope(body, &nonlexical_regioncx,
                                             &mut borrows_out_of_scope_at_location,
                                             borrow_index, borrow_region, location);
         }
 
         Borrows {
             tcx: tcx,
-            mir: mir,
+            body: body,
             borrow_set: borrow_set.clone(),
             borrows_out_of_scope_at_location,
             _nonlexical_regioncx: nonlexical_regioncx,
@@ -219,7 +219,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             // locations.
             if places_conflict::places_conflict(
                 self.tcx,
-                self.mir,
+                self.body,
                 &borrow_data.borrowed_place,
                 place,
                 places_conflict::PlaceConflictBias::NoOverlap,
@@ -257,7 +257,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
     fn statement_effect(&self, sets: &mut BlockSets<'_, BorrowIndex>, location: Location) {
         debug!("Borrows::statement_effect: sets={:?} location={:?}", sets, location);
 
-        let block = &self.mir.basic_blocks().get(location.block).unwrap_or_else(|| {
+        let block = &self.body.basic_blocks().get(location.block).unwrap_or_else(|| {
             panic!("could not find block at location {:?}", location);
         });
         let stmt = block.statements.get(location.statement_index).unwrap_or_else(|| {
@@ -274,7 +274,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
                 if let mir::Rvalue::Ref(_, _, ref place) = **rhs {
                     if place.ignore_borrow(
                         self.tcx,
-                        self.mir,
+                        self.body,
                         &self.borrow_set.locals_state_at_exit,
                     ) {
                         return;

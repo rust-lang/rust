@@ -30,9 +30,9 @@ impl MirPass for CleanupNonCodegenStatements {
     fn run_pass<'a, 'tcx>(&self,
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource<'tcx>,
-                          mir: &mut Body<'tcx>) {
+                          body: &mut Body<'tcx>) {
         let mut delete = DeleteNonCodegenStatements;
-        delete.visit_body(mir);
+        delete.visit_body(body);
     }
 }
 

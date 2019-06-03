@@ -175,8 +175,8 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Check if this is a generator, if so, return the drop glue for it
     if let Some(&ty::TyS { sty: ty::Generator(gen_def_id, substs, _), .. }) = ty {
-        let mir = &**tcx.optimized_mir(gen_def_id).generator_drop.as_ref().unwrap();
-        return mir.subst(tcx, substs.substs);
+        let body = &**tcx.optimized_mir(gen_def_id).generator_drop.as_ref().unwrap();
+        return body.subst(tcx, substs.substs);
     }
 
     let substs = if let Some(ty) = ty {
@@ -202,7 +202,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     block(&mut blocks, TerminatorKind::Goto { target: return_block });
     block(&mut blocks, TerminatorKind::Return);
 
-    let mut mir = Body::new(
+    let mut body = Body::new(
         blocks,
         IndexVec::from_elem_n(
             SourceScopeData { span: span, parent_scope: None }, 1
@@ -223,7 +223,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let dropee_ptr = Place::Base(PlaceBase::Local(Local::new(1+0)));
         if tcx.sess.opts.debugging_opts.mir_emit_retag {
             // Function arguments should be retagged, and we make this one raw.
-            mir.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
+            body.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
                 source_info,
                 kind: StatementKind::Retag(RetagKind::Raw, dropee_ptr.clone()),
             });
@@ -231,8 +231,8 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let patch = {
             let param_env = tcx.param_env(def_id).with_reveal_all();
             let mut elaborator = DropShimElaborator {
-                mir: &mir,
-                patch: MirPatch::new(&mir),
+                body: &body,
+                patch: MirPatch::new(&body),
                 tcx,
                 param_env
             };
@@ -249,14 +249,14 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             );
             elaborator.patch
         };
-        patch.apply(&mut mir);
+        patch.apply(&mut body);
     }
 
-    mir
+    body
 }
 
 pub struct DropShimElaborator<'a, 'tcx: 'a> {
-    pub mir: &'a Body<'tcx>,
+    pub body: &'a Body<'tcx>,
     pub patch: MirPatch<'tcx>,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -272,7 +272,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     type Path = ();
 
     fn patch(&mut self) -> &mut MirPatch<'tcx> { &mut self.patch }
-    fn mir(&self) -> &'a Body<'tcx> { self.mir }
+    fn body(&self) -> &'a Body<'tcx> { self.body }
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
     fn param_env(&self) -> ty::ParamEnv<'tcx> { self.param_env }
 
@@ -821,7 +821,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         block(&mut blocks, vec![], TerminatorKind::Resume, true);
     }
 
-    let mut mir = Body::new(
+    let mut body = Body::new(
         blocks,
         IndexVec::from_elem_n(
             SourceScopeData { span: span, parent_scope: None }, 1
@@ -837,9 +837,9 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         vec![],
     );
     if let Abi::RustCall = sig.abi {
-        mir.spread_arg = Some(Local::new(sig.inputs().len()));
+        body.spread_arg = Some(Local::new(sig.inputs().len()));
     }
-    mir
+    body
 }
 
 pub fn build_adt_ctor<'gcx>(tcx: TyCtxt<'_, 'gcx, 'gcx>, ctor_id: DefId) -> &'gcx Body<'gcx> {

@@ -21,19 +21,19 @@ pub struct Use {
 }
 
 impl DefUseAnalysis {
-    pub fn new(mir: &Body<'_>) -> DefUseAnalysis {
+    pub fn new(body: &Body<'_>) -> DefUseAnalysis {
         DefUseAnalysis {
-            info: IndexVec::from_elem_n(Info::new(), mir.local_decls.len()),
+            info: IndexVec::from_elem_n(Info::new(), body.local_decls.len()),
         }
     }
 
-    pub fn analyze(&mut self, mir: &Body<'_>) {
+    pub fn analyze(&mut self, body: &Body<'_>) {
         self.clear();
 
         let mut finder = DefUseFinder {
             info: mem::replace(&mut self.info, IndexVec::new()),
         };
-        finder.visit_body(mir);
+        finder.visit_body(body);
         self.info = finder.info
     }
 
@@ -47,23 +47,23 @@ impl DefUseAnalysis {
         &self.info[local]
     }
 
-    fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Body<'_>, mut callback: F)
+    fn mutate_defs_and_uses<F>(&self, local: Local, body: &mut Body<'_>, mut callback: F)
                                where F: for<'a> FnMut(&'a mut Local,
                                                       PlaceContext,
                                                       Location) {
         for place_use in &self.info[local].defs_and_uses {
             MutateUseVisitor::new(local,
                                   &mut callback,
-                                  mir).visit_location(mir, place_use.location)
+                                  body).visit_location(body, place_use.location)
         }
     }
 
     // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
-                                          mir: &mut Body<'_>,
+                                          body: &mut Body<'_>,
                                           new_local: Local) {
-        self.mutate_defs_and_uses(local, mir, |local, _, _| *local = new_local)
+        self.mutate_defs_and_uses(local, body, |local, _, _| *local = new_local)
     }
 }
 

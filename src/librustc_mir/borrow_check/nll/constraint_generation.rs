@@ -18,7 +18,7 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     let mut cg = ConstraintGeneration {
@@ -29,7 +29,7 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
         all_facts,
     };
 
-    for (bb, data) in mir.basic_blocks().iter_enumerated() {
+    for (bb, data) in body.basic_blocks().iter_enumerated() {
         cg.visit_basic_block_data(bb, data);
     }
 }

@@ -6,12 +6,12 @@ use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
-pub fn renumber_mir<'tcx>(infcx: &InferCtxt<'_, '_, 'tcx>, mir: &mut Body<'tcx>) {
+pub fn renumber_mir<'tcx>(infcx: &InferCtxt<'_, '_, 'tcx>, body: &mut Body<'tcx>) {
     debug!("renumber_mir()");
-    debug!("renumber_mir: mir.arg_count={:?}", mir.arg_count);
+    debug!("renumber_mir: body.arg_count={:?}", body.arg_count);
 
     let mut visitor = NLLVisitor { infcx };
-    visitor.visit_body(mir);
+    visitor.visit_body(body);
 }
 
 /// Replaces all regions appearing in `value` with fresh inference
@@ -47,12 +47,12 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
-    fn visit_body(&mut self, mir: &mut Body<'tcx>) {
-        for promoted in mir.promoted.iter_mut() {
+    fn visit_body(&mut self, body: &mut Body<'tcx>) {
+        for promoted in body.promoted.iter_mut() {
             self.visit_body(promoted);
         }
 
-        self.super_body(mir);
+        self.super_body(body);
     }
 
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
