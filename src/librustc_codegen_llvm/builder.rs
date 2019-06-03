@@ -265,6 +265,12 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         neg(x) => LLVMBuildNeg,
         fneg(x) => LLVMBuildFNeg,
         not(x) => LLVMBuildNot,
+        unchecked_sadd(x, y) => LLVMBuildNSWAdd,
+        unchecked_uadd(x, y) => LLVMBuildNUWAdd,
+        unchecked_ssub(x, y) => LLVMBuildNSWSub,
+        unchecked_usub(x, y) => LLVMBuildNUWSub,
+        unchecked_smul(x, y) => LLVMBuildNSWMul,
+        unchecked_umul(x, y) => LLVMBuildNUWMul,
     }
 
     fn fadd_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
