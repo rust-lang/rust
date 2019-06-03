@@ -11,7 +11,7 @@ use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::substitute::substitute_value;
 use crate::infer::canonical::{
     Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty,
-    OriginalQueryValues, QueryOutlivesConstraint, QueryResponse,
+    OriginalQueryValues, QueryRegionConstraints, QueryOutlivesConstraint, QueryResponse,
 };
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxtBuilder;
@@ -132,7 +132,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     {
         self.canonicalize_response(&QueryResponse {
             var_values: inference_vars,
-            region_constraints: vec![],
+            region_constraints: QueryRegionConstraints::default(),
             certainty: Certainty::Proven, // Ambiguities are OK!
             value: answer,
         })
@@ -173,7 +173,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
-        let region_constraints = self.with_region_constraints(|region_constraints| {
+        let outlives_constraints = self.with_region_constraints(|region_constraints| {
             make_query_outlives(
                 tcx,
                 region_obligations
@@ -191,7 +191,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         Ok(QueryResponse {
             var_values: inference_vars,
-            region_constraints,
+            region_constraints: QueryRegionConstraints {
+                outlives: outlives_constraints,
+            },
             certainty,
             value: answer,
         })
@@ -225,7 +227,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         obligations.extend(self.query_outlives_constraints_into_obligations(
             cause,
             param_env,
-            &query_response.value.region_constraints,
+            &query_response.value.region_constraints.outlives,
             &result_subst,
         ));
 
@@ -334,7 +336,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         // ...also include the other query region constraints from the query.
         output_query_outlives_constraints.extend(
-            query_response.value.region_constraints.iter().filter_map(|r_c| {
+            query_response.value.region_constraints.outlives.iter().filter_map(|r_c| {
                 let r_c = substitute_value(self.tcx, &result_subst, r_c);
 
                 // Screen out `'a: 'a` cases -- we skip the binder here but

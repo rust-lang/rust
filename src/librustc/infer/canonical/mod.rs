@@ -189,9 +189,14 @@ pub enum CanonicalTyVarKind {
 #[derive(Clone, Debug, HashStable)]
 pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
-    pub region_constraints: Vec<QueryOutlivesConstraint<'tcx>>,
+    pub region_constraints: QueryRegionConstraints<'tcx>,
     pub certainty: Certainty,
     pub value: R,
+}
+
+#[derive(Clone, Debug, Default, HashStable)]
+pub struct QueryRegionConstraints<'tcx> {
+    outlives: Vec<QueryOutlivesConstraint<'tcx>>,
 }
 
 pub type Canonicalized<'tcx, V> = Canonical<'tcx, V>;
@@ -538,6 +543,19 @@ BraceStructLiftImpl! {
         type Lifted = QueryResponse<'tcx, R::Lifted>;
         var_values, region_constraints, certainty, value
     } where R: Lift<'tcx>
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for QueryRegionConstraints<'tcx> {
+        outlives
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for QueryRegionConstraints<'a> {
+        type Lifted = QueryRegionConstraints<'tcx>;
+        outlives
+    }
 }
 
 impl<'tcx> Index<BoundVar> for CanonicalVarValues<'tcx> {
