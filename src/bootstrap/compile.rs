@@ -341,7 +341,7 @@ impl Step for StartupObjects {
             if !up_to_date(src_file, dst_file) {
                 let mut cmd = Command::new(&builder.initial_rustc);
                 builder.run(cmd.env("RUSTC_BOOTSTRAP", "1")
-                            .arg("--cfg").arg("stage0")
+                            .arg("--cfg").arg("bootstrap")
                             .arg("--target").arg(target)
                             .arg("--emit=obj")
                             .arg("-o").arg(dst_file)
