@@ -35,5 +35,13 @@ LL |     foo();
    |
    = note: this `Result` may be an `Err` variant, which should be handled
 
-error: aborting due to 4 previous errors
+error: unused `std::result::Result` in tuple element 0 that must be used
+  --> $DIR/must_use-tuple.rs:16:6
+   |
+LL |     ((Err::<(), ()>(()), ()), ());
+   |      ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+
+error: aborting due to 5 previous errors
 

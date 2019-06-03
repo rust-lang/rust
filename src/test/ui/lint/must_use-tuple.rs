@@ -12,4 +12,6 @@ fn main() {
     //~^^ ERROR unused `std::result::Result`
 
     foo(); //~ ERROR unused `std::result::Result`
+
+    ((Err::<(), ()>(()), ()), ()); //~ ERROR unused `std::result::Result`
 }
