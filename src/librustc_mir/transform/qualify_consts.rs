@@ -35,11 +35,26 @@ use super::promote_consts::{self, Candidate, TempState};
 /// What kind of item we are in.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Mode {
-    Const,
+    /// A `static` item.
     Static,
+    /// A `static mut` item.
     StaticMut,
+    /// A `const fn` item.
     ConstFn,
-    Fn
+    /// A `const` item or an anonymous constant (e.g. in array lengths).
+    Const,
+    /// Other type of `fn`.
+    NonConstFn,
+}
+
+impl Mode {
+    /// Determine whether we are running in "const context".  "const context" refers
+    /// to code type-checked according to the rules of the "const type system":
+    /// the bodies of const/static items and `const fn`.
+    #[inline]
+    fn requires_const_checking(self) -> bool {
+        self != Mode::NonConstFn
+    }
 }
 
 impl fmt::Display for Mode {
@@ -48,7 +63,7 @@ impl fmt::Display for Mode {
             Mode::Const => write!(f, "constant"),
             Mode::Static | Mode::StaticMut => write!(f, "static"),
             Mode::ConstFn => write!(f, "constant function"),
-            Mode::Fn => write!(f, "function")
+            Mode::NonConstFn => write!(f, "function")
         }
     }
 }
@@ -135,10 +150,10 @@ enum ValueSource<'a, 'tcx> {
     },
 }
 
-/// A "qualif" is a way to lookg for something "bad" in the MIR that would prevent
-/// proper const evaluation.  So `return true` means "I found something bad, no reason
-/// to go on searching".  `false` is only returned if we definitely cannot find anything
-/// bad anywhere.
+/// A "qualif"(-ication) is a way to look for something "bad" in the MIR that would disqualify some
+/// code for promotion or prevent it from evaluating at compile time. So `return true` means
+/// "I found something bad, no reason to go on searching". `false` is only returned if we
+/// definitely cannot find anything bad anywhere.
 ///
 /// The default implementations proceed structurally.
 trait Qualif {
@@ -291,9 +306,11 @@ trait Qualif {
     }
 }
 
-/// Constant containing interior mutability (UnsafeCell).
+/// Constant containing interior mutability (`UnsafeCell<T>`).
 /// This must be ruled out to make sure that evaluating the constant at compile-time
-/// and run-time would produce the same result.
+/// and run-time would produce the same result. In particular, promotion of temporaries
+/// must not change program behavior; if the promoted could be written to, that would
+/// be a problem.
 struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
@@ -322,10 +339,10 @@ impl Qualif for HasMutInterior {
                             _ => return true,
                         }
                     } else if let ty::Array(_, len) = ty.sty {
-                        // FIXME(eddyb) the `cx.mode == Mode::Fn` condition
+                        // FIXME(eddyb) the `cx.mode == Mode::NonConstFn` condition
                         // seems unnecessary, given that this is merely a ZST.
                         match len.assert_usize(cx.tcx) {
-                            Some(0) if cx.mode == Mode::Fn => {},
+                            Some(0) if cx.mode == Mode::NonConstFn => {},
                             _ => return true,
                         }
                     } else {
@@ -351,9 +368,10 @@ impl Qualif for HasMutInterior {
     }
 }
 
-/// Constant containing an ADT that implements Drop.
-/// This must be ruled out because we cannot run `Drop` during compile-time
-/// as that might not be a `const fn`.
+/// Constant containing an ADT that implements `Drop`.
+/// This must be ruled out (a) because we cannot run `Drop` during compile-time
+/// as that might not be a `const fn`, and (b) because implicit promotion would
+/// remove side-effects that occur as part of dropping that value.
 struct NeedsDrop;
 
 impl Qualif for NeedsDrop {
@@ -376,11 +394,12 @@ impl Qualif for NeedsDrop {
     }
 }
 
-/// Not promotable at all - non-`const fn` calls, asm!,
+/// Not promotable at all - non-`const fn` calls, `asm!`,
 /// pointer comparisons, ptr-to-int casts, etc.
 /// Inside a const context all constness rules apply, so promotion simply has to follow the regular
 /// constant rules (modulo interior mutability or `Drop` rules which are handled `HasMutInterior`
-/// and `NeedsDrop` respectively).
+/// and `NeedsDrop` respectively). Basically this duplicates the checks that the const-checking
+/// visitor enforces by emitting errors when working in const context.
 struct IsNotPromotable;
 
 impl Qualif for IsNotPromotable {
@@ -411,9 +430,10 @@ impl Qualif for IsNotPromotable {
             ProjectionElem::Index(_) => {}
 
             ProjectionElem::Field(..) => {
-                if cx.mode == Mode::Fn {
+                if cx.mode == Mode::NonConstFn {
                     let base_ty = proj.base.ty(cx.body, cx.tcx).ty;
                     if let Some(def) = base_ty.ty_adt_def() {
+                        // No promotion of union field accesses.
                         if def.is_union() {
                             return true;
                         }
@@ -427,7 +447,7 @@ impl Qualif for IsNotPromotable {
 
     fn in_rvalue(cx: &ConstCx<'_, 'tcx>, rvalue: &Rvalue<'tcx>) -> bool {
         match *rvalue {
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if cx.mode == Mode::Fn => {
+            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if cx.mode == Mode::NonConstFn => {
                 let operand_ty = operand.ty(cx.body, cx.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
@@ -441,7 +461,7 @@ impl Qualif for IsNotPromotable {
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, _) if cx.mode == Mode::Fn => {
+            Rvalue::BinaryOp(op, ref lhs, _) if cx.mode == Mode::NonConstFn => {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(cx.body, cx.tcx).sty {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
@@ -524,9 +544,9 @@ impl Qualif for IsNotPromotable {
 
 /// Refers to temporaries which cannot be promoted *implicitly*.
 /// Explicit promotion happens e.g. for constant arguments declared via `rustc_args_required_const`.
-/// Implicit promotion has almost the same rules, except that it does not happen if `const fn`
-/// calls are involved. The call may be perfectly alright at runtime, but fail at compile time
-/// e.g. due to addresses being compared inside the function.
+/// Implicit promotion has almost the same rules, except that disallows `const fn` except for
+/// those marked `#[rustc_promotable]`. This is to avoid changing a legitimate run-time operation
+/// into a failing compile-time operation e.g. due to addresses being compared inside the function.
 struct IsNotImplicitlyPromotable;
 
 impl Qualif for IsNotImplicitlyPromotable {
@@ -538,7 +558,7 @@ impl Qualif for IsNotImplicitlyPromotable {
         args: &[Operand<'tcx>],
         _return_ty: Ty<'tcx>,
     ) -> bool {
-        if cx.mode == Mode::Fn {
+        if cx.mode == Mode::NonConstFn {
             if let ty::FnDef(def_id, _) = callee.ty(cx.body, cx.tcx).sty {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
@@ -602,8 +622,8 @@ impl ConstCx<'_, 'tcx> {
 /// Checks MIR for const-correctness, using `ConstCx`
 /// for value qualifications, and accumulates writes of
 /// rvalue/call results to locals, in `local_qualif`.
-/// For functions (constant or not), it also records
-/// candidates for promotion in `promotion_candidates`.
+/// It also records candidates for promotion in `promotion_candidates`,
+/// both in functions and const/static items.
 struct Checker<'a, 'tcx> {
     cx: ConstCx<'a, 'tcx>,
 
@@ -687,7 +707,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     // slightly pointless (even with feature-gating).
     fn not_const(&mut self) {
         unleash_miri!(self);
-        if self.mode != Mode::Fn {
+        if self.mode.requires_const_checking() {
             let mut err = struct_span_err!(
                 self.tcx.sess,
                 self.span,
@@ -722,7 +742,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 qualifs[HasMutInterior] = false;
                 qualifs[IsNotPromotable] = true;
 
-                if self.mode != Mode::Fn {
+                if self.mode.requires_const_checking() {
                     if let BorrowKind::Mut { .. } = kind {
                         let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
                                                        "references in {}s may only refer \
@@ -752,7 +772,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
                 // We might have a candidate for promotion.
                 let candidate = Candidate::Ref(location);
-                // We can only promote interior borrows of promotable temps.
+                // Start by traversing to the "base", with non-deref projections removed.
                 let mut place = place;
                 while let Place::Projection(ref proj) = *place {
                     if proj.elem == ProjectionElem::Deref {
@@ -761,6 +781,10 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     place = &proj.base;
                 }
                 debug!("qualify_consts: promotion candidate: place={:?}", place);
+                // We can only promote interior borrows of promotable temps (non-temps
+                // don't get promoted anyway).
+                // (If we bailed out of the loop due to a `Deref` above, we will definitely
+                // not enter the conditional here.)
                 if let Place::Base(PlaceBase::Local(local)) = *place {
                     if self.body.local_kind(local) == LocalKind::Temp {
                         debug!("qualify_consts: promotion candidate: local={:?}", local);
@@ -771,10 +795,11 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                         // `HasMutInterior`, from a type that does, e.g.:
                         // `let _: &'static _ = &(Cell::new(1), 2).1;`
                         let mut local_qualifs = self.qualifs_in_local(local);
-                        local_qualifs[HasMutInterior] = false;
-                        // Make sure there is no reason to prevent promotion.
+                        // Any qualifications, except HasMutInterior (see above), disqualify
+                        // from promotion.
                         // This is, in particular, the "implicit promotion" version of
                         // the check making sure that we don't run drop glue during const-eval.
+                        local_qualifs[HasMutInterior] = false;
                         if !local_qualifs.0.iter().any(|&qualif| qualif) {
                             debug!("qualify_consts: promotion candidate: {:?}", candidate);
                             self.promotion_candidates.push(candidate);
@@ -821,7 +846,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         debug!("store to {:?} {:?}", kind, index);
 
         // Only handle promotable temps in non-const functions.
-        if self.mode == Mode::Fn {
+        if self.mode == Mode::NonConstFn {
             if kind != LocalKind::Temp ||
                !self.temp_promotion_state[index].is_promotable() {
                 return;
@@ -956,7 +981,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         .get_attrs(*def_id)
                         .iter()
                         .any(|attr| attr.check_name(sym::thread_local)) {
-                    if self.mode != Mode::Fn {
+                    if self.mode.requires_const_checking() {
                         span_err!(self.tcx.sess, self.span, E0625,
                                     "thread-local statics cannot be \
                                     accessed at compile-time");
@@ -980,7 +1005,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
                 unleash_miri!(self);
 
-                if self.mode != Mode::Fn {
+                if self.mode.requires_const_checking() {
                     let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
                                                     "{}s cannot refer to statics, use \
                                                     a constant instead", self.mode);
@@ -1018,7 +1043,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
                 let base_ty = proj.base.ty(self.body, self.tcx).ty;
                 match self.mode {
-                    Mode::Fn => {},
+                    Mode::NonConstFn => {},
                     _ => {
                         if let ty::RawPtr(_) = base_ty.sty {
                             if !self.tcx.features().const_raw_ptr_deref {
@@ -1054,7 +1079,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                 }
                             },
 
-                            | Mode::Fn
+                            | Mode::NonConstFn
                             | Mode::Static
                             | Mode::StaticMut
                             | Mode::Const
@@ -1144,7 +1169,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
                     (CastTy::Ptr(_), CastTy::Int(_)) |
-                    (CastTy::FnPtr, CastTy::Int(_)) if self.mode != Mode::Fn => {
+                    (CastTy::FnPtr, CastTy::Int(_)) if self.mode != Mode::NonConstFn => {
                         unleash_miri!(self);
                         if !self.tcx.features().const_raw_ptr_to_usize_cast {
                             // in const fn and constants require the feature gate
@@ -1171,7 +1196,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                             op == BinOp::Offset);
 
                     unleash_miri!(self);
-                    if self.mode != Mode::Fn && !self.tcx.features().const_compare_raw_pointers {
+                    if self.mode.requires_const_checking() &&
+                        !self.tcx.features().const_compare_raw_pointers
+                    {
                         // require the feature gate inside constants and const fn
                         // FIXME: make it unsafe to use these operations
                         emit_feature_err(
@@ -1187,7 +1214,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
             Rvalue::NullaryOp(NullOp::Box, _) => {
                 unleash_miri!(self);
-                if self.mode != Mode::Fn {
+                if self.mode.requires_const_checking() {
                     let mut err = struct_span_err!(self.tcx.sess, self.span, E0010,
                                                    "allocations are not allowed in {}s", self.mode);
                     err.span_label(self.span, format!("allocation not allowed in {}s", self.mode));
@@ -1232,8 +1259,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                 // special intrinsic that can be called diretly without an intrinsic
                                 // feature gate needs a language feature gate
                                 "transmute" => {
-                                    // never promote transmute calls
-                                    if self.mode != Mode::Fn {
+                                    if self.mode.requires_const_checking() {
                                         // const eval transmute calls only with the feature gate
                                         if !self.tcx.features().const_transmute {
                                             emit_feature_err(
@@ -1256,7 +1282,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         }
                         _ => {
                             // In normal functions no calls are feature-gated.
-                            if self.mode != Mode::Fn {
+                            if self.mode.requires_const_checking() {
                                 let unleash_miri = self
                                     .tcx
                                     .sess
@@ -1315,7 +1341,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     }
                 }
                 ty::FnPtr(_) => {
-                    if self.mode != Mode::Fn {
+                    if self.mode.requires_const_checking() {
                         let mut err = self.tcx.sess.struct_span_err(
                             self.span,
                             &format!("function pointers are not allowed in const fn"));
@@ -1374,7 +1400,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             self.super_terminator_kind(kind, location);
 
             // Deny *any* live drops anywhere other than functions.
-            if self.mode != Mode::Fn {
+            if self.mode.requires_const_checking() {
                 unleash_miri!(self);
                 // HACK(eddyb): emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
@@ -1485,12 +1511,12 @@ impl MirPass for QualifyAndPromoteConstants {
         let id = tcx.hir().as_local_hir_id(def_id).unwrap();
         let mut const_promoted_temps = None;
         let mode = match tcx.hir().body_owner_kind_by_hir_id(id) {
-            hir::BodyOwnerKind::Closure => Mode::Fn,
+            hir::BodyOwnerKind::Closure => Mode::NonConstFn,
             hir::BodyOwnerKind::Fn => {
                 if tcx.is_const_fn(def_id) {
                     Mode::ConstFn
                 } else {
-                    Mode::Fn
+                    Mode::NonConstFn
                 }
             }
             hir::BodyOwnerKind::Const => {
@@ -1502,7 +1528,7 @@ impl MirPass for QualifyAndPromoteConstants {
         };
 
         debug!("run_pass: mode={:?}", mode);
-        if mode == Mode::Fn || mode == Mode::ConstFn {
+        if mode == Mode::NonConstFn || mode == Mode::ConstFn {
             // This is ugly because Checker holds onto mir,
             // which can't be mutated until its scope ends.
             let (temps, candidates) = {
