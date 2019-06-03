@@ -8,3 +8,4 @@ publish = false
 [dependencies]
 once_cell = "0.2.0"
 itertools = "0.8.0"
+backtrace = "0.3.28"
