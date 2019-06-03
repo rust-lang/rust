@@ -7,7 +7,7 @@ use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::mir::BinOp;
 use rustc::mir::interpret::{
-    EvalResult, InterpError, Scalar, ConstValue
+    EvalResult, InterpError, Scalar, Immediate, Pointer
 };
 
 use super::{
