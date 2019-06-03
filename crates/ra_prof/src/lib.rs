@@ -225,6 +225,36 @@ fn print(lvl: usize, msgs: &[Message], out: &mut impl Write, longer_than: Durati
     }
 }
 
+/// Prints backtrace to stderr, useful for debugging.
+pub fn print_backtrace() {
+    let bt = backtrace::Backtrace::new();
+    eprintln!("{:?}", bt);
+}
+
+thread_local!(static IN_SCOPE: RefCell<bool> = RefCell::new(false));
+
+/// Allows to check if the current code is withing some dynamic scope, can be
+/// useful during debugging to figure out why a function is called.
+pub struct Scope {
+    _hidden: (),
+}
+
+impl Scope {
+    pub fn enter() -> Scope {
+        IN_SCOPE.with(|slot| *slot.borrow_mut() = true);
+        Scope { _hidden: () }
+    }
+    pub fn is_active() -> bool {
+        IN_SCOPE.with(|slot| *slot.borrow())
+    }
+}
+
+impl Drop for Scope {
+    fn drop(&mut self) {
+        IN_SCOPE.with(|slot| *slot.borrow_mut() = false);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
