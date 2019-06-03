@@ -1,6 +1,6 @@
 use crate::infer::canonical::{
     Canonical, Canonicalized, CanonicalizedQueryResponse, OriginalQueryValues,
-    QueryOutlivesConstraint, QueryResponse,
+    QueryRegionConstraints, QueryOutlivesConstraint, QueryResponse,
 };
 use crate::infer::{InferCtxt, InferOk};
 use std::fmt;
@@ -32,7 +32,7 @@ pub trait TypeOp<'tcx>: Sized + fmt::Debug {
     fn fully_perform(
         self,
         infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryOutlivesConstraint<'tcx>>>>)>;
+    ) -> Fallible<(Self::Output, Option<Rc<QueryRegionConstraints<'tcx>>>)>;
 }
 
 /// "Query type ops" are type ops that are implemented using a
@@ -140,16 +140,16 @@ where
     fn fully_perform(
         self,
         infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryOutlivesConstraint<'tcx>>>>)> {
-        let mut qrc = vec![];
-        let r = Q::fully_perform_into(self, infcx, &mut qrc)?;
+    ) -> Fallible<(Self::Output, Option<Rc<QueryRegionConstraints<'tcx>>>)> {
+        let mut outlives = vec![];
+        let r = Q::fully_perform_into(self, infcx, &mut outlives)?;
 
         // Promote the final query-region-constraints into a
         // (optional) ref-counted vector:
-        let opt_qrc = if qrc.is_empty() {
+        let opt_qrc = if outlives.is_empty() {
             None
         } else {
-            Some(Rc::new(qrc))
+            Some(Rc::new(QueryRegionConstraints { outlives }))
         };
 
         Ok((r, opt_qrc))

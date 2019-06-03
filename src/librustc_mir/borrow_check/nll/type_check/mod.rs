@@ -23,7 +23,7 @@ use crate::dataflow::MaybeInitializedPlaces;
 use either::Either;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::infer::canonical::QueryOutlivesConstraint;
+use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1093,12 +1093,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         locations: Locations,
         category: ConstraintCategory,
-        data: &[QueryOutlivesConstraint<'tcx>],
+        data: &QueryRegionConstraints<'tcx>,
     ) {
         debug!(
             "push_region_constraints: constraints generated at {:?} are {:#?}",
             locations, data
         );
+
+        let QueryRegionConstraints { outlives } = data;
 
         constraint_conversion::ConstraintConversion::new(
             self.infcx,
@@ -1109,7 +1111,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations,
             category,
             &mut self.borrowck_context.constraints,
-        ).convert_all(&data);
+        ).convert_all(outlives);
     }
 
     /// Convenient wrapper around `relate_tys::relate_types` -- see
@@ -2508,10 +2510,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
-            let closure_constraints =
-                closure_region_requirements.apply_requirements(tcx, def_id, substs);
+            let closure_constraints = QueryRegionConstraints {
+                outlives: closure_region_requirements.apply_requirements(tcx, def_id, substs)
+            };
 
             let bounds_mapping = closure_constraints
+                .outlives
                 .iter()
                 .enumerate()
                 .filter_map(|(idx, constraint)| {

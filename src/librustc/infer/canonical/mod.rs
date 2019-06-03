@@ -196,7 +196,15 @@ pub struct QueryResponse<'tcx, R> {
 
 #[derive(Clone, Debug, Default, HashStable)]
 pub struct QueryRegionConstraints<'tcx> {
-    outlives: Vec<QueryOutlivesConstraint<'tcx>>,
+    pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
+}
+
+impl QueryRegionConstraints<'_> {
+    /// Represents an empty (trivially true) set of region
+    /// constraints.
+    pub fn is_empty(&self) -> bool {
+        self.outlives.is_empty()
+    }
 }
 
 pub type Canonicalized<'tcx, V> = Canonical<'tcx, V>;

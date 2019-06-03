@@ -173,8 +173,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
-        let outlives_constraints = self.with_region_constraints(|region_constraints| {
-            make_query_outlives(
+        let region_constraints = self.with_region_constraints(|region_constraints| {
+            make_query_region_constraints(
                 tcx,
                 region_obligations
                     .iter()
@@ -191,9 +191,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         Ok(QueryResponse {
             var_values: inference_vars,
-            region_constraints: QueryRegionConstraints {
-                outlives: outlives_constraints,
-            },
+            region_constraints,
             certainty,
             value: answer,
         })
@@ -647,11 +645,11 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
 /// Given the region obligations and constraints scraped from the infcx,
 /// creates query region constraints.
-pub fn make_query_outlives<'tcx>(
+pub fn make_query_region_constraints<'tcx>(
     tcx: TyCtxt<'tcx>,
     outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
-) -> Vec<QueryOutlivesConstraint<'tcx>> {
+) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData {
         constraints,
         verifys,
@@ -690,5 +688,5 @@ pub fn make_query_outlives<'tcx>(
         )
         .collect();
 
-    outlives
+    QueryRegionConstraints { outlives }
 }
