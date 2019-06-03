@@ -25,7 +25,7 @@ unwind = { path = "../libunwind" }
 hashbrown = { version = "0.4.0", features = ['rustc-dep-of-std'] }
 
 [dependencies.backtrace]
-version = "0.3.25"
+version = "0.3.29"
 default-features = false # don't use coresymbolication on OSX
 features = [
   "rustc-dep-of-std", # enable build support for integrating into libstd

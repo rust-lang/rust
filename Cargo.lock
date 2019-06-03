@@ -112,7 +112,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "backtrace"
-version = "0.3.25"
+version = "0.3.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "autocfg 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -837,7 +837,7 @@ name = "error-chain"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "backtrace 0.3.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "backtrace 0.3.29 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -845,7 +845,7 @@ name = "error-chain"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "backtrace 0.3.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "backtrace 0.3.29 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -860,7 +860,7 @@ name = "failure"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "backtrace 0.3.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "backtrace 0.3.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2375,7 +2375,7 @@ name = "rustc"
 version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
- "backtrace 0.3.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "backtrace 0.3.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "chalk-engine 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3336,7 +3336,7 @@ name = "std"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
- "backtrace 0.3.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "backtrace 0.3.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
@@ -4120,7 +4120,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)" = "a1e964f9e24d588183fcb43503abda40d288c8657dfc27311516ce2f05675aef"
 "checksum atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)" = "9a7d5b8723950951411ee34d271d99dddcc2035a16ab25310ea2c8cfd4369652"
 "checksum autocfg 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "0e49efa51329a5fd37e7c79db4621af617cd4e3e5bc224939808d076077077bf"
-"checksum backtrace 0.3.25 (registry+https://github.com/rust-lang/crates.io-index)" = "1c50b4cb6d852a8567d98bb11c03f91ccec4dfbd88778bc1b92789c624081283"
+"checksum backtrace 0.3.29 (registry+https://github.com/rust-lang/crates.io-index)" = "2d631cd7af21b7ff796293f1990104e3cdb606852863bac32f000c193aa35dfb"
 "checksum backtrace-sys 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)" = "6ea90dd7b012b3d1a2cb6bec16670a0db2c95d4e931e84f4047e0460c1b34c8d"
 "checksum bit-set 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6f1efcc46c18245a69c38fcc5cc650f16d3a59d034f3106e9ed63748f695730a"
 "checksum bit-vec 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4440d5cb623bb7390ae27fec0bb6c61111969860f8e3ae198bfa0663645e67cf"
