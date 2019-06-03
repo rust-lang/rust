@@ -461,35 +461,7 @@ impl Qualif for IsNotPromotable {
                     Abi::RustIntrinsic |
                     Abi::PlatformIntrinsic => {
                         assert!(!cx.tcx.is_const_fn(def_id));
-                        match &cx.tcx.item_name(def_id).as_str()[..] {
-                            | "size_of"
-                            | "min_align_of"
-                            | "needs_drop"
-                            | "type_id"
-                            | "bswap"
-                            | "bitreverse"
-                            | "ctpop"
-                            | "cttz"
-                            | "cttz_nonzero"
-                            | "ctlz"
-                            | "ctlz_nonzero"
-                            | "overflowing_add"
-                            | "overflowing_sub"
-                            | "overflowing_mul"
-                            | "unchecked_shl"
-                            | "unchecked_shr"
-                            | "rotate_left"
-                            | "rotate_right"
-                            | "add_with_overflow"
-                            | "sub_with_overflow"
-                            | "mul_with_overflow"
-                            | "saturating_add"
-                            | "saturating_sub"
-                            | "transmute"
-                            => return true,
-
-                            _ => {}
-                        }
+                        return true
                     }
                     _ => {
                         let is_const_fn =
