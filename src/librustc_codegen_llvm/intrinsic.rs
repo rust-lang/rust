@@ -212,7 +212,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             "type_name" => {
                 let tp_ty = substs.type_at(0);
-                let ty_name = rustc_mir::interpret::type_name(self.tcx, tp_ty);
+                let ty_name = self.tcx.type_name(tp_ty);
                 OperandRef::from_const(self, ty_name).immediate_or_packed_pair(self)
             }
             "type_id" => {

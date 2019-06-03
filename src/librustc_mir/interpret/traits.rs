@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, Instance};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
 
@@ -55,8 +55,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         );
         let tcx = &*self.tcx;
 
-        let drop = crate::monomorphize::resolve_drop_in_place(*tcx, ty);
+        let drop = Instance::resolve_drop_in_place(*tcx, ty);
         let drop = self.memory.create_fn_alloc(drop);
+
         // no need to do any alignment checks on the memory accesses below, because we know the
         // allocation is correctly aligned as we created it above. Also we're only offsetting by
         // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.

@@ -9,6 +9,8 @@ use rustc_data_structures::fx::FxHashSet;
 mod pretty;
 pub use self::pretty::*;
 
+pub mod obsolete;
+
 pub trait Print<'gcx, 'tcx, P> {
     type Output;
     type Error;

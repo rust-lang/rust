@@ -1,8 +1,8 @@
 use super::BackendTypes;
+use rustc::mir::mono::CodegenUnit;
 use rustc::session::Session;
 use rustc::ty::{self, Instance, Ty};
 use rustc::util::nodemap::FxHashMap;
-use rustc_mir::monomorphize::partitioning::CodegenUnit;
 use std::cell::RefCell;
 use std::sync::Arc;
 

@@ -97,24 +97,20 @@ use std::cmp;
 use std::sync::Arc;
 
 use syntax::symbol::InternedString;
-use rustc::dep_graph::{WorkProductId, WorkProduct, DepNode, DepConstructor};
-use rustc::hir::{CodegenFnAttrFlags, HirId};
+use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
-use rustc::mir::mono::{Linkage, Visibility, CodegenUnitNameBuilder};
+use rustc::mir::mono::{Linkage, Visibility, CodegenUnitNameBuilder, CodegenUnit};
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::ty::{self, DefIdTree, TyCtxt, InstanceDef};
 use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
 use rustc::util::common::time;
 use rustc::util::nodemap::{DefIdSet, FxHashMap, FxHashSet};
-use rustc::mir::mono::MonoItem;
+use rustc::mir::mono::{MonoItem, InstantiationMode};
 
 use crate::monomorphize::collector::InliningMap;
 use crate::monomorphize::collector::{self, MonoItemCollectionMode};
-use crate::monomorphize::item::{MonoItemExt, InstantiationMode};
-
-pub use rustc::mir::mono::CodegenUnit;
 
 pub enum PartitioningStrategy {
     /// Generates one codegen unit per source-level module.
@@ -122,93 +118,6 @@ pub enum PartitioningStrategy {
 
     /// Partition the whole crate into a fixed number of codegen units.
     FixedUnitCount(usize)
-}
-
-pub trait CodegenUnitExt<'tcx> {
-    fn as_codegen_unit(&self) -> &CodegenUnit<'tcx>;
-
-    fn contains_item(&self, item: &MonoItem<'tcx>) -> bool {
-        self.items().contains_key(item)
-    }
-
-    fn name<'a>(&'a self) -> &'a InternedString
-        where 'tcx: 'a,
-    {
-        &self.as_codegen_unit().name()
-    }
-
-    fn items(&self) -> &FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
-        &self.as_codegen_unit().items()
-    }
-
-    fn work_product_id(&self) -> WorkProductId {
-        WorkProductId::from_cgu_name(&self.name().as_str())
-    }
-
-    fn work_product(&self, tcx: TyCtxt<'_, '_, '_>) -> WorkProduct {
-        let work_product_id = self.work_product_id();
-        tcx.dep_graph
-           .previous_work_product(&work_product_id)
-           .unwrap_or_else(|| {
-                panic!("Could not find work-product for CGU `{}`", self.name())
-            })
-    }
-
-    fn items_in_deterministic_order<'a>(&self,
-                                        tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                        -> Vec<(MonoItem<'tcx>,
-                                                (Linkage, Visibility))> {
-        // The codegen tests rely on items being process in the same order as
-        // they appear in the file, so for local items, we sort by node_id first
-        #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey(Option<HirId>, ty::SymbolName);
-
-        fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   item: MonoItem<'tcx>) -> ItemSortKey {
-            ItemSortKey(match item {
-                MonoItem::Fn(ref instance) => {
-                    match instance.def {
-                        // We only want to take HirIds of user-defined
-                        // instances into account. The others don't matter for
-                        // the codegen tests and can even make item order
-                        // unstable.
-                        InstanceDef::Item(def_id) => {
-                            tcx.hir().as_local_hir_id(def_id)
-                        }
-                        InstanceDef::VtableShim(..) |
-                        InstanceDef::Intrinsic(..) |
-                        InstanceDef::FnPtrShim(..) |
-                        InstanceDef::Virtual(..) |
-                        InstanceDef::ClosureOnceShim { .. } |
-                        InstanceDef::DropGlue(..) |
-                        InstanceDef::CloneShim(..) => {
-                            None
-                        }
-                    }
-                }
-                MonoItem::Static(def_id) => {
-                    tcx.hir().as_local_hir_id(def_id)
-                }
-                MonoItem::GlobalAsm(hir_id) => {
-                    Some(hir_id)
-                }
-            }, item.symbol_name(tcx))
-        }
-
-        let mut items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
-        items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
-        items
-    }
-
-    fn codegen_dep_node(&self, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> DepNode {
-        DepNode::new(tcx, DepConstructor::CompileCodegenUnit(self.name().clone()))
-    }
-}
-
-impl<'tcx> CodegenUnitExt<'tcx> for CodegenUnit<'tcx> {
-    fn as_codegen_unit(&self) -> &CodegenUnit<'tcx> {
-        self
-    }
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
@@ -882,6 +791,50 @@ fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+#[inline(never)] // give this a place in the profiler
+fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mono_items: I)
+    where I: Iterator<Item=&'a MonoItem<'tcx>>
+{
+    let mut symbols: Vec<_> = mono_items.map(|mono_item| {
+        (mono_item, mono_item.symbol_name(tcx))
+    }).collect();
+
+    symbols.sort_by_key(|sym| sym.1);
+
+    for pair in symbols.windows(2) {
+        let sym1 = &pair[0].1;
+        let sym2 = &pair[1].1;
+
+        if sym1 == sym2 {
+            let mono_item1 = pair[0].0;
+            let mono_item2 = pair[1].0;
+
+            let span1 = mono_item1.local_span(tcx);
+            let span2 = mono_item2.local_span(tcx);
+
+            // Deterministically select one of the spans for error reporting
+            let span = match (span1, span2) {
+                (Some(span1), Some(span2)) => {
+                    Some(if span1.lo().0 > span2.lo().0 {
+                        span1
+                    } else {
+                        span2
+                    })
+                }
+                (span1, span2) => span1.or(span2),
+            };
+
+            let error_message = format!("symbol `{}` is already defined", sym1);
+
+            if let Some(span) = span {
+                tcx.sess.span_fatal(span, &error_message)
+            } else {
+                tcx.sess.fatal(&error_message)
+            }
+        }
+    }
+}
+
 fn collect_and_partition_mono_items<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cnum: CrateNum,
@@ -922,7 +875,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
 
     tcx.sess.abort_if_errors();
 
-    crate::monomorphize::assert_symbols_are_distinct(tcx, items.iter());
+    assert_symbols_are_distinct(tcx, items.iter());
 
     let strategy = if tcx.sess.opts.incremental.is_some() {
         PartitioningStrategy::PerModule

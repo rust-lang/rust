@@ -1,11 +1,10 @@
 use rustc::middle::lang_items;
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable, Instance};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnTypeExt};
 use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
 use rustc::mir::interpret::InterpError;
 use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
 use rustc_target::spec::abi::Abi;
-use rustc_mir::monomorphize;
 use crate::base;
 use crate::MemFlags;
 use crate::common::{self, IntPredicate};
@@ -310,7 +309,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(&ty);
-        let drop_fn = monomorphize::resolve_drop_in_place(bx.tcx(), ty);
+        let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
         if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.

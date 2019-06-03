@@ -1,5 +1,4 @@
 use rustc::mir::interpret::ErrorHandled;
-use rustc_mir::const_eval::const_field;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::ty::{self, Ty};
@@ -46,12 +45,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     _ => bug!("invalid simd shuffle type: {}", c.ty),
                 };
                 let values: Vec<_> = (0..fields).map(|field| {
-                    let field = const_field(
-                        bx.tcx(),
-                        ty::ParamEnv::reveal_all(),
-                        None,
-                        mir::Field::new(field as usize),
-                        c,
+                    let field = bx.tcx().const_field(
+                        ty::ParamEnv::reveal_all().and((&c, mir::Field::new(field as usize)))
                     );
                     if let Some(prim) = field.val.try_to_scalar() {
                         let layout = bx.layout_of(field_ty);

@@ -470,7 +470,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 }
 
-/// Projects to a field of a (variant of a) const.
+/// Extracts a field of a (variant of a) const.
 // this function uses `unwrap` copiously, because an already validated constant must have valid
 // fields and can thus never fail outside of compiler bugs
 pub fn const_field<'a, 'tcx>(

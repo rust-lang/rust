@@ -5,7 +5,7 @@ mod check_match;
 
 pub(crate) use self::check_match::check_match;
 
-use crate::const_eval::{const_field, const_variant_index};
+use crate::const_eval::const_variant_index;
 
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::constant::*;
@@ -949,7 +949,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
         let adt_subpattern = |i, variant_opt| {
             let field = Field::new(i);
-            let val = const_field(self.tcx, self.param_env, variant_opt, field, cv);
+            let val = crate::const_eval::const_field(
+                self.tcx, self.param_env, variant_opt, field, cv
+            );
             self.const_to_pat(instance, val, id, span)
         };
         let adt_subpatterns = |n, variant_opt| {

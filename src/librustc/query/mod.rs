@@ -4,6 +4,7 @@ use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use crate::ty::subst::SubstsRef;
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
+use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::traits;
 use crate::traits::query::{
@@ -431,6 +432,24 @@ rustc_queries! {
                 tcx.queries.on_disk_cache.try_load_query_result(tcx, id).map(Ok)
             }
         }
+
+        /// Extracts a field of a (variant of a) const.
+        query const_field(
+            key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field)>
+        ) -> &'tcx ty::Const<'tcx> {
+            eval_always
+            no_force
+            desc { "extract field of const" }
+        }
+
+        /// Produces an absolute path representation of the given type. See also the documentation
+        /// on `std::any::type_name`.
+        query type_name(key: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
+            eval_always
+            no_force
+            desc { "get absolute path of type" }
+        }
+
     }
 
     TypeChecking {

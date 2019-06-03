@@ -1,22 +1,30 @@
 use rustc::hir;
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::layout::HasTyCtxt;
-use std::fmt;
 use crate::base;
 use crate::traits::*;
 
-pub use rustc::mir::mono::MonoItem;
+use rustc::mir::mono::MonoItem;
 
-pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
+pub trait MonoItemExt<'a, 'tcx: 'a> {
+    fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx);
+    fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
+        &self,
+        cx: &'a Bx::CodegenCx,
+        linkage: Linkage,
+        visibility: Visibility
+    );
+    fn to_raw_string(&self) -> String;
+}
 
-pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
+impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
                self.to_string(cx.tcx(), true),
                self.to_raw_string(),
                cx.codegen_unit().name());
 
-        match *self.as_mono_item() {
+        match *self {
             MonoItem::Static(def_id) => {
                 cx.codegen_static(def_id, cx.tcx().is_mutable_static(def_id));
             }
@@ -54,7 +62,7 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
 
         debug!("symbol {}", &symbol_name);
 
-        match *self.as_mono_item() {
+        match *self {
             MonoItem::Static(def_id) => {
                 cx.predefine_static(def_id, linkage, visibility, &symbol_name);
             }
@@ -71,7 +79,7 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
     }
 
     fn to_raw_string(&self) -> String {
-        match *self.as_mono_item() {
+        match *self {
             MonoItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
                         instance.def,
@@ -86,5 +94,3 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
         }
     }
 }
-
-impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {}

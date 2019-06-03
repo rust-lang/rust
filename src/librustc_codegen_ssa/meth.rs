@@ -1,10 +1,9 @@
 use rustc_target::abi::call::FnType;
-use rustc_mir::monomorphize;
 
 use crate::callee;
 use crate::traits::*;
 
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, Instance};
 
 #[derive(Copy, Clone, Debug)]
 pub struct VirtualIndex(u64);
@@ -103,7 +102,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     // `get_vtable` in rust_mir/interpret/traits.rs
     // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
-        cx.get_fn(monomorphize::resolve_drop_in_place(cx.tcx(), ty)),
+        cx.get_fn(Instance::resolve_drop_in_place(cx.tcx(), ty)),
         cx.const_usize(layout.size.bytes()),
         cx.const_usize(layout.align.abi.bytes())
     ].iter().cloned().chain(methods).collect();

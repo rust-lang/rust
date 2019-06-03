@@ -4,10 +4,9 @@ use rustc::ich::NodeIdHashingMode;
 use rustc::mir::interpret::{ConstValue, Scalar};
 use rustc::ty::print::{PrettyPrinter, Printer, Print};
 use rustc::ty::subst::{Kind, UnpackedKind};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Instance};
 use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_mir::monomorphize::Instance;
 
 use log::debug;
 
