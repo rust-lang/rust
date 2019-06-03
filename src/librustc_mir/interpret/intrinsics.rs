@@ -83,7 +83,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 let alloc = alloc_type_name(self.tcx.tcx, substs.type_at(0));
                 let name_id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
                 let id_ptr = self.memory.tag_static_base_pointer(Pointer::new(name_id, Size::ZERO));
-                let name_val = Immediate::new_slice(Scalar::Ptr(id_ptr), alloc.bytes.len() as u64, self);
+                let alloc_len = alloc.bytes.len() as u64;
+                let name_val = Immediate::new_slice(Scalar::Ptr(id_ptr), alloc_len, self);
                 self.write_immediate(name_val, dest)?;
             }
             | "ctpop"
