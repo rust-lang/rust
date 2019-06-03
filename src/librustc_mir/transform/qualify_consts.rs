@@ -135,6 +135,12 @@ enum ValueSource<'a, 'tcx> {
     },
 }
 
+/// A "qualif" is a way to lookg for something "bad" in the MIR that would prevent
+/// proper const evaluation.  So `return true` means "I found something bad, no reason
+/// to go on searching".  `false` is only returned if we definitely cannot find anything
+/// bad anywhere.
+///
+/// The default implementations proceed structurally.
 trait Qualif {
     const IDX: usize;
 
@@ -285,7 +291,9 @@ trait Qualif {
     }
 }
 
-// Constant containing interior mutability (UnsafeCell).
+/// Constant containing interior mutability (UnsafeCell).
+/// This must be ruled out to make sure that evaluating the constant at compile-time
+/// and run-time would produce the same result.
 struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
@@ -343,7 +351,9 @@ impl Qualif for HasMutInterior {
     }
 }
 
-// Constant containing an ADT that implements Drop.
+/// Constant containing an ADT that implements Drop.
+/// This must be ruled out because we cannot run `Drop` during compile-time
+/// as that might not be a `const fn`.
 struct NeedsDrop;
 
 impl Qualif for NeedsDrop {
@@ -366,8 +376,11 @@ impl Qualif for NeedsDrop {
     }
 }
 
-// Not promotable at all - non-`const fn` calls, asm!,
-// pointer comparisons, ptr-to-int casts, etc.
+/// Not promotable at all - non-`const fn` calls, asm!,
+/// pointer comparisons, ptr-to-int casts, etc.
+/// Inside a const context all constness rules apply, so promotion simply has to follow the regular
+/// constant rules (modulo interior mutability or `Drop` rules which are handled `HasMutInterior`
+/// and `NeedsDrop` respectively).
 struct IsNotPromotable;
 
 impl Qualif for IsNotPromotable {
@@ -511,12 +524,9 @@ impl Qualif for IsNotPromotable {
 
 /// Refers to temporaries which cannot be promoted *implicitly*.
 /// Explicit promotion happens e.g. for constant arguments declared via `rustc_args_required_const`.
-/// Inside a const context all constness rules
-/// apply, so implicit promotion simply has to follow the regular constant rules (modulo interior
-/// mutability or `Drop` rules which are handled `HasMutInterior` and `NeedsDrop` respectively).
-/// Implicit promotion inside regular functions does not happen if `const fn` calls are involved,
-/// as the call may be perfectly alright at runtime, but fail at compile time e.g. due to addresses
-/// being compared inside the function.
+/// Implicit promotion has almost the same rules, except that it does not happen if `const fn`
+/// calls are involved. The call may be perfectly alright at runtime, but fail at compile time
+/// e.g. due to addresses being compared inside the function.
 struct IsNotImplicitlyPromotable;
 
 impl Qualif for IsNotImplicitlyPromotable {
@@ -589,6 +599,11 @@ impl ConstCx<'_, 'tcx> {
     }
 }
 
+/// Checks MIR for const-correctness, using `ConstCx`
+/// for value qualifications, and accumulates writes of
+/// rvalue/call results to locals, in `local_qualif`.
+/// For functions (constant or not), it also records
+/// candidates for promotion in `promotion_candidates`.
 struct Checker<'a, 'tcx> {
     cx: ConstCx<'a, 'tcx>,
 
@@ -757,6 +772,9 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                         // `let _: &'static _ = &(Cell::new(1), 2).1;`
                         let mut local_qualifs = self.qualifs_in_local(local);
                         local_qualifs[HasMutInterior] = false;
+                        // Make sure there is no reason to prevent promotion.
+                        // This is, in particular, the "implicit promotion" version of
+                        // the check making sure that we don't run drop glue during const-eval.
                         if !local_qualifs.0.iter().any(|&qualif| qualif) {
                             debug!("qualify_consts: promotion candidate: {:?}", candidate);
                             self.promotion_candidates.push(candidate);
@@ -920,11 +938,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     }
 }
 
-/// Checks MIR for const-correctness, using `ConstCx`
-/// for value qualifications, and accumulates writes of
-/// rvalue/call results to locals, in `local_qualif`.
-/// For functions (constant or not), it also records
-/// candidates for promotion in `promotion_candidates`.
 impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     fn visit_place_base(
         &mut self,
