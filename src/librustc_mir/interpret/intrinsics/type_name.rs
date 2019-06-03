@@ -228,7 +228,7 @@ pub fn type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx t
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-pub(super) 
+pub(super)
 fn alloc_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx Allocation {
     let path = AbsolutePathPrinter { tcx, path: String::new() }.print_type(ty).unwrap().path;
     let alloc = Allocation::from_byte_aligned_bytes(path.into_bytes());
