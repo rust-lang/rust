@@ -11,7 +11,6 @@ use std::process;
 use std::cmp;
 
 use build_helper::t;
-use num_cpus;
 use toml;
 use serde::Deserialize;
 use crate::cache::{INTERNER, Interned};
@@ -401,7 +400,7 @@ impl Config {
         config.rustc_error_format = flags.rustc_error_format;
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
-        config.jobs = flags.jobs;
+        config.jobs = flags.jobs.map(threads_from_config);
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
         config.dry_run = flags.dry_run;
@@ -583,13 +582,8 @@ impl Config {
 
             set(&mut config.rust_codegen_backends_dir, rust.codegen_backends_dir.clone());
 
-            match rust.codegen_units {
-                Some(0) => config.rust_codegen_units = Some(num_cpus::get() as u32),
-                Some(n) => config.rust_codegen_units = Some(n),
-                None => {}
-            }
-
-            config.rust_codegen_units_std = rust.codegen_units_std;
+            config.rust_codegen_units = rust.codegen_units.map(threads_from_config);
+            config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
         }
 
         if let Some(ref t) = toml.target {
@@ -686,5 +680,12 @@ impl Config {
 fn set<T>(field: &mut T, val: Option<T>) {
     if let Some(v) = val {
         *field = v;
+    }
+}
+
+fn threads_from_config(v: u32) -> u32 {
+    match v {
+        0 => num_cpus::get() as u32,
+        n => n,
     }
 }
