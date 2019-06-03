@@ -246,10 +246,7 @@ where
     let total_sep_len = sep.len() * sep_count.saturating_sub(1);
     let real_total = total_width + total_sep_len;
 
-    if real_total <= limit
-        && !pre_line_comments
-        && !items.into_iter().any(|item| item.as_ref().is_multiline())
-    {
+    if real_total <= limit && !items.into_iter().any(|item| item.as_ref().is_multiline()) {
         DefinitiveListTactic::Horizontal
     } else {
         match tactic {

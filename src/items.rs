@@ -15,7 +15,7 @@ use crate::comment::{
     FindUncommented,
 };
 use crate::config::lists::*;
-use crate::config::{BraceStyle, Config, Density, IndentStyle, Version};
+use crate::config::{BraceStyle, Config, IndentStyle, Version};
 use crate::expr::{
     format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
     ExprType, RhsTactics,
@@ -703,7 +703,7 @@ pub(crate) fn format_impl(
             &generics.where_clause,
             context.config.brace_style(),
             Shape::legacy(where_budget, offset.block_only()),
-            Density::Vertical,
+            false,
             "{",
             where_span_end,
             self_ty.span.hi(),
@@ -1044,11 +1044,7 @@ pub(crate) fn format_trait(
 
         // Rewrite where-clause.
         if !generics.where_clause.predicates.is_empty() {
-            let where_density = if context.config.indent_style() == IndentStyle::Block {
-                Density::Compressed
-            } else {
-                Density::Tall
-            };
+            let where_on_new_line = context.config.indent_style() != IndentStyle::Block;
 
             let where_budget = context.budget(last_line_width(&result));
             let pos_before_where = if generic_bounds.is_empty() {
@@ -1062,7 +1058,7 @@ pub(crate) fn format_trait(
                 &generics.where_clause,
                 context.config.brace_style(),
                 Shape::legacy(where_budget, offset.block_only()),
-                where_density,
+                where_on_new_line,
                 "{",
                 None,
                 pos_before_where,
@@ -1171,7 +1167,7 @@ impl<'a> Rewrite for TraitAliasBounds<'a> {
             &self.generics.where_clause,
             context.config.brace_style(),
             shape,
-            Density::Compressed,
+            false,
             ";",
             None,
             self.generics.where_clause.span.lo(),
@@ -1423,7 +1419,7 @@ fn format_tuple_struct(
                 &generics.where_clause,
                 context.config.brace_style(),
                 Shape::legacy(where_budget, offset.block_only()),
-                Density::Compressed,
+                false,
                 ";",
                 None,
                 body_hi,
@@ -1499,7 +1495,7 @@ fn rewrite_type_prefix(
         &generics.where_clause,
         context.config.brace_style(),
         Shape::legacy(where_budget, indent),
-        Density::Vertical,
+        false,
         "=",
         None,
         generics.span.hi(),
@@ -2258,7 +2254,7 @@ fn rewrite_fn_base(
         where_clause,
         context.config.brace_style(),
         Shape::indented(indent, context.config),
-        Density::Tall,
+        true,
         "{",
         Some(span.hi()),
         pos_before_where,
@@ -2390,7 +2386,7 @@ fn rewrite_args(
         &arg_items,
         context
             .config
-            .fn_args_density()
+            .fn_args_layout()
             .to_list_tactic(arg_items.len()),
         Separator::Comma,
         one_line_budget,
@@ -2677,7 +2673,7 @@ fn rewrite_where_clause(
     where_clause: &ast::WhereClause,
     brace_style: BraceStyle,
     shape: Shape,
-    density: Density,
+    on_new_line: bool,
     terminator: &str,
     span_end: Option<BytePos>,
     span_end_before_where: BytePos,
@@ -2757,7 +2753,7 @@ fn rewrite_where_clause(
     } else {
         terminator.len()
     };
-    if density == Density::Tall
+    if on_new_line
         || preds_str.contains('\n')
         || shape.indent.width() + " where ".len() + preds_str.len() + end_length > shape.width
     {
@@ -2848,7 +2844,7 @@ fn format_generics(
             &generics.where_clause,
             brace_style,
             Shape::legacy(budget, offset.block_only()),
-            Density::Tall,
+            true,
             "{",
             Some(span.hi()),
             span_end_before_where,

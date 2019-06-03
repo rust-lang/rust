@@ -1,4 +1,4 @@
-// rustfmt-fn_args_density: Compressed
+// rustfmt-fn_args_layout: Compressed
 // Test some of the ways function signatures can be customised.
 
 // Test compressed layout of args.

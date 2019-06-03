@@ -2,9 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
 - Change option `format_doc_comment` to `format_code_in_doc_comment`.
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
+- Stabilise `fn_args_density` configuration option and rename it to `fn_args_layout` #3581
 
 ## [1.2.2] 2019-04-24
 

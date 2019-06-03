@@ -58,10 +58,11 @@ pub enum IndentStyle {
 
 #[config_type]
 /// How to place a list-like items.
+/// FIXME: Issue-3581: this should be renamed to ItemsLayout when publishing 2.0
 pub enum Density {
     /// Fit as much on one line as possible.
     Compressed,
-    /// Use more lines.
+    /// Items are placed horizontally if sufficient space, vertically otherwise.
     Tall,
     /// Place every item on a separate line.
     Vertical,

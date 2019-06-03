@@ -1,4 +1,4 @@
-// rustfmt-fn_args_density: Compressed
+// rustfmt-fn_args_layout: Vertical
 // Function arguments density
 
 trait Lorem {

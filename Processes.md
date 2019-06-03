@@ -17,6 +17,7 @@ Open a pull request that closes the tracking issue. The tracking issue is listed
 
 - Update the `Config` enum marking the option as stable.
 - Update the the `Configuration.md` file marking the option as stable.
+- Update `CHANGELOG.md` marking the option as stable.
 
 ## After the stabilisation
 

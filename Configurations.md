@@ -629,13 +629,13 @@ trailing whitespaces.
 - **Possible values**: `true`, `false`
 - **Stable**: No (tracking issue: #3392)
 
-## `fn_args_density`
+## `fn_args_layout`
 
-Argument density in functions
+Control the layout of arguments in a function
 
 - **Default value**: `"Tall"`
 - **Possible values**: `"Compressed"`, `"Tall"`, `"Vertical"`
-- **Stable**: No (tracking issue: #3375)
+- **Stable**: Yes
 
 #### `"Tall"` (default):
 
