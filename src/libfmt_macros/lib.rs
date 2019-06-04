@@ -302,22 +302,19 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn raw(&self) -> usize {
-        self.style.map(|raw| raw + 1).unwrap_or(0)
-    }
-
     fn to_span_index(&self, pos: usize) -> SpanIndex {
         let mut pos = pos;
+        let raw = self.style.map(|raw| raw + 1).unwrap_or(0);
         for skip in &self.skips {
             if pos > *skip {
                 pos += 1;
-            } else if pos == *skip && self.raw() == 0 {
+            } else if pos == *skip && raw == 0 {
                 pos += 1;
             } else {
                 break;
             }
         }
-        SpanIndex(self.raw() + pos + 1)
+        SpanIndex(raw + pos + 1)
     }
 
     /// Forces consumption of the specified character. If the character is not
