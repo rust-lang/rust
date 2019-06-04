@@ -2019,7 +2019,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty], hir::BodyId) {
         Arguments {
             values: self.0.iter().enumerate().map(|(i, ty)| {
                 Argument {
-                    name: name_from_pat(&body.arguments[i].original_pat()),
+                    name: name_from_pat(&body.arguments[i].pat),
                     type_: ty.clean(cx),
                 }
             }).collect()

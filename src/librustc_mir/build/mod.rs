@@ -126,6 +126,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'
                             opt_ty_info = None;
                             self_arg = None;
                         }
+
                         ArgInfo(fn_sig.inputs()[index], opt_ty_info, Some(&*arg.pat), self_arg)
                     });
 
@@ -614,10 +615,7 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-struct ArgInfo<'gcx>(Ty<'gcx>,
-                     Option<Span>,
-                     Option<&'gcx hir::Pat>,
-                     Option<ImplicitSelfKind>);
+struct ArgInfo<'gcx>(Ty<'gcx>, Option<Span>, Option<&'gcx hir::Pat>, Option<ImplicitSelfKind>);
 
 fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    fn_id: hir::HirId,
@@ -883,21 +881,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // debuginfo and so that error reporting knows that this is a user
             // variable. For any other pattern the pattern introduces new
             // variables which will be named instead.
-            let mut name = None;
-            if let Some(pat) = pattern {
-                match pat.node {
-                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, _)
-                    | hir::PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, _) => {
-                        name = Some(ident.name);
-                    }
-                    _ => (),
-                }
-            }
-
-            let source_info = SourceInfo {
-                scope: OUTERMOST_SOURCE_SCOPE,
-                span: pattern.map_or(self.fn_span, |pat| pat.span)
+            let (name, span) = if let Some(pat) = pattern {
+                (pat.simple_ident().map(|ident| ident.name), pat.span)
+            } else {
+                (None, self.fn_span)
             };
+
+            let source_info = SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span, };
             self.local_decls.push(LocalDecl {
                 mutability: Mutability::Mut,
                 ty,
@@ -932,7 +922,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 match *pattern.kind {
                     // Don't introduce extra copies for simple bindings
-                    PatternKind::Binding { mutability, var, mode: BindingMode::ByValue, .. } => {
+                    PatternKind::Binding {
+                        mutability,
+                        var,
+                        mode: BindingMode::ByValue,
+                        subpattern: None,
+                        ..
+                    } => {
                         self.local_decls[local].mutability = mutability;
                         self.local_decls[local].is_user_variable =
                             if let Some(kind) = self_binding {

@@ -50,6 +50,7 @@ use errors::Applicability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::sync::Lrc;
 
 use std::collections::{BTreeSet, BTreeMap};
 use std::mem;
@@ -58,17 +59,17 @@ use syntax::attr;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::errors;
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::source_map::{respan, CompilerDesugaringKind, Spanned};
+use syntax::source_map::{self, respan, CompilerDesugaringKind, Spanned};
 use syntax::source_map::CompilerDesugaringKind::IfTemporary;
 use syntax::std_inject;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::Token;
 use syntax::visit::{self, Visitor};
-use syntax_pos::Span;
+use syntax_pos::{edition, Span};
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
@@ -465,32 +466,6 @@ impl<'a> LoweringContext<'a> {
                 visit::walk_pat(self, p)
             }
 
-            fn visit_fn(&mut self, fk: visit::FnKind<'lcx>, fd: &'lcx FnDecl, s: Span, _: NodeId) {
-                if fk.header().map(|h| h.asyncness.node.is_async()).unwrap_or(false) {
-                    // Don't visit the original pattern for async functions as it will be
-                    // replaced.
-                    for arg in &fd.inputs {
-                        if let ArgSource::AsyncFn(pat) = &arg.source { self.visit_pat(pat); }
-                        self.visit_ty(&arg.ty)
-                    }
-                    self.visit_fn_ret_ty(&fd.output);
-
-                    match fk {
-                        visit::FnKind::ItemFn(_, decl, _, body) => {
-                            self.visit_fn_header(decl);
-                            self.visit_block(body)
-                        },
-                        visit::FnKind::Method(_, sig, _, body) => {
-                            self.visit_fn_header(&sig.header);
-                            self.visit_block(body)
-                        },
-                        visit::FnKind::Closure(body) => self.visit_expr(body),
-                    }
-                } else {
-                    visit::walk_fn(self, fk, fd, s)
-                }
-            }
-
             fn visit_item(&mut self, item: &'lcx Item) {
                 let hir_id = self.lctx.allocate_hir_id_counter(item.id);
 
@@ -806,7 +781,7 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn record_body(&mut self, value: hir::Expr, arguments: HirVec<hir::Arg>) -> hir::BodyId {
+    fn record_body(&mut self, arguments: HirVec<hir::Arg>, value: hir::Expr) -> hir::BodyId {
         if self.is_generator && self.is_async_body {
             span_err!(
                 self.sess,
@@ -853,6 +828,27 @@ impl<'a> LoweringContext<'a> {
 
     fn diagnostic(&self) -> &errors::Handler {
         self.sess.diagnostic()
+    }
+
+    /// Reuses the span but adds information like the kind of the desugaring and features that are
+    /// allowed inside this span.
+    fn mark_span_with_reason(
+        &self,
+        reason: CompilerDesugaringKind,
+        span: Span,
+        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    ) -> Span {
+        let mark = Mark::fresh(Mark::root());
+        mark.set_expn_info(source_map::ExpnInfo {
+            call_site: span,
+            def_site: Some(span),
+            format: source_map::CompilerDesugaring(reason),
+            allow_internal_unstable,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            edition: edition::Edition::from_session(),
+        });
+        span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     }
 
     fn with_anonymous_lifetime_mode<R>(
@@ -1125,27 +1121,21 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::ExprKind {
-        let prev_is_generator = mem::replace(&mut self.is_generator, false);
-        let prev_is_async_body = mem::replace(&mut self.is_async_body, true);
+        let capture_clause = self.lower_capture_clause(capture_clause);
         let output = match ret_ty {
             Some(ty) => FunctionRetTy::Ty(P(ty.clone())),
             None => FunctionRetTy::Default(span),
         };
-        let decl = FnDecl {
+        let ast_decl = FnDecl {
             inputs: vec![],
             output,
             c_variadic: false
         };
-        // Lower the arguments before the body otherwise the body will call `lower_res` expecting
-        // the argument to have been assigned an id already.
-        let arguments = self.lower_args(Some(&decl));
-        let body_expr = body(self);
-        let body_id = self.record_body(body_expr, arguments);
-        self.is_generator = prev_is_generator;
-        self.is_async_body = prev_is_async_body;
-
-        let capture_clause = self.lower_capture_clause(capture_clause);
-        let decl = self.lower_fn_decl(&decl, None, /* impl trait allowed */ false, None);
+        let decl = self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None);
+        let body_id = self.lower_fn_body(&ast_decl, |this| {
+            this.is_async_body = true;
+            body(this)
+        });
         let generator = hir::Expr {
             hir_id: self.lower_node_id(closure_node_id),
             node: hir::ExprKind::Closure(capture_clause, decl, body_id, span,
@@ -1154,7 +1144,7 @@ impl<'a> LoweringContext<'a> {
             attrs: ThinVec::new(),
         };
 
-        let unstable_span = self.sess.source_map().mark_span_with_reason(
+        let unstable_span = self.mark_span_with_reason(
             CompilerDesugaringKind::Async,
             span,
             Some(vec![sym::gen_future].into()),
@@ -1164,18 +1154,32 @@ impl<'a> LoweringContext<'a> {
         hir::ExprKind::Call(P(gen_future), hir_vec![generator])
     }
 
-    fn lower_body<F>(&mut self, decl: Option<&FnDecl>, f: F) -> hir::BodyId
-    where
-        F: FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
-    {
-        let prev_generator = mem::replace(&mut self.is_generator, false);
-        let prev_async = mem::replace(&mut self.is_async_body, false);
-        let arguments = self.lower_args(decl);
-        let result = f(self);
-        let r = self.record_body(result, arguments);
-        self.is_generator = prev_generator;
-        self.is_async_body = prev_async;
-        return r;
+    fn lower_body(
+        &mut self,
+        f: impl FnOnce(&mut LoweringContext<'_>) -> (HirVec<hir::Arg>, hir::Expr),
+    ) -> hir::BodyId {
+        let prev_is_generator = mem::replace(&mut self.is_generator, false);
+        let prev_is_async_body = mem::replace(&mut self.is_async_body, false);
+        let (arguments, result) = f(self);
+        let body_id = self.record_body(arguments, result);
+        self.is_generator = prev_is_generator;
+        self.is_async_body = prev_is_async_body;
+        body_id
+    }
+
+    fn lower_fn_body(
+        &mut self,
+        decl: &FnDecl,
+        body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
+    ) -> hir::BodyId {
+        self.lower_body(|this| (
+            decl.inputs.iter().map(|x| this.lower_arg(x)).collect(),
+            body(this),
+        ))
+    }
+
+    fn lower_const_body(&mut self, expr: &Expr) -> hir::BodyId {
+        self.lower_body(|this| (hir_vec![], this.lower_expr(expr)))
     }
 
     fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
@@ -1561,7 +1565,7 @@ impl<'a> LoweringContext<'a> {
         // desugaring that explicitly states that we don't want to track that.
         // Not tracking it makes lints in rustc and clippy very fragile as
         // frequently opened issues show.
-        let exist_ty_span = self.sess.source_map().mark_span_with_reason(
+        let exist_ty_span = self.mark_span_with_reason(
             CompilerDesugaringKind::ExistentialReturnType,
             span,
             None,
@@ -2266,15 +2270,8 @@ impl<'a> LoweringContext<'a> {
             init: l.init.as_ref().map(|e| P(self.lower_expr(e))),
             span: l.span,
             attrs: l.attrs.clone(),
-            source: self.lower_local_source(l.source),
+            source: hir::LocalSource::Normal,
         }, ids)
-    }
-
-    fn lower_local_source(&mut self, ls: LocalSource) -> hir::LocalSource {
-        match ls {
-            LocalSource::Normal => hir::LocalSource::Normal,
-            LocalSource::AsyncFn => hir::LocalSource::AsyncFn,
-        }
     }
 
     fn lower_mutability(&mut self, m: Mutability) -> hir::Mutability {
@@ -2284,22 +2281,10 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_args(&mut self, decl: Option<&FnDecl>) -> HirVec<hir::Arg> {
-        decl.map_or(hir_vec![], |decl| decl.inputs.iter().map(|x| self.lower_arg(x)).collect())
-    }
-
     fn lower_arg(&mut self, arg: &Arg) -> hir::Arg {
         hir::Arg {
             hir_id: self.lower_node_id(arg.id),
             pat: self.lower_pat(&arg.pat),
-            source: self.lower_arg_source(&arg.source),
-        }
-    }
-
-    fn lower_arg_source(&mut self, source: &ArgSource) -> hir::ArgSource {
-        match source {
-            ArgSource::Normal => hir::ArgSource::Normal,
-            ArgSource::AsyncFn(pat) => hir::ArgSource::AsyncFn(self.lower_pat(pat)),
         }
     }
 
@@ -2435,7 +2420,7 @@ impl<'a> LoweringContext<'a> {
     ) -> hir::FunctionRetTy {
         let span = output.span();
 
-        let exist_ty_span = self.sess.source_map().mark_span_with_reason(
+        let exist_ty_span = self.mark_span_with_reason(
             CompilerDesugaringKind::Async,
             span,
             None,
@@ -2998,10 +2983,13 @@ impl<'a> LoweringContext<'a> {
         bounds.iter().map(|bound| self.lower_param_bound(bound, itctx.reborrow())).collect()
     }
 
-    fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> P<hir::Block> {
+    fn lower_block_with_stmts(
+        &mut self,
+        b: &Block,
+        targeted_by_break: bool,
+        mut stmts: Vec<hir::Stmt>,
+    ) -> P<hir::Block> {
         let mut expr = None;
-
-        let mut stmts = vec![];
 
         for (index, stmt) in b.stmts.iter().enumerate() {
             if index == b.stmts.len() - 1 {
@@ -3025,56 +3013,136 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn lower_async_body(
+    fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> P<hir::Block> {
+        self.lower_block_with_stmts(b, targeted_by_break, vec![])
+    }
+
+    fn lower_maybe_async_body(
         &mut self,
         decl: &FnDecl,
-        asyncness: &IsAsync,
+        asyncness: IsAsync,
         body: &Block,
     ) -> hir::BodyId {
-        self.lower_body(Some(&decl), |this| {
-            if let IsAsync::Async { closure_id, ref arguments, .. } = asyncness {
-                let mut body = body.clone();
-
-                // Async function arguments are lowered into the closure body so that they are
-                // captured and so that the drop order matches the equivalent non-async functions.
-                //
-                //     async fn foo(<pattern>: <ty>, <pattern>: <ty>, <pattern>: <ty>) {
-                //       async move {
-                //       }
-                //     }
-                //
-                //     // ...becomes...
-                //     fn foo(__arg0: <ty>, __arg1: <ty>, __arg2: <ty>) {
-                //       async move {
-                //         let __arg2 = __arg2;
-                //         let <pattern> = __arg2;
-                //         let __arg1 = __arg1;
-                //         let <pattern> = __arg1;
-                //         let __arg0 = __arg0;
-                //         let <pattern> = __arg0;
-                //       }
-                //     }
-                //
-                // If `<pattern>` is a simple ident, then it is lowered to a single
-                // `let <pattern> = <pattern>;` statement as an optimization.
-                for a in arguments.iter().rev() {
-                    if let Some(pat_stmt) = a.pat_stmt.clone() {
-                        body.stmts.insert(0, pat_stmt);
-                    }
-                    body.stmts.insert(0, a.move_stmt.clone());
-                }
-
-                let async_expr = this.make_async_expr(
-                    CaptureBy::Value, *closure_id, None, body.span,
-                    |this| {
-                        let body = this.lower_block(&body, false);
-                        this.expr_block(body, ThinVec::new())
-                    });
-                this.expr(body.span, async_expr, ThinVec::new())
-            } else {
+        let closure_id = match asyncness {
+            IsAsync::Async { closure_id, .. } => closure_id,
+            IsAsync::NotAsync => return self.lower_fn_body(&decl, |this| {
                 let body = this.lower_block(body, false);
                 this.expr_block(body, ThinVec::new())
+            }),
+        };
+
+        self.lower_body(|this| {
+            let mut arguments: Vec<hir::Arg> = Vec::new();
+            let mut statements: Vec<hir::Stmt> = Vec::new();
+
+            // Async function arguments are lowered into the closure body so that they are
+            // captured and so that the drop order matches the equivalent non-async functions.
+            //
+            // from:
+            //
+            //     async fn foo(<pattern>: <ty>, <pattern>: <ty>, <pattern>: <ty>) {
+            //       async move {
+            //       }
+            //     }
+            //
+            // into:
+            //
+            //     fn foo(__arg0: <ty>, __arg1: <ty>, __arg2: <ty>) {
+            //       async move {
+            //         let __arg2 = __arg2;
+            //         let <pattern> = __arg2;
+            //         let __arg1 = __arg1;
+            //         let <pattern> = __arg1;
+            //         let __arg0 = __arg0;
+            //         let <pattern> = __arg0;
+            //       }
+            //     }
+            //
+            // If `<pattern>` is a simple ident, then it is lowered to a single
+            // `let <pattern> = <pattern>;` statement as an optimization.
+            for (index, argument) in decl.inputs.iter().enumerate() {
+                let argument = this.lower_arg(argument);
+                let span = argument.pat.span;
+
+                // Check if this is a binding pattern, if so, we can optimize and avoid adding a
+                // `let <pat> = __argN;` statement. In this case, we do not rename the argument.
+                let (ident, is_simple_argument) = match argument.pat.node {
+                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, _) =>
+                        (ident, true),
+                    _ => {
+                        // Replace the ident for bindings that aren't simple.
+                        let name = format!("__arg{}", index);
+                        let ident = Ident::from_str(&name);
+
+                        (ident, false)
+                    },
+                };
+
+                let desugared_span =
+                    this.mark_span_with_reason(CompilerDesugaringKind::Async, span, None);
+
+                // Construct an argument representing `__argN: <ty>` to replace the argument of the
+                // async function.
+                //
+                // If this is the simple case, this argument will end up being the same as the
+                // original argument, but with a different pattern id.
+                let (new_argument_pat, new_argument_id) = this.pat_ident(desugared_span, ident);
+                let new_argument = hir::Arg {
+                    hir_id: argument.hir_id,
+                    pat: new_argument_pat,
+                };
+
+                if is_simple_argument {
+                    // If this is the simple case, then we only insert one statement that is
+                    // `let <pat> = <pat>;`. We re-use the original argument's pattern so that
+                    // `HirId`s are densely assigned.
+                    let expr = this.expr_ident(desugared_span, ident, new_argument_id);
+                    let stmt = this.stmt_let_pat(
+                        desugared_span, Some(P(expr)), argument.pat, hir::LocalSource::AsyncFn);
+                    statements.push(stmt);
+                } else {
+                    // If this is not the simple case, then we construct two statements:
+                    //
+                    // ```
+                    // let __argN = __argN;
+                    // let <pat> = __argN;
+                    // ```
+                    //
+                    // The first statement moves the argument into the closure and thus ensures
+                    // that the drop order is correct.
+                    //
+                    // The second statement creates the bindings that the user wrote.
+
+                    // Construct the `let mut __argN = __argN;` statement. It must be a mut binding
+                    // because the user may have specified a `ref mut` binding in the next
+                    // statement.
+                    let (move_pat, move_id) = this.pat_ident_binding_mode(
+                        desugared_span, ident, hir::BindingAnnotation::Mutable);
+                    let move_expr = this.expr_ident(desugared_span, ident, new_argument_id);
+                    let move_stmt = this.stmt_let_pat(
+                        desugared_span, Some(P(move_expr)), move_pat, hir::LocalSource::AsyncFn);
+
+                    // Construct the `let <pat> = __argN;` statement. We re-use the original
+                    // argument's pattern so that `HirId`s are densely assigned.
+                    let pattern_expr = this.expr_ident(desugared_span, ident, move_id);
+                    let pattern_stmt = this.stmt_let_pat(
+                        desugared_span, Some(P(pattern_expr)), argument.pat,
+                        hir::LocalSource::AsyncFn);
+
+                    statements.push(move_stmt);
+                    statements.push(pattern_stmt);
+                };
+
+                arguments.push(new_argument);
             }
+
+            let async_expr = this.make_async_expr(
+                CaptureBy::Value, closure_id, None, body.span,
+                |this| {
+                    let body = this.lower_block_with_stmts(body, false, statements);
+                    this.expr_block(body, ThinVec::new())
+                });
+            (HirVec::from(arguments), this.expr(body.span, async_expr, ThinVec::new()))
         })
     }
 
@@ -3098,7 +3166,6 @@ impl<'a> LoweringContext<'a> {
                 self.lower_use_tree(use_tree, &prefix, id, vis, ident, attrs)
             }
             ItemKind::Static(ref t, m, ref e) => {
-                let value = self.lower_body(None, |this| this.lower_expr(e));
                 hir::ItemKind::Static(
                     self.lower_ty(
                         t,
@@ -3109,11 +3176,10 @@ impl<'a> LoweringContext<'a> {
                         }
                     ),
                     self.lower_mutability(m),
-                    value,
+                    self.lower_const_body(e),
                 )
             }
             ItemKind::Const(ref t, ref e) => {
-                let value = self.lower_body(None, |this| this.lower_expr(e));
                 hir::ItemKind::Const(
                     self.lower_ty(
                         t,
@@ -3123,50 +3189,31 @@ impl<'a> LoweringContext<'a> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                         }
                     ),
-                    value
+                    self.lower_const_body(e)
                 )
             }
-            ItemKind::Fn(ref decl, ref header, ref generics, ref body) => {
+            ItemKind::Fn(ref decl, header, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
-                    let mut lower_fn = |decl: &FnDecl| {
-                        // Note: we don't need to change the return type from `T` to
-                        // `impl Future<Output = T>` here because lower_body
-                        // only cares about the input argument patterns in the function
-                        // declaration (decl), not the return types.
-                        let body_id = this.lower_async_body(&decl, &header.asyncness.node, body);
 
-                        let (generics, fn_decl) = this.add_in_band_defs(
-                            generics,
-                            fn_def_id,
-                            AnonymousLifetimeMode::PassThrough,
-                            |this, idty| this.lower_fn_decl(
-                                &decl,
-                                Some((fn_def_id, idty)),
-                                true,
-                                header.asyncness.node.opt_return_id()
-                            ),
-                        );
+                    // Note: we don't need to change the return type from `T` to
+                    // `impl Future<Output = T>` here because lower_body
+                    // only cares about the input argument patterns in the function
+                    // declaration (decl), not the return types.
+                    let body_id = this.lower_maybe_async_body(&decl, header.asyncness.node, body);
 
-                        (body_id, generics, fn_decl)
-                    };
-
-                    let (body_id, generics, fn_decl) = if let IsAsync::Async {
-                        arguments, ..
-                    } = &header.asyncness.node {
-                        let mut decl = decl.clone();
-                        // Replace the arguments of this async function with the generated
-                        // arguments that will be moved into the closure.
-                        for (i, a) in arguments.clone().drain(..).enumerate() {
-                            if let Some(arg) = a.arg {
-                                decl.inputs[i] = arg;
-                            }
-                        }
-                        lower_fn(&decl)
-                    } else {
-                        lower_fn(decl)
-                    };
+                    let (generics, fn_decl) = this.add_in_band_defs(
+                        generics,
+                        fn_def_id,
+                        AnonymousLifetimeMode::PassThrough,
+                        |this, idty| this.lower_fn_decl(
+                            &decl,
+                            Some((fn_def_id, idty)),
+                            true,
+                            header.asyncness.node.opt_return_id()
+                        ),
+                    );
 
                     hir::ItemKind::Fn(
                         fn_decl,
@@ -3548,7 +3595,7 @@ impl<'a> LoweringContext<'a> {
                     self.lower_ty(ty, ImplTraitContext::disallowed()),
                     default
                         .as_ref()
-                        .map(|x| self.lower_body(None, |this| this.lower_expr(x))),
+                        .map(|x| self.lower_const_body(x)),
                 ),
             ),
             TraitItemKind::Method(ref sig, None) => {
@@ -3563,7 +3610,7 @@ impl<'a> LoweringContext<'a> {
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
             }
             TraitItemKind::Method(ref sig, Some(ref body)) => {
-                let body_id = self.lower_body(Some(&sig.decl), |this| {
+                let body_id = self.lower_fn_body(&sig.decl, |this| {
                     let body = this.lower_block(body, false);
                     this.expr_block(body, ThinVec::new())
                 });
@@ -3627,48 +3674,26 @@ impl<'a> LoweringContext<'a> {
         let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, node) = match i.node {
-            ImplItemKind::Const(ref ty, ref expr) => {
-                let body_id = self.lower_body(None, |this| this.lower_expr(expr));
-                (
-                    self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
-                    hir::ImplItemKind::Const(
-                        self.lower_ty(ty, ImplTraitContext::disallowed()),
-                        body_id,
-                    ),
-                )
-            }
+            ImplItemKind::Const(ref ty, ref expr) => (
+                self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
+                hir::ImplItemKind::Const(
+                    self.lower_ty(ty, ImplTraitContext::disallowed()),
+                    self.lower_const_body(expr),
+                ),
+            ),
             ImplItemKind::Method(ref sig, ref body) => {
-                let mut lower_method = |sig: &MethodSig| {
-                    let body_id = self.lower_async_body(
-                        &sig.decl, &sig.header.asyncness.node, body
-                    );
-                    let impl_trait_return_allow = !self.is_in_trait_impl;
-                    let (generics, sig) = self.lower_method_sig(
-                        &i.generics,
-                        sig,
-                        impl_item_def_id,
-                        impl_trait_return_allow,
-                        sig.header.asyncness.node.opt_return_id(),
-                    );
-                    (body_id, generics, sig)
-                };
-
-                let (body_id, generics, sig) = if let IsAsync::Async {
-                    ref arguments, ..
-                } = sig.header.asyncness.node {
-                    let mut sig = sig.clone();
-                    // Replace the arguments of this async function with the generated
-                    // arguments that will be moved into the closure.
-                    for (i, a) in arguments.clone().drain(..).enumerate() {
-                        if let Some(arg) = a.arg {
-                            sig.decl.inputs[i] = arg;
-                        }
-                    }
-                    lower_method(&sig)
-                } else {
-                    lower_method(sig)
-                };
                 self.current_item = Some(i.span);
+                let body_id = self.lower_maybe_async_body(
+                    &sig.decl, sig.header.asyncness.node, body
+                );
+                let impl_trait_return_allow = !self.is_in_trait_impl;
+                let (generics, sig) = self.lower_method_sig(
+                    &i.generics,
+                    sig,
+                    impl_item_def_id,
+                    impl_trait_return_allow,
+                    sig.header.asyncness.node.opt_return_id(),
+                );
 
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
@@ -3860,7 +3885,7 @@ impl<'a> LoweringContext<'a> {
         impl_trait_return_allow: bool,
         is_async: Option<NodeId>,
     ) -> (hir::Generics, hir::MethodSig) {
-        let header = self.lower_fn_header(&sig.header);
+        let header = self.lower_fn_header(sig.header);
         let (generics, decl) = self.add_in_band_defs(
             generics,
             fn_def_id,
@@ -3882,10 +3907,10 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_fn_header(&mut self, h: &FnHeader) -> hir::FnHeader {
+    fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         hir::FnHeader {
             unsafety: self.lower_unsafety(h.unsafety),
-            asyncness: self.lower_asyncness(&h.asyncness.node),
+            asyncness: self.lower_asyncness(h.asyncness.node),
             constness: self.lower_constness(h.constness),
             abi: h.abi,
         }
@@ -3905,7 +3930,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_asyncness(&mut self, a: &IsAsync) -> hir::IsAsync {
+    fn lower_asyncness(&mut self, a: IsAsync) -> hir::IsAsync {
         match a {
             IsAsync::Async { .. } => hir::IsAsync::Async,
             IsAsync::NotAsync => hir::IsAsync::NotAsync,
@@ -4064,7 +4089,7 @@ impl<'a> LoweringContext<'a> {
         self.with_new_scopes(|this| {
             hir::AnonConst {
                 hir_id: this.lower_node_id(c.id),
-                body: this.lower_body(None, |this| this.lower_expr(&c.value)),
+                body: this.lower_const_body(&c.value),
             }
         })
     }
@@ -4151,10 +4176,7 @@ impl<'a> LoweringContext<'a> {
                 let else_arm = self.arm(hir_vec![else_pat], P(else_expr));
 
                 // Lower condition:
-                let span_block = self
-                    .sess
-                    .source_map()
-                    .mark_span_with_reason(IfTemporary, cond.span, None);
+                let span_block = self.mark_span_with_reason(IfTemporary, cond.span, None);
                 let cond = self.lower_expr(cond);
                 // Wrap in a construct equivalent to `{ let _t = $cond; _t }` to preserve drop
                 // semantics since `if cond { ... }` don't let temporaries live outside of `cond`.
@@ -4184,7 +4206,7 @@ impl<'a> LoweringContext<'a> {
             }),
             ExprKind::TryBlock(ref body) => {
                 self.with_catch_scope(body.id, |this| {
-                    let unstable_span = this.sess.source_map().mark_span_with_reason(
+                    let unstable_span = this.mark_span_with_reason(
                         CompilerDesugaringKind::TryBlock,
                         body.span,
                         Some(vec![sym::try_trait].into()),
@@ -4222,7 +4244,7 @@ impl<'a> LoweringContext<'a> {
             }
             ExprKind::Await(_origin, ref expr) => self.lower_await(e.span, expr),
             ExprKind::Closure(
-                capture_clause, ref asyncness, movability, ref decl, ref body, fn_decl_span
+                capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span
             ) => {
                 if let IsAsync::Async { closure_id, .. } = asyncness {
                     let outer_decl = FnDecl {
@@ -4255,12 +4277,12 @@ impl<'a> LoweringContext<'a> {
 
                         // Transform `async |x: u8| -> X { ... }` into
                         // `|x: u8| future_from_generator(|| -> X { ... })`.
-                        let body_id = this.lower_body(Some(&outer_decl), |this| {
+                        let body_id = this.lower_fn_body(&outer_decl, |this| {
                             let async_ret_ty = if let FunctionRetTy::Ty(ty) = &decl.output {
                                 Some(&**ty)
                             } else { None };
                             let async_body = this.make_async_expr(
-                                capture_clause, *closure_id, async_ret_ty, body.span,
+                                capture_clause, closure_id, async_ret_ty, body.span,
                                 |this| {
                                     this.with_new_scopes(|this| this.lower_expr(body))
                                 });
@@ -4281,7 +4303,7 @@ impl<'a> LoweringContext<'a> {
                     self.with_new_scopes(|this| {
                         this.current_item = Some(fn_decl_span);
                         let mut is_generator = false;
-                        let body_id = this.lower_body(Some(decl), |this| {
+                        let body_id = this.lower_fn_body(decl, |this| {
                             let e = this.lower_expr(body);
                             is_generator = this.is_generator;
                             e
@@ -4616,7 +4638,7 @@ impl<'a> LoweringContext<'a> {
                 // expand <head>
                 let mut head = self.lower_expr(head);
                 let head_sp = head.span;
-                let desugared_span = self.sess.source_map().mark_span_with_reason(
+                let desugared_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::ForLoop,
                     head_sp,
                     None,
@@ -4770,13 +4792,13 @@ impl<'a> LoweringContext<'a> {
                 //                 return Try::from_error(From::from(err)),
                 // }
 
-                let unstable_span = self.sess.source_map().mark_span_with_reason(
+                let unstable_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::QuestionMark,
                     e.span,
                     Some(vec![sym::try_trait].into()),
                 );
                 let try_span = self.sess.source_map().end_point(e.span);
-                let try_span = self.sess.source_map().mark_span_with_reason(
+                let try_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::QuestionMark,
                     try_span,
                     Some(vec![sym::try_trait].into()),
@@ -5573,12 +5595,12 @@ impl<'a> LoweringContext<'a> {
             err.emit();
             return hir::ExprKind::Err;
         }
-        let span = self.sess.source_map().mark_span_with_reason(
+        let span = self.mark_span_with_reason(
             CompilerDesugaringKind::Await,
             await_span,
             None,
         );
-        let gen_future_span = self.sess.source_map().mark_span_with_reason(
+        let gen_future_span = self.mark_span_with_reason(
             CompilerDesugaringKind::Await,
             await_span,
             Some(vec![sym::gen_future].into()),
