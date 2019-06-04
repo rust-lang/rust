@@ -144,8 +144,12 @@ pub fn run_clippy() -> Result<()> {
         _ => install_clippy()?,
     };
 
-    let allowed_lints =
-        ["clippy::collapsible_if", "clippy::nonminimal_bool", "clippy::needless_pass_by_value"];
+    let allowed_lints = [
+        "clippy::collapsible_if",
+        "clippy::nonminimal_bool",
+        "clippy::needless_pass_by_value",
+        "clippy::map_clone", // FIXME: remove when Iterator::copied stabilizes (1.36.0)
+    ];
     run(
         &format!(
             "rustup run {} -- cargo clippy --all-features --all-targets -- -A {}",
