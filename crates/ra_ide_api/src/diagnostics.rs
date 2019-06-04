@@ -109,7 +109,7 @@ fn check_unnecessary_braces_in_use_statement(
 
         acc.push(Diagnostic {
             range,
-            message: format!("Unnecessary braces in use statement"),
+            message: "Unnecessary braces in use statement".to_string(),
             severity: Severity::WeakWarning,
             fix: Some(SourceChange::source_file_edit(
                 "Remove unnecessary braces",
@@ -155,7 +155,7 @@ fn check_struct_shorthand_initialization(
 
                 acc.push(Diagnostic {
                     range: named_field.syntax().range(),
-                    message: format!("Shorthand struct initialization"),
+                    message: "Shorthand struct initialization".to_string(),
                     severity: Severity::WeakWarning,
                     fix: Some(SourceChange::source_file_edit(
                         "use struct shorthand initialization",
