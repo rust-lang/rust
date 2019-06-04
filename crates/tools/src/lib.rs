@@ -144,7 +144,8 @@ pub fn run_clippy() -> Result<()> {
         _ => install_clippy()?,
     };
 
-    let allowed_lints = ["clippy::collapsible_if", "clippy::nonminimal_bool"];
+    let allowed_lints =
+        ["clippy::collapsible_if", "clippy::nonminimal_bool", "clippy::needless_pass_by_value"];
     run(
         &format!(
             "rustup run {} -- cargo clippy --all-features --all-targets -- -A {}",
