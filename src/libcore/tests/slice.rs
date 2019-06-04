@@ -233,6 +233,15 @@ fn test_chunks_mut_nth_back() {
     let mut c1 = v1.chunks_mut(3);
     assert_eq!(c1.nth_back(1).unwrap(), &[0, 1, 2]);
     assert_eq!(c1.next(), None);
+
+    let v3: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c3 = v3.chunks_mut(10);
+    assert_eq!(c3.nth_back(0).unwrap(), &[0, 1, 2, 3, 4]);
+    assert_eq!(c3.next(), None);
+
+    let v4: &[i32] = &[0, 1, 2];
+    let mut c4 = v4.chunks_mut(10);
+    assert_eq!(c4.nth_back(1_000_000_000usize), None);
 }
 
 #[test]

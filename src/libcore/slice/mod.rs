@@ -4335,7 +4335,7 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let len = self.len();
         if n >= len {
-            self.v = &[];
+            self.v = &mut [];
             None
         } else {
             let start = (len - 1 - n) * self.chunk_size;
@@ -4343,8 +4343,9 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
                 Some(res) => cmp::min(res, self.v.len()),
                 None => self.v.len(),
             };
-            let nth_back = &self.v[start..end];
-            self.v = &self.v[..start];
+            let (temp, tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
+            let (_, nth_back) = temp.split_at_mut(start);
+            self.v = tail;
             Some(nth_back)
         }
     }
