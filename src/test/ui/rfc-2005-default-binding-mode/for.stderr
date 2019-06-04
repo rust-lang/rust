@@ -6,19 +6,14 @@ LL |     for (n, mut m) in &tups {
    |          |
    |          both by-ref and by-move used
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/for.rs:6:23
    |
 LL |     for (n, mut m) in &tups {
-   |             -----     ^^^^^ cannot move out of borrowed content
+   |             -----     ^^^^^
    |             |
    |             data moved here
-   |
-note: move occurs because `m` has type `Foo`, which does not implement the `Copy` trait
-  --> $DIR/for.rs:6:13
-   |
-LL |     for (n, mut m) in &tups {
-   |             ^^^^^
+   |             move occurs because `m` has type `Foo`, which does not implement the `Copy` trait
 
 error: aborting due to 2 previous errors
 

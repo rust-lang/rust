@@ -2,13 +2,13 @@ error[E0507]: cannot move out of an `Rc`
   --> $DIR/issue-52086.rs:8:10
    |
 LL |     drop(x.field);
-   |          ^^^^^^^ cannot move out of an `Rc`
+   |          ^^^^^^^ move occurs because value has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 
 error[E0507]: cannot move out of an `Arc`
   --> $DIR/issue-52086.rs:12:10
    |
 LL |     drop(y.field);
-   |          ^^^^^^^ cannot move out of an `Arc`
+   |          ^^^^^^^ move occurs because value has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 
 error: aborting due to 2 previous errors
 

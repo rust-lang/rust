@@ -29,9 +29,9 @@ impl Index<usize> for T {
 
 fn main() {
     S[0];
-    //~^ ERROR cannot move out of borrowed content
+    //~^ ERROR cannot move out of index of `S`
     //~^^ ERROR E0161
     T[0];
-    //~^ ERROR cannot move out of borrowed content
+    //~^ ERROR cannot move out of index of `T`
     //~^^ ERROR E0161
 }

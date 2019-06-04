@@ -27,9 +27,9 @@ fn illegal_dereference<T: Add<Output=()>>(mut x: T, y: T) {
     let m = &mut x;
     let n = &y;
 
-    *m  //~ ERROR: cannot move out of borrowed content
+    *m  //~ ERROR: cannot move
     +
-    *n;  //~ ERROR: cannot move out of borrowed content
+    *n;  //~ ERROR: cannot move
     use_imm(n); use_mut(m);
 }
 struct Foo;

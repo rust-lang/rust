@@ -1,47 +1,32 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:12:15
    |
 LL |     for &a in x.iter() {
-   |         --    ^^^^^^^^ cannot move out of borrowed content
+   |         --    ^^^^^^^^
    |         ||
    |         |data moved here
+   |         |move occurs because `a` has type `&mut i32`, which does not implement the `Copy` trait
    |         help: consider removing the `&`: `a`
-   |
-note: move occurs because `a` has type `&mut i32`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:12:10
-   |
-LL |     for &a in x.iter() {
-   |          ^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:18:15
    |
 LL |     for &a in &f.a {
-   |         --    ^^^^ cannot move out of borrowed content
+   |         --    ^^^^
    |         ||
    |         |data moved here
+   |         |move occurs because `a` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
    |         help: consider removing the `&`: `a`
-   |
-note: move occurs because `a` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:18:10
-   |
-LL |     for &a in &f.a {
-   |          ^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:15
    |
 LL |     for &a in x.iter() {
-   |         --    ^^^^^^^^ cannot move out of borrowed content
+   |         --    ^^^^^^^^
    |         ||
    |         |data moved here
+   |         |move occurs because `a` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
    |         help: consider removing the `&`: `a`
-   |
-note: move occurs because `a` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:10
-   |
-LL |     for &a in x.iter() {
-   |          ^
 
 error: aborting due to 3 previous errors
 

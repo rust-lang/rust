@@ -503,13 +503,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 elem: ProjectionElem::Deref,
             }) => {
                 debug_assert!(
-                    if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
-                        this.local_decls[local].is_user_variable
-                    {
-                        true
-                    } else {
-                        false
-                    },
+                    this.local_decls[local].is_ref_for_guard(),
                     "Unexpected capture place",
                 );
                 this.local_decls[local].mutability

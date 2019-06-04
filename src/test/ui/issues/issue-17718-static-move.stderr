@@ -1,10 +1,10 @@
-error[E0507]: cannot move out of static item
+error[E0507]: cannot move out of static item `FOO`
   --> $DIR/issue-17718-static-move.rs:6:14
    |
 LL |     let _a = FOO;
    |              ^^^
    |              |
-   |              cannot move out of static item
+   |              move occurs because `FOO` has type `Foo`, which does not implement the `Copy` trait
    |              help: consider borrowing here: `&FOO`
 
 error: aborting due to previous error

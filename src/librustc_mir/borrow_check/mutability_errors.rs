@@ -95,12 +95,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     }
                 } else if {
                     if let Place::Base(PlaceBase::Local(local)) = *base {
-                        if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard))
-                            = self.mir.local_decls[local].is_user_variable {
-                                true
-                        } else {
-                            false
-                        }
+                        self.mir.local_decls[local].is_ref_for_guard()
                     } else {
                         false
                     }

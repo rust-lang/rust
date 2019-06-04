@@ -2,9 +2,9 @@ use rustc::hir;
 use rustc::hir::def::Namespace;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
-    AggregateKind, BindingForm, ClearCrossCrate, Constant, Field, Local,
-    LocalKind, Location, Operand, Place, PlaceBase, ProjectionElem, Rvalue,
-    Statement, StatementKind, Static, StaticKind, TerminatorKind,
+    AggregateKind, Constant, Field, Local, LocalKind, Location, Operand,
+    Place, PlaceBase, ProjectionElem, Rvalue, Statement, StatementKind, Static,
+    StaticKind, TerminatorKind,
 };
 use rustc::ty::{self, DefIdTree, Ty};
 use rustc::ty::layout::VariantIdx;
@@ -180,9 +180,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     &including_downcast,
                                 )?;
                             } else if let Place::Base(PlaceBase::Local(local)) = proj.base {
-                                if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
-                                    self.mir.local_decls[local].is_user_variable
-                                {
+                                if self.mir.local_decls[local].is_ref_for_guard() {
                                     self.append_place_to_string(
                                         &proj.base,
                                         buf,
@@ -381,6 +379,26 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         } else {
             debug!("is_place_thread_local: no");
             false
+        }
+    }
+
+    /// Add a note that a type does not implement `Copy`
+    pub(super) fn note_type_does_not_implement_copy(
+        &self,
+        err: &mut DiagnosticBuilder<'a>,
+        place_desc: &str,
+        ty: Ty<'tcx>,
+        span: Option<Span>,
+    ) {
+        let message = format!(
+            "move occurs because {} has type `{}`, which does not implement the `Copy` trait",
+            place_desc,
+            ty,
+        );
+        if let Some(span) = span {
+            err.span_label(span, message);
+        } else {
+            err.note(&message);
         }
     }
 }

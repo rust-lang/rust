@@ -1,10 +1,10 @@
-error[E0507]: cannot move out of captured variable in an `Fn` closure
+error[E0507]: cannot move out of `x.0`, as `x` is a captured variable in an `Fn` closure
   --> $DIR/issue-52663-span-decl-captured-variable.rs:8:26
    |
 LL |        let x = (vec![22], vec![44]);
    |            - captured outer variable
 LL |        expect_fn(|| drop(x.0));
-   |                          ^^^ cannot move out of captured variable in an `Fn` closure
+   |                          ^^^ move occurs because `x.0` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

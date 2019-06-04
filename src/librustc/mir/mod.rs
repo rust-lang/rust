@@ -913,6 +913,16 @@ impl<'tcx> LocalDecl<'tcx> {
         }
     }
 
+    /// Returns `true` if this is a reference to a variable bound in a `match`
+    /// expression that is used to access said variable for the guard of the
+    /// match arm.
+    pub fn is_ref_for_guard(&self) -> bool {
+        match self.is_user_variable {
+            Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) => true,
+            _ => false,
+        }
+    }
+
     /// Returns `true` is the local is from a compiler desugaring, e.g.,
     /// `__next` from a `for` loop.
     #[inline]

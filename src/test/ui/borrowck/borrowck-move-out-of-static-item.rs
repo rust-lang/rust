@@ -12,5 +12,5 @@ fn test(f: Foo) {
 }
 
 fn main() {
-    test(BAR); //~ ERROR cannot move out of static item [E0507]
+    test(BAR); //~ ERROR cannot move out of static item `BAR` [E0507]
 }

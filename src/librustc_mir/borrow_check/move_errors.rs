@@ -1,13 +1,13 @@
 use core::unicode::property::Pattern_White_Space;
-use std::fmt::{self, Display};
 
 use rustc::mir::*;
-use rustc::ty;
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc_errors::{DiagnosticBuilder,Applicability};
 use syntax_pos::Span;
 
 use crate::borrow_check::MirBorrowckCtxt;
 use crate::borrow_check::prefixes::PrefixSet;
+use crate::borrow_check::error_reporting::UseSpans;
 use crate::dataflow::move_paths::{
     IllegalMoveOrigin, IllegalMoveOriginKind, InitLocation,
     LookupResult, MoveError, MovePathIndex,
@@ -50,25 +50,71 @@ enum GroupedMoveError<'tcx> {
     // Everything that isn't from pattern matching.
     OtherIllegalMove {
         original_path: Place<'tcx>,
-        span: Span,
+        use_spans: UseSpans,
         kind: IllegalMoveOriginKind<'tcx>,
     },
 }
 
-enum BorrowedContentSource {
-    Arc,
-    Rc,
+enum BorrowedContentSource<'tcx> {
     DerefRawPointer,
-    Other,
+    DerefMutableRef,
+    DerefSharedRef,
+    OverloadedDeref(Ty<'tcx>),
+    OverloadedIndex(Ty<'tcx>),
 }
 
-impl Display for BorrowedContentSource {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl BorrowedContentSource<'tcx> {
+    fn describe_for_unnamed_place(&self) -> String {
         match *self {
-            BorrowedContentSource::Arc => write!(f, "an `Arc`"),
-            BorrowedContentSource::Rc => write!(f, "an `Rc`"),
-            BorrowedContentSource::DerefRawPointer => write!(f, "dereference of raw pointer"),
-            BorrowedContentSource::Other => write!(f, "borrowed content"),
+            BorrowedContentSource::DerefRawPointer => format!("a raw pointer"),
+            BorrowedContentSource::DerefSharedRef => format!("a shared reference"),
+            BorrowedContentSource::DerefMutableRef => {
+                format!("a mutable reference")
+            }
+            BorrowedContentSource::OverloadedDeref(ty) => {
+                if ty.is_rc() {
+                   format!("an `Rc`")
+                } else if ty.is_arc() {
+                    format!("an `Arc`")
+                } else {
+                    format!("dereference of `{}`", ty)
+                }
+            }
+            BorrowedContentSource::OverloadedIndex(ty) => format!("index of `{}`", ty),
+        }
+    }
+
+    fn describe_for_named_place(&self) -> Option<&'static str> {
+        match *self {
+            BorrowedContentSource::DerefRawPointer => Some("raw pointer"),
+            BorrowedContentSource::DerefSharedRef => Some("shared reference"),
+            BorrowedContentSource::DerefMutableRef => Some("mutable reference"),
+            // Overloaded deref and index operators should be evaluated into a
+            // temporary. So we don't need a description here.
+            BorrowedContentSource::OverloadedDeref(_)
+            | BorrowedContentSource::OverloadedIndex(_) => None
+        }
+    }
+
+    fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'_, '_, 'tcx>) -> Option<Self> {
+        match func.sty {
+            ty::FnDef(def_id, substs) => {
+                let trait_id = tcx.trait_of_item(def_id)?;
+
+                let lang_items = tcx.lang_items();
+                if Some(trait_id) == lang_items.deref_trait()
+                    || Some(trait_id) == lang_items.deref_mut_trait()
+                {
+                    Some(BorrowedContentSource::OverloadedDeref(substs.type_at(0)))
+                } else if Some(trait_id) == lang_items.index_trait()
+                    || Some(trait_id) == lang_items.index_mut_trait()
+                {
+                    Some(BorrowedContentSource::OverloadedIndex(substs.type_at(0)))
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 }
@@ -105,7 +151,6 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             MoveError::IllegalMove {
                 cannot_move_out_of: IllegalMoveOrigin { location, kind },
             } => {
-                let stmt_source_info = self.mir.source_info(location);
                 // Note: that the only time we assign a place isn't a temporary
                 // to a user variable is when initializing it.
                 // If that ever stops being the case, then the ever initialized
@@ -133,6 +178,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         pat_span: _,
                     }))) = local_decl.is_user_variable
                     {
+                        let stmt_source_info = self.mir.source_info(location);
                         self.append_binding_error(
                             grouped_errors,
                             kind,
@@ -146,8 +192,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                 }
+
+                let move_spans = self.move_spans(&original_path, location);
                 grouped_errors.push(GroupedMoveError::OtherIllegalMove {
-                    span: stmt_source_info.span,
+                    use_spans: move_spans,
                     original_path,
                     kind,
                 });
@@ -243,112 +291,203 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             let (span, original_path, kind): (Span, &Place<'tcx>, &IllegalMoveOriginKind<'_>) =
                 match error {
                     GroupedMoveError::MovesFromPlace { span, ref original_path, ref kind, .. } |
-                    GroupedMoveError::MovesFromValue { span, ref original_path, ref kind, .. } |
-                    GroupedMoveError::OtherIllegalMove { span, ref original_path, ref kind } => {
+                    GroupedMoveError::MovesFromValue { span, ref original_path, ref kind, .. } => {
                         (span, original_path, kind)
+                    }
+                    GroupedMoveError::OtherIllegalMove {
+                        use_spans,
+                        ref original_path,
+                        ref kind
+                    } => {
+                        (use_spans.args_or_use(), original_path, kind)
                     },
                 };
-            let origin = Origin::Mir;
             debug!("report: original_path={:?} span={:?}, kind={:?} \
                    original_path.is_upvar_field_projection={:?}", original_path, span, kind,
                    self.is_upvar_field_projection(original_path));
-            let err = match kind {
-                IllegalMoveOriginKind::Static => {
-                    self.infcx.tcx.cannot_move_out_of(span, "static item", origin)
-                }
-                IllegalMoveOriginKind::BorrowedContent { target_place: place } => {
-                    // Inspect the type of the content behind the
-                    // borrow to provide feedback about why this
-                    // was a move rather than a copy.
-                    let ty = place.ty(self.mir, self.infcx.tcx).ty;
-                    let is_upvar_field_projection =
-                        self.prefixes(&original_path, PrefixSet::All)
-                        .any(|p| self.is_upvar_field_projection(p).is_some());
-                    debug!("report: ty={:?}", ty);
-                    let mut err = match ty.sty {
-                        ty::Array(..) | ty::Slice(..) =>
-                            self.infcx.tcx.cannot_move_out_of_interior_noncopy(
-                                span, ty, None, origin
-                            ),
-                        ty::Closure(def_id, closure_substs)
-                            if def_id == self.mir_def_id && is_upvar_field_projection
-                        => {
-                            let closure_kind_ty =
-                                closure_substs.closure_kind_ty(def_id, self.infcx.tcx);
-                            let closure_kind = closure_kind_ty.to_opt_closure_kind();
-                            let place_description = match closure_kind {
-                                Some(ty::ClosureKind::Fn) => {
-                                    "captured variable in an `Fn` closure"
-                                }
-                                Some(ty::ClosureKind::FnMut) => {
-                                    "captured variable in an `FnMut` closure"
-                                }
-                                Some(ty::ClosureKind::FnOnce) => {
-                                    bug!("closure kind does not match first argument type")
-                                }
-                                None => bug!("closure kind not inferred by borrowck"),
-                            };
-                            debug!("report: closure_kind_ty={:?} closure_kind={:?} \
-                                    place_description={:?}", closure_kind_ty, closure_kind,
-                                    place_description);
-
-                            let mut diag = self.infcx.tcx.cannot_move_out_of(
-                                span, place_description, origin);
-
-                            for prefix in self.prefixes(&original_path, PrefixSet::All) {
-                                if let Some(field) = self.is_upvar_field_projection(prefix) {
-                                    let upvar_hir_id = self.upvars[field.index()].var_hir_id;
-                                    let upvar_span = self.infcx.tcx.hir().span_by_hir_id(
-                                        upvar_hir_id);
-                                    diag.span_label(upvar_span, "captured outer variable");
-                                    break;
-                                }
-                            }
-
-                            diag
-                        }
-                        _ => {
-                            let source = self.borrowed_content_source(place);
-                            self.infcx.tcx.cannot_move_out_of(
-                                span, &source.to_string(), origin
-                            )
-                        },
-                    };
-                    let orig_path_ty = format!(
-                        "{:?}",
-                        original_path.ty(self.mir, self.infcx.tcx).ty,
-                    );
-                    let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
-                    let is_option = orig_path_ty.starts_with("std::option::Option");
-                    let is_result = orig_path_ty.starts_with("std::result::Result");
-                    if  is_option || is_result {
-                        err.span_suggestion(
-                            span,
-                            &format!("consider borrowing the `{}`'s content", if is_option {
-                                "Option"
-                            } else {
-                                "Result"
-                            }),
-                            format!("{}.as_ref()", snippet),
-                            Applicability::MaybeIncorrect,
-                        );
+            (
+                match kind {
+                    IllegalMoveOriginKind::Static => {
+                        self.report_cannot_move_from_static(original_path, span)
                     }
-                    err
-                }
-                IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
-                    self.infcx.tcx
-                        .cannot_move_out_of_interior_of_drop(span, ty, origin)
-                }
-                IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } =>
-                    self.infcx.tcx.cannot_move_out_of_interior_noncopy(
-                        span, ty, Some(*is_index), origin
-                    ),
-            };
-            (err, span)
+                    IllegalMoveOriginKind::BorrowedContent { target_place } => {
+                        self.report_cannot_move_from_borrowed_content(
+                            original_path,
+                            target_place,
+                            span,
+                        )
+                    }
+                    IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
+                        self.infcx.tcx
+                            .cannot_move_out_of_interior_of_drop(span, ty, Origin::Mir)
+                    }
+                    IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } =>
+                        self.infcx.tcx.cannot_move_out_of_interior_noncopy(
+                            span, ty, Some(*is_index), Origin::Mir
+                        ),
+                },
+                span,
+            )
         };
 
         self.add_move_hints(error, &mut err, err_span);
         err.buffer(&mut self.errors_buffer);
+    }
+
+    fn report_cannot_move_from_static(
+        &mut self,
+        place: &Place<'tcx>,
+        span: Span
+    ) -> DiagnosticBuilder<'a> {
+        let mut base_static = place;
+        loop {
+            match base_static {
+                Place::Base(_) => break,
+                Place::Projection(box Projection { base, .. }) => base_static = base,
+            }
+        }
+
+        let description = if let Place::Base(_) = place {
+            format!("static item `{}`", self.describe_place(place).unwrap())
+        } else {
+            format!(
+                "`{:?}` as `{:?}` is a static item",
+                self.describe_place(place).unwrap(),
+                self.describe_place(base_static).unwrap(),
+            )
+        };
+
+        self.infcx.tcx.cannot_move_out_of(span, &description, Origin::Mir)
+    }
+
+    fn report_cannot_move_from_borrowed_content(
+        &mut self,
+        move_place: &Place<'tcx>,
+        deref_target_place: &Place<'tcx>,
+        span: Span,
+    ) -> DiagnosticBuilder<'a> {
+        let origin = Origin::Mir;
+
+        // Inspect the type of the content behind the
+        // borrow to provide feedback about why this
+        // was a move rather than a copy.
+        let ty = deref_target_place.ty(self.mir, self.infcx.tcx).ty;
+        let upvar_field = self.prefixes(&move_place, PrefixSet::All)
+            .find_map(|p| self.is_upvar_field_projection(p));
+
+        let deref_base = match deref_target_place {
+            Place::Projection(box Projection { base, elem: ProjectionElem::Deref }) => base,
+            _ => bug!("deref_target_place is not a deref projection"),
+        };
+
+        if let Place::Base(PlaceBase::Local(local)) = *deref_base {
+            let decl = &self.mir.local_decls[local];
+            if decl.is_ref_for_guard() {
+                let mut err = self.infcx.tcx.cannot_move_out_of(
+                    span,
+                    &format!("`{}` in pattern guard", decl.name.unwrap()),
+                    origin,
+                );
+                err.note(
+                    "variables bound in patterns cannot be moved from \
+                     until after the end of the pattern guard");
+                return err;
+            }
+        }
+
+        debug!("report: ty={:?}", ty);
+        let mut err = match ty.sty {
+            ty::Array(..) | ty::Slice(..) =>
+                self.infcx.tcx.cannot_move_out_of_interior_noncopy(
+                    span, ty, None, origin
+                ),
+            ty::Closure(def_id, closure_substs)
+                if def_id == self.mir_def_id && upvar_field.is_some()
+            => {
+                let closure_kind_ty = closure_substs.closure_kind_ty(def_id, self.infcx.tcx);
+                let closure_kind = closure_kind_ty.to_opt_closure_kind();
+                let capture_description = match closure_kind {
+                    Some(ty::ClosureKind::Fn) => {
+                        "captured variable in an `Fn` closure"
+                    }
+                    Some(ty::ClosureKind::FnMut) => {
+                        "captured variable in an `FnMut` closure"
+                    }
+                    Some(ty::ClosureKind::FnOnce) => {
+                        bug!("closure kind does not match first argument type")
+                    }
+                    None => bug!("closure kind not inferred by borrowck"),
+                };
+
+                let upvar = &self.upvars[upvar_field.unwrap().index()];
+                let upvar_hir_id = upvar.var_hir_id;
+                let upvar_name = upvar.name;
+                let upvar_span = self.infcx.tcx.hir().span_by_hir_id(upvar_hir_id);
+
+                let place_name = self.describe_place(move_place).unwrap();
+
+                let place_description = if self.is_upvar_field_projection(move_place).is_some() {
+                    format!("`{}`, a {}", place_name, capture_description)
+                } else {
+                    format!(
+                        "`{}`, as `{}` is a {}",
+                        place_name,
+                        upvar_name,
+                        capture_description,
+                    )
+                };
+
+                debug!(
+                    "report: closure_kind_ty={:?} closure_kind={:?} place_description={:?}",
+                    closure_kind_ty, closure_kind, place_description,
+                );
+
+                let mut diag = self.infcx.tcx.cannot_move_out_of(span, &place_description, origin);
+
+                diag.span_label(upvar_span, "captured outer variable");
+
+                diag
+            }
+            _ => {
+                let source = self.borrowed_content_source(deref_base);
+                match (self.describe_place(move_place), source.describe_for_named_place()) {
+                    (Some(place_desc), Some(source_desc)) => {
+                        self.infcx.tcx.cannot_move_out_of(
+                            span,
+                            &format!("`{}` which is behind a {}", place_desc, source_desc),
+                            origin,
+                        )
+                    }
+                    (_, _) => {
+                        self.infcx.tcx.cannot_move_out_of(
+                            span,
+                            &source.describe_for_unnamed_place(),
+                            origin,
+                        )
+                    }
+                }
+            },
+        };
+        let move_ty = format!(
+            "{:?}",
+            move_place.ty(self.mir, self.infcx.tcx).ty,
+        );
+        let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
+        let is_option = move_ty.starts_with("std::option::Option");
+        let is_result = move_ty.starts_with("std::result::Result");
+        if  is_option || is_result {
+            err.span_suggestion(
+                span,
+                &format!("consider borrowing the `{}`'s content", if is_option {
+                    "Option"
+                } else {
+                    "Result"
+                }),
+                format!("{}.as_ref()", snippet),
+                Applicability::MaybeIncorrect,
+            );
+        }
+        err
     }
 
     fn add_move_hints(
@@ -391,9 +530,25 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     );
                 }
 
-                binds_to.sort();
-                binds_to.dedup();
-                self.add_move_error_details(err, &binds_to);
+                if binds_to.is_empty() {
+                    let place_ty = move_from.ty(self.mir, self.infcx.tcx).ty;
+                    let place_desc = match self.describe_place(&move_from) {
+                        Some(desc) => format!("`{}`", desc),
+                        None => format!("value"),
+                    };
+
+                    self.note_type_does_not_implement_copy(
+                        err,
+                        &place_desc,
+                        place_ty,
+                        Some(span)
+                    );
+                } else {
+                    binds_to.sort();
+                    binds_to.dedup();
+
+                    self.add_move_error_details(err, &binds_to);
+                }
             }
             GroupedMoveError::MovesFromValue { mut binds_to, .. } => {
                 binds_to.sort();
@@ -402,7 +557,26 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 self.add_move_error_details(err, &binds_to);
             }
             // No binding. Nothing to suggest.
-            GroupedMoveError::OtherIllegalMove { .. } => (),
+            GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
+                let span = use_spans.var_or_use();
+                let place_ty = original_path.ty(self.mir, self.infcx.tcx).ty;
+                let place_desc = match self.describe_place(original_path) {
+                    Some(desc) => format!("`{}`", desc),
+                    None => format!("value"),
+                };
+                self.note_type_does_not_implement_copy(
+                    err,
+                    &place_desc,
+                    place_ty,
+                    Some(span),
+                );
+
+                use_spans.args_span_label(err, format!("move out of {} occurs here", place_desc));
+                use_spans.var_span_label(
+                    err,
+                    format!("move occurs due to use{}", use_spans.describe()),
+                );
+            },
         }
     }
 
@@ -473,14 +647,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }
 
             if binds_to.len() == 1 {
-                err.span_note(
-                    binding_span,
-                    &format!(
-                        "move occurs because `{}` has type `{}`, \
-                            which does not implement the `Copy` trait",
-                        bind_to.name.unwrap(),
-                        bind_to.ty
-                    ),
+                self.note_type_does_not_implement_copy(
+                    err,
+                    &format!("`{}`", bind_to.name.unwrap()),
+                    bind_to.ty,
+                    Some(binding_span)
                 );
             } else {
                 noncopy_var_spans.push(binding_span);
@@ -496,105 +667,64 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn borrowed_content_source(&self, place: &Place<'tcx>) -> BorrowedContentSource {
+    fn borrowed_content_source(&self, deref_base: &Place<'tcx>) -> BorrowedContentSource<'tcx> {
+        let tcx = self.infcx.tcx;
+
         // Look up the provided place and work out the move path index for it,
-        // we'll use this to work back through where this value came from and check whether it
-        // was originally part of an `Rc` or `Arc`.
-        let initial_mpi = match self.move_data.rev_lookup.find(place) {
-            LookupResult::Exact(mpi) | LookupResult::Parent(Some(mpi)) => mpi,
-            _ => return BorrowedContentSource::Other,
-        };
+        // we'll use this to check whether it was originally from an overloaded
+        // operator.
+        match self.move_data.rev_lookup.find(deref_base) {
+            LookupResult::Exact(mpi) | LookupResult::Parent(Some(mpi)) => {
+                debug!("borrowed_content_source: mpi={:?}", mpi);
 
-        let mut queue = vec![initial_mpi];
-        let mut visited = Vec::new();
-        debug!("borrowed_content_source: queue={:?}", queue);
-        while let Some(mpi) = queue.pop() {
-            debug!(
-                "borrowed_content_source: mpi={:?} queue={:?} visited={:?}",
-                mpi, queue, visited
-            );
+                for i in &self.move_data.init_path_map[mpi] {
+                    let init = &self.move_data.inits[*i];
+                    debug!("borrowed_content_source: init={:?}", init);
+                    // We're only interested in statements that initialized a value, not the
+                    // initializations from arguments.
+                    let loc = match init.location {
+                        InitLocation::Statement(stmt) => stmt,
+                        _ => continue,
+                    };
 
-            // Don't visit the same path twice.
-            if visited.contains(&mpi) {
-                continue;
-            }
-            visited.push(mpi);
-
-            for i in &self.move_data.init_path_map[mpi] {
-                let init = &self.move_data.inits[*i];
-                debug!("borrowed_content_source: init={:?}", init);
-                // We're only interested in statements that initialized a value, not the
-                // initializations from arguments.
-                let loc = match init.location {
-                    InitLocation::Statement(stmt) => stmt,
-                    _ => continue,
-                };
-
-                let bbd = &self.mir[loc.block];
-                let is_terminator = bbd.statements.len() == loc.statement_index;
-                debug!("borrowed_content_source: loc={:?} is_terminator={:?}", loc, is_terminator);
-                if !is_terminator {
-                    let stmt = &bbd.statements[loc.statement_index];
-                    debug!("borrowed_content_source: stmt={:?}", stmt);
-                    // We're only interested in assignments (in particular, where the
-                    // assignment came from - was it an `Rc` or `Arc`?).
-                    if let StatementKind::Assign(_, box Rvalue::Ref(_, _, source)) = &stmt.kind {
-                        let ty = source.ty(self.mir, self.infcx.tcx).ty;
-                        let ty = match ty.sty {
-                            ty::Ref(_, ty, _) => ty,
-                            _ => ty,
-                        };
-                        debug!("borrowed_content_source: ty={:?}", ty);
-
-                        if ty.is_arc() {
-                            return BorrowedContentSource::Arc;
-                        } else if ty.is_rc() {
-                            return BorrowedContentSource::Rc;
-                        } else {
-                            queue.push(init.path);
-                        }
-                    }
-                } else if let Some(Terminator {
-                    kind: TerminatorKind::Call { args, .. },
-                    ..
-                }) = &bbd.terminator {
-                    for arg in args {
-                        let source = match arg {
-                            Operand::Copy(place) | Operand::Move(place) => place,
-                            _ => continue,
-                        };
-
-                        let ty = source.ty(self.mir, self.infcx.tcx).ty;
-                        let ty = match ty.sty {
-                            ty::Ref(_, ty, _) => ty,
-                            _ => ty,
-                        };
-                        debug!("borrowed_content_source: ty={:?}", ty);
-
-                        if ty.is_arc() {
-                            return BorrowedContentSource::Arc;
-                        } else if ty.is_rc() {
-                            return BorrowedContentSource::Rc;
-                        } else {
-                            queue.push(init.path);
+                    let bbd = &self.mir[loc.block];
+                    let is_terminator = bbd.statements.len() == loc.statement_index;
+                    debug!(
+                        "borrowed_content_source: loc={:?} is_terminator={:?}",
+                        loc,
+                        is_terminator,
+                    );
+                    if !is_terminator {
+                        continue;
+                    } else if let Some(Terminator {
+                        kind: TerminatorKind::Call {
+                            ref func,
+                            from_hir_call: false,
+                            ..
+                        },
+                        ..
+                    }) = bbd.terminator {
+                        if let Some(source)
+                            = BorrowedContentSource::from_call(func.ty(self.mir, tcx), tcx)
+                        {
+                            return source;
                         }
                     }
                 }
             }
-        }
+            // Base is a `static` so won't be from an overloaded operator
+            _ => (),
+        };
 
-        // If we didn't find an `Arc` or an `Rc`, then check specifically for
-        // a dereference of a place that has the type of a raw pointer.
-        // We can't use `place.ty(..).to_ty(..)` here as that strips away the raw pointer.
-        if let Place::Projection(box Projection {
-            base,
-            elem: ProjectionElem::Deref,
-        }) = place {
-            if base.ty(self.mir, self.infcx.tcx).ty.is_unsafe_ptr() {
-                return BorrowedContentSource::DerefRawPointer;
-            }
+        // If we didn't find an overloaded deref or index, then assume it's a
+        // built in deref and check the type of the base.
+        let base_ty = deref_base.ty(self.mir, tcx).ty;
+        if base_ty.is_unsafe_ptr() {
+            BorrowedContentSource::DerefRawPointer
+        } else if base_ty.is_mutable_pointer() {
+            BorrowedContentSource::DerefMutableRef
+        } else {
+            BorrowedContentSource::DerefSharedRef
         }
-
-        BorrowedContentSource::Other
     }
 }

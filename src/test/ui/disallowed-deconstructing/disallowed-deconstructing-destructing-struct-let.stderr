@@ -5,12 +5,7 @@ LL |     let X { x: y } = x;
    |                -     ^ cannot move out of here
    |                |
    |                data moved here
-   |
-note: move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/disallowed-deconstructing-destructing-struct-let.rs:12:16
-   |
-LL |     let X { x: y } = x;
-   |                ^
+   |                move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

@@ -1,8 +1,8 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of `*t` which is behind a shared reference
   --> $DIR/trivial-bounds-leak-copy.rs:9:5
    |
 LL |     *t
-   |     ^^ cannot move out of borrowed content
+   |     ^^ move occurs because `*t` has type `std::string::String`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 
