@@ -431,6 +431,13 @@ impl str {
     ///
     /// assert_eq!(new_year, new_year.to_uppercase());
     /// ```
+    ///
+    /// One character can become multiple:
+    /// ```
+    /// let s = "tschüß";
+    ///
+    /// assert_eq!("TSCHÜSS", s.to_uppercase());
+    /// ```
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
