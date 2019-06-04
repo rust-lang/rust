@@ -1,0 +1,11 @@
+error[E0596]: cannot borrow `data` as mutable, as it is not declared as mutable
+  --> $DIR/issue-61187.rs:8:5
+   |
+LL | async fn response(data: Vec<u8>) {
+   |                   ---- help: consider changing this to be mutable: `mut data`
+LL |     data.reverse();
+   |     ^^^^ cannot borrow as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

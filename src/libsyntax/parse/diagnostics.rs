@@ -27,7 +27,7 @@ crate fn dummy_arg(ident: Ident) -> Arg {
         span: ident.span,
         id: ast::DUMMY_NODE_ID
     };
-    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID, source: ast::ArgSource::Normal }
+    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID }
 }
 
 pub enum Error {
