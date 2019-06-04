@@ -324,6 +324,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 );
                             }
                         }
+                        if let ty::RawPtr(_) = &actual.sty {
+                            err.note("try using `<*const T>::as_ref()` to get a reference to the \
+                                      type behind the pointer: https://doc.rust-lang.org/std/\
+                                      primitive.pointer.html#method.as_ref");
+                        }
                         err
                     }
                 } else {
