@@ -64,7 +64,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
 
             // If we are in a method account for `self`
             if has_self {
-                param = param + 1;
+                param += 1;
             }
 
             call_info.active_parameter = Some(param);
