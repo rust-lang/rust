@@ -472,7 +472,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("propagate_constraints()");
 
         debug!("propagate_constraints: constraints={:#?}", {
-            let mut constraints: Vec<_> = self.constraints.iter().collect();
+            let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
             constraints.sort();
             constraints
                 .into_iter()

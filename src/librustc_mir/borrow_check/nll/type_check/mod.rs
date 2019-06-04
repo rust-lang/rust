@@ -215,7 +215,7 @@ fn translate_outlives_facts(cx: &mut BorrowCheckContext<'_, '_>) {
         let location_table = cx.location_table;
         facts
             .outlives
-            .extend(cx.constraints.outlives_constraints.iter().flat_map(
+            .extend(cx.constraints.outlives_constraints.outlives().iter().flat_map(
                 |constraint: &OutlivesConstraint| {
                     if let Some(from_location) = constraint.locations.from_location() {
                         Either::Left(iter::once((
@@ -582,7 +582,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         );
 
         let locations = location.to_locations();
-        for constraint in constraints.iter() {
+        for constraint in constraints.outlives().iter() {
             let mut constraint = *constraint;
             constraint.locations = locations;
             if let ConstraintCategory::Return

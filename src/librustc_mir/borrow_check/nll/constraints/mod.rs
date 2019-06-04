@@ -1,11 +1,10 @@
+use crate::borrow_check::nll::type_check::Locations;
 use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use crate::borrow_check::nll::type_check::Locations;
-
 use std::fmt;
-use std::ops::Deref;
+use std::ops::Index;
 
 crate mod graph;
 
@@ -58,13 +57,17 @@ impl ConstraintSet {
         let region_graph = &constraint_graph.region_graph(self, static_region);
         Sccs::new(region_graph)
     }
+
+    crate fn outlives(&self) -> &IndexVec<OutlivesConstraintIndex, OutlivesConstraint> {
+        &self.outlives
+    }
 }
 
-impl Deref for ConstraintSet {
-    type Target = IndexVec<OutlivesConstraintIndex, OutlivesConstraint>;
+impl Index<OutlivesConstraintIndex> for ConstraintSet {
+    type Output = OutlivesConstraint;
 
-    fn deref(&self) -> &Self::Target {
-        &self.outlives
+    fn index(&self, i: OutlivesConstraintIndex) -> &Self::Output {
+        &self.outlives[i]
     }
 }
 
