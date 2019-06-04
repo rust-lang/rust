@@ -95,13 +95,8 @@ impl Server {
             "test server",
             128,
             move |mut msg_receiver, mut msg_sender| {
-                main_loop(
-                    roots,
-                    InitializationOptions::default(),
-                    &mut msg_receiver,
-                    &mut msg_sender,
-                )
-                .unwrap()
+                main_loop(roots, InitializationOptions::default(), &msg_receiver, &msg_sender)
+                    .unwrap()
             },
         );
         let res = Server { req_id: Cell::new(1), dir, messages: Default::default(), worker };
