@@ -94,7 +94,7 @@ impl Server {
         let worker = Worker::<RawMessage, RawMessage>::spawn(
             "test server",
             128,
-            move |mut msg_receiver, mut msg_sender| {
+            move |msg_receiver, msg_sender| {
                 main_loop(roots, InitializationOptions::default(), &msg_receiver, &msg_sender)
                     .unwrap()
             },
