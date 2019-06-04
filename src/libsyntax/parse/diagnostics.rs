@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
             self.span,
             &format!("expected identifier, found {}", self.this_token_descr()),
         );
-        if let token::Ident(ident, false) = &self.token {
+        if let token::Ident(ident, false) = &self.token.kind {
             if ident.is_raw_guess() {
                 err.span_suggestion(
                     self.span,
@@ -730,7 +730,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, bool /* recovered */> {
         let token_str = pprust::token_to_string(t);
         let this_token_str = self.this_token_descr();
-        let (prev_sp, sp) = match (&self.token, self.subparser_name) {
+        let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
             // Point at the end of the macro call when reaching end of macro arguments.
             (token::Eof, Some(_)) => {
                 let sp = self.sess.source_map().next_point(self.span);
@@ -746,7 +746,7 @@ impl<'a> Parser<'a> {
         let msg = format!(
             "expected `{}`, found {}",
             token_str,
-            match (&self.token, self.subparser_name) {
+            match (&self.token.kind, self.subparser_name) {
                 (token::Eof, Some(origin)) => format!("end of {}", origin),
                 _ => this_token_str,
             },
@@ -989,7 +989,7 @@ impl<'a> Parser<'a> {
                break_on_semi, break_on_block);
         loop {
             debug!("recover_stmt_ loop {:?}", self.token);
-            match self.token {
+            match self.token.kind {
                 token::OpenDelim(token::DelimToken::Brace) => {
                     brace_depth += 1;
                     self.bump();
@@ -1074,7 +1074,7 @@ impl<'a> Parser<'a> {
     }
 
     crate fn eat_incorrect_doc_comment(&mut self, applied_to: &str) {
-        if let token::DocComment(_) = self.token {
+        if let token::DocComment(_) = self.token.kind {
             let mut err = self.diagnostic().struct_span_err(
                 self.span,
                 &format!("documentation comments cannot be applied to {}", applied_to),
@@ -1214,7 +1214,7 @@ impl<'a> Parser<'a> {
     }
 
     crate fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
-        let (span, msg) = match (&self.token, self.subparser_name) {
+        let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.sess.source_map().next_point(self.span);
                 (sp, format!("expected expression, found end of {}", origin))

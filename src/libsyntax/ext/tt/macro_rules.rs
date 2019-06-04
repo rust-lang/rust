@@ -190,10 +190,10 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
                     arm_span,
                 })
             }
-            Failure(sp, tok, t) => if sp.lo() >= best_fail_spot.lo() {
-                best_fail_spot = sp;
-                best_fail_tok = Some(tok);
-                best_fail_text = Some(t);
+            Failure(token, msg) => if token.span.lo() >= best_fail_spot.lo() {
+                best_fail_spot = token.span;
+                best_fail_tok = Some(token.kind);
+                best_fail_text = Some(msg);
             },
             Error(err_sp, ref msg) => {
                 cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..])
@@ -288,11 +288,11 @@ pub fn compile(
 
     let argument_map = match parse(sess, body.stream(), &argument_gram, None, true) {
         Success(m) => m,
-        Failure(sp, tok, t) => {
-            let s = parse_failure_msg(tok);
-            let sp = sp.substitute_dummy(def.span);
+        Failure(token, msg) => {
+            let s = parse_failure_msg(token.kind);
+            let sp = token.span.substitute_dummy(def.span);
             let mut err = sess.span_diagnostic.struct_span_fatal(sp, &s);
-            err.span_label(sp, t);
+            err.span_label(sp, msg);
             err.emit();
             FatalError.raise();
         }

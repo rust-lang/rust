@@ -260,7 +260,7 @@ fn parse_inline_asm<'a>(
         loop {
             // MOD_SEP is a double colon '::' without space in between.
             // When encountered, the state must be advanced twice.
-            match (&p.token, state.next(), state.next().next()) {
+            match (&p.token.kind, state.next(), state.next().next()) {
                 (&token::Colon, StateNone, _) |
                 (&token::ModSep, _, StateNone) => {
                     p.bump();

@@ -239,7 +239,7 @@ fn maybe_source_file_to_parser(
     let mut parser = stream_to_parser(sess, stream, None);
     parser.unclosed_delims = unclosed_delims;
     if parser.token == token::Eof && parser.span.is_dummy() {
-        parser.span = Span::new(end_pos, end_pos, parser.span.ctxt());
+        parser.token.span = Span::new(end_pos, end_pos, parser.span.ctxt());
     }
 
     Ok(parser)

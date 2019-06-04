@@ -273,7 +273,7 @@ pub enum ParseResult<T> {
     Success(T),
     /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
-    Failure(syntax_pos::Span, TokenKind, &'static str),
+    Failure(Token, &'static str),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(syntax_pos::Span, String),
 }
@@ -701,7 +701,7 @@ pub fn parse(
             parser.span,
         ) {
             Success(_) => {}
-            Failure(sp, tok, t) => return Failure(sp, tok, t),
+            Failure(token, msg) => return Failure(token, msg),
             Error(sp, msg) => return Error(sp, msg),
         }
 
@@ -727,13 +727,13 @@ pub fn parse(
                     "ambiguity: multiple successful parses".to_string(),
                 );
             } else {
+                let span = if parser.span.is_dummy() {
+                    parser.span
+                } else {
+                    sess.source_map().next_point(parser.span)
+                };
                 return Failure(
-                    if parser.span.is_dummy() {
-                        parser.span
-                    } else {
-                        sess.source_map().next_point(parser.span)
-                    },
-                    token::Eof,
+                    Token { kind: token::Eof, span },
                     "missing tokens in macro arguments",
                 );
             }
@@ -771,7 +771,6 @@ pub fn parse(
         // then there is a syntax error.
         else if bb_items.is_empty() && next_items.is_empty() {
             return Failure(
-                parser.span,
                 parser.token.clone(),
                 "no rules expected this token in macro call",
             );

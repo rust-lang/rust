@@ -103,7 +103,7 @@ fn parse_assert<'a>(
     //
     // Parse this as an actual message, and suggest inserting a comma. Eventually, this should be
     // turned into an error.
-    let custom_message = if let token::Literal(token::Lit { kind: token::Str, .. }) = parser.token {
+    let custom_message = if let token::Literal(token::Lit { kind: token::Str, .. }) = parser.token.kind {
         let mut err = cx.struct_span_warn(parser.span, "unexpected string literal");
         let comma_span = cx.source_map().next_point(parser.prev_span);
         err.span_suggestion_short(

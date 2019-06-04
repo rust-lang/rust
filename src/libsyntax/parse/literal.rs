@@ -3,7 +3,7 @@
 use crate::ast::{self, Ident, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
-use crate::parse::token::{self, TokenKind};
+use crate::parse::token::{self, Token, TokenKind};
 use crate::parse::unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
@@ -272,44 +272,42 @@ impl<'a> Parser<'a> {
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`.
             recovered = self.look_ahead(1, |t| {
-                if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = *t {
+                if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = t.kind {
                     let next_span = self.look_ahead_span(1);
                     if self.span.hi() == next_span.lo() {
                         let s = String::from("0.") + &symbol.as_str();
-                        let token = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
-                        return Some((token, self.span.to(next_span)));
+                        let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
+                        return Some(Token { kind, span: self.span.to(next_span) });
                     }
                 }
                 None
             });
-            if let Some((ref token, span)) = recovered {
+            if let Some(token) = &recovered {
                 self.bump();
                 self.diagnostic()
-                    .struct_span_err(span, "float literals must have an integer part")
+                    .struct_span_err(token.span, "float literals must have an integer part")
                     .span_suggestion(
-                        span,
+                        token.span,
                         "must have an integer part",
-                        pprust::token_to_string(&token),
+                        pprust::token_to_string(token),
                         Applicability::MachineApplicable,
                     )
                     .emit();
             }
         }
 
-        let (token, span) = recovered.as_ref().map_or((&self.token, self.span),
-                                                      |(token, span)| (token, *span));
-
-        match Lit::from_token(token, span) {
+        let token = recovered.as_ref().unwrap_or(&self.token);
+        match Lit::from_token(token, token.span) {
             Ok(lit) => {
                 self.bump();
                 Ok(lit)
             }
             Err(LitError::NotLiteral) => {
                 let msg = format!("unexpected token: {}", self.this_token_descr());
-                Err(self.span_fatal(span, &msg))
+                Err(self.span_fatal(token.span, &msg))
             }
             Err(err) => {
-                let lit = token.expect_lit();
+                let (lit, span) = (token.expect_lit(), token.span);
                 self.bump();
                 err.report(&self.sess.span_diagnostic, lit, span);
                 let lit = token::Lit::new(token::Err, lit.symbol, lit.suffix);
