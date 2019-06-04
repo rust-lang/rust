@@ -57,7 +57,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             _ => return,
         };
 
-        let lit_fields: FxHashSet<_> = fields.into_iter().map(|f| &f.name).collect();
+        let lit_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
         let missed_fields: Vec<Name> = struct_def
             .fields(db)
             .iter()

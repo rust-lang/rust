@@ -1044,7 +1044,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::StructLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
-                for (field_idx, field) in fields.into_iter().enumerate() {
+                for (field_idx, field) in fields.iter().enumerate() {
                     let field_ty = def_id
                         .and_then(|it| match it.field(self.db, &field.name) {
                             Some(field) => Some(field),
