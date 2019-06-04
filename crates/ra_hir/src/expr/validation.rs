@@ -44,7 +44,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         &mut self,
         id: ExprId,
         _path: &Option<Path>,
-        fields: &Vec<StructLitField>,
+        fields: &[StructLitField],
         spread: &Option<ExprId>,
         db: &impl HirDatabase,
     ) {
