@@ -20,6 +20,7 @@ use syntax::symbol::LocalInternedString;
 
 use crate::utils::paths;
 use crate::utils::sugg;
+use crate::utils::usage::mutated_variables;
 use crate::utils::{
     get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
     is_ctor_function, is_expn_of, is_self, is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path,
@@ -1880,7 +1881,20 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
     // lint if the caller of `map()` is an `Option`
     let is_option = match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION);
     let is_result = match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::RESULT);
+
     if is_option || is_result {
+        // Don't make a suggestion that may fail to compile due to mutably borrowing
+        // the same variable twice.
+        let map_mutated_vars = mutated_variables(&map_args[0], cx);
+        let unwrap_mutated_vars = mutated_variables(&unwrap_args[1], cx);
+        if let (Some(map_mutated_vars), Some(unwrap_mutated_vars)) = (map_mutated_vars, unwrap_mutated_vars) {
+            if map_mutated_vars.intersection(&unwrap_mutated_vars).next().is_some() {
+                return;
+            }
+        } else {
+            return;
+        }
+
         // lint message
         let msg = if is_option {
             "called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling \
