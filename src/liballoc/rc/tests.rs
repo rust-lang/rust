@@ -6,7 +6,7 @@ use std::option::Option::{self, None, Some};
 use std::result::Result::{Err, Ok};
 use std::mem::drop;
 use std::clone::Clone;
-use std::convert::From;
+use std::convert::{From, TryInto};
 
 #[test]
 fn test_clone() {
@@ -424,4 +424,16 @@ fn test_downcast() {
     let r2str = r2.downcast::<&'static str>();
     assert!(r2str.is_ok());
     assert_eq!(r2str.unwrap(), Rc::new("abc"));
+}
+
+#[test]
+fn test_array_from_slice() {
+    let v = vec![1, 2, 3];
+    let r: Rc<[u32]> = Rc::from(v);
+
+    let a: Result<Rc<[u32; 3]>, _> = r.clone().try_into();
+    assert!(a.is_ok());
+
+    let a: Result<Rc<[u32; 2]>, _> = r.clone().try_into();
+    assert!(a.is_err());
 }
