@@ -1,0 +1,16 @@
+error: variable does not need to be mutable
+  --> $DIR/issue-61424.rs:4:9
+   |
+LL |     let mut x;
+   |         ----^
+   |         |
+   |         help: remove this `mut`
+   |
+note: lint level defined here
+  --> $DIR/issue-61424.rs:1:9
+   |
+LL | #![deny(unused_mut)]
+   |         ^^^^^^^^^^
+
+error: aborting due to previous error
+
