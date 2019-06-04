@@ -900,15 +900,15 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
 
     if !parser.errors.is_empty() {
         let err = parser.errors.remove(0);
-        let sp = fmt.span.from_inner_byte_pos(err.start.unwrap(), err.end.unwrap());
+        let sp = fmt.span.from_inner(err.span);
         let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}",
                                                      err.description));
         e.span_label(sp, err.label + " in format string");
         if let Some(note) = err.note {
             e.note(&note);
         }
-        if let Some((label, start, end)) = err.secondary_label {
-            let sp = fmt.span.from_inner_byte_pos(start.unwrap(), end.unwrap());
+        if let Some((label, span)) = err.secondary_label {
+            let sp = fmt.span.from_inner(span);
             e.span_label(sp, label);
         }
         e.emit();
@@ -916,9 +916,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
     }
 
     let arg_spans = parser.arg_places.iter()
-        .map(|&(parse::SpanIndex(start), parse::SpanIndex(end))| {
-            fmt.span.from_inner_byte_pos(start, end)
-        })
+        .map(|span| fmt.span.from_inner(*span))
         .collect();
 
     let mut cx = Context {
@@ -1065,8 +1063,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
                             show_doc_note = true;
                         }
 
-                        if let Some((start, end)) = pos {
-                            let sp = fmt_sp.from_inner_byte_pos(start, end);
+                        if let Some(inner_sp) = pos {
+                            let sp = fmt_sp.from_inner(inner_sp);
                             suggestions.push((sp, trn));
                         } else {
                             diag.help(&format!("`{}` should be written as `{}`", sub, trn));

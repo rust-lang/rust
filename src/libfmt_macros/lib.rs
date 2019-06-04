@@ -24,7 +24,16 @@ use std::str;
 use std::string;
 use std::iter;
 
-use syntax_pos::Symbol;
+use syntax_pos::{InnerSpan, Symbol};
+
+#[derive(Copy, Clone)]
+struct InnerOffset(usize);
+
+impl InnerOffset {
+    fn to(self, end: InnerOffset) -> InnerSpan {
+        InnerSpan::new(self.0, end.0)
+    }
+}
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
@@ -136,9 +145,8 @@ pub struct ParseError {
     pub description: string::String,
     pub note: Option<string::String>,
     pub label: string::String,
-    pub start: SpanIndex,
-    pub end: SpanIndex,
-    pub secondary_label: Option<(string::String, SpanIndex, SpanIndex)>,
+    pub span: InnerSpan,
+    pub secondary_label: Option<(string::String, InnerSpan)>,
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -157,22 +165,13 @@ pub struct Parser<'a> {
     /// `Some(raw count)` when the string is "raw", used to position spans correctly
     style: Option<usize>,
     /// Start and end byte offset of every successfully parsed argument
-    pub arg_places: Vec<(SpanIndex, SpanIndex)>,
+    pub arg_places: Vec<InnerSpan>,
     /// Characters that need to be shifted
     skips: Vec<usize>,
-    /// Span offset of the last opening brace seen, used for error reporting
-    last_opening_brace_pos: Option<SpanIndex>,
+    /// Span of the last opening brace seen, used for error reporting
+    last_opening_brace: Option<InnerSpan>,
     /// Wether the source string is comes from `println!` as opposed to `format!` or `print!`
     append_newline: bool,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct SpanIndex(pub usize);
-
-impl SpanIndex {
-    pub fn unwrap(self) -> usize {
-        self.0
-    }
 }
 
 impl<'a> Iterator for Parser<'a> {
@@ -182,19 +181,20 @@ impl<'a> Iterator for Parser<'a> {
         if let Some(&(pos, c)) = self.cur.peek() {
             match c {
                 '{' => {
-                    let curr_last_brace = self.last_opening_brace_pos;
-                    self.last_opening_brace_pos = Some(self.to_span_index(pos));
+                    let curr_last_brace = self.last_opening_brace;
+                    let byte_pos = self.to_span_index(pos);
+                    self.last_opening_brace = Some(byte_pos.to(byte_pos));
                     self.cur.next();
                     if self.consume('{') {
-                        self.last_opening_brace_pos = curr_last_brace;
+                        self.last_opening_brace = curr_last_brace;
 
                         Some(String(self.string(pos + 1)))
                     } else {
                         let arg = self.argument();
-                        if let Some(arg_pos) = self.must_consume('}').map(|end| {
-                            (self.to_span_index(pos), self.to_span_index(end + 1))
-                        }) {
-                            self.arg_places.push(arg_pos);
+                        if let Some(end) = self.must_consume('}') {
+                            let start = self.to_span_index(pos);
+                            let end = self.to_span_index(end + 1);
+                            self.arg_places.push(start.to(end));
                         }
                         Some(NextArgument(arg))
                     }
@@ -209,8 +209,7 @@ impl<'a> Iterator for Parser<'a> {
                             "unmatched `}` found",
                             "unmatched `}`",
                             "if you intended to print `}`, you can escape it using `}}`",
-                            err_pos,
-                            err_pos,
+                            err_pos.to(err_pos),
                         );
                         None
                     }
@@ -242,7 +241,7 @@ impl<'a> Parser<'a> {
             style,
             arg_places: vec![],
             skips,
-            last_opening_brace_pos: None,
+            last_opening_brace: None,
             append_newline,
         }
     }
@@ -254,15 +253,13 @@ impl<'a> Parser<'a> {
         &mut self,
         description: S1,
         label: S2,
-        start: SpanIndex,
-        end: SpanIndex,
+        span: InnerSpan,
     ) {
         self.errors.push(ParseError {
             description: description.into(),
             note: None,
             label: label.into(),
-            start,
-            end,
+            span,
             secondary_label: None,
         });
     }
@@ -275,15 +272,13 @@ impl<'a> Parser<'a> {
         description: S1,
         label: S2,
         note: S3,
-        start: SpanIndex,
-        end: SpanIndex,
+        span: InnerSpan,
     ) {
         self.errors.push(ParseError {
             description: description.into(),
             note: Some(note.into()),
             label: label.into(),
-            start,
-            end,
+            span,
             secondary_label: None,
         });
     }
@@ -304,7 +299,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn to_span_index(&self, pos: usize) -> SpanIndex {
+    fn to_span_index(&self, pos: usize) -> InnerOffset {
         let mut pos = pos;
         let raw = self.style.map(|raw| raw + 1).unwrap_or(0);
         for skip in &self.skips {
@@ -316,7 +311,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        SpanIndex(raw + pos + 1)
+        InnerOffset(raw + pos + 1)
     }
 
     /// Forces consumption of the specified character. If the character is not
@@ -334,8 +329,8 @@ impl<'a> Parser<'a> {
                 let label = "expected `}`".to_owned();
                 let (note, secondary_label) = if c == '}' {
                     (Some("if you intended to print `{`, you can escape it using `{{`".to_owned()),
-                     self.last_opening_brace_pos.map(|pos| {
-                        ("because of this opening brace".to_owned(), pos, pos)
+                     self.last_opening_brace.map(|sp| {
+                        ("because of this opening brace".to_owned(), sp)
                      }))
                 } else {
                     (None, None)
@@ -344,8 +339,7 @@ impl<'a> Parser<'a> {
                     description,
                     note,
                     label,
-                    start: pos,
-                    end: pos,
+                    span: pos.to(pos),
                     secondary_label,
                 });
                 None
@@ -359,8 +353,8 @@ impl<'a> Parser<'a> {
                 let label = format!("expected `{:?}`", c);
                 let (note, secondary_label) = if c == '}' {
                     (Some("if you intended to print `{`, you can escape it using `{{`".to_owned()),
-                     self.last_opening_brace_pos.map(|pos| {
-                        ("because of this opening brace".to_owned(), pos, pos)
+                     self.last_opening_brace.map(|sp| {
+                        ("because of this opening brace".to_owned(), sp)
                      }))
                 } else {
                     (None, None)
@@ -369,12 +363,11 @@ impl<'a> Parser<'a> {
                     description,
                     note,
                     label,
-                    start: pos,
-                    end: pos,
+                    span: pos.to(pos),
                     secondary_label,
                 });
             } else {
-                self.err(description, format!("expected `{:?}`", c), pos, pos);
+                self.err(description, format!("expected `{:?}`", c), pos.to(pos));
             }
             None
         }
@@ -446,8 +439,10 @@ impl<'a> Parser<'a> {
                     self.err_with_note(format!("invalid argument name `{}`", invalid_name),
                                        "invalid argument name",
                                        "argument names cannot start with an underscore",
-                                       self.to_span_index(pos),
-                                       self.to_span_index(pos + invalid_name.len()));
+                                        self.to_span_index(pos).to(
+                                            self.to_span_index(pos + invalid_name.len())
+                                        ),
+                                        );
                     Some(ArgumentNamed(Symbol::intern(invalid_name)))
                 },
 
