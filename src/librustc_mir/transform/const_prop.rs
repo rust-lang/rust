@@ -3,8 +3,8 @@
 
 use rustc::hir::def::DefKind;
 use rustc::mir::{
-    AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue, Local,
-    NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind,
+    AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
+    Local, NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind,
     TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp, ProjectionElem,
     SourceScope, SourceScopeLocalData, LocalDecl, Promoted,
 };
@@ -21,7 +21,9 @@ use rustc::ty::layout::{
     HasTyCtxt, TargetDataLayout, HasDataLayout,
 };
 
-use crate::interpret::{self, InterpretCx, ScalarMaybeUndef, Immediate, OpTy, ImmTy, MemoryKind};
+use crate::interpret::{
+    self, InterpretCx, ScalarMaybeUndef, Immediate, OpTy, ImmTy, MemoryKind,
+};
 use crate::const_eval::{
     CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_eval_cx,
 };
@@ -516,7 +518,12 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         ))
     }
 
-    fn replace_with_const(&self, rval: &mut Rvalue<'tcx>, value: Const<'tcx>, span: Span) {
+    fn replace_with_const(
+        &mut self,
+        rval: &mut Rvalue<'tcx>,
+        value: Const<'tcx>,
+        source_info: SourceInfo,
+    ) {
         trace!("attepting to replace {:?} with {:?}", rval, value);
         self.ecx.validate_operand(
             value,
@@ -525,10 +532,16 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             true,
         ).expect("value should already be a valid const");
 
-        if let interpret::Operand::Immediate(im) = *value {
-            match im {
+        // FIXME> figure out what tho do when try_read_immediate fails
+        let imm = self.use_ecx(source_info, |this| {
+            this.ecx.try_read_immediate(value)
+        });
+
+        if let Some(Ok(imm)) = imm {
+            match imm {
                 interpret::Immediate::Scalar(ScalarMaybeUndef::Scalar(scalar)) => {
-                    *rval = Rvalue::Use(self.operand_from_scalar(scalar, value.layout.ty, span));
+                    *rval = Rvalue::Use(
+                        self.operand_from_scalar(scalar, value.layout.ty, source_info.span));
                 },
                 Immediate::ScalarPair(
                     ScalarMaybeUndef::Scalar(one),
@@ -539,8 +552,12 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                         *rval = Rvalue::Aggregate(
                             Box::new(AggregateKind::Tuple),
                             vec![
-                                self.operand_from_scalar(one, substs[0].expect_ty(), span),
-                                self.operand_from_scalar(two, substs[1].expect_ty(), span),
+                                self.operand_from_scalar(
+                                    one, substs[0].expect_ty(), source_info.span
+                                ),
+                                self.operand_from_scalar(
+                                    two, substs[1].expect_ty(), source_info.span
+                                ),
                             ],
                         );
                     }
@@ -655,7 +672,11 @@ impl<'b, 'a, 'tcx> MutVisitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                             self.places[local] = Some(value);
 
                             if self.should_const_prop() {
-                                self.replace_with_const(rval, value, statement.source_info.span);
+                                self.replace_with_const(
+                                    rval,
+                                    value,
+                                    statement.source_info,
+                                );
                             }
                         }
                     }
