@@ -31,11 +31,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     pub(crate) fn validate_body(&mut self, db: &impl HirDatabase) {
         let body = self.func.body(db);
         for e in body.exprs() {
-            match e {
-                (id, Expr::StructLit { path, fields, spread }) => {
-                    self.validate_struct_literal(id, path, fields, spread, db)
-                }
-                _ => (),
+            if let (id, Expr::StructLit { path, fields, spread }) = e {
+                self.validate_struct_literal(id, path, fields, spread, db);
             }
         }
     }
