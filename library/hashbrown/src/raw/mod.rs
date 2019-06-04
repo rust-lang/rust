@@ -652,13 +652,20 @@ impl<T> RawTable<T> {
             .checked_add(additional)
             .ok_or_else(|| fallability.capacity_overflow())?;
 
-        // Rehash in-place without re-allocating if we have plenty of spare
-        // capacity that is locked up due to DELETED entries.
-        if new_items < bucket_mask_to_capacity(self.bucket_mask) / 2 {
+        let full_capacity = bucket_mask_to_capacity(self.bucket_mask);
+        if new_items <= full_capacity / 2 {
+            // Rehash in-place without re-allocating if we have plenty of spare
+            // capacity that is locked up due to DELETED entries.
             self.rehash_in_place(hasher);
             Ok(())
         } else {
-            self.resize(new_items, hasher, fallability)
+            // Otherwise, conservatively resize to at least the next size up
+            // to avoid churning deletes into frequent rehashes.
+            self.resize(
+                usize::max(new_items, full_capacity + 1),
+                hasher,
+                fallability,
+            )
         }
     }
 
