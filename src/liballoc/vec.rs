@@ -2018,16 +2018,14 @@ impl<T> Vec<T> {
     /// with the given `replace_with` iterator and yields the removed items.
     /// `replace_with` does not need to be the same length as `range`.
     ///
-    /// Note 1: The element range is removed even if the iterator is not
-    /// consumed until the end.
+    /// The element range is removed even if the iterator is not consumed until the end.
     ///
-    /// Note 2: It is unspecified how many elements are removed from the vector,
+    /// It is unspecified how many elements are removed from the vector
     /// if the `Splice` value is leaked.
     ///
-    /// Note 3: The input iterator `replace_with` is only consumed
-    /// when the `Splice` value is dropped.
+    /// The input iterator `replace_with` is only consumed when the `Splice` value is dropped.
     ///
-    /// Note 4: This is optimal if:
+    /// This is optimal if:
     ///
     /// * The tail (elements in the vector after `range`) is empty,
     /// * or `replace_with` yields fewer elements than `range`’s length
