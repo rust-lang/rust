@@ -234,7 +234,7 @@ impl<'a> Classifier<'a> {
             // reference or dereference operator or a reference or pointer type, instead of the
             // bit-and or multiplication operator.
             token::BinOp(token::And) | token::BinOp(token::Star)
-                if self.lexer.peek() != token::Whitespace => Class::RefKeyWord,
+                if self.lexer.peek() != &token::Whitespace => Class::RefKeyWord,
 
             // Consider this as part of a macro invocation if there was a
             // leading identifier.
@@ -280,9 +280,9 @@ impl<'a> Classifier<'a> {
                 // as an attribute.
 
                 // Case 1: #![inner_attribute]
-                if self.lexer.peek() == token::Not {
+                if self.lexer.peek() == &token::Not {
                     self.try_next_token()?; // NOTE: consumes `!` token!
-                    if self.lexer.peek() == token::OpenDelim(token::Bracket) {
+                    if self.lexer.peek() == &token::OpenDelim(token::Bracket) {
                         self.in_attribute = true;
                         out.enter_span(Class::Attribute)?;
                     }
@@ -292,7 +292,7 @@ impl<'a> Classifier<'a> {
                 }
 
                 // Case 2: #[outer_attribute]
-                if self.lexer.peek() == token::OpenDelim(token::Bracket) {
+                if self.lexer.peek() == &token::OpenDelim(token::Bracket) {
                     self.in_attribute = true;
                     out.enter_span(Class::Attribute)?;
                 }
@@ -341,7 +341,7 @@ impl<'a> Classifier<'a> {
                         if self.in_macro_nonterminal {
                             self.in_macro_nonterminal = false;
                             Class::MacroNonTerminal
-                        } else if self.lexer.peek() == token::Not {
+                        } else if self.lexer.peek() == &token::Not {
                             self.in_macro = true;
                             Class::Macro
                         } else {

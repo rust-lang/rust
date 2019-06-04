@@ -12,7 +12,6 @@ use core::unicode::property::Pattern_White_Space;
 use std::borrow::Cow;
 use std::char;
 use std::iter;
-use std::mem::replace;
 use rustc_data_structures::sync::Lrc;
 use log::debug;
 
@@ -41,8 +40,7 @@ pub struct StringReader<'a> {
     /// Stop reading src at this index.
     crate end_src_index: usize,
     // cached:
-    peek_tok: TokenKind,
-    peek_span: Span,
+    peek_token: Token,
     peek_span_src_raw: Span,
     fatal_errs: Vec<DiagnosticBuilder<'a>>,
     // cache a direct reference to the source text, so that we don't have to
@@ -90,10 +88,7 @@ impl<'a> StringReader<'a> {
     /// Returns the next token. EFFECT: advances the string_reader.
     pub fn try_next_token(&mut self) -> Result<Token, ()> {
         assert!(self.fatal_errs.is_empty());
-        let ret_val = Token {
-            kind: replace(&mut self.peek_tok, token::Whitespace),
-            span: self.peek_span,
-        };
+        let ret_val = self.peek_token.clone();
         self.advance_token()?;
         Ok(ret_val)
     }
@@ -158,7 +153,7 @@ impl<'a> StringReader<'a> {
     }
 
     fn fatal(&self, m: &str) -> FatalError {
-        self.fatal_span(self.peek_span, m)
+        self.fatal_span(self.peek_token.span, m)
     }
 
     crate fn emit_fatal_errors(&mut self) {
@@ -179,12 +174,8 @@ impl<'a> StringReader<'a> {
         buffer
     }
 
-    pub fn peek(&self) -> Token {
-        // FIXME(pcwalton): Bad copy!
-        Token {
-            kind: self.peek_tok.clone(),
-            span: self.peek_span,
-        }
+    pub fn peek(&self) -> &Token {
+        &self.peek_token
     }
 
     /// For comments.rs, which hackily pokes into next_pos and ch
@@ -215,8 +206,7 @@ impl<'a> StringReader<'a> {
             source_file,
             end_src_index: src.len(),
             // dummy values; not read
-            peek_tok: token::Eof,
-            peek_span: syntax_pos::DUMMY_SP,
+            peek_token: Token { kind: token::Eof, span: syntax_pos::DUMMY_SP },
             peek_span_src_raw: syntax_pos::DUMMY_SP,
             src,
             fatal_errs: Vec::new(),
@@ -321,29 +311,28 @@ impl<'a> StringReader<'a> {
         self.err_span_(from_pos, to_pos, &m[..]);
     }
 
-    /// Advance peek_tok and peek_span to refer to the next token, and
+    /// Advance peek_token to refer to the next token, and
     /// possibly update the interner.
     fn advance_token(&mut self) -> Result<(), ()> {
         match self.scan_whitespace_or_comment() {
             Some(comment) => {
                 self.peek_span_src_raw = comment.span;
-                self.peek_span = comment.span;
-                self.peek_tok = comment.kind;
+                self.peek_token = comment;
             }
             None => {
                 if self.is_eof() {
-                    self.peek_tok = token::Eof;
+
                     let (real, raw) = self.mk_sp_and_raw(
                         self.source_file.end_pos,
                         self.source_file.end_pos,
                     );
-                    self.peek_span = real;
+                    self.peek_token = Token { kind: token::Eof, span: real };
                     self.peek_span_src_raw = raw;
                 } else {
                     let start_bytepos = self.pos;
-                    self.peek_tok = self.next_token_inner()?;
+                    let kind = self.next_token_inner()?;
                     let (real, raw) = self.mk_sp_and_raw(start_bytepos, self.pos);
-                    self.peek_span = real;
+                    self.peek_token = Token { kind, span: real };
                     self.peek_span_src_raw = raw;
                 };
             }
