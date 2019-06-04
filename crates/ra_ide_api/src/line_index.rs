@@ -41,7 +41,7 @@ impl LineIndex {
                 newlines.push(curr_row);
 
                 // Save any utf-16 characters seen in the previous line
-                if utf16_chars.len() > 0 {
+                if !utf16_chars.is_empty() {
                     utf16_lines.insert(line, utf16_chars);
                     utf16_chars = Vec::new();
                 }
@@ -61,7 +61,7 @@ impl LineIndex {
         }
 
         // Save any utf-16 characters seen in the last line
-        if utf16_chars.len() > 0 {
+        if !utf16_chars.is_empty() {
             utf16_lines.insert(line, utf16_chars);
         }
 

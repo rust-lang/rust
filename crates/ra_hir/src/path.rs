@@ -116,7 +116,7 @@ impl Path {
 
     /// `true` if this path is just a standalone `self`
     pub fn is_self(&self) -> bool {
-        self.kind == PathKind::Self_ && self.segments.len() == 0
+        self.kind == PathKind::Self_ && self.segments.is_empty()
     }
 
     /// If this path is a single identifier, like `foo`, return its name.
@@ -140,7 +140,7 @@ impl GenericArgs {
             args.push(GenericArg::Type(type_ref));
         }
         // lifetimes and assoc type args ignored for now
-        if args.len() > 0 {
+        if !args.is_empty() {
             Some(GenericArgs { args })
         } else {
             None

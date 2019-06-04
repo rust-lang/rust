@@ -292,7 +292,7 @@ fn delim_to_str(d: tt::Delimiter, closing: bool) -> SmolStr {
     };
 
     let idx = closing as usize;
-    let text = if texts.len() > 0 { &texts[idx..texts.len() - (1 - idx)] } else { "" };
+    let text = if !texts.is_empty() { &texts[idx..texts.len() - (1 - idx)] } else { "" };
     text.into()
 }
 
