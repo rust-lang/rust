@@ -315,8 +315,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             .append(&mut get_skip_macro_names(&attrs));
 
         let should_visit_node_again = match item.node {
-            // For use items, skip rewriting attributes. Just check for a skip attribute.
-            ast::ItemKind::Use(..) => {
+            // For use/extern crate items, skip rewriting attributes but check for a skip attribute.
+            ast::ItemKind::Use(..) | ast::ItemKind::ExternCrate(_) => {
                 if contains_skip(attrs) {
                     self.push_skipped_with_span(attrs.as_slice(), item.span(), item.span());
                     false
@@ -381,8 +381,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.push_rewrite(item.span, rw);
                 }
                 ast::ItemKind::ExternCrate(_) => {
-                    let rw = rewrite_extern_crate(&self.get_context(), item);
-                    self.push_rewrite(item.span, rw);
+                    let rw = rewrite_extern_crate(&self.get_context(), item, self.shape());
+                    let span = if attrs.is_empty() {
+                        item.span
+                    } else {
+                        mk_sp(attrs[0].span.lo(), item.span.hi())
+                    };
+                    self.push_rewrite(span, rw);
                 }
                 ast::ItemKind::Struct(..) | ast::ItemKind::Union(..) => {
                     self.visit_struct(&StructParts::from_item(item));

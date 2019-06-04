@@ -9,6 +9,7 @@ use syntax::source_map::{self, BytePos, Span};
 use syntax::visit;
 use syntax::{ast, ptr, symbol};
 
+use crate::attr::filter_inline_attrs;
 use crate::comment::{
     combine_strs_with_missing_comments, contains_comment, is_last_comment_block,
     recover_comment_removed, recover_missing_comment_in_span, rewrite_missing_comment,
@@ -2977,29 +2978,71 @@ impl Rewrite for ast::ForeignItem {
     }
 }
 
+/// Rewrite the attributes of an item.
+fn rewrite_attrs(
+    context: &RewriteContext<'_>,
+    item: &ast::Item,
+    item_str: &str,
+    shape: Shape,
+) -> Option<String> {
+    let attrs = filter_inline_attrs(&item.attrs, item.span());
+    let attrs_str = attrs.rewrite(context, shape)?;
+
+    let missed_span = if attrs.is_empty() {
+        mk_sp(item.span.lo(), item.span.lo())
+    } else {
+        mk_sp(attrs[attrs.len() - 1].span.hi(), item.span.lo())
+    };
+
+    let allow_extend = if attrs.len() == 1 {
+        let line_len = attrs_str.len() + 1 + item_str.len();
+        !attrs.first().unwrap().is_sugared_doc
+            && context.config.inline_attribute_width() >= line_len
+    } else {
+        false
+    };
+
+    combine_strs_with_missing_comments(
+        context,
+        &attrs_str,
+        &item_str,
+        missed_span,
+        shape,
+        allow_extend,
+    )
+}
+
 /// Rewrite an inline mod.
-pub(crate) fn rewrite_mod(context: &RewriteContext<'_>, item: &ast::Item) -> String {
+/// The given shape is used to format the mod's attributes.
+pub(crate) fn rewrite_mod(
+    context: &RewriteContext<'_>,
+    item: &ast::Item,
+    attrs_shape: Shape,
+) -> Option<String> {
     let mut result = String::with_capacity(32);
     result.push_str(&*format_visibility(context, &item.vis));
     result.push_str("mod ");
     result.push_str(rewrite_ident(context, item.ident));
     result.push(';');
-    result
+    rewrite_attrs(context, item, &result, attrs_shape)
 }
 
-/// Rewrite `extern crate foo;` WITHOUT attributes.
+/// Rewrite `extern crate foo;`.
+/// The given shape is used to format the extern crate's attributes.
 pub(crate) fn rewrite_extern_crate(
     context: &RewriteContext<'_>,
     item: &ast::Item,
+    attrs_shape: Shape,
 ) -> Option<String> {
     assert!(is_extern_crate(item));
     let new_str = context.snippet(item.span);
-    Some(if contains_comment(new_str) {
+    let item_str = if contains_comment(new_str) {
         new_str.to_owned()
     } else {
         let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
         String::from(&*Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"))
-    })
+    };
+    rewrite_attrs(context, item, &item_str, attrs_shape)
 }
 
 /// Returns `true` for `mod foo;`, false for `mod foo { .. }`.

@@ -11,12 +11,11 @@ use std::cmp::{Ord, Ordering};
 use syntax::{ast, attr, source_map::Span, symbol::sym};
 
 use crate::attr::filter_inline_attrs;
-use crate::comment::combine_strs_with_missing_comments;
 use crate::config::Config;
 use crate::imports::{merge_use_trees, UseTree};
 use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use crate::lists::{itemize_list, write_list, ListFormatting, ListItem};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::RewriteContext;
 use crate::shape::Shape;
 use crate::source_map::LineRangeUtils;
 use crate::spanned::Spanned;
@@ -70,37 +69,11 @@ fn rewrite_reorderable_item(
     item: &ast::Item,
     shape: Shape,
 ) -> Option<String> {
-    let attrs = filter_inline_attrs(&item.attrs, item.span());
-    let attrs_str = attrs.rewrite(context, shape)?;
-
-    let missed_span = if attrs.is_empty() {
-        mk_sp(item.span.lo(), item.span.lo())
-    } else {
-        mk_sp(attrs.last().unwrap().span.hi(), item.span.lo())
-    };
-
-    let item_str = match item.node {
-        ast::ItemKind::ExternCrate(..) => rewrite_extern_crate(context, item)?,
-        ast::ItemKind::Mod(..) => rewrite_mod(context, item),
-        _ => return None,
-    };
-
-    let allow_extend = if attrs.len() == 1 {
-        let line_len = attrs_str.len() + 1 + item_str.len();
-        !attrs.first().unwrap().is_sugared_doc
-            && context.config.inline_attribute_width() >= line_len
-    } else {
-        false
-    };
-
-    combine_strs_with_missing_comments(
-        context,
-        &attrs_str,
-        &item_str,
-        missed_span,
-        shape,
-        allow_extend,
-    )
+    match item.node {
+        ast::ItemKind::ExternCrate(..) => rewrite_extern_crate(context, item, shape),
+        ast::ItemKind::Mod(..) => rewrite_mod(context, item, shape),
+        _ => None,
+    }
 }
 
 /// Rewrite a list of items with reordering. Every item in `items` must have
