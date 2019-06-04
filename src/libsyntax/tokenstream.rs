@@ -16,7 +16,7 @@
 use crate::ext::base;
 use crate::ext::tt::{macro_parser, quoted};
 use crate::parse::Directory;
-use crate::parse::token::{self, DelimToken, Token};
+use crate::parse::token::{self, DelimToken, TokenKind};
 use crate::print::pprust;
 
 use syntax_pos::{BytePos, Mark, Span, DUMMY_SP};
@@ -44,7 +44,7 @@ use std::{fmt, iter, mem};
 #[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum TokenTree {
     /// A single token
-    Token(Span, token::Token),
+    Token(Span, token::TokenKind),
     /// A delimited sequence of token trees
     Delimited(DelimSpan, DelimToken, TokenStream),
 }
@@ -54,7 +54,7 @@ pub enum TokenTree {
 fn _dummy()
 where
     Span: Send + Sync,
-    token::Token: Send + Sync,
+    token::TokenKind: Send + Sync,
     DelimSpan: Send + Sync,
     DelimToken: Send + Sync,
     TokenStream: Send + Sync,
@@ -130,7 +130,7 @@ impl TokenTree {
     }
 
     /// Indicates if the stream is a token that is equal to the provided token.
-    pub fn eq_token(&self, t: Token) -> bool {
+    pub fn eq_token(&self, t: TokenKind) -> bool {
         match *self {
             TokenTree::Token(_, ref tk) => *tk == t,
             _ => false,
@@ -241,8 +241,8 @@ impl From<TokenTree> for TreeAndJoint {
     }
 }
 
-impl From<Token> for TokenStream {
-    fn from(token: Token) -> TokenStream {
+impl From<TokenKind> for TokenStream {
+    fn from(token: TokenKind) -> TokenStream {
         TokenTree::Token(DUMMY_SP, token).into()
     }
 }
@@ -580,7 +580,7 @@ mod tests {
     use super::*;
     use crate::syntax::ast::Ident;
     use crate::with_default_globals;
-    use crate::parse::token::Token;
+    use crate::parse::token::TokenKind;
     use crate::util::parser_testing::string_to_stream;
     use syntax_pos::{Span, BytePos, NO_EXPANSION};
 

@@ -78,7 +78,7 @@ use crate::ast::Ident;
 use crate::ext::tt::quoted::{self, TokenTree};
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::{Parser, PathStyle};
-use crate::parse::token::{self, DocComment, Nonterminal, Token};
+use crate::parse::token::{self, DocComment, Nonterminal, TokenKind};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream};
@@ -199,7 +199,7 @@ struct MatcherPos<'root, 'tt: 'root> {
     seq_op: Option<quoted::KleeneOp>,
 
     /// The separator if we are in a repetition.
-    sep: Option<Token>,
+    sep: Option<TokenKind>,
 
     /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
     /// before we enter the sequence.
@@ -273,7 +273,7 @@ pub enum ParseResult<T> {
     Success(T),
     /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
-    Failure(syntax_pos::Span, Token, &'static str),
+    Failure(syntax_pos::Span, TokenKind, &'static str),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(syntax_pos::Span, String),
 }
@@ -417,7 +417,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub fn parse_failure_msg(tok: Token) -> String {
+pub fn parse_failure_msg(tok: TokenKind) -> String {
     match tok {
         token::Eof => "unexpected end of macro invocation".to_string(),
         _ => format!(
@@ -428,7 +428,7 @@ pub fn parse_failure_msg(tok: Token) -> String {
 }
 
 /// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
-fn token_name_eq(t1: &Token, t2: &Token) -> bool {
+fn token_name_eq(t1: &TokenKind, t2: &TokenKind) -> bool {
     if let (Some((id1, is_raw1)), Some((id2, is_raw2))) = (t1.ident(), t2.ident()) {
         id1.name == id2.name && is_raw1 == is_raw2
     } else if let (Some(id1), Some(id2)) = (t1.lifetime(), t2.lifetime()) {
@@ -466,7 +466,7 @@ fn inner_parse_loop<'root, 'tt>(
     next_items: &mut Vec<MatcherPosHandle<'root, 'tt>>,
     eof_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     bb_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
-    token: &Token,
+    token: &TokenKind,
     span: syntax_pos::Span,
 ) -> ParseResult<()> {
     // Pop items from `cur_items` until it is empty.
@@ -807,7 +807,7 @@ pub fn parse(
 
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
+fn get_macro_ident(token: &TokenKind) -> Option<(Ident, bool)> {
     match *token {
         token::Ident(ident, is_raw) if ident.name != kw::Underscore =>
             Some((ident, is_raw)),
@@ -819,7 +819,7 @@ fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
 ///
 /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
 /// token. Be conservative (return true) if not sure.
-fn may_begin_with(name: Symbol, token: &Token) -> bool {
+fn may_begin_with(name: Symbol, token: &TokenKind) -> bool {
     /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
     fn may_be_ident(nt: &token::Nonterminal) -> bool {
         match *nt {

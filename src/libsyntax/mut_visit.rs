@@ -9,7 +9,7 @@
 
 use crate::ast::*;
 use crate::source_map::{Spanned, respan};
-use crate::parse::token::{self, Token};
+use crate::parse::token::{self, TokenKind};
 use crate::ptr::P;
 use crate::ThinVec;
 use crate::tokenstream::*;
@@ -262,7 +262,7 @@ pub trait MutVisitor: Sized {
         noop_visit_tts(tts, self);
     }
 
-    fn visit_token(&mut self, t: &mut Token) {
+    fn visit_token(&mut self, t: &mut TokenKind) {
         noop_visit_token(t, self);
     }
 
@@ -596,7 +596,7 @@ pub fn noop_visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &m
 }
 
 // apply ident visitor if it's an ident, apply other visits to interpolated nodes
-pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
+pub fn noop_visit_token<T: MutVisitor>(t: &mut TokenKind, vis: &mut T) {
     match t {
         token::Ident(id, _is_raw) => vis.visit_ident(id),
         token::Lifetime(id) => vis.visit_ident(id),

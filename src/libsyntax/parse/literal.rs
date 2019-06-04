@@ -3,7 +3,7 @@
 use crate::ast::{self, Ident, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
-use crate::parse::token::{self, Token};
+use crate::parse::token::{self, TokenKind};
 use crate::parse::unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
@@ -228,7 +228,7 @@ impl Lit {
     }
 
     /// Converts arbitrary token into an AST literal.
-    crate fn from_token(token: &Token, span: Span) -> Result<Lit, LitError> {
+    crate fn from_token(token: &TokenKind, span: Span) -> Result<Lit, LitError> {
         let lit = match *token {
             token::Ident(ident, false) if ident.name == kw::True || ident.name == kw::False =>
                 token::Lit::new(token::Bool, ident.name, None),
@@ -276,7 +276,7 @@ impl<'a> Parser<'a> {
                     let next_span = self.look_ahead_span(1);
                     if self.span.hi() == next_span.lo() {
                         let s = String::from("0.") + &symbol.as_str();
-                        let token = Token::lit(token::Float, Symbol::intern(&s), suffix);
+                        let token = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
                         return Some((token, self.span.to(next_span)));
                     }
                 }

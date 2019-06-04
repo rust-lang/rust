@@ -5,7 +5,7 @@ use crate::generated_code;
 use std::cell::Cell;
 
 use syntax::parse::lexer::{self, StringReader};
-use syntax::parse::token::{self, Token};
+use syntax::parse::token::{self, TokenKind};
 use syntax_pos::*;
 
 #[derive(Clone)]
@@ -56,7 +56,7 @@ impl<'a> SpanUtils<'a> {
         lexer::StringReader::retokenize(&self.sess.parse_sess, span)
     }
 
-    pub fn sub_span_of_token(&self, span: Span, tok: Token) -> Option<Span> {
+    pub fn sub_span_of_token(&self, span: Span, tok: TokenKind) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         loop {
             let next = toks.real_token();

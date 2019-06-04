@@ -307,7 +307,7 @@ impl_stable_hash_for!(struct token::Lit {
 });
 
 fn hash_token<'a, 'gcx, W: StableHasherResult>(
-    token: &token::Token,
+    token: &token::TokenKind,
     hcx: &mut StableHashingContext<'a>,
     hasher: &mut StableHasher<W>,
 ) {

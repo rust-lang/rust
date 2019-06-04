@@ -358,13 +358,13 @@ pub fn stream_to_parser_with_base_dir<'a>(
 /// A sequence separator.
 pub struct SeqSep {
     /// The seperator token.
-    pub sep: Option<token::Token>,
+    pub sep: Option<token::TokenKind>,
     /// `true` if a trailing separator is allowed.
     pub trailing_sep_allowed: bool,
 }
 
 impl SeqSep {
-    pub fn trailing_allowed(t: token::Token) -> SeqSep {
+    pub fn trailing_allowed(t: token::TokenKind) -> SeqSep {
         SeqSep {
             sep: Some(t),
             trailing_sep_allowed: true,

@@ -23,12 +23,12 @@ pub struct Delimited {
 
 impl Delimited {
     /// Returns the opening delimiter (possibly `NoDelim`).
-    pub fn open_token(&self) -> token::Token {
+    pub fn open_token(&self) -> token::TokenKind {
         token::OpenDelim(self.delim)
     }
 
     /// Returns the closing delimiter (possibly `NoDelim`).
-    pub fn close_token(&self) -> token::Token {
+    pub fn close_token(&self) -> token::TokenKind {
         token::CloseDelim(self.delim)
     }
 
@@ -58,7 +58,7 @@ pub struct SequenceRepetition {
     /// The sequence of token trees
     pub tts: Vec<TokenTree>,
     /// The optional separator
-    pub separator: Option<token::Token>,
+    pub separator: Option<token::TokenKind>,
     /// Whether the sequence can be repeated zero (*), or one or more times (+)
     pub op: KleeneOp,
     /// The number of `Match`s that appear in the sequence (and subsequences)
@@ -81,7 +81,7 @@ pub enum KleeneOp {
 /// are "first-class" token trees. Useful for parsing macros.
 #[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum TokenTree {
-    Token(Span, token::Token),
+    Token(Span, token::TokenKind),
     Delimited(DelimSpan, Lrc<Delimited>),
     /// A kleene-style repetition sequence
     Sequence(DelimSpan, Lrc<SequenceRepetition>),
@@ -366,7 +366,7 @@ where
 
 /// Takes a token and returns `Some(KleeneOp)` if the token is `+` `*` or `?`. Otherwise, return
 /// `None`.
-fn kleene_op(token: &token::Token) -> Option<KleeneOp> {
+fn kleene_op(token: &token::TokenKind) -> Option<KleeneOp> {
     match *token {
         token::BinOp(token::Star) => Some(KleeneOp::ZeroOrMore),
         token::BinOp(token::Plus) => Some(KleeneOp::OneOrMore),
@@ -383,7 +383,7 @@ fn kleene_op(token: &token::Token) -> Option<KleeneOp> {
 fn parse_kleene_op<I>(
     input: &mut I,
     span: Span,
-) -> Result<Result<(KleeneOp, Span), (token::Token, Span)>, Span>
+) -> Result<Result<(KleeneOp, Span), (token::TokenKind, Span)>, Span>
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
@@ -422,7 +422,7 @@ fn parse_sep_and_kleene_op<I>(
     attrs: &[ast::Attribute],
     edition: Edition,
     macro_node_id: NodeId,
-) -> (Option<token::Token>, KleeneOp)
+) -> (Option<token::TokenKind>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
@@ -447,7 +447,7 @@ fn parse_sep_and_kleene_op_2015<I>(
     _features: &Features,
     _attrs: &[ast::Attribute],
     macro_node_id: NodeId,
-) -> (Option<token::Token>, KleeneOp)
+) -> (Option<token::TokenKind>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
@@ -565,7 +565,7 @@ fn parse_sep_and_kleene_op_2018<I>(
     sess: &ParseSess,
     _features: &Features,
     _attrs: &[ast::Attribute],
-) -> (Option<token::Token>, KleeneOp)
+) -> (Option<token::TokenKind>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {

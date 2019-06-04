@@ -67,7 +67,7 @@ use syntax::source_map::CompilerDesugaringKind::IfTemporary;
 use syntax::std_inject;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::parse::token::{self, Token};
+use syntax::parse::token::{self, TokenKind};
 use syntax::visit::{self, Visitor};
 use syntax_pos::{DUMMY_SP, edition, Span};
 
@@ -1337,7 +1337,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_token(&mut self, token: Token, span: Span) -> TokenStream {
+    fn lower_token(&mut self, token: TokenKind, span: Span) -> TokenStream {
         match token {
             token::Interpolated(nt) => {
                 let tts = nt.to_tokenstream(&self.sess.parse_sess, span);

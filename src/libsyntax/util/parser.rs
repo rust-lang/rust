@@ -1,4 +1,4 @@
-use crate::parse::token::{self, Token, BinOpToken};
+use crate::parse::token::{self, TokenKind, BinOpToken};
 use crate::symbol::kw;
 use crate::ast::{self, BinOpKind};
 
@@ -69,7 +69,7 @@ pub enum Fixity {
 
 impl AssocOp {
     /// Creates a new AssocOP from a token
-    pub fn from_token(t: &Token) -> Option<AssocOp> {
+    pub fn from_token(t: &TokenKind) -> Option<AssocOp> {
         use AssocOp::*;
         match *t {
             token::BinOpEq(k) => Some(AssignOp(k)),

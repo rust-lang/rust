@@ -2,7 +2,7 @@ pub use BinOpToken::*;
 pub use Nonterminal::*;
 pub use DelimToken::*;
 pub use LitKind::*;
-pub use Token::*;
+pub use TokenKind::*;
 
 use crate::ast::{self};
 use crate::parse::ParseSess;
@@ -118,7 +118,7 @@ impl Lit {
 }
 
 pub(crate) fn ident_can_begin_expr(ident: ast::Ident, is_raw: bool) -> bool {
-    let ident_token: Token = Ident(ident, is_raw);
+    let ident_token: TokenKind = Ident(ident, is_raw);
 
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
@@ -149,7 +149,7 @@ pub(crate) fn ident_can_begin_expr(ident: ast::Ident, is_raw: bool) -> bool {
 }
 
 fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
-    let ident_token: Token = Ident(ident, is_raw);
+    let ident_token: TokenKind = Ident(ident, is_raw);
 
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
@@ -166,7 +166,7 @@ fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
-pub enum Token {
+pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
     Lt,
@@ -231,13 +231,13 @@ pub enum Token {
     Eof,
 }
 
-// `Token` is used a lot. Make sure it doesn't unintentionally get bigger.
+// `TokenKind` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Token, 16);
+static_assert_size!(TokenKind, 16);
 
-impl Token {
-    /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
-    pub fn from_ast_ident(ident: ast::Ident) -> Token {
+impl TokenKind {
+    /// Recovers a `TokenKind` from an `ast::Ident`. This creates a raw identifier if necessary.
+    pub fn from_ast_ident(ident: ast::Ident) -> TokenKind {
         Ident(ident, ident.is_raw_guess())
     }
 
@@ -323,7 +323,7 @@ impl Token {
         self == &Question || self == &OpenDelim(Paren)
     }
 
-    pub fn lit(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Token {
+    pub fn lit(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> TokenKind {
         Literal(Lit::new(kind, symbol, suffix))
     }
 
@@ -468,7 +468,7 @@ impl Token {
         }
     }
 
-    crate fn glue(self, joint: Token) -> Option<Token> {
+    crate fn glue(self, joint: TokenKind) -> Option<TokenKind> {
         Some(match self {
             Eq => match joint {
                 Eq => EqEq,
@@ -534,7 +534,7 @@ impl Token {
 
     /// Returns tokens that are likely to be typed accidentally instead of the current token.
     /// Enables better error recovery when the wrong token is found.
-    crate fn similar_tokens(&self) -> Option<Vec<Token>> {
+    crate fn similar_tokens(&self) -> Option<Vec<TokenKind>> {
         match *self {
             Comma => Some(vec![Dot, Lt, Semi]),
             Semi => Some(vec![Colon, Comma]),
@@ -544,7 +544,7 @@ impl Token {
 
     // See comments in `Nonterminal::to_tokenstream` for why we care about
     // *probably* equal here rather than actual equality
-    crate fn probably_equal_for_proc_macro(&self, other: &Token) -> bool {
+    crate fn probably_equal_for_proc_macro(&self, other: &TokenKind) -> bool {
         if mem::discriminant(self) != mem::discriminant(other) {
             return false
         }
@@ -743,7 +743,7 @@ impl Nonterminal {
     }
 }
 
-crate fn is_op(tok: &Token) -> bool {
+crate fn is_op(tok: &TokenKind) -> bool {
     match *tok {
         OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
         Ident(..) | Lifetime(..) | Interpolated(..) |

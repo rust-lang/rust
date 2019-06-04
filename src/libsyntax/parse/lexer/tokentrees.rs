@@ -23,7 +23,7 @@ impl<'a> StringReader<'a> {
 
 struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
-    token: token::Token,
+    token: token::TokenKind,
     span: Span,
     /// Stack of open delimiters and their spans. Used for error message.
     open_braces: Vec<(token::DelimToken, Span)>,

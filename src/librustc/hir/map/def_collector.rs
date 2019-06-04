@@ -6,7 +6,7 @@ use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
 use syntax::visit;
 use syntax::symbol::{kw, sym};
-use syntax::parse::token::{self, Token};
+use syntax::parse::token::{self, TokenKind};
 use syntax_pos::Span;
 
 /// Creates `DefId`s for nodes in the AST.
@@ -325,7 +325,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         }
     }
 
-    fn visit_token(&mut self, t: Token) {
+    fn visit_token(&mut self, t: TokenKind) {
         if let token::Interpolated(nt) = t {
             if let token::NtExpr(ref expr) = *nt {
                 if let ExprKind::Mac(..) = expr.node {

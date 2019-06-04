@@ -161,7 +161,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                 let stream = vec![
                     Ident(ast::Ident::new(sym::doc, span), false),
                     Eq,
-                    Token::lit(token::Str, Symbol::intern(&escaped), None),
+                    TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
                 ]
                 .into_iter()
                 .map(|token| tokenstream::TokenTree::Token(span, token))
@@ -220,7 +220,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             }) if symbol.as_str().starts_with("-") => {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
-                let integer = Token::lit(token::Integer, symbol, suffix);
+                let integer = TokenKind::lit(token::Integer, symbol, suffix);
                 let a = tokenstream::TokenTree::Token(span, minus);
                 let b = tokenstream::TokenTree::Token(span, integer);
                 return vec![a, b].into_iter().collect();
@@ -231,7 +231,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             }) if symbol.as_str().starts_with("-") => {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
-                let float = Token::lit(token::Float, symbol, suffix);
+                let float = TokenKind::lit(token::Float, symbol, suffix);
                 let a = tokenstream::TokenTree::Token(span, minus);
                 let b = tokenstream::TokenTree::Token(span, float);
                 return vec![a, b].into_iter().collect();

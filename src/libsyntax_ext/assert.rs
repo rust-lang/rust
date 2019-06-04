@@ -4,7 +4,7 @@ use syntax::ast::{self, *};
 use syntax::source_map::Spanned;
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token::{self, Token};
+use syntax::parse::token::{self, TokenKind};
 use syntax::parse::parser::Parser;
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -31,7 +31,7 @@ pub fn expand_assert<'cx>(
         tts: custom_message.unwrap_or_else(|| {
             TokenStream::from(TokenTree::Token(
                 DUMMY_SP,
-                Token::lit(token::Str, Symbol::intern(&format!(
+                TokenKind::lit(token::Str, Symbol::intern(&format!(
                     "assertion failed: {}",
                     pprust::expr_to_string(&cond_expr).escape_debug()
                 )), None),

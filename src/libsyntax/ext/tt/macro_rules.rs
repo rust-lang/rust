@@ -12,7 +12,7 @@ use crate::feature_gate::Features;
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::Parser;
 use crate::parse::token::{self, NtTT};
-use crate::parse::token::Token::*;
+use crate::parse::token::TokenKind::*;
 use crate::symbol::{Symbol, kw, sym};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 

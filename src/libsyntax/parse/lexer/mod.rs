@@ -1,6 +1,6 @@
 use crate::ast::{self, Ident};
 use crate::parse::ParseSess;
-use crate::parse::token::{self, Token};
+use crate::parse::token::{self, TokenKind};
 use crate::symbol::{sym, Symbol};
 use crate::parse::unescape;
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
@@ -22,7 +22,7 @@ mod unicode_chars;
 
 #[derive(Clone, Debug)]
 pub struct TokenAndSpan {
-    pub tok: Token,
+    pub tok: TokenKind,
     pub sp: Span,
 }
 
@@ -56,7 +56,7 @@ pub struct StringReader<'a> {
     /// Stop reading src at this index.
     crate end_src_index: usize,
     // cached:
-    peek_tok: Token,
+    peek_tok: TokenKind,
     peek_span: Span,
     peek_span_src_raw: Span,
     fatal_errs: Vec<DiagnosticBuilder<'a>>,
@@ -847,7 +847,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn binop(&mut self, op: token::BinOpToken) -> Token {
+    fn binop(&mut self, op: token::BinOpToken) -> TokenKind {
         self.bump();
         if self.ch_is('=') {
             self.bump();
@@ -859,7 +859,7 @@ impl<'a> StringReader<'a> {
 
     /// Returns the next token from the string, advances the input past that
     /// token, and updates the interner
-    fn next_token_inner(&mut self) -> Result<Token, ()> {
+    fn next_token_inner(&mut self) -> Result<TokenKind, ()> {
         let c = self.ch;
 
         if ident_start(c) {
@@ -916,7 +916,7 @@ impl<'a> StringReader<'a> {
             let (kind, symbol) = self.scan_number(c.unwrap());
             let suffix = self.scan_optional_raw_name();
             debug!("next_token_inner: scanned number {:?}, {:?}, {:?}", kind, symbol, suffix);
-            return Ok(Token::lit(kind, symbol, suffix));
+            return Ok(TokenKind::lit(kind, symbol, suffix));
         }
 
         match c.expect("next_token_inner called at EOF") {
@@ -1077,7 +1077,7 @@ impl<'a> StringReader<'a> {
                         let symbol = self.name_from(start);
                         self.bump();
                         self.validate_char_escape(start_with_quote);
-                        return Ok(Token::lit(token::Char, symbol, None));
+                        return Ok(TokenKind::lit(token::Char, symbol, None));
                     }
 
                     // Include the leading `'` in the real identifier, for macro
@@ -1102,7 +1102,7 @@ impl<'a> StringReader<'a> {
                 let symbol = self.scan_single_quoted_string(start_with_quote, msg);
                 self.validate_char_escape(start_with_quote);
                 let suffix = self.scan_optional_raw_name();
-                Ok(Token::lit(token::Char, symbol, suffix))
+                Ok(TokenKind::lit(token::Char, symbol, suffix))
             }
             'b' => {
                 self.bump();
@@ -1127,7 +1127,7 @@ impl<'a> StringReader<'a> {
                 };
                 let suffix = self.scan_optional_raw_name();
 
-                Ok(Token::lit(kind, symbol, suffix))
+                Ok(TokenKind::lit(kind, symbol, suffix))
             }
             '"' => {
                 let start_with_quote = self.pos;
@@ -1135,7 +1135,7 @@ impl<'a> StringReader<'a> {
                 let symbol = self.scan_double_quoted_string(msg);
                 self.validate_str_escape(start_with_quote);
                 let suffix = self.scan_optional_raw_name();
-                Ok(Token::lit(token::Str, symbol, suffix))
+                Ok(TokenKind::lit(token::Str, symbol, suffix))
             }
             'r' => {
                 let start_bpos = self.pos;
@@ -1213,7 +1213,7 @@ impl<'a> StringReader<'a> {
                 };
                 let suffix = self.scan_optional_raw_name();
 
-                Ok(Token::lit(token::StrRaw(hash_count), symbol, suffix))
+                Ok(TokenKind::lit(token::StrRaw(hash_count), symbol, suffix))
             }
             '-' => {
                 if self.nextch_is('>') {
@@ -1638,19 +1638,19 @@ mod tests {
 
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
-    fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<Token>) {
+    fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<TokenKind>) {
         for expected_tok in &expected {
             assert_eq!(&string_reader.next_token().tok, expected_tok);
         }
     }
 
     // make the identifier by looking up the string in the interner
-    fn mk_ident(id: &str) -> Token {
-        Token::from_ast_ident(Ident::from_str(id))
+    fn mk_ident(id: &str) -> TokenKind {
+        TokenKind::from_ast_ident(Ident::from_str(id))
     }
 
-    fn mk_lit(kind: token::LitKind, symbol: &str, suffix: Option<&str>) -> Token {
-        Token::lit(kind, Symbol::intern(symbol), suffix.map(Symbol::intern))
+    fn mk_lit(kind: token::LitKind, symbol: &str, suffix: Option<&str>) -> TokenKind {
+        TokenKind::lit(kind, Symbol::intern(symbol), suffix.map(Symbol::intern))
     }
 
     #[test]
