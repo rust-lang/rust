@@ -35,6 +35,8 @@ function isOSX {
 function getCIBranch {
   if [ "$TRAVIS" = "true" ]; then
     echo "$TRAVIS_BRANCH"
+  elif [ "$APPVEYOR" = "True" ]; then
+    echo "$APPVEYOR_REPO_BRANCH"
   else
     echo "$BUILD_SOURCEBRANCHNAME"
   fi;
