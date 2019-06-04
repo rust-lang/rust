@@ -1884,7 +1884,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
 
     if is_option || is_result {
         // Don't make a suggestion that may fail to compile due to mutably borrowing
-        // they same variable twice.
+        // the same variable twice.
         let map_mutated_vars = mutated_variables(&map_args[0], cx);
         let unwrap_mutated_vars = mutated_variables(&unwrap_args[1], cx);
         if let (Some(map_mutated_vars), Some(unwrap_mutated_vars)) = (map_mutated_vars, unwrap_mutated_vars) {
