@@ -36,9 +36,9 @@ use crate::{ast, attr};
 use crate::ext::base::DummyResult;
 use crate::source_map::{self, SourceMap, Spanned, respan};
 use crate::parse::{SeqSep, classify, literal, token};
-use crate::parse::lexer::{TokenAndSpan, UnmatchedBrace};
+use crate::parse::lexer::UnmatchedBrace;
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use crate::parse::token::DelimToken;
+use crate::parse::token::{Token, DelimToken};
 use crate::parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
 use crate::util::parser::{AssocOp, Fixity};
 use crate::print::pprust;
@@ -295,7 +295,7 @@ impl TokenCursorFrame {
 }
 
 impl TokenCursor {
-    fn next(&mut self) -> TokenAndSpan {
+    fn next(&mut self) -> Token {
         loop {
             let tree = if !self.frame.open_delim {
                 self.frame.open_delim = true;
@@ -309,7 +309,7 @@ impl TokenCursor {
                 self.frame = frame;
                 continue
             } else {
-                return TokenAndSpan { tok: token::Eof, sp: DUMMY_SP }
+                return Token { kind: token::Eof, span: DUMMY_SP }
             };
 
             match self.frame.last_token {
@@ -318,7 +318,7 @@ impl TokenCursor {
             }
 
             match tree {
-                TokenTree::Token(sp, tok) => return TokenAndSpan { tok: tok, sp: sp },
+                TokenTree::Token(span, kind) => return Token { kind, span },
                 TokenTree::Delimited(sp, delim, tts) => {
                     let frame = TokenCursorFrame::new(sp, delim, &tts);
                     self.stack.push(mem::replace(&mut self.frame, frame));
@@ -327,9 +327,9 @@ impl TokenCursor {
         }
     }
 
-    fn next_desugared(&mut self) -> TokenAndSpan {
+    fn next_desugared(&mut self) -> Token {
         let (sp, name) = match self.next() {
-            TokenAndSpan { sp, tok: token::DocComment(name) } => (sp, name),
+            Token { span, kind: token::DocComment(name) } => (span, name),
             tok => return tok,
         };
 
@@ -499,8 +499,8 @@ impl<'a> Parser<'a> {
         };
 
         let tok = parser.next_tok();
-        parser.token = tok.tok;
-        parser.span = tok.sp;
+        parser.token = tok.kind;
+        parser.span = tok.span;
 
         if let Some(directory) = directory {
             parser.directory = directory;
@@ -515,15 +515,15 @@ impl<'a> Parser<'a> {
         parser
     }
 
-    fn next_tok(&mut self) -> TokenAndSpan {
+    fn next_tok(&mut self) -> Token {
         let mut next = if self.desugar_doc_comments {
             self.token_cursor.next_desugared()
         } else {
             self.token_cursor.next()
         };
-        if next.sp.is_dummy() {
+        if next.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
-            next.sp = self.prev_span.with_ctxt(next.sp.ctxt());
+            next.span = self.prev_span.with_ctxt(next.span.ctxt());
         }
         next
     }
@@ -1023,8 +1023,8 @@ impl<'a> Parser<'a> {
         };
 
         let next = self.next_tok();
-        self.span = next.sp;
-        self.token = next.tok;
+        self.token = next.kind;
+        self.span = next.span;
         self.expected_tokens.clear();
         // check after each token
         self.process_potential_macro_variable();
@@ -1038,8 +1038,8 @@ impl<'a> Parser<'a> {
         // fortunately for tokens currently using `bump_with`, the
         // prev_token_kind will be of no use anyway.
         self.prev_token_kind = PrevTokenKind::Other;
-        self.span = span;
         self.token = next;
+        self.span = span;
         self.expected_tokens.clear();
     }
 

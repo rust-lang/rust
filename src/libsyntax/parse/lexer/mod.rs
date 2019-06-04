@@ -1,6 +1,6 @@
 use crate::ast::{self, Ident};
 use crate::parse::ParseSess;
-use crate::parse::token::{self, TokenKind};
+use crate::parse::token::{self, Token, TokenKind};
 use crate::symbol::{sym, Symbol};
 use crate::parse::unescape;
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
@@ -19,21 +19,6 @@ use log::debug;
 pub mod comments;
 mod tokentrees;
 mod unicode_chars;
-
-#[derive(Clone, Debug)]
-pub struct TokenAndSpan {
-    pub tok: TokenKind,
-    pub sp: Span,
-}
-
-impl Default for TokenAndSpan {
-    fn default() -> Self {
-        TokenAndSpan {
-            tok: token::Whitespace,
-            sp: syntax_pos::DUMMY_SP,
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct UnmatchedBrace {
@@ -87,7 +72,7 @@ impl<'a> StringReader<'a> {
         ident
     }
 
-    fn unwrap_or_abort(&mut self, res: Result<TokenAndSpan, ()>) -> TokenAndSpan {
+    fn unwrap_or_abort(&mut self, res: Result<Token, ()>) -> Token {
         match res {
             Ok(tok) => tok,
             Err(_) => {
@@ -97,17 +82,17 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
+    fn next_token(&mut self) -> Token where Self: Sized {
         let res = self.try_next_token();
         self.unwrap_or_abort(res)
     }
 
     /// Returns the next token. EFFECT: advances the string_reader.
-    pub fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
+    pub fn try_next_token(&mut self) -> Result<Token, ()> {
         assert!(self.fatal_errs.is_empty());
-        let ret_val = TokenAndSpan {
-            tok: replace(&mut self.peek_tok, token::Whitespace),
-            sp: self.peek_span,
+        let ret_val = Token {
+            kind: replace(&mut self.peek_tok, token::Whitespace),
+            span: self.peek_span,
         };
         self.advance_token()?;
         Ok(ret_val)
@@ -135,10 +120,10 @@ impl<'a> StringReader<'a> {
         return None;
     }
 
-    fn try_real_token(&mut self) -> Result<TokenAndSpan, ()> {
+    fn try_real_token(&mut self) -> Result<Token, ()> {
         let mut t = self.try_next_token()?;
         loop {
-            match t.tok {
+            match t.kind {
                 token::Whitespace | token::Comment | token::Shebang(_) => {
                     t = self.try_next_token()?;
                 }
@@ -149,7 +134,7 @@ impl<'a> StringReader<'a> {
         Ok(t)
     }
 
-    pub fn real_token(&mut self) -> TokenAndSpan {
+    pub fn real_token(&mut self) -> Token {
         let res = self.try_real_token();
         self.unwrap_or_abort(res)
     }
@@ -194,11 +179,11 @@ impl<'a> StringReader<'a> {
         buffer
     }
 
-    pub fn peek(&self) -> TokenAndSpan {
+    pub fn peek(&self) -> Token {
         // FIXME(pcwalton): Bad copy!
-        TokenAndSpan {
-            tok: self.peek_tok.clone(),
-            sp: self.peek_span,
+        Token {
+            kind: self.peek_tok.clone(),
+            span: self.peek_span,
         }
     }
 
@@ -341,9 +326,9 @@ impl<'a> StringReader<'a> {
     fn advance_token(&mut self) -> Result<(), ()> {
         match self.scan_whitespace_or_comment() {
             Some(comment) => {
-                self.peek_span_src_raw = comment.sp;
-                self.peek_span = comment.sp;
-                self.peek_tok = comment.tok;
+                self.peek_span_src_raw = comment.span;
+                self.peek_span = comment.span;
+                self.peek_tok = comment.kind;
             }
             None => {
                 if self.is_eof() {
@@ -527,7 +512,7 @@ impl<'a> StringReader<'a> {
 
     /// PRECONDITION: self.ch is not whitespace
     /// Eats any kind of comment.
-    fn scan_comment(&mut self) -> Option<TokenAndSpan> {
+    fn scan_comment(&mut self) -> Option<Token> {
         if let Some(c) = self.ch {
             if c.is_whitespace() {
                 let msg = "called consume_any_line_comment, but there was whitespace";
@@ -563,14 +548,14 @@ impl<'a> StringReader<'a> {
                         self.bump();
                     }
 
-                    let tok = if doc_comment {
+                    let kind = if doc_comment {
                         self.with_str_from(start_bpos, |string| {
                             token::DocComment(Symbol::intern(string))
                         })
                     } else {
                         token::Comment
                     };
-                    Some(TokenAndSpan { tok, sp: self.mk_sp(start_bpos, self.pos) })
+                    Some(Token { kind, span: self.mk_sp(start_bpos, self.pos) })
                 }
                 Some('*') => {
                     self.bump();
@@ -594,9 +579,9 @@ impl<'a> StringReader<'a> {
                     while !self.ch_is('\n') && !self.is_eof() {
                         self.bump();
                     }
-                    return Some(TokenAndSpan {
-                        tok: token::Shebang(self.name_from(start)),
-                        sp: self.mk_sp(start, self.pos),
+                    return Some(Token {
+                        kind: token::Shebang(self.name_from(start)),
+                        span: self.mk_sp(start, self.pos),
                     });
                 }
             }
@@ -608,7 +593,7 @@ impl<'a> StringReader<'a> {
 
     /// If there is whitespace, shebang, or a comment, scan it. Otherwise,
     /// return `None`.
-    fn scan_whitespace_or_comment(&mut self) -> Option<TokenAndSpan> {
+    fn scan_whitespace_or_comment(&mut self) -> Option<Token> {
         match self.ch.unwrap_or('\0') {
             // # to handle shebang at start of file -- this is the entry point
             // for skipping over all "junk"
@@ -622,9 +607,9 @@ impl<'a> StringReader<'a> {
                 while is_pattern_whitespace(self.ch) {
                     self.bump();
                 }
-                let c = Some(TokenAndSpan {
-                    tok: token::Whitespace,
-                    sp: self.mk_sp(start_bpos, self.pos),
+                let c = Some(Token {
+                    kind: token::Whitespace,
+                    span: self.mk_sp(start_bpos, self.pos),
                 });
                 debug!("scanning whitespace: {:?}", c);
                 c
@@ -634,7 +619,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Might return a sugared-doc-attr
-    fn scan_block_comment(&mut self) -> Option<TokenAndSpan> {
+    fn scan_block_comment(&mut self) -> Option<Token> {
         // block comments starting with "/**" or "/*!" are doc-comments
         let is_doc_comment = self.ch_is('*') || self.ch_is('!');
         let start_bpos = self.pos - BytePos(2);
@@ -671,7 +656,7 @@ impl<'a> StringReader<'a> {
 
         self.with_str_from(start_bpos, |string| {
             // but comments with only "*"s between two "/"s are not
-            let tok = if is_block_doc_comment(string) {
+            let kind = if is_block_doc_comment(string) {
                 let string = if has_cr {
                     self.translate_crlf(start_bpos,
                                         string,
@@ -684,9 +669,9 @@ impl<'a> StringReader<'a> {
                 token::Comment
             };
 
-            Some(TokenAndSpan {
-                tok,
-                sp: self.mk_sp(start_bpos, self.pos),
+            Some(Token {
+                kind,
+                span: self.mk_sp(start_bpos, self.pos),
             })
         })
     }
@@ -1611,26 +1596,26 @@ mod tests {
                                         "/* my source file */ fn main() { println!(\"zebra\"); }\n"
                                             .to_string());
             let id = Ident::from_str("fn");
-            assert_eq!(string_reader.next_token().tok, token::Comment);
-            assert_eq!(string_reader.next_token().tok, token::Whitespace);
+            assert_eq!(string_reader.next_token().kind, token::Comment);
+            assert_eq!(string_reader.next_token().kind, token::Whitespace);
             let tok1 = string_reader.next_token();
-            let tok2 = TokenAndSpan {
-                tok: token::Ident(id, false),
-                sp: Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
+            let tok2 = Token {
+                kind: token::Ident(id, false),
+                span: Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
             };
-            assert_eq!(tok1.tok, tok2.tok);
-            assert_eq!(tok1.sp, tok2.sp);
-            assert_eq!(string_reader.next_token().tok, token::Whitespace);
+            assert_eq!(tok1.kind, tok2.kind);
+            assert_eq!(tok1.span, tok2.span);
+            assert_eq!(string_reader.next_token().kind, token::Whitespace);
             // the 'main' id is already read:
             assert_eq!(string_reader.pos.clone(), BytePos(28));
             // read another token:
             let tok3 = string_reader.next_token();
-            let tok4 = TokenAndSpan {
-                tok: mk_ident("main"),
-                sp: Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
+            let tok4 = Token {
+                kind: mk_ident("main"),
+                span: Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
             };
-            assert_eq!(tok3.tok, tok4.tok);
-            assert_eq!(tok3.sp, tok4.sp);
+            assert_eq!(tok3.kind, tok4.kind);
+            assert_eq!(tok3.span, tok4.span);
             // the lparen is already read:
             assert_eq!(string_reader.pos.clone(), BytePos(29))
         })
@@ -1640,7 +1625,7 @@ mod tests {
     // of tokens (stop checking after exhausting the expected vec)
     fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<TokenKind>) {
         for expected_tok in &expected {
-            assert_eq!(&string_reader.next_token().tok, expected_tok);
+            assert_eq!(&string_reader.next_token().kind, expected_tok);
         }
     }
 
@@ -1698,7 +1683,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token().kind,
                        mk_lit(token::Char, "a", None));
         })
     }
@@ -1708,7 +1693,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token().kind,
                        mk_lit(token::Char, " ", None));
         })
     }
@@ -1718,7 +1703,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token().kind,
                        mk_lit(token::Char, "\\n", None));
         })
     }
@@ -1728,7 +1713,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token().kind,
                        token::Lifetime(Ident::from_str("'abc")));
         })
     }
@@ -1738,7 +1723,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token().kind,
                        mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None));
         })
     }
@@ -1750,10 +1735,10 @@ mod tests {
             let sh = mk_sess(sm.clone());
             macro_rules! test {
                 ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
-                    assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token().tok,
+                    assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token().kind,
                                mk_lit(token::$tok_type, $tok_contents, Some("suffix")));
                     // with a whitespace separator:
-                    assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token().tok,
+                    assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token().kind,
                                mk_lit(token::$tok_type, $tok_contents, None));
                 }}
             }
@@ -1768,11 +1753,11 @@ mod tests {
             test!("1.0", Float, "1.0");
             test!("1.0e10", Float, "1.0e10");
 
-            assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token().kind,
                        mk_lit(token::Integer, "2", Some("us")));
-            assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token().kind,
                        mk_lit(token::StrRaw(3), "raw", Some("suffix")));
-            assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token().kind,
                        mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")));
         })
     }
@@ -1790,11 +1775,11 @@ mod tests {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             let mut lexer = setup(&sm, &sh, "/* /* */ */'a'".to_string());
-            match lexer.next_token().tok {
+            match lexer.next_token().kind {
                 token::Comment => {}
                 _ => panic!("expected a comment!"),
             }
-            assert_eq!(lexer.next_token().tok, mk_lit(token::Char, "a", None));
+            assert_eq!(lexer.next_token().kind, mk_lit(token::Char, "a", None));
         })
     }
 
@@ -1805,10 +1790,10 @@ mod tests {
             let sh = mk_sess(sm.clone());
             let mut lexer = setup(&sm, &sh, "// test\r\n/// test\r\n".to_string());
             let comment = lexer.next_token();
-            assert_eq!(comment.tok, token::Comment);
-            assert_eq!((comment.sp.lo(), comment.sp.hi()), (BytePos(0), BytePos(7)));
-            assert_eq!(lexer.next_token().tok, token::Whitespace);
-            assert_eq!(lexer.next_token().tok,
+            assert_eq!(comment.kind, token::Comment);
+            assert_eq!((comment.span.lo(), comment.span.hi()), (BytePos(0), BytePos(7)));
+            assert_eq!(lexer.next_token().kind, token::Whitespace);
+            assert_eq!(lexer.next_token().kind,
                     token::DocComment(Symbol::intern("/// test")));
         })
     }

@@ -580,7 +580,6 @@ mod tests {
     use super::*;
     use crate::syntax::ast::Ident;
     use crate::with_default_globals;
-    use crate::parse::token::TokenKind;
     use crate::util::parser_testing::string_to_stream;
     use syntax_pos::{Span, BytePos, NO_EXPANSION};
 

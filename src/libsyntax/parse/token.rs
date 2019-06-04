@@ -235,6 +235,12 @@ pub enum TokenKind {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(TokenKind, 16);
 
+#[derive(Clone, Debug)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub span: Span,
+}
+
 impl TokenKind {
     /// Recovers a `TokenKind` from an `ast::Ident`. This creates a raw identifier if necessary.
     pub fn from_ast_ident(ident: ast::Ident) -> TokenKind {
@@ -599,6 +605,12 @@ impl TokenKind {
 
             _ => panic!("forgot to add a token?"),
         }
+    }
+}
+
+impl PartialEq<TokenKind> for Token {
+    fn eq(&self, rhs: &TokenKind) -> bool {
+        self.kind == *rhs
     }
 }
 

@@ -220,7 +220,7 @@ impl<'a> TokenTreesReader<'a> {
 
     fn real_token(&mut self) {
         let t = self.string_reader.real_token();
-        self.token = t.tok;
-        self.span = t.sp;
+        self.token = t.kind;
+        self.span = t.span;
     }
 }

@@ -60,11 +60,11 @@ impl<'a> SpanUtils<'a> {
         let mut toks = self.retokenise_span(span);
         loop {
             let next = toks.real_token();
-            if next.tok == token::Eof {
+            if next == token::Eof {
                 return None;
             }
-            if next.tok == tok {
-                return Some(next.sp);
+            if next == tok {
+                return Some(next.span);
             }
         }
     }
@@ -74,12 +74,12 @@ impl<'a> SpanUtils<'a> {
     //     let mut toks = self.retokenise_span(span);
     //     loop {
     //         let ts = toks.real_token();
-    //         if ts.tok == token::Eof {
+    //         if ts == token::Eof {
     //             return None;
     //         }
-    //         if ts.tok == token::Not {
+    //         if ts == token::Not {
     //             let ts = toks.real_token();
-    //             if ts.tok.is_ident() {
+    //             if ts.kind.is_ident() {
     //                 return Some(ts.sp);
     //             } else {
     //                 return None;
@@ -93,12 +93,12 @@ impl<'a> SpanUtils<'a> {
     //     let mut toks = self.retokenise_span(span);
     //     let mut prev = toks.real_token();
     //     loop {
-    //         if prev.tok == token::Eof {
+    //         if prev == token::Eof {
     //             return None;
     //         }
     //         let ts = toks.real_token();
-    //         if ts.tok == token::Not {
-    //             if prev.tok.is_ident() {
+    //         if ts == token::Not {
+    //             if prev.kind.is_ident() {
     //                 return Some(prev.sp);
     //             } else {
     //                 return None;
