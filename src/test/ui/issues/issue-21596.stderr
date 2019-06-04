@@ -1,0 +1,13 @@
+error[E0599]: no method named `to_string` found for type `*const u8` in the current scope
+  --> $DIR/issue-21596.rs:4:22
+   |
+LL |     println!("{}", z.to_string());
+   |                      ^^^^^^^^^
+   |
+   = note: try using `<*const T>::as_ref()` to get a reference to the type behind the pointer: https://doc.rust-lang.org/std/primitive.pointer.html#method.as_ref
+   = note: the method `to_string` exists but the following trait bounds were not satisfied:
+           `*const u8 : std::string::ToString`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.
