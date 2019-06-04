@@ -333,6 +333,12 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                             this.ecx.operand_field(eval, field.index() as u64)
                         })?;
                     },
+                    ProjectionElem::Deref => {
+                        trace!("processing deref");
+                        eval = self.use_ecx(source_info, |this| {
+                            this.ecx.deref_operand(eval)
+                        })?.into();
+                    }
                     // We could get more projections by using e.g., `operand_projection`,
                     // but we do not even have the stack frame set up properly so
                     // an `Index` projection would throw us off-track.
