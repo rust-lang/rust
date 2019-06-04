@@ -133,6 +133,40 @@ pub fn install_format_hook() -> Result<()> {
     Ok(())
 }
 
+pub fn run_clippy() -> Result<()> {
+    match Command::new("rustup")
+        .args(&["run", TOOLCHAIN, "--", "cargo", "clippy", "--version"])
+        .stderr(Stdio::null())
+        .stdout(Stdio::null())
+        .status()
+    {
+        Ok(status) if status.success() => (),
+        _ => install_clippy()?,
+    };
+
+    let allowed_lints = [
+        "clippy::collapsible_if",
+        "clippy::map_clone", // FIXME: remove when Iterator::copied stabilizes (1.36.0)
+        "clippy::needless_pass_by_value",
+        "clippy::nonminimal_bool",
+        "clippy::redundant_pattern_matching",
+    ];
+    run(
+        &format!(
+            "rustup run {} -- cargo clippy --all-features --all-targets -- -A {}",
+            TOOLCHAIN,
+            allowed_lints.join(" -A ")
+        ),
+        ".",
+    )?;
+    Ok(())
+}
+
+pub fn install_clippy() -> Result<()> {
+    run(&format!("rustup install {}", TOOLCHAIN), ".")?;
+    run(&format!("rustup component add clippy --toolchain {}", TOOLCHAIN), ".")
+}
+
 pub fn run_fuzzer() -> Result<()> {
     match Command::new("cargo")
         .args(&["fuzz", "--help"])

@@ -212,21 +212,17 @@ impl AstEditor<ast::FnDef> {
     }
 
     pub fn strip_attrs_and_docs(&mut self) {
-        loop {
-            if let Some(start) = self
-                .ast()
-                .syntax()
-                .children_with_tokens()
-                .find(|it| it.kind() == ATTR || it.kind() == COMMENT)
-            {
-                let end = match start.next_sibling_or_token() {
-                    Some(el) if el.kind() == WHITESPACE => el,
-                    Some(_) | None => start,
-                };
-                self.ast = self.replace_children(RangeInclusive::new(start, end), iter::empty());
-            } else {
-                break;
-            }
+        while let Some(start) = self
+            .ast()
+            .syntax()
+            .children_with_tokens()
+            .find(|it| it.kind() == ATTR || it.kind() == COMMENT)
+        {
+            let end = match start.next_sibling_or_token() {
+                Some(el) if el.kind() == WHITESPACE => el,
+                Some(_) | None => start,
+            };
+            self.ast = self.replace_children(RangeInclusive::new(start, end), iter::empty());
         }
     }
 }

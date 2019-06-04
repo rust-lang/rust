@@ -49,7 +49,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     }
 }
 
-fn build_import_label(name: &str, path: &Vec<SmolStr>) -> String {
+fn build_import_label(name: &str, path: &[SmolStr]) -> String {
     let mut buf = String::with_capacity(64);
     buf.push_str(name);
     buf.push_str(" (");
@@ -58,7 +58,7 @@ fn build_import_label(name: &str, path: &Vec<SmolStr>) -> String {
     buf
 }
 
-fn fmt_import_path(path: &Vec<SmolStr>, buf: &mut String) {
+fn fmt_import_path(path: &[SmolStr], buf: &mut String) {
     let mut segments = path.iter();
     if let Some(s) = segments.next() {
         buf.push_str(&s);

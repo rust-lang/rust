@@ -137,7 +137,7 @@ impl CargoWorkspace {
         for meta_pkg in meta.packages {
             let is_member = ws_members.contains(&meta_pkg.id);
             let pkg = packages.alloc(PackageData {
-                name: meta_pkg.name.into(),
+                name: meta_pkg.name,
                 manifest: meta_pkg.manifest_path.clone(),
                 targets: Vec::new(),
                 is_member,
@@ -149,7 +149,7 @@ impl CargoWorkspace {
             for meta_tgt in meta_pkg.targets {
                 let tgt = targets.alloc(TargetData {
                     pkg,
-                    name: meta_tgt.name.into(),
+                    name: meta_tgt.name,
                     root: meta_tgt.src_path.clone(),
                     kind: TargetKind::new(meta_tgt.kind.as_slice()),
                 });
@@ -160,8 +160,7 @@ impl CargoWorkspace {
         for node in resolve.nodes {
             let source = pkg_by_id[&node.id];
             for dep_node in node.deps {
-                let dep =
-                    PackageDependency { name: dep_node.name.into(), pkg: pkg_by_id[&dep_node.pkg] };
+                let dep = PackageDependency { name: dep_node.name, pkg: pkg_by_id[&dep_node.pkg] };
                 packages[source].dependencies.push(dep);
             }
         }

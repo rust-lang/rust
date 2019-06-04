@@ -179,6 +179,6 @@ impl<'a> Cursor<'a> {
     /// Check whether it is a top level
     pub fn is_root(&self) -> bool {
         let entry_id = self.ptr.0;
-        return entry_id.0 == 0;
+        entry_id.0 == 0
     }
 }

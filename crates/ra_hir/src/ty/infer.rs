@@ -462,7 +462,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let mut resolved =
             if remaining_index.is_none() { def.take_values()? } else { def.take_types()? };
 
-        let remaining_index = remaining_index.unwrap_or(path.segments.len());
+        let remaining_index = remaining_index.unwrap_or_else(|| path.segments.len());
         let mut actual_def_ty: Option<Ty> = None;
 
         let krate = resolver.krate()?;
@@ -539,7 +539,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             })?;
 
-            resolved = Resolution::Def(item.into());
+            resolved = Resolution::Def(item);
         }
 
         match resolved {
@@ -762,7 +762,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     _ => &Ty::Unknown,
                 };
                 let subty = self.infer_pat(*pat, expectation, default_bm);
-                Ty::apply_one(TypeCtor::Ref(*mutability), subty.into())
+                Ty::apply_one(TypeCtor::Ref(*mutability), subty)
             }
             Pat::TupleStruct { path: ref p, args: ref subpats } => {
                 self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm)
@@ -790,7 +790,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 let bound_ty = match mode {
                     BindingMode::Ref(mutability) => {
-                        Ty::apply_one(TypeCtor::Ref(mutability), inner_ty.clone().into())
+                        Ty::apply_one(TypeCtor::Ref(mutability), inner_ty.clone())
                     }
                     BindingMode::Move => inner_ty.clone(),
                 };
@@ -848,28 +848,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
-        match callable_ty {
-            Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::FnDef(def) => {
-                    // add obligation for trait implementation, if this is a trait method
-                    // FIXME also register obligations from where clauses from the trait or impl and method
-                    match def {
-                        CallableDef::Function(f) => {
-                            if let Some(trait_) = f.parent_trait(self.db) {
-                                // construct a TraitDef
-                                let substs = a_ty.parameters.prefix(
-                                    trait_.generic_params(self.db).count_params_including_parent(),
-                                );
-                                self.obligations
-                                    .push(Obligation::Trait(TraitRef { trait_, substs }));
-                            }
+        if let Ty::Apply(a_ty) = callable_ty {
+            if let TypeCtor::FnDef(def) = a_ty.ctor {
+                // add obligation for trait implementation, if this is a trait method
+                // FIXME also register obligations from where clauses from the trait or impl and method
+                match def {
+                    CallableDef::Function(f) => {
+                        if let Some(trait_) = f.parent_trait(self.db) {
+                            // construct a TraitDef
+                            let substs = a_ty.parameters.prefix(
+                                trait_.generic_params(self.db).count_params_including_parent(),
+                            );
+                            self.obligations.push(Obligation::Trait(TraitRef { trait_, substs }));
                         }
-                        CallableDef::Struct(_) | CallableDef::EnumVariant(_) => {}
                     }
+                    CallableDef::Struct(_) | CallableDef::EnumVariant(_) => {}
                 }
-                _ => {}
-            },
-            _ => {}
+            }
         }
     }
 
@@ -1049,7 +1044,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::StructLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
-                for (field_idx, field) in fields.into_iter().enumerate() {
+                for (field_idx, field) in fields.iter().enumerate() {
                     let field_ty = def_id
                         .and_then(|it| match it.field(self.db, &field.name) {
                             Some(field) => Some(field),

@@ -281,9 +281,8 @@ impl Module {
 
         for impl_block in self.impl_blocks(db) {
             for item in impl_block.items(db) {
-                match item {
-                    crate::ImplItem::Method(f) => f.diagnostics(db, sink),
-                    _ => (),
+                if let crate::ImplItem::Method(f) = item {
+                    f.diagnostics(db, sink);
                 }
             }
         }

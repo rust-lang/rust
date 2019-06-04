@@ -78,7 +78,7 @@ impl ast::Attr {
         if attr.kind() == IDENT {
             let key = attr.as_token()?.text().clone();
             let val_node = tt_node.children_with_tokens().find(|t| t.kind() == STRING)?;
-            let val = val_node.as_token()?.text().trim_start_matches("\"").trim_end_matches("\"");
+            let val = val_node.as_token()?.text().trim_start_matches('"').trim_end_matches('"');
             Some((key, SmolStr::new(val)))
         } else {
             None

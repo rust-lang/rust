@@ -48,8 +48,8 @@ pub fn module_from_declaration(
 pub fn module_from_position(db: &impl HirDatabase, position: FilePosition) -> Option<Module> {
     let file = db.parse(position.file_id).tree;
     match find_node_at_offset::<ast::Module>(file.syntax(), position.offset) {
-        Some(m) if !m.has_semi() => module_from_inline(db, position.file_id.into(), m),
-        _ => module_from_file_id(db, position.file_id.into()),
+        Some(m) if !m.has_semi() => module_from_inline(db, position.file_id, m),
+        _ => module_from_file_id(db, position.file_id),
     }
 }
 
@@ -72,9 +72,9 @@ pub fn module_from_child_node(
     child: &SyntaxNode,
 ) -> Option<Module> {
     if let Some(m) = child.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi()) {
-        module_from_inline(db, file_id.into(), m)
+        module_from_inline(db, file_id, m)
     } else {
-        module_from_file_id(db, file_id.into())
+        module_from_file_id(db, file_id)
     }
 }
 
@@ -99,14 +99,12 @@ pub fn struct_from_module(
     struct_def: &ast::StructDef,
 ) -> Struct {
     let (file_id, _) = module.definition_source(db);
-    let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
     Struct { id: ctx.to_def(struct_def) }
 }
 
 pub fn enum_from_module(db: &impl HirDatabase, module: Module, enum_def: &ast::EnumDef) -> Enum {
     let (file_id, _) = module.definition_source(db);
-    let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
     Enum { id: ctx.to_def(enum_def) }
 }
@@ -117,7 +115,6 @@ pub fn trait_from_module(
     trait_def: &ast::TraitDef,
 ) -> Trait {
     let (file_id, _) = module.definition_source(db);
-    let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
     Trait { id: ctx.to_def(trait_def) }
 }

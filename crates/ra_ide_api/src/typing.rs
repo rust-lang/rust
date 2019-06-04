@@ -110,7 +110,7 @@ pub(crate) fn on_dot_typed(db: &RootDatabase, position: FilePosition) -> Option<
     let mut edit = TextEditBuilder::default();
     edit.replace(
         TextRange::from_to(position.offset - current_indent_len, position.offset),
-        target_indent.into(),
+        target_indent,
     );
 
     let res = SourceChange::source_file_edit_from("reindent dot", position.file_id, edit.finish())

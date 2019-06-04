@@ -125,8 +125,8 @@ fn parse_repeat(p: &mut TtCursor, transcriber: bool) -> Result<crate::Repeat, Pa
         }
     }
 
-    let sep = p.eat_seperator().ok_or(ParseError::Expected(String::from("separator")))?;
-    let rep = p.eat_punct().ok_or(ParseError::Expected(String::from("repeat")))?;
+    let sep = p.eat_seperator().ok_or_else(|| ParseError::Expected(String::from("separator")))?;
+    let rep = p.eat_punct().ok_or_else(|| ParseError::Expected(String::from("repeat")))?;
 
     mk_repeat(rep.char, subtree, Some(sep))
 }

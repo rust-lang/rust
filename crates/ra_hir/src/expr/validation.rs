@@ -31,11 +31,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     pub(crate) fn validate_body(&mut self, db: &impl HirDatabase) {
         let body = self.func.body(db);
         for e in body.exprs() {
-            match e {
-                (id, Expr::StructLit { path, fields, spread }) => {
-                    self.validate_struct_literal(id, path, fields, spread, db)
-                }
-                _ => (),
+            if let (id, Expr::StructLit { path, fields, spread }) = e {
+                self.validate_struct_literal(id, path, fields, spread, db);
             }
         }
     }
@@ -44,7 +41,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         &mut self,
         id: ExprId,
         _path: &Option<Path>,
-        fields: &Vec<StructLitField>,
+        fields: &[StructLitField],
         spread: &Option<ExprId>,
         db: &impl HirDatabase,
     ) {
@@ -57,7 +54,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             _ => return,
         };
 
-        let lit_fields: FxHashSet<_> = fields.into_iter().map(|f| &f.name).collect();
+        let lit_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
         let missed_fields: Vec<Name> = struct_def
             .fields(db)
             .iter()

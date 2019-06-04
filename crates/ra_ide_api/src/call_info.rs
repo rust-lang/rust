@@ -21,8 +21,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let function = match calling_node {
         FnCallNode::CallExpr(expr) => {
             //FIXME: apply subst
-            let (callable_def, _subst) =
-                analyzer.type_of(db, expr.expr()?.into())?.as_callable()?;
+            let (callable_def, _subst) = analyzer.type_of(db, expr.expr()?)?.as_callable()?;
             match callable_def {
                 hir::CallableDef::Function(it) => it,
                 //FIXME: handle other callables
@@ -64,7 +63,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
 
             // If we are in a method account for `self`
             if has_self {
-                param = param + 1;
+                param += 1;
             }
 
             call_info.active_parameter = Some(param);

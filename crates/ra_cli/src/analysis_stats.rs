@@ -31,18 +31,16 @@ pub fn run(verbose: bool, path: &str, only: Option<&str>) -> Result<()> {
 
             for decl in module.declarations(&db) {
                 num_decls += 1;
-                match decl {
-                    ModuleDef::Function(f) => funcs.push(f),
-                    _ => {}
+                if let ModuleDef::Function(f) = decl {
+                    funcs.push(f);
                 }
             }
 
             for impl_block in module.impl_blocks(&db) {
                 for item in impl_block.items(&db) {
                     num_decls += 1;
-                    match item {
-                        ImplItem::Method(f) => funcs.push(f),
-                        _ => {}
+                    if let ImplItem::Method(f) = item {
+                        funcs.push(f);
                     }
                 }
             }

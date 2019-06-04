@@ -36,7 +36,7 @@ impl AdtDef {
 
 impl Struct {
     pub(crate) fn variant_data(&self, db: &impl DefDatabase) -> Arc<VariantData> {
-        db.struct_data((*self).into()).variant_data.clone()
+        db.struct_data(*self).variant_data.clone()
     }
 }
 

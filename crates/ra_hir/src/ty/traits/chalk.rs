@@ -211,13 +211,10 @@ fn convert_where_clauses(
             // anyway), otherwise Chalk can easily get into slow situations
             return vec![pred.clone().subst(substs).to_chalk(db)];
         }
-        match pred {
-            GenericPredicate::Implemented(trait_ref) => {
-                if blacklisted_trait(db, trait_ref.trait_) {
-                    continue;
-                }
+        if let GenericPredicate::Implemented(trait_ref) = pred {
+            if blacklisted_trait(db, trait_ref.trait_) {
+                continue;
             }
-            _ => {}
         }
         result.push(pred.clone().subst(substs).to_chalk(db));
     }

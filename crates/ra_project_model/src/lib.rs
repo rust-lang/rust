@@ -70,7 +70,7 @@ impl ProjectRoot {
             })
         };
 
-        let hidden = dir_path.components().any(|c| c.as_str().starts_with("."));
+        let hidden = dir_path.components().any(|c| c.as_str().starts_with('.'));
 
         !is_ignored && !hidden
     }

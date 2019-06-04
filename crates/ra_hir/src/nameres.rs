@@ -332,7 +332,8 @@ impl CrateDefMap {
         let name = path.expand_macro_expr()?;
         // search local first
         // FIXME: Remove public_macros check when we have a correct local_macors implementation
-        let local = self.public_macros.get(&name).or(self.local_macros.get(&name)).map(|it| *it);
+        let local =
+            self.public_macros.get(&name).or_else(|| self.local_macros.get(&name)).map(|it| *it);
         if local.is_some() {
             return local;
         }
@@ -405,7 +406,7 @@ impl CrateDefMap {
         };
 
         for (i, segment) in segments {
-            let curr = match curr_per_ns.as_ref().left().map_or(None, |m| m.as_ref().take_types()) {
+            let curr = match curr_per_ns.as_ref().left().and_then(|m| m.as_ref().take_types()) {
                 Some(r) => r,
                 None => {
                     // we still have path segments left, but the path so far
@@ -421,10 +422,8 @@ impl CrateDefMap {
             curr_per_ns = match curr {
                 ModuleDef::Module(module) => {
                     if module.krate != self.krate {
-                        let path = Path {
-                            segments: path.segments[i..].iter().cloned().collect(),
-                            kind: PathKind::Self_,
-                        };
+                        let path =
+                            Path { segments: path.segments[i..].to_vec(), kind: PathKind::Self_ };
                         log::debug!("resolving {:?} in other crate", path);
                         let defp_map = db.crate_def_map(module.krate);
                         let (def, s) =
@@ -468,7 +467,7 @@ impl CrateDefMap {
                     );
 
                     return ResolvePathResult::with(
-                        Either::Left(PerNs::types((*s).into())),
+                        Either::Left(PerNs::types(*s)),
                         ReachedFixedPoint::Yes,
                         Some(i),
                     );
@@ -479,8 +478,10 @@ impl CrateDefMap {
     }
 
     fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> ItemOrMacro {
-        let from_crate_root =
-            self[self.root].scope.get_item_or_macro(name).unwrap_or(Either::Left(PerNs::none()));
+        let from_crate_root = self[self.root]
+            .scope
+            .get_item_or_macro(name)
+            .unwrap_or_else(|| Either::Left(PerNs::none()));
         let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
 
         or(from_crate_root, Either::Left(from_extern_prelude))
@@ -505,8 +506,10 @@ impl CrateDefMap {
         //  - current module / scope
         //  - extern prelude
         //  - std prelude
-        let from_scope =
-            self[module].scope.get_item_or_macro(name).unwrap_or(Either::Left(PerNs::none()));;
+        let from_scope = self[module]
+            .scope
+            .get_item_or_macro(name)
+            .unwrap_or_else(|| Either::Left(PerNs::none()));;
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
         let from_prelude = self.resolve_in_prelude(db, name);
@@ -525,7 +528,7 @@ impl CrateDefMap {
             } else {
                 db.crate_def_map(prelude.krate)[prelude.module_id].scope.get_item_or_macro(name)
             };
-            resolution.unwrap_or(Either::Left(PerNs::none()))
+            resolution.unwrap_or_else(|| Either::Left(PerNs::none()))
         } else {
             Either::Left(PerNs::none())
         }

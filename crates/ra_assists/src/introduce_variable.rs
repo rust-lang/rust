@@ -57,9 +57,9 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
             if text.starts_with("\r\n") {
                 buf.push_str("\r\n");
                 buf.push_str(text.trim_start_matches("\r\n"));
-            } else if text.starts_with("\n") {
+            } else if text.starts_with('\n') {
                 buf.push_str("\n");
-                buf.push_str(text.trim_start_matches("\n"));
+                buf.push_str(text.trim_start_matches('\n'));
             } else {
                 buf.push_str(text);
             }

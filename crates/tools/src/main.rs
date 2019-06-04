@@ -3,7 +3,7 @@ use core::str;
 use failure::bail;
 use tools::{
     generate, gen_tests, install_format_hook, run, run_with_output, run_rustfmt,
-    Overwrite, Result, run_fuzzer,
+    Overwrite, Result, run_fuzzer, run_clippy,
 };
 use std::{path::{PathBuf}, env};
 
@@ -16,6 +16,7 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("format"))
         .subcommand(SubCommand::with_name("format-hook"))
         .subcommand(SubCommand::with_name("fuzz-tests"))
+        .subcommand(SubCommand::with_name("lint"))
         .get_matches();
     match matches.subcommand_name().expect("Subcommand must be specified") {
         "install-code" => {
@@ -28,6 +29,7 @@ fn main() -> Result<()> {
         "gen-syntax" => generate(Overwrite)?,
         "format" => run_rustfmt(Overwrite)?,
         "format-hook" => install_format_hook()?,
+        "lint" => run_clippy()?,
         "fuzz-tests" => run_fuzzer()?,
         _ => unreachable!(),
     }
@@ -82,7 +84,7 @@ fn fix_path_for_mac() -> Result<()> {
 
         [ROOT_DIR, &home_dir]
             .iter()
-            .map(|dir| String::from(dir.clone()) + COMMON_APP_PATH)
+            .map(|dir| String::from(*dir) + COMMON_APP_PATH)
             .map(PathBuf::from)
             .filter(|path| path.exists())
             .collect()

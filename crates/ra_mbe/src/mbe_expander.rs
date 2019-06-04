@@ -105,17 +105,15 @@ impl Bindings {
     }
 
     fn get(&self, name: &SmolStr, nesting: &[usize]) -> Result<&tt::TokenTree, ExpandError> {
-        let mut b = self
-            .inner
-            .get(name)
-            .ok_or(ExpandError::BindingError(format!("could not find binding `{}`", name)))?;
+        let mut b = self.inner.get(name).ok_or_else(|| {
+            ExpandError::BindingError(format!("could not find binding `{}`", name))
+        })?;
         for &idx in nesting.iter() {
             b = match b {
                 Binding::Simple(_) => break,
-                Binding::Nested(bs) => bs.get(idx).ok_or(ExpandError::BindingError(format!(
-                    "could not find nested binding `{}`",
-                    name
-                )))?,
+                Binding::Nested(bs) => bs.get(idx).ok_or_else(|| {
+                    ExpandError::BindingError(format!("could not find nested binding `{}`", name))
+                })?,
                 Binding::Empty => {
                     return Err(ExpandError::BindingError(format!(
                         "could not find empty binding `{}`",
@@ -206,48 +204,48 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                         "path" => {
                             let path =
                                 input.eat_path().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(path.into()));
+                            res.inner.insert(text.clone(), Binding::Simple(path));
                         }
                         "expr" => {
                             let expr =
                                 input.eat_expr().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(expr.into()));
+                            res.inner.insert(text.clone(), Binding::Simple(expr));
                         }
                         "ty" => {
                             let ty = input.eat_ty().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(ty.into()));
+                            res.inner.insert(text.clone(), Binding::Simple(ty));
                         }
                         "pat" => {
                             let pat = input.eat_pat().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(pat.into()));
+                            res.inner.insert(text.clone(), Binding::Simple(pat));
                         }
                         "stmt" => {
                             let pat = input.eat_stmt().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(pat.into()));
+                            res.inner.insert(text.clone(), Binding::Simple(pat));
                         }
                         "block" => {
                             let block =
                                 input.eat_block().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(block.into()));
+                            res.inner.insert(text.clone(), Binding::Simple(block));
                         }
                         "meta" => {
                             let meta =
                                 input.eat_meta().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(meta.into()));
+                            res.inner.insert(text.clone(), Binding::Simple(meta));
                         }
                         "tt" => {
                             let token = input.eat().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(token.into()));
+                            res.inner.insert(text.clone(), Binding::Simple(token));
                         }
                         "item" => {
                             let item =
                                 input.eat_item().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(item.into()));
+                            res.inner.insert(text.clone(), Binding::Simple(item));
                         }
                         "lifetime" => {
                             let lifetime =
                                 input.eat_lifetime().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(lifetime.into()));
+                            res.inner.insert(text.clone(), Binding::Simple(lifetime));
                         }
                         "literal" => {
                             let literal =
@@ -262,7 +260,7 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                             // `vis` is optional
                             if let Some(vis) = input.try_eat_vis() {
                                 let vis = vis.clone();
-                                res.inner.insert(text.clone(), Binding::Simple(vis.into()));
+                                res.inner.insert(text.clone(), Binding::Simple(vis));
                             } else {
                                 res.push_optional(&text);
                             }
@@ -452,7 +450,7 @@ fn expand_tt(
 
                 let idx = ctx.nesting.pop().unwrap();
                 ctx.nesting.push(idx + 1);
-                token_trees.push(reduce_single_token(t).into());
+                token_trees.push(reduce_single_token(t));
 
                 if let Some(ref sep) = repeat.separator {
                     match sep {

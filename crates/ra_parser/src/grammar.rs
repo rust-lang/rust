@@ -87,10 +87,8 @@ pub(crate) fn pattern(p: &mut Parser) {
 }
 
 pub(crate) fn stmt(p: &mut Parser, with_semi: bool) {
-    let with_semi = match with_semi {
-        true => expressions::StmtWithSemi::Yes,
-        false => expressions::StmtWithSemi::No,
-    };
+    let with_semi =
+        if with_semi { expressions::StmtWithSemi::Yes } else { expressions::StmtWithSemi::No };
 
     expressions::stmt(p, with_semi)
 }

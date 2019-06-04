@@ -192,23 +192,20 @@ fn iterate_trait_method_candidates<T>(
         // iteration
         let mut known_implemented = false;
         for item in data.items() {
-            match item {
-                &TraitItem::Function(m) => {
-                    let sig = m.signature(db);
-                    if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
-                        if !known_implemented {
-                            let trait_ref = canonical_trait_ref(db, t, ty.clone());
-                            if db.implements(krate, trait_ref).is_none() {
-                                continue 'traits;
-                            }
-                        }
-                        known_implemented = true;
-                        if let Some(result) = callback(&ty.value, m) {
-                            return Some(result);
+            if let TraitItem::Function(m) = *item {
+                let sig = m.signature(db);
+                if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
+                    if !known_implemented {
+                        let trait_ref = canonical_trait_ref(db, t, ty.clone());
+                        if db.implements(krate, trait_ref).is_none() {
+                            continue 'traits;
                         }
                     }
+                    known_implemented = true;
+                    if let Some(result) = callback(&ty.value, m) {
+                        return Some(result);
+                    }
                 }
-                _ => {}
             }
         }
     }
@@ -230,16 +227,13 @@ fn iterate_inherent_methods<T>(
 
     for impl_block in impls.lookup_impl_blocks(&ty.value) {
         for item in impl_block.items(db) {
-            match item {
-                ImplItem::Method(f) => {
-                    let sig = f.signature(db);
-                    if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
-                        if let Some(result) = callback(&ty.value, f) {
-                            return Some(result);
-                        }
+            if let ImplItem::Method(f) = item {
+                let sig = f.signature(db);
+                if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
+                    if let Some(result) = callback(&ty.value, f) {
+                        return Some(result);
                     }
                 }
-                _ => {}
             }
         }
     }
