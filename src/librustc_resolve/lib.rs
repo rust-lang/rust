@@ -855,15 +855,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 _: NodeId)
     {
         debug!("(resolving function) entering function");
-        let (rib_kind, asyncness) = match function_kind {
-            FnKind::ItemFn(_, ref header, ..) =>
-                (FnItemRibKind, &header.asyncness.node),
-            FnKind::Method(_, ref sig, _, _) =>
-                (AssocItemRibKind, &sig.header.asyncness.node),
-            FnKind::Closure(_) =>
-                // Async closures aren't resolved through `visit_fn`-- they're
-                // processed separately
-                (NormalRibKind, &IsAsync::NotAsync),
+        let rib_kind = match function_kind {
+            FnKind::ItemFn(..) => FnItemRibKind,
+            FnKind::Method(..) => AssocItemRibKind,
+            FnKind::Closure(_) => NormalRibKind,
         };
 
         // Create a value rib for the function.
@@ -874,45 +869,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 
         // Add each argument to the rib.
         let mut bindings_list = FxHashMap::default();
-        let mut add_argument = |argument: &ast::Arg| {
+        for argument in &declaration.inputs {
             self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
+
             self.visit_ty(&argument.ty);
+
             debug!("(resolving function) recorded argument");
-        };
-
-        // Walk the generated async arguments if this is an `async fn`, otherwise walk the
-        // normal arguments.
-        if let IsAsync::Async { ref arguments, .. } = asyncness {
-            for (i, a) in arguments.iter().enumerate() {
-                if let Some(arg) = &a.arg {
-                    add_argument(&arg);
-                } else {
-                    add_argument(&declaration.inputs[i]);
-                }
-            }
-        } else {
-            for a in &declaration.inputs { add_argument(a); }
         }
-
         visit::walk_fn_ret_ty(self, &declaration.output);
 
         // Resolve the function body, potentially inside the body of an async closure
         match function_kind {
-            FnKind::ItemFn(.., body) | FnKind::Method(.., body) => {
-                if let IsAsync::Async { ref arguments, .. } = asyncness {
-                    let mut body = body.clone();
-                    // Insert the generated statements into the body before attempting to
-                    // resolve names.
-                    for a in arguments.iter().rev() {
-                        if let Some(pat_stmt) = a.pat_stmt.clone() {
-                            body.stmts.insert(0, pat_stmt);
-                        }
-                        body.stmts.insert(0, a.move_stmt.clone());
-                    }
-                    self.visit_block(&body);
-                } else {
-                    self.visit_block(body);
-                }
+            FnKind::ItemFn(.., body) |
+            FnKind::Method(.., body) => {
+                self.visit_block(body);
             }
             FnKind::Closure(body) => {
                 self.visit_expr(body);
@@ -4178,7 +4148,7 @@ impl<'a> Resolver<'a> {
         let add_module_candidates = |module: Module<'_>, names: &mut Vec<TypoSuggestion>| {
             for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
                 if let Some(binding) = resolution.borrow().binding {
-                    if !ident.is_gensymed() && filter_fn(binding.res()) {
+                    if filter_fn(binding.res()) {
                         names.push(TypoSuggestion {
                             candidate: ident.name,
                             article: binding.res().article(),
@@ -4196,7 +4166,7 @@ impl<'a> Resolver<'a> {
             for rib in self.ribs[ns].iter().rev() {
                 // Locals and type parameters
                 for (ident, &res) in &rib.bindings {
-                    if !ident.is_gensymed() && filter_fn(res) {
+                    if filter_fn(res) {
                         names.push(TypoSuggestion {
                             candidate: ident.name,
                             article: res.article(),
@@ -4226,7 +4196,7 @@ impl<'a> Resolver<'a> {
                                             },
                                         );
 
-                                        if !ident.is_gensymed() && filter_fn(crate_mod) {
+                                        if filter_fn(crate_mod) {
                                             Some(TypoSuggestion {
                                                 candidate: ident.name,
                                                 article: "a",
@@ -4249,15 +4219,13 @@ impl<'a> Resolver<'a> {
             // Add primitive types to the mix
             if filter_fn(Res::PrimTy(Bool)) {
                 names.extend(
-                    self.primitive_type_table.primitive_types
-                        .iter()
-                        .map(|(name, _)| {
-                            TypoSuggestion {
-                                candidate: *name,
-                                article: "a",
-                                kind: "primitive type",
-                            }
-                        })
+                    self.primitive_type_table.primitive_types.iter().map(|(name, _)| {
+                        TypoSuggestion {
+                            candidate: *name,
+                            article: "a",
+                            kind: "primitive type",
+                        }
+                    })
                 )
             }
         } else {

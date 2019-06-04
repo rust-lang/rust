@@ -948,16 +948,6 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
 
         intravisit::walk_pat(self, pat);
     }
-
-    fn visit_argument_source(&mut self, s: &'tcx hir::ArgSource) {
-        match s {
-            // Don't visit the pattern in `ArgSource::AsyncFn`, it contains a pattern which has
-            // a `NodeId` w/out a type, as it is only used for getting the name of the original
-            // pattern for diagnostics where only an `hir::Arg` is present.
-            hir::ArgSource::AsyncFn(..) => {},
-            _ => intravisit::walk_argument_source(self, s),
-        }
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -1145,16 +1135,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         }
 
         intravisit::walk_pat(self, pattern);
-    }
-
-    fn visit_argument_source(&mut self, s: &'tcx hir::ArgSource) {
-        match s {
-            // Don't visit the pattern in `ArgSource::AsyncFn`, it contains a pattern which has
-            // a `NodeId` w/out a type, as it is only used for getting the name of the original
-            // pattern for diagnostics where only an `hir::Arg` is present.
-            hir::ArgSource::AsyncFn(..) => {},
-            _ => intravisit::walk_argument_source(self, s),
-        }
     }
 
     fn visit_local(&mut self, local: &'tcx hir::Local) {
