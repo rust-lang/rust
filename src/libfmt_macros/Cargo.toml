@@ -8,3 +8,6 @@ edition = "2018"
 name = "fmt_macros"
 path = "lib.rs"
 crate-type = ["dylib"]
+
+[dependencies]
+syntax_pos = { path = "../libsyntax_pos" }

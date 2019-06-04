@@ -24,6 +24,8 @@ use std::str;
 use std::string;
 use std::iter;
 
+use syntax_pos::Symbol;
+
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
 #[derive(Copy, Clone, PartialEq)]
@@ -39,7 +41,7 @@ pub enum Piece<'a> {
 #[derive(Copy, Clone, PartialEq)]
 pub struct Argument<'a> {
     /// Where to find this argument
-    pub position: Position<'a>,
+    pub position: Position,
     /// How to format the argument
     pub format: FormatSpec<'a>,
 }
@@ -54,9 +56,9 @@ pub struct FormatSpec<'a> {
     /// Packed version of various flags provided
     pub flags: u32,
     /// The integer precision to use
-    pub precision: Count<'a>,
+    pub precision: Count,
     /// The string width requested for the resulting format
-    pub width: Count<'a>,
+    pub width: Count,
     /// The descriptor string representing the name of the format desired for
     /// this argument, this can be empty or any number of characters, although
     /// it is required to be one word.
@@ -65,16 +67,16 @@ pub struct FormatSpec<'a> {
 
 /// Enum describing where an argument for a format can be located.
 #[derive(Copy, Clone, PartialEq)]
-pub enum Position<'a> {
+pub enum Position {
     /// The argument is implied to be located at an index
     ArgumentImplicitlyIs(usize),
     /// The argument is located at a specific index given in the format
     ArgumentIs(usize),
     /// The argument has a name.
-    ArgumentNamed(&'a str),
+    ArgumentNamed(Symbol),
 }
 
-impl Position<'_> {
+impl Position {
     pub fn index(&self) -> Option<usize> {
         match self {
             ArgumentIs(i) | ArgumentImplicitlyIs(i) => Some(*i),
@@ -119,11 +121,11 @@ pub enum Flag {
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
 #[derive(Copy, Clone, PartialEq)]
-pub enum Count<'a> {
+pub enum Count {
     /// The count is specified explicitly.
     CountIs(usize),
     /// The count is specified by the argument with the given name.
-    CountIsName(&'a str),
+    CountIsName(Symbol),
     /// The count is specified by the argument at the given index.
     CountIsParam(usize),
     /// The count is implied and cannot be explicitly specified.
@@ -431,12 +433,14 @@ impl<'a> Parser<'a> {
     /// integer index of an argument, a named argument, or a blank string.
     /// Returns `Some(parsed_position)` if the position is not implicitly
     /// consuming a macro argument, `None` if it's the case.
-    fn position(&mut self) -> Option<Position<'a>> {
+    fn position(&mut self) -> Option<Position> {
         if let Some(i) = self.integer() {
             Some(ArgumentIs(i))
         } else {
             match self.cur.peek() {
-                Some(&(_, c)) if c.is_alphabetic() => Some(ArgumentNamed(self.word())),
+                Some(&(_, c)) if c.is_alphabetic() => {
+                    Some(ArgumentNamed(Symbol::intern(self.word())))
+                }
                 Some(&(pos, c)) if c == '_' => {
                     let invalid_name = self.string(pos);
                     self.err_with_note(format!("invalid argument name `{}`", invalid_name),
@@ -444,7 +448,7 @@ impl<'a> Parser<'a> {
                                        "argument names cannot start with an underscore",
                                        self.to_span_index(pos),
                                        self.to_span_index(pos + invalid_name.len()));
-                    Some(ArgumentNamed(invalid_name))
+                    Some(ArgumentNamed(Symbol::intern(invalid_name)))
                 },
 
                 // This is an `ArgumentNext`.
@@ -552,7 +556,7 @@ impl<'a> Parser<'a> {
     /// Parses a Count parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
-    fn count(&mut self) -> Count<'a> {
+    fn count(&mut self) -> Count {
         if let Some(i) = self.integer() {
             if self.consume('$') {
                 CountIsParam(i)
@@ -566,7 +570,7 @@ impl<'a> Parser<'a> {
                 self.cur = tmp;
                 CountImplied
             } else if self.consume('$') {
-                CountIsName(word)
+                CountIsName(Symbol::intern(word))
             } else {
                 self.cur = tmp;
                 CountImplied
@@ -756,6 +760,8 @@ mod tests {
     }
     #[test]
     fn format_counts() {
+        use syntax_pos::{GLOBALS, Globals, edition};
+        GLOBALS.set(&Globals::new(edition::DEFAULT_EDITION), || {
         same("{:10s}",
              &[NextArgument(Argument {
                    position: ArgumentImplicitlyIs(0),
@@ -811,11 +817,12 @@ mod tests {
                        fill: None,
                        align: AlignUnknown,
                        flags: 0,
-                       precision: CountIsName("b"),
-                       width: CountIsName("a"),
+                       precision: CountIsName(Symbol::intern("b")),
+                       width: CountIsName(Symbol::intern("a")),
                        ty: "s",
                    },
                })]);
+        });
     }
     #[test]
     fn format_flags() {

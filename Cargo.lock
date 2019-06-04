@@ -910,6 +910,9 @@ dependencies = [
 [[package]]
 name = "fmt_macros"
 version = "0.0.0"
+dependencies = [
+ "syntax_pos 0.0.0",
+]
 
 [[package]]
 name = "fnv"
