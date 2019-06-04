@@ -1,7 +1,7 @@
 //! See docs in build/expr/mod.rs
 
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::build::scope::{CachedBlock, DropKind};
+use crate::build::scope::DropKind;
 use crate::hair::*;
 use rustc::middle::region;
 use rustc::mir::*;
@@ -103,9 +103,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 temp_lifetime,
                 temp_place,
                 expr_ty,
-                DropKind::Value {
-                    cached_block: CachedBlock::default(),
-                },
+                DropKind::Value,
             );
         }
 
