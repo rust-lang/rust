@@ -628,10 +628,10 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 Err(if self.prev_token_kind == PrevTokenKind::DocComment {
-                        self.span_fatal_err(self.prev_span, Error::UselessDocComment)
-                    } else {
-                        self.expected_ident_found()
-                    })
+                    self.span_fatal_err(self.prev_span, Error::UselessDocComment)
+                } else {
+                    self.expected_ident_found()
+                })
             }
         }
     }
@@ -1657,8 +1657,8 @@ impl<'a> Parser<'a> {
             path = self.parse_path(PathStyle::Type)?;
             path_span = path_lo.to(self.prev_span);
         } else {
-            path = ast::Path { segments: Vec::new(), span: DUMMY_SP };
             path_span = self.span.to(self.span);
+            path = ast::Path { segments: Vec::new(), span: path_span };
         }
 
         // See doc comment for `unmatched_angle_bracket_count`.
@@ -2844,7 +2844,11 @@ impl<'a> Parser<'a> {
             // want to keep their span info to improve diagnostics in these cases in a later stage.
             (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
             (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
-            (true, Some(AssocOp::Add)) => { // `{ 42 } + 42
+            (true, Some(AssocOp::LAnd)) | // `{ 42 } &&x` (#61475)
+            (true, Some(AssocOp::Add)) // `{ 42 } + 42
+            // If the next token is a keyword, then the tokens above *are* unambiguously incorrect:
+            // `if x { a } else { b } && if y { c } else { d }`
+            if !self.look_ahead(1, |t| t.is_reserved_ident()) => {
                 // These cases are ambiguous and can't be identified in the parser alone
                 let sp = self.sess.source_map().start_point(self.span);
                 self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
@@ -5298,7 +5302,7 @@ impl<'a> Parser<'a> {
         let mut where_clause = WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
-            span: DUMMY_SP,
+            span: self.prev_span.to(self.prev_span),
         };
 
         if !self.eat_keyword(kw::Where) {
