@@ -1,4 +1,4 @@
-#[doc(include = "panic.md")]
+#[doc(include = "macros/panic.md")]
 #[macro_export]
 #[allow_internal_unstable(core_panic, __rust_unstable_column)]
 #[stable(feature = "core", since = "1.6.0")]
