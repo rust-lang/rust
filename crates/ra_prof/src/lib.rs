@@ -236,13 +236,13 @@ thread_local!(static IN_SCOPE: RefCell<bool> = RefCell::new(false));
 /// Allows to check if the current code is withing some dynamic scope, can be
 /// useful during debugging to figure out why a function is called.
 pub struct Scope {
-    _hidden: (),
+    prev: bool,
 }
 
 impl Scope {
     pub fn enter() -> Scope {
-        IN_SCOPE.with(|slot| *slot.borrow_mut() = true);
-        Scope { _hidden: () }
+        let prev = IN_SCOPE.with(|slot| std::mem::replace(&mut *slot.borrow_mut(), true));
+        Scope { prev }
     }
     pub fn is_active() -> bool {
         IN_SCOPE.with(|slot| *slot.borrow())
@@ -251,7 +251,7 @@ impl Scope {
 
 impl Drop for Scope {
     fn drop(&mut self) {
-        IN_SCOPE.with(|slot| *slot.borrow_mut() = false);
+        IN_SCOPE.with(|slot| *slot.borrow_mut() = self.prev);
     }
 }
 
