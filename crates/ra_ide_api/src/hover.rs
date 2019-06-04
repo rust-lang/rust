@@ -18,6 +18,12 @@ pub struct HoverResult {
     exact: bool,
 }
 
+impl Default for HoverResult {
+    fn default() -> Self {
+        HoverResult::new()
+    }
+}
+
 impl HoverResult {
     pub fn new() -> HoverResult {
         HoverResult {
