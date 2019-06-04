@@ -406,7 +406,7 @@ impl CrateDefMap {
         };
 
         for (i, segment) in segments {
-            let curr = match curr_per_ns.as_ref().left().map_or(None, |m| m.as_ref().take_types()) {
+            let curr = match curr_per_ns.as_ref().left().and_then(|m| m.as_ref().take_types()) {
                 Some(r) => r,
                 None => {
                     // we still have path segments left, but the path so far
