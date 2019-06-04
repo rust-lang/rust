@@ -145,7 +145,9 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                 let gcx = self.infcx.tcx.global_tcx();
 
                 let mut orig_values = OriginalQueryValues::default();
-                let c_data = self.infcx.canonicalize_query(
+                // HACK(matthewjasper) `'static` is special-cased in selection,
+                // so we cannot canonicalize it.
+                let c_data = self.infcx.canonicalize_hr_query_hack(
                     &self.param_env.and(*data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
