@@ -1,6 +1,4 @@
-/// Panics the current thread.
-///
-/// For details, see `std::macros`.
+#[doc(include = "panic.md")]
 #[macro_export]
 #[allow_internal_unstable(core_panic, __rust_unstable_column)]
 #[stable(feature = "core", since = "1.6.0")]
