@@ -640,6 +640,15 @@ impl SyntaxContext {
                     "$crate name is reset for a syntax context");
         })
     }
+
+    #[inline]
+    pub fn edition(self) -> Edition {
+        GLOBALS.with(|globals| {
+            let data = globals.hygiene_data.borrow_mut();
+            data.expn_info(data.outer(self))
+                .map_or(globals.edition, |einfo| einfo.edition)
+        })
+    }
 }
 
 impl fmt::Debug for SyntaxContext {

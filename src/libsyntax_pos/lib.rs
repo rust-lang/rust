@@ -359,9 +359,7 @@ impl Span {
 
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
-        self.ctxt().outer_expn_info().map_or_else(|| {
-            Edition::from_session()
-        }, |einfo| einfo.edition)
+        self.ctxt().edition()
     }
 
     #[inline]
