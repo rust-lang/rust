@@ -649,14 +649,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // where we do not expect overflow to be propagated.
         assert!(self.query_mode == TraitQueryMode::Standard);
 
-        self.evaluate_obligation_recursively(obligation)
+        self.evaluate_root_obligation(obligation)
             .expect("Overflow should be caught earlier in standard query mode")
             .may_apply()
     }
 
-    /// Evaluates whether the obligation `obligation` can be satisfied and returns
-    /// an `EvaluationResult`.
-    pub fn evaluate_obligation_recursively(
+    /// Evaluates whether the obligation `obligation` can be satisfied
+    /// and returns an `EvaluationResult`. This is meant for the
+    /// *initial* call.
+    pub fn evaluate_root_obligation(
         &mut self,
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
