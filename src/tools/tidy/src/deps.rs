@@ -62,6 +62,8 @@ const WHITELIST_CRATES: &[CrateVersion<'_>] = &[
 const WHITELIST: &[Crate<'_>] = &[
     Crate("adler32"),
     Crate("aho-corasick"),
+    Crate("annotate-snippets"),
+    Crate("ansi_term"),
     Crate("arrayvec"),
     Crate("atty"),
     Crate("autocfg"),
