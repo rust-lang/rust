@@ -55,7 +55,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
         use syntax::parse::token::*;
 
         let joint = is_joint == Joint;
-        let (span, token) = match tree {
+        let Token { kind, span } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
                 return TokenTree::Group(Group {
@@ -64,7 +64,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                     span,
                 });
             }
-            tokenstream::TokenTree::Token(span, token) => (span, token),
+            tokenstream::TokenTree::Token(token) => token,
         };
 
         macro_rules! tt {
@@ -93,7 +93,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             }};
         }
 
-        match token {
+        match kind {
             Eq => op!('='),
             Lt => op!('<'),
             Le => op!('<', '='),
@@ -164,7 +164,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                     TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
                 ]
                 .into_iter()
-                .map(|token| tokenstream::TokenTree::Token(span, token))
+                .map(|kind| tokenstream::TokenTree::token(span, kind))
                 .collect();
                 stack.push(TokenTree::Group(Group {
                     delimiter: Delimiter::Bracket,
@@ -212,7 +212,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
                 let token = Ident(ast::Ident::new(sym, span), is_raw);
-                return tokenstream::TokenTree::Token(span, token).into();
+                return tokenstream::TokenTree::token(span, token).into();
             }
             TokenTree::Literal(self::Literal {
                 lit: token::Lit { kind: token::Integer, symbol, suffix },
@@ -221,8 +221,8 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
-                let a = tokenstream::TokenTree::Token(span, minus);
-                let b = tokenstream::TokenTree::Token(span, integer);
+                let a = tokenstream::TokenTree::token(span, minus);
+                let b = tokenstream::TokenTree::token(span, integer);
                 return vec![a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal {
@@ -232,16 +232,16 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let float = TokenKind::lit(token::Float, symbol, suffix);
-                let a = tokenstream::TokenTree::Token(span, minus);
-                let b = tokenstream::TokenTree::Token(span, float);
+                let a = tokenstream::TokenTree::token(span, minus);
+                let b = tokenstream::TokenTree::token(span, float);
                 return vec![a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal { lit, span }) => {
-                return tokenstream::TokenTree::Token(span, Literal(lit)).into()
+                return tokenstream::TokenTree::token(span, Literal(lit)).into()
             }
         };
 
-        let token = match ch {
+        let kind = match ch {
             '=' => Eq,
             '<' => Lt,
             '>' => Gt,
@@ -267,7 +267,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             _ => unreachable!(),
         };
 
-        let tree = tokenstream::TokenTree::Token(span, token);
+        let tree = tokenstream::TokenTree::token(span, kind);
         TokenStream::new(vec![(tree, if joint { Joint } else { NonJoint })])
     }
 }

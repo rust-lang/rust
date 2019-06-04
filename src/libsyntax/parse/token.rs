@@ -18,6 +18,7 @@ use log::info;
 
 use std::fmt;
 use std::mem;
+use std::ops::Deref;
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
@@ -165,7 +166,7 @@ fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
     ].contains(&ident.name)
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
@@ -235,7 +236,7 @@ pub enum TokenKind {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(TokenKind, 16);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
@@ -614,6 +615,14 @@ impl PartialEq<TokenKind> for Token {
     }
 }
 
+// FIXME: Remove this after all necessary methods are moved from `TokenKind` to `Token`.
+impl Deref for Token {
+    type Target = TokenKind;
+    fn deref(&self) -> &Self::Target {
+        &self.kind
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
@@ -704,11 +713,11 @@ impl Nonterminal {
             }
             Nonterminal::NtIdent(ident, is_raw) => {
                 let token = Ident(ident, is_raw);
-                Some(TokenTree::Token(ident.span, token).into())
+                Some(TokenTree::token(ident.span, token).into())
             }
             Nonterminal::NtLifetime(ident) => {
                 let token = Lifetime(ident);
-                Some(TokenTree::Token(ident.span, token).into())
+                Some(TokenTree::token(ident.span, token).into())
             }
             Nonterminal::NtTT(ref tt) => {
                 Some(tt.clone().into())
@@ -794,7 +803,7 @@ fn prepend_attrs(sess: &ParseSess,
         if attr.path.segments.len() == 1 && attr.path.segments[0].args.is_none() {
             let ident = attr.path.segments[0].ident;
             let token = Ident(ident, ident.as_str().starts_with("r#"));
-            brackets.push(tokenstream::TokenTree::Token(ident.span, token));
+            brackets.push(tokenstream::TokenTree::token(ident.span, token));
 
         // ... and for more complicated paths, fall back to a reparse hack that
         // should eventually be removed.
@@ -808,7 +817,7 @@ fn prepend_attrs(sess: &ParseSess,
         // The span we list here for `#` and for `[ ... ]` are both wrong in
         // that it encompasses more than each token, but it hopefully is "good
         // enough" for now at least.
-        builder.push(tokenstream::TokenTree::Token(attr.span, Pound));
+        builder.push(tokenstream::TokenTree::token(attr.span, Pound));
         let delim_span = DelimSpan::from_single(attr.span);
         builder.push(tokenstream::TokenTree::Delimited(
             delim_span, DelimToken::Bracket, brackets.build().into()));

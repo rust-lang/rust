@@ -585,7 +585,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             AttrProcMacro(ref mac, ..) => {
                 self.gate_proc_macro_attr_item(attr.span, &item);
-                let item_tok = TokenTree::Token(DUMMY_SP, token::Interpolated(Lrc::new(match item {
+                let item_tok = TokenTree::token(DUMMY_SP, token::Interpolated(Lrc::new(match item {
                     Annotatable::Item(item) => token::NtItem(item),
                     Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
                     Annotatable::ImplItem(item) => token::NtImplItem(item.into_inner()),

@@ -69,7 +69,7 @@ impl MultiItemModifier for ProcMacroDerive {
         MarkAttrs(&self.attrs).visit_item(&item);
 
         let token = token::Interpolated(Lrc::new(token::NtItem(item)));
-        let input = tokenstream::TokenTree::Token(DUMMY_SP, token).into();
+        let input = tokenstream::TokenTree::token(DUMMY_SP, token).into();
 
         let server = proc_macro_server::Rustc::new(ecx);
         let stream = match self.client.run(&EXEC_STRATEGY, server, input) {

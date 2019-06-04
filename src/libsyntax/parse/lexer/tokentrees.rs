@@ -203,7 +203,7 @@ impl<'a> TokenTreesReader<'a> {
                 Err(err)
             },
             _ => {
-                let tt = TokenTree::Token(self.span, self.token.clone());
+                let tt = TokenTree::token(self.span, self.token.clone());
                 // Note that testing for joint-ness here is done via the raw
                 // source span as the joint-ness is a property of the raw source
                 // rather than wanting to take `override_span` into account.

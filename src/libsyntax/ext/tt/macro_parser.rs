@@ -78,7 +78,7 @@ use crate::ast::Ident;
 use crate::ext::tt::quoted::{self, TokenTree};
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::{Parser, PathStyle};
-use crate::parse::token::{self, DocComment, Nonterminal, TokenKind};
+use crate::parse::token::{self, DocComment, Nonterminal, Token, TokenKind};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream};
@@ -609,7 +609,8 @@ fn inner_parse_loop<'root, 'tt>(
                 //
                 // At the beginning of the loop, if we reach the end of the delimited submatcher,
                 // we pop the stack to backtrack out of the descent.
-                seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
+                seq @ TokenTree::Delimited(..) |
+                seq @ TokenTree::Token(Token { kind: DocComment(..), .. }) => {
                     let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
                     let idx = item.idx;
                     item.stack.push(MatcherTtFrame {
@@ -621,7 +622,7 @@ fn inner_parse_loop<'root, 'tt>(
                 }
 
                 // We just matched a normal token. We can just advance the parser.
-                TokenTree::Token(_, ref t) if token_name_eq(t, token) => {
+                TokenTree::Token(t) if token_name_eq(&t, token) => {
                     item.idx += 1;
                     next_items.push(item);
                 }

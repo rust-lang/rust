@@ -11,7 +11,7 @@ use crate::ext::tt::transcribe::transcribe;
 use crate::feature_gate::Features;
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::Parser;
-use crate::parse::token::{self, NtTT};
+use crate::parse::token::{self, Token, NtTT};
 use crate::parse::token::TokenKind::*;
 use crate::symbol::{Symbol, kw, sym};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
@@ -270,7 +270,7 @@ pub fn compile(
         quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
             tts: vec![
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, lhs_nm, ast::Ident::from_str("tt")),
-                quoted::TokenTree::Token(DUMMY_SP, token::FatArrow),
+                quoted::TokenTree::token(DUMMY_SP, token::FatArrow),
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, rhs_nm, ast::Ident::from_str("tt")),
             ],
             separator: Some(if body.legacy { token::Semi } else { token::Comma }),
@@ -279,7 +279,7 @@ pub fn compile(
         })),
         // to phase into semicolon-termination instead of semicolon-separation
         quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
-            tts: vec![quoted::TokenTree::Token(DUMMY_SP, token::Semi)],
+            tts: vec![quoted::TokenTree::token(DUMMY_SP, token::Semi)],
             separator: None,
             op: quoted::KleeneOp::ZeroOrMore,
             num_captures: 0
@@ -613,7 +613,7 @@ impl FirstSets {
 
                         if let (Some(ref sep), true) = (seq_rep.separator.clone(),
                                                         subfirst.maybe_empty) {
-                            first.add_one_maybe(TokenTree::Token(sp.entire(), sep.clone()));
+                            first.add_one_maybe(TokenTree::token(sp.entire(), sep.clone()));
                         }
 
                         // Reverse scan: Sequence comes before `first`.
@@ -663,7 +663,7 @@ impl FirstSets {
 
                             if let (Some(ref sep), true) = (seq_rep.separator.clone(),
                                                             subfirst.maybe_empty) {
-                                first.add_one_maybe(TokenTree::Token(sp.entire(), sep.clone()));
+                                first.add_one_maybe(TokenTree::token(sp.entire(), sep.clone()));
                             }
 
                             assert!(first.maybe_empty);
@@ -869,7 +869,7 @@ fn check_matcher_core(sess: &ParseSess,
                 let mut new;
                 let my_suffix = if let Some(ref u) = seq_rep.separator {
                     new = suffix_first.clone();
-                    new.add_one_maybe(TokenTree::Token(sp.entire(), u.clone()));
+                    new.add_one_maybe(TokenTree::token(sp.entire(), u.clone()));
                     &new
                 } else {
                     &suffix_first
@@ -1015,7 +1015,7 @@ enum IsInFollow {
 fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
     use quoted::TokenTree;
 
-    if let TokenTree::Token(_, token::CloseDelim(_)) = *tok {
+    if let TokenTree::Token(Token { kind: token::CloseDelim(_), .. }) = *tok {
         // closing a token tree can never be matched by any fragment;
         // iow, we always require that `(` and `)` match, etc.
         IsInFollow::Yes
@@ -1033,8 +1033,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
             },
             "stmt" | "expr"  => {
                 let tokens = vec!["`=>`", "`,`", "`;`"];
-                match *tok {
-                    TokenTree::Token(_, ref tok) => match *tok {
+                match tok {
+                    TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Semi => IsInFollow::Yes,
                         _ => IsInFollow::No(tokens),
                     },
@@ -1043,8 +1043,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
             },
             "pat" => {
                 let tokens = vec!["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
-                match *tok {
-                    TokenTree::Token(_, ref tok) => match *tok {
+                match tok {
+                    TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | BinOp(token::Or) => IsInFollow::Yes,
                         Ident(i, false) if i.name == kw::If ||
                                            i.name == kw::In => IsInFollow::Yes,
@@ -1058,8 +1058,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     "`{`", "`[`", "`=>`", "`,`", "`>`","`=`", "`:`", "`;`", "`|`", "`as`",
                     "`where`",
                 ];
-                match *tok {
-                    TokenTree::Token(_, ref tok) => match *tok {
+                match tok {
+                    TokenTree::Token(token) => match token.kind {
                         OpenDelim(token::DelimToken::Brace) |
                         OpenDelim(token::DelimToken::Bracket) |
                         Comma | FatArrow | Colon | Eq | Gt | BinOp(token::Shr) | Semi |
@@ -1089,8 +1089,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
             "vis" => {
                 // Explicitly disallow `priv`, on the off chance it comes back.
                 let tokens = vec!["`,`", "an ident", "a type"];
-                match *tok {
-                    TokenTree::Token(_, ref tok) => match *tok {
+                match tok {
+                    TokenTree::Token(token) => match token.kind {
                         Comma => IsInFollow::Yes,
                         Ident(i, is_raw) if is_raw || i.name != kw::Priv =>
                             IsInFollow::Yes,
@@ -1150,7 +1150,7 @@ fn is_legal_fragment_specifier(_sess: &ParseSess,
 
 fn quoted_tt_to_string(tt: &quoted::TokenTree) -> String {
     match *tt {
-        quoted::TokenTree::Token(_, ref tok) => crate::print::pprust::token_to_string(tok),
+        quoted::TokenTree::Token(ref token) => crate::print::pprust::token_to_string(&token),
         quoted::TokenTree::MetaVar(_, name) => format!("${}", name),
         quoted::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
         _ => panic!("unexpected quoted::TokenTree::{{Sequence or Delimited}} \

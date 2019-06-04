@@ -1596,8 +1596,8 @@ mod tests {
                                         "/* my source file */ fn main() { println!(\"zebra\"); }\n"
                                             .to_string());
             let id = Ident::from_str("fn");
-            assert_eq!(string_reader.next_token().kind, token::Comment);
-            assert_eq!(string_reader.next_token().kind, token::Whitespace);
+            assert_eq!(string_reader.next_token(), token::Comment);
+            assert_eq!(string_reader.next_token(), token::Whitespace);
             let tok1 = string_reader.next_token();
             let tok2 = Token {
                 kind: token::Ident(id, false),
@@ -1605,7 +1605,7 @@ mod tests {
             };
             assert_eq!(tok1.kind, tok2.kind);
             assert_eq!(tok1.span, tok2.span);
-            assert_eq!(string_reader.next_token().kind, token::Whitespace);
+            assert_eq!(string_reader.next_token(), token::Whitespace);
             // the 'main' id is already read:
             assert_eq!(string_reader.pos.clone(), BytePos(28));
             // read another token:
@@ -1625,7 +1625,7 @@ mod tests {
     // of tokens (stop checking after exhausting the expected vec)
     fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<TokenKind>) {
         for expected_tok in &expected {
-            assert_eq!(&string_reader.next_token().kind, expected_tok);
+            assert_eq!(&string_reader.next_token(), expected_tok);
         }
     }
 
@@ -1683,7 +1683,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token().kind,
+            assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token(),
                        mk_lit(token::Char, "a", None));
         })
     }
@@ -1693,7 +1693,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token().kind,
+            assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token(),
                        mk_lit(token::Char, " ", None));
         })
     }
@@ -1703,7 +1703,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token().kind,
+            assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token(),
                        mk_lit(token::Char, "\\n", None));
         })
     }
@@ -1713,7 +1713,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token().kind,
+            assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token(),
                        token::Lifetime(Ident::from_str("'abc")));
         })
     }
@@ -1723,7 +1723,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token().kind,
+            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token(),
                        mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None));
         })
     }
@@ -1735,10 +1735,10 @@ mod tests {
             let sh = mk_sess(sm.clone());
             macro_rules! test {
                 ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
-                    assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token().kind,
+                    assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token(),
                                mk_lit(token::$tok_type, $tok_contents, Some("suffix")));
                     // with a whitespace separator:
-                    assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token().kind,
+                    assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
                                mk_lit(token::$tok_type, $tok_contents, None));
                 }}
             }
@@ -1753,11 +1753,11 @@ mod tests {
             test!("1.0", Float, "1.0");
             test!("1.0e10", Float, "1.0e10");
 
-            assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token().kind,
+            assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token(),
                        mk_lit(token::Integer, "2", Some("us")));
-            assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token().kind,
+            assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token(),
                        mk_lit(token::StrRaw(3), "raw", Some("suffix")));
-            assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token().kind,
+            assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token(),
                        mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")));
         })
     }
@@ -1775,11 +1775,8 @@ mod tests {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             let mut lexer = setup(&sm, &sh, "/* /* */ */'a'".to_string());
-            match lexer.next_token().kind {
-                token::Comment => {}
-                _ => panic!("expected a comment!"),
-            }
-            assert_eq!(lexer.next_token().kind, mk_lit(token::Char, "a", None));
+            assert_eq!(lexer.next_token(), token::Comment);
+            assert_eq!(lexer.next_token(), mk_lit(token::Char, "a", None));
         })
     }
 
@@ -1792,9 +1789,8 @@ mod tests {
             let comment = lexer.next_token();
             assert_eq!(comment.kind, token::Comment);
             assert_eq!((comment.span.lo(), comment.span.hi()), (BytePos(0), BytePos(7)));
-            assert_eq!(lexer.next_token().kind, token::Whitespace);
-            assert_eq!(lexer.next_token().kind,
-                    token::DocComment(Symbol::intern("/// test")));
+            assert_eq!(lexer.next_token(), token::Whitespace);
+            assert_eq!(lexer.next_token(), token::DocComment(Symbol::intern("/// test")));
         })
     }
 }

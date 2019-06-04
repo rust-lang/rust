@@ -10,6 +10,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(internal)]
 
+#![feature(bind_by_move_pattern_guards)]
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(nll)]

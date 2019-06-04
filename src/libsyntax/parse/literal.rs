@@ -261,7 +261,7 @@ impl Lit {
             token::Bool => token::Ident(Ident::new(self.token.symbol, self.span), false),
             _ => token::Literal(self.token),
         };
-        TokenTree::Token(self.span, token).into()
+        TokenTree::token(self.span, token).into()
     }
 }
 

@@ -385,6 +385,7 @@ mod tests {
     use crate::ast::{self, Ident, PatKind};
     use crate::attr::first_attr_value_str_by_name;
     use crate::ptr::P;
+    use crate::parse::token::Token;
     use crate::print::pprust::item_to_string;
     use crate::tokenstream::{DelimSpan, TokenTree};
     use crate::util::parser_testing::string_to_stream;
@@ -426,9 +427,9 @@ mod tests {
             match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
                 (
                     4,
-                    Some(&TokenTree::Token(_, token::Ident(name_macro_rules, false))),
-                    Some(&TokenTree::Token(_, token::Not)),
-                    Some(&TokenTree::Token(_, token::Ident(name_zip, false))),
+                    Some(&TokenTree::Token(Token { kind: token::Ident(name_macro_rules, false), .. })),
+                    Some(&TokenTree::Token(Token { kind: token::Not, .. })),
+                    Some(&TokenTree::Token(Token { kind: token::Ident(name_zip, false), .. })),
                     Some(&TokenTree::Delimited(_, macro_delim, ref macro_tts)),
                 )
                 if name_macro_rules.name == sym::macro_rules
@@ -438,7 +439,7 @@ mod tests {
                         (
                             3,
                             Some(&TokenTree::Delimited(_, first_delim, ref first_tts)),
-                            Some(&TokenTree::Token(_, token::FatArrow)),
+                            Some(&TokenTree::Token(Token { kind: token::FatArrow, .. })),
                             Some(&TokenTree::Delimited(_, second_delim, ref second_tts)),
                         )
                         if macro_delim == token::Paren => {
@@ -446,8 +447,8 @@ mod tests {
                             match (tts.len(), tts.get(0), tts.get(1)) {
                                 (
                                     2,
-                                    Some(&TokenTree::Token(_, token::Dollar)),
-                                    Some(&TokenTree::Token(_, token::Ident(ident, false))),
+                                    Some(&TokenTree::Token(Token { kind: token::Dollar, .. })),
+                                    Some(&TokenTree::Token(Token { kind: token::Ident(ident, false), .. })),
                                 )
                                 if first_delim == token::Paren && ident.name.as_str() == "a" => {},
                                 _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
@@ -456,8 +457,8 @@ mod tests {
                             match (tts.len(), tts.get(0), tts.get(1)) {
                                 (
                                     2,
-                                    Some(&TokenTree::Token(_, token::Dollar)),
-                                    Some(&TokenTree::Token(_, token::Ident(ident, false))),
+                                    Some(&TokenTree::Token(Token { kind: token::Dollar, .. })),
+                                    Some(&TokenTree::Token(Token { kind: token::Ident(ident, false), .. })),
                                 )
                                 if second_delim == token::Paren && ident.name.as_str() == "a" => {},
                                 _ => panic!("value 4: {:?} {:?}", second_delim, second_tts),
@@ -477,16 +478,16 @@ mod tests {
             let tts = string_to_stream("fn a (b : i32) { b; }".to_string());
 
             let expected = TokenStream::new(vec![
-                TokenTree::Token(sp(0, 2), token::Ident(Ident::from_str("fn"), false)).into(),
-                TokenTree::Token(sp(3, 4), token::Ident(Ident::from_str("a"), false)).into(),
+                TokenTree::token(sp(0, 2), token::Ident(Ident::from_str("fn"), false)).into(),
+                TokenTree::token(sp(3, 4), token::Ident(Ident::from_str("a"), false)).into(),
                 TokenTree::Delimited(
                     DelimSpan::from_pair(sp(5, 6), sp(13, 14)),
                     token::DelimToken::Paren,
                     TokenStream::new(vec![
-                        TokenTree::Token(sp(6, 7),
+                        TokenTree::token(sp(6, 7),
                                          token::Ident(Ident::from_str("b"), false)).into(),
-                        TokenTree::Token(sp(8, 9), token::Colon).into(),
-                        TokenTree::Token(sp(10, 13),
+                        TokenTree::token(sp(8, 9), token::Colon).into(),
+                        TokenTree::token(sp(10, 13),
                                          token::Ident(Ident::from_str("i32"), false)).into(),
                     ]).into(),
                 ).into(),
@@ -494,9 +495,9 @@ mod tests {
                     DelimSpan::from_pair(sp(15, 16), sp(20, 21)),
                     token::DelimToken::Brace,
                     TokenStream::new(vec![
-                        TokenTree::Token(sp(17, 18),
+                        TokenTree::token(sp(17, 18),
                                          token::Ident(Ident::from_str("b"), false)).into(),
-                        TokenTree::Token(sp(18, 19), token::Semi).into(),
+                        TokenTree::token(sp(18, 19), token::Semi).into(),
                     ]).into(),
                 ).into()
             ]);

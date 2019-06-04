@@ -724,10 +724,10 @@ pub trait PrintState<'a> {
     /// expression arguments as expressions). It can be done! I think.
     fn print_tt(&mut self, tt: tokenstream::TokenTree) -> io::Result<()> {
         match tt {
-            TokenTree::Token(_, ref tk) => {
-                self.writer().word(token_to_string(tk))?;
-                match *tk {
-                    parse::token::DocComment(..) => {
+            TokenTree::Token(ref token) => {
+                self.writer().word(token_to_string(&token))?;
+                match token.kind {
+                    token::DocComment(..) => {
                         self.writer().hardbreak()
                     }
                     _ => Ok(())

@@ -29,7 +29,7 @@ pub fn expand_assert<'cx>(
     let panic_call = Mac_ {
         path: Path::from_ident(Ident::new(sym::panic, sp)),
         tts: custom_message.unwrap_or_else(|| {
-            TokenStream::from(TokenTree::Token(
+            TokenStream::from(TokenTree::token(
                 DUMMY_SP,
                 TokenKind::lit(token::Str, Symbol::intern(&format!(
                     "assertion failed: {}",

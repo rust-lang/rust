@@ -16,7 +16,7 @@
 use crate::ext::base;
 use crate::ext::tt::{macro_parser, quoted};
 use crate::parse::Directory;
-use crate::parse::token::{self, DelimToken, TokenKind};
+use crate::parse::token::{self, DelimToken, Token, TokenKind};
 use crate::print::pprust;
 
 use syntax_pos::{BytePos, Mark, Span, DUMMY_SP};
@@ -44,7 +44,7 @@ use std::{fmt, iter, mem};
 #[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum TokenTree {
     /// A single token
-    Token(Span, token::TokenKind),
+    Token(Token),
     /// A delimited sequence of token trees
     Delimited(DelimSpan, DelimToken, TokenStream),
 }
@@ -53,8 +53,7 @@ pub enum TokenTree {
 #[cfg(parallel_compiler)]
 fn _dummy()
 where
-    Span: Send + Sync,
-    token::TokenKind: Send + Sync,
+    Token: Send + Sync,
     DelimSpan: Send + Sync,
     DelimToken: Send + Sync,
     TokenStream: Send + Sync,
@@ -86,12 +85,11 @@ impl TokenTree {
     /// Checks if this TokenTree is equal to the other, regardless of span information.
     pub fn eq_unspanned(&self, other: &TokenTree) -> bool {
         match (self, other) {
-            (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => tk == tk2,
-            (&TokenTree::Delimited(_, delim, ref tts),
-             &TokenTree::Delimited(_, delim2, ref tts2)) => {
+            (TokenTree::Token(token), TokenTree::Token(token2)) => token.kind == token2.kind,
+            (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
                 delim == delim2 && tts.eq_unspanned(&tts2)
             }
-            (_, _) => false,
+            _ => false,
         }
     }
 
@@ -102,43 +100,46 @@ impl TokenTree {
     // different method.
     pub fn probably_equal_for_proc_macro(&self, other: &TokenTree) -> bool {
         match (self, other) {
-            (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => {
-                tk.probably_equal_for_proc_macro(tk2)
+            (TokenTree::Token(token), TokenTree::Token(token2)) => {
+                token.probably_equal_for_proc_macro(token2)
             }
-            (&TokenTree::Delimited(_, delim, ref tts),
-             &TokenTree::Delimited(_, delim2, ref tts2)) => {
+            (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
                 delim == delim2 && tts.probably_equal_for_proc_macro(&tts2)
             }
-            (_, _) => false,
+            _ => false,
         }
     }
 
     /// Retrieves the TokenTree's span.
     pub fn span(&self) -> Span {
-        match *self {
-            TokenTree::Token(sp, _) => sp,
+        match self {
+            TokenTree::Token(token) => token.span,
             TokenTree::Delimited(sp, ..) => sp.entire(),
         }
     }
 
     /// Modify the `TokenTree`'s span in-place.
     pub fn set_span(&mut self, span: Span) {
-        match *self {
-            TokenTree::Token(ref mut sp, _) => *sp = span,
-            TokenTree::Delimited(ref mut sp, ..) => *sp = DelimSpan::from_single(span),
+        match self {
+            TokenTree::Token(token) => token.span = span,
+            TokenTree::Delimited(dspan, ..) => *dspan = DelimSpan::from_single(span),
         }
     }
 
     /// Indicates if the stream is a token that is equal to the provided token.
     pub fn eq_token(&self, t: TokenKind) -> bool {
-        match *self {
-            TokenTree::Token(_, ref tk) => *tk == t,
+        match self {
+            TokenTree::Token(token) => *token == t,
             _ => false,
         }
     }
 
     pub fn joint(self) -> TokenStream {
         TokenStream::new(vec![(self, Joint)])
+    }
+
+    pub fn token(span: Span, kind: TokenKind) -> TokenTree {
+        TokenTree::Token(Token { kind, span })
     }
 
     /// Returns the opening delimiter as a token tree.
@@ -148,7 +149,7 @@ impl TokenTree {
         } else {
             span.with_hi(span.lo() + BytePos(delim.len() as u32))
         };
-        TokenTree::Token(open_span, token::OpenDelim(delim))
+        TokenTree::token(open_span, token::OpenDelim(delim))
     }
 
     /// Returns the closing delimiter as a token tree.
@@ -158,7 +159,7 @@ impl TokenTree {
         } else {
             span.with_lo(span.hi() - BytePos(delim.len() as u32))
         };
-        TokenTree::Token(close_span, token::CloseDelim(delim))
+        TokenTree::token(close_span, token::CloseDelim(delim))
     }
 }
 
@@ -201,18 +202,17 @@ impl TokenStream {
             while let Some((pos, ts)) = iter.next() {
                 if let Some((_, next)) = iter.peek() {
                     let sp = match (&ts, &next) {
-                        (_, (TokenTree::Token(_, token::Comma), _)) => continue,
-                        ((TokenTree::Token(sp, token_left), NonJoint),
-                         (TokenTree::Token(_, token_right), _))
+                        (_, (TokenTree::Token(Token { kind: token::Comma, .. }), _)) => continue,
+                        ((TokenTree::Token(token_left), NonJoint), (TokenTree::Token(token_right), _))
                         if ((token_left.is_ident() && !token_left.is_reserved_ident())
                             || token_left.is_lit()) &&
                             ((token_right.is_ident() && !token_right.is_reserved_ident())
-                            || token_right.is_lit()) => *sp,
+                            || token_right.is_lit()) => token_left.span,
                         ((TokenTree::Delimited(sp, ..), NonJoint), _) => sp.entire(),
                         _ => continue,
                     };
                     let sp = sp.shrink_to_hi();
-                    let comma = (TokenTree::Token(sp, token::Comma), NonJoint);
+                    let comma = (TokenTree::token(sp, token::Comma), NonJoint);
                     suggestion = Some((pos, comma, sp));
                 }
             }
@@ -238,12 +238,6 @@ impl From<TokenTree> for TokenStream {
 impl From<TokenTree> for TreeAndJoint {
     fn from(tree: TokenTree) -> TreeAndJoint {
         (tree, NonJoint)
-    }
-}
-
-impl From<TokenKind> for TokenStream {
-    fn from(token: TokenKind) -> TokenStream {
-        TokenTree::Token(DUMMY_SP, token).into()
     }
 }
 
@@ -349,22 +343,25 @@ impl TokenStream {
         // streams, making a comparison between a token stream generated from an
         // AST and a token stream which was parsed into an AST more reliable.
         fn semantic_tree(tree: &TokenTree) -> bool {
-            match tree {
-                // The pretty printer tends to add trailing commas to
-                // everything, and in particular, after struct fields.
-                | TokenTree::Token(_, token::Comma)
-                // The pretty printer emits `NoDelim` as whitespace.
-                | TokenTree::Token(_, token::OpenDelim(DelimToken::NoDelim))
-                | TokenTree::Token(_, token::CloseDelim(DelimToken::NoDelim))
-                // The pretty printer collapses many semicolons into one.
-                | TokenTree::Token(_, token::Semi)
-                // The pretty printer collapses whitespace arbitrarily and can
-                // introduce whitespace from `NoDelim`.
-                | TokenTree::Token(_, token::Whitespace)
-                // The pretty printer can turn `$crate` into `::crate_name`
-                | TokenTree::Token(_, token::ModSep) => false,
-                _ => true
+            if let TokenTree::Token(token) = tree {
+                if let
+                    // The pretty printer tends to add trailing commas to
+                    // everything, and in particular, after struct fields.
+                    | token::Comma
+                    // The pretty printer emits `NoDelim` as whitespace.
+                    | token::OpenDelim(DelimToken::NoDelim)
+                    | token::CloseDelim(DelimToken::NoDelim)
+                    // The pretty printer collapses many semicolons into one.
+                    | token::Semi
+                    // The pretty printer collapses whitespace arbitrarily and can
+                    // introduce whitespace from `NoDelim`.
+                    | token::Whitespace
+                    // The pretty printer can turn `$crate` into `::crate_name`
+                    | token::ModSep = token.kind {
+                    return false;
+                }
             }
+            true
         }
 
         let mut t1 = self.trees().filter(semantic_tree);
@@ -430,13 +427,13 @@ impl TokenStreamBuilder {
     pub fn push<T: Into<TokenStream>>(&mut self, stream: T) {
         let stream = stream.into();
         let last_tree_if_joint = self.0.last().and_then(TokenStream::last_tree_if_joint);
-        if let Some(TokenTree::Token(last_span, last_tok)) = last_tree_if_joint {
-            if let Some((TokenTree::Token(span, tok), is_joint)) = stream.first_tree_and_joint() {
-                if let Some(glued_tok) = last_tok.glue(tok) {
+        if let Some(TokenTree::Token(last_token)) = last_tree_if_joint {
+            if let Some((TokenTree::Token(token), is_joint)) = stream.first_tree_and_joint() {
+                if let Some(glued_tok) = last_token.kind.glue(token.kind) {
                     let last_stream = self.0.pop().unwrap();
                     self.push_all_but_last_tree(&last_stream);
-                    let glued_span = last_span.to(span);
-                    let glued_tt = TokenTree::Token(glued_span, glued_tok);
+                    let glued_span = last_token.span.to(token.span);
+                    let glued_tt = TokenTree::token(glued_span, glued_tok);
                     let glued_tokenstream = TokenStream::new(vec![(glued_tt, is_joint)]);
                     self.0.push(glued_tokenstream);
                     self.push_all_but_first_tree(&stream);
@@ -663,7 +660,7 @@ mod tests {
         with_default_globals(|| {
             let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
             let test1: TokenStream =
-                TokenTree::Token(sp(0, 1), token::Ident(Ident::from_str("a"), false)).into();
+                TokenTree::token(sp(0, 1), token::Ident(Ident::from_str("a"), false)).into();
             let test2 = string_to_ts("foo(bar::baz)");
 
             assert_eq!(test0.is_empty(), true);
@@ -676,9 +673,9 @@ mod tests {
     fn test_dotdotdot() {
         with_default_globals(|| {
             let mut builder = TokenStreamBuilder::new();
-            builder.push(TokenTree::Token(sp(0, 1), token::Dot).joint());
-            builder.push(TokenTree::Token(sp(1, 2), token::Dot).joint());
-            builder.push(TokenTree::Token(sp(2, 3), token::Dot));
+            builder.push(TokenTree::token(sp(0, 1), token::Dot).joint());
+            builder.push(TokenTree::token(sp(1, 2), token::Dot).joint());
+            builder.push(TokenTree::token(sp(2, 3), token::Dot));
             let stream = builder.build();
             assert!(stream.eq_unspanned(&string_to_ts("...")));
             assert_eq!(stream.trees().count(), 1);

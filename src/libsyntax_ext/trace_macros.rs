@@ -17,10 +17,10 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt<'_>,
     }
 
     match (tt.len(), tt.first()) {
-        (1, Some(&TokenTree::Token(_, ref tok))) if tok.is_keyword(kw::True) => {
+        (1, Some(TokenTree::Token(token))) if token.is_keyword(kw::True) => {
             cx.set_trace_macros(true);
         }
-        (1, Some(&TokenTree::Token(_, ref tok))) if tok.is_keyword(kw::False) => {
+        (1, Some(TokenTree::Token(token))) if token.is_keyword(kw::False) => {
             cx.set_trace_macros(false);
         }
         _ => cx.span_err(sp, "trace_macros! accepts only `true` or `false`"),

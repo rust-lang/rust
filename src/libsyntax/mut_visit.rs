@@ -9,7 +9,7 @@
 
 use crate::ast::*;
 use crate::source_map::{Spanned, respan};
-use crate::parse::token::{self, TokenKind};
+use crate::parse::token::{self, Token, TokenKind};
 use crate::ptr::P;
 use crate::ThinVec;
 use crate::tokenstream::*;
@@ -576,9 +576,9 @@ pub fn noop_visit_arg<T: MutVisitor>(Arg { id, pat, ty }: &mut Arg, vis: &mut T)
 
 pub fn noop_visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
     match tt {
-        TokenTree::Token(span, tok) => {
+        TokenTree::Token(Token { kind, span }) => {
+            vis.visit_token(kind);
             vis.visit_span(span);
-            vis.visit_token(tok);
         }
         TokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
             vis.visit_span(open);

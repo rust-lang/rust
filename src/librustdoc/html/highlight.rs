@@ -234,7 +234,7 @@ impl<'a> Classifier<'a> {
             // reference or dereference operator or a reference or pointer type, instead of the
             // bit-and or multiplication operator.
             token::BinOp(token::And) | token::BinOp(token::Star)
-                if self.lexer.peek().kind != token::Whitespace => Class::RefKeyWord,
+                if self.lexer.peek() != token::Whitespace => Class::RefKeyWord,
 
             // Consider this as part of a macro invocation if there was a
             // leading identifier.
@@ -335,7 +335,7 @@ impl<'a> Classifier<'a> {
                     sym::Option | sym::Result => Class::PreludeTy,
                     sym::Some | sym::None | sym::Ok | sym::Err => Class::PreludeVal,
 
-                    _ if token.kind.is_reserved_ident() => Class::KeyWord,
+                    _ if token.is_reserved_ident() => Class::KeyWord,
 
                     _ => {
                         if self.in_macro_nonterminal {
