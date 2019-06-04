@@ -52,6 +52,19 @@ struct GatherUsedMutsVisitor<'visit, 'cx: 'visit, 'gcx: 'tcx, 'tcx: 'cx> {
     mbcx: &'visit mut MirBorrowckCtxt<'cx, 'gcx, 'tcx>,
 }
 
+impl GatherUsedMutsVisitor<'_, '_, '_, '_> {
+    fn remove_never_initialized_mut_locals(&mut self, into: &Place<'_>) {
+        // Remove any locals that we found were initialized from the
+        // `never_initialized_mut_locals` set. At the end, the only remaining locals will
+        // be those that were never initialized - we will consider those as being used as
+        // they will either have been removed by unreachable code optimizations; or linted
+        // as unused variables.
+        if let Some(local) = into.base_local() {
+            let _ = self.never_initialized_mut_locals.remove(&local);
+        }
+    }
+}
+
 impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'gcx, 'tcx> {
     fn visit_terminator_kind(
         &mut self,
@@ -61,14 +74,10 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
         debug!("visit_terminator_kind: kind={:?}", kind);
         match &kind {
             TerminatorKind::Call { destination: Some((into, _)), .. } => {
-                if let Some(local) = into.base_local() {
-                    debug!(
-                        "visit_terminator_kind: kind={:?} local={:?} \
-                         never_initialized_mut_locals={:?}",
-                        kind, local, self.never_initialized_mut_locals
-                    );
-                    let _ = self.never_initialized_mut_locals.remove(&local);
-                }
+                self.remove_never_initialized_mut_locals(&into);
+            },
+            TerminatorKind::DropAndReplace { location, .. } => {
+                self.remove_never_initialized_mut_locals(&location);
             },
             _ => {},
         }
@@ -81,19 +90,14 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
     ) {
         match &statement.kind {
             StatementKind::Assign(into, _) => {
-                // Remove any locals that we found were initialized from the
-                // `never_initialized_mut_locals` set. At the end, the only remaining locals will
-                // be those that were never initialized - we will consider those as being used as
-                // they will either have been removed by unreachable code optimizations; or linted
-                // as unused variables.
                 if let Some(local) = into.base_local() {
                     debug!(
                         "visit_statement: statement={:?} local={:?} \
                          never_initialized_mut_locals={:?}",
                         statement, local, self.never_initialized_mut_locals
                     );
-                    let _ = self.never_initialized_mut_locals.remove(&local);
                 }
+                self.remove_never_initialized_mut_locals(into);
             },
             _ => {},
         }

@@ -580,15 +580,18 @@ impl<T: ?Sized> Rc<T> {
 impl<T: Clone> Rc<T> {
     /// Makes a mutable reference into the given `Rc`.
     ///
-    /// If there are other `Rc` or [`Weak`][weak] pointers to the same value,
-    /// then `make_mut` will invoke [`clone`][clone] on the inner value to
-    /// ensure unique ownership. This is also referred to as clone-on-write.
+    /// If there are other `Rc` pointers to the same value, then `make_mut` will
+    /// [`clone`] the inner value to ensure unique ownership.  This is also
+    /// referred to as clone-on-write.
     ///
-    /// See also [`get_mut`][get_mut], which will fail rather than cloning.
+    /// If there are no other `Rc` pointers to this value, then [`Weak`]
+    /// pointers to this value will be dissassociated.
     ///
-    /// [weak]: struct.Weak.html
-    /// [clone]: ../../std/clone/trait.Clone.html#tymethod.clone
-    /// [get_mut]: struct.Rc.html#method.get_mut
+    /// See also [`get_mut`], which will fail rather than cloning.
+    ///
+    /// [`Weak`]: struct.Weak.html
+    /// [`clone`]: ../../std/clone/trait.Clone.html#tymethod.clone
+    /// [`get_mut`]: struct.Rc.html#method.get_mut
     ///
     /// # Examples
     ///
@@ -606,6 +609,23 @@ impl<T: Clone> Rc<T> {
     /// // Now `data` and `other_data` point to different values.
     /// assert_eq!(*data, 8);
     /// assert_eq!(*other_data, 12);
+    /// ```
+    ///
+    /// [`Weak`] pointers will be dissassociated:
+    ///
+    /// ```
+    /// use std::rc::Rc;
+    ///
+    /// let mut data = Rc::new(75);
+    /// let weak = Rc::downgrade(&data);
+    ///
+    /// assert!(75 == *data);
+    /// assert!(75 == *weak.upgrade().unwrap());
+    ///
+    /// *Rc::make_mut(&mut data) += 1;
+    ///
+    /// assert!(76 == *data);
+    /// assert!(weak.upgrade().is_none());
     /// ```
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]

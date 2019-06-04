@@ -204,7 +204,7 @@ fn parse_cfgs<'a>(contents: &'a str) -> Vec<(usize, &'a str)> {
         succeeds_non_ident && preceeds_whitespace_and_paren
     });
 
-    cfgs.map(|i| {
+    cfgs.flat_map(|i| {
         let mut depth = 0;
         let contents_from = &contents[i..];
         for (j, byte) in contents_from.bytes().enumerate() {
@@ -215,13 +215,15 @@ fn parse_cfgs<'a>(contents: &'a str) -> Vec<(usize, &'a str)> {
                 b')' => {
                     depth -= 1;
                     if depth == 0 {
-                        return (i, &contents_from[..=j]);
+                        return Some((i, &contents_from[..=j]));
                     }
                 }
                 _ => { }
             }
         }
 
-        unreachable!()
+        // if the parentheses are unbalanced just ignore this cfg -- it'll be caught when attempting
+        // to run the compiler, and there's no real reason to lint it separately here
+        None
     }).collect()
 }

@@ -1335,88 +1335,97 @@ pub fn checked_type_of<'a, 'tcx>(
 
                 Node::Ty(&hir::Ty { node: hir::TyKind::Path(_), .. }) |
                 Node::Expr(&hir::Expr { node: ExprKind::Struct(..), .. }) |
-                Node::Expr(&hir::Expr { node: ExprKind::Path(_), .. }) => {
+                Node::Expr(&hir::Expr { node: ExprKind::Path(_), .. }) |
+                Node::TraitRef(..) => {
                     let path = match parent_node {
-                        Node::Ty(&hir::Ty { node: hir::TyKind::Path(ref path), .. }) |
-                        Node::Expr(&hir::Expr { node: ExprKind::Path(ref path), .. }) => {
-                            path
+                        Node::Ty(&hir::Ty {
+                            node: hir::TyKind::Path(QPath::Resolved(_, ref path)),
+                            ..
+                        })
+                        | Node::Expr(&hir::Expr {
+                            node: ExprKind::Path(QPath::Resolved(_, ref path)),
+                            ..
+                        }) => {
+                            Some(&**path)
                         }
                         Node::Expr(&hir::Expr { node: ExprKind::Struct(ref path, ..), .. }) => {
-                            &*path
+                            if let QPath::Resolved(_, ref path) = **path {
+                                Some(&**path)
+                            } else {
+                                None
+                            }
                         }
-                        _ => unreachable!(),
+                        Node::TraitRef(&hir::TraitRef { ref path, .. }) => Some(path),
+                        _ => None,
                     };
 
-                    match path {
-                        QPath::Resolved(_, ref path) => {
-                            let arg_index = path.segments.iter()
-                                .filter_map(|seg| seg.args.as_ref())
-                                .map(|generic_args| generic_args.args.as_ref())
-                                .find_map(|args| {
-                                    args.iter()
-                                        .filter(|arg| arg.is_const())
-                                        .enumerate()
-                                        .filter(|(_, arg)| arg.id() == hir_id)
-                                        .map(|(index, _)| index)
-                                        .next()
-                                })
-                                .or_else(|| {
-                                    if !fail {
-                                        None
-                                    } else {
-                                        bug!("no arg matching AnonConst in path")
-                                    }
-                                })?;
-
-                            // We've encountered an `AnonConst` in some path, so we need to
-                            // figure out which generic parameter it corresponds to and return
-                            // the relevant type.
-                            let generics = match path.res {
-                                Res::Def(DefKind::Ctor(..), def_id) =>
-                                    tcx.generics_of(tcx.parent(def_id).unwrap()),
-                                Res::Def(_, def_id) =>
-                                    tcx.generics_of(def_id),
-                                Res::Err =>
-                                    return Some(tcx.types.err),
-                                _ if !fail =>
-                                    return None,
-                                x => {
-                                    tcx.sess.delay_span_bug(
-                                        DUMMY_SP,
-                                        &format!(
-                                            "unexpected const parent path def {:?}", x
-                                        ),
-                                    );
-                                    return Some(tcx.types.err);
+                    if let Some(path) = path {
+                        let arg_index = path.segments.iter()
+                            .filter_map(|seg| seg.args.as_ref())
+                            .map(|generic_args| generic_args.args.as_ref())
+                            .find_map(|args| {
+                                args.iter()
+                                    .filter(|arg| arg.is_const())
+                                    .enumerate()
+                                    .filter(|(_, arg)| arg.id() == hir_id)
+                                    .map(|(index, _)| index)
+                                    .next()
+                            })
+                            .or_else(|| {
+                                if !fail {
+                                    None
+                                } else {
+                                    bug!("no arg matching AnonConst in path")
                                 }
-                            };
+                            })?;
 
-                            generics.params.iter()
-                                .filter(|param| {
-                                    if let ty::GenericParamDefKind::Const = param.kind {
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                })
-                                .nth(arg_index)
-                                .map(|param| tcx.type_of(param.def_id))
-                                // This is no generic parameter associated with the arg. This is
-                                // probably from an extra arg where one is not needed.
-                                .unwrap_or(tcx.types.err)
-                        }
-                        x => {
-                            if !fail {
-                                return None;
+                        // We've encountered an `AnonConst` in some path, so we need to
+                        // figure out which generic parameter it corresponds to and return
+                        // the relevant type.
+                        let generics = match path.res {
+                            Res::Def(DefKind::Ctor(..), def_id) => {
+                                tcx.generics_of(tcx.parent(def_id).unwrap())
                             }
-                            tcx.sess.delay_span_bug(
-                                DUMMY_SP,
-                                &format!(
-                                    "unexpected const parent path {:?}", x
-                                ),
-                            );
-                            tcx.types.err
+                            Res::Def(_, def_id) => tcx.generics_of(def_id),
+                            Res::Err => return Some(tcx.types.err),
+                            _ if !fail => return None,
+                            res => {
+                                tcx.sess.delay_span_bug(
+                                    DUMMY_SP,
+                                    &format!(
+                                        "unexpected const parent path def {:?}",
+                                        res,
+                                    ),
+                                );
+                                return Some(tcx.types.err);
+                            }
+                        };
+
+                        generics.params.iter()
+                            .filter(|param| {
+                                if let ty::GenericParamDefKind::Const = param.kind {
+                                    true
+                                } else {
+                                    false
+                                }
+                            })
+                            .nth(arg_index)
+                            .map(|param| tcx.type_of(param.def_id))
+                            // This is no generic parameter associated with the arg. This is
+                            // probably from an extra arg where one is not needed.
+                            .unwrap_or(tcx.types.err)
+                    } else {
+                        if !fail {
+                            return None;
                         }
+                        tcx.sess.delay_span_bug(
+                            DUMMY_SP,
+                            &format!(
+                                "unexpected const parent path {:?}",
+                                parent_node,
+                            ),
+                        );
+                        return Some(tcx.types.err);
                     }
                 }
 
