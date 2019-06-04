@@ -56,9 +56,20 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
     fn terminator_effect(&self,
                          sets: &mut BlockSets<'_, Local>,
                          loc: Location) {
+        let terminator = self.mir[loc.block].terminator();
         BorrowedLocalsVisitor {
             sets,
-        }.visit_terminator(self.mir[loc.block].terminator(), loc);
+        }.visit_terminator(terminator, loc);
+        match &terminator.kind {
+            // Drop terminators borrows the location
+            TerminatorKind::Drop { location, .. } |
+            TerminatorKind::DropAndReplace { location, .. } => {
+                if let Some(local) = find_local(location) {
+                    sets.gen(local);
+                }
+            }
+            _ => (),
+        }
     }
 
     fn propagate_call_return(

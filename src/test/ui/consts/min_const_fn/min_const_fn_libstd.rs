@@ -1,5 +1,3 @@
-#![feature(integer_atomics)]
-
 // compile-pass
 
 use std::cell::UnsafeCell;
