@@ -192,7 +192,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
                     }
-                    mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_)) => {
+                    mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_, _)) => {
                         match operand.layout.ty.sty {
                             ty::Closure(def_id, substs) => {
                                 let instance = Instance::resolve_closure(

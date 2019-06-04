@@ -104,7 +104,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 }
             }
 
-            Pointer(PointerCast::ClosureFnPointer(_)) => {
+            Pointer(PointerCast::ClosureFnPointer(_, _)) => {
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::Closure(def_id, substs) => {

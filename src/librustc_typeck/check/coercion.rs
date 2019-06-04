@@ -739,11 +739,12 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 //     `unsafe fn(arg0,arg1,...) -> _`
                 let sig = self.closure_sig(def_id_a, substs_a);
                 let unsafety = fn_ty.unsafety();
-                let pointer_ty = self.tcx.coerce_closure_fn_ty(sig, unsafety);
+                let abi = fn_ty.abi();
+                let pointer_ty = self.tcx.coerce_closure_fn_ty(sig, unsafety, abi);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})",
                        a, b, pointer_ty);
                 self.unify_and(pointer_ty, b, simple(
-                    Adjust::Pointer(PointerCast::ClosureFnPointer(unsafety))
+                    Adjust::Pointer(PointerCast::ClosureFnPointer(unsafety, abi))
                 ))
             }
             _ => self.unify_and(a, b, identity),

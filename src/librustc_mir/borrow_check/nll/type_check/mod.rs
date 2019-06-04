@@ -2011,14 +2011,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     }
 
-                    CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
+                    CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety, abi)) => {
                         let sig = match op.ty(body, tcx).sty {
                             ty::Closure(def_id, substs) => {
                                 substs.closure_sig_ty(def_id, tcx).fn_sig(tcx)
                             }
                             _ => bug!(),
                         };
-                        let ty_fn_ptr_from = tcx.coerce_closure_fn_ty(sig, *unsafety);
+                        let ty_fn_ptr_from = tcx.coerce_closure_fn_ty(sig, *unsafety, *abi);
 
                         if let Err(terr) = self.eq_types(
                             ty_fn_ptr_from,

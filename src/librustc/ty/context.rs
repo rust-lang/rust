@@ -2420,7 +2420,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// `hir::Unsafety::Unsafe` in the previous example, then you would get
     /// an `unsafe fn (u32, i32)`.
     /// It cannot convert a closure that requires unsafe.
-    pub fn coerce_closure_fn_ty(self, sig: PolyFnSig<'tcx>, unsafety: hir::Unsafety) -> Ty<'tcx> {
+    pub fn coerce_closure_fn_ty(
+        self,
+        sig: PolyFnSig<'tcx>,
+        unsafety: hir::Unsafety,
+        abi: abi::Abi,
+    ) -> Ty<'tcx> {
         let converted_sig = sig.map_bound(|s| {
             let params_iter = match s.inputs()[0].sty {
                 ty::Tuple(params) => {
@@ -2428,13 +2433,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
                 _ => bug!(),
             };
-            self.mk_fn_sig(
-                params_iter,
-                s.output(),
-                s.c_variadic,
-                unsafety,
-                abi::Abi::Rust,
-            )
+            self.mk_fn_sig(params_iter, s.output(), s.c_variadic, unsafety, abi)
         });
 
         self.mk_fn_ptr(converted_sig)

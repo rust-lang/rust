@@ -3,6 +3,7 @@ use crate::hir::def_id::DefId;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::subst::SubstsRef;
 use rustc_macros::HashStable;
+use rustc_target::spec::abi;
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
@@ -15,7 +16,7 @@ pub enum PointerCast {
 
     /// Go from a non-capturing closure to an fn pointer or an unsafe fn pointer.
     /// It cannot convert a closure that requires unsafe.
-    ClosureFnPointer(hir::Unsafety),
+    ClosureFnPointer(hir::Unsafety, abi::Abi),
 
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,
