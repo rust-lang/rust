@@ -9,9 +9,13 @@ use std::ops::Deref;
 
 crate mod graph;
 
+/// A set of NLL region constraints. These include "outlives"
+/// constraints of the form `R1: R2`. Each constraint is identified by
+/// a unique `OutlivesConstraintIndex` and you can index into the set
+/// (`constraint_set[i]`) to access the constraint details.
 #[derive(Clone, Default)]
 crate struct ConstraintSet {
-    constraints: IndexVec<ConstraintIndex, OutlivesConstraint>,
+    outlives: IndexVec<OutlivesConstraintIndex, OutlivesConstraint>,
 }
 
 impl ConstraintSet {
@@ -24,7 +28,7 @@ impl ConstraintSet {
             // 'a: 'a is pretty uninteresting
             return;
         }
-        self.constraints.push(constraint);
+        self.outlives.push(constraint);
     }
 
     /// Constructs a "normal" graph from the constraint set; the graph makes it
@@ -57,10 +61,10 @@ impl ConstraintSet {
 }
 
 impl Deref for ConstraintSet {
-    type Target = IndexVec<ConstraintIndex, OutlivesConstraint>;
+    type Target = IndexVec<OutlivesConstraintIndex, OutlivesConstraint>;
 
     fn deref(&self) -> &Self::Target {
-        &self.constraints
+        &self.outlives
     }
 }
 
@@ -94,8 +98,8 @@ impl fmt::Debug for OutlivesConstraint {
 }
 
 newtype_index! {
-    pub struct ConstraintIndex {
-        DEBUG_FORMAT = "ConstraintIndex({})"
+    pub struct OutlivesConstraintIndex {
+        DEBUG_FORMAT = "OutlivesConstraintIndex({})"
     }
 }
 

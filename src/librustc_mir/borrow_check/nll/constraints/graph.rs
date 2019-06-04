@@ -1,5 +1,5 @@
 use crate::borrow_check::nll::type_check::Locations;
-use crate::borrow_check::nll::constraints::ConstraintIndex;
+use crate::borrow_check::nll::constraints::OutlivesConstraintIndex;
 use crate::borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
@@ -12,8 +12,8 @@ use syntax_pos::DUMMY_SP;
 /// -> R2` or `R2 -> R1` depending on the direction type `D`.
 crate struct ConstraintGraph<D: ConstraintGraphDirecton> {
     _direction: D,
-    first_constraints: IndexVec<RegionVid, Option<ConstraintIndex>>,
-    next_constraints: IndexVec<ConstraintIndex, Option<ConstraintIndex>>,
+    first_constraints: IndexVec<RegionVid, Option<OutlivesConstraintIndex>>,
+    next_constraints: IndexVec<OutlivesConstraintIndex, Option<OutlivesConstraintIndex>>,
 }
 
 crate type NormalConstraintGraph = ConstraintGraph<Normal>;
@@ -81,9 +81,9 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
         num_region_vars: usize,
     ) -> Self {
         let mut first_constraints = IndexVec::from_elem_n(None, num_region_vars);
-        let mut next_constraints = IndexVec::from_elem(None, &set.constraints);
+        let mut next_constraints = IndexVec::from_elem(None, &set.outlives);
 
-        for (idx, constraint) in set.constraints.iter_enumerated().rev() {
+        for (idx, constraint) in set.outlives.iter_enumerated().rev() {
             let head = &mut first_constraints[D::start_region(constraint)];
             let next = &mut next_constraints[idx];
             debug_assert!(next.is_none());
@@ -143,7 +143,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
 crate struct Edges<'s, D: ConstraintGraphDirecton> {
     graph: &'s ConstraintGraph<D>,
     constraints: &'s ConstraintSet,
-    pointer: Option<ConstraintIndex>,
+    pointer: Option<OutlivesConstraintIndex>,
     next_static_idx: Option<usize>,
     static_region: RegionVid,
 }
