@@ -573,6 +573,20 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// set of substitutions. This may involve applying defaulted type parameters.
     /// Also returns back constriants on associated types.
     ///
+    /// Example:
+    ///
+    /// ```
+    /// T: std::ops::Index<usize, Output = u32>
+    /// ^1 ^^^^^^^^^^^^^^2 ^^^^3  ^^^^^^^^^^^4
+    /// ```
+    ///
+    /// 1. The `self_ty` here would refer to the type `T`.
+    /// 2. The path in question is the path to the trait `std::ops::Index`,
+    ///    which will have been resolved to a `def_id`
+    /// 3. The `generic_args` contains info on the `<...>` contents. The `usize` type
+    ///    parameters are returned in the `SubstsRef`, the associated type bindings like
+    ///    `Output = u32` are returned in the `Vec<ConvertedBinding...>` result.
+    ///
     /// Note that the type listing given here is *exactly* what the user provided.
     fn create_substs_for_ast_path<'a>(&self,
         span: Span,
