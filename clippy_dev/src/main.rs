@@ -87,6 +87,28 @@ fn print_lints() {
 
 fn update_lints(update_mode: &UpdateMode) {
     let lint_list: Vec<Lint> = gather_all().collect();
+
+    std::fs::write(
+        "../src/lintlist.rs",
+        &format!(
+            "\
+/// Lint data parsed from the Clippy source code.
+#[derive(Clone, PartialEq, Debug)]
+pub struct Lint {{
+    pub name: &'static str,
+    pub group: &'static str,
+    pub desc: &'static str,
+    pub deprecation: Option<&'static str>,
+    pub module: &'static str,
+}}
+
+pub const ALL_LINTS: [Lint; {}] = {:#?};",
+            lint_list.len(),
+            lint_list
+        ),
+    )
+    .expect("can write to file");
+
     let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list.clone().into_iter()).collect();
     let lint_count = usable_lints.len();
 

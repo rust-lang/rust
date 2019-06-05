@@ -15,6 +15,8 @@ use rustc_tools_util::*;
 use std::path::Path;
 use std::process::{exit, Command};
 
+mod lintlist;
+
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
 fn arg_value<'a>(
@@ -117,6 +119,40 @@ pub fn main() {
             if std::env::args().any(|a| a == "--version" || a == "-V") {
                 let version_info = rustc_tools_util::get_version_info!();
                 println!("{}", version_info);
+                exit(0);
+            }
+
+            if std::env::args().any(|a| a == "--help" || a == "-h") {
+                println!(
+                    "\
+Checks a package to catch common mistakes and improve your Rust code.
+
+Usage:
+    cargo clippy [options] [--] [<opts>...]
+
+Common options:
+    -h, --help               Print this message
+    -V, --version            Print version info and exit
+
+Other options are the same as `cargo check`.
+
+To allow or deny a lint from the command line you can use `cargo clippy --`
+with:
+
+    -W --warn OPT       Set lint warnings
+    -A --allow OPT      Set lint allowed
+    -D --deny OPT       Set lint denied
+    -F --forbid OPT     Set lint forbidden
+
+You can use tool lints to allow or deny lints from your code, eg.:
+
+    #[allow(clippy::needless_lifetimes)]
+"
+                );
+
+                for lint in &lintlist::ALL_LINTS[..] {
+                    println!("clippy::{},", lint.name);
+                }
                 exit(0);
             }
 
