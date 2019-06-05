@@ -2330,14 +2330,12 @@ impl<'a> Resolver<'a> {
         let orig_current_module = self.current_module;
         match module {
             ModuleOrUniformRoot::Module(module) => {
-                ident.span = ident.span.modern();
-                if let Some(def) = ident.span.adjust(module.expansion) {
+                if let Some(def) = ident.span.modernize_and_adjust(module.expansion) {
                     self.current_module = self.macro_def_scope(def);
                 }
             }
             ModuleOrUniformRoot::ExternPrelude => {
-                ident.span = ident.span.modern();
-                ident.span.adjust(Mark::root());
+                ident.span.modernize_and_adjust(Mark::root());
             }
             ModuleOrUniformRoot::CrateRootAndExternPrelude |
             ModuleOrUniformRoot::CurrentScope => {
@@ -4525,7 +4523,7 @@ impl<'a> Resolver<'a> {
                 let mut ident = ident;
                 if ident.span.glob_adjust(
                     module.expansion,
-                    binding.span.ctxt().modern(),
+                    binding.span,
                 ).is_none() {
                     continue
                 }

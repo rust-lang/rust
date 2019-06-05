@@ -844,9 +844,8 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<Span> for CacheEncoder<'enc, 'a, 'tcx
         if span_data.ctxt == SyntaxContext::empty() {
             TAG_NO_EXPANSION_INFO.encode(self)
         } else {
-            let mark = span_data.ctxt.outer();
-
-            if let Some(expn_info) = mark.expn_info() {
+            let (mark, expn_info) = span_data.ctxt.outer_and_expn_info();
+            if let Some(expn_info) = expn_info {
                 if let Some(pos) = self.expn_info_shorthands.get(&mark).cloned() {
                     TAG_EXPANSION_INFO_SHORTHAND.encode(self)?;
                     pos.encode(self)

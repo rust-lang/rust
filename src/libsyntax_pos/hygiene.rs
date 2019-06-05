@@ -5,6 +5,26 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 <https://doi.org/10.1017/S0956796812000093>
 
+// Hygiene data is stored in a global variable and accessed via TLS, which
+// means that accesses are somewhat expensive. (`HygieneData::with`
+// encapsulates a single access.) Therefore, on hot code paths it is worth
+// ensuring that multiple HygieneData accesses are combined into a single
+// `HygieneData::with`.
+//
+// This explains why `HygieneData`, `SyntaxContext` and `Mark` have interfaces
+// with a certain amount of redundancy in them. For example,
+// `SyntaxContext::outer_expn_info` combines `SyntaxContext::outer` and
+// `Mark::expn_info` so that two `HygieneData` accesses can be performed within
+// a single `HygieneData::with` call.
+//
+// It also explains why many functions appear in `HygieneData` and again in
+// `SyntaxContext` or `Mark`. For example, `HygieneData::outer` and
+// `SyntaxContext::outer` do the same thing, but the former is for use within a
+// `HygieneData::with` call while the latter is for use outside such a call.
+// When modifying this file it is important to understand this distinction,
+// because getting it wrong can lead to nested `HygieneData::with` calls that
+// trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
+
 use crate::GLOBALS;
 use crate::Span;
 use crate::edition::Edition;
@@ -98,7 +118,7 @@ impl Mark {
 
     #[inline]
     pub fn expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| data.marks[self.0 as usize].expn_info.clone())
+        HygieneData::with(|data| data.expn_info(self))
     }
 
     #[inline]
@@ -200,10 +220,6 @@ impl HygieneData {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
 
-    fn outer(&self, ctxt: SyntaxContext) -> Mark {
-        self.syntax_contexts[ctxt.0 as usize].outer_mark
-    }
-
     fn expn_info(&self, mark: Mark) -> Option<ExpnInfo> {
         self.marks[mark.0 as usize].expn_info.clone()
     }
@@ -217,10 +233,172 @@ impl HygieneData {
         }
         true
     }
+
+    fn default_transparency(&self, mark: Mark) -> Transparency {
+        self.marks[mark.0 as usize].default_transparency
+    }
+
+    fn modern(&self, ctxt: SyntaxContext) -> SyntaxContext {
+        self.syntax_contexts[ctxt.0 as usize].opaque
+    }
+
+    fn modern_and_legacy(&self, ctxt: SyntaxContext) -> SyntaxContext {
+        self.syntax_contexts[ctxt.0 as usize].opaque_and_semitransparent
+    }
+
+    fn outer(&self, ctxt: SyntaxContext) -> Mark {
+        self.syntax_contexts[ctxt.0 as usize].outer_mark
+    }
+
+    fn transparency(&self, ctxt: SyntaxContext) -> Transparency {
+        self.syntax_contexts[ctxt.0 as usize].transparency
+    }
+
+    fn prev_ctxt(&self, ctxt: SyntaxContext) -> SyntaxContext {
+        self.syntax_contexts[ctxt.0 as usize].prev_ctxt
+    }
+
+    fn remove_mark(&self, ctxt: &mut SyntaxContext) -> Mark {
+        let outer_mark = self.syntax_contexts[ctxt.0 as usize].outer_mark;
+        *ctxt = self.prev_ctxt(*ctxt);
+        outer_mark
+    }
+
+    fn marks(&self, mut ctxt: SyntaxContext) -> Vec<(Mark, Transparency)> {
+        let mut marks = Vec::new();
+        while ctxt != SyntaxContext::empty() {
+            let outer_mark = self.outer(ctxt);
+            let transparency = self.transparency(ctxt);
+            let prev_ctxt = self.prev_ctxt(ctxt);
+            marks.push((outer_mark, transparency));
+            ctxt = prev_ctxt;
+        }
+        marks.reverse();
+        marks
+    }
+
+    fn walk_chain(&self, mut span: Span, to: SyntaxContext) -> Span {
+        while span.ctxt() != crate::NO_EXPANSION && span.ctxt() != to {
+            if let Some(info) = self.expn_info(self.outer(span.ctxt())) {
+                span = info.call_site;
+            } else {
+                break;
+            }
+        }
+        span
+    }
+
+    fn adjust(&self, ctxt: &mut SyntaxContext, expansion: Mark) -> Option<Mark> {
+        let mut scope = None;
+        while !self.is_descendant_of(expansion, self.outer(*ctxt)) {
+            scope = Some(self.remove_mark(ctxt));
+        }
+        scope
+    }
+
+    fn apply_mark(&mut self, ctxt: SyntaxContext, mark: Mark) -> SyntaxContext {
+        assert_ne!(mark, Mark::root());
+        self.apply_mark_with_transparency(ctxt, mark, self.default_transparency(mark))
+    }
+
+    fn apply_mark_with_transparency(&mut self, ctxt: SyntaxContext, mark: Mark,
+                                    transparency: Transparency) -> SyntaxContext {
+        assert_ne!(mark, Mark::root());
+        if transparency == Transparency::Opaque {
+            return self.apply_mark_internal(ctxt, mark, transparency);
+        }
+
+        let call_site_ctxt =
+            self.expn_info(mark).map_or(SyntaxContext::empty(), |info| info.call_site.ctxt());
+        let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
+            self.modern(call_site_ctxt)
+        } else {
+            self.modern_and_legacy(call_site_ctxt)
+        };
+
+        if call_site_ctxt == SyntaxContext::empty() {
+            return self.apply_mark_internal(ctxt, mark, transparency);
+        }
+
+        // Otherwise, `mark` is a macros 1.0 definition and the call site is in a
+        // macros 2.0 expansion, i.e., a macros 1.0 invocation is in a macros 2.0 definition.
+        //
+        // In this case, the tokens from the macros 1.0 definition inherit the hygiene
+        // at their invocation. That is, we pretend that the macros 1.0 definition
+        // was defined at its invocation (i.e., inside the macros 2.0 definition)
+        // so that the macros 2.0 definition remains hygienic.
+        //
+        // See the example at `test/run-pass/hygiene/legacy_interaction.rs`.
+        for (mark, transparency) in self.marks(ctxt) {
+            call_site_ctxt = self.apply_mark_internal(call_site_ctxt, mark, transparency);
+        }
+        self.apply_mark_internal(call_site_ctxt, mark, transparency)
+    }
+
+    fn apply_mark_internal(&mut self, ctxt: SyntaxContext, mark: Mark, transparency: Transparency)
+                           -> SyntaxContext {
+        let syntax_contexts = &mut self.syntax_contexts;
+        let mut opaque = syntax_contexts[ctxt.0 as usize].opaque;
+        let mut opaque_and_semitransparent =
+            syntax_contexts[ctxt.0 as usize].opaque_and_semitransparent;
+
+        if transparency >= Transparency::Opaque {
+            let prev_ctxt = opaque;
+            opaque = *self.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
+                let new_opaque = SyntaxContext(syntax_contexts.len() as u32);
+                syntax_contexts.push(SyntaxContextData {
+                    outer_mark: mark,
+                    transparency,
+                    prev_ctxt,
+                    opaque: new_opaque,
+                    opaque_and_semitransparent: new_opaque,
+                    dollar_crate_name: kw::DollarCrate,
+                });
+                new_opaque
+            });
+        }
+
+        if transparency >= Transparency::SemiTransparent {
+            let prev_ctxt = opaque_and_semitransparent;
+            opaque_and_semitransparent =
+                    *self.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
+                let new_opaque_and_semitransparent =
+                    SyntaxContext(syntax_contexts.len() as u32);
+                syntax_contexts.push(SyntaxContextData {
+                    outer_mark: mark,
+                    transparency,
+                    prev_ctxt,
+                    opaque,
+                    opaque_and_semitransparent: new_opaque_and_semitransparent,
+                    dollar_crate_name: kw::DollarCrate,
+                });
+                new_opaque_and_semitransparent
+            });
+        }
+
+        let prev_ctxt = ctxt;
+        *self.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
+            let new_opaque_and_semitransparent_and_transparent =
+                SyntaxContext(syntax_contexts.len() as u32);
+            syntax_contexts.push(SyntaxContextData {
+                outer_mark: mark,
+                transparency,
+                prev_ctxt,
+                opaque,
+                opaque_and_semitransparent,
+                dollar_crate_name: kw::DollarCrate,
+            });
+            new_opaque_and_semitransparent_and_transparent
+        })
+    }
 }
 
 pub fn clear_markings() {
     HygieneData::with(|data| data.markings = FxHashMap::default());
+}
+
+pub fn walk_chain(span: Span, to: SyntaxContext) -> Span {
+    HygieneData::with(|data| data.walk_chain(span, to))
 }
 
 impl SyntaxContext {
@@ -269,104 +447,13 @@ impl SyntaxContext {
 
     /// Extend a syntax context with a given mark and default transparency for that mark.
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
-        assert_ne!(mark, Mark::root());
-        self.apply_mark_with_transparency(
-            mark, HygieneData::with(|data| data.marks[mark.0 as usize].default_transparency)
-        )
+        HygieneData::with(|data| data.apply_mark(self, mark))
     }
 
     /// Extend a syntax context with a given mark and transparency
     pub fn apply_mark_with_transparency(self, mark: Mark, transparency: Transparency)
                                         -> SyntaxContext {
-        assert_ne!(mark, Mark::root());
-        if transparency == Transparency::Opaque {
-            return self.apply_mark_internal(mark, transparency);
-        }
-
-        let call_site_ctxt =
-            mark.expn_info().map_or(SyntaxContext::empty(), |info| info.call_site.ctxt());
-        let call_site_ctxt = if transparency == Transparency::SemiTransparent {
-            call_site_ctxt.modern()
-        } else {
-            call_site_ctxt.modern_and_legacy()
-        };
-
-        if call_site_ctxt == SyntaxContext::empty() {
-            return self.apply_mark_internal(mark, transparency);
-        }
-
-        // Otherwise, `mark` is a macros 1.0 definition and the call site is in a
-        // macros 2.0 expansion, i.e., a macros 1.0 invocation is in a macros 2.0 definition.
-        //
-        // In this case, the tokens from the macros 1.0 definition inherit the hygiene
-        // at their invocation. That is, we pretend that the macros 1.0 definition
-        // was defined at its invocation (i.e., inside the macros 2.0 definition)
-        // so that the macros 2.0 definition remains hygienic.
-        //
-        // See the example at `test/run-pass/hygiene/legacy_interaction.rs`.
-        let mut ctxt = call_site_ctxt;
-        for (mark, transparency) in self.marks() {
-            ctxt = ctxt.apply_mark_internal(mark, transparency);
-        }
-        ctxt.apply_mark_internal(mark, transparency)
-    }
-
-    fn apply_mark_internal(self, mark: Mark, transparency: Transparency) -> SyntaxContext {
-        HygieneData::with(|data| {
-            let syntax_contexts = &mut data.syntax_contexts;
-            let mut opaque = syntax_contexts[self.0 as usize].opaque;
-            let mut opaque_and_semitransparent =
-                syntax_contexts[self.0 as usize].opaque_and_semitransparent;
-
-            if transparency >= Transparency::Opaque {
-                let prev_ctxt = opaque;
-                opaque = *data.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
-                    let new_opaque = SyntaxContext(syntax_contexts.len() as u32);
-                    syntax_contexts.push(SyntaxContextData {
-                        outer_mark: mark,
-                        transparency,
-                        prev_ctxt,
-                        opaque: new_opaque,
-                        opaque_and_semitransparent: new_opaque,
-                        dollar_crate_name: kw::DollarCrate,
-                    });
-                    new_opaque
-                });
-            }
-
-            if transparency >= Transparency::SemiTransparent {
-                let prev_ctxt = opaque_and_semitransparent;
-                opaque_and_semitransparent =
-                        *data.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
-                    let new_opaque_and_semitransparent =
-                        SyntaxContext(syntax_contexts.len() as u32);
-                    syntax_contexts.push(SyntaxContextData {
-                        outer_mark: mark,
-                        transparency,
-                        prev_ctxt,
-                        opaque,
-                        opaque_and_semitransparent: new_opaque_and_semitransparent,
-                        dollar_crate_name: kw::DollarCrate,
-                    });
-                    new_opaque_and_semitransparent
-                });
-            }
-
-            let prev_ctxt = self;
-            *data.markings.entry((prev_ctxt, mark, transparency)).or_insert_with(|| {
-                let new_opaque_and_semitransparent_and_transparent =
-                    SyntaxContext(syntax_contexts.len() as u32);
-                syntax_contexts.push(SyntaxContextData {
-                    outer_mark: mark,
-                    transparency,
-                    prev_ctxt,
-                    opaque,
-                    opaque_and_semitransparent,
-                    dollar_crate_name: kw::DollarCrate,
-                });
-                new_opaque_and_semitransparent_and_transparent
-            })
-        })
+        HygieneData::with(|data| data.apply_mark_with_transparency(self, mark, transparency))
     }
 
     /// Pulls a single mark off of the syntax context. This effectively moves the
@@ -386,24 +473,11 @@ impl SyntaxContext {
     /// invocation of f that created g1.
     /// Returns the mark that was removed.
     pub fn remove_mark(&mut self) -> Mark {
-        HygieneData::with(|data| {
-            let outer_mark = data.syntax_contexts[self.0 as usize].outer_mark;
-            *self = data.syntax_contexts[self.0 as usize].prev_ctxt;
-            outer_mark
-        })
+        HygieneData::with(|data| data.remove_mark(self))
     }
 
-    pub fn marks(mut self) -> Vec<(Mark, Transparency)> {
-        HygieneData::with(|data| {
-            let mut marks = Vec::new();
-            while self != SyntaxContext::empty() {
-                let ctxt_data = &data.syntax_contexts[self.0 as usize];
-                marks.push((ctxt_data.outer_mark, ctxt_data.transparency));
-                self = ctxt_data.prev_ctxt;
-            }
-            marks.reverse();
-            marks
-        })
+    pub fn marks(self) -> Vec<(Mark, Transparency)> {
+        HygieneData::with(|data| data.marks(self))
     }
 
     /// Adjust this context for resolution in a scope created by the given expansion.
@@ -431,11 +505,15 @@ impl SyntaxContext {
     /// This returns the expansion whose definition scope we use to privacy check the resolution,
     /// or `None` if we privacy check as usual (i.e., not w.r.t. a macro definition scope).
     pub fn adjust(&mut self, expansion: Mark) -> Option<Mark> {
-        let mut scope = None;
-        while !expansion.outer_is_descendant_of(*self) {
-            scope = Some(self.remove_mark());
-        }
-        scope
+        HygieneData::with(|data| data.adjust(self, expansion))
+    }
+
+    /// Like `SyntaxContext::adjust`, but also modernizes `self`.
+    pub fn modernize_and_adjust(&mut self, expansion: Mark) -> Option<Mark> {
+        HygieneData::with(|data| {
+            *self = data.modern(*self);
+            data.adjust(self, expansion)
+        })
     }
 
     /// Adjust this context for resolution in a scope created by the given expansion
@@ -463,19 +541,21 @@ impl SyntaxContext {
     /// ```
     /// This returns `None` if the context cannot be glob-adjusted.
     /// Otherwise, it returns the scope to use when privacy checking (see `adjust` for details).
-    pub fn glob_adjust(&mut self, expansion: Mark, mut glob_ctxt: SyntaxContext)
-                       -> Option<Option<Mark>> {
-        let mut scope = None;
-        while !expansion.outer_is_descendant_of(glob_ctxt) {
-            scope = Some(glob_ctxt.remove_mark());
-            if self.remove_mark() != scope.unwrap() {
+    pub fn glob_adjust(&mut self, expansion: Mark, glob_span: Span) -> Option<Option<Mark>> {
+        HygieneData::with(|data| {
+            let mut scope = None;
+            let mut glob_ctxt = data.modern(glob_span.ctxt());
+            while !data.is_descendant_of(expansion, data.outer(glob_ctxt)) {
+                scope = Some(data.remove_mark(&mut glob_ctxt));
+                if data.remove_mark(self) != scope.unwrap() {
+                    return None;
+                }
+            }
+            if data.adjust(self, expansion).is_some() {
                 return None;
             }
-        }
-        if self.adjust(expansion).is_some() {
-            return None;
-        }
-        Some(scope)
+            Some(scope)
+        })
     }
 
     /// Undo `glob_adjust` if possible:
@@ -485,32 +565,43 @@ impl SyntaxContext {
     ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));
     /// }
     /// ```
-    pub fn reverse_glob_adjust(&mut self, expansion: Mark, mut glob_ctxt: SyntaxContext)
+    pub fn reverse_glob_adjust(&mut self, expansion: Mark, glob_span: Span)
                                -> Option<Option<Mark>> {
-        if self.adjust(expansion).is_some() {
-            return None;
-        }
+        HygieneData::with(|data| {
+            if data.adjust(self, expansion).is_some() {
+                return None;
+            }
 
-        let mut marks = Vec::new();
-        while !expansion.outer_is_descendant_of(glob_ctxt) {
-            marks.push(glob_ctxt.remove_mark());
-        }
+            let mut glob_ctxt = data.modern(glob_span.ctxt());
+            let mut marks = Vec::new();
+            while !data.is_descendant_of(expansion, data.outer(glob_ctxt)) {
+                marks.push(data.remove_mark(&mut glob_ctxt));
+            }
 
-        let scope = marks.last().cloned();
-        while let Some(mark) = marks.pop() {
-            *self = self.apply_mark(mark);
-        }
-        Some(scope)
+            let scope = marks.last().cloned();
+            while let Some(mark) = marks.pop() {
+                *self = data.apply_mark(*self, mark);
+            }
+            Some(scope)
+        })
+    }
+
+    pub fn hygienic_eq(self, other: SyntaxContext, mark: Mark) -> bool {
+        HygieneData::with(|data| {
+            let mut self_modern = data.modern(self);
+            data.adjust(&mut self_modern, mark);
+            self_modern == data.modern(other)
+        })
     }
 
     #[inline]
     pub fn modern(self) -> SyntaxContext {
-        HygieneData::with(|data| data.syntax_contexts[self.0 as usize].opaque)
+        HygieneData::with(|data| data.modern(self))
     }
 
     #[inline]
     pub fn modern_and_legacy(self) -> SyntaxContext {
-        HygieneData::with(|data| data.syntax_contexts[self.0 as usize].opaque_and_semitransparent)
+        HygieneData::with(|data| data.modern_and_legacy(self))
     }
 
     #[inline]
@@ -523,6 +614,16 @@ impl SyntaxContext {
     #[inline]
     pub fn outer_expn_info(self) -> Option<ExpnInfo> {
         HygieneData::with(|data| data.expn_info(data.outer(self)))
+    }
+
+    /// `ctxt.outer_and_expn_info()` is equivalent to but faster than
+    /// `{ let outer = ctxt.outer(); (outer, outer.expn_info()) }`.
+    #[inline]
+    pub fn outer_and_expn_info(self) -> (Mark, Option<ExpnInfo>) {
+        HygieneData::with(|data| {
+            let outer = data.outer(self);
+            (outer, data.expn_info(outer))
+        })
     }
 
     pub fn dollar_crate_name(self) -> Symbol {

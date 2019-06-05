@@ -3089,7 +3089,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // comparison fails frequently, and we want to avoid the expensive
         // `modern()` calls required for the span comparison whenever possible.
         use_name.name == def_name.name &&
-        self.adjust_ident(use_name, def_parent_def_id).span.ctxt() == def_name.modern().span.ctxt()
+        use_name.span.ctxt().hygienic_eq(def_name.span.ctxt(),
+                                         self.expansion_that_defined(def_parent_def_id))
     }
 
     fn expansion_that_defined(self, scope: DefId) -> Mark {
@@ -3100,15 +3101,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId) -> Ident {
-        ident = ident.modern();
-        ident.span.adjust(self.expansion_that_defined(scope));
+        ident.span.modernize_and_adjust(self.expansion_that_defined(scope));
         ident
     }
 
     pub fn adjust_ident_and_get_scope(self, mut ident: Ident, scope: DefId, block: hir::HirId)
                                       -> (Ident, DefId) {
-        ident = ident.modern();
-        let scope = match ident.span.adjust(self.expansion_that_defined(scope)) {
+        let scope = match ident.span.modernize_and_adjust(self.expansion_that_defined(scope)) {
             Some(actual_expansion) =>
                 self.hir().definitions().parent_module_of_macro_def(actual_expansion),
             None => self.hir().get_module_parent_by_hir_id(block),
