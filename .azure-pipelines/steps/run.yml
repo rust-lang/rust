@@ -50,6 +50,7 @@ steps:
 # on since libstd tests require it
 - bash: |
     set -e
+    sudo mkdir -p /etc/docker
     echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json
     sudo service docker restart
   displayName: Enable IPv6
@@ -101,6 +102,10 @@ steps:
 
 - bash: |
     set -e
+    # Remove any preexisting rustup installation since it can interfere
+    # with the cargotest step and its auto-detection of things like Clippy in
+    # the environment
+    rustup self uninstall -y || true
     if [ "$IMAGE" = "" ]; then
       src/ci/run.sh
     else
