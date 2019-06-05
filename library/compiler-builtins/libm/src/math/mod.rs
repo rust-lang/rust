@@ -166,6 +166,7 @@ mod tgamma;
 mod tgammaf;
 mod trunc;
 mod truncf;
+mod minf;
 
 // Use separated imports instead of {}-grouped imports for easier merging.
 pub use self::acos::acos;
@@ -272,6 +273,7 @@ pub use self::tgamma::tgamma;
 pub use self::tgammaf::tgammaf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
+pub use self::minf::minf;
 
 // Private modules
 mod expo2;
