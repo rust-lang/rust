@@ -138,6 +138,8 @@ pub trait F32Ext: private::Sealed + Sized {
     fn atanh(self) -> Self;
 
     fn min(self, other: Self) -> Self;
+
+    fn max(self, other: Self) -> Self;
 }
 
 impl F32Ext for f32 {
@@ -333,6 +335,11 @@ impl F32Ext for f32 {
     #[inline]
     fn min(self, other: Self) -> Self {
         minf(self, other)
+    }
+
+    #[inline]
+    fn max(self, other: Self) -> Self {
+        maxf(self, other)
     }
 }
 
