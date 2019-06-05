@@ -1304,7 +1304,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
             }
 
-            if self.mode == Mode::Fn {
+            // No need to do anything in constants and statics, as everything is "constant" anyway
+            // so promotion would be useless.
+            if self.mode != Mode::Static && self.mode != Mode::Const {
                 let constant_args = callee_def_id.and_then(|id| {
                     args_required_const(self.tcx, id)
                 }).unwrap_or_default();
