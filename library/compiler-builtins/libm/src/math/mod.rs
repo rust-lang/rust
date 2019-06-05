@@ -168,6 +168,7 @@ mod trunc;
 mod truncf;
 mod min;
 mod minf;
+mod max;
 mod maxf;
 
 // Use separated imports instead of {}-grouped imports for easier merging.
@@ -277,6 +278,7 @@ pub use self::trunc::trunc;
 pub use self::truncf::truncf;
 pub use self::min::min;
 pub use self::minf::minf;
+pub use self::max::max;
 pub use self::maxf::maxf;
 
 // Private modules

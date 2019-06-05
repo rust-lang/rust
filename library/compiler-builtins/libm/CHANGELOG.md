@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - minf
 - min
 - maxf
+- max
 
 ## [v0.1.2] - 2018-07-18
 
