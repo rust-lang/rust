@@ -34,7 +34,7 @@ use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::is_builtin_attr;
-use syntax::parse::token::{self, TokenKind};
+use syntax::parse::token::{self, Token};
 use syntax::span_err;
 use syntax::std_inject::injected_crate_name;
 use syntax::symbol::{kw, sym};
@@ -1052,8 +1052,8 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         self.resolver.current_module = parent;
     }
 
-    fn visit_token(&mut self, t: TokenKind) {
-        if let token::Interpolated(nt) = t {
+    fn visit_token(&mut self, t: Token) {
+        if let token::Interpolated(nt) = t.kind {
             if let token::NtExpr(ref expr) = *nt {
                 if let ast::ExprKind::Mac(..) = expr.node {
                     self.visit_invoc(expr.id);

@@ -9,7 +9,7 @@
 
 use crate::ast::*;
 use crate::source_map::{Spanned, respan};
-use crate::parse::token::{self, Token, TokenKind};
+use crate::parse::token::{self, Token};
 use crate::ptr::P;
 use crate::ThinVec;
 use crate::tokenstream::*;
@@ -262,7 +262,7 @@ pub trait MutVisitor: Sized {
         noop_visit_tts(tts, self);
     }
 
-    fn visit_token(&mut self, t: &mut TokenKind) {
+    fn visit_token(&mut self, t: &mut Token) {
         noop_visit_token(t, self);
     }
 
@@ -576,9 +576,8 @@ pub fn noop_visit_arg<T: MutVisitor>(Arg { id, pat, ty }: &mut Arg, vis: &mut T)
 
 pub fn noop_visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
     match tt {
-        TokenTree::Token(Token { kind, span }) => {
-            vis.visit_token(kind);
-            vis.visit_span(span);
+        TokenTree::Token(token) => {
+            vis.visit_token(token);
         }
         TokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
             vis.visit_span(open);
@@ -595,15 +594,24 @@ pub fn noop_visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &m
     })
 }
 
-// apply ident visitor if it's an ident, apply other visits to interpolated nodes
-pub fn noop_visit_token<T: MutVisitor>(t: &mut TokenKind, vis: &mut T) {
-    match t {
+// Apply ident visitor if it's an ident, apply other visits to interpolated nodes.
+// In practice the ident part is not actually used by specific visitors right now,
+// but there's a test below checking that it works.
+pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
+    let Token { kind, span } = t;
+    match kind {
+        token::Ident(name, _) | token::Lifetime(name) => {
+            let mut ident = Ident::new(*name, *span);
+            vis.visit_ident(&mut ident);
+            *name = ident.name;
+        }
         token::Interpolated(nt) => {
             let mut nt = Lrc::make_mut(nt);
             vis.visit_interpolated(&mut nt);
         }
         _ => {}
     }
+    vis.visit_span(span);
 }
 
 /// Apply visitor to elements of interpolated nodes.

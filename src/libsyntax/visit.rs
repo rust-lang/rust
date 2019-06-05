@@ -14,7 +14,7 @@
 //! those that are created by the expansion of a macro.
 
 use crate::ast::*;
-use crate::parse::token::TokenKind;
+use crate::parse::token::Token;
 use crate::tokenstream::{TokenTree, TokenStream};
 
 use syntax_pos::Span;
@@ -151,7 +151,7 @@ pub trait Visitor<'ast>: Sized {
     fn visit_tts(&mut self, tts: TokenStream) {
         walk_tts(self, tts)
     }
-    fn visit_token(&mut self, _t: TokenKind) {}
+    fn visit_token(&mut self, _t: Token) {}
     // FIXME: add `visit_interpolated` and `walk_interpolated`
     fn visit_vis(&mut self, vis: &'ast Visibility) {
         walk_vis(self, vis)
@@ -855,7 +855,7 @@ pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) 
 
 pub fn walk_tt<'a, V: Visitor<'a>>(visitor: &mut V, tt: TokenTree) {
     match tt {
-        TokenTree::Token(token) => visitor.visit_token(token.kind),
+        TokenTree::Token(token) => visitor.visit_token(token),
         TokenTree::Delimited(_, _, tts) => visitor.visit_tts(tts),
     }
 }
