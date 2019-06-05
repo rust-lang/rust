@@ -140,6 +140,10 @@ mod log1pf;
 mod log2;
 mod log2f;
 mod logf;
+mod max;
+mod maxf;
+mod min;
+mod minf;
 mod modf;
 mod modff;
 mod pow;
@@ -166,10 +170,6 @@ mod tgamma;
 mod tgammaf;
 mod trunc;
 mod truncf;
-mod min;
-mod minf;
-mod max;
-mod maxf;
 
 // Use separated imports instead of {}-grouped imports for easier merging.
 pub use self::acos::acos;
@@ -250,6 +250,10 @@ pub use self::log1pf::log1pf;
 pub use self::log2::log2;
 pub use self::log2f::log2f;
 pub use self::logf::logf;
+pub use self::max::max;
+pub use self::maxf::maxf;
+pub use self::min::min;
+pub use self::minf::minf;
 pub use self::modf::modf;
 pub use self::modff::modff;
 pub use self::pow::pow;
@@ -276,10 +280,6 @@ pub use self::tgamma::tgamma;
 pub use self::tgammaf::tgammaf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
-pub use self::min::min;
-pub use self::minf::minf;
-pub use self::max::max;
-pub use self::maxf::maxf;
 
 // Private modules
 mod expo2;
