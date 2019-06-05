@@ -362,11 +362,11 @@ impl TokenCursor {
             delim_span,
             token::Bracket,
             [
-                TokenTree::token(sp, token::Ident(sym::doc, false)),
-                TokenTree::token(sp, token::Eq),
-                TokenTree::token(sp, token::TokenKind::lit(
+                TokenTree::token(token::Ident(sym::doc, false), sp),
+                TokenTree::token(token::Eq, sp),
+                TokenTree::token(token::TokenKind::lit(
                     token::StrRaw(num_of_hashes), Symbol::intern(&stripped), None
-                )),
+                ), sp),
             ]
             .iter().cloned().collect::<TokenStream>().into(),
         );
@@ -375,10 +375,10 @@ impl TokenCursor {
             delim_span,
             token::NoDelim,
             &if doc_comment_style(&name.as_str()) == AttrStyle::Inner {
-                [TokenTree::token(sp, token::Pound), TokenTree::token(sp, token::Not), body]
+                [TokenTree::token(token::Pound, sp), TokenTree::token(token::Not, sp), body]
                     .iter().cloned().collect::<TokenStream>().into()
             } else {
-                [TokenTree::token(sp, token::Pound), body]
+                [TokenTree::token(token::Pound, sp), body]
                     .iter().cloned().collect::<TokenStream>().into()
             },
         )));
@@ -4344,7 +4344,7 @@ impl<'a> Parser<'a> {
                     };
                     TokenStream::new(vec![
                         args.into(),
-                        TokenTree::token(token_lo.to(self.prev_span), token::FatArrow).into(),
+                        TokenTree::token(token::FatArrow, token_lo.to(self.prev_span)).into(),
                         body.into(),
                     ])
                 } else {

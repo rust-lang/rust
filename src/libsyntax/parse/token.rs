@@ -763,10 +763,10 @@ impl Nonterminal {
                 prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
             }
             Nonterminal::NtIdent(ident, is_raw) => {
-                Some(TokenTree::token(ident.span, Ident(ident.name, is_raw)).into())
+                Some(TokenTree::token(Ident(ident.name, is_raw), ident.span).into())
             }
             Nonterminal::NtLifetime(ident) => {
-                Some(TokenTree::token(ident.span, Lifetime(ident.name)).into())
+                Some(TokenTree::token(Lifetime(ident.name), ident.span).into())
             }
             Nonterminal::NtTT(ref tt) => {
                 Some(tt.clone().into())
@@ -852,7 +852,7 @@ fn prepend_attrs(sess: &ParseSess,
         if attr.path.segments.len() == 1 && attr.path.segments[0].args.is_none() {
             let ident = attr.path.segments[0].ident;
             let token = Ident(ident.name, ident.as_str().starts_with("r#"));
-            brackets.push(tokenstream::TokenTree::token(ident.span, token));
+            brackets.push(tokenstream::TokenTree::token(token, ident.span));
 
         // ... and for more complicated paths, fall back to a reparse hack that
         // should eventually be removed.
@@ -866,7 +866,7 @@ fn prepend_attrs(sess: &ParseSess,
         // The span we list here for `#` and for `[ ... ]` are both wrong in
         // that it encompasses more than each token, but it hopefully is "good
         // enough" for now at least.
-        builder.push(tokenstream::TokenTree::token(attr.span, Pound));
+        builder.push(tokenstream::TokenTree::token(Pound, attr.span));
         let delim_span = DelimSpan::from_single(attr.span);
         builder.push(tokenstream::TokenTree::Delimited(
             delim_span, DelimToken::Bracket, brackets.build().into()));

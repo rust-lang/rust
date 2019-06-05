@@ -157,7 +157,7 @@ impl<'a> Parser<'a> {
                self.check(&token::OpenDelim(DelimToken::Brace)) {
                    self.parse_token_tree().into()
             } else if self.eat(&token::Eq) {
-                let eq = TokenTree::token(self.prev_span, token::Eq);
+                let eq = TokenTree::token(token::Eq, self.prev_span);
                 let mut is_interpolated_expr = false;
                 if let token::Interpolated(nt) = &self.token.kind {
                     if let token::NtExpr(..) = **nt {

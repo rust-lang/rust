@@ -119,7 +119,7 @@ pub fn transcribe(
                             Some((tt, _)) => tt.span(),
                             None => DUMMY_SP,
                         };
-                        result.push(TokenTree::token(prev_span, sep).into());
+                        result.push(TokenTree::token(sep, prev_span).into());
                     }
                     continue;
                 }
@@ -225,7 +225,7 @@ pub fn transcribe(
                             result.push(tt.clone().into());
                         } else {
                             sp = sp.apply_mark(cx.current_expansion.mark);
-                            let token = TokenTree::token(sp, token::Interpolated(nt.clone()));
+                            let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
                             result.push(token.into());
                         }
                     } else {
@@ -241,8 +241,8 @@ pub fn transcribe(
                     let ident =
                         Ident::new(ident.name, ident.span.apply_mark(cx.current_expansion.mark));
                     sp = sp.apply_mark(cx.current_expansion.mark);
-                    result.push(TokenTree::token(sp, token::Dollar).into());
-                    result.push(TokenTree::token(sp, token::TokenKind::from_ast_ident(ident)).into());
+                    result.push(TokenTree::token(token::Dollar, sp).into());
+                    result.push(TokenTree::token(token::TokenKind::from_ast_ident(ident), sp).into());
                 }
             }
 

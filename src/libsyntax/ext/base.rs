@@ -268,8 +268,9 @@ impl<F> TTMacroExpander for F
                 if let tokenstream::TokenTree::Token(token) = tt {
                     if let token::Interpolated(nt) = &token.kind {
                         if let token::NtIdent(ident, is_raw) = **nt {
-                            *tt = tokenstream::TokenTree::token(ident.span,
-                                                                token::Ident(ident.name, is_raw));
+                            *tt = tokenstream::TokenTree::token(
+                                token::Ident(ident.name, is_raw), ident.span
+                            );
                         }
                     }
                 }

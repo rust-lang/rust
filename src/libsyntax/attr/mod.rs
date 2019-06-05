@@ -465,10 +465,10 @@ impl MetaItem {
                 let mod_sep_span = Span::new(last_pos,
                                              segment.ident.span.lo(),
                                              segment.ident.span.ctxt());
-                idents.push(TokenTree::token(mod_sep_span, token::ModSep).into());
+                idents.push(TokenTree::token(token::ModSep, mod_sep_span).into());
             }
-            idents.push(TokenTree::token(segment.ident.span,
-                                         TokenKind::from_ast_ident(segment.ident)).into());
+            idents.push(TokenTree::token(TokenKind::from_ast_ident(segment.ident),
+                                         segment.ident.span).into());
             last_pos = segment.ident.span.hi();
         }
         self.node.tokens(self.span).append_to_tree_and_joint_vec(&mut idents);
@@ -532,7 +532,7 @@ impl MetaItemKind {
         match *self {
             MetaItemKind::Word => TokenStream::empty(),
             MetaItemKind::NameValue(ref lit) => {
-                let mut vec = vec![TokenTree::token(span, token::Eq).into()];
+                let mut vec = vec![TokenTree::token(token::Eq, span).into()];
                 lit.tokens().append_to_tree_and_joint_vec(&mut vec);
                 TokenStream::new(vec)
             }
@@ -540,7 +540,7 @@ impl MetaItemKind {
                 let mut tokens = Vec::new();
                 for (i, item) in list.iter().enumerate() {
                     if i > 0 {
-                        tokens.push(TokenTree::token(span, token::Comma).into());
+                        tokens.push(TokenTree::token(token::Comma, span).into());
                     }
                     item.tokens().append_to_tree_and_joint_vec(&mut tokens);
                 }

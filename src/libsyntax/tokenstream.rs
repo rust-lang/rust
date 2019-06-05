@@ -138,7 +138,7 @@ impl TokenTree {
         TokenStream::new(vec![(self, Joint)])
     }
 
-    pub fn token(span: Span, kind: TokenKind) -> TokenTree {
+    pub fn token(kind: TokenKind, span: Span) -> TokenTree {
         TokenTree::Token(Token::new(kind, span))
     }
 
@@ -149,7 +149,7 @@ impl TokenTree {
         } else {
             span.with_hi(span.lo() + BytePos(delim.len() as u32))
         };
-        TokenTree::token(open_span, token::OpenDelim(delim))
+        TokenTree::token(token::OpenDelim(delim), open_span)
     }
 
     /// Returns the closing delimiter as a token tree.
@@ -159,7 +159,7 @@ impl TokenTree {
         } else {
             span.with_lo(span.hi() - BytePos(delim.len() as u32))
         };
-        TokenTree::token(close_span, token::CloseDelim(delim))
+        TokenTree::token(token::CloseDelim(delim), close_span)
     }
 }
 
@@ -212,7 +212,7 @@ impl TokenStream {
                         _ => continue,
                     };
                     let sp = sp.shrink_to_hi();
-                    let comma = (TokenTree::token(sp, token::Comma), NonJoint);
+                    let comma = (TokenTree::token(token::Comma, sp), NonJoint);
                     suggestion = Some((pos, comma, sp));
                 }
             }
@@ -433,7 +433,7 @@ impl TokenStreamBuilder {
                     let last_stream = self.0.pop().unwrap();
                     self.push_all_but_last_tree(&last_stream);
                     let glued_span = last_token.span.to(token.span);
-                    let glued_tt = TokenTree::token(glued_span, glued_tok);
+                    let glued_tt = TokenTree::token(glued_tok, glued_span);
                     let glued_tokenstream = TokenStream::new(vec![(glued_tt, is_joint)]);
                     self.0.push(glued_tokenstream);
                     self.push_all_but_first_tree(&stream);
@@ -660,7 +660,7 @@ mod tests {
         with_default_globals(|| {
             let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
             let test1: TokenStream =
-                TokenTree::token(sp(0, 1), token::Ident(Name::intern("a"), false)).into();
+                TokenTree::token(token::Ident(Name::intern("a"), false), sp(0, 1)).into();
             let test2 = string_to_ts("foo(bar::baz)");
 
             assert_eq!(test0.is_empty(), true);
@@ -673,9 +673,9 @@ mod tests {
     fn test_dotdotdot() {
         with_default_globals(|| {
             let mut builder = TokenStreamBuilder::new();
-            builder.push(TokenTree::token(sp(0, 1), token::Dot).joint());
-            builder.push(TokenTree::token(sp(1, 2), token::Dot).joint());
-            builder.push(TokenTree::token(sp(2, 3), token::Dot));
+            builder.push(TokenTree::token(token::Dot, sp(0, 1)).joint());
+            builder.push(TokenTree::token(token::Dot, sp(1, 2)).joint());
+            builder.push(TokenTree::token(token::Dot, sp(2, 3)));
             let stream = builder.build();
             assert!(stream.eq_unspanned(&string_to_ts("...")));
             assert_eq!(stream.trees().count(), 1);

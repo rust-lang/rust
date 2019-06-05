@@ -476,23 +476,23 @@ mod tests {
             let tts = string_to_stream("fn a (b : i32) { b; }".to_string());
 
             let expected = TokenStream::new(vec![
-                TokenTree::token(sp(0, 2), token::Ident(kw::Fn, false)).into(),
-                TokenTree::token(sp(3, 4), token::Ident(Name::intern("a"), false)).into(),
+                TokenTree::token(token::Ident(kw::Fn, false), sp(0, 2)).into(),
+                TokenTree::token(token::Ident(Name::intern("a"), false), sp(3, 4)).into(),
                 TokenTree::Delimited(
                     DelimSpan::from_pair(sp(5, 6), sp(13, 14)),
                     token::DelimToken::Paren,
                     TokenStream::new(vec![
-                        TokenTree::token(sp(6, 7), token::Ident(Name::intern("b"), false)).into(),
-                        TokenTree::token(sp(8, 9), token::Colon).into(),
-                        TokenTree::token(sp(10, 13), token::Ident(sym::i32, false)).into(),
+                        TokenTree::token(token::Ident(Name::intern("b"), false), sp(6, 7)).into(),
+                        TokenTree::token(token::Colon, sp(8, 9)).into(),
+                        TokenTree::token(token::Ident(sym::i32, false), sp(10, 13)).into(),
                     ]).into(),
                 ).into(),
                 TokenTree::Delimited(
                     DelimSpan::from_pair(sp(15, 16), sp(20, 21)),
                     token::DelimToken::Brace,
                     TokenStream::new(vec![
-                        TokenTree::token(sp(17, 18), token::Ident(Name::intern("b"), false)).into(),
-                        TokenTree::token(sp(18, 19), token::Semi).into(),
+                        TokenTree::token(token::Ident(Name::intern("b"), false), sp(17, 18)).into(),
+                        TokenTree::token(token::Semi, sp(18, 19)).into(),
                     ]).into(),
                 ).into()
             ]);

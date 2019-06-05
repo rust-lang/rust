@@ -163,7 +163,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                     TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
                 ]
                 .into_iter()
-                .map(|kind| tokenstream::TokenTree::token(span, kind))
+                .map(|kind| tokenstream::TokenTree::token(kind, span))
                 .collect();
                 stack.push(TokenTree::Group(Group {
                     delimiter: Delimiter::Bracket,
@@ -210,7 +210,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 .into();
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
-                return tokenstream::TokenTree::token(span, Ident(sym, is_raw)).into();
+                return tokenstream::TokenTree::token(Ident(sym, is_raw), span).into();
             }
             TokenTree::Literal(self::Literal {
                 lit: token::Lit { kind: token::Integer, symbol, suffix },
@@ -219,8 +219,8 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
-                let a = tokenstream::TokenTree::token(span, minus);
-                let b = tokenstream::TokenTree::token(span, integer);
+                let a = tokenstream::TokenTree::token(minus, span);
+                let b = tokenstream::TokenTree::token(integer, span);
                 return vec![a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal {
@@ -230,12 +230,12 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let float = TokenKind::lit(token::Float, symbol, suffix);
-                let a = tokenstream::TokenTree::token(span, minus);
-                let b = tokenstream::TokenTree::token(span, float);
+                let a = tokenstream::TokenTree::token(minus, span);
+                let b = tokenstream::TokenTree::token(float, span);
                 return vec![a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal { lit, span }) => {
-                return tokenstream::TokenTree::token(span, Literal(lit)).into()
+                return tokenstream::TokenTree::token(Literal(lit), span).into()
             }
         };
 
@@ -265,7 +265,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             _ => unreachable!(),
         };
 
-        let tree = tokenstream::TokenTree::token(span, kind);
+        let tree = tokenstream::TokenTree::token(kind, span);
         TokenStream::new(vec![(tree, if joint { Joint } else { NonJoint })])
     }
 }

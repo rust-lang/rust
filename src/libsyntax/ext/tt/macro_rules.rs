@@ -270,7 +270,7 @@ pub fn compile(
         quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
             tts: vec![
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, lhs_nm, ast::Ident::from_str("tt")),
-                quoted::TokenTree::token(DUMMY_SP, token::FatArrow),
+                quoted::TokenTree::token(token::FatArrow, DUMMY_SP),
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, rhs_nm, ast::Ident::from_str("tt")),
             ],
             separator: Some(if body.legacy { token::Semi } else { token::Comma }),
@@ -279,7 +279,7 @@ pub fn compile(
         })),
         // to phase into semicolon-termination instead of semicolon-separation
         quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
-            tts: vec![quoted::TokenTree::token(DUMMY_SP, token::Semi)],
+            tts: vec![quoted::TokenTree::token(token::Semi, DUMMY_SP)],
             separator: None,
             op: quoted::KleeneOp::ZeroOrMore,
             num_captures: 0
@@ -613,7 +613,7 @@ impl FirstSets {
 
                         if let (Some(ref sep), true) = (seq_rep.separator.clone(),
                                                         subfirst.maybe_empty) {
-                            first.add_one_maybe(TokenTree::token(sp.entire(), sep.clone()));
+                            first.add_one_maybe(TokenTree::token(sep.clone(), sp.entire()));
                         }
 
                         // Reverse scan: Sequence comes before `first`.
@@ -663,7 +663,7 @@ impl FirstSets {
 
                             if let (Some(ref sep), true) = (seq_rep.separator.clone(),
                                                             subfirst.maybe_empty) {
-                                first.add_one_maybe(TokenTree::token(sp.entire(), sep.clone()));
+                                first.add_one_maybe(TokenTree::token(sep.clone(), sp.entire()));
                             }
 
                             assert!(first.maybe_empty);
@@ -869,7 +869,7 @@ fn check_matcher_core(sess: &ParseSess,
                 let mut new;
                 let my_suffix = if let Some(ref u) = seq_rep.separator {
                     new = suffix_first.clone();
-                    new.add_one_maybe(TokenTree::token(sp.entire(), u.clone()));
+                    new.add_one_maybe(TokenTree::token(u.clone(), sp.entire()));
                     &new
                 } else {
                     &suffix_first

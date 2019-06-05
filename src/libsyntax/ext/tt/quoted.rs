@@ -40,7 +40,7 @@ impl Delimited {
         } else {
             span.with_lo(span.lo() + BytePos(self.delim.len() as u32))
         };
-        TokenTree::token(open_span, self.open_token())
+        TokenTree::token(self.open_token(), open_span)
     }
 
     /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
@@ -50,7 +50,7 @@ impl Delimited {
         } else {
             span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
         };
-        TokenTree::token(close_span, self.close_token())
+        TokenTree::token(self.close_token(), close_span)
     }
 }
 
@@ -153,7 +153,7 @@ impl TokenTree {
         }
     }
 
-    crate fn token(span: Span, kind: TokenKind) -> TokenTree {
+    crate fn token(kind: TokenKind, span: Span) -> TokenTree {
         TokenTree::Token(Token::new(kind, span))
     }
 }
@@ -325,7 +325,7 @@ where
                 let (ident, is_raw) = token.ident().unwrap();
                 let span = ident.span.with_lo(span.lo());
                 if ident.name == kw::Crate && !is_raw {
-                    TokenTree::token(span, token::Ident(kw::DollarCrate, is_raw))
+                    TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
                 } else {
                     TokenTree::MetaVar(span, ident)
                 }
@@ -342,7 +342,7 @@ where
             }
 
             // There are no more tokens. Just return the `$` we already have.
-            None => TokenTree::token(span, token::Dollar),
+            None => TokenTree::token(token::Dollar, span),
         },
 
         // `tree` is an arbitrary token. Keep it.

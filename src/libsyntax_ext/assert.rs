@@ -30,11 +30,11 @@ pub fn expand_assert<'cx>(
         path: Path::from_ident(Ident::new(sym::panic, sp)),
         tts: custom_message.unwrap_or_else(|| {
             TokenStream::from(TokenTree::token(
-                DUMMY_SP,
                 TokenKind::lit(token::Str, Symbol::intern(&format!(
                     "assertion failed: {}",
                     pprust::expr_to_string(&cond_expr).escape_debug()
                 )), None),
+                DUMMY_SP,
             ))
         }).into(),
         delim: MacDelimiter::Parenthesis,
