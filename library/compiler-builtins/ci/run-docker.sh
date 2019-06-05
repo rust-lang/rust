@@ -19,7 +19,7 @@ run() {
            -e CARGO_HOME=/cargo \
            -e CARGO_TARGET_DIR=/target \
            -e RUST_COMPILER_RT_ROOT \
-           -v $HOME/.cargo:/cargo \
+           -v $(dirname $(dirname `which cargo`)):/cargo \
            -v `pwd`/target:/target \
            -v `pwd`:/checkout:ro \
            -v `rustc --print sysroot`:/rust:ro \
