@@ -431,8 +431,8 @@ pub fn parse_failure_msg(tok: TokenKind) -> String {
 fn token_name_eq(t1: &TokenKind, t2: &TokenKind) -> bool {
     if let (Some((id1, is_raw1)), Some((id2, is_raw2))) = (t1.ident(), t2.ident()) {
         id1.name == id2.name && is_raw1 == is_raw2
-    } else if let (Some(id1), Some(id2)) = (t1.lifetime(), t2.lifetime()) {
-        id1.name == id2.name
+    } else if let (Some(name1), Some(name2)) = (t1.lifetime_name(), t2.lifetime_name()) {
+        name1 == name2
     } else {
         *t1 == *t2
     }

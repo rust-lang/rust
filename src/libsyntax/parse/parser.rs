@@ -2652,7 +2652,7 @@ impl<'a> Parser<'a> {
                 // and lifetime tokens, so the former are never encountered during normal parsing.
                 match **nt {
                     token::NtIdent(ident, is_raw) => Token::new(token::Ident(ident, is_raw), ident.span),
-                    token::NtLifetime(ident) => Token::new(token::Lifetime(ident), ident.span),
+                    token::NtLifetime(ident) => Token::new(token::Lifetime(ident.name), ident.span),
                     _ => return,
                 }
             }
@@ -3922,9 +3922,8 @@ impl<'a> Parser<'a> {
                 // Parse &pat / &mut pat
                 self.expect_and()?;
                 let mutbl = self.parse_mutability();
-                if let token::Lifetime(ident) = self.token.kind {
-                    let mut err = self.fatal(&format!("unexpected lifetime `{}` in pattern",
-                                                      ident));
+                if let token::Lifetime(name) = self.token.kind {
+                    let mut err = self.fatal(&format!("unexpected lifetime `{}` in pattern", name));
                     err.span_label(self.span, "unexpected lifetime");
                     return Err(err);
                 }

@@ -1041,13 +1041,6 @@ impl<'a> StringReader<'a> {
                         return Ok(TokenKind::lit(token::Char, symbol, None));
                     }
 
-                    // Include the leading `'` in the real identifier, for macro
-                    // expansion purposes. See #12512 for the gory details of why
-                    // this is necessary.
-                    let ident = self.with_str_from(start_with_quote, |lifetime_name| {
-                        self.mk_ident(lifetime_name)
-                    });
-
                     if starts_with_number {
                         // this is a recovered lifetime written `'1`, error but accept it
                         self.err_span_(
@@ -1057,7 +1050,10 @@ impl<'a> StringReader<'a> {
                         );
                     }
 
-                    return Ok(token::Lifetime(ident));
+                    // Include the leading `'` in the real identifier, for macro
+                    // expansion purposes. See #12512 for the gory details of why
+                    // this is necessary.
+                    return Ok(token::Lifetime(self.name_from(start_with_quote)));
                 }
                 let msg = "unterminated character literal";
                 let symbol = self.scan_single_quoted_string(start_with_quote, msg);
@@ -1690,7 +1686,7 @@ mod tests {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token(),
-                       token::Lifetime(Ident::from_str("'abc")));
+                       token::Lifetime(Symbol::intern("'abc")));
         })
     }
 

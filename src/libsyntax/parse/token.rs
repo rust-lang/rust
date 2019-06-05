@@ -12,7 +12,7 @@ use crate::symbol::kw;
 use crate::syntax::parse::parse_stream_from_source_str;
 use crate::tokenstream::{self, DelimSpan, TokenStream, TokenTree};
 
-use syntax_pos::symbol::{self, Symbol};
+use syntax_pos::symbol::Symbol;
 use syntax_pos::{self, Span, FileName, DUMMY_SP};
 use log::info;
 
@@ -211,7 +211,7 @@ pub enum TokenKind {
 
     /* Name components */
     Ident(ast::Ident, /* is_raw */ bool),
-    Lifetime(ast::Ident),
+    Lifetime(ast::Name),
 
     Interpolated(Lrc<Nonterminal>),
 
@@ -364,7 +364,23 @@ impl TokenKind {
             _            => false,
         }
     }
+}
 
+impl Token {
+    /// Returns a lifetime identifier if this token is a lifetime.
+    pub fn lifetime(&self) -> Option<ast::Ident> {
+        match self.kind {
+            Lifetime(name) => Some(ast::Ident::new(name, self.span)),
+            Interpolated(ref nt) => match **nt {
+                NtLifetime(ident) => Some(ident),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+}
+
+impl TokenKind {
     /// Returns an identifier if this token is an identifier.
     pub fn ident(&self) -> Option<(ast::Ident, /* is_raw */ bool)> {
         match *self {
@@ -376,12 +392,12 @@ impl TokenKind {
             _ => None,
         }
     }
-    /// Returns a lifetime identifier if this token is a lifetime.
-    pub fn lifetime(&self) -> Option<ast::Ident> {
+    /// Returns a lifetime name if this token is a lifetime.
+    pub fn lifetime_name(&self) -> Option<ast::Name> {
         match *self {
-            Lifetime(ident) => Some(ident),
+            Lifetime(name) => Some(name),
             Interpolated(ref nt) => match **nt {
-                NtLifetime(ident) => Some(ident),
+                NtLifetime(ident) => Some(ident.name),
                 _ => None,
             },
             _ => None,
@@ -393,7 +409,7 @@ impl TokenKind {
     }
     /// Returns `true` if the token is a lifetime.
     crate fn is_lifetime(&self) -> bool {
-        self.lifetime().is_some()
+        self.lifetime_name().is_some()
     }
 
     /// Returns `true` if the token is a identifier whose name is the given
@@ -521,13 +537,7 @@ impl TokenKind {
                 _ => return None,
             },
             SingleQuote => match joint {
-                Ident(ident, false) => {
-                    let name = Symbol::intern(&format!("'{}", ident));
-                    Lifetime(symbol::Ident {
-                        name,
-                        span: ident.span,
-                    })
-                }
+                Ident(ident, false) => Lifetime(Symbol::intern(&format!("'{}", ident))),
                 _ => return None,
             },
 
@@ -597,7 +607,7 @@ impl TokenKind {
 
             (&Literal(a), &Literal(b)) => a == b,
 
-            (&Lifetime(a), &Lifetime(b)) => a.name == b.name,
+            (&Lifetime(a), &Lifetime(b)) => a == b,
             (&Ident(a, b), &Ident(c, d)) => b == d && (a.name == c.name ||
                                                        a.name == kw::DollarCrate ||
                                                        c.name == kw::DollarCrate),
@@ -732,8 +742,7 @@ impl Nonterminal {
                 Some(TokenTree::token(ident.span, token).into())
             }
             Nonterminal::NtLifetime(ident) => {
-                let token = Lifetime(ident);
-                Some(TokenTree::token(ident.span, token).into())
+                Some(TokenTree::token(ident.span, Lifetime(ident.name)).into())
             }
             Nonterminal::NtTT(ref tt) => {
                 Some(tt.clone().into())

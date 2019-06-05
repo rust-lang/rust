@@ -357,7 +357,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
                 ident.name.hash_stable(hcx, hasher);
                 is_raw.hash_stable(hcx, hasher);
             }
-            token::Lifetime(ident) => ident.name.hash_stable(hcx, hasher),
+            token::Lifetime(name) => name.hash_stable(hcx, hasher),
 
             token::Interpolated(_) => {
                 bug!("interpolated tokens should not be present in the HIR")

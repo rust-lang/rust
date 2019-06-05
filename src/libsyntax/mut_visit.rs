@@ -599,7 +599,6 @@ pub fn noop_visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &m
 pub fn noop_visit_token<T: MutVisitor>(t: &mut TokenKind, vis: &mut T) {
     match t {
         token::Ident(id, _is_raw) => vis.visit_ident(id),
-        token::Lifetime(id) => vis.visit_ident(id),
         token::Interpolated(nt) => {
             let mut nt = Lrc::make_mut(nt);
             vis.visit_interpolated(&mut nt);

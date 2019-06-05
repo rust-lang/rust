@@ -145,8 +145,8 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             Ident(ident, false) if ident.name == kw::DollarCrate =>
                 tt!(Ident::dollar_crate()),
             Ident(ident, is_raw) => tt!(Ident::new(ident.name, is_raw)),
-            Lifetime(ident) => {
-                let ident = ident.without_first_quote();
+            Lifetime(name) => {
+                let ident = ast::Ident::new(name, span).without_first_quote();
                 stack.push(tt!(Ident::new(ident.name, false)));
                 tt!(Punct::new('\'', true))
             }
