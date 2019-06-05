@@ -142,9 +142,8 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             Question => op!('?'),
             SingleQuote => op!('\''),
 
-            Ident(ident, false) if ident.name == kw::DollarCrate =>
-                tt!(Ident::dollar_crate()),
-            Ident(ident, is_raw) => tt!(Ident::new(ident.name, is_raw)),
+            Ident(name, false) if name == kw::DollarCrate => tt!(Ident::dollar_crate()),
+            Ident(name, is_raw) => tt!(Ident::new(name, is_raw)),
             Lifetime(name) => {
                 let ident = ast::Ident::new(name, span).without_first_quote();
                 stack.push(tt!(Ident::new(ident.name, false)));
@@ -159,7 +158,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                     escaped.extend(ch.escape_debug());
                 }
                 let stream = vec![
-                    Ident(ast::Ident::new(sym::doc, span), false),
+                    Ident(sym::doc, false),
                     Eq,
                     TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
                 ]
@@ -211,8 +210,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 .into();
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
-                let token = Ident(ast::Ident::new(sym, span), is_raw);
-                return tokenstream::TokenTree::token(span, token).into();
+                return tokenstream::TokenTree::token(span, Ident(sym, is_raw)).into();
             }
             TokenTree::Literal(self::Literal {
                 lit: token::Lit { kind: token::Integer, symbol, suffix },
@@ -338,7 +336,8 @@ impl Ident {
         if !Self::is_valid(&string) {
             panic!("`{:?}` is not a valid identifier", string)
         }
-        if is_raw && !ast::Ident::from_interned_str(sym.as_interned_str()).can_be_raw() {
+        // Get rid of gensyms to conservatively check rawness on the string contents only.
+        if is_raw && !sym.as_interned_str().as_symbol().can_be_raw() {
             panic!("`{}` cannot be a raw identifier", string);
         }
         Ident { sym, is_raw, span }

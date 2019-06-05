@@ -1,6 +1,6 @@
 //! Code related to parsing literals.
 
-use crate::ast::{self, Ident, Lit, LitKind};
+use crate::ast::{self, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
 use crate::parse::token::{self, Token, TokenKind};
@@ -230,8 +230,8 @@ impl Lit {
     /// Converts arbitrary token into an AST literal.
     crate fn from_token(token: &TokenKind, span: Span) -> Result<Lit, LitError> {
         let lit = match *token {
-            token::Ident(ident, false) if ident.name == kw::True || ident.name == kw::False =>
-                token::Lit::new(token::Bool, ident.name, None),
+            token::Ident(name, false) if name == kw::True || name == kw::False =>
+                token::Lit::new(token::Bool, name, None),
             token::Literal(lit) =>
                 lit,
             token::Interpolated(ref nt) => {
@@ -258,7 +258,7 @@ impl Lit {
     /// Losslessly convert an AST literal into a token stream.
     crate fn tokens(&self) -> TokenStream {
         let token = match self.token.kind {
-            token::Bool => token::Ident(Ident::new(self.token.symbol, self.span), false),
+            token::Bool => token::Ident(self.token.symbol, false),
             _ => token::Literal(self.token),
         };
         TokenTree::token(self.span, token).into()

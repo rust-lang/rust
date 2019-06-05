@@ -482,19 +482,19 @@ impl MetaItem {
         let path = match tokens.next() {
             Some(TokenTree::Token(Token { kind: kind @ token::Ident(..), span })) |
             Some(TokenTree::Token(Token { kind: kind @ token::ModSep, span })) => 'arm: {
-                let mut segments = if let token::Ident(ident, _) = kind {
+                let mut segments = if let token::Ident(name, _) = kind {
                     if let Some(TokenTree::Token(Token { kind: token::ModSep, .. })) = tokens.peek() {
                         tokens.next();
-                        vec![PathSegment::from_ident(ident.with_span_pos(span))]
+                        vec![PathSegment::from_ident(Ident::new(name, span))]
                     } else {
-                        break 'arm Path::from_ident(ident.with_span_pos(span));
+                        break 'arm Path::from_ident(Ident::new(name, span));
                     }
                 } else {
                     vec![PathSegment::path_root(span)]
                 };
                 loop {
-                    if let Some(TokenTree::Token(Token { kind: token::Ident(ident, _), span })) = tokens.next() {
-                        segments.push(PathSegment::from_ident(ident.with_span_pos(span)));
+                    if let Some(TokenTree::Token(Token { kind: token::Ident(name, _), span })) = tokens.next() {
+                        segments.push(PathSegment::from_ident(Ident::new(name, span)));
                     } else {
                         return None;
                     }

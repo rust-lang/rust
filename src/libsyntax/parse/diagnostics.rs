@@ -201,12 +201,12 @@ impl<'a> Parser<'a> {
             self.span,
             &format!("expected identifier, found {}", self.this_token_descr()),
         );
-        if let token::Ident(ident, false) = &self.token.kind {
-            if ident.is_raw_guess() {
+        if let token::Ident(name, false) = self.token.kind {
+            if Ident::new(name, self.span).is_raw_guess() {
                 err.span_suggestion(
                     self.span,
                     "you can escape reserved keywords to use them as identifiers",
-                    format!("r#{}", ident),
+                    format!("r#{}", name),
                     Applicability::MaybeIncorrect,
                 );
             }

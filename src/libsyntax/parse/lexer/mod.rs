@@ -1,4 +1,4 @@
-use crate::ast::{self, Ident};
+use crate::ast;
 use crate::parse::ParseSess;
 use crate::parse::token::{self, Token, TokenKind};
 use crate::symbol::{sym, Symbol};
@@ -59,15 +59,6 @@ impl<'a> StringReader<'a> {
         let real = self.override_span.unwrap_or(raw);
 
         (real, raw)
-    }
-
-    fn mk_ident(&self, string: &str) -> Ident {
-        let mut ident = Ident::from_str(string);
-        if let Some(span) = self.override_span {
-            ident.span = span;
-        }
-
-        ident
     }
 
     fn unwrap_or_abort(&mut self, res: Result<Token, ()>) -> Token {
@@ -858,17 +849,17 @@ impl<'a> StringReader<'a> {
 
                 return Ok(self.with_str_from(start, |string| {
                     // FIXME: perform NFKC normalization here. (Issue #2253)
-                    let ident = self.mk_ident(string);
+                    let name = ast::Name::intern(string);
 
                     if is_raw_ident {
                         let span = self.mk_sp(raw_start, self.pos);
-                        if !ident.can_be_raw() {
-                            self.err_span(span, &format!("`{}` cannot be a raw identifier", ident));
+                        if !name.can_be_raw() {
+                            self.err_span(span, &format!("`{}` cannot be a raw identifier", name));
                         }
                         self.sess.raw_identifier_spans.borrow_mut().push(span);
                     }
 
-                    token::Ident(ident, is_raw_ident)
+                    token::Ident(name, is_raw_ident)
                 }));
             }
         }
@@ -1567,12 +1558,11 @@ mod tests {
                                         &sh,
                                         "/* my source file */ fn main() { println!(\"zebra\"); }\n"
                                             .to_string());
-            let id = Ident::from_str("fn");
             assert_eq!(string_reader.next_token(), token::Comment);
             assert_eq!(string_reader.next_token(), token::Whitespace);
             let tok1 = string_reader.next_token();
             let tok2 = Token::new(
-                token::Ident(id, false),
+                token::Ident(Symbol::intern("fn"), false),
                 Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
             );
             assert_eq!(tok1.kind, tok2.kind);

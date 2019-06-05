@@ -362,7 +362,7 @@ impl TokenCursor {
             delim_span,
             token::Bracket,
             [
-                TokenTree::token(sp, token::Ident(ast::Ident::with_empty_ctxt(sym::doc), false)),
+                TokenTree::token(sp, token::Ident(sym::doc, false)),
                 TokenTree::token(sp, token::Eq),
                 TokenTree::token(sp, token::TokenKind::lit(
                     token::StrRaw(num_of_hashes), Symbol::intern(&stripped), None
@@ -541,9 +541,9 @@ impl<'a> Parser<'a> {
 
     crate fn token_descr(&self) -> Option<&'static str> {
         Some(match &self.token.kind {
-            t if t.is_special_ident() => "reserved identifier",
-            t if t.is_used_keyword() => "keyword",
-            t if t.is_unused_keyword() => "reserved keyword",
+            _ if self.token.is_special_ident() => "reserved identifier",
+            _ if self.token.is_used_keyword() => "keyword",
+            _ if self.token.is_unused_keyword() => "reserved keyword",
             token::DocComment(..) => "doc comment",
             _ => return None,
         })
@@ -619,7 +619,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
         match self.token.kind {
-            token::Ident(ident, _) => {
+            token::Ident(name, _) => {
                 if self.token.is_reserved_ident() {
                     let mut err = self.expected_ident_found();
                     if recover {
@@ -630,7 +630,7 @@ impl<'a> Parser<'a> {
                 }
                 let span = self.span;
                 self.bump();
-                Ok(Ident::new(ident.name, span))
+                Ok(Ident::new(name, span))
             }
             _ => {
                 Err(if self.prev_token_kind == PrevTokenKind::DocComment {
@@ -1618,10 +1618,10 @@ impl<'a> Parser<'a> {
 
     fn parse_path_segment_ident(&mut self) -> PResult<'a, ast::Ident> {
         match self.token.kind {
-            token::Ident(ident, _) if self.token.is_path_segment_keyword() => {
+            token::Ident(name, _) if name.is_path_segment_keyword() => {
                 let span = self.span;
                 self.bump();
-                Ok(Ident::new(ident.name, span))
+                Ok(Ident::new(name, span))
             }
             _ => self.parse_ident(),
         }
@@ -1629,10 +1629,10 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
         match self.token.kind {
-            token::Ident(ident, false) if ident.name == kw::Underscore => {
+            token::Ident(name, false) if name == kw::Underscore => {
                 let span = self.span;
                 self.bump();
-                Ok(Ident::new(ident.name, span))
+                Ok(Ident::new(name, span))
             }
             _ => self.parse_ident(),
         }
@@ -2368,13 +2368,11 @@ impl<'a> Parser<'a> {
             }
 
             let mut recovery_field = None;
-            if let token::Ident(ident, _) = self.token.kind {
+            if let token::Ident(name, _) = self.token.kind {
                 if !self.token.is_reserved_ident() && self.look_ahead(1, |t| *t == token::Colon) {
                     // Use in case of error after field-looking code: `S { foo: () with a }`
-                    let mut ident = ident.clone();
-                    ident.span = self.span;
                     recovery_field = Some(ast::Field {
-                        ident,
+                        ident: Ident::new(name, self.span),
                         span: self.span,
                         expr: self.mk_expr(self.span, ExprKind::Err, ThinVec::new()),
                         is_shorthand: false,
@@ -2637,7 +2635,7 @@ impl<'a> Parser<'a> {
                              self.look_ahead(1, |t| t.is_ident()) => {
                 self.bump();
                 let name = match self.token.kind {
-                    token::Ident(ident, _) => ident,
+                    token::Ident(name, _) => name,
                     _ => unreachable!()
                 };
                 let mut err = self.fatal(&format!("unknown macro variable `{}`", name));
@@ -2651,7 +2649,7 @@ impl<'a> Parser<'a> {
                 // Interpolated identifier and lifetime tokens are replaced with usual identifier
                 // and lifetime tokens, so the former are never encountered during normal parsing.
                 match **nt {
-                    token::NtIdent(ident, is_raw) => Token::new(token::Ident(ident, is_raw), ident.span),
+                    token::NtIdent(ident, is_raw) => Token::new(token::Ident(ident.name, is_raw), ident.span),
                     token::NtLifetime(ident) => Token::new(token::Lifetime(ident.name), ident.span),
                     _ => return,
                 }
@@ -2766,7 +2764,7 @@ impl<'a> Parser<'a> {
                 let token_cannot_continue_expr = |t: &Token| match t.kind {
                     // These tokens can start an expression after `!`, but
                     // can't continue an expression after an ident
-                    token::Ident(ident, is_raw) => token::ident_can_begin_expr(ident, is_raw),
+                    token::Ident(name, is_raw) => token::ident_can_begin_expr(name, t.span, is_raw),
                     token::Literal(..) | token::Pound => true,
                     token::Interpolated(ref nt) => match **nt {
                         token::NtIdent(..) | token::NtExpr(..) |
@@ -4328,7 +4326,7 @@ impl<'a> Parser<'a> {
                      -> PResult<'a, Option<P<Item>>> {
         let token_lo = self.span;
         let (ident, def) = match self.token.kind {
-            token::Ident(ident, false) if ident.name == kw::Macro => {
+            token::Ident(name, false) if name == kw::Macro => {
                 self.bump();
                 let ident = self.parse_ident()?;
                 let tokens = if self.check(&token::OpenDelim(token::Brace)) {
@@ -4356,8 +4354,8 @@ impl<'a> Parser<'a> {
 
                 (ident, ast::MacroDef { tokens: tokens.into(), legacy: false })
             }
-            token::Ident(ident, _) if ident.name == sym::macro_rules &&
-                                   self.look_ahead(1, |t| *t == token::Not) => {
+            token::Ident(name, _) if name == sym::macro_rules &&
+                                     self.look_ahead(1, |t| *t == token::Not) => {
                 let prev_span = self.prev_span;
                 self.complain_if_pub_macro(&vis.node, prev_span);
                 self.bump();
@@ -5481,8 +5479,8 @@ impl<'a> Parser<'a> {
     fn parse_self_arg(&mut self) -> PResult<'a, Option<Arg>> {
         let expect_ident = |this: &mut Self| match this.token.kind {
             // Preserve hygienic context.
-            token::Ident(ident, _) =>
-                { let span = this.span; this.bump(); Ident::new(ident.name, span) }
+            token::Ident(name, _) =>
+                { let span = this.span; this.bump(); Ident::new(name, span) }
             _ => unreachable!()
         };
         let isolated_self = |this: &mut Self, n| {
@@ -5805,11 +5803,7 @@ impl<'a> Parser<'a> {
         match *vis {
             VisibilityKind::Inherited => {}
             _ => {
-                let is_macro_rules: bool = match self.token.kind {
-                    token::Ident(sid, _) => sid.name == sym::macro_rules,
-                    _ => false,
-                };
-                let mut err = if is_macro_rules {
+                let mut err = if self.token.is_keyword(sym::macro_rules) {
                     let mut err = self.diagnostic()
                         .struct_span_err(sp, "can't qualify macro_rules invocation with `pub`");
                     err.span_suggestion(

@@ -353,8 +353,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
             }
             token::Literal(lit) => lit.hash_stable(hcx, hasher),
 
-            token::Ident(ident, is_raw) => {
-                ident.name.hash_stable(hcx, hasher);
+            token::Ident(name, is_raw) => {
+                name.hash_stable(hcx, hasher);
                 is_raw.hash_stable(hcx, hasher);
             }
             token::Lifetime(name) => name.hash_stable(hcx, hasher),

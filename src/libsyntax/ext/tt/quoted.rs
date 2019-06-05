@@ -323,10 +323,9 @@ where
             // metavariable that names the crate of the invocation.
             Some(tokenstream::TokenTree::Token(token)) if token.is_ident() => {
                 let (ident, is_raw) = token.ident().unwrap();
-                let span = token.span.with_lo(span.lo());
+                let span = ident.span.with_lo(span.lo());
                 if ident.name == kw::Crate && !is_raw {
-                    let ident = ast::Ident::new(kw::DollarCrate, ident.span);
-                    TokenTree::token(span, token::Ident(ident, is_raw))
+                    TokenTree::token(span, token::Ident(kw::DollarCrate, is_raw))
                 } else {
                     TokenTree::MetaVar(span, ident)
                 }

@@ -1046,8 +1046,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | BinOp(token::Or) => IsInFollow::Yes,
-                        Ident(i, false) if i.name == kw::If ||
-                                           i.name == kw::In => IsInFollow::Yes,
+                        Ident(name, false) if name == kw::If || name == kw::In => IsInFollow::Yes,
                         _ => IsInFollow::No(tokens),
                     },
                     _ => IsInFollow::No(tokens),
@@ -1064,8 +1063,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                         OpenDelim(token::DelimToken::Bracket) |
                         Comma | FatArrow | Colon | Eq | Gt | BinOp(token::Shr) | Semi |
                         BinOp(token::Or) => IsInFollow::Yes,
-                        Ident(i, false) if i.name == kw::As ||
-                                           i.name == kw::Where => IsInFollow::Yes,
+                        Ident(name, false) if name == kw::As ||
+                                              name == kw::Where => IsInFollow::Yes,
                         _ => IsInFollow::No(tokens),
                     },
                     TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::block =>
@@ -1092,9 +1091,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         Comma => IsInFollow::Yes,
-                        Ident(i, is_raw) if is_raw || i.name != kw::Priv =>
-                            IsInFollow::Yes,
-                        ref tok => if tok.can_begin_type() {
+                        Ident(name, is_raw) if is_raw || name != kw::Priv => IsInFollow::Yes,
+                        _ => if token.can_begin_type() {
                             IsInFollow::Yes
                         } else {
                             IsInFollow::No(tokens)

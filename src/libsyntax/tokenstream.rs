@@ -575,7 +575,7 @@ impl DelimSpan {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::syntax::ast::Ident;
+    use crate::syntax::ast::Name;
     use crate::with_default_globals;
     use crate::util::parser_testing::string_to_stream;
     use syntax_pos::{Span, BytePos, NO_EXPANSION};
@@ -660,7 +660,7 @@ mod tests {
         with_default_globals(|| {
             let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
             let test1: TokenStream =
-                TokenTree::token(sp(0, 1), token::Ident(Ident::from_str("a"), false)).into();
+                TokenTree::token(sp(0, 1), token::Ident(Name::intern("a"), false)).into();
             let test2 = string_to_ts("foo(bar::baz)");
 
             assert_eq!(test0.is_empty(), true);
