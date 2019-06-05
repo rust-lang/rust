@@ -560,7 +560,7 @@ impl MetaItemKind {
             Some(TokenTree::Token(token)) if token == token::Eq => {
                 tokens.next();
                 return if let Some(TokenTree::Token(token)) = tokens.next() {
-                    Lit::from_token(&token, token.span).ok().map(MetaItemKind::NameValue)
+                    Lit::from_token(&token).ok().map(MetaItemKind::NameValue)
                 } else {
                     None
                 };
@@ -605,7 +605,7 @@ impl NestedMetaItem {
         where I: Iterator<Item = TokenTree>,
     {
         if let Some(TokenTree::Token(token)) = tokens.peek() {
-            if let Ok(lit) = Lit::from_token(token, token.span) {
+            if let Ok(lit) = Lit::from_token(token) {
                 tokens.next();
                 return Some(NestedMetaItem::Literal(lit));
             }

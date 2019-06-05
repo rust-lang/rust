@@ -228,8 +228,8 @@ impl Lit {
     }
 
     /// Converts arbitrary token into an AST literal.
-    crate fn from_token(token: &TokenKind, span: Span) -> Result<Lit, LitError> {
-        let lit = match *token {
+    crate fn from_token(token: &Token) -> Result<Lit, LitError> {
+        let lit = match token.kind {
             token::Ident(name, false) if name == kw::True || name == kw::False =>
                 token::Lit::new(token::Bool, name, None),
             token::Literal(lit) =>
@@ -245,7 +245,7 @@ impl Lit {
             _ => return Err(LitError::NotLiteral)
         };
 
-        Lit::from_lit_token(lit, span)
+        Lit::from_lit_token(lit, token.span)
     }
 
     /// Attempts to recover an AST literal from semantic literal.
@@ -297,7 +297,7 @@ impl<'a> Parser<'a> {
         }
 
         let token = recovered.as_ref().unwrap_or(&self.token);
-        match Lit::from_token(token, token.span) {
+        match Lit::from_token(token) {
             Ok(lit) => {
                 self.bump();
                 Ok(lit)
