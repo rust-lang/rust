@@ -150,7 +150,7 @@ impl Constraint<'_> {
 /// ```
 /// pick R0 from [O1..On]
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, HashStable)]
 pub struct PickConstraint<'tcx> {
     /// the def-id of the opaque type causing this constraint: used for error reporting
     pub opaque_type_def_id: DefId,
@@ -163,6 +163,19 @@ pub struct PickConstraint<'tcx> {
 
     /// the options O1..On
     pub option_regions: Rc<Vec<Region<'tcx>>>,
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for PickConstraint<'tcx> {
+        opaque_type_def_id, hidden_ty, pick_region, option_regions
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for PickConstraint<'a> {
+        type Lifted = PickConstraint<'tcx>;
+        opaque_type_def_id, hidden_ty, pick_region, option_regions
+    }
 }
 
 /// `VerifyGenericBound(T, _, R, RS)`: the parameter type `T` (or

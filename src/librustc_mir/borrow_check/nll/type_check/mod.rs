@@ -1100,7 +1100,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations, data
         );
 
-        let QueryRegionConstraints { outlives } = data;
+        let QueryRegionConstraints { outlives, pick_constraints: _ } = data; // TODO
 
         constraint_conversion::ConstraintConversion::new(
             self.infcx,
@@ -2511,7 +2511,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
             let closure_constraints = QueryRegionConstraints {
-                outlives: closure_region_requirements.apply_requirements(tcx, def_id, substs)
+                outlives: closure_region_requirements.apply_requirements(tcx, def_id, substs),
+                pick_constraints: vec![], // TODO
             };
 
             let bounds_mapping = closure_constraints

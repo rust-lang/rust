@@ -288,7 +288,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
         }
 
         for data in constraint_sets {
-            let QueryRegionConstraints { outlives } = &*data;
+            let QueryRegionConstraints { outlives, pick_constraints: _ } = &*data; // TODO
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 &self.universal_regions,

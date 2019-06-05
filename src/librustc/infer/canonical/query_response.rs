@@ -340,7 +340,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 let r_c = substitute_value(self.tcx, &result_subst, r_c);
 
                 // Screen out `'a: 'a` cases -- we skip the binder here but
-                // only care the inner values to one another, so they are still at
+                // only compare the inner values to one another, so they are still at
                 // consistent binding levels.
                 let &ty::OutlivesPredicate(k1, r2) = r_c.skip_binder();
                 if k1 != r2.into() {
@@ -348,6 +348,13 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 } else {
                     None
                 }
+            })
+        );
+
+        // ...also include the query pick constraints.
+        output_query_region_constraints.pick_constraints.extend(
+            query_response.value.region_constraints.pick_constraints.iter().map(|p_c| {
+                substitute_value(self.tcx, &result_subst, p_c)
             })
         );
 
@@ -662,9 +669,6 @@ pub fn make_query_region_constraints<'tcx>(
     assert!(verifys.is_empty());
     assert!(givens.is_empty());
 
-    // FIXME(ndm) -- we have to think about what to do here, perhaps
-    assert!(pick_constraints.is_empty());
-
     let outlives: Vec<_> = constraints
         .into_iter()
         .map(|(k, _)| match *k {
@@ -690,5 +694,5 @@ pub fn make_query_region_constraints<'tcx>(
         )
         .collect();
 
-    QueryRegionConstraints { outlives }
+    QueryRegionConstraints { outlives, pick_constraints: pick_constraints.clone() }
 }

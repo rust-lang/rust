@@ -23,6 +23,7 @@
 
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
+use crate::infer::region_constraints::PickConstraint;
 use crate::mir::interpret::ConstValue;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_macros::HashStable;
@@ -197,13 +198,14 @@ pub struct QueryResponse<'tcx, R> {
 #[derive(Clone, Debug, Default, HashStable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
+    pub pick_constraints: Vec<PickConstraint<'tcx>>,
 }
 
 impl QueryRegionConstraints<'_> {
     /// Represents an empty (trivially true) set of region
     /// constraints.
     pub fn is_empty(&self) -> bool {
-        self.outlives.is_empty()
+        self.outlives.is_empty() && self.pick_constraints.is_empty()
     }
 }
 
@@ -555,14 +557,14 @@ BraceStructLiftImpl! {
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for QueryRegionConstraints<'tcx> {
-        outlives
+        outlives, pick_constraints
     }
 }
 
 BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for QueryRegionConstraints<'a> {
         type Lifted = QueryRegionConstraints<'tcx>;
-        outlives
+        outlives, pick_constraints
     }
 }
 
