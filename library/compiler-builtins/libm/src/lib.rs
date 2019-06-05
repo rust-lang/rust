@@ -334,12 +334,12 @@ impl F32Ext for f32 {
 
     #[inline]
     fn min(self, other: Self) -> Self {
-        minf(self, other)
+        fminf(self, other)
     }
 
     #[inline]
     fn max(self, other: Self) -> Self {
-        maxf(self, other)
+        fmaxf(self, other)
     }
 }
 
@@ -622,12 +622,12 @@ impl F64Ext for f64 {
 
     #[inline]
     fn min(self, other: Self) -> Self {
-        min(self, other)
+        fmin(self, other)
     }
 
     #[inline]
     fn max(self, other: Self) -> Self {
-        max(self, other)
+        fmax(self, other)
     }
 }
 
