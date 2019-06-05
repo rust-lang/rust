@@ -941,7 +941,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     ///
     /// It adds these `ast_bounds` into the `bounds` structure.
     ///
-    /// **A note on binders:** There is an implied binder around
+    /// **A note on binders:** there is an implied binder around
     /// `param_ty` and `ast_bounds`. See `instantiate_poly_trait_ref`
     /// for more details.
     fn add_bounds(&self,
@@ -1017,6 +1017,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         bounds
     }
 
+    /// Given an HIR binding like `Item = Foo` or `Item: Foo`, pushes the corresponding predicates
+    /// onto `bounds`.
+    ///
+    /// **A note on binders:** given something like `T: for<'a> Iterator<Item = &'a u32>`, the
+    /// `trait_ref` here will be `for<'a> T: Iterator`. The `binding` data however is from *inside*
+    /// the binder (e.g., `&'a u32`) and hence may reference bound regions.
     fn add_predicates_for_ast_type_binding(
         &self,
         hir_ref_id: hir::HirId,
