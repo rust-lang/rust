@@ -289,9 +289,9 @@ pub enum BlockFrame {
     /// Evaluation is currently within a statement.
     ///
     /// Examples include:
-    ///  1. `EXPR;`
-    ///  2. `let _ = EXPR;`
-    ///  3. `let x = EXPR;`
+    /// 1. `EXPR;`
+    /// 2. `let _ = EXPR;`
+    /// 3. `let x = EXPR;`
     Statement {
         /// If true, then statement discards result from evaluating
         /// the expression (such as examples 1 and 2 above).

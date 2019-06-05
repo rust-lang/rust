@@ -1040,12 +1040,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         if !self.in_body {
             // Avoid calling `hir_trait_to_predicates` in bodies, it will ICE.
             // The traits' privacy in bodies is already checked as a part of trait object types.
-            let (principal, projections) =
-                rustc_typeck::hir_trait_to_predicates(self.tcx, trait_ref);
+            let (principal, bounds) = rustc_typeck::hir_trait_to_predicates(self.tcx, trait_ref);
             if self.visit_trait(*principal.skip_binder()) {
                 return;
             }
-            for (poly_predicate, _) in projections {
+            for (poly_predicate, _) in bounds.projection_bounds {
                 let tcx = self.tcx;
                 if self.visit(poly_predicate.skip_binder().ty) ||
                    self.visit_trait(poly_predicate.skip_binder().projection_ty.trait_ref(tcx)) {

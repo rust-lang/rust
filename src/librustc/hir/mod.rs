@@ -1,4 +1,4 @@
-// HIR datatypes. See the [rustc guide] for more info.
+//! HIR datatypes. See the [rustc guide] for more info.
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 
@@ -121,13 +121,13 @@ impl fmt::Display for HirId {
     }
 }
 
-// hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module
+// Hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module
 mod item_local_id_inner {
     use rustc_data_structures::indexed_vec::Idx;
     use rustc_macros::HashStable;
     newtype_index! {
-        /// An `ItemLocalId` uniquely identifies something within a given "item-like",
-        /// that is, within a hir::Item, hir::TraitItem, or hir::ImplItem. There is no
+        /// An `ItemLocalId` uniquely identifies something within a given "item-like";
+        /// that is, within a `hir::Item`, `hir::TraitItem`, or `hir::ImplItem`. There is no
         /// guarantee that the numerical value of a given `ItemLocalId` corresponds to
         /// the node's position within the owning item in any way, but there is a
         /// guarantee that the `LocalItemId`s within an owner occupy a dense range of
@@ -568,7 +568,6 @@ pub struct GenericParam {
     pub bounds: GenericBounds,
     pub span: Span,
     pub pure_wrt_drop: bool,
-
     pub kind: GenericParamKind,
 }
 
@@ -1566,13 +1565,13 @@ pub enum ExprKind {
 
     /// A struct or struct-like variant literal expression.
     ///
-    /// For example, `Foo {x: 1, y: 2}`, or
-    /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
+    /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. base}`,
+    /// where `base` is the `Option<Expr>`.
     Struct(P<QPath>, HirVec<Field>, Option<P<Expr>>),
 
     /// An array literal constructed from one repeated element.
     ///
-    /// For example, `[1; 5]`. The first expression is the element
+    /// E.g., `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     Repeat(P<Expr>, AnonConst),
 
@@ -1583,7 +1582,7 @@ pub enum ExprKind {
     Err,
 }
 
-/// Optionally `Self`-qualified value/type path or associated extension.
+/// Represents an optionally `Self`-qualified value/type path or associated extension.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum QPath {
     /// Path to a definition, optionally "fully-qualified" with a `Self`
@@ -1738,7 +1737,7 @@ pub struct TraitItem {
     pub span: Span,
 }
 
-/// A trait method's body (or just argument names).
+/// Represents a trait method's body (or just argument names).
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum TraitMethod {
     /// No default body in the trait, just a signature.
@@ -1751,13 +1750,12 @@ pub enum TraitMethod {
 /// Represents a trait method or associated constant or type
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum TraitItemKind {
-    /// An associated constant with an optional value (otherwise `impl`s
-    /// must contain a value)
+    /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(P<Ty>, Option<BodyId>),
-    /// A method with an optional body
+    /// A method with an optional body.
     Method(MethodSig, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
-    /// type
+    /// type.
     Type(GenericBounds, Option<P<Ty>>),
 }
 
@@ -1782,7 +1780,7 @@ pub struct ImplItem {
     pub span: Span,
 }
 
-/// Represents different contents within `impl`s
+/// Represents various kinds of content within an `impl`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum ImplItemKind {
     /// An associated constant of the given type, set to the constant result
@@ -1796,21 +1794,56 @@ pub enum ImplItemKind {
     Existential(GenericBounds),
 }
 
-// Bind a type to an associated type: `A=Foo`.
+/// Bind a type to an associated type (i.e., `A = Foo`).
+///
+/// Bindings like `A: Debug` are represented as a special type `A =
+/// $::Debug` that is understood by the astconv code.
+///
+/// FIXME(alexreg) -- why have a separate type for the binding case,
+/// wouldn't it be better to make the `ty` field an enum like:
+///
+/// ```
+/// enum TypeBindingKind {
+///    Equals(...),
+///    Binding(...),
+/// }
+/// ```
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct TypeBinding {
     pub hir_id: HirId,
     #[stable_hasher(project(name))]
     pub ident: Ident,
-    pub ty: P<Ty>,
+    pub kind: TypeBindingKind,
     pub span: Span,
+}
+
+// Represents the two kinds of type bindings.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
+pub enum TypeBindingKind {
+    /// E.g., `Foo<Bar: Send>`.
+    Constraint {
+        bounds: HirVec<GenericBound>,
+    },
+    /// E.g., `Foo<Bar = ()>`.
+    Equality {
+        ty: P<Ty>,
+    },
+}
+
+impl TypeBinding {
+    pub fn ty(&self) -> &Ty {
+        match self.kind {
+            TypeBindingKind::Equality { ref ty } => ty,
+            _ => bug!("expected equality type binding for parenthesized generic args"),
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Ty {
+    pub hir_id: HirId,
     pub node: TyKind,
     pub span: Span,
-    pub hir_id: HirId,
 }
 
 impl fmt::Debug for Ty {
@@ -1874,7 +1907,7 @@ pub enum TyKind {
     BareFn(P<BareFnTy>),
     /// The never type (`!`).
     Never,
-    /// A tuple (`(A, B, C, D,...)`).
+    /// A tuple (`(A, B, C, D, ...)`).
     Tup(HirVec<Ty>),
     /// A path to a type definition (`module::module::...::Type`), or an
     /// associated type (e.g., `<Vec<T> as Trait>::Type` or `<T>::Target`).
@@ -2236,18 +2269,18 @@ impl StructField {
     }
 }
 
-/// Fields and constructor ids of enum variants and structs
+/// Fields and constructor IDs of enum variants and structs.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum VariantData {
-    /// Struct variant.
+    /// A struct variant.
     ///
-    /// e.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
+    /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
     Struct(HirVec<StructField>, /* recovered */ bool),
-    /// Tuple variant.
+    /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
     Tuple(HirVec<StructField>, HirId),
-    /// Unit variant.
+    /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
     Unit(HirId),
@@ -2598,7 +2631,7 @@ impl CodegenFnAttrs {
         }
     }
 
-    /// True if it looks like this symbol needs to be exported, for example:
+    /// Returns `true` if it looks like this symbol needs to be exported, for example:
     ///
     /// * `#[no_mangle]` is present
     /// * `#[export_name(...)]` is present
@@ -2607,8 +2640,8 @@ impl CodegenFnAttrs {
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE) ||
             self.export_name.is_some() ||
             match self.linkage {
-                // these are private, make sure we don't try to consider
-                // them external
+                // These are private, so make sure we don't try to consider
+                // them external.
                 None |
                 Some(Linkage::Internal) |
                 Some(Linkage::Private) => false,

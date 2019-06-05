@@ -91,7 +91,9 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
                 PP::AngleBracketed { ref mut bindings, .. } => {
                     bindings.push(clean::TypeBinding {
                         name: name.clone(),
-                        ty: rhs.clone(),
+                        kind: clean::TypeBindingKind::Equality {
+                            ty: rhs.clone(),
+                        },
                     });
                 }
                 PP::Parenthesized { ref mut output, .. } => {

@@ -408,7 +408,7 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
     Async,
     Await,
     QuestionMark,
-    ExistentialReturnType,
+    ExistentialType,
     ForLoop,
     TryBlock
 });

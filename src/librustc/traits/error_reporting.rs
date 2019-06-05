@@ -662,7 +662,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             "{}",
                             message.unwrap_or_else(||
                                 format!("the trait bound `{}` is not satisfied{}",
-                                         trait_ref.to_predicate(), post_message)
+                                        trait_ref.to_predicate(), post_message)
                             ));
 
                         let explanation =
@@ -676,7 +676,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             };
 
                         if let Some(ref s) = label {
-                            // If it has a custom "#[rustc_on_unimplemented]"
+                            // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
                             err.span_label(span, s.as_str());
                             err.help(&explanation);
@@ -684,7 +684,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             err.span_label(span, explanation);
                         }
                         if let Some(ref s) = note {
-                            // If it has a custom "#[rustc_on_unimplemented]" note, let's display it
+                            // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
                             err.note(s.as_str());
                         }
 

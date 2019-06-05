@@ -1127,10 +1127,10 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
     // For this reason, we have organized the arguments we pass to the linker as
     // such:
     //
-    //  1. The local object that LLVM just generated
-    //  2. Local native libraries
-    //  3. Upstream rust libraries
-    //  4. Upstream native libraries
+    // 1. The local object that LLVM just generated
+    // 2. Local native libraries
+    // 3. Upstream rust libraries
+    // 4. Upstream native libraries
     //
     // The rationale behind this ordering is that those items lower down in the
     // list can't depend on items higher up in the list. For example nothing can

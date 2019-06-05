@@ -96,12 +96,12 @@ pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
 }
 
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
-    /// Either gets a JobOwner corresponding the query, allowing us to
+    /// Either gets a `JobOwner` corresponding the query, allowing us to
     /// start executing the query, or it returns with the result of the query.
     /// If the query is executing elsewhere, this will wait for it.
     /// If the query panicked, this will silently panic.
     ///
-    /// This function is inlined because that results in a noticeable speedup
+    /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
     pub(super) fn try_get(
@@ -126,9 +126,9 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 Entry::Occupied(entry) => {
                     match *entry.get() {
                         QueryResult::Started(ref job) => {
-                            //For parallel queries, we'll block and wait until the query running
-                            //in another thread has completed. Record how long we wait in the
-                            //self-profiler
+                            // For parallel queries, we'll block and wait until the query running
+                            // in another thread has completed. Record how long we wait in the
+                            // self-profiler.
                             #[cfg(parallel_compiler)]
                             tcx.sess.profiler(|p| p.query_blocked_start(Q::NAME));
 
@@ -138,7 +138,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                     }
                 }
                 Entry::Vacant(entry) => {
-                    // No job entry for this query. Return a new one to be started later
+                    // No job entry for this query. Return a new one to be started later.
                     return tls::with_related_context(tcx, |icx| {
                         // Create the `parent` variable before `info`. This allows LLVM
                         // to elide the move of `info`
@@ -161,14 +161,14 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             mem::drop(lock);
 
             // If we are single-threaded we know that we have cycle error,
-            // so we just return the error
+            // so we just return the error.
             #[cfg(not(parallel_compiler))]
             return TryGetJob::Cycle(cold_path(|| {
                 Q::handle_cycle_error(tcx, job.find_cycle_in_stack(tcx, span))
             }));
 
             // With parallel queries we might just have to wait on some other
-            // thread
+            // thread.
             #[cfg(parallel_compiler)]
             {
                 let result = job.r#await(tcx, span);
@@ -636,8 +636,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                           profq_query_msg!(Q::NAME.as_str(), self, key))
         );
 
-        // We may be concurrently trying both execute and force a query
-        // Ensure that only one of them runs the query
+        // We may be concurrently trying both execute and force a query.
+        // Ensure that only one of them runs the query.
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::Cycle(_) |
@@ -731,7 +731,7 @@ macro_rules! define_queries_inner {
                 let mut jobs = Vec::new();
 
                 // We use try_lock here since we are only called from the
-                // deadlock handler, and this shouldn't be locked
+                // deadlock handler, and this shouldn't be locked.
                 $(
                     jobs.extend(
                         self.$name.try_lock().unwrap().active.values().filter_map(|v|

@@ -10,7 +10,7 @@ use rustc_target::spec::abi::Abi;
 use syntax_pos::{Pos, Span};
 
 pub trait AstBuilder {
-    // paths
+    // Paths
     fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path;
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path;
     fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path;
@@ -18,7 +18,7 @@ pub trait AstBuilder {
                 global: bool,
                 idents: Vec<ast::Ident>,
                 args: Vec<ast::GenericArg>,
-                bindings: Vec<ast::TypeBinding>)
+                constraints: Vec<ast::AssocTyConstraint>)
         -> ast::Path;
 
     fn qpath(&self, self_type: P<ast::Ty>,
@@ -29,7 +29,7 @@ pub trait AstBuilder {
                 trait_path: ast::Path,
                 ident: ast::Ident,
                 args: Vec<ast::GenericArg>,
-                bindings: Vec<ast::TypeBinding>)
+                constraints: Vec<ast::AssocTyConstraint>)
                 -> (ast::QSelf, ast::Path);
 
     // types and consts
@@ -69,7 +69,7 @@ pub trait AstBuilder {
                     bounds: ast::GenericBounds)
                     -> ast::GenericParam;
 
-    // statements
+    // Statements
     fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt;
     fn stmt_semi(&self, expr: P<ast::Expr>) -> ast::Stmt;
     fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident, ex: P<ast::Expr>) -> ast::Stmt;
@@ -83,11 +83,11 @@ pub trait AstBuilder {
     fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> ast::Stmt;
     fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt;
 
-    // blocks
+    // Blocks
     fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block>;
     fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block>;
 
-    // expressions
+    // Expressions
     fn expr(&self, span: Span, node: ast::ExprKind) -> P<ast::Expr>;
     fn expr_path(&self, path: ast::Path) -> P<ast::Expr>;
     fn expr_qpath(&self, span: Span, qself: ast::QSelf, path: ast::Path) -> P<ast::Expr>;
@@ -194,12 +194,12 @@ pub trait AstBuilder {
     fn lambda_stmts_1(&self, span: Span, stmts: Vec<ast::Stmt>,
                       ident: ast::Ident) -> P<ast::Expr>;
 
-    // items
+    // Items
     fn item(&self, span: Span,
             name: Ident, attrs: Vec<ast::Attribute> , node: ast::ItemKind) -> P<ast::Item>;
 
     fn arg(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::Arg;
-    // FIXME unused self
+    // FIXME: unused `self`
     fn fn_decl(&self, inputs: Vec<ast::Arg> , output: ast::FunctionRetTy) -> P<ast::FnDecl>;
 
     fn item_fn_poly(&self,
@@ -302,7 +302,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
                 args: Vec<ast::GenericArg>,
-                bindings: Vec<ast::TypeBinding> )
+                constraints: Vec<ast::AssocTyConstraint> )
                 -> ast::Path {
         assert!(!idents.is_empty());
         let add_root = global && !idents[0].is_path_segment_keyword();
@@ -314,8 +314,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         segments.extend(idents.into_iter().map(|ident| {
             ast::PathSegment::from_ident(ident.with_span_pos(span))
         }));
-        let args = if !args.is_empty() || !bindings.is_empty() {
-            ast::AngleBracketedArgs { args, bindings, span }.into()
+        let args = if !args.is_empty() || !constraints.is_empty() {
+            ast::AngleBracketedArgs { args, constraints, span }.into()
         } else {
             None
         };
@@ -346,11 +346,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  trait_path: ast::Path,
                  ident: ast::Ident,
                  args: Vec<ast::GenericArg>,
-                 bindings: Vec<ast::TypeBinding>)
+                 constraints: Vec<ast::AssocTyConstraint>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
-        let args = if !args.is_empty() || !bindings.is_empty() {
-            ast::AngleBracketedArgs { args, bindings, span: ident.span }.into()
+        let args = if !args.is_empty() || !constraints.is_empty() {
+            ast::AngleBracketedArgs { args, constraints, span: ident.span }.into()
         } else {
             None
         };
@@ -552,7 +552,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
-    // Generate `let _: Type;`, usually used for type assertions.
+    // Generates `let _: Type;`, which is usually used for type assertions.
     fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> ast::Stmt {
         let local = P(ast::Local {
             pat: self.pat_wild(span),
@@ -606,7 +606,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(path.span, ast::ExprKind::Path(None, path))
     }
 
-    /// Constructs a QPath expression.
+    /// Constructs a `QPath` expression.
     fn expr_qpath(&self, span: Span, qself: ast::QSelf, path: ast::Path) -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Path(Some(qself), path))
     }
@@ -736,7 +736,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::Cast(expr, ty))
     }
 
-
     fn expr_some(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
         let some = self.std_path(&[sym::option, sym::Option, sym::Some]);
         self.expr_call_global(sp, some, vec![expr])
@@ -748,11 +747,9 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_path(none)
     }
 
-
     fn expr_break(&self, sp: Span) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::Break(None, None))
     }
-
 
     fn expr_tuple(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::Tup(exprs))
@@ -797,22 +794,22 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let binding_pat = self.pat_ident(sp, binding_variable);
         let binding_expr = self.expr_ident(sp, binding_variable);
 
-        // Ok(__try_var) pattern
+        // `Ok(__try_var)` pattern
         let ok_pat = self.pat_tuple_struct(sp, ok_path, vec![binding_pat.clone()]);
 
-        // Err(__try_var)  (pattern and expression resp.)
+        // `Err(__try_var)` (pattern and expression respectively)
         let err_pat = self.pat_tuple_struct(sp, err_path.clone(), vec![binding_pat]);
         let err_inner_expr = self.expr_call(sp, self.expr_path(err_path),
                                             vec![binding_expr.clone()]);
-        // return Err(__try_var)
+        // `return Err(__try_var)`
         let err_expr = self.expr(sp, ast::ExprKind::Ret(Some(err_inner_expr)));
 
-        // Ok(__try_var) => __try_var
+        // `Ok(__try_var) => __try_var`
         let ok_arm = self.arm(sp, vec![ok_pat], binding_expr);
-        // Err(__try_var) => return Err(__try_var)
+        // `Err(__try_var) => return Err(__try_var)`
         let err_arm = self.arm(sp, vec![err_pat], err_expr);
 
-        // match head { Ok() => ..., Err() => ... }
+        // `match head { Ok() => ..., Err() => ... }`
         self.expr_match(sp, head, vec![ok_arm, err_arm])
     }
 
@@ -972,7 +969,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
-    // FIXME unused self
+    // FIXME: unused `self`
     fn fn_decl(&self, inputs: Vec<ast::Arg>, output: ast::FunctionRetTy) -> P<ast::FnDecl> {
         P(ast::FnDecl {
             inputs,

@@ -71,7 +71,7 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 
 /// This is used for object safety, to check that a method's receiver type can be dispatched on.
 ///
-/// example impl:
+/// An example implementation of the trait:
 ///
 /// ```
 /// # #![feature(dispatch_from_dyn, unsize)]

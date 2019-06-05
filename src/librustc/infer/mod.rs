@@ -914,10 +914,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // variable, and because type variable's can't (at present, at
         // least) capture any of the things bound by this binder.
         //
-        // Really, there is no *particular* reason to do this
-        // `shallow_resolve` here except as a
-        // micro-optimization. Naturally I could not
-        // resist. -nmatsakis
+        // NOTE(nmatsakis): really, there is no *particular* reason to do this
+        // `shallow_resolve` here except as a micro-optimization.
+        // Naturally I could not resist.
         let two_unbound_type_vars = {
             let a = self.shallow_resolve(predicate.skip_binder().a);
             let b = self.shallow_resolve(predicate.skip_binder().b);

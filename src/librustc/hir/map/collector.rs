@@ -19,7 +19,7 @@ use std::iter::repeat;
 use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
-/// A Visitor that walks over the HIR and collects Nodes into a HIR map
+/// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
     /// The crate
     krate: &'hir Crate,
@@ -45,7 +45,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
 
     hcx: StableHashingContext<'a>,
 
-    // We are collecting DepNode::HirBody hashes here so we can compute the
+    // We are collecting `DepNode::HirBody` hashes here so we can compute the
     // crate hash from then later on.
     hir_body_nodes: Vec<(DefPathHash, Fingerprint)>,
 }
@@ -109,7 +109,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let mut hir_body_nodes = Vec::new();
 
-        // Allocate DepNodes for the root module
+        // Allocate `DepNode`s for the root module.
         let (root_mod_sig_dep_index, root_mod_full_dep_index) = {
             let Crate {
                 ref module,

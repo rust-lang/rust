@@ -139,8 +139,8 @@ pub trait Visitor<'ast>: Sized {
             GenericArg::Const(ct) => self.visit_anon_const(ct),
         }
     }
-    fn visit_assoc_type_binding(&mut self, type_binding: &'ast TypeBinding) {
-        walk_assoc_type_binding(self, type_binding)
+    fn visit_assoc_ty_constraint(&mut self, constraint: &'ast AssocTyConstraint) {
+        walk_assoc_ty_constraint(self, constraint)
     }
     fn visit_attribute(&mut self, attr: &'ast Attribute) {
         walk_attribute(self, attr)
@@ -404,7 +404,7 @@ pub fn walk_generic_args<'a, V>(visitor: &mut V,
     match *generic_args {
         GenericArgs::AngleBracketed(ref data) => {
             walk_list!(visitor, visit_generic_arg, &data.args);
-            walk_list!(visitor, visit_assoc_type_binding, &data.bindings);
+            walk_list!(visitor, visit_assoc_ty_constraint, &data.constraints);
         }
         GenericArgs::Parenthesized(ref data) => {
             walk_list!(visitor, visit_ty, &data.inputs);
@@ -413,10 +413,17 @@ pub fn walk_generic_args<'a, V>(visitor: &mut V,
     }
 }
 
-pub fn walk_assoc_type_binding<'a, V: Visitor<'a>>(visitor: &mut V,
-                                                   type_binding: &'a TypeBinding) {
-    visitor.visit_ident(type_binding.ident);
-    visitor.visit_ty(&type_binding.ty);
+pub fn walk_assoc_ty_constraint<'a, V: Visitor<'a>>(visitor: &mut V,
+                                                    constraint: &'a AssocTyConstraint) {
+    visitor.visit_ident(constraint.ident);
+    match constraint.kind {
+        AssocTyConstraintKind::Equality { ref ty } => {
+            visitor.visit_ty(ty);
+        }
+        AssocTyConstraintKind::Bound { ref bounds } => {
+            walk_list!(visitor, visit_param_bound, bounds);
+        }
+    }
 }
 
 pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
@@ -499,7 +506,7 @@ pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Generi
     walk_list!(visitor, visit_attribute, param.attrs.iter());
     walk_list!(visitor, visit_param_bound, &param.bounds);
     match param.kind {
-        GenericParamKind::Lifetime => {}
+        GenericParamKind::Lifetime => (),
         GenericParamKind::Type { ref default } => walk_list!(visitor, visit_ty, default),
         GenericParamKind::Const { ref ty, .. } => visitor.visit_ty(ty),
     }

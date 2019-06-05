@@ -546,7 +546,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.def_key(def_id).disambiguated_data.data == DefPathData::Ctor
     }
 
-    /// Given the `DefId` of a fn or closure, returns the `DefId` of
+    /// Given the def-ID of a fn or closure, returns the def-ID of
     /// the innermost fn item that the closure is contained within.
     /// This is a significant `DefId` because, when we do
     /// type-checking, we type-check this fn item and all of its

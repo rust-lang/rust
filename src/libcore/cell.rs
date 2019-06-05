@@ -1351,7 +1351,7 @@ impl<'b> BorrowRefMut<'b> {
         }
     }
 
-    // Clone a `BorrowRefMut`.
+    // Clones a `BorrowRefMut`.
     //
     // This is only valid if each `BorrowRefMut` is used to track a mutable
     // reference to a distinct, nonoverlapping range of the original object.

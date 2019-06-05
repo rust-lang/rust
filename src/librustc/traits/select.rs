@@ -1465,9 +1465,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let predicate = self.infcx()
             .resolve_vars_if_possible(&obligation.predicate);
 
-        // OK to skip binder because of the nature of the
+        // Okay to skip binder because of the nature of the
         // trait-ref-is-knowable check, which does not care about
-        // bound regions
+        // bound regions.
         let trait_ref = predicate.skip_binder().trait_ref;
 
         let result = coherence::trait_ref_is_knowable(self.tcx(), trait_ref);
@@ -1848,12 +1848,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .iter()
             .filter_map(|o| o.to_opt_poly_trait_ref());
 
-        // micro-optimization: filter out predicates relating to different
-        // traits.
+        // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =
             all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
 
-        // keep only those bounds which may apply, and propagate overflow if it occurs
+        // Keep only those bounds which may apply, and propagate overflow if it occurs.
         let mut param_candidates = vec![];
         for bound in matching_bounds {
             let wc = self.evaluate_where_clause(stack, bound.clone())?;
@@ -1891,9 +1890,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Ok(());
         }
 
-        // OK to skip binder because the substs on generator types never
+        // Okay to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
-        // type/region parameters
+        // type/region parameters.
         let self_ty = *obligation.self_ty().skip_binder();
         match self_ty.sty {
             ty::Generator(..) => {
@@ -1935,7 +1934,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
         };
 
-        // OK to skip binder because the substs on closure types never
+        // Okay to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         match obligation.self_ty().skip_binder().sty {
@@ -1985,7 +1984,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Ok(());
         }
 
-        // OK to skip binder because what we are inspecting doesn't involve bound regions
+        // Okay to skip binder because what we are inspecting doesn't involve bound regions
         let self_ty = *obligation.self_ty().skip_binder();
         match self_ty.sty {
             ty::Infer(ty::TyVar(_)) => {
@@ -2042,7 +2041,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
-        // OK to skip binder here because the tests we do below do not involve bound regions
+        // Okay to skip binder here because the tests we do below do not involve bound regions.
         let self_ty = *obligation.self_ty().skip_binder();
         debug!("assemble_candidates_from_auto_impls(self_ty={:?})", self_ty);
 
@@ -2274,7 +2273,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
-        // OK to skip binder here because the tests we do below do not involve bound regions
+        // Okay to skip binder here because the tests we do below do not involve bound regions.
         let self_ty = *obligation.self_ty().skip_binder();
         debug!("assemble_candidates_for_trait_alias(self_ty={:?})", self_ty);
 
@@ -3094,7 +3093,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ) -> Result<VtableFnPointerData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!("confirm_fn_pointer_candidate({:?})", obligation);
 
-        // OK to skip binder; it is reintroduced below
+        // Okay to skip binder; it is reintroduced below.
         let self_ty = self.infcx
             .shallow_resolve(*obligation.self_ty().skip_binder());
         let sig = self_ty.fn_sig(self.tcx());
@@ -3172,9 +3171,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<VtableGeneratorData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        // OK to skip binder because the substs on generator types never
+        // Okay to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
-        // type/region parameters
+        // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let (generator_def_id, substs) = match self_ty.sty {
             ty::Generator(id, substs, _) => (id, substs),
@@ -3229,9 +3228,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .fn_trait_kind(obligation.predicate.def_id())
             .unwrap_or_else(|| bug!("closure candidate for non-fn trait {:?}", obligation));
 
-        // OK to skip binder because the substs on closure types never
+        // Okay to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
-        // type/region parameters
+        // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.sty {
             ty::Closure(id, substs) => (id, substs),

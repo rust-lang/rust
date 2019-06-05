@@ -190,9 +190,9 @@ pub struct AngleBracketedArgs {
     pub span: Span,
     /// The arguments for this path segment.
     pub args: Vec<GenericArg>,
-    /// Bindings (equality constraints) on associated types, if present.
-    /// E.g., `Foo<A = Bar>`.
-    pub bindings: Vec<TypeBinding>,
+    /// Constraints on associated types, if any.
+    /// E.g., `Foo<A = Bar, B: Baz>`.
+    pub constraints: Vec<AssocTyConstraint>,
 }
 
 impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
@@ -213,7 +213,7 @@ pub struct ParenthesizedArgs {
     /// Overall span
     pub span: Span,
 
-    /// `(A,B)`
+    /// `(A, B)`
     pub inputs: Vec<P<Ty>>,
 
     /// `C`
@@ -225,7 +225,7 @@ impl ParenthesizedArgs {
         AngleBracketedArgs {
             span: self.span,
             args: self.inputs.iter().cloned().map(|input| GenericArg::Type(input)).collect(),
-            bindings: vec![],
+            constraints: vec![],
         }
     }
 }
@@ -1611,13 +1611,27 @@ impl fmt::Display for UintTy {
     }
 }
 
-// Bind a type to an associated type: `A = Foo`.
+/// A constraint on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or
+/// `A: TraitA + TraitB` in `Foo<A: TraitA + TraitB>`).
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct TypeBinding {
+pub struct AssocTyConstraint {
     pub id: NodeId,
     pub ident: Ident,
-    pub ty: P<Ty>,
+    pub kind: AssocTyConstraintKind,
     pub span: Span,
+}
+
+/// The kinds of an `AssocTyConstraint`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum AssocTyConstraintKind {
+    /// E.g., `A = Bar` in `Foo<A = Bar>`.
+    Equality {
+        ty: P<Ty>,
+    },
+    /// E.g. `A: TraitA + TraitB` in `Foo<A: TraitA + TraitB>`.
+    Bound {
+        bounds: GenericBounds,
+    },
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -1840,7 +1854,7 @@ impl Arg {
     }
 }
 
-/// Header (not the body) of a function declaration.
+/// A header (not the body) of a function declaration.
 ///
 /// E.g., `fn foo(bar: baz)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

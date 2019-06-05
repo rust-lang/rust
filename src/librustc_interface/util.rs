@@ -717,7 +717,13 @@ impl<'a> ReplaceBodyWithLoop<'a> {
                                     _ => None,
                                 });
                                 any_involves_impl_trait(types.into_iter()) ||
-                                any_involves_impl_trait(data.bindings.iter().map(|b| &b.ty))
+                                data.constraints.iter().any(|c| {
+                                    match c.kind {
+                                        ast::AssocTyConstraintKind::Bound { .. } => true,
+                                        ast::AssocTyConstraintKind::Equality { ref ty } =>
+                                            involves_impl_trait(ty),
+                                    }
+                                })
                             },
                             Some(&ast::GenericArgs::Parenthesized(ref data)) => {
                                 any_involves_impl_trait(data.inputs.iter()) ||

@@ -1090,7 +1090,7 @@ pub enum Predicate<'tcx> {
     /// See the `ProjectionPredicate` struct for details.
     Projection(PolyProjectionPredicate<'tcx>),
 
-    /// no syntax: `T` well-formed
+    /// No syntax: `T` well-formed.
     WellFormed(Ty<'tcx>),
 
     /// Trait must be object-safe.
@@ -1245,19 +1245,17 @@ impl<'tcx> TraitPredicate<'tcx> {
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(&self) -> DefId {
-        // ok to skip binder since trait def-id does not care about regions
+        // Ok to skip binder since trait def-ID does not care about regions.
         self.skip_binder().def_id()
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
          Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A: B`
-pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
-pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>,
-                                                           ty::Region<'tcx>>;
-pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>,
-                                                         ty::Region<'tcx>>;
+pub struct OutlivesPredicate<A, B>(pub A, pub B); // `A: B`
+pub type PolyOutlivesPredicate<A, B> = ty::Binder<OutlivesPredicate<A, B>>;
+pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>;
+pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<RegionOutlivesPredicate<'tcx>>;
 pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<TypeOutlivesPredicate<'tcx>>;
 
@@ -1314,7 +1312,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     /// Note that this is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
     pub fn projection_def_id(&self) -> DefId {
-        // okay to skip binder since trait def-id does not care about regions
+        // Ok to skip binder since trait def-ID does not care about regions.
         self.skip_binder().projection_ty.item_def_id
     }
 }
@@ -1371,7 +1369,7 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     }
 }
 
-// A custom iterator used by Predicate::walk_tys.
+// A custom iterator used by `Predicate::walk_tys`.
 enum WalkTysIter<'tcx, I, J, K>
     where I: Iterator<Item = Ty<'tcx>>,
           J: Iterator<Item = Ty<'tcx>>,
@@ -1505,7 +1503,7 @@ impl<'tcx> Predicate<'tcx> {
 ///
 /// Example:
 ///
-///     struct Foo<T,U:Bar<T>> { ... }
+///     struct Foo<T, U: Bar<T>> { ... }
 ///
 /// Here, the `GenericPredicates` for `Foo` would contain a list of bounds like
 /// `[[], [U:Bar<T>]]`. Now if there were some particular reference
@@ -2785,10 +2783,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 e.span
             }
             Some(f) => {
-                bug!("Node id {} is not an expr: {:?}", id, f);
+                bug!("node-ID {} is not an expr: {:?}", id, f);
             }
             None => {
-                bug!("Node id {} is not present in the node map", id);
+                bug!("node-ID {} is not present in the node map", id);
             }
         }
     }

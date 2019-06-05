@@ -1,0 +1,85 @@
+error[E0277]: `<L1 as Lam<&'a u8>>::App` doesn't implement `std::fmt::Debug`
+  --> $DIR/bad-bounds-on-assoc-in-trait.rs:32:6
+   |
+LL | impl Case1 for S1 {
+   |      ^^^^^ `<L1 as Lam<&'a u8>>::App` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `for<'a> std::fmt::Debug` is not implemented for `<L1 as Lam<&'a u8>>::App`
+
+error[E0277]: `<<T as Case1>::C as std::iter::Iterator>::Item` is not an iterator
+  --> $DIR/bad-bounds-on-assoc-in-trait.rs:37:1
+   |
+LL | / fn assume_case1<T: Case1>() {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     assert_c::<_, _, _, T::C>();
+LL | | }
+   | |_^ `<<T as Case1>::C as std::iter::Iterator>::Item` is not an iterator
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `<<T as Case1>::C as std::iter::Iterator>::Item`
+   = help: consider adding a `where <<T as Case1>::C as std::iter::Iterator>::Item: std::iter::Iterator` bound
+
+error[E0277]: `<<T as Case1>::C as std::iter::Iterator>::Item` cannot be sent between threads safely
+  --> $DIR/bad-bounds-on-assoc-in-trait.rs:37:1
+   |
+LL | / fn assume_case1<T: Case1>() {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     assert_c::<_, _, _, T::C>();
+LL | | }
+   | |_^ `<<T as Case1>::C as std::iter::Iterator>::Item` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `<<T as Case1>::C as std::iter::Iterator>::Item`
+   = help: consider adding a `where <<T as Case1>::C as std::iter::Iterator>::Item: std::marker::Send` bound
+note: required by `Case1`
+  --> $DIR/bad-bounds-on-assoc-in-trait.rs:22:1
+   |
+LL | trait Case1 {
+   | ^^^^^^^^^^^
+
+error[E0277]: `<<T as Case1>::C as std::iter::Iterator>::Item` cannot be shared between threads safely
+  --> $DIR/bad-bounds-on-assoc-in-trait.rs:37:1
+   |
+LL | / fn assume_case1<T: Case1>() {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     assert_c::<_, _, _, T::C>();
+LL | | }
+   | |_^ `<<T as Case1>::C as std::iter::Iterator>::Item` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `<<T as Case1>::C as std::iter::Iterator>::Item`
+   = help: consider adding a `where <<T as Case1>::C as std::iter::Iterator>::Item: std::marker::Sync` bound
+note: required by `Case1`
+  --> $DIR/bad-bounds-on-assoc-in-trait.rs:22:1
+   |
+LL | trait Case1 {
+   | ^^^^^^^^^^^
+
+error[E0277]: `<_ as Lam<&'a u8>>::App` doesn't implement `std::fmt::Debug`
+  --> $DIR/bad-bounds-on-assoc-in-trait.rs:37:1
+   |
+LL | / fn assume_case1<T: Case1>() {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     assert_c::<_, _, _, T::C>();
+LL | | }
+   | |_^ `<_ as Lam<&'a u8>>::App` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `for<'a> std::fmt::Debug` is not implemented for `<_ as Lam<&'a u8>>::App`
+note: required by `Case1`
+  --> $DIR/bad-bounds-on-assoc-in-trait.rs:22:1
+   |
+LL | trait Case1 {
+   | ^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

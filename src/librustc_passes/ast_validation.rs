@@ -1,4 +1,4 @@
-// Validate AST before lowering it to HIR
+// Validate AST before lowering it to HIR.
 //
 // This pass is supposed to catch things that fit into AST data structures,
 // but not permitted by the language. It runs after expansion when AST is frozen,
@@ -56,12 +56,16 @@ struct AstValidator<'a> {
 
     /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
     /// Nested `impl Trait` _is_ allowed in associated type position,
-    /// e.g `impl Iterator<Item=impl Debug>`
+    /// e.g., `impl Iterator<Item = impl Debug>`.
     outer_impl_trait: Option<OuterImplTrait>,
 
     /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
     /// or `Foo::Bar<impl Trait>`
     is_impl_trait_banned: bool,
+
+    /// Used to ban associated type bounds (i.e., `Type<AssocType: Bounds>`) in
+    /// certain positions.
+    is_assoc_ty_bound_banned: bool,
 
     /// rust-lang/rust#57979: the ban of nested `impl Trait` was buggy
     /// until PRs #57730 and #57981 landed: it would jump directly to
@@ -87,26 +91,43 @@ impl<'a> AstValidator<'a> {
         self.is_impl_trait_banned = old;
     }
 
+    fn with_banned_assoc_ty_bound(&mut self, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.is_assoc_ty_bound_banned, true);
+        f(self);
+        self.is_assoc_ty_bound_banned = old;
+    }
+
     fn with_impl_trait(&mut self, outer: Option<OuterImplTrait>, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(&mut self.outer_impl_trait, outer);
         f(self);
         self.outer_impl_trait = old;
     }
 
-    fn visit_assoc_type_binding_from_generic_args(&mut self, type_binding: &'a TypeBinding) {
-        // rust-lang/rust#57979: bug in old visit_generic_args called
-        // walk_ty rather than visit_ty, skipping outer `impl Trait`
-        // if it happened to occur at `type_binding.ty`
-        if let TyKind::ImplTrait(..) = type_binding.ty.node {
-            self.warning_period_57979_didnt_record_next_impl_trait = true;
+    fn visit_assoc_ty_constraint_from_generic_args(&mut self, constraint: &'a AssocTyConstraint) {
+        match constraint.kind {
+            AssocTyConstraintKind::Equality { ref ty } => {
+                // rust-lang/rust#57979: bug in old `visit_generic_args` called
+                // `walk_ty` rather than `visit_ty`, skipping outer `impl Trait`
+                // if it happened to occur at `ty`.
+                if let TyKind::ImplTrait(..) = ty.node {
+                    self.warning_period_57979_didnt_record_next_impl_trait = true;
+                }
+            }
+            AssocTyConstraintKind::Bound { .. } => {
+                if self.is_assoc_ty_bound_banned {
+                    self.err_handler().span_err(constraint.span,
+                        "associated type bounds are not allowed within structs, enums, or unions"
+                    );
+                }
+            }
         }
-        self.visit_assoc_type_binding(type_binding);
+        self.visit_assoc_ty_constraint(constraint);
     }
 
     fn visit_ty_from_generic_args(&mut self, ty: &'a Ty) {
-        // rust-lang/rust#57979: bug in old visit_generic_args called
-        // walk_ty rather than visit_ty, skippping outer `impl Trait`
-        // if it happened to occur at `ty`
+        // rust-lang/rust#57979: bug in old `visit_generic_args` called
+        // `walk_ty` rather than `visit_ty`, skippping outer `impl Trait`
+        // if it happened to occur at `ty`.
         if let TyKind::ImplTrait(..) = ty.node {
             self.warning_period_57979_didnt_record_next_impl_trait = true;
         }
@@ -117,10 +138,10 @@ impl<'a> AstValidator<'a> {
         let only_recorded_since_pull_request_57730 =
             self.warning_period_57979_didnt_record_next_impl_trait;
 
-        // (this flag is designed to be set to true and then only
+        // (This flag is designed to be set to `true`, and then only
         // reach the construction point for the outer impl trait once,
         // so its safe and easiest to unconditionally reset it to
-        // false)
+        // false.)
         self.warning_period_57979_didnt_record_next_impl_trait = false;
 
         OuterImplTrait {
@@ -128,7 +149,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    // Mirrors visit::walk_ty, but tracks relevant state
+    // Mirrors `visit::walk_ty`, but tracks relevant state.
     fn walk_ty(&mut self, t: &'a Ty) {
         match t.node {
             TyKind::ImplTrait(..) => {
@@ -619,15 +640,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     // Auto traits cannot have generics, super traits nor contain items.
                     if !generics.params.is_empty() {
                         struct_span_err!(self.session, item.span, E0567,
-                                        "auto traits cannot have generic parameters").emit();
+                            "auto traits cannot have generic parameters"
+                        ).emit();
                     }
                     if !bounds.is_empty() {
                         struct_span_err!(self.session, item.span, E0568,
-                                        "auto traits cannot have super traits").emit();
+                            "auto traits cannot have super traits"
+                        ).emit();
                     }
                     if !trait_items.is_empty() {
                         struct_span_err!(self.session, item.span, E0380,
-                                "auto traits cannot have methods or associated items").emit();
+                            "auto traits cannot have methods or associated items"
+                        ).emit();
                     }
                 }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
@@ -699,7 +723,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_foreign_item(self, fi)
     }
 
-    // Mirrors visit::walk_generic_args, but tracks relevant state
+    // Mirrors `visit::walk_generic_args`, but tracks relevant state.
     fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
@@ -718,10 +742,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     generic_args.span(),
                 );
 
-                // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
+                // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
                 // are allowed to contain nested `impl Trait`.
                 self.with_impl_trait(None, |this| {
-                    walk_list!(this, visit_assoc_type_binding_from_generic_args, &data.bindings);
+                    walk_list!(this, visit_assoc_ty_constraint_from_generic_args,
+                        &data.constraints);
                 });
             }
             GenericArgs::Parenthesized(ref data) => {
@@ -814,6 +839,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_poly_trait_ref(self, t, m);
     }
 
+    fn visit_variant_data(&mut self, s: &'a VariantData, _: Ident,
+                          _: &'a Generics, _: NodeId, _: Span) {
+        self.with_banned_assoc_ty_bound(|this| visit::walk_struct_def(this, s))
+    }
+
+    fn visit_enum_def(&mut self, enum_definition: &'a EnumDef,
+                      generics: &'a Generics, item_id: NodeId, _: Span) {
+        self.with_banned_assoc_ty_bound(
+            |this| visit::walk_enum_def(this, enum_definition, generics, item_id))
+    }
+
     fn visit_mac(&mut self, mac: &Spanned<Mac_>) {
         // when a new macro kind is added but the author forgets to set it up for expansion
         // because that's the only part that won't cause a compiler error
@@ -837,6 +873,7 @@ pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
         has_global_allocator: false,
         outer_impl_trait: None,
         is_impl_trait_banned: false,
+        is_assoc_ty_bound_banned: false,
         warning_period_57979_didnt_record_next_impl_trait: false,
         warning_period_57979_impl_trait_in_proj: false,
     };

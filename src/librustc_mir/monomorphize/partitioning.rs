@@ -90,7 +90,7 @@
 //!
 //! Note though that as a side-effect of creating a codegen units per
 //! source-level module, functions from the same module will be available for
-//! inlining, even when they are not marked #[inline].
+//! inlining, even when they are not marked `#[inline]`.
 
 use std::collections::hash_map::Entry;
 use std::cmp;
@@ -152,7 +152,7 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // In the next step, we use the inlining map to determine which additional
     // monomorphizations have to go into each codegen unit. These additional
     // monomorphizations can be drop-glue, functions from external crates, and
-    // local functions the definition of which is marked with #[inline].
+    // local functions the definition of which is marked with `#[inline]`.
     let mut post_inlining = place_inlined_mono_items(initial_partitioning,
                                                             inlining_map);
 
@@ -166,7 +166,7 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         internalize_symbols(tcx, &mut post_inlining, inlining_map);
     }
 
-    // Finally, sort by codegen unit name, so that we get deterministic results
+    // Finally, sort by codegen unit name, so that we get deterministic results.
     let PostInliningPartitioning {
         codegen_units: mut result,
         mono_item_placements: _,
@@ -258,8 +258,8 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         roots.insert(mono_item);
     }
 
-    // always ensure we have at least one CGU; otherwise, if we have a
-    // crate with just types (for example), we could wind up with no CGU
+    // Always ensure we have at least one CGU; otherwise, if we have a
+    // crate with just types (for example), we could wind up with no CGU.
     if codegen_units.is_empty() {
         let codegen_unit_name = fallback_cgu_name(cgu_name_builder);
         codegen_units.insert(codegen_unit_name.clone(),
@@ -300,10 +300,10 @@ fn mono_item_visibility(
     export_generics: bool,
 ) -> Visibility {
     let instance = match mono_item {
-        // This is pretty complicated, go below
+        // This is pretty complicated; see below.
         MonoItem::Fn(instance) => instance,
 
-        // Misc handling for generics and such, but otherwise
+        // Misc handling for generics and such, but otherwise:
         MonoItem::Static(def_id) => {
             return if tcx.is_reachable_non_generic(*def_id) {
                 *can_be_internalized = false;
@@ -358,11 +358,10 @@ fn mono_item_visibility(
 
     let is_generic = instance.substs.non_erasable_generics().next().is_some();
 
-    // Upstream `DefId` instances get different handling than local ones
+    // Upstream `DefId` instances get different handling than local ones.
     if !def_id.is_local() {
         return if export_generics && is_generic {
-            // If it is a upstream monomorphization
-            // and we export generics, we must make
+            // If it is a upstream monomorphization and we export generics, we must make
             // it available to downstream crates.
             *can_be_internalized = false;
             default_visibility(tcx, def_id, true)
@@ -374,20 +373,16 @@ fn mono_item_visibility(
     if is_generic {
         if export_generics {
             if tcx.is_unreachable_local_definition(def_id) {
-                // This instance cannot be used
-                // from another crate.
+                // This instance cannot be used from another crate.
                 Visibility::Hidden
             } else {
-                // This instance might be useful in
-                // a downstream crate.
+                // This instance might be useful in a downstream crate.
                 *can_be_internalized = false;
                 default_visibility(tcx, def_id, true)
             }
         } else {
-            // We are not exporting generics or
-            // the definition is not reachable
-            // for downstream crates, we can
-            // internalize its instantiations.
+            // We are not exporting generics or the definition is not reachable
+            // for downstream crates, we can internalize its instantiations.
             Visibility::Hidden
         }
     } else {
@@ -449,19 +444,19 @@ fn default_visibility(tcx: TyCtxt<'_, '_, '_>, id: DefId, is_generic: bool) -> V
         return Visibility::Default
     }
 
-    // Generic functions never have export level C
+    // Generic functions never have export-level C.
     if is_generic {
         return Visibility::Hidden
     }
 
     // Things with export level C don't get instantiated in
-    // downstream crates
+    // downstream crates.
     if !id.is_local() {
         return Visibility::Hidden
     }
 
     // C-export level items remain at `Default`, all other internal
-    // items become `Hidden`
+    // items become `Hidden`.
     match tcx.reachable_non_generics(id.krate).get(&id) {
         Some(SymbolExportLevel::C) => Visibility::Default,
         _ => Visibility::Hidden,
@@ -519,7 +514,7 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
     let single_codegen_unit = initial_cgus.len() == 1;
 
     for old_codegen_unit in initial_cgus {
-        // Collect all items that need to be available in this codegen unit
+        // Collect all items that need to be available in this codegen unit.
         let mut reachable = FxHashSet::default();
         for root in old_codegen_unit.items().keys() {
             follow_inlining(*root, inlining_map, &mut reachable);
@@ -527,10 +522,10 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
 
         let mut new_codegen_unit = CodegenUnit::new(old_codegen_unit.name().clone());
 
-        // Add all monomorphizations that are not already there
+        // Add all monomorphizations that are not already there.
         for mono_item in reachable {
             if let Some(linkage) = old_codegen_unit.items().get(&mono_item) {
-                // This is a root, just copy it over
+                // This is a root, just copy it over.
                 new_codegen_unit.items_mut().insert(mono_item, *linkage);
             } else {
                 if roots.contains(&mono_item) {
@@ -538,7 +533,7 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
                           {:?}", mono_item);
                 }
 
-                // This is a cgu-private copy
+                // This is a CGU-private copy.
                 new_codegen_unit.items_mut().insert(
                     mono_item,
                     (Linkage::Internal, Visibility::Default),
@@ -547,7 +542,7 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
 
             if !single_codegen_unit {
                 // If there is more than one codegen unit, we need to keep track
-                // in which codegen units each monomorphization is placed:
+                // in which codegen units each monomorphization is placed.
                 match mono_item_placements.entry(mono_item) {
                     Entry::Occupied(e) => {
                         let placement = e.into_mut();
@@ -656,8 +651,8 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 mono_item: MonoItem<'tcx>)
-                                                 -> Option<DefId> {
+                                                mono_item: MonoItem<'tcx>)
+                                                -> Option<DefId> {
     match mono_item {
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
@@ -709,10 +704,10 @@ fn compute_codegen_unit_name(tcx: TyCtxt<'_, '_, '_>,
                              volatile: bool,
                              cache: &mut CguNameCache)
                              -> InternedString {
-    // Find the innermost module that is not nested within a function
+    // Find the innermost module that is not nested within a function.
     let mut current_def_id = def_id;
     let mut cgu_def_id = None;
-    // Walk backwards from the item we want to find the module for:
+    // Walk backwards from the item we want to find the module for.
     loop {
         if current_def_id.index == CRATE_DEF_INDEX {
             if cgu_def_id.is_none() {
