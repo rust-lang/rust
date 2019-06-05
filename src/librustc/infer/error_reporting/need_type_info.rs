@@ -122,8 +122,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
             let ty_vars = self.type_variables.borrow();
             let getter = move |ty_vid| {
-                if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
-                    *ty_vars.var_origin(ty_vid) {
+                if let TypeVariableOriginKind::TypeParameterDefinition(name) =
+                    ty_vars.var_origin(ty_vid).kind {
                     return Some(name.to_string());
                 }
                 None
