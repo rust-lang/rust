@@ -53,6 +53,12 @@ mod llvm_libunwind {
         let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
         let cfg = &mut cc::Build::new();
 
+        if let Ok(build_ar) = env::var("RUSTBUILD_AR") {
+            cfg.archiver(build_ar);
+        }
+        if let Ok(build_cc) = env::var("RUSTBUILD_CC") {
+            cfg.compiler(build_cc);
+        }
         cfg.cpp(true);
         cfg.cpp_set_stdlib(None);
         cfg.warnings(false);

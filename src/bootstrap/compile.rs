@@ -185,6 +185,11 @@ pub fn std_cargo(builder: &Builder<'_>,
         String::new()
     };
 
+    if let Some(ar) = builder.ar(target) {
+        cargo.env("RUSTBUILD_AR", ar);
+    }
+    cargo.env("RUSTBUILD_CC", builder.cc(target));
+
     if builder.no_std(target) == Some(true) {
         let mut features = "compiler-builtins-mem".to_string();
         features.push_str(&compiler_builtins_c_feature);
