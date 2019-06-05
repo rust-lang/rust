@@ -8,7 +8,7 @@ use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::{infer, traits};
-use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_target::spec::abi;
 use syntax::ast::Ident;
 use syntax_pos::Span;
@@ -193,9 +193,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let opt_input_types = opt_arg_exprs.map(|arg_exprs| [self.tcx.mk_tup(
                 arg_exprs
                 .iter()
-                .map(|e| self.next_ty_var(
-                    TypeVariableOrigin::TypeInference(e.span)
-                ))
+                .map(|e| {
+                    self.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::TypeInference,
+                        span: e.span,
+                    })
+                })
             )]);
             let opt_input_types = opt_input_types.as_ref().map(AsRef::as_ref);
 

@@ -6,7 +6,7 @@ use rustc::hir::{self, PatKind, Pat, ExprKind};
 use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer;
-use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::subst::Kind;
@@ -311,9 +311,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let max_len = cmp::max(expected_len, elements.len());
 
                 let element_tys_iter = (0..max_len).map(|_| {
-                    // FIXME: `MiscVariable` for now -- obtaining the span and name information
-                    // from all tuple elements isn't trivial.
-                    Kind::from(self.next_ty_var(TypeVariableOrigin::TypeInference(pat.span)))
+                    Kind::from(self.next_ty_var(
+                        // FIXME: `MiscVariable` for now -- obtaining the span and name information
+                        // from all tuple elements isn't trivial.
+                        TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::TypeInference,
+                            span: pat.span,
+                        },
+                    ))
                 });
                 let element_tys = tcx.mk_substs(element_tys_iter);
                 let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
@@ -339,7 +344,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             PatKind::Box(ref inner) => {
-                let inner_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(inner.span));
+                let inner_ty = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span: inner.span,
+                });
                 let uniq_ty = tcx.mk_box(inner_ty);
 
                 if self.check_dereferencable(pat.span, expected, &inner) {
@@ -372,7 +380,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                         _ => {
                             let inner_ty = self.next_ty_var(
-                                TypeVariableOrigin::TypeInference(inner.span));
+                                TypeVariableOrigin {
+                                    kind: TypeVariableOriginKind::TypeInference,
+                                    span: inner.span,
+                                }
+                            );
                             let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
                             let region = self.next_region_var(infer::PatternRegion(pat.span));
                             let rptr_ty = tcx.mk_ref(region, mt);
@@ -685,7 +697,10 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 // arm for inconsistent arms or to the whole match when a `()` type
                 // is required).
                 Expectation::ExpectHasType(ety) if ety != self.tcx.mk_unit() => ety,
-                _ => self.next_ty_var(TypeVariableOrigin::MiscVariable(expr.span)),
+                _ => self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: expr.span,
+                }),
             };
             CoerceMany::with_coercion_sites(coerce_first, arms)
         };
@@ -994,7 +1009,10 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             // ...but otherwise we want to use any supertype of the
             // discriminant. This is sort of a workaround, see note (*) in
             // `check_pat` for some details.
-            let discrim_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(discrim.span));
+            let discrim_ty = self.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::TypeInference,
+                span: discrim.span,
+            });
             self.check_expr_has_type_or_error(discrim, discrim_ty);
             discrim_ty
         }

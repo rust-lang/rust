@@ -37,25 +37,28 @@ pub struct TypeVariableTable<'tcx> {
     sub_relations: ut::UnificationTable<ut::InPlace<ty::TyVid>>,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct TypeVariableOrigin {
+    pub kind: TypeVariableOriginKind,
+    pub span: Span,
+}
+
 /// Reasons to create a type inference variable
 #[derive(Copy, Clone, Debug)]
-pub enum TypeVariableOrigin {
-    MiscVariable(Span),
-    NormalizeProjectionType(Span),
-    TypeInference(Span),
-    TypeParameterDefinition(Span, InternedString),
+pub enum TypeVariableOriginKind {
+    MiscVariable,
+    NormalizeProjectionType,
+    TypeInference,
+    TypeParameterDefinition(InternedString),
 
-    /// one of the upvars or closure kind parameters in a `ClosureSubsts`
-    /// (before it has been determined)
-    ClosureSynthetic(Span),
-    SubstitutionPlaceholder(Span),
-    AutoDeref(Span),
-    AdjustmentType(Span),
-    DivergingStmt(Span),
-    DivergingBlockExpr(Span),
-    DivergingFn(Span),
-    LatticeVariable(Span),
-    Generalized(ty::TyVid),
+    /// One of the upvars or closure kind parameters in a `ClosureSubsts`
+    /// (before it has been determined).
+    ClosureSynthetic,
+    SubstitutionPlaceholder,
+    AutoDeref,
+    AdjustmentType,
+    DivergingFn,
+    LatticeVariable,
 }
 
 struct TypeVariableData {

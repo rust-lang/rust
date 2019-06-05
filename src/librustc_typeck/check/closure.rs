@@ -7,7 +7,7 @@ use crate::middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferOk, InferResult};
 use rustc::infer::LateBoundRegionConversionTime;
-use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Obligation;
 use rustc::traits::error_reporting::ArgKind;
 use rustc::ty::{self, Ty, GenericParamDefKind};
@@ -102,7 +102,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     span_bug!(expr.span, "closure has lifetime param")
                 }
                 GenericParamDefKind::Type { .. } => {
-                    self.infcx.next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span)).into()
+                    self.infcx.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::ClosureSynthetic,
+                        span: expr.span,
+                    }).into()
                 }
                 GenericParamDefKind::Const => {
                     span_bug!(expr.span, "closure has const param")

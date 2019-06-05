@@ -1,4 +1,5 @@
-use super::{InferCtxt, FixupError, FixupResult, Span, type_variable::TypeVariableOrigin};
+use super::{InferCtxt, FixupError, FixupResult, Span};
+use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Ty, Const, TyCtxt, TypeFoldable, InferConst, TypeFlags};
 use crate::ty::fold::{TypeFolder, TypeVisitor};
@@ -123,8 +124,10 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'gcx, 'tcx> 
                 let ty_var_span =
                 if let ty::TyVar(ty_vid) = infer_ty {
                     let ty_vars = self.infcx.type_variables.borrow();
-                    if let TypeVariableOrigin::TypeParameterDefinition(span, _name)
-                        = *ty_vars.var_origin(ty_vid)
+                    if let TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::TypeParameterDefinition(_),
+                        span,
+                    } = *ty_vars.var_origin(ty_vid)
                     {
                         Some(span)
                     } else {

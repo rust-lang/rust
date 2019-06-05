@@ -28,7 +28,8 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 use super::lub::Lub;
 use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
-use super::unify_key::{ConstVarValue, ConstVariableValue, ConstVariableOrigin};
+use super::unify_key::{ConstVarValue, ConstVariableValue};
+use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 
 use crate::hir::def_id::DefId;
 use crate::mir::interpret::ConstValue;
@@ -165,7 +166,10 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
         self.const_unification_table
             .borrow_mut()
             .unify_var_value(vid, ConstVarValue {
-                origin: ConstVariableOrigin::ConstInference(DUMMY_SP),
+                origin: ConstVariableOrigin {
+                    kind: ConstVariableOriginKind::ConstInference,
+                    span: DUMMY_SP,
+                },
                 val: ConstVariableValue::Known { value },
             })
             .map_err(|e| const_unification_error(vid_is_expected, e))?;
