@@ -2287,17 +2287,52 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 }
 
-// A helper struct for conveniently grouping a set of bounds which we pass to
-// and return from functions in multiple places.
+/// Collects together a list of bounds that are applied to some type,
+/// after they've been converted into `ty` form (from the HIR
+/// representations). These lists of bounds occur in many places in
+/// Rust's syntax:
+///
+/// ```
+/// trait Foo: Bar + Baz { }
+///            ^^^^^^^^^ supertrait list bounding the `Self` type parameter
+///
+/// fn foo<T: Bar + Baz>() { }
+///           ^^^^^^^^^ bounding the type parameter `T`
+///
+/// impl dyn Bar + Baz
+///          ^^^^^^^^^ bounding the forgotten dynamic type
+/// ```
+///
+/// Our representation is a bit mixed here -- in some cases, we
+/// include the self type (e.g., `trait_bounds`) but in others we do
 #[derive(Default, PartialEq, Eq, Clone, Debug)]
 pub struct Bounds<'tcx> {
+    /// A list of region bounds on the (implicit) self type. So if you
+    /// had `T: 'a + 'b` this might would be a list `['a, 'b]` (but
+    /// the `T` is not explicitly included).
     pub region_bounds: Vec<(ty::Region<'tcx>, Span)>,
+
+    /// A list of trait bounds. So if you had `T: Debug` this would be
+    /// `T: Debug`. Note that the self-type is explicit here.
     pub trait_bounds: Vec<(ty::PolyTraitRef<'tcx>, Span)>,
+
+    /// A list of projection equality bounds. So if you had `T:
+    /// Iterator<Item = u32>` this would include `<T as
+    /// Iterator>::Item => u32`. Note that the self-type is explicit
+    /// here.
     pub projection_bounds: Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>,
+
+    /// `Some` if there is *no* `?Sized` predicate. The `span`
+    /// is the location in the source of the `T` declaration which can
+    /// be cited as the source of the `T: Sized` requirement.
     pub implicitly_sized: Option<Span>,
 }
 
 impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
+    /// Converts a bounds list into a flat set of predicates (like
+    /// where-clauses). Because some of our bounds listings (e.g.,
+    /// regions) don't include the self-type, you must supply the
+    /// self-type here (the `param_ty` parameter).
     pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, param_ty: Ty<'tcx>)
                       -> Vec<(ty::Predicate<'tcx>, Span)>
     {
