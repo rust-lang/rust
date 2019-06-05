@@ -37,6 +37,7 @@ crate mod type_check;
 mod universal_regions;
 
 mod constraints;
+mod pick_constraints;
 
 use self::facts::AllFacts;
 use self::region_infer::RegionInferenceContext;
