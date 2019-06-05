@@ -4,17 +4,21 @@ parameters:
 steps:
   - bash: |
       set -e
-      curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $TOOLCHAIN
-      echo "##vso[task.prependpath]$HOME/.cargo/bin"
+      if command -v rustup; then
+        rustup update $TOOLCHAIN
+        rustup default $TOOLCHAIN
+      else
+        curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $TOOLCHAIN
+        echo "##vso[task.prependpath]$HOME/.cargo/bin"
+      fi
     displayName: Install rust
     condition: ne( variables['Agent.OS'], 'Windows_NT' )
     env:
       TOOLCHAIN: ${{ parameters.toolchain }}
 
   - script: |
-      curl -sSf -o rustup-init.exe https://win.rustup.rs
-      rustup-init.exe -y --default-toolchain %TOOLCHAIN%-%TARGET%
-      echo ##vso[task.prependpath]%USERPROFILE%\.cargo\bin
+      rustup update --no-self-update %TOOLCHAIN%-%TARGET%
+      rustup default %TOOLCHAIN%-%TARGET%
     displayName: Install rust
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
     env:
