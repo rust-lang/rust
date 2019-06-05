@@ -197,13 +197,17 @@ enum PrevTokenKind {
 #[derive(Clone)]
 pub struct Parser<'a> {
     pub sess: &'a ParseSess,
-    /// The current token.
+    /// The current normalized token.
+    /// "Normalized" means that some interpolated tokens
+    /// (`$i: ident` and `$l: lifetime` meta-variables) are replaced
+    /// with non-interpolated identifier and lifetime tokens they refer to.
+    /// Perhaps the normalized / non-normalized setup can be simplified somehow.
     pub token: Token,
-    /// The span of the previous token.
+    /// Span of the current non-normalized token.
     meta_var_span: Option<Span>,
-    /// The span of the previous token.
+    /// Span of the previous non-normalized token.
     pub prev_span: Span,
-    /// The previous token kind.
+    /// Kind of the previous normalized token (in simplified form).
     prev_token_kind: PrevTokenKind,
     restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files.

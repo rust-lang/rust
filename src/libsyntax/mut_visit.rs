@@ -604,6 +604,8 @@ pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
             let mut ident = Ident::new(*name, *span);
             vis.visit_ident(&mut ident);
             *name = ident.name;
+            *span = ident.span;
+            return; // avoid visiting the span for the second time
         }
         token::Interpolated(nt) => {
             let mut nt = Lrc::make_mut(nt);

@@ -130,9 +130,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
     }
 
     // Which arm's failure should we report? (the one furthest along)
-    let mut best_fail_spot = DUMMY_SP;
-    let mut best_fail_tok = None;
-    let mut best_fail_text = None;
+    let mut best_failure: Option<(Token, &str)> = None;
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -190,21 +188,20 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
                     arm_span,
                 })
             }
-            Failure(token, msg) => if token.span.lo() >= best_fail_spot.lo() {
-                best_fail_spot = token.span;
-                best_fail_tok = Some(token.kind);
-                best_fail_text = Some(msg);
-            },
+            Failure(token, msg) => match best_failure {
+                Some((ref best_token, _)) if best_token.span.lo() >= token.span.lo() => {}
+                _ => best_failure = Some((token, msg))
+            }
             Error(err_sp, ref msg) => {
                 cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..])
             }
         }
     }
 
-    let best_fail_msg = parse_failure_msg(best_fail_tok.expect("ran no matchers"));
-    let span = best_fail_spot.substitute_dummy(sp);
-    let mut err = cx.struct_span_err(span, &best_fail_msg);
-    err.span_label(span, best_fail_text.unwrap_or(&best_fail_msg));
+    let (token, label) = best_failure.expect("ran no matchers");
+    let span = token.span.substitute_dummy(sp);
+    let mut err = cx.struct_span_err(span, &parse_failure_msg(token.kind));
+    err.span_label(span, label);
     if let Some(sp) = def_span {
         if cx.source_map().span_to_filename(sp).is_real() && !sp.is_dummy() {
             err.span_label(cx.source_map().def_span(sp), "when calling this macro");
