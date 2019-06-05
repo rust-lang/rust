@@ -173,7 +173,7 @@ impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpretCx<'mir, 'tcx, M>
     where M: Machine<'mir, 'tcx>
 {
     #[inline]
-    fn tcx<'d>(&'d self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         *self.tcx
     }
 }

@@ -171,7 +171,7 @@ impl ItemCtxt<'tcx> {
 }
 
 impl AstConv<'tcx, 'tcx> for ItemCtxt<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 

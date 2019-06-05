@@ -1727,7 +1727,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
 }
 
 pub trait HasTyCtxt<'tcx>: HasDataLayout {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'tcx>;
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx>;
 }
 
 pub trait HasParamEnv<'tcx> {
@@ -1741,7 +1741,7 @@ impl<'gcx, 'tcx> HasDataLayout for TyCtxt<'gcx, 'tcx> {
 }
 
 impl<'gcx, 'tcx> HasTyCtxt<'gcx> for TyCtxt<'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'gcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'gcx> {
         self.global_tcx()
     }
 }
@@ -1759,7 +1759,7 @@ impl<'tcx, T: HasDataLayout> HasDataLayout for LayoutCx<'tcx, T> {
 }
 
 impl<'gcx, 'tcx, T: HasTyCtxt<'gcx>> HasTyCtxt<'gcx> for LayoutCx<'tcx, T> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'gcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'gcx> {
         self.tcx.tcx()
     }
 }

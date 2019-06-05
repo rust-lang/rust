@@ -203,7 +203,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'tcx> {
     type DynExistential = Self;
     type Const = Self;
 
-    fn tcx(&'a self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 

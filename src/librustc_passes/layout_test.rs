@@ -119,7 +119,7 @@ impl LayoutOf for UnwrapLayoutCx<'tcx> {
 }
 
 impl HasTyCtxt<'tcx> for UnwrapLayoutCx<'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 }

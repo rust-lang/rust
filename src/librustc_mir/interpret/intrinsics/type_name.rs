@@ -23,7 +23,7 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'tcx> {
     type DynExistential = Self;
     type Const = Self;
 
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 

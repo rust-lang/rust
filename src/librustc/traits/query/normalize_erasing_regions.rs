@@ -68,7 +68,7 @@ struct NormalizeAfterErasingRegionsFolder<'tcx> {
 }
 
 impl TypeFolder<'tcx, 'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 

@@ -793,7 +793,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
             type DynExistential = ();
             type Const = ();
 
-            fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'tcx> {
+            fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
                 self.tcx
             }
 

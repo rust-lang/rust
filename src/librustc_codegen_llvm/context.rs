@@ -838,7 +838,7 @@ impl HasTargetSpec for CodegenCx<'ll, 'tcx> {
 }
 
 impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 }

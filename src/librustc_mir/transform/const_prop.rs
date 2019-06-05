@@ -113,7 +113,7 @@ impl<'mir, 'tcx> HasDataLayout for ConstPropagator<'mir, 'tcx> {
 
 impl<'mir, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
     #[inline]
-    fn tcx<'c>(&'c self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 }
