@@ -525,12 +525,10 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source_info: SourceInfo,
     ) {
         trace!("attepting to replace {:?} with {:?}", rval, value);
-        self.ecx.validate_operand(
-            value,
-            vec![],
-            None,
-            true,
-        ).expect("value should already be a valid const");
+        if let Err(e) = self.ecx.validate_operand(value, vec![], None, true) {
+            trace!("validation error, attempt failed: {:?}", e);
+            return;
+        }
 
         // FIXME> figure out what tho do when try_read_immediate fails
         let imm = self.use_ecx(source_info, |this| {
