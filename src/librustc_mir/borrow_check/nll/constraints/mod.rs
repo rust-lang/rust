@@ -13,14 +13,14 @@ crate mod graph;
 /// a unique `OutlivesConstraintIndex` and you can index into the set
 /// (`constraint_set[i]`) to access the constraint details.
 #[derive(Clone, Default)]
-crate struct ConstraintSet {
+crate struct OutlivesConstraintSet {
     outlives: IndexVec<OutlivesConstraintIndex, OutlivesConstraint>,
 }
 
-impl ConstraintSet {
+impl OutlivesConstraintSet {
     crate fn push(&mut self, constraint: OutlivesConstraint) {
         debug!(
-            "ConstraintSet::push({:?}: {:?} @ {:?}",
+            "OutlivesConstraintSet::push({:?}: {:?} @ {:?}",
             constraint.sup, constraint.sub, constraint.locations
         );
         if constraint.sup == constraint.sub {
@@ -34,7 +34,7 @@ impl ConstraintSet {
     /// easy to find the constraints affecting a particular region.
     ///
     /// N.B., this graph contains a "frozen" view of the current
-    /// constraints. Any new constraints added to the `ConstraintSet`
+    /// constraints. Any new constraints added to the `OutlivesConstraintSet`
     /// after the graph is built will not be present in the graph.
     crate fn graph(&self, num_region_vars: usize) -> graph::NormalConstraintGraph {
         graph::ConstraintGraph::new(graph::Normal, self, num_region_vars)
@@ -63,7 +63,7 @@ impl ConstraintSet {
     }
 }
 
-impl Index<OutlivesConstraintIndex> for ConstraintSet {
+impl Index<OutlivesConstraintIndex> for OutlivesConstraintSet {
     type Output = OutlivesConstraint;
 
     fn index(&self, i: OutlivesConstraintIndex) -> &Self::Output {

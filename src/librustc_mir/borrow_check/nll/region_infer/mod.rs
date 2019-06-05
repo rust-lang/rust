@@ -1,6 +1,6 @@
 use super::universal_regions::UniversalRegions;
 use crate::borrow_check::nll::constraints::graph::NormalConstraintGraph;
-use crate::borrow_check::nll::constraints::{ConstraintSccIndex, ConstraintSet, OutlivesConstraint};
+use crate::borrow_check::nll::constraints::{ConstraintSccIndex, OutlivesConstraintSet, OutlivesConstraint};
 use crate::borrow_check::nll::region_infer::values::{
     PlaceholderIndices, RegionElement, ToElementIndex
 };
@@ -49,7 +49,7 @@ pub struct RegionInferenceContext<'tcx> {
     liveness_constraints: LivenessValues<RegionVid>,
 
     /// The outlives constraints computed by the type-check.
-    constraints: Rc<ConstraintSet>,
+    constraints: Rc<OutlivesConstraintSet>,
 
     /// The constraint-set, but in graph form, making it easy to traverse
     /// the constraints adjacent to a particular region. Used to construct
@@ -186,7 +186,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         placeholder_indices: Rc<PlaceholderIndices>,
         universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
         _body: &Body<'tcx>,
-        outlives_constraints: ConstraintSet,
+        outlives_constraints: OutlivesConstraintSet,
         closure_bounds_mapping: FxHashMap<
             Location,
             FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,

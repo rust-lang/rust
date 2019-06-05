@@ -1,6 +1,6 @@
 use crate::borrow_check::nll::type_check::Locations;
 use crate::borrow_check::nll::constraints::OutlivesConstraintIndex;
-use crate::borrow_check::nll::constraints::{ConstraintSet, OutlivesConstraint};
+use crate::borrow_check::nll::constraints::{OutlivesConstraintSet, OutlivesConstraint};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::RegionVid;
 use rustc_data_structures::graph;
@@ -77,7 +77,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
     /// reporting.
     crate fn new(
         direction: D,
-        set: &ConstraintSet,
+        set: &OutlivesConstraintSet,
         num_region_vars: usize,
     ) -> Self {
         let mut first_constraints = IndexVec::from_elem_n(None, num_region_vars);
@@ -103,7 +103,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
     /// and not constraints.
     crate fn region_graph<'rg>(
         &'rg self,
-        set: &'rg ConstraintSet,
+        set: &'rg OutlivesConstraintSet,
         static_region: RegionVid,
     ) -> RegionGraph<'rg, D> {
         RegionGraph::new(set, self, static_region)
@@ -113,7 +113,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
     crate fn outgoing_edges<'a>(
         &'a self,
         region_sup: RegionVid,
-        constraints: &'a ConstraintSet,
+        constraints: &'a OutlivesConstraintSet,
         static_region: RegionVid,
     ) -> Edges<'a, D> {
         //if this is the `'static` region and the graph's direction is normal,
@@ -142,7 +142,7 @@ impl<D: ConstraintGraphDirecton> ConstraintGraph<D> {
 
 crate struct Edges<'s, D: ConstraintGraphDirecton> {
     graph: &'s ConstraintGraph<D>,
-    constraints: &'s ConstraintSet,
+    constraints: &'s OutlivesConstraintSet,
     pointer: Option<OutlivesConstraintIndex>,
     next_static_idx: Option<usize>,
     static_region: RegionVid,
@@ -180,7 +180,7 @@ impl<'s, D: ConstraintGraphDirecton> Iterator for Edges<'s, D> {
 /// reverse) constraint graph. It implements the graph traits and is
 /// usd for doing the SCC computation.
 crate struct RegionGraph<'s, D: ConstraintGraphDirecton> {
-    set: &'s ConstraintSet,
+    set: &'s OutlivesConstraintSet,
     constraint_graph: &'s ConstraintGraph<D>,
     static_region: RegionVid,
 }
@@ -191,7 +191,7 @@ impl<'s, D: ConstraintGraphDirecton> RegionGraph<'s, D> {
     /// construct SCCs for region inference but also for error
     /// reporting.
     crate fn new(
-        set: &'s ConstraintSet,
+        set: &'s OutlivesConstraintSet,
         constraint_graph: &'s ConstraintGraph<D>,
         static_region: RegionVid,
     ) -> Self {
