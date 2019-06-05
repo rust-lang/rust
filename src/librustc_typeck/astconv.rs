@@ -1149,8 +1149,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 //
                 // `<T as Iterator>::Item: Debug`
                 //
-                // Calling `skip_binder` is okay, because the predicates are re-bound later by
-                // `instantiate_poly_trait_ref`.
+                // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
+                // parameter to have a skipped binder.
                 let param_ty = tcx.mk_projection(assoc_ty.def_id, candidate.skip_binder().substs);
                 self.add_bounds(
                     param_ty,
