@@ -146,7 +146,7 @@ pub fn check(build: &mut Build) {
 
     for host in &build.hosts {
         if !build.config.dry_run {
-            cmd_finder.must_have(build.cxx(*host).unwrap());
+            cmd_finder.must_have(build.cxx(*host));
         }
     }
 

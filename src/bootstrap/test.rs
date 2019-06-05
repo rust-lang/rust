@@ -1211,7 +1211,7 @@ impl Step for Compiletest {
                 cmd.arg("--cc")
                     .arg(builder.cc(target))
                     .arg("--cxx")
-                    .arg(builder.cxx(target).unwrap())
+                    .arg(builder.cxx(target))
                     .arg("--cflags")
                     .arg(builder.cflags(target, GitRepo::Rustc).join(" "))
                     .arg("--llvm-components")

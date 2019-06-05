@@ -358,7 +358,7 @@ fn configure_cmake(builder: &Builder<'_>,
 
     let (cc, cxx) = match builder.config.llvm_clang_cl {
         Some(ref cl) => (cl.as_ref(), cl.as_ref()),
-        None => (builder.cc(target), builder.cxx(target).unwrap()),
+        None => (builder.cc(target), builder.cxx(target)),
     };
 
     // Handle msvc + ninja + ccache specially (this is what the bots use)

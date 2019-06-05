@@ -782,7 +782,7 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
                !target.contains("windows") &&
                !target.contains("apple") {
                 let file = compiler_file(builder,
-                                         builder.cxx(target).unwrap(),
+                                         builder.cxx(target),
                                          target,
                                          "libstdc++.a");
                 cargo.env("LLVM_STATIC_STDCPP", file);
