@@ -45,6 +45,10 @@ no_mangle! {
     fn log10f(x: f32) -> f32;
     fn log(x: f64) -> f64;
     fn logf(x: f32) -> f32;
+    fn fmin(x: f64, y: f64) -> f64;
+    fn fminf(x: f32, y: f32) -> f32;
+    fn fmax(x: f64, y: f64) -> f64;
+    fn fmaxf(x: f32, y: f32) -> f32;
     fn round(x: f64) -> f64;
     fn roundf(x: f32) -> f32;
     fn sin(x: f64) -> f64;
