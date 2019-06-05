@@ -727,13 +727,12 @@ pub fn parse(
                     "ambiguity: multiple successful parses".to_string(),
                 );
             } else {
-                let span = if parser.span.is_dummy() {
-                    parser.span
-                } else {
-                    sess.source_map().next_point(parser.span)
-                };
                 return Failure(
-                    Token { kind: token::Eof, span },
+                    Token::new(token::Eof, if parser.span.is_dummy() {
+                        parser.span
+                    } else {
+                        sess.source_map().next_point(parser.span)
+                    }),
                     "missing tokens in macro arguments",
                 );
             }
@@ -771,7 +770,7 @@ pub fn parse(
         // then there is a syntax error.
         else if bb_items.is_empty() && next_items.is_empty() {
             return Failure(
-                parser.token.clone(),
+                parser.token.take(),
                 "no rules expected this token in macro call",
             );
         }

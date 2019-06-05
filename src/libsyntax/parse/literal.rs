@@ -277,7 +277,7 @@ impl<'a> Parser<'a> {
                     if self.span.hi() == next_span.lo() {
                         let s = String::from("0.") + &symbol.as_str();
                         let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
-                        return Some(Token { kind, span: self.span.to(next_span) });
+                        return Some(Token::new(kind, self.span.to(next_span)));
                     }
                 }
                 None

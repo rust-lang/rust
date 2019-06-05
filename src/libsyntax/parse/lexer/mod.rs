@@ -88,7 +88,7 @@ impl<'a> StringReader<'a> {
     /// Returns the next token. EFFECT: advances the string_reader.
     pub fn try_next_token(&mut self) -> Result<Token, ()> {
         assert!(self.fatal_errs.is_empty());
-        let ret_val = self.peek_token.clone();
+        let ret_val = self.peek_token.take();
         self.advance_token()?;
         Ok(ret_val)
     }
@@ -205,8 +205,7 @@ impl<'a> StringReader<'a> {
             ch: Some('\n'),
             source_file,
             end_src_index: src.len(),
-            // dummy values; not read
-            peek_token: Token { kind: token::Eof, span: syntax_pos::DUMMY_SP },
+            peek_token: Token::dummy(),
             peek_span_src_raw: syntax_pos::DUMMY_SP,
             src,
             fatal_errs: Vec::new(),
@@ -320,21 +319,15 @@ impl<'a> StringReader<'a> {
                 self.peek_token = comment;
             }
             None => {
-                if self.is_eof() {
-
-                    let (real, raw) = self.mk_sp_and_raw(
-                        self.source_file.end_pos,
-                        self.source_file.end_pos,
-                    );
-                    self.peek_token = Token { kind: token::Eof, span: real };
-                    self.peek_span_src_raw = raw;
+                let (kind, start_pos, end_pos) = if self.is_eof() {
+                    (token::Eof, self.source_file.end_pos, self.source_file.end_pos)
                 } else {
-                    let start_bytepos = self.pos;
-                    let kind = self.next_token_inner()?;
-                    let (real, raw) = self.mk_sp_and_raw(start_bytepos, self.pos);
-                    self.peek_token = Token { kind, span: real };
-                    self.peek_span_src_raw = raw;
+                    let start_pos = self.pos;
+                    (self.next_token_inner()?, start_pos, self.pos)
                 };
+                let (real, raw) = self.mk_sp_and_raw(start_pos, end_pos);
+                self.peek_token = Token::new(kind, real);
+                self.peek_span_src_raw = raw;
             }
         }
 
@@ -544,7 +537,7 @@ impl<'a> StringReader<'a> {
                     } else {
                         token::Comment
                     };
-                    Some(Token { kind, span: self.mk_sp(start_bpos, self.pos) })
+                    Some(Token::new(kind, self.mk_sp(start_bpos, self.pos)))
                 }
                 Some('*') => {
                     self.bump();
@@ -568,10 +561,10 @@ impl<'a> StringReader<'a> {
                     while !self.ch_is('\n') && !self.is_eof() {
                         self.bump();
                     }
-                    return Some(Token {
-                        kind: token::Shebang(self.name_from(start)),
-                        span: self.mk_sp(start, self.pos),
-                    });
+                    return Some(Token::new(
+                        token::Shebang(self.name_from(start)),
+                        self.mk_sp(start, self.pos),
+                    ));
                 }
             }
             None
@@ -596,10 +589,7 @@ impl<'a> StringReader<'a> {
                 while is_pattern_whitespace(self.ch) {
                     self.bump();
                 }
-                let c = Some(Token {
-                    kind: token::Whitespace,
-                    span: self.mk_sp(start_bpos, self.pos),
-                });
+                let c = Some(Token::new(token::Whitespace, self.mk_sp(start_bpos, self.pos)));
                 debug!("scanning whitespace: {:?}", c);
                 c
             }
@@ -658,10 +648,7 @@ impl<'a> StringReader<'a> {
                 token::Comment
             };
 
-            Some(Token {
-                kind,
-                span: self.mk_sp(start_bpos, self.pos),
-            })
+            Some(Token::new(kind, self.mk_sp(start_bpos, self.pos)))
         })
     }
 
@@ -1588,10 +1575,10 @@ mod tests {
             assert_eq!(string_reader.next_token(), token::Comment);
             assert_eq!(string_reader.next_token(), token::Whitespace);
             let tok1 = string_reader.next_token();
-            let tok2 = Token {
-                kind: token::Ident(id, false),
-                span: Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
-            };
+            let tok2 = Token::new(
+                token::Ident(id, false),
+                Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
+            );
             assert_eq!(tok1.kind, tok2.kind);
             assert_eq!(tok1.span, tok2.span);
             assert_eq!(string_reader.next_token(), token::Whitespace);
@@ -1599,10 +1586,10 @@ mod tests {
             assert_eq!(string_reader.pos.clone(), BytePos(28));
             // read another token:
             let tok3 = string_reader.next_token();
-            let tok4 = Token {
-                kind: mk_ident("main"),
-                span: Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
-            };
+            let tok4 = Token::new(
+                mk_ident("main"),
+                Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
+            );
             assert_eq!(tok3.kind, tok4.kind);
             assert_eq!(tok3.span, tok4.span);
             // the lparen is already read:

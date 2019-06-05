@@ -604,8 +604,8 @@ impl NestedMetaItem {
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<NestedMetaItem>
         where I: Iterator<Item = TokenTree>,
     {
-        if let Some(TokenTree::Token(token)) = tokens.peek().cloned() {
-            if let Ok(lit) = Lit::from_token(&token, token.span) {
+        if let Some(TokenTree::Token(token)) = tokens.peek() {
+            if let Ok(lit) = Lit::from_token(token, token.span) {
                 tokens.next();
                 return Some(NestedMetaItem::Literal(lit));
             }

@@ -139,7 +139,7 @@ impl TokenTree {
     }
 
     pub fn token(span: Span, kind: TokenKind) -> TokenTree {
-        TokenTree::Token(Token { kind, span })
+        TokenTree::Token(Token::new(kind, span))
     }
 
     /// Returns the opening delimiter as a token tree.

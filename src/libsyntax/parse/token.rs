@@ -13,7 +13,7 @@ use crate::syntax::parse::parse_stream_from_source_str;
 use crate::tokenstream::{self, DelimSpan, TokenStream, TokenTree};
 
 use syntax_pos::symbol::{self, Symbol};
-use syntax_pos::{self, Span, FileName};
+use syntax_pos::{self, Span, FileName, DUMMY_SP};
 use log::info;
 
 use std::fmt;
@@ -606,6 +606,22 @@ impl TokenKind {
 
             _ => panic!("forgot to add a token?"),
         }
+    }
+}
+
+impl Token {
+    crate fn new(kind: TokenKind, span: Span) -> Self {
+        Token { kind, span }
+    }
+
+    /// Some token that will be thrown away later.
+    crate fn dummy() -> Self {
+        Token::new(TokenKind::Whitespace, DUMMY_SP)
+    }
+
+    /// Return this token by value and leave a dummy token in its place.
+    crate fn take(&mut self) -> Self {
+        mem::replace(self, Token::dummy())
     }
 }
 

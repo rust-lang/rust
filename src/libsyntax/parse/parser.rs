@@ -318,7 +318,7 @@ impl TokenCursor {
                 self.frame = frame;
                 continue
             } else {
-                return Token { kind: token::Eof, span: DUMMY_SP }
+                return Token::new(token::Eof, DUMMY_SP);
             };
 
             match self.frame.last_token {
@@ -477,7 +477,7 @@ impl<'a> Parser<'a> {
     ) -> Self {
         let mut parser = Parser {
             sess,
-            token: Token { kind: token::Whitespace, span: DUMMY_SP },
+            token: Token::dummy(),
             prev_span: DUMMY_SP,
             meta_var_span: None,
             prev_token_kind: PrevTokenKind::Other,
@@ -1042,12 +1042,12 @@ impl<'a> Parser<'a> {
         // fortunately for tokens currently using `bump_with`, the
         // prev_token_kind will be of no use anyway.
         self.prev_token_kind = PrevTokenKind::Other;
-        self.token = Token { kind: next, span };
+        self.token = Token::new(next, span);
         self.expected_tokens.clear();
     }
 
     pub fn look_ahead<R, F>(&self, dist: usize, f: F) -> R where
-        F: FnOnce(&token::Token) -> R,
+        F: FnOnce(&Token) -> R,
     {
         if dist == 0 {
             // FIXME: Avoid cloning here.
@@ -1058,9 +1058,9 @@ impl<'a> Parser<'a> {
         f(&match frame.tree_cursor.look_ahead(dist - 1) {
             Some(tree) => match tree {
                 TokenTree::Token(token) => token,
-                TokenTree::Delimited(dspan, delim, _) => Token { kind: token::OpenDelim(delim), span: dspan.open },
+                TokenTree::Delimited(dspan, delim, _) => Token::new(token::OpenDelim(delim), dspan.open),
             }
-            None => Token { kind: token::CloseDelim(frame.delim), span: frame.span.close }
+            None => Token::new(token::CloseDelim(frame.delim), frame.span.close)
         })
     }
 
@@ -2651,8 +2651,8 @@ impl<'a> Parser<'a> {
                 // Interpolated identifier and lifetime tokens are replaced with usual identifier
                 // and lifetime tokens, so the former are never encountered during normal parsing.
                 match **nt {
-                    token::NtIdent(ident, is_raw) => Token { kind: token::Ident(ident, is_raw), span: ident.span },
-                    token::NtLifetime(ident) => Token { kind: token::Lifetime(ident), span: ident.span },
+                    token::NtIdent(ident, is_raw) => Token::new(token::Ident(ident, is_raw), ident.span),
+                    token::NtLifetime(ident) => Token::new(token::Lifetime(ident), ident.span),
                     _ => return,
                 }
             }
@@ -2676,7 +2676,7 @@ impl<'a> Parser<'a> {
             },
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
-                let token = mem::replace(&mut self.token, Token { kind: token::Whitespace, span: DUMMY_SP });
+                let token = self.token.take();
                 self.bump();
                 TokenTree::Token(token)
             }
@@ -2763,7 +2763,7 @@ impl<'a> Parser<'a> {
                 // `not` is just an ordinary identifier in Rust-the-language,
                 // but as `rustc`-the-compiler, we can issue clever diagnostics
                 // for confused users who really want to say `!`
-                let token_cannot_continue_expr = |t: &token::Token| match t.kind {
+                let token_cannot_continue_expr = |t: &Token| match t.kind {
                     // These tokens can start an expression after `!`, but
                     // can't continue an expression after an ident
                     token::Ident(ident, is_raw) => token::ident_can_begin_expr(ident, is_raw),

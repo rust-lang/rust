@@ -10,7 +10,7 @@ impl<'a> StringReader<'a> {
     crate fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
         let mut tt_reader = TokenTreesReader {
             string_reader: self,
-            token: token::Token { kind: token::Eof, span: syntax_pos::DUMMY_SP },
+            token: Token::dummy(),
             open_braces: Vec::new(),
             unmatched_braces: Vec::new(),
             matching_delim_spans: Vec::new(),
@@ -202,7 +202,7 @@ impl<'a> TokenTreesReader<'a> {
                 Err(err)
             },
             _ => {
-                let tt = TokenTree::Token(self.token.clone());
+                let tt = TokenTree::Token(self.token.take());
                 // Note that testing for joint-ness here is done via the raw
                 // source span as the joint-ness is a property of the raw source
                 // rather than wanting to take `override_span` into account.

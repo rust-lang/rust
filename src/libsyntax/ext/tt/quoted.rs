@@ -154,7 +154,7 @@ impl TokenTree {
     }
 
     crate fn token(span: Span, kind: TokenKind) -> TokenTree {
-        TokenTree::Token(Token { kind, span })
+        TokenTree::Token(Token::new(kind, span))
     }
 }
 
