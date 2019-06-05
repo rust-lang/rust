@@ -5,7 +5,8 @@ use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::feature_gate::UnstableFeatures;
 use crate::parse::parser::Parser;
-use crate::syntax::parse::parser::emit_unclosed_delims;
+use crate::parse::parser::emit_unclosed_delims;
+use crate::parse::token::TokenKind;
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::diagnostics::plugin::ErrorMap;
 use crate::print::pprust::token_to_string;
@@ -358,13 +359,13 @@ pub fn stream_to_parser_with_base_dir<'a>(
 /// A sequence separator.
 pub struct SeqSep {
     /// The seperator token.
-    pub sep: Option<token::TokenKind>,
+    pub sep: Option<TokenKind>,
     /// `true` if a trailing separator is allowed.
     pub trailing_sep_allowed: bool,
 }
 
 impl SeqSep {
-    pub fn trailing_allowed(t: token::TokenKind) -> SeqSep {
+    pub fn trailing_allowed(t: TokenKind) -> SeqSep {
         SeqSep {
             sep: Some(t),
             trailing_sep_allowed: true,
@@ -426,7 +427,9 @@ mod tests {
             match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
                 (
                     4,
-                    Some(&TokenTree::Token(Token { kind: token::Ident(name_macro_rules, false), .. })),
+                    Some(&TokenTree::Token(Token {
+                        kind: token::Ident(name_macro_rules, false), ..
+                    })),
                     Some(&TokenTree::Token(Token { kind: token::Not, .. })),
                     Some(&TokenTree::Token(Token { kind: token::Ident(name_zip, false), .. })),
                     Some(&TokenTree::Delimited(_, macro_delim, ref macro_tts)),
@@ -446,7 +449,9 @@ mod tests {
                                 (
                                     2,
                                     Some(&TokenTree::Token(Token { kind: token::Dollar, .. })),
-                                    Some(&TokenTree::Token(Token { kind: token::Ident(name, false), .. })),
+                                    Some(&TokenTree::Token(Token {
+                                        kind: token::Ident(name, false), ..
+                                    })),
                                 )
                                 if first_delim == token::Paren && name.as_str() == "a" => {},
                                 _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
@@ -456,7 +461,9 @@ mod tests {
                                 (
                                     2,
                                     Some(&TokenTree::Token(Token { kind: token::Dollar, .. })),
-                                    Some(&TokenTree::Token(Token { kind: token::Ident(name, false), .. })),
+                                    Some(&TokenTree::Token(Token {
+                                        kind: token::Ident(name, false), ..
+                                    })),
                                 )
                                 if second_delim == token::Paren && name.as_str() == "a" => {},
                                 _ => panic!("value 4: {:?} {:?}", second_delim, second_tts),

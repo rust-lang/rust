@@ -921,10 +921,9 @@ pub struct Interner {
 
 impl Interner {
     fn prefill(init: &[&'static str]) -> Self {
-        let symbols = (0 .. init.len() as u32).map(Symbol::new);
         Interner {
-            strings: init.to_vec(),
-            names: init.iter().copied().zip(symbols).collect(),
+            strings: init.into(),
+            names: init.iter().copied().zip((0..).map(Symbol::new)).collect(),
             ..Default::default()
         }
     }

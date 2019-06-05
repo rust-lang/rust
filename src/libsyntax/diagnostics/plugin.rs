@@ -77,7 +77,9 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt<'_>,
         },
         (3, Some(&TokenTree::Token(Token { kind: token::Ident(code, _), .. })),
             Some(&TokenTree::Token(Token { kind: token::Comma, .. })),
-            Some(&TokenTree::Token(Token { kind: token::Literal(token::Lit { symbol, .. }), .. }))) => {
+            Some(&TokenTree::Token(Token {
+                kind: token::Literal(token::Lit { symbol, .. }), ..
+            }))) => {
             (code, Some(symbol))
         }
         _ => unreachable!()

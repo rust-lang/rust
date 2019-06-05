@@ -242,7 +242,7 @@ pub fn transcribe(
                         Ident::new(ident.name, ident.span.apply_mark(cx.current_expansion.mark));
                     sp = sp.apply_mark(cx.current_expansion.mark);
                     result.push(TokenTree::token(token::Dollar, sp).into());
-                    result.push(TokenTree::token(token::TokenKind::from_ast_ident(ident), sp).into());
+                    result.push(TokenTree::token(TokenKind::from_ast_ident(ident), sp).into());
                 }
             }
 

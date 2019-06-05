@@ -203,7 +203,8 @@ impl TokenStream {
                 if let Some((_, next)) = iter.peek() {
                     let sp = match (&ts, &next) {
                         (_, (TokenTree::Token(Token { kind: token::Comma, .. }), _)) => continue,
-                        ((TokenTree::Token(token_left), NonJoint), (TokenTree::Token(token_right), _))
+                        ((TokenTree::Token(token_left), NonJoint),
+                         (TokenTree::Token(token_right), _))
                         if ((token_left.is_ident() && !token_left.is_reserved_ident())
                             || token_left.is_lit()) &&
                             ((token_right.is_ident() && !token_right.is_reserved_ident())
@@ -575,7 +576,7 @@ impl DelimSpan {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::syntax::ast::Name;
+    use crate::ast::Name;
     use crate::with_default_globals;
     use crate::util::parser_testing::string_to_stream;
     use syntax_pos::{Span, BytePos, NO_EXPANSION};

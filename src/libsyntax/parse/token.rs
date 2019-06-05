@@ -5,11 +5,10 @@ pub use LitKind::*;
 pub use TokenKind::*;
 
 use crate::ast::{self};
-use crate::parse::ParseSess;
+use crate::parse::{parse_stream_from_source_str, ParseSess};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::symbol::kw;
-use crate::syntax::parse::parse_stream_from_source_str;
 use crate::tokenstream::{self, DelimSpan, TokenStream, TokenTree};
 
 use syntax_pos::symbol::Symbol;

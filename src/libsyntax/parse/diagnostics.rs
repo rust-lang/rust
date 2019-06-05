@@ -2,8 +2,9 @@ use crate::ast::{
     self, Arg, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
 };
-use crate::parse::{SeqSep, token, PResult, Parser};
+use crate::parse::{SeqSep, PResult, Parser};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
+use crate::parse::token::{self, TokenKind};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::Spanned;
@@ -229,8 +230,8 @@ impl<'a> Parser<'a> {
 
     pub fn expected_one_of_not_found(
         &mut self,
-        edible: &[token::TokenKind],
-        inedible: &[token::TokenKind],
+        edible: &[TokenKind],
+        inedible: &[TokenKind],
     ) -> PResult<'a, bool /* recovered */> {
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
@@ -368,7 +369,7 @@ impl<'a> Parser<'a> {
 
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
-    crate fn eat_to_tokens(&mut self, kets: &[&token::TokenKind]) {
+    crate fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
         let handler = self.diagnostic();
 
         if let Err(ref mut err) = self.parse_seq_to_before_tokens(
@@ -388,7 +389,7 @@ impl<'a> Parser<'a> {
     /// let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>();
     ///                                                        ^^ help: remove extra angle brackets
     /// ```
-    crate fn check_trailing_angle_brackets(&mut self, segment: &PathSegment, end: token::TokenKind) {
+    crate fn check_trailing_angle_brackets(&mut self, segment: &PathSegment, end: TokenKind) {
         // This function is intended to be invoked after parsing a path segment where there are two
         // cases:
         //
@@ -726,7 +727,7 @@ impl<'a> Parser<'a> {
     /// closing delimiter.
     pub fn unexpected_try_recover(
         &mut self,
-        t: &token::TokenKind,
+        t: &TokenKind,
     ) -> PResult<'a, bool /* recovered */> {
         let token_str = pprust::token_to_string(t);
         let this_token_str = self.this_token_descr();
@@ -903,7 +904,7 @@ impl<'a> Parser<'a> {
 
     crate fn recover_closing_delimiter(
         &mut self,
-        tokens: &[token::TokenKind],
+        tokens: &[TokenKind],
         mut err: DiagnosticBuilder<'a>,
     ) -> PResult<'a, bool> {
         let mut pos = None;

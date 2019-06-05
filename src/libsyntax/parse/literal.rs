@@ -272,7 +272,8 @@ impl<'a> Parser<'a> {
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`.
             recovered = self.look_ahead(1, |t| {
-                if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = t.kind {
+                if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix })
+                        = t.kind {
                     let next_span = self.look_ahead_span(1);
                     if self.span.hi() == next_span.lo() {
                         let s = String::from("0.") + &symbol.as_str();

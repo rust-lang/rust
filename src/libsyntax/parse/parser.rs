@@ -38,7 +38,7 @@ use crate::source_map::{self, SourceMap, Spanned, respan};
 use crate::parse::{SeqSep, classify, literal, token};
 use crate::parse::lexer::UnmatchedBrace;
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use crate::parse::token::{Token, DelimToken};
+use crate::parse::token::{Token, TokenKind, DelimToken};
 use crate::parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
 use crate::util::parser::{AssocOp, Fixity};
 use crate::print::pprust;
@@ -337,8 +337,8 @@ impl TokenCursor {
     }
 
     fn next_desugared(&mut self) -> Token {
-        let (sp, name) = match self.next() {
-            Token { span, kind: token::DocComment(name) } => (span, name),
+        let (name, sp) = match self.next() {
+            Token { kind: token::DocComment(name), span } => (name, span),
             tok => return tok,
         };
 
@@ -364,7 +364,7 @@ impl TokenCursor {
             [
                 TokenTree::token(token::Ident(sym::doc, false), sp),
                 TokenTree::token(token::Eq, sp),
-                TokenTree::token(token::TokenKind::lit(
+                TokenTree::token(TokenKind::lit(
                     token::StrRaw(num_of_hashes), Symbol::intern(&stripped), None
                 ), sp),
             ]
@@ -389,7 +389,7 @@ impl TokenCursor {
 
 #[derive(Clone, PartialEq)]
 crate enum TokenType {
-    Token(token::TokenKind),
+    Token(TokenKind),
     Keyword(Symbol),
     Operator,
     Lifetime,
@@ -419,7 +419,7 @@ impl TokenType {
 ///
 /// Types can also be of the form `IDENT(u8, u8) -> u8`, however this assumes
 /// that `IDENT` is not the ident of a fn trait.
-fn can_continue_type_after_non_fn_ident(t: &token::TokenKind) -> bool {
+fn can_continue_type_after_non_fn_ident(t: &TokenKind) -> bool {
     t == &token::ModSep || t == &token::Lt ||
     t == &token::BinOp(token::Shl)
 }
@@ -565,7 +565,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Expects and consumes the token `t`. Signals an error if the next token is not `t`.
-    pub fn expect(&mut self, t: &token::TokenKind) -> PResult<'a, bool /* recovered */> {
+    pub fn expect(&mut self, t: &TokenKind) -> PResult<'a, bool /* recovered */> {
         if self.expected_tokens.is_empty() {
             if self.token == *t {
                 self.bump();
@@ -583,8 +583,8 @@ impl<'a> Parser<'a> {
     /// anything.  Signal a fatal error if next token is unexpected.
     pub fn expect_one_of(
         &mut self,
-        edible: &[token::TokenKind],
-        inedible: &[token::TokenKind],
+        edible: &[TokenKind],
+        inedible: &[TokenKind],
     ) -> PResult<'a, bool /* recovered */> {
         if edible.contains(&self.token) {
             self.bump();
@@ -646,14 +646,14 @@ impl<'a> Parser<'a> {
     ///
     /// This method will automatically add `tok` to `expected_tokens` if `tok` is not
     /// encountered.
-    crate fn check(&mut self, tok: &token::TokenKind) -> bool {
+    crate fn check(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.token == *tok;
         if !is_present { self.expected_tokens.push(TokenType::Token(tok.clone())); }
         is_present
     }
 
     /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
-    pub fn eat(&mut self, tok: &token::TokenKind) -> bool {
+    pub fn eat(&mut self, tok: &TokenKind) -> bool {
         let is_present = self.check(tok);
         if is_present { self.bump() }
         is_present
@@ -889,7 +889,7 @@ impl<'a> Parser<'a> {
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
     pub fn parse_seq_to_end<T, F>(&mut self,
-                                  ket: &token::TokenKind,
+                                  ket: &TokenKind,
                                   sep: SeqSep,
                                   f: F)
                                   -> PResult<'a, Vec<T>> where
@@ -907,7 +907,7 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     pub fn parse_seq_to_before_end<T, F>(
         &mut self,
-        ket: &token::TokenKind,
+        ket: &TokenKind,
         sep: SeqSep,
         f: F,
     ) -> PResult<'a, (Vec<T>, bool)>
@@ -918,7 +918,7 @@ impl<'a> Parser<'a> {
 
     crate fn parse_seq_to_before_tokens<T, F>(
         &mut self,
-        kets: &[&token::TokenKind],
+        kets: &[&TokenKind],
         sep: SeqSep,
         expect: TokenExpectType,
         mut f: F,
@@ -992,8 +992,8 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_unspanned_seq<T, F>(
         &mut self,
-        bra: &token::TokenKind,
-        ket: &token::TokenKind,
+        bra: &TokenKind,
+        ket: &TokenKind,
         sep: SeqSep,
         f: F,
     ) -> PResult<'a, Vec<T>> where
@@ -1036,7 +1036,7 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser using provided token as a next one. Use this when
     /// consuming a part of a token. For example a single `<` from `<<`.
-    fn bump_with(&mut self, next: token::TokenKind, span: Span) {
+    fn bump_with(&mut self, next: TokenKind, span: Span) {
         self.prev_span = self.span.with_hi(span.lo());
         // It would be incorrect to record the kind of the current token, but
         // fortunately for tokens currently using `bump_with`, the
@@ -1050,7 +1050,6 @@ impl<'a> Parser<'a> {
         F: FnOnce(&Token) -> R,
     {
         if dist == 0 {
-            // FIXME: Avoid cloning here.
             return f(&self.token);
         }
 
@@ -1058,7 +1057,8 @@ impl<'a> Parser<'a> {
         f(&match frame.tree_cursor.look_ahead(dist - 1) {
             Some(tree) => match tree {
                 TokenTree::Token(token) => token,
-                TokenTree::Delimited(dspan, delim, _) => Token::new(token::OpenDelim(delim), dspan.open),
+                TokenTree::Delimited(dspan, delim, _) =>
+                    Token::new(token::OpenDelim(delim), dspan.open),
             }
             None => Token::new(token::CloseDelim(frame.delim), frame.span.close)
         })
@@ -1768,7 +1768,7 @@ impl<'a> Parser<'a> {
     fn parse_path_segment(&mut self, style: PathStyle) -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
 
-        let is_args_start = |token: &token::TokenKind| match *token {
+        let is_args_start = |token: &TokenKind| match *token {
             token::Lt | token::BinOp(token::Shl) | token::OpenDelim(token::Paren)
             | token::LArrow => true,
             _ => false,
@@ -1864,7 +1864,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_field_name(&mut self) -> PResult<'a, Ident> {
-        if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind {
+        if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) =
+                self.token.kind {
             self.expect_no_suffix(self.span, "a tuple index", suffix);
             self.bump();
             Ok(Ident::new(symbol, self.prev_span))
@@ -2649,8 +2650,10 @@ impl<'a> Parser<'a> {
                 // Interpolated identifier and lifetime tokens are replaced with usual identifier
                 // and lifetime tokens, so the former are never encountered during normal parsing.
                 match **nt {
-                    token::NtIdent(ident, is_raw) => Token::new(token::Ident(ident.name, is_raw), ident.span),
-                    token::NtLifetime(ident) => Token::new(token::Lifetime(ident.name), ident.span),
+                    token::NtIdent(ident, is_raw) =>
+                        Token::new(token::Ident(ident.name, is_raw), ident.span),
+                    token::NtLifetime(ident) =>
+                        Token::new(token::Lifetime(ident.name), ident.span),
                     _ => return,
                 }
             }
@@ -4481,7 +4484,9 @@ impl<'a> Parser<'a> {
                 // We used to incorrectly stop parsing macro-expanded statements here.
                 // If the next token will be an error anyway but could have parsed with the
                 // earlier behavior, stop parsing here and emit a warning to avoid breakage.
-                else if macro_legacy_warnings && self.token.can_begin_expr() && match self.token.kind {
+                else if macro_legacy_warnings &&
+                        self.token.can_begin_expr() &&
+                        match self.token.kind {
                     // These can continue an expression, so we can't stop parsing and warn.
                     token::OpenDelim(token::Paren) | token::OpenDelim(token::Bracket) |
                     token::BinOp(token::Minus) | token::BinOp(token::Star) |
@@ -6409,7 +6414,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Given a termination token, parses all of the items in a module.
-    fn parse_mod_items(&mut self, term: &token::TokenKind, inner_lo: Span) -> PResult<'a, Mod> {
+    fn parse_mod_items(&mut self, term: &TokenKind, inner_lo: Span) -> PResult<'a, Mod> {
         let mut items = vec![];
         while let Some(item) = self.parse_item()? {
             items.push(item);

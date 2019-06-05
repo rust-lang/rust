@@ -137,12 +137,6 @@ pub mod util {
 
 pub mod json;
 
-pub mod syntax {
-    pub use crate::ext;
-    pub use crate::parse;
-    pub use crate::ast;
-}
-
 pub mod ast;
 pub mod attr;
 pub mod source_map;

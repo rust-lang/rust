@@ -24,12 +24,12 @@ pub struct Delimited {
 
 impl Delimited {
     /// Returns the opening delimiter (possibly `NoDelim`).
-    pub fn open_token(&self) -> token::TokenKind {
+    pub fn open_token(&self) -> TokenKind {
         token::OpenDelim(self.delim)
     }
 
     /// Returns the closing delimiter (possibly `NoDelim`).
-    pub fn close_token(&self) -> token::TokenKind {
+    pub fn close_token(&self) -> TokenKind {
         token::CloseDelim(self.delim)
     }
 
@@ -59,7 +59,7 @@ pub struct SequenceRepetition {
     /// The sequence of token trees
     pub tts: Vec<TokenTree>,
     /// The optional separator
-    pub separator: Option<token::TokenKind>,
+    pub separator: Option<TokenKind>,
     /// Whether the sequence can be repeated zero (*), or one or more times (+)
     pub op: KleeneOp,
     /// The number of `Match`s that appear in the sequence (and subsequences)
@@ -210,20 +210,21 @@ pub fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
-                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) => match trees.next() {
-                        Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
-                            Some((kind, _)) => {
-                                let span = token.span.with_lo(start_sp.lo());
-                                result.push(TokenTree::MetaVarDecl(span, ident, kind));
-                                continue;
-                            }
-                            _ => token.span,
+                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) =>
+                        match trees.next() {
+                            Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
+                                Some((kind, _)) => {
+                                    let span = token.span.with_lo(start_sp.lo());
+                                    result.push(TokenTree::MetaVarDecl(span, ident, kind));
+                                    continue;
+                                }
+                                _ => token.span,
+                            },
+                            tree => tree
+                                .as_ref()
+                                .map(tokenstream::TokenTree::span)
+                                .unwrap_or(span),
                         },
-                        tree => tree
-                            .as_ref()
-                            .map(tokenstream::TokenTree::span)
-                            .unwrap_or(span),
-                    },
                     tree => tree
                         .as_ref()
                         .map(tokenstream::TokenTree::span)
@@ -370,7 +371,7 @@ where
 
 /// Takes a token and returns `Some(KleeneOp)` if the token is `+` `*` or `?`. Otherwise, return
 /// `None`.
-fn kleene_op(token: &token::TokenKind) -> Option<KleeneOp> {
+fn kleene_op(token: &TokenKind) -> Option<KleeneOp> {
     match *token {
         token::BinOp(token::Star) => Some(KleeneOp::ZeroOrMore),
         token::BinOp(token::Plus) => Some(KleeneOp::OneOrMore),
@@ -423,7 +424,7 @@ fn parse_sep_and_kleene_op<I>(
     attrs: &[ast::Attribute],
     edition: Edition,
     macro_node_id: NodeId,
-) -> (Option<token::TokenKind>, KleeneOp)
+) -> (Option<TokenKind>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
@@ -448,7 +449,7 @@ fn parse_sep_and_kleene_op_2015<I>(
     _features: &Features,
     _attrs: &[ast::Attribute],
     macro_node_id: NodeId,
-) -> (Option<token::TokenKind>, KleeneOp)
+) -> (Option<TokenKind>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
@@ -566,7 +567,7 @@ fn parse_sep_and_kleene_op_2018<I>(
     sess: &ParseSess,
     _features: &Features,
     _attrs: &[ast::Attribute],
-) -> (Option<token::TokenKind>, KleeneOp)
+) -> (Option<TokenKind>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
