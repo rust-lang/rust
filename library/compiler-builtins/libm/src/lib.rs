@@ -417,6 +417,8 @@ pub trait F64Ext: private::Sealed + Sized {
     fn acosh(self) -> Self;
 
     fn atanh(self) -> Self;
+
+    fn min(self, other: Self) -> Self;
 }
 
 impl F64Ext for f64 {
@@ -607,6 +609,11 @@ impl F64Ext for f64 {
     #[inline]
     fn atanh(self) -> Self {
         atanh(self)
+    }
+
+    #[inline]
+    fn min(self, other: Self) -> Self {
+        min(self, other)
     }
 }
 

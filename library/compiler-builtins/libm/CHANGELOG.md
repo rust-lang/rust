@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - minf
+- min
 
 ## [v0.1.2] - 2018-07-18
 
