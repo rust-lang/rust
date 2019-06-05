@@ -5,6 +5,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- minf
+- fmin
+- fmaxf
+- fmax
+
 ## [v0.1.2] - 2018-07-18
 
 ### Added

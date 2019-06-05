@@ -136,6 +136,10 @@ pub trait F32Ext: private::Sealed + Sized {
     fn acosh(self) -> Self;
 
     fn atanh(self) -> Self;
+
+    fn min(self, other: Self) -> Self;
+
+    fn max(self, other: Self) -> Self;
 }
 
 impl F32Ext for f32 {
@@ -327,6 +331,16 @@ impl F32Ext for f32 {
     fn atanh(self) -> Self {
         atanhf(self)
     }
+
+    #[inline]
+    fn min(self, other: Self) -> Self {
+        fminf(self, other)
+    }
+
+    #[inline]
+    fn max(self, other: Self) -> Self {
+        fmaxf(self, other)
+    }
 }
 
 /// Math support for `f64`
@@ -410,6 +424,10 @@ pub trait F64Ext: private::Sealed + Sized {
     fn acosh(self) -> Self;
 
     fn atanh(self) -> Self;
+
+    fn min(self, other: Self) -> Self;
+
+    fn max(self, other: Self) -> Self;
 }
 
 impl F64Ext for f64 {
@@ -600,6 +618,16 @@ impl F64Ext for f64 {
     #[inline]
     fn atanh(self) -> Self {
         atanh(self)
+    }
+
+    #[inline]
+    fn min(self, other: Self) -> Self {
+        fmin(self, other)
+    }
+
+    #[inline]
+    fn max(self, other: Self) -> Self {
+        fmax(self, other)
     }
 }
 
