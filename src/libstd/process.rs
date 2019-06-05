@@ -1153,10 +1153,13 @@ impl From<fs::File> for Stdio {
 ///
 /// This `struct` is used to represent the exit status of a child process.
 /// Child processes are created via the [`Command`] struct and their exit
-/// status is exposed through the [`status`] method.
+/// status is exposed through the [`status`] method, or the [`wait`] method
+/// of a [`Child`] process.
 ///
 /// [`Command`]: struct.Command.html
+/// [`Child`]: struct.Child.html
 /// [`status`]: struct.Command.html#method.status
+/// [`wait`]: struct.Child.html#method.wait
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
