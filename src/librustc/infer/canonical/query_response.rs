@@ -279,7 +279,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
-        output_query_outlives_constraints: &mut Vec<QueryOutlivesConstraint<'tcx>>,
+        output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
     ) -> InferResult<'tcx, R>
     where
         R: Debug + TypeFoldable<'tcx>,
@@ -305,9 +305,11 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 (UnpackedKind::Lifetime(v_o), UnpackedKind::Lifetime(v_r)) => {
                     // To make `v_o = v_r`, we emit `v_o: v_r` and `v_r: v_o`.
                     if v_o != v_r {
-                        output_query_outlives_constraints
+                        output_query_region_constraints
+                            .outlives
                             .push(ty::Binder::dummy(ty::OutlivesPredicate(v_o.into(), v_r)));
-                        output_query_outlives_constraints
+                        output_query_region_constraints
+                            .outlives
                             .push(ty::Binder::dummy(ty::OutlivesPredicate(v_r.into(), v_o)));
                     }
                 }
@@ -333,7 +335,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         }
 
         // ...also include the other query region constraints from the query.
-        output_query_outlives_constraints.extend(
+        output_query_region_constraints.outlives.extend(
             query_response.value.region_constraints.outlives.iter().filter_map(|r_c| {
                 let r_c = substitute_value(self.tcx, &result_subst, r_c);
 
