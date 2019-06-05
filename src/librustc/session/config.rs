@@ -2003,7 +2003,7 @@ pub fn build_session_options_and_crate_config(
             None |
             Some("human") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
             Some("human-annotate-rs") => {
-                ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateRs(color))
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(color))
             },
             Some("json") => ErrorOutputType::Json { pretty: false, json_rendered },
             Some("pretty-json") => ErrorOutputType::Json { pretty: true, json_rendered },
@@ -2041,7 +2041,7 @@ pub fn build_session_options_and_crate_config(
                 "--error-format=pretty-json is unstable",
             );
         }
-        if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateRs(_)) =
+        if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(_)) =
             error_format {
             early_error(
                 ErrorOutputType::Json { pretty: false, json_rendered },

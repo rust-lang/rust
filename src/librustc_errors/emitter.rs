@@ -24,7 +24,7 @@ use termcolor::{WriteColor, Color, Buffer};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HumanReadableErrorType {
     Default(ColorConfig),
-    AnnotateRs(ColorConfig),
+    AnnotateSnippet(ColorConfig),
     Short(ColorConfig),
 }
 
@@ -34,7 +34,7 @@ impl HumanReadableErrorType {
         match self {
             HumanReadableErrorType::Default(cc) => (false, cc),
             HumanReadableErrorType::Short(cc) => (true, cc),
-            HumanReadableErrorType::AnnotateRs(cc) => (false, cc),
+            HumanReadableErrorType::AnnotateSnippet(cc) => (false, cc),
         }
     }
     pub fn new_emitter(

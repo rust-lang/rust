@@ -1,9 +1,9 @@
-/// Emit diagnostics using the `annotate-snippets` library
-///
-/// This is the equivalent of `./emitter.rs` but making use of the
-/// [`annotate-snippets`][annotate_snippets] library instead of building the output ourselves.
-///
-/// [annotate_snippets]: https://docs.rs/crate/annotate-snippets/
+//! Emit diagnostics using the `annotate-snippets` library
+//!
+//! This is the equivalent of `./emitter.rs` but making use of the
+//! [`annotate-snippets`][annotate_snippets] library instead of building the output ourselves.
+//!
+//! [annotate_snippets]: https://docs.rs/crate/annotate-snippets/
 
 use syntax_pos::{SourceFile, MultiSpan, Loc};
 use crate::{
@@ -18,8 +18,8 @@ use annotate_snippets::display_list::DisplayList;
 use annotate_snippets::formatter::DisplayListFormatter;
 
 
-/// Generates diagnostics using annotate-rs
-pub struct AnnotateRsEmitterWriter {
+/// Generates diagnostics using annotate-snippet
+pub struct AnnotateSnippetEmitterWriter {
     source_map: Option<Lrc<SourceMapperDyn>>,
     /// If true, hides the longer explanation text
     short_message: bool,
@@ -27,7 +27,7 @@ pub struct AnnotateRsEmitterWriter {
     ui_testing: bool,
 }
 
-impl Emitter for AnnotateRsEmitterWriter {
+impl Emitter for AnnotateSnippetEmitterWriter {
     /// The entry point for the diagnostics generation
     fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
         let primary_span = db.span.clone();
@@ -158,7 +158,7 @@ impl<'a>  DiagnosticConverter<'a> {
     }
 }
 
-impl AnnotateRsEmitterWriter {
+impl AnnotateSnippetEmitterWriter {
     pub fn new(
         source_map: Option<Lrc<SourceMapperDyn>>,
         short_message: bool
