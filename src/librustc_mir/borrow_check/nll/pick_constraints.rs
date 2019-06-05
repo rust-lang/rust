@@ -55,18 +55,20 @@ newtype_index! {
     }
 }
 
-impl<'tcx> PickConstraintSet<'tcx, ty::RegionVid> {
-    crate fn new() -> Self {
+impl Default for PickConstraintSet<'tcx, ty::RegionVid> {
+    fn default() -> Self {
         Self {
             first_constraints: Default::default(),
             constraints: Default::default(),
             option_regions: Default::default(),
         }
     }
+}
 
+impl<'tcx> PickConstraintSet<'tcx, ty::RegionVid> {
     crate fn push_constraint(
         &mut self,
-        p_c: PickConstraint<'tcx>,
+        p_c: &PickConstraint<'tcx>,
         mut to_region_vid: impl FnMut(ty::Region<'tcx>) -> ty::RegionVid,
     ) {
         let pick_region_vid: ty::RegionVid = to_region_vid(p_c.pick_region);

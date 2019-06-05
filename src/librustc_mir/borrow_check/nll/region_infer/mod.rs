@@ -1,6 +1,7 @@
 use super::universal_regions::UniversalRegions;
 use crate::borrow_check::nll::constraints::graph::NormalConstraintGraph;
 use crate::borrow_check::nll::constraints::{ConstraintSccIndex, OutlivesConstraintSet, OutlivesConstraint};
+use crate::borrow_check::nll::pick_constraints::PickConstraintSet;
 use crate::borrow_check::nll::region_infer::values::{
     PlaceholderIndices, RegionElement, ToElementIndex
 };
@@ -187,6 +188,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
         _body: &Body<'tcx>,
         outlives_constraints: OutlivesConstraintSet,
+        pick_constraints: PickConstraintSet<'tcx, RegionVid>,
         closure_bounds_mapping: FxHashMap<
             Location,
             FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
@@ -217,6 +219,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let scc_universes = Self::compute_scc_universes(&constraint_sccs, &definitions);
 
         let scc_representatives = Self::compute_scc_representatives(&constraint_sccs, &definitions);
+
+        let _pick_constraints_scc = pick_constraints.into_mapped( // TODO
+            |r| constraint_sccs.scc(r),
+        );
 
         let mut result = Self {
             definitions,
