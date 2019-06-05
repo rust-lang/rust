@@ -287,8 +287,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
             self.relations.relate_universal_regions(fr, fr_fn_body);
         }
 
-        for data in constraint_sets {
-            let QueryRegionConstraints { outlives, pick_constraints: _ } = &*data; // TODO
+        for data in &constraint_sets {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 &self.universal_regions,
@@ -298,7 +297,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                 Locations::All(DUMMY_SP),
                 ConstraintCategory::Internal,
                 &mut self.constraints,
-            ).convert_all(outlives);
+            ).convert_all(data);
         }
 
         CreateResult {

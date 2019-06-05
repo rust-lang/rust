@@ -1100,8 +1100,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations, data
         );
 
-        let QueryRegionConstraints { outlives, pick_constraints: _ } = data; // TODO
-
         constraint_conversion::ConstraintConversion::new(
             self.infcx,
             self.borrowck_context.universal_regions,
@@ -1111,7 +1109,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations,
             category,
             &mut self.borrowck_context.constraints,
-        ).convert_all(outlives);
+        ).convert_all(data);
     }
 
     /// Convenient wrapper around `relate_tys::relate_types` -- see
