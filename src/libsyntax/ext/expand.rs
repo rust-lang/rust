@@ -791,28 +791,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
             }
 
-            IdentTT { ref expander, span: tt_span, ref allow_internal_unstable } => {
-                if ident.name == kw::Invalid {
-                    self.cx.span_err(path.span,
-                                    &format!("macro {}! expects an ident argument", path));
-                    self.cx.trace_macros_diag();
-                    kind.dummy(span)
-                } else {
-                    invoc.expansion_data.mark.set_expn_info(ExpnInfo {
-                        call_site: span,
-                        def_site: tt_span,
-                        format: macro_bang_format(path),
-                        allow_internal_unstable: allow_internal_unstable.clone(),
-                        allow_internal_unsafe: false,
-                        local_inner_macros: false,
-                        edition: self.cx.parse_sess.edition,
-                    });
-
-                    let input: Vec<_> = mac.node.stream().into_trees().collect();
-                    kind.make_from(expander.expand(self.cx, span, ident, input))
-                }
-            }
-
             MultiDecorator(..) | MultiModifier(..) |
             AttrProcMacro(..) | SyntaxExtension::NonMacroAttr { .. } => {
                 self.cx.span_err(path.span,

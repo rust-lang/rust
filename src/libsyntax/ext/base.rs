@@ -288,34 +288,6 @@ impl<F> TTMacroExpander for F
     }
 }
 
-pub trait IdentMacroExpander {
-    fn expand<'cx>(&self,
-                   cx: &'cx mut ExtCtxt<'_>,
-                   sp: Span,
-                   ident: ast::Ident,
-                   token_tree: Vec<tokenstream::TokenTree>)
-                   -> Box<dyn MacResult+'cx>;
-}
-
-pub type IdentMacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, ast::Ident, Vec<tokenstream::TokenTree>)
-                -> Box<dyn MacResult+'cx>;
-
-impl<F> IdentMacroExpander for F
-    where F : for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, ast::Ident,
-                          Vec<tokenstream::TokenTree>) -> Box<dyn MacResult+'cx>
-{
-    fn expand<'cx>(&self,
-                   cx: &'cx mut ExtCtxt<'_>,
-                   sp: Span,
-                   ident: ast::Ident,
-                   token_tree: Vec<tokenstream::TokenTree>)
-                   -> Box<dyn MacResult+'cx>
-    {
-        (*self)(cx, sp, ident, token_tree)
-    }
-}
-
 // Use a macro because forwarding to a simple function has type system issues
 macro_rules! make_stmts_default {
     ($me:expr) => {
@@ -658,14 +630,6 @@ pub enum SyntaxExtension {
         edition: Edition,
     },
 
-    /// A function-like syntax extension that has an extra ident before
-    /// the block.
-    IdentTT {
-        expander: Box<dyn IdentMacroExpander + sync::Sync + sync::Send>,
-        span: Option<Span>,
-        allow_internal_unstable: Option<Lrc<[Symbol]>>,
-    },
-
     /// An attribute-like procedural macro. TokenStream -> TokenStream.
     /// The input is the annotated item.
     /// Allows generating code to implement a Trait for a given struct
@@ -691,7 +655,6 @@ impl SyntaxExtension {
         match *self {
             SyntaxExtension::DeclMacro { .. } |
             SyntaxExtension::NormalTT { .. } |
-            SyntaxExtension::IdentTT { .. } |
             SyntaxExtension::ProcMacro { .. } =>
                 MacroKind::Bang,
             SyntaxExtension::NonMacroAttr { .. } |
@@ -725,7 +688,6 @@ impl SyntaxExtension {
             SyntaxExtension::ProcMacroDerive(.., edition) => edition,
             // Unstable legacy stuff
             SyntaxExtension::NonMacroAttr { .. } |
-            SyntaxExtension::IdentTT { .. } |
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
             SyntaxExtension::BuiltinDerive(..) => default_edition,
