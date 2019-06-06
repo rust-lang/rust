@@ -102,7 +102,7 @@ pub struct Lint {{
     pub module: &'static str,
 }}
 
-pub const ALL_LINTS: [Lint; {}] = {:#?};",
+pub const ALL_LINTS: [Lint; {}] = {:#?};\n",
             lint_list.len(),
             lint_list
         ),
