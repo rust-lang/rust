@@ -893,29 +893,29 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             edition: ext.edition(self.cx.parse_sess.edition),
         };
 
-        match *ext {
-            ProcMacroDerive(ref ext, ..) => {
-                invoc.expansion_data.mark.set_expn_info(expn_info);
-                let span = span.with_ctxt(self.cx.backtrace());
-                let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
-                    path: Path::from_ident(Ident::invalid()),
-                    span: DUMMY_SP,
-                    node: ast::MetaItemKind::Word,
+        match ext {
+            ProcMacroDerive(expander, ..) | BuiltinDerive(expander) => {
+                let meta = match ext {
+                    ProcMacroDerive(..) => ast::MetaItem { // FIXME(jseyfried) avoid this
+                        path: Path::from_ident(Ident::invalid()),
+                        span: DUMMY_SP,
+                        node: ast::MetaItemKind::Word,
+                    },
+                    _ => {
+                        expn_info.allow_internal_unstable = Some(vec![
+                            sym::rustc_attrs,
+                            Symbol::intern("derive_clone_copy"),
+                            Symbol::intern("derive_eq"),
+                            // RustcDeserialize and RustcSerialize
+                            Symbol::intern("libstd_sys_internals"),
+                        ].into());
+                        attr.meta()?
+                    }
                 };
-                let items = ext.expand(self.cx, span, &dummy, item);
-                Some(invoc.fragment_kind.expect_from_annotatables(items))
-            }
-            BuiltinDerive(func) => {
-                expn_info.allow_internal_unstable = Some(vec![
-                    sym::rustc_attrs,
-                    Symbol::intern("derive_clone_copy"),
-                    Symbol::intern("derive_eq"),
-                    Symbol::intern("libstd_sys_internals"), // RustcDeserialize and RustcSerialize
-                ].into());
+
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
-                let mut items = Vec::new();
-                func(self.cx, span, &attr.meta()?, &item, &mut |a| items.push(a));
+                let items = expander.expand(self.cx, span, &meta, item);
                 Some(invoc.fragment_kind.expect_from_annotatables(items))
             }
             _ => {

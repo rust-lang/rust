@@ -1,6 +1,6 @@
 pub use SyntaxExtension::*;
 
-use crate::ast::{self, Attribute, Name, PatKind, MetaItem};
+use crate::ast::{self, Attribute, Name, PatKind};
 use crate::attr::HasAttrs;
 use crate::source_map::{SourceMap, Spanned, respan};
 use crate::edition::Edition;
@@ -519,9 +519,6 @@ impl MacResult for DummyResult {
     }
 }
 
-pub type BuiltinDeriveFn =
-    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable));
-
 /// Represents different kinds of macro invocations that can be resolved.
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum MacroKind {
@@ -607,7 +604,7 @@ pub enum SyntaxExtension {
                     Vec<Symbol> /* inert attribute names */, Edition),
 
     /// An attribute-like procedural macro that derives a builtin trait.
-    BuiltinDerive(BuiltinDeriveFn),
+    BuiltinDerive(Box<dyn MultiItemModifier + sync::Sync + sync::Send>),
 
     /// A declarative macro, e.g., `macro m() {}`.
     DeclMacro {
