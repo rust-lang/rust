@@ -213,17 +213,17 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for LintCollector<'a, 'tcx> {
 
 #[derive(Clone, Default)]
 pub struct CompilerLintFunctions {
-    map: FxHashMap<String, String>,
+    map: FxHashMap<&'static str, &'static str>,
 }
 
 impl CompilerLintFunctions {
     pub fn new() -> Self {
         let mut map = FxHashMap::default();
-        map.insert("span_lint".to_string(), "utils::span_lint".to_string());
-        map.insert("struct_span_lint".to_string(), "utils::span_lint".to_string());
-        map.insert("lint".to_string(), "utils::span_lint".to_string());
-        map.insert("span_lint_note".to_string(), "utils::span_note_and_lint".to_string());
-        map.insert("span_lint_help".to_string(), "utils::span_help_and_lint".to_string());
+        map.insert("span_lint", "utils::span_lint");
+        map.insert("struct_span_lint", "utils::span_lint");
+        map.insert("lint", "utils::span_lint");
+        map.insert("span_lint_note", "utils::span_note_and_lint");
+        map.insert("span_lint_help", "utils::span_help_and_lint");
         Self { map }
     }
 }
@@ -234,8 +234,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
-            let fn_name = path.ident.as_str().to_string();
-            if let Some(sugg) = self.map.get(&fn_name);
+            let fn_name = path.ident;
+            if let Some(sugg) = self.map.get(&*fn_name.as_str());
             let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
             if match_type(cx, ty, &paths::EARLY_CONTEXT)
                 || match_type(cx, ty, &paths::LATE_CONTEXT);
