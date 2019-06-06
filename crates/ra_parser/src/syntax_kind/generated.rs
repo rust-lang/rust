@@ -103,6 +103,7 @@ pub enum SyntaxKind {
     LET_KW,
     MOVE_KW,
     RETURN_KW,
+    TRY_KW,
     AUTO_KW,
     DEFAULT_KW,
     UNION_KW,
@@ -184,6 +185,7 @@ pub enum SyntaxKind {
     STRUCT_LIT,
     NAMED_FIELD_LIST,
     NAMED_FIELD,
+    TRY_BLOCK_EXPR,
     CALL_EXPR,
     INDEX_EXPR,
     METHOD_CALL_EXPR,
@@ -331,6 +333,7 @@ macro_rules! T {
     (let) => { $crate::SyntaxKind::LET_KW };
     (move) => { $crate::SyntaxKind::MOVE_KW };
     (return) => { $crate::SyntaxKind::RETURN_KW };
+    (try) => { $crate::SyntaxKind::TRY_KW };
     (auto) => { $crate::SyntaxKind::AUTO_KW };
     (default) => { $crate::SyntaxKind::DEFAULT_KW };
     (union) => { $crate::SyntaxKind::UNION_KW };
@@ -388,6 +391,7 @@ impl SyntaxKind {
             | LET_KW
             | MOVE_KW
             | RETURN_KW
+            | TRY_KW
             | AUTO_KW
             | DEFAULT_KW
             | UNION_KW
@@ -559,6 +563,7 @@ impl SyntaxKind {
             LET_KW => &SyntaxInfo { name: "LET_KW" },
             MOVE_KW => &SyntaxInfo { name: "MOVE_KW" },
             RETURN_KW => &SyntaxInfo { name: "RETURN_KW" },
+            TRY_KW => &SyntaxInfo { name: "TRY_KW" },
             AUTO_KW => &SyntaxInfo { name: "AUTO_KW" },
             DEFAULT_KW => &SyntaxInfo { name: "DEFAULT_KW" },
             UNION_KW => &SyntaxInfo { name: "UNION_KW" },
@@ -640,6 +645,7 @@ impl SyntaxKind {
             STRUCT_LIT => &SyntaxInfo { name: "STRUCT_LIT" },
             NAMED_FIELD_LIST => &SyntaxInfo { name: "NAMED_FIELD_LIST" },
             NAMED_FIELD => &SyntaxInfo { name: "NAMED_FIELD" },
+            TRY_BLOCK_EXPR => &SyntaxInfo { name: "TRY_BLOCK_EXPR" },
             CALL_EXPR => &SyntaxInfo { name: "CALL_EXPR" },
             INDEX_EXPR => &SyntaxInfo { name: "INDEX_EXPR" },
             METHOD_CALL_EXPR => &SyntaxInfo { name: "METHOD_CALL_EXPR" },
@@ -734,6 +740,7 @@ impl SyntaxKind {
             "let" => LET_KW,
             "move" => MOVE_KW,
             "return" => RETURN_KW,
+            "try" => TRY_KW,
             _ => return None,
         };
         Some(kw)

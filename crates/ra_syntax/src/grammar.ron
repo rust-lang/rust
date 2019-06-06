@@ -95,6 +95,7 @@ Grammar(
         "let",
         "move",
         "return",
+        "try",
     ],
     contextual_keywords: [
         "auto",
@@ -189,6 +190,7 @@ Grammar(
         "STRUCT_LIT",
         "NAMED_FIELD_LIST",
         "NAMED_FIELD",
+        "TRY_BLOCK_EXPR",
 
         // postfix
         "CALL_EXPR",
@@ -417,6 +419,9 @@ Grammar(
         "LoopExpr": (
             traits: ["LoopBodyOwner"],
         ),
+        "TryBlockExpr": (
+            traits: ["TryBlockBodyOwner"],
+        ),
         "ForExpr": (
             traits: ["LoopBodyOwner"],
             options: [
@@ -499,6 +504,7 @@ Grammar(
                 "MethodCallExpr",
                 "FieldExpr",
                 "TryExpr",
+                "TryBlockExpr",
                 "CastExpr",
                 "RefExpr",
                 "PrefixExpr",

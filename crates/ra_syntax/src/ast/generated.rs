@@ -713,6 +713,7 @@ pub enum ExprKind<'a> {
     MethodCallExpr(&'a MethodCallExpr),
     FieldExpr(&'a FieldExpr),
     TryExpr(&'a TryExpr),
+    TryBlockExpr(&'a TryBlockExpr),
     CastExpr(&'a CastExpr),
     RefExpr(&'a RefExpr),
     PrefixExpr(&'a PrefixExpr),
@@ -826,6 +827,11 @@ impl<'a> From<&'a TryExpr> for &'a Expr {
         Expr::cast(&n.syntax).unwrap()
     }
 }
+impl<'a> From<&'a TryBlockExpr> for &'a Expr {
+    fn from(n: &'a TryBlockExpr) -> &'a Expr {
+        Expr::cast(&n.syntax).unwrap()
+    }
+}
 impl<'a> From<&'a CastExpr> for &'a Expr {
     fn from(n: &'a CastExpr) -> &'a Expr {
         Expr::cast(&n.syntax).unwrap()
@@ -887,6 +893,7 @@ impl AstNode for Expr {
             | METHOD_CALL_EXPR
             | FIELD_EXPR
             | TRY_EXPR
+            | TRY_BLOCK_EXPR
             | CAST_EXPR
             | REF_EXPR
             | PREFIX_EXPR
@@ -929,6 +936,7 @@ impl Expr {
             METHOD_CALL_EXPR => ExprKind::MethodCallExpr(MethodCallExpr::cast(&self.syntax).unwrap()),
             FIELD_EXPR => ExprKind::FieldExpr(FieldExpr::cast(&self.syntax).unwrap()),
             TRY_EXPR => ExprKind::TryExpr(TryExpr::cast(&self.syntax).unwrap()),
+            TRY_BLOCK_EXPR => ExprKind::TryBlockExpr(TryBlockExpr::cast(&self.syntax).unwrap()),
             CAST_EXPR => ExprKind::CastExpr(CastExpr::cast(&self.syntax).unwrap()),
             REF_EXPR => ExprKind::RefExpr(RefExpr::cast(&self.syntax).unwrap()),
             PREFIX_EXPR => ExprKind::PrefixExpr(PrefixExpr::cast(&self.syntax).unwrap()),
@@ -3671,6 +3679,35 @@ impl TraitDef {
         super::child_opt(self)
     }
 }
+
+// TryBlockExpr
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TryBlockExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for TryBlockExpr {
+    type Repr = rowan::SyntaxNode;
+}
+
+impl AstNode for TryBlockExpr {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            TRY_BLOCK_EXPR => Some(TryBlockExpr::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for TryBlockExpr {
+    type Owned = TreeArc<TryBlockExpr>;
+    fn to_owned(&self) -> TreeArc<TryBlockExpr> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl ast::TryBlockBodyOwner for TryBlockExpr {}
+impl TryBlockExpr {}
 
 // TryExpr
 #[derive(Debug, PartialEq, Eq, Hash)]

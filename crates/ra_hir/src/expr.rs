@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_syntax::{
     SyntaxNodePtr, AstPtr, AstNode,
-    ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralKind,ArrayExprKind, TypeAscriptionOwner},
+    ast::{self, TryBlockBodyOwner, LoopBodyOwner, ArgListOwner, NameOwner, LiteralKind,ArrayExprKind, TypeAscriptionOwner},
 };
 
 use crate::{
@@ -216,6 +216,9 @@ pub enum Expr {
     Try {
         expr: ExprId,
     },
+    TryBlock {
+        body: ExprId,
+    },
     Cast {
         expr: ExprId,
         type_ref: TypeRef,
@@ -299,6 +302,7 @@ impl Expr {
                     f(*expr);
                 }
             }
+            Expr::TryBlock { body } => f(*body),
             Expr::Loop { body } => f(*body),
             Expr::While { condition, body } => {
                 f(*condition);
@@ -577,6 +581,10 @@ where
                     });
                     self.alloc_expr(Expr::If { condition, then_branch, else_branch }, syntax_ptr)
                 }
+            }
+            ast::ExprKind::TryBlockExpr(e) => {
+                let body = self.collect_block_opt(e.try_body());
+                self.alloc_expr(Expr::TryBlock { body }, syntax_ptr)
             }
             ast::ExprKind::BlockExpr(e) => self.collect_block_opt(e.block()),
             ast::ExprKind::LoopExpr(e) => {

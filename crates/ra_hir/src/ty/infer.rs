@@ -946,6 +946,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 then_ty
             }
             Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
+            Expr::TryBlock { body } => {
+                let _inner = self.infer_expr(*body, expected);
+                
+                // FIXME should be std::result::Result<{inner}, _>
+                Ty::Unknown
+            }
             Expr::Loop { body } => {
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 // FIXME handle break with value
