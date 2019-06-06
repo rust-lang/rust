@@ -56,7 +56,7 @@ mod prelude {
 
     pub use rustc::bug;
     pub use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-    pub use rustc::mir::{self, interpret::AllocId, *};
+    pub use rustc::mir::{self, interpret::AllocId, mono::MonoItem, *};
     pub use rustc::session::{
         config::{CrateType, Lto},
         Session,
@@ -71,7 +71,7 @@ mod prelude {
         indexed_vec::Idx,
         sync::Lrc,
     };
-    pub use rustc_mir::monomorphize::{collector, MonoItem};
+    pub use rustc_mir::monomorphize::collector;
 
     pub use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
     pub use rustc_codegen_ssa::traits::*;

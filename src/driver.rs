@@ -8,7 +8,6 @@ use rustc::mir::mono::{Linkage as RLinkage, Visibility};
 use rustc::session::config::{DebugInfo, OutputType};
 use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::CrateInfo;
-use rustc_mir::monomorphize::partitioning::CodegenUnitExt;
 
 use cranelift_faerie::*;
 

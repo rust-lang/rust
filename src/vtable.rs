@@ -89,7 +89,7 @@ fn build_vtable<'a, 'tcx: 'a>(
     let drop_in_place_fn = import_function(
         tcx,
         fx.module,
-        crate::rustc_mir::monomorphize::resolve_drop_in_place(tcx, ty),
+        Instance::resolve_drop_in_place(tcx, ty),
     );
 
     let mut components: Vec<_> = vec![Some(drop_in_place_fn), None, None];

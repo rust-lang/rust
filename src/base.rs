@@ -288,7 +288,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
             } => {
                 let ty = location.ty(fx.mir, fx.tcx).ty;
                 let ty = fx.monomorphize(&ty);
-                let drop_fn = crate::rustc_mir::monomorphize::resolve_drop_in_place(fx.tcx, ty);
+                let drop_fn = Instance::resolve_drop_in_place(fx.tcx, ty);
 
                 if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
                     // we don't actually need to drop anything
@@ -603,7 +603,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let operand = trans_operand(fx, operand);
                     match operand.layout().ty.sty {
                         ty::Closure(def_id, substs) => {
-                            let instance = rustc_mir::monomorphize::resolve_closure(
+                            let instance = Instance::resolve_closure(
                                 fx.tcx,
                                 def_id,
                                 substs,

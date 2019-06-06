@@ -5,7 +5,7 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::Const;
 use rustc_mir::interpret::{
-    InterpretCx, ImmTy, MPlaceTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
+    InterpretCx, ImmTy, Machine, Memory, MemoryKind, OpTy, PlaceTy,
     StackPopCleanup,
 };
 
@@ -375,7 +375,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     fn find_foreign_static(
         _: DefId,
         _: ::rustc::ty::query::TyCtxtAt<'a, 'tcx, 'tcx>,
-        _: &(),
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation>> {
         panic!();
     }
@@ -393,27 +392,17 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn tag_dereference(
-        _: &InterpretCx<'a, 'mir, 'tcx, Self>,
-        _: MPlaceTy<'tcx>,
-        _: Option<::rustc::hir::Mutability>,
-    ) -> EvalResult<'tcx, Scalar> {
-        panic!();
+    fn tag_allocation<'b>(
+        _: AllocId,
+        alloc: Cow<'b, Allocation>,
+        _: Option<MemoryKind<!>>,
+        _: &(),
+    ) -> (Cow<'b, Allocation<(), ()>>, ()) {
+        (alloc, ())
     }
 
-    fn adjust_static_allocation<'alloc>(
-        alloc: &'alloc Allocation,
-        _: &(),
-    ) -> Cow<'alloc, Allocation> {
-        Cow::Borrowed(alloc)
-    }
-
-    fn new_allocation(
-        _: Size,
-        _: &(),
-        _: MemoryKind<!>,
-    ) -> ((), ()) {
-        ((), ())
+    fn tag_static_base_pointer(_: AllocId, _: &()) -> Self::PointerTag {
+        ()
     }
 
     fn stack_push(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
