@@ -1,7 +1,6 @@
 use crate::{ast, attr};
 use crate::edition::Edition;
-use crate::ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
-use crate::ext::base::{NormalTT, TTMacroExpander};
+use crate::ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension, TTMacroExpander};
 use crate::ext::expand::{AstFragment, AstFragmentKind};
 use crate::ext::hygiene::Transparency;
 use crate::ext::tt::macro_parser::{Success, Error, Failure};
@@ -425,7 +424,7 @@ pub fn compile(
         }
     });
 
-    NormalTT {
+    SyntaxExtension::LegacyBang {
         expander,
         def_info: Some((def.id, def.span)),
         transparency,

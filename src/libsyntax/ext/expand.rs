@@ -389,7 +389,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         let item = match self.cx.resolver.resolve_macro_path(
                                 path, MacroKind::Derive, Mark::root(), Vec::new(), false) {
                             Ok(ext) => match *ext {
-                                BuiltinDerive(..) => item_with_markers.clone(),
+                                SyntaxExtension::LegacyDerive(..) => item_with_markers.clone(),
                                 _ => item.clone(),
                             },
                             _ => item.clone(),
@@ -548,7 +548,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             _ => unreachable!(),
         };
 
-        if let NonMacroAttr { mark_used: false } = *ext {} else {
+        if let SyntaxExtension::NonMacroAttr { mark_used: false } = *ext {} else {
             // Macro attrs are always used when expanded,
             // non-macro attrs are considered used when the field says so.
             attr::mark_used(&attr);
@@ -564,18 +564,18 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         });
 
         match *ext {
-            NonMacroAttr { .. } => {
+            SyntaxExtension::NonMacroAttr { .. } => {
                 attr::mark_known(&attr);
                 item.visit_attrs(|attrs| attrs.push(attr));
                 Some(invoc.fragment_kind.expect_from_annotatables(iter::once(item)))
             }
-            MultiModifier(ref mac) => {
+            SyntaxExtension::LegacyAttr(ref mac) => {
                 let meta = attr.parse_meta(self.cx.parse_sess)
                                .map_err(|mut e| { e.emit(); }).ok()?;
                 let item = mac.expand(self.cx, attr.span, &meta, item);
                 Some(invoc.fragment_kind.expect_from_annotatables(item))
             }
-            AttrProcMacro(ref mac, ..) => {
+            SyntaxExtension::Attr(ref mac, ..) => {
                 self.gate_proc_macro_attr_item(attr.span, &item);
                 let item_tok = TokenTree::token(token::Interpolated(Lrc::new(match item {
                     Annotatable::Item(item) => token::NtItem(item),
@@ -592,7 +592,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 self.gate_proc_macro_expansion(attr.span, &res);
                 res
             }
-            ProcMacroDerive(..) | BuiltinDerive(..) => {
+            SyntaxExtension::Derive(..) | SyntaxExtension::LegacyDerive(..) => {
                 self.cx.span_err(attr.span, &format!("`{}` is a derive macro", attr.path));
                 self.cx.trace_macros_diag();
                 invoc.fragment_kind.dummy(attr.span)
@@ -747,7 +747,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         let opt_expanded = match *ext {
-            NormalTT {
+            SyntaxExtension::LegacyBang {
                 ref expander,
                 def_info,
                 ref allow_internal_unstable,
@@ -774,20 +774,22 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
             }
 
-            MultiModifier(..) | AttrProcMacro(..) | SyntaxExtension::NonMacroAttr { .. } => {
+            SyntaxExtension::Attr(..) |
+            SyntaxExtension::LegacyAttr(..) |
+            SyntaxExtension::NonMacroAttr { .. } => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", path));
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
             }
 
-            ProcMacroDerive(..) | BuiltinDerive(..) => {
+            SyntaxExtension::Derive(..) | SyntaxExtension::LegacyDerive(..) => {
                 self.cx.span_err(path.span, &format!("`{}` is a derive macro", path));
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
             }
 
-            SyntaxExtension::ProcMacro { ref expander, ref allow_internal_unstable, edition } => {
+            SyntaxExtension::Bang { ref expander, ref allow_internal_unstable, edition } => {
                 if ident.name != kw::Invalid {
                     let msg =
                         format!("macro {}! expects no ident argument, given '{}'", path, ident);
@@ -885,9 +887,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         match ext {
-            ProcMacroDerive(expander, ..) | BuiltinDerive(expander) => {
+            SyntaxExtension::Derive(expander, ..) | SyntaxExtension::LegacyDerive(expander) => {
                 let meta = match ext {
-                    ProcMacroDerive(..) => ast::MetaItem { // FIXME(jseyfried) avoid this
+                    SyntaxExtension::Derive(..) => ast::MetaItem { // FIXME(jseyfried) avoid this
                         path: Path::from_ident(Ident::invalid()),
                         span: DUMMY_SP,
                         node: ast::MetaItemKind::Word,

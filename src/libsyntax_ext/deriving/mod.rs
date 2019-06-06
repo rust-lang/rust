@@ -71,7 +71,7 @@ macro_rules! derive_traits {
             $(
                 resolver.add_builtin(
                     ast::Ident::with_empty_ctxt(Symbol::intern($name)),
-                    Lrc::new(SyntaxExtension::BuiltinDerive(Box::new(BuiltinDerive($func))))
+                    Lrc::new(SyntaxExtension::LegacyDerive(Box::new(BuiltinDerive($func))))
                 );
             )*
         }
