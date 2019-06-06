@@ -380,7 +380,7 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// # Examples
 ///
-/// Here's an example of how a collection might make use of needs_drop:
+/// Here's an example of how a collection might make use of `needs_drop`:
 ///
 /// ```
 /// use std::{mem, ptr};
