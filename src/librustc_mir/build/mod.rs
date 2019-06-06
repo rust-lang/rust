@@ -1,5 +1,5 @@
 use crate::build;
-use crate::build::scope::{CachedBlock, DropKind};
+use crate::build::scope::DropKind;
 use crate::hair::cx::Cx;
 use crate::hair::{LintLevel, BindingMode, PatternKind};
 use crate::shim;
@@ -912,8 +912,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
                 pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                argument_scope, &place, ty,
-                DropKind::Value { cached_block: CachedBlock::default() },
+                argument_scope, &place, ty, DropKind::Value,
             );
 
             if let Some(pattern) = pattern {

@@ -5,7 +5,7 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
-use crate::build::scope::{CachedBlock, DropKind};
+use crate::build::scope::DropKind;
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
@@ -557,9 +557,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             region_scope,
             &Place::Base(PlaceBase::Local(local_id)),
             var_ty,
-            DropKind::Value {
-                cached_block: CachedBlock::default(),
-            },
+            DropKind::Value,
         );
     }
 
