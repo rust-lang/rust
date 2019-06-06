@@ -48,9 +48,8 @@ enum Mode {
 }
 
 impl Mode {
-    /// Determine whether we are running in "const context".  "const context" refers
-    /// to code type-checked according to the rules of the "const type system":
-    /// the bodies of const/static items and `const fn`.
+    /// Determine whether we have to do full const-checking because syntactically, we
+    /// are required to be "const".
     #[inline]
     fn requires_const_checking(self) -> bool {
         self != Mode::NonConstFn
