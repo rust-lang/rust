@@ -94,7 +94,7 @@ pub unsafe fn make_unsafe() {}
 pub fn make_extern() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, mir_built, typeck_tables_of, fn_sig")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, typeck_tables_of, fn_sig")]
 #[rustc_clean(cfg = "cfail3")]
 pub extern "C" fn make_extern() {}
 
