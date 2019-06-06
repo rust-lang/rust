@@ -340,7 +340,7 @@ impl NameMapping {
                 Macro(_) => Some(&mut self.macro_map),
             },
             PrimTy(_) | SelfTy(_, _) => Some(&mut self.type_map),
-            SelfCtor(_) | Local(_) | Upvar(_, _, _) => Some(&mut self.value_map),
+            SelfCtor(_) | Local(_) => Some(&mut self.value_map),
             _ => None,
         };
 
