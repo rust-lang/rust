@@ -1,3 +1,4 @@
+#![feature(bound_cloned)]
 #![feature(box_syntax)]
 #![feature(cell_update)]
 #![feature(core_private_bignum)]
