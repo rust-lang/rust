@@ -186,18 +186,17 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
 
     fn re_infer(
         &self,
-        _span: Span,
-        _def: Option<&ty::GenericParamDef>,
+        _: Option<&ty::GenericParamDef>,
+        _: Span,
     ) -> Option<ty::Region<'tcx>> {
         None
     }
 
-    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
-        struct_span_err!(
-            self.tcx().sess,
+    fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
+        self.tcx().sess.struct_span_err_with_code(
             span,
-            E0121,
-            "the type placeholder `_` is not allowed within types on item signatures"
+            "the type placeholder `_` is not allowed within types on item signatures",
+            DiagnosticId::Error("E0121".into()),
         ).span_label(span, "not allowed in type signatures")
          .emit();
 

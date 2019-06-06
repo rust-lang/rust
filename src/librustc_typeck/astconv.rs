@@ -49,19 +49,17 @@ pub trait AstConv<'gcx, 'tcx> {
                                  -> &'tcx ty::GenericPredicates<'tcx>;
 
     /// Returns the lifetime to use when a lifetime is omitted (and not elided).
-    fn re_infer(&self, span: Span, _def: Option<&ty::GenericParamDef>)
+    fn re_infer(
+        &self,
+        param: Option<&ty::GenericParamDef>,
+        span: Span,
+    )
                 -> Option<ty::Region<'tcx>>;
 
     /// Returns the type to use when a type is omitted.
-    fn ty_infer(&self, span: Span) -> Ty<'tcx>;
+    fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
 
-    /// Same as `ty_infer`, but with a known type parameter definition.
-    fn ty_infer_for_def(&self,
-                        _def: &ty::GenericParamDef,
-                        span: Span) -> Ty<'tcx> {
-        self.ty_infer(span)
-    }
-    /// What const should we use when a const is omitted?
+    /// Returns the const to use when a const is omitted.
     fn ct_infer(
         &self,
         ty: Ty<'tcx>,
@@ -163,7 +161,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
 
             None => {
-                self.re_infer(lifetime.span, def)
+                self.re_infer(def, lifetime.span)
                     .unwrap_or_else(|| {
                         // This indicates an illegal lifetime
                         // elision. `resolve_lifetime` should have
@@ -701,11 +699,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                             }
                         } else if infer_args {
                             // No type parameters were provided, we can infer all.
-                            if !default_needs_object_self(param) {
-                                self.ty_infer_for_def(param, span).into()
+                            let param = if !default_needs_object_self(param) {
+                                Some(param)
                             } else {
-                                self.ty_infer(span).into()
-                            }
+                                None
+                            };
+                            self.ty_infer(param, span).into()
                         } else {
                             // We've already errored above about the mismatch.
                             tcx.types.err.into()
@@ -1440,7 +1439,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 if tcx.named_region(lifetime.hir_id).is_some() {
                     self.ast_region_to_region(lifetime, None)
                 } else {
-                    self.re_infer(span, None).unwrap_or_else(|| {
+                    self.re_infer(None, span).unwrap_or_else(|| {
                         span_err!(tcx.sess, span, E0228,
                             "the lifetime bound for this object type cannot be deduced \
                              from context; please supply an explicit bound");
@@ -2134,7 +2133,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 // values in a ExprKind::Closure, or as
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
-                self.ty_infer(ast_ty.span)
+                self.ty_infer(None, ast_ty.span)
             }
             hir::TyKind::CVarArgs(lt) => {
                 let va_list_did = match tcx.lang_items().va_list() {
