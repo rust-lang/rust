@@ -47,7 +47,7 @@ pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, Toke
 
 fn token_tree_to_syntax_node<F>(tt: &tt::Subtree, f: F) -> Result<TreeArc<SyntaxNode>, ExpandError>
 where
-    F: Fn(&mut ra_parser::TokenSource, &mut ra_parser::TreeSink),
+    F: Fn(&mut dyn ra_parser::TokenSource, &mut dyn ra_parser::TreeSink),
 {
     let tokens = [tt.clone().into()];
     let buffer = TokenBuffer::new(&tokens);

@@ -87,7 +87,7 @@ impl Diagnostic for NoSuchField {
     fn syntax_node_ptr(&self) -> SyntaxNodePtr {
         self.field.into()
     }
-    fn as_any(&self) -> &(Any + Send + 'static) {
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
     }
 }
@@ -109,7 +109,7 @@ impl Diagnostic for UnresolvedModule {
     fn syntax_node_ptr(&self) -> SyntaxNodePtr {
         self.decl.into()
     }
-    fn as_any(&self) -> &(Any + Send + 'static) {
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
     }
 }
