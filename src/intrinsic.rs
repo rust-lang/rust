@@ -5,7 +5,7 @@ use rustc::ty;
 
 use crate::{
     PlaceTy, OpTy, ImmTy, Immediate, Scalar, ScalarMaybeUndef, Tag,
-    OperatorEvalContextExt, MiriMemoryKind,
+    OperatorEvalContextExt
 };
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
@@ -396,14 +396,6 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     Scalar::from_uint(align.bytes(), ptr_size),
                     dest,
                 )?;
-            }
-
-            "type_name" => {
-                let ty = substs.type_at(0);
-                let ty_name = ty.to_string();
-                let ptr = this.memory_mut().allocate_static_bytes(ty_name.as_bytes(), MiriMemoryKind::Static.into());
-                let value = Immediate::new_slice(Scalar::Ptr(ptr), ty_name.len() as u64, this);
-                this.write_immediate(value, dest)?;
             }
 
             "unchecked_div" => {
