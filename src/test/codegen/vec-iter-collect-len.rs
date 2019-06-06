@@ -5,8 +5,6 @@
 
 #[no_mangle]
 pub fn get_len() -> usize {
-    // CHECK-LABEL: @get_len
-    // CHECK-NOT: call
-    // CHECK-NOT: invoke
+    // CHECK-COUNT-1: {{^define}}
     [1, 2, 3].iter().collect::<Vec<_>>().len()
 }

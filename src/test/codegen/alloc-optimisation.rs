@@ -7,7 +7,8 @@
 pub fn alloc_test(data: u32) {
     // CHECK-LABEL: @alloc_test
     // CHECK-NEXT: start:
-    // CHECK-NEXT: ret void
+    // CHECK-NOT: alloc
+    // CHECK: ret void
     let x = Box::new(data);
     drop(x);
 }

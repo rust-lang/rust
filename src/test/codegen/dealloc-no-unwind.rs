@@ -17,7 +17,7 @@ impl Drop for A {
 pub fn a(a: Box<i32>) {
     // CHECK-LABEL: define void @a
     // CHECK: call void @__rust_dealloc
-    // CHECK-NEXT: call void @foo
+    // CHECK: call void @foo
     let _a = A;
     drop(a);
 }

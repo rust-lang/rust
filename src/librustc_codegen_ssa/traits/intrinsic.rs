@@ -20,6 +20,7 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
+    fn sideeffect(&mut self);
     /// Trait method used to inject `va_start` on the "spoofed" `VaListImpl` in
     /// Rust defined C-variadic functions.
     fn va_start(&mut self, val: Self::Value) -> Self::Value;

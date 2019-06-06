@@ -124,6 +124,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.call(expect, &[args[0].immediate(), self.const_bool(false)], None)
             }
             "try" => {
+                self.sideeffect();
                 try_intrinsic(self,
                               args[0].immediate(),
                               args[1].immediate(),
@@ -722,6 +723,11 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value {
         let expect = self.get_intrinsic(&"llvm.expect.i1");
         self.call(expect, &[cond, self.const_bool(expected)], None)
+    }
+
+    fn sideeffect(&mut self) {
+        let fnname = self.get_intrinsic(&("llvm.sideeffect"));
+        self.call(fnname, &[], None);
     }
 
     fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {

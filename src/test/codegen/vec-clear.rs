@@ -1,3 +1,9 @@
+// ignore-test
+
+// FIXME:
+// LLVM can't optimize some loops with unknown number of iterations because of
+// @llvm.sideeffect() (see also #59546)
+
 // ignore-debug: the debug assertions get in the way
 // compile-flags: -O
 

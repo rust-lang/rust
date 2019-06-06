@@ -148,6 +148,24 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
             }
         }
     }
+
+    // Generate sideeffect intrinsic if jumping to any of the targets can form
+    // a loop.
+    fn maybe_sideeffect<'b, 'tcx2: 'b, Bx: BuilderMethods<'b, 'tcx2>>(
+        &self,
+        mir: &'b mir::Body<'tcx>,
+        bx: &mut Bx,
+        targets: &[mir::BasicBlock],
+    ) {
+        if targets.iter().any(|target| {
+            *target <= *self.bb
+                && target
+                    .start_location()
+                    .is_predecessor_of(self.bb.start_location(), mir)
+        }) {
+            bx.sideeffect();
+        }
+    }
 }
 
 /// Codegen implementations for some terminator variants.
@@ -196,6 +214,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let lltrue = helper.llblock(self, targets[0]);
             let llfalse = helper.llblock(self, targets[1]);
             if switch_ty == bx.tcx().types.bool {
+                helper.maybe_sideeffect(self.mir, &mut bx, targets.as_slice());
                 // Don't generate trivial icmps when switching on bool
                 if let [0] = values[..] {
                     bx.cond_br(discr.immediate(), llfalse, lltrue);
@@ -209,9 +228,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 let llval = bx.const_uint_big(switch_llty, values[0]);
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
+                helper.maybe_sideeffect(self.mir, &mut bx, targets.as_slice());
                 bx.cond_br(cmp, lltrue, llfalse);
             }
         } else {
+            helper.maybe_sideeffect(self.mir, &mut bx, targets.as_slice());
             let (otherwise, targets) = targets.split_last().unwrap();
             bx.switch(
                 discr.immediate(),
@@ -310,6 +331,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.
+            helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
             helper.funclet_br(self, &mut bx, target);
             return
         }
@@ -340,6 +362,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                  FnType::of_instance(&bx, drop_fn))
             }
         };
+        bx.sideeffect();
         helper.do_call(self, &mut bx, fn_ty, drop_fn, args,
                        Some((ReturnDest::Nothing, target)),
                        unwind);
@@ -375,6 +398,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Don't codegen the panic block if success if known.
         if const_cond == Some(expected) {
+            helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
             helper.funclet_br(self, &mut bx, target);
             return;
         }
@@ -385,6 +409,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Create the failure block and the conditional branch to it.
         let lltarget = helper.llblock(self, target);
         let panic_block = self.new_block("panic");
+        helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
         if expected {
             bx.cond_br(cond, lltarget, panic_block.llbb());
         } else {
@@ -437,6 +462,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let fn_ty = FnType::of_instance(&bx, instance);
         let llfn = bx.get_fn(instance);
 
+        bx.sideeffect();
         // Codegen the actual panic invoke/call.
         helper.do_call(self, &mut bx, fn_ty, llfn, &args, None, cleanup);
     }
@@ -488,6 +514,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             if let Some(destination_ref) = destination.as_ref() {
                 let &(ref dest, target) = destination_ref;
                 self.codegen_transmute(&mut bx, &args[0], dest);
+                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
                 helper.funclet_br(self, &mut bx, target);
             } else {
                 // If we are trying to transmute to an uninhabited type,
@@ -518,6 +545,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(ty::InstanceDef::DropGlue(_, None)) => {
                 // Empty drop glue; a no-op.
                 let &(_, target) = destination.as_ref().unwrap();
+                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
                 helper.funclet_br(self, &mut bx, target);
                 return;
             }
@@ -554,6 +582,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let fn_ty = FnType::of_instance(&bx, instance);
                 let llfn = bx.get_fn(instance);
 
+                bx.sideeffect();
                 // Codegen the actual panic invoke/call.
                 helper.do_call(
                     self,
@@ -566,7 +595,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
             } else {
                 // a NOP
-                helper.funclet_br(self, &mut bx, destination.as_ref().unwrap().1)
+                let target = destination.as_ref().unwrap().1;
+                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
+                helper.funclet_br(self, &mut bx, target);
             }
             return;
         }
@@ -675,6 +706,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             if let Some((_, target)) = *destination {
+                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
                 helper.funclet_br(self, &mut bx, target);
             } else {
                 bx.unreachable();
@@ -786,6 +818,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => span_bug!(span, "no llfn for call"),
         };
 
+        bx.sideeffect();
         helper.do_call(self, &mut bx, fn_ty, fn_ptr, &llargs,
                        destination.as_ref().map(|&(_, target)| (ret_dest, target)),
                        cleanup);
@@ -835,6 +868,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Goto { target } => {
+                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
                 helper.funclet_br(self, &mut bx, target);
             }
 

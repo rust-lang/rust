@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
@@ -53,7 +51,7 @@ pub fn naked_with_args_and_return(a: isize) -> isize {
 #[naked]
 pub fn naked_recursive() {
     // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: call void @naked_empty()
+    // CHECK: call void @naked_empty()
 
     // FIXME(#39685) Avoid one block per call.
     // CHECK-NEXT: br label %bb1
@@ -61,19 +59,19 @@ pub fn naked_recursive() {
 
     naked_empty();
 
-    // CHECK-NEXT: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_return()
+    // CHECK: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_return()
 
     // FIXME(#39685) Avoid one block per call.
     // CHECK-NEXT: br label %bb2
     // CHECK: bb2:
 
-    // CHECK-NEXT: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}} %{{[0-9]+}})
+    // CHECK: %{{[0-9]+}} = call i{{[0-9]+}} @naked_with_args_and_return(i{{[0-9]+}} %{{[0-9]+}})
 
     // FIXME(#39685) Avoid one block per call.
     // CHECK-NEXT: br label %bb3
     // CHECK: bb3:
 
-    // CHECK-NEXT: call void @naked_with_args(i{{[0-9]+}} %{{[0-9]+}})
+    // CHECK: call void @naked_with_args(i{{[0-9]+}} %{{[0-9]+}})
 
     // FIXME(#39685) Avoid one block per call.
     // CHECK-NEXT: br label %bb4
