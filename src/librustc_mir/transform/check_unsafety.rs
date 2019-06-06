@@ -199,11 +199,39 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
     fn visit_place(&mut self,
                     place: &Place<'tcx>,
                     context: PlaceContext,
-                    location: Location) {
-        match place {
-            &Place::Projection(box Projection {
-                ref base, ref elem
-            }) => {
+                    _location: Location) {
+        place.iterate(|place_base, place_projections| {
+            match place_base {
+                PlaceBase::Local(..) => {
+                    // Locals are safe.
+                }
+                PlaceBase::Static(box Static { kind: StaticKind::Promoted(_), .. }) => {
+                    bug!("unsafety checking should happen before promotion")
+                }
+                PlaceBase::Static(box Static { kind: StaticKind::Static(def_id), .. }) => {
+                    if self.tcx.is_mutable_static(*def_id) {
+                        self.require_unsafe("use of mutable static",
+                            "mutable statics can be mutated by multiple threads: aliasing \
+                             violations or data races will cause undefined behavior",
+                             UnsafetyViolationKind::General);
+                    } else if self.tcx.is_foreign_item(*def_id) {
+                        let source_info = self.source_info;
+                        let lint_root =
+                            self.source_scope_local_data[source_info.scope].lint_root;
+                        self.register_violations(&[UnsafetyViolation {
+                            source_info,
+                            description: InternedString::intern("use of extern static"),
+                            details: InternedString::intern(
+                                "extern statics are not controlled by the Rust type system: \
+                                invalid data, aliasing violations or data races will cause \
+                                undefined behavior"),
+                            kind: UnsafetyViolationKind::ExternStatic(lint_root)
+                        }], &[]);
+                    }
+                }
+            }
+
+            for proj in place_projections {
                 if context.is_borrow() {
                     if util::is_disaligned(self.tcx, self.mir, self.param_env, place) {
                         let source_info = self.source_info;
@@ -220,7 +248,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         }], &[]);
                     }
                 }
-                let is_borrow_of_interior_mut = context.is_borrow() && !base
+                let is_borrow_of_interior_mut = context.is_borrow() && !proj.base
                     .ty(self.mir, self.tcx)
                     .ty
                     .is_freeze(self.tcx, self.param_env, self.source_info.span);
@@ -236,7 +264,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     );
                 }
                 let old_source_info = self.source_info;
-                if let &Place::Base(PlaceBase::Local(local)) = base {
+                if let Place::Base(PlaceBase::Local(local)) = proj.base {
                     if self.mir.local_decls[local].internal {
                         // Internal locals are used in the `move_val_init` desugaring.
                         // We want to check unsafety against the source info of the
@@ -244,7 +272,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         self.source_info = self.mir.local_decls[local].source_info;
                     }
                 }
-                let base_ty = base.ty(self.mir, self.tcx).ty;
+                let base_ty = proj.base.ty(self.mir, self.tcx).ty;
                 match base_ty.sty {
                     ty::RawPtr(..) => {
                         self.require_unsafe("dereference of raw pointer",
@@ -260,8 +288,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                                     MutatingUseContext::AsmOutput
                                 )
                             {
-                                let elem_ty = match elem {
-                                    &ProjectionElem::Field(_, ty) => ty,
+                                let elem_ty = match proj.elem {
+                                    ProjectionElem::Field(_, ty) => ty,
                                     _ => span_bug!(
                                         self.source_info.span,
                                         "non-field projection {:?} from union?",
@@ -292,36 +320,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
                 self.source_info = old_source_info;
             }
-            &Place::Base(PlaceBase::Local(..)) => {
-                // locals are safe
-            }
-            &Place::Base(PlaceBase::Static(box Static { kind: StaticKind::Promoted(_), .. })) => {
-                bug!("unsafety checking should happen before promotion")
-            }
-            &Place::Base(
-                PlaceBase::Static(box Static { kind: StaticKind::Static(def_id), .. })
-            ) => {
-                if self.tcx.is_mutable_static(def_id) {
-                    self.require_unsafe("use of mutable static",
-                        "mutable statics can be mutated by multiple threads: aliasing violations \
-                         or data races will cause undefined behavior",
-                         UnsafetyViolationKind::General);
-                } else if self.tcx.is_foreign_item(def_id) {
-                    let source_info = self.source_info;
-                    let lint_root =
-                        self.source_scope_local_data[source_info.scope].lint_root;
-                    self.register_violations(&[UnsafetyViolation {
-                        source_info,
-                        description: InternedString::intern("use of extern static"),
-                        details: InternedString::intern(
-                            "extern statics are not controlled by the Rust type system: invalid \
-                            data, aliasing violations or data races will cause undefined behavior"),
-                        kind: UnsafetyViolationKind::ExternStatic(lint_root)
-                    }], &[]);
-                }
-            }
-        };
-        self.super_place(place, context, location);
+        });
     }
 }
 
