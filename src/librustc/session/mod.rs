@@ -24,7 +24,7 @@ use rustc_data_structures::sync::{
 use errors::{DiagnosticBuilder, DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
 use errors::emitter::HumanReadableErrorType;
-use errors::annotate_rs_emitter::{AnnotateRsEmitterWriter};
+use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
 use syntax::feature_gate::{self, AttributeType};
@@ -1034,8 +1034,8 @@ fn default_emitter(
         (config::ErrorOutputType::HumanReadable(kind), dst) => {
             let (short, color_config) = kind.unzip();
 
-            if let HumanReadableErrorType::AnnotateRs(_) = kind {
-                let emitter = AnnotateRsEmitterWriter::new(
+            if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
+                let emitter = AnnotateSnippetEmitterWriter::new(
                     Some(source_map.clone()),
                     short,
                 );

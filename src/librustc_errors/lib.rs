@@ -33,7 +33,7 @@ use termcolor::{ColorSpec, Color};
 mod diagnostic;
 mod diagnostic_builder;
 pub mod emitter;
-pub mod annotate_rs_emitter;
+pub mod annotate_snippet_emitter_writer;
 mod snippet;
 pub mod registry;
 mod styled_buffer;
