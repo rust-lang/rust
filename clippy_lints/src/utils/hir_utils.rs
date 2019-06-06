@@ -237,7 +237,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 && over(&left.bindings, &right.bindings, |l, r| self.eq_type_binding(l, r))
         } else if left.parenthesized && right.parenthesized {
             over(left.inputs(), right.inputs(), |l, r| self.eq_ty(l, r))
-                && both(&Some(&left.bindings[0].ty), &Some(&right.bindings[0].ty), |l, r| {
+                && both(&Some(&left.bindings[0].ty()), &Some(&right.bindings[0].ty()), |l, r| {
                     self.eq_ty(l, r)
                 })
         } else {
@@ -299,7 +299,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     }
 
     fn eq_type_binding(&mut self, left: &TypeBinding, right: &TypeBinding) -> bool {
-        left.ident.name == right.ident.name && self.eq_ty(&left.ty, &right.ty)
+        left.ident.name == right.ident.name && self.eq_ty(&left.ty(), &right.ty())
     }
 }
 
