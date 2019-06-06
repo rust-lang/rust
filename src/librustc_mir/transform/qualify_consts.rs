@@ -618,7 +618,7 @@ impl ConstCx<'_, 'tcx> {
     }
 }
 
-/// Checks MIR for const-correctness, using `ConstCx`
+/// Checks MIR for being admissible as a compile-time constant, using `ConstCx`
 /// for value qualifications, and accumulates writes of
 /// rvalue/call results to locals, in `local_qualif`.
 /// It also records candidates for promotion in `promotion_candidates`,
