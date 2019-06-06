@@ -948,7 +948,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
             Expr::TryBlock { body } => {
                 let _inner = self.infer_expr(*body, expected);
-                
                 // FIXME should be std::result::Result<{inner}, _>
                 Ty::Unknown
             }

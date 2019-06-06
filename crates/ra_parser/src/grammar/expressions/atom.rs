@@ -76,7 +76,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T![loop] => loop_expr(p, None),
         T![for] => for_expr(p, None),
         T![while] => while_expr(p, None),
-        T![try] => try_expr(p, None),
+        T![try] => try_block_expr(p, None),
         LIFETIME if la == T![:] => {
             let m = p.start();
             label(p);
@@ -118,7 +118,9 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         }
     };
     let blocklike = match done.kind() {
-        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR | TRY_BLOCK_EXPR => BlockLike::Block,
+        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR | TRY_BLOCK_EXPR => {
+            BlockLike::Block
+        }
         _ => BlockLike::NotBlock,
     };
     Some((done, blocklike))
@@ -494,13 +496,11 @@ fn break_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
     m.complete(p, BREAK_EXPR)
 }
 
-// test try_expr
+// test try_block_expr
 // fn foo() {
-//     try {
-//     
-//     }
+//     let _ = try {};
 // }
-fn try_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
+fn try_block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T![try]));
     let m = m.unwrap_or_else(|| p.start());
     p.bump();
