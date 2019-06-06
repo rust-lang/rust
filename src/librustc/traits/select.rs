@@ -185,6 +185,9 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     in_cycle: Cell<bool>,
 
     previous: TraitObligationStackList<'prev, 'tcx>,
+
+    /// Number of parent frames plus one -- so the topmost frame has depth 1.
+    depth: usize,
 }
 
 #[derive(Clone, Default)]
@@ -662,8 +665,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
-            this.evaluate_predicate_recursively(TraitObligationStackList::empty(),
-                obligation.clone())
+            this.evaluate_predicate_recursively(
+                TraitObligationStackList::empty(),
+                obligation.clone(),
+            )
         })
     }
 
@@ -3743,6 +3748,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             fresh_trait_ref,
             in_cycle: Cell::new(false),
             previous: previous_stack,
+            depth: previous_stack.depth() + 1,
         }
     }
 
@@ -3956,6 +3962,14 @@ impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
 
     fn head(&self) -> Option<&'o TraitObligationStack<'o, 'tcx>> {
         self.head
+    }
+
+    fn depth(&self) -> usize {
+        if let Some(head) = self.head {
+            head.depth
+        } else {
+            0
+        }
     }
 }
 
