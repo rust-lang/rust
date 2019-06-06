@@ -1,8 +1,8 @@
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:8:14
    |
-LL | type SVec<T: Send+Send> = Vec<T>;
-   |              ^^^^ ^^^^
+LL | type SVec<T: Send + Send> = Vec<T>;
+   |              ^^^^   ^^^^
    |
    = note: #[warn(type_alias_bounds)] on by default
    = help: the bound will not be checked when the type alias is used, and should be removed
@@ -18,16 +18,16 @@ LL | type S2Vec<T> where T: Send = Vec<T>;
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:12:19
    |
-LL | type VVec<'b, 'a: 'b+'b> = (&'b u32, Vec<&'a i32>);
-   |                   ^^ ^^
+LL | type VVec<'b, 'a: 'b + 'b> = (&'b u32, Vec<&'a i32>);
+   |                   ^^   ^^
    |
    = help: the bound will not be checked when the type alias is used, and should be removed
 
 warning: bounds on generic parameters are not enforced in type aliases
   --> $DIR/type-alias-bounds.rs:14:18
    |
-LL | type WVec<'b, T: 'b+'b> = (&'b u32, Vec<T>);
-   |                  ^^ ^^
+LL | type WVec<'b, T: 'b + 'b> = (&'b u32, Vec<T>);
+   |                  ^^   ^^
    |
    = help: the bound will not be checked when the type alias is used, and should be removed
 

@@ -196,7 +196,7 @@ declare_lint_pass!(UnsafeCode => [UNSAFE_CODE]);
 
 impl UnsafeCode {
     fn report_unsafe(&self, cx: &EarlyContext<'_>, span: Span, desc: &'static str) {
-        // This comes from a macro that has #[allow_internal_unsafe].
+        // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
             return;
         }
@@ -216,7 +216,7 @@ impl EarlyLintPass for UnsafeCode {
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::Block(ref blk, _) = e.node {
-            // Don't warn about generated blocks, that'll just pollute the output.
+            // Don't warn about generated blocks; that'll just pollute the output.
             if blk.rules == ast::BlockCheckMode::Unsafe(ast::UserProvided) {
                 self.report_unsafe(cx, blk.span, "usage of an `unsafe` block");
             }
@@ -335,7 +335,7 @@ impl MissingDoc {
 
         // Only check publicly-visible items, using the result from the privacy pass.
         // It's an option so the crate root can also use this function (it doesn't
-        // have a NodeId).
+        // have a `NodeId`).
         if let Some(id) = id {
             if !cx.access_levels.is_exported(id) {
                 return;
@@ -389,7 +389,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Struct(..) => "a struct",
             hir::ItemKind::Union(..) => "a union",
             hir::ItemKind::Trait(.., ref trait_item_refs) => {
-                // Issue #11592, traits are always considered exported, even when private.
+                // Issue #11592: traits are always considered exported, even when private.
                 if let hir::VisibilityKind::Inherited = it.vis.node {
                     self.private_traits.insert(it.hir_id);
                     for trait_item_ref in trait_item_refs {
@@ -401,7 +401,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             }
             hir::ItemKind::Ty(..) => "a type alias",
             hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) => {
-                // If the trait is private, add the impl items to private_traits so they don't get
+                // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
                 if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(real_trait) {
@@ -1215,7 +1215,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
         use rustc::ty::fold::TypeFoldable;
         use rustc::ty::Predicate::*;
 
-
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             let predicates = cx.tcx.predicates_of(def_id);
@@ -1464,7 +1463,7 @@ impl KeywordIdents {
             _ => return,
         };
 
-        // don't lint `r#foo`
+        // Don't lint `r#foo`.
         if cx.sess.parse_sess.raw_identifier_spans.borrow().contains(&ident.span) {
             return;
         }
@@ -1717,8 +1716,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                 );
                 err.emit();
             }
-
         }
     }
-
 }

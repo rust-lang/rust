@@ -18,7 +18,6 @@ use crate::core::DocAccessLevels;
 use crate::html::item_type::ItemType;
 use crate::html::render::{self, cache, CURRENT_LOCATION_KEY};
 
-
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
 #[derive(Copy, Clone)]
@@ -561,7 +560,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
             if param_names.is_some() {
                 f.write_str("dyn ")?;
             }
-            // Paths like T::Output and Self::Output should be rendered with all segments
+            // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             resolved_path(f, did, path, is_generic, use_absolute)?;
             tybounds(f, param_names)
         }
@@ -585,7 +584,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 &[] => primitive_link(f, PrimitiveType::Unit, "()"),
                 &[ref one] => {
                     primitive_link(f, PrimitiveType::Tuple, "(")?;
-                    //carry f.alternate() into this display w/o branching manually
+                    // Carry `f.alternate()` into this display w/o branching manually.
                     fmt::Display::fmt(one, f)?;
                     primitive_link(f, PrimitiveType::Tuple, ",)")
                 }
@@ -638,7 +637,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 "&amp;".to_string()
             };
             match **ty {
-                clean::Slice(ref bt) => { // BorrowedRef{ ... Slice(T) } is &[T]
+                clean::Slice(ref bt) => { // `BorrowedRef{ ... Slice(T) }` is `&[T]`
                     match **bt {
                         clean::Generic(_) => {
                             if f.alternate() {
@@ -1020,11 +1019,26 @@ impl fmt::Display for clean::ImportSource {
 
 impl fmt::Display for clean::TypeBinding {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            write!(f, "{} = {:#}", self.name, self.ty)
-        } else {
-            write!(f, "{} = {}", self.name, self.ty)
+        f.write_str(&self.name)?;
+        match self.kind {
+            clean::TypeBindingKind::Equality { ref ty } => {
+                if f.alternate() {
+                    write!(f, " = {:#}", ty)?;
+                } else {
+                    write!(f, " = {}", ty)?;
+                }
+            }
+            clean::TypeBindingKind::Constraint { ref bounds } => {
+                if !bounds.is_empty() {
+                    if f.alternate() {
+                        write!(f, ": {:#}", GenericBounds(bounds))?;
+                    } else {
+                        write!(f, ":&nbsp;{}", GenericBounds(bounds))?;
+                    }
+                }
+            }
         }
+        Ok(())
     }
 }
 

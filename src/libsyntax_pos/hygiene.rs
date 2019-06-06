@@ -714,7 +714,7 @@ pub enum CompilerDesugaringKind {
     /// Desugaring of an `impl Trait` in return type position
     /// to an `existential type Foo: Trait;` and replacing the
     /// `impl Trait` with `Foo`.
-    ExistentialReturnType,
+    ExistentialType,
     Async,
     Await,
     ForLoop,
@@ -728,7 +728,7 @@ impl CompilerDesugaringKind {
             CompilerDesugaringKind::Await => "await",
             CompilerDesugaringKind::QuestionMark => "?",
             CompilerDesugaringKind::TryBlock => "try block",
-            CompilerDesugaringKind::ExistentialReturnType => "existential type",
+            CompilerDesugaringKind::ExistentialType => "existential type",
             CompilerDesugaringKind::ForLoop => "for loop",
         })
     }

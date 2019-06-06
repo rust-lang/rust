@@ -523,10 +523,10 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// eventually).
     param_env: ty::ParamEnv<'tcx>,
 
-    // Number of errors that had been reported when we started
-    // checking this function. On exit, if we find that *more* errors
-    // have been reported, we will skip regionck and other work that
-    // expects the types within the function to be consistent.
+    /// Number of errors that had been reported when we started
+    /// checking this function. On exit, if we find that *more* errors
+    /// have been reported, we will skip regionck and other work that
+    /// expects the types within the function to be consistent.
     err_count_on_creation: usize,
 
     ret_coercion: Option<RefCell<DynamicCoerceMany<'gcx, 'tcx>>>,

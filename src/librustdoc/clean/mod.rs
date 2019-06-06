@@ -1979,7 +1979,7 @@ impl FnDecl {
                 match &bounds[0] {
                     GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
                         let bindings = trait_.bindings().unwrap();
-                        FunctionRetTy::Return(bindings[0].ty.clone())
+                        FunctionRetTy::Return(bindings[0].ty().clone())
                     }
                     _ => panic!("unexpected desugaring of async function"),
                 }
@@ -2443,12 +2443,12 @@ pub struct PolyTrait {
     pub generic_params: Vec<GenericParamDef>,
 }
 
-/// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
-/// type out of the AST/TyCtxt given one of these, if more information is needed. Most importantly
-/// it does not preserve mutability or boxes.
+/// A representation of a type suitable for hyperlinking purposes. Ideally, one can get the original
+/// type out of the AST/`TyCtxt` given one of these, if more information is needed. Most
+/// importantly, it does not preserve mutability or boxes.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum Type {
-    /// Structs/enums/traits (most that'd be an `hir::TyKind::Path`).
+    /// Structs/enums/traits (most that would be an `hir::TyKind::Path`).
     ResolvedPath {
         path: Path,
         param_names: Option<Vec<GenericBound>>,
@@ -2462,7 +2462,7 @@ pub enum Type {
     /// Primitives are the fixed-size numeric types (plus int/usize/float), char,
     /// arrays, slices, and tuples.
     Primitive(PrimitiveType),
-    /// extern "ABI" fn
+    /// `extern "ABI" fn`
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
     Slice(Box<Type>),
@@ -2477,17 +2477,17 @@ pub enum Type {
         type_: Box<Type>,
     },
 
-    // <Type as Trait>::Name
+    // `<Type as Trait>::Name`
     QPath {
         name: String,
         self_type: Box<Type>,
         trait_: Box<Type>
     },
 
-    // _
+    // `_`
     Infer,
 
-    // impl TraitA+TraitB
+    // `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),
 }
 
@@ -2747,7 +2747,6 @@ impl Clean<Type> for hir::Ty {
 
         match self.node {
             TyKind::Never => Never,
-            TyKind::CVarArgs(_) => CVarArgs,
             TyKind::Ptr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
             TyKind::Rptr(ref l, ref m) => {
                 let lifetime = if l.is_elided() {
@@ -2933,12 +2932,13 @@ impl Clean<Type> for hir::Ty {
                         }
                         ResolvedPath { path, param_names: Some(bounds), did, is_generic, }
                     }
-                    _ => Infer // shouldn't happen
+                    _ => Infer, // shouldn't happen
                 }
             }
             TyKind::BareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyKind::Infer | TyKind::Err => Infer,
-            TyKind::Typeof(..) => panic!("Unimplemented type {:?}", self.node),
+            TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.node),
+            TyKind::CVarArgs(_) => CVarArgs,
         }
     }
 }
@@ -3054,7 +3054,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 for pb in obj.projection_bounds() {
                     bindings.push(TypeBinding {
                         name: cx.tcx.associated_item(pb.item_def_id()).ident.name.clean(cx),
-                        ty: pb.skip_binder().ty.clean(cx)
+                        kind: TypeBindingKind::Equality {
+                            ty: pb.skip_binder().ty.clean(cx)
+                        },
                     });
                 }
 
@@ -3110,7 +3112,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                                 Some(TypeBinding {
                                     name: cx.tcx.associated_item(proj.projection_ty.item_def_id)
                                                 .ident.name.clean(cx),
-                                    ty: proj.ty.clean(cx),
+                                    kind: TypeBindingKind::Equality {
+                                        ty: proj.ty.clean(cx),
+                                    },
                                 })
                             } else {
                                 None
@@ -3495,7 +3499,7 @@ pub enum GenericArgs {
 impl Clean<GenericArgs> for hir::GenericArgs {
     fn clean(&self, cx: &DocContext<'_>) -> GenericArgs {
         if self.parenthesized {
-            let output = self.bindings[0].ty.clean(cx);
+            let output = self.bindings[0].ty().clean(cx);
             GenericArgs::Parenthesized {
                 inputs: self.inputs().clean(cx),
                 output: if output != Type::Tuple(Vec::new()) { Some(output) } else { None }
@@ -4343,18 +4347,53 @@ impl Clean<Deprecation> for attr::Deprecation {
     }
 }
 
-/// An equality constraint on an associated type, e.g., `A = Bar` in `Foo<A = Bar>`
+/// An type binding on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or
+/// `A: Send + Sync` in `Foo<A: Send + Sync>`).
 #[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug, Hash)]
 pub struct TypeBinding {
     pub name: String,
-    pub ty: Type
+    pub kind: TypeBindingKind,
+}
+
+#[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug, Hash)]
+pub enum TypeBindingKind {
+    Equality {
+        ty: Type,
+    },
+    Constraint {
+        bounds: Vec<GenericBound>,
+    },
+}
+
+impl TypeBinding {
+    pub fn ty(&self) -> &Type {
+        match self.kind {
+            TypeBindingKind::Equality { ref ty } => ty,
+            _ => panic!("expected equality type binding for parenthesized generic args"),
+        }
+    }
 }
 
 impl Clean<TypeBinding> for hir::TypeBinding {
     fn clean(&self, cx: &DocContext<'_>) -> TypeBinding {
         TypeBinding {
             name: self.ident.name.clean(cx),
-            ty: self.ty.clean(cx)
+            kind: self.kind.clean(cx),
+        }
+    }
+}
+
+impl Clean<TypeBindingKind> for hir::TypeBindingKind {
+    fn clean(&self, cx: &DocContext<'_>) -> TypeBindingKind {
+        match *self {
+            hir::TypeBindingKind::Equality { ref ty } =>
+                TypeBindingKind::Equality {
+                    ty: ty.clean(cx),
+                },
+            hir::TypeBindingKind::Constraint { ref bounds } =>
+                TypeBindingKind::Constraint {
+                    bounds: bounds.into_iter().map(|b| b.clean(cx)).collect(),
+                },
         }
     }
 }

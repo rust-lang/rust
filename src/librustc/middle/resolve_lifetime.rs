@@ -1,6 +1,6 @@
 //! Name resolution for lifetimes.
 //!
-//! Name resolution for lifetimes follows MUCH simpler rules than the
+//! Name resolution for lifetimes follows *much* simpler rules than the
 //! full resolve. For example, lifetime names are never exported or
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
@@ -923,7 +923,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl) {
         let output = match fd.output {
             hir::DefaultReturn(_) => None,
-            hir::Return(ref ty) => Some(ty),
+            hir::Return(ref ty) => Some(&**ty),
         };
         self.visit_fn_like_elision(&fd.inputs, output);
     }
@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         trait_ref: &'tcx hir::PolyTraitRef,
         _modifier: hir::TraitBoundModifier,
     ) {
-        debug!("visit_poly_trait_ref trait_ref={:?}", trait_ref);
+        debug!("visit_poly_trait_ref(trait_ref={:?})", trait_ref);
 
         if !self.trait_ref_hack || trait_ref.bound_generic_params.iter().any(|param| {
             match param.kind {
@@ -1884,7 +1884,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         if generic_args.parenthesized {
             let was_in_fn_syntax = self.is_in_fn_syntax;
             self.is_in_fn_syntax = true;
-            self.visit_fn_like_elision(generic_args.inputs(), Some(&generic_args.bindings[0].ty));
+            self.visit_fn_like_elision(generic_args.inputs(), Some(generic_args.bindings[0].ty()));
             self.is_in_fn_syntax = was_in_fn_syntax;
             return;
         }
@@ -2020,7 +2020,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_fn_like_elision(&mut self, inputs: &'tcx [hir::Ty], output: Option<&'tcx P<hir::Ty>>) {
+    fn visit_fn_like_elision(&mut self, inputs: &'tcx [hir::Ty], output: Option<&'tcx hir::Ty>) {
         debug!("visit_fn_like_elision: enter");
         let mut arg_elide = Elide::FreshLateAnon(Cell::new(0));
         let arg_scope = Scope::Elision {

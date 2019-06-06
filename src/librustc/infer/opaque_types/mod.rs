@@ -786,13 +786,13 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                             match tcx.hir().find_by_hir_id(opaque_hir_id)
                         {
                             Some(Node::Item(item)) => match item.node {
-                                // impl trait
+                                // Anonymous `impl Trait`
                                 hir::ItemKind::Existential(hir::ExistTy {
                                     impl_trait_fn: Some(parent),
                                     origin,
                                     ..
                                 }) => (parent == self.parent_def_id, origin),
-                                // named existential types
+                                // Named `existential type`
                                 hir::ItemKind::Existential(hir::ExistTy {
                                     impl_trait_fn: None,
                                     origin,
@@ -858,7 +858,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             def_id, substs
         );
 
-        // Use the same type variable if the exact same Opaque appears more
+        // Use the same type variable if the exact same opaque type appears more
         // than once in the return type (e.g., if it's passed to a type alias).
         if let Some(opaque_defn) = self.opaque_types.get(&def_id) {
             return opaque_defn.concrete_ty;
@@ -871,7 +871,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 
         let predicates_of = tcx.predicates_of(def_id);
         debug!(
-            "instantiate_opaque_types: predicates: {:#?}",
+            "instantiate_opaque_types: predicates={:#?}",
             predicates_of,
         );
         let bounds = predicates_of.instantiate(tcx, substs);
@@ -883,15 +883,15 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             required_region_bounds
         );
 
-        // make sure that we are in fact defining the *entire* type
-        // e.g., `existential type Foo<T: Bound>: Bar;` needs to be
-        // defined by a function like `fn foo<T: Bound>() -> Foo<T>`.
+        // Make sure that we are in fact defining the *entire* type
+        // (e.g., `existential type Foo<T: Bound>: Bar;` needs to be
+        // defined by a function like `fn foo<T: Bound>() -> Foo<T>`).
         debug!(
-            "instantiate_opaque_types: param_env: {:#?}",
+            "instantiate_opaque_types: param_env={:#?}",
             self.param_env,
         );
         debug!(
-            "instantiate_opaque_types: generics: {:#?}",
+            "instantiate_opaque_types: generics={:#?}",
             tcx.generics_of(def_id),
         );
 
@@ -925,8 +925,9 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
     }
 }
 
-/// Returns `true` if `opaque_node_id` is a sibling or a child of a sibling of `def_id`.
+/// Returns `true` if `opaque_hir_id` is a sibling or a child of a sibling of `def_id`.
 ///
+/// Example:
 /// ```rust
 /// pub mod foo {
 ///     pub mod bar {
@@ -939,27 +940,29 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 /// }
 /// ```
 ///
-/// Here, `def_id` is the `DefId` of the existential type `Baz` and `opaque_node_id` is the
-/// `NodeId` of the reference to `Baz` (i.e., the return type of both `f1` and `f2`).
-/// We return `true` if the reference is within the same module as the existential type
-/// (i.e., `true` for `f1`, `false` for `f2`).
+/// Here, `def_id` is the `DefId` of the defining use of the existential type (e.g., `f1` or `f2`),
+/// and `opaque_hir_id` is the `HirId` of the definition of the existential type `Baz`.
+/// For the above example, this function returns `true` for `f1` and `false` for `f2`.
 pub fn may_define_existential_type(
     tcx: TyCtxt<'_, '_, '_>,
     def_id: DefId,
     opaque_hir_id: hir::HirId,
 ) -> bool {
-    let mut hir_id = tcx
-        .hir()
-        .as_local_hir_id(def_id)
-        .unwrap();
-    // named existential types can be defined by any siblings or
-    // children of siblings
-    let mod_id = tcx.hir().get_parent_item(opaque_hir_id);
-    // so we walk up the node tree until we hit the root or the parent
-    // of the opaque type
-    while hir_id != mod_id && hir_id != hir::CRATE_HIR_ID {
+    let mut hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    trace!(
+        "may_define_existential_type(def={:?}, opaque_node={:?})",
+        tcx.hir().get_by_hir_id(hir_id),
+        tcx.hir().get_by_hir_id(opaque_hir_id)
+    );
+
+    // Named existential types can be defined by any siblings or children of siblings.
+    let scope = tcx.hir()
+        .get_defining_scope(opaque_hir_id)
+        .expect("could not get defining scope");
+    // We walk up the node tree until we hit the root or the scope of the opaque type.
+    while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
         hir_id = tcx.hir().get_parent_item(hir_id);
     }
-    // syntactically we are allowed to define the concrete type
-    hir_id == mod_id
+    // Syntactically, we are allowed to define the concrete type if:
+    hir_id == scope
 }

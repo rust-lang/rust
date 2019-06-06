@@ -20,8 +20,11 @@ use rustc::hir::itemlikevisit::ParItemLikeVisitor;
 use rustc::hir;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
-/// Necessary because we can't write the following bound:
-/// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(FnCtxt<'b, 'gcx, 'tcx>)`.
+/// This is necessary because we can't write the following bound:
+///
+/// ```rust
+/// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(FnCtxt<'b, 'gcx, 'tcx>)
+/// ```
 struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     inherited: super::InheritedBuilder<'a, 'gcx, 'tcx>,
     id: hir::HirId,
@@ -42,7 +45,7 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
             if !inh.tcx.features().trivial_bounds {
                 // As predicates are cached rather than obligations, this
                 // needsto be called first so that they are checked with an
-                // empty param_env.
+                // empty `param_env`.
                 check_false_global_bounds(&fcx, span, id);
             }
             let wf_tys = f(&fcx, fcx.tcx.global_tcx());
@@ -56,7 +59,9 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
 /// well-formed, meaning that they do not require any constraints not declared in the struct
 /// definition itself. For example, this definition would be illegal:
 ///
-///     struct Ref<'a, T> { x: &'a T }
+/// ```rust
+/// struct Ref<'a, T> { x: &'a T }
+/// ```
 ///
 /// because the type did not declare that `T:'a`.
 ///
@@ -75,7 +80,7 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         // Right now we check that every default trait implementation
         // has an implementation of itself. Basically, a case like:
         //
-        // `impl Trait for T {}`
+        //     impl Trait for T {}
         //
         // has a requirement of `T: Trait` which was required for default
         // method implementations. Although this could be improved now that
@@ -85,7 +90,7 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         // Since there's such a requirement, we need to check *just* positive
         // implementations, otherwise things like:
         //
-        // impl !Send for T {}
+        //     impl !Send for T {}
         //
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
@@ -98,7 +103,7 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
             if polarity == hir::ImplPolarity::Positive {
                 check_impl(tcx, item, self_ty, trait_ref);
             } else {
-                // FIXME(#27579) what amount of WF checking do we need for neg impls?
+                // FIXME(#27579): what amount of WF checking do we need for neg impls?
                 if trait_ref.is_some() && !is_auto {
                     span_err!(tcx.sess, item.span, E0192,
                               "negative impls are only allowed for \
@@ -302,7 +307,8 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         check_where_clauses(tcx, fcx, item.span, def_id, None);
 
-        vec![] // no implied bounds in a struct def'n
+        // No implied bounds in a struct definition.
+        vec![]
     });
 }
 
@@ -369,7 +375,8 @@ fn check_item_type<'a, 'tcx>(
             );
         }
 
-        vec![] // no implied bounds in a const etc
+        // No implied bounds in a const, etc.
+        vec![]
     });
 }
 
@@ -421,6 +428,8 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     def_id: DefId,
     return_ty: Option<Ty<'tcx>>,
 ) {
+    debug!("check_where_clauses(def_id={:?}, return_ty={:?})", def_id, return_ty);
+
     let predicates = fcx.tcx.predicates_of(def_id);
     let generics = tcx.generics_of(def_id);
 
@@ -434,15 +443,17 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     };
 
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
-    // For example this forbids the declaration:
-    // struct Foo<T = Vec<[u32]>> { .. }
-    // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
+    // For example, this forbids the declaration:
+    //
+    //     struct Foo<T = Vec<[u32]>> { .. }
+    //
+    // Here, the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
     for param in &generics.params {
         if let GenericParamDefKind::Type { .. } = param.kind {
             if is_our_default(&param) {
                 let ty = fcx.tcx.type_of(param.def_id);
-                // ignore dependent defaults -- that is, where the default of one type
-                // parameter includes another (e.g., <T, U = T>). In those cases, we can't
+                // Ignore dependent defaults -- that is, where the default of one type
+                // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
                 // be sure if it will error or not as user might always specify the other.
                 if !ty.needs_subst() {
                     fcx.register_wf_obligation(ty, fcx.tcx.def_span(param.def_id),
@@ -468,16 +479,16 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
             }
 
             GenericParamDefKind::Type { .. } => {
-                // If the param has a default,
+                // If the param has a default, ...
                 if is_our_default(param) {
                     let default_ty = fcx.tcx.type_of(param.def_id);
-                    // and it's not a dependent default
+                    // ... and it's not a dependent default, ...
                     if !default_ty.needs_subst() {
-                        // then substitute with the default.
+                        // ... then substitute it with the default.
                         return default_ty.into();
                     }
                 }
-                // Mark unwanted params as err.
+                // Mark unwanted params as error.
                 fcx.tcx.types.err.into()
             }
 
@@ -525,7 +536,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
             Some(substituted_pred)
         }
     }).map(|pred| {
-        // convert each of those into an obligation. So if you have
+        // Convert each of those into an obligation. So if you have
         // something like `struct Foo<T: Copy = String>`, we would
         // take that predicate `T: Copy`, substitute to `String: Copy`
         // (actually that happens in the previous `flat_map` call),
@@ -595,14 +606,13 @@ fn check_fn_or_method<'a, 'fcx, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 /// ```rust
 /// existential type Foo<A, B>;
 ///
-/// // ok -- `Foo` is applied to two distinct, generic types.
+/// // Okay -- `Foo` is applied to two distinct, generic types.
 /// fn a<T, U>() -> Foo<T, U> { .. }
 ///
-/// // not ok -- `Foo` is applied to `T` twice.
+/// // Not okay -- `Foo` is applied to `T` twice.
 /// fn b<T>() -> Foo<T, T> { .. }
 ///
-///
-/// // not ok -- `Foo` is applied to a non-generic type.
+/// // Not okay -- `Foo` is applied to a non-generic type.
 /// fn b<T>() -> Foo<T, u32> { .. }
 /// ```
 ///
@@ -613,7 +623,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
     span: Span,
     ty: Ty<'tcx>,
 ) -> Vec<ty::Predicate<'tcx>> {
-    trace!("check_existential_types: {:?}", ty);
+    trace!("check_existential_types(ty={:?})", ty);
     let mut substituted_predicates = Vec::new();
     ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
@@ -621,17 +631,17 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
             if let ty::Opaque(def_id, substs) = ty.sty {
                 trace!("check_existential_types: opaque_ty, {:?}, {:?}", def_id, substs);
                 let generics = tcx.generics_of(def_id);
-                // only check named existential types defined in this crate
+                // Only check named existential types defined in this crate.
                 if generics.parent.is_none() && def_id.is_local() {
                     let opaque_hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
                     if may_define_existential_type(tcx, fn_def_id, opaque_hir_id) {
-                        trace!("check_existential_types may define. Generics: {:#?}", generics);
+                        trace!("check_existential_types: may define, generics={:#?}", generics);
                         let mut seen: FxHashMap<_, Vec<_>> = FxHashMap::default();
                         for (subst, param) in substs.iter().zip(&generics.params) {
                             match subst.unpack() {
                                 ty::subst::UnpackedKind::Type(ty) => match ty.sty {
                                     ty::Param(..) => {}
-                                    // prevent `fn foo() -> Foo<u32>` from being defining
+                                    // Prevent `fn foo() -> Foo<u32>` from being defining.
                                     _ => {
                                         tcx.sess
                                             .struct_span_err(
@@ -713,20 +723,19 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                         }
                     } // if may_define_existential_type
 
-                    // now register the bounds on the parameters of the existential type
-                    // so the parameters given by the function need to fulfill them
-                    // ```rust
-                    // existential type Foo<T: Bar>: 'static;
-                    // fn foo<U>() -> Foo<U> { .. *}
-                    // ```
+                    // Now register the bounds on the parameters of the existential type
+                    // so the parameters given by the function need to fulfill them.
+                    //
+                    //     existential type Foo<T: Bar>: 'static;
+                    //     fn foo<U>() -> Foo<U> { .. *}
+                    //
                     // becomes
-                    // ```rust
-                    // existential type Foo<T: Bar>: 'static;
-                    // fn foo<U: Bar>() -> Foo<U> { .. *}
-                    // ```
+                    //
+                    //     existential type Foo<T: Bar>: 'static;
+                    //     fn foo<U: Bar>() -> Foo<U> { .. *}
                     let predicates = tcx.predicates_of(def_id);
                     trace!(
-                        "check_existential_types may define. adding predicates: {:#?}",
+                        "check_existential_types: may define, predicates={:#?}",
                         predicates,
                     );
                     for &(pred, _) in predicates.predicates.iter() {
@@ -751,7 +760,7 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                                            method: &ty::AssocItem,
                                            self_ty: Ty<'tcx>)
 {
-    // check that the method has a valid receiver type, given the type `Self`
+    // Check that the method has a valid receiver type, given the type `Self`.
     debug!("check_method_receiver({:?}, self_ty={:?})",
            method, self_ty);
 
@@ -783,7 +792,7 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
 
     if fcx.tcx.features().arbitrary_self_types {
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {
-            // report error, arbitrary_self_types was enabled
+            // Report error; `arbitrary_self_types` was enabled.
             fcx.tcx.sess.diagnostic().mut_span_err(
                 span, &format!("invalid method receiver type: {:?}", receiver_ty)
             ).note("type of `self` must be `Self` or a type that dereferences to it")
@@ -794,7 +803,7 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
     } else {
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, false) {
             if receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {
-                // report error, would have worked with arbitrary_self_types
+                // Report error; would have worked with `arbitrary_self_types`.
                 feature_gate::feature_err(
                     &fcx.tcx.sess.parse_sess,
                     sym::arbitrary_self_types,
@@ -808,7 +817,7 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                 ).help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
                 .emit();
             } else {
-                // report error, would not have worked with arbitrary_self_types
+                // Report error; would not have worked with `arbitrary_self_types`.
                 fcx.tcx.sess.diagnostic().mut_span_err(
                     span, &format!("invalid method receiver type: {:?}", receiver_ty)
                 ).note("type must be `Self` or a type that dereferences to it")
@@ -820,10 +829,11 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
     }
 }
 
-/// returns true if `receiver_ty` would be considered a valid receiver type for `self_ty`. If
+/// Returns whether `receiver_ty` would be considered a valid receiver type for `self_ty`. If
 /// `arbitrary_self_types` is enabled, `receiver_ty` must transitively deref to `self_ty`, possibly
 /// through a `*const/mut T` raw pointer. If the feature is not enabled, the requirements are more
-/// strict: `receiver_ty` must implement `Receiver` and directly implement `Deref<Target=self_ty>`.
+/// strict: `receiver_ty` must implement `Receiver` and directly implement
+/// `Deref<Target = self_ty>`.
 ///
 /// N.B., there are cases this function returns `true` but causes an error to be emitted,
 /// particularly when `receiver_ty` derefs to a type that is the same as `self_ty` but has the
@@ -839,7 +849,7 @@ fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
 
     let can_eq_self = |ty| fcx.infcx.can_eq(fcx.param_env, self_ty, ty).is_ok();
 
-    // `self: Self` is always valid
+    // `self: Self` is always valid.
     if can_eq_self(receiver_ty) {
         if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, self_ty, receiver_ty) {
             err.emit();
@@ -849,15 +859,15 @@ fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
 
     let mut autoderef = fcx.autoderef(span, receiver_ty);
 
-    // the `arbitrary_self_types` feature allows raw pointer receivers like `self: *const Self`
+    // The `arbitrary_self_types` feature allows raw pointer receivers like `self: *const Self`.
     if arbitrary_self_types_enabled {
         autoderef = autoderef.include_raw_pointers();
     }
 
-    // the first type is `receiver_ty`, which we know its not equal to `self_ty`. skip it.
+    // The first type is `receiver_ty`, which we know its not equal to `self_ty`; skip it.
     autoderef.next();
 
-    // keep dereferencing `receiver_ty` until we get to `self_ty`
+    // Keep dereferencing `receiver_ty` until we get to `self_ty`.
     loop {
         if let Some((potential_self_ty, _)) = autoderef.next() {
             debug!("receiver_is_valid: potential self type `{:?}` to match `{:?}`",
@@ -882,14 +892,14 @@ fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
             return receiver_ty.references_error();
         }
 
-        // without the `arbitrary_self_types` feature, `receiver_ty` must directly deref to
-        // `self_ty`. Enforce this by only doing one iteration of the loop
+        // Without the `arbitrary_self_types` feature, `receiver_ty` must directly deref to
+        // `self_ty`. Enforce this by only doing one iteration of the loop.
         if !arbitrary_self_types_enabled {
             return false
         }
     }
 
-    // without `feature(arbitrary_self_types)`, we require that `receiver_ty` implements `Receiver`
+    // Without `feature(arbitrary_self_types)`, we require that `receiver_ty` implements `Receiver`.
     if !arbitrary_self_types_enabled {
         let trait_def_id = match fcx.tcx.lang_items().receiver_trait() {
             Some(did) => did,
@@ -968,7 +978,7 @@ fn report_bivariance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut err = error_392(tcx, span, param_name);
 
     let suggested_marker_id = tcx.lang_items().phantom_data();
-    // help is available only in presence of lang items
+    // Help is available only in presence of lang items.
     if let Some(def_id) = suggested_marker_id {
         err.help(&format!("consider removing `{}` or using a marker such as `{}`",
                           param_name,
@@ -988,12 +998,12 @@ fn reject_shadowing_parameters(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) {
     }).collect();
 
     for method_param in &generics.params {
-        // Shadowing is checked in resolve_lifetime.
+        // Shadowing is checked in `resolve_lifetime`.
         if let GenericParamDefKind::Lifetime = method_param.kind {
             continue
         }
         if impl_params.contains_key(&method_param.name) {
-            // Tighten up the span to focus on only the shadowing type
+            // Tighten up the span to focus on only the shadowing type.
             let type_span = tcx.def_span(method_param.def_id);
 
             // The expectation here is that the original trait declaration is

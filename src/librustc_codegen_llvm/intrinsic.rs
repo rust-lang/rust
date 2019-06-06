@@ -937,8 +937,8 @@ fn codegen_msvc_try(
     bx.store(ret, dest, i32_align);
 }
 
-// Definition of the standard "try" function for Rust using the GNU-like model
-// of exceptions (e.g., the normal semantics of LLVM's landingpad and invoke
+// Definition of the standard `try` function for Rust using the GNU-like model
+// of exceptions (e.g., the normal semantics of LLVM's `landingpad` and `invoke`
 // instructions).
 //
 // This codegen is a little surprising because we always call a shim
