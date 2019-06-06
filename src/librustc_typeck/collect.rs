@@ -26,7 +26,7 @@ use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::UnpackedKind;
-use rustc::ty::{self, AdtKind, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
+use rustc::ty::{self, AdtKind, DefIdTree, ToPolyTraitRef, Ty, TyCtxt, Const};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc::util::captures::Captures;
 use rustc::util::nodemap::FxHashMap;
@@ -47,7 +47,7 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::GenericParamKind;
 use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
-use errors::Applicability;
+use errors::{Applicability, DiagnosticId};
 
 use std::iter;
 
@@ -202,6 +202,22 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
          .emit();
 
         self.tcx().types.err
+    }
+
+    fn ct_infer(
+        &self,
+        _: Ty<'tcx>,
+        _: Option<&ty::GenericParamDef>,
+        span: Span,
+    ) -> &'tcx Const<'tcx> {
+        self.tcx().sess.struct_span_err_with_code(
+            span,
+            "the const placeholder `_` is not allowed within types on item signatures",
+            DiagnosticId::Error("E0121".into()),
+        ).span_label(span, "not allowed in type signatures")
+         .emit();
+
+        self.tcx().consts.err
     }
 
     fn projected_ty_from_poly_trait_ref(

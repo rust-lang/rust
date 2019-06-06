@@ -13,7 +13,7 @@ use crate::middle::resolve_lifetime as rl;
 use crate::namespace::Namespace;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
-use rustc::ty::{self, DefIdTree, Ty, TyCtxt, ToPredicate, TypeFoldable};
+use rustc::ty::{self, DefIdTree, Ty, TyCtxt, Const, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{Kind, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
@@ -61,6 +61,13 @@ pub trait AstConv<'gcx, 'tcx> {
                         span: Span) -> Ty<'tcx> {
         self.ty_infer(span)
     }
+    /// What const should we use when a const is omitted?
+    fn ct_infer(
+        &self,
+        ty: Ty<'tcx>,
+        param: Option<&ty::GenericParamDef>,
+        span: Span,
+    ) -> &'tcx Const<'tcx>;
 
     /// Projecting an associated type from a (potentially)
     /// higher-ranked trait reference is more complicated, because of
@@ -280,7 +287,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let param_counts = def.own_counts();
         let arg_counts = args.own_counts();
         let infer_lifetimes = position != GenericArgPosition::Type && arg_counts.lifetimes == 0;
-        let infer_consts = position != GenericArgPosition::Type && arg_counts.consts == 0;
 
         let mut defaults: ty::GenericParamCount = Default::default();
         for param in &def.params {
@@ -333,7 +339,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 offset
             );
             // We enforce the following: `required` <= `provided` <= `permitted`.
-            // For kinds without defaults (i.e., lifetimes), `required == permitted`.
+            // For kinds without defaults (e.g.., lifetimes), `required == permitted`.
             // For other kinds (i.e., types), `permitted` may be greater than `required`.
             if required <= provided && provided <= permitted {
                 return (reported_late_bound_region_err.unwrap_or(false), None);
@@ -404,7 +410,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             );
         }
         // FIXME(const_generics:defaults)
-        if !infer_consts || arg_counts.consts > param_counts.consts {
+        if !infer_args || arg_counts.consts > param_counts.consts {
             check_kind_count(
                 "const",
                 param_counts.consts,
@@ -707,8 +713,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     }
                     GenericParamDefKind::Const => {
                         // FIXME(const_generics:defaults)
-                        // We've already errored above about the mismatch.
-                        tcx.consts.err.into()
+                        if infer_args {
+                            // No const parameters were provided, we can infer all.
+                            let ty = tcx.at(span).type_of(param.def_id);
+                            self.ct_infer(ty, Some(param), span).into()
+                        } else {
+                            // We've already errored above about the mismatch.
+                            tcx.consts.err.into()
+                        }
                     }
                 }
             },

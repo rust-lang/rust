@@ -100,11 +100,12 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_target::spec::abi::Abi;
 use rustc::infer::opaque_types::OpaqueTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{
-    self, AdtKind, CanonicalUserType, Ty, TyCtxt, GenericParamDefKind, Visibility,
+    self, AdtKind, CanonicalUserType, Ty, TyCtxt, Const, GenericParamDefKind, Visibility,
     ToPolyTraitRef, ToPredicate, RegionKind, UserType
 };
 use rustc::ty::adjustment::{
@@ -1959,6 +1960,22 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                         span: Span) -> Ty<'tcx> {
         if let UnpackedKind::Type(ty) = self.var_for_def(span, ty_param_def).unpack() {
             return ty;
+    fn ct_infer(
+        &self,
+        ty: Ty<'tcx>,
+        param: Option<&ty::GenericParamDef>,
+        span: Span,
+    ) -> &'tcx Const<'tcx> {
+        if let Some(param) = param {
+            if let UnpackedKind::Const(ct) = self.var_for_def(span, param).unpack() {
+                return ct;
+            }
+            unreachable!()
+        } else {
+            self.next_const_var(ty, ConstVariableOrigin {
+                kind: ConstVariableOriginKind::ConstInference,
+                span,
+            })
         }
         unreachable!()
     }
