@@ -552,60 +552,78 @@ impl MacroKind {
 
 /// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
-    /// A trivial "extension" that does nothing, only keeps the attribute and marks it as known.
-    NonMacroAttr { mark_used: bool },
-
-    /// A syntax extension that is attached to an item and modifies it
-    /// in-place. Also allows decoration, i.e., creating new items.
-    MultiModifier(Box<dyn MultiItemModifier + sync::Sync + sync::Send>),
-
-    /// A function-like procedural macro. TokenStream -> TokenStream.
+    /// A token-based function-like macro.
     ProcMacro {
+        /// An expander with signature TokenStream -> TokenStream.
         expander: Box<dyn ProcMacro + sync::Sync + sync::Send>,
-        /// Whitelist of unstable features that are treated as stable inside this macro
+        /// Whitelist of unstable features that are treated as stable inside this macro.
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
+        /// Edition of the crate in which this macro is defined.
         edition: Edition,
     },
 
-    /// An attribute-like procedural macro. TokenStream, TokenStream -> TokenStream.
-    /// The first TokenSteam is the attribute, the second is the annotated item.
-    /// Allows modification of the input items and adding new items, similar to
-    /// MultiModifier, but uses TokenStreams, rather than AST nodes.
-    AttrProcMacro(Box<dyn AttrProcMacro + sync::Sync + sync::Send>, Edition),
-
-    /// A normal, function-like syntax extension.
-    ///
-    /// `bytes!` is a `NormalTT`.
+    /// An AST-based function-like macro.
     NormalTT {
+        /// An expander with signature TokenStream -> AST.
         expander: Box<dyn TTMacroExpander + sync::Sync + sync::Send>,
+        /// Some info about the macro's definition point.
         def_info: Option<(ast::NodeId, Span)>,
+        /// Hygienic properties of identifiers produced by this macro.
         transparency: Transparency,
-        /// Whether the contents of the macro can
-        /// directly use `#[unstable]` things.
-        ///
-        /// Only allows things that require a feature gate in the given whitelist
+        /// Whitelist of unstable features that are treated as stable inside this macro.
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
-        /// Whether the contents of the macro can use `unsafe`
-        /// without triggering the `unsafe_code` lint.
+        /// Suppresses the `unsafe_code` lint for code produced by this macro.
         allow_internal_unsafe: bool,
-        /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`)
-        /// for a given macro.
+        /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
         local_inner_macros: bool,
-        /// The macro's feature name if it is unstable, and the stability feature
+        /// The macro's feature name and tracking issue number if it is unstable.
         unstable_feature: Option<(Symbol, u32)>,
-        /// Edition of the crate in which the macro is defined
+        /// Edition of the crate in which this macro is defined.
         edition: Edition,
     },
 
-    /// An attribute-like procedural macro. TokenStream -> TokenStream.
-    /// The input is the annotated item.
-    /// Allows generating code to implement a Trait for a given struct
-    /// or enum item.
-    ProcMacroDerive(Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
-                    Vec<Symbol> /* inert attribute names */, Edition),
+    /// A token-based attribute macro.
+    AttrProcMacro(
+        /// An expander with signature (TokenStream, TokenStream) -> TokenStream.
+        /// The first TokenSteam is the attribute itself, the second is the annotated item.
+        /// The produced TokenSteam replaces the input TokenSteam.
+        Box<dyn AttrProcMacro + sync::Sync + sync::Send>,
+        /// Edition of the crate in which this macro is defined.
+        Edition,
+    ),
 
-    /// An attribute-like procedural macro that derives a builtin trait.
-    BuiltinDerive(Box<dyn MultiItemModifier + sync::Sync + sync::Send>),
+    /// An AST-based attribute macro.
+    MultiModifier(
+        /// An expander with signature (AST, AST) -> AST.
+        /// The first AST fragment is the attribute itself, the second is the annotated item.
+        /// The produced AST fragment replaces the input AST fragment.
+        Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
+    ),
+
+    /// A trivial attribute "macro" that does nothing,
+    /// only keeps the attribute and marks it as known.
+    NonMacroAttr {
+        /// Suppresses the `unused_attributes` lint for this attribute.
+        mark_used: bool,
+    },
+
+    /// A token-based derive macro.
+    ProcMacroDerive(
+        /// An expander with signature TokenStream -> TokenStream (not yet).
+        /// The produced TokenSteam is appended to the input TokenSteam.
+        Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
+        /// Names of helper attributes registered by this macro.
+        Vec<Symbol>,
+        /// Edition of the crate in which this macro is defined.
+        Edition,
+    ),
+
+    /// An AST-based derive macro.
+    BuiltinDerive(
+        /// An expander with signature AST -> AST.
+        /// The produced AST fragment is appended to the input AST fragment.
+        Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
+    ),
 }
 
 impl SyntaxExtension {
