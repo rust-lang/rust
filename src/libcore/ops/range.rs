@@ -711,7 +711,7 @@ impl<T: Clone> Bound<&T> {
     /// ```
     #[unstable(feature = "bound_cloned", issue = "61356")]
     pub fn cloned(self) -> Bound<T> {
-        match *self {
+        match self {
             Bound::Unbounded => Bound::Unbounded,
             Bound::Included(x) => Bound::Included(x.clone()),
             Bound::Excluded(x) => Bound::Excluded(x.clone()),
