@@ -137,29 +137,6 @@ impl Annotatable {
     }
 }
 
-// A more flexible ItemDecorator.
-pub trait MultiItemDecorator {
-    fn expand(&self,
-              ecx: &mut ExtCtxt<'_>,
-              sp: Span,
-              meta_item: &ast::MetaItem,
-              item: &Annotatable,
-              push: &mut dyn FnMut(Annotatable));
-}
-
-impl<F> MultiItemDecorator for F
-    where F : Fn(&mut ExtCtxt<'_>, Span, &ast::MetaItem, &Annotatable, &mut dyn FnMut(Annotatable))
-{
-    fn expand(&self,
-              ecx: &mut ExtCtxt<'_>,
-              sp: Span,
-              meta_item: &ast::MetaItem,
-              item: &Annotatable,
-              push: &mut dyn FnMut(Annotatable)) {
-        (*self)(ecx, sp, meta_item, item, push)
-    }
-}
-
 // `meta_item` is the annotation, and `item` is the item being modified.
 // FIXME Decorators should follow the same pattern too.
 pub trait MultiItemModifier {
@@ -581,14 +558,6 @@ pub enum SyntaxExtension {
     /// A trivial "extension" that does nothing, only keeps the attribute and marks it as known.
     NonMacroAttr { mark_used: bool },
 
-    /// A syntax extension that is attached to an item and creates new items
-    /// based upon it.
-    ///
-    /// `#[derive(...)]` is a `MultiItemDecorator`.
-    ///
-    /// Prefer ProcMacro or MultiModifier since they are more flexible.
-    MultiDecorator(Box<dyn MultiItemDecorator + sync::Sync + sync::Send>),
-
     /// A syntax extension that is attached to an item and modifies it
     /// in-place. Also allows decoration, i.e., creating new items.
     MultiModifier(Box<dyn MultiItemModifier + sync::Sync + sync::Send>),
@@ -658,7 +627,6 @@ impl SyntaxExtension {
             SyntaxExtension::ProcMacro { .. } =>
                 MacroKind::Bang,
             SyntaxExtension::NonMacroAttr { .. } |
-            SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
             SyntaxExtension::AttrProcMacro(..) =>
                 MacroKind::Attr,
@@ -688,7 +656,6 @@ impl SyntaxExtension {
             SyntaxExtension::ProcMacroDerive(.., edition) => edition,
             // Unstable legacy stuff
             SyntaxExtension::NonMacroAttr { .. } |
-            SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
             SyntaxExtension::BuiltinDerive(..) => default_edition,
         }

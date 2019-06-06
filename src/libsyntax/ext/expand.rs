@@ -575,14 +575,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let item = mac.expand(self.cx, attr.span, &meta, item);
                 Some(invoc.fragment_kind.expect_from_annotatables(item))
             }
-            MultiDecorator(ref mac) => {
-                let mut items = Vec::new();
-                let meta = attr.parse_meta(self.cx.parse_sess)
-                               .expect("derive meta should already have been parsed");
-                mac.expand(self.cx, attr.span, &meta, &item, &mut |item| items.push(item));
-                items.push(item);
-                Some(invoc.fragment_kind.expect_from_annotatables(items))
-            }
             AttrProcMacro(ref mac, ..) => {
                 self.gate_proc_macro_attr_item(attr.span, &item);
                 let item_tok = TokenTree::token(token::Interpolated(Lrc::new(match item {
@@ -791,8 +783,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
             }
 
-            MultiDecorator(..) | MultiModifier(..) |
-            AttrProcMacro(..) | SyntaxExtension::NonMacroAttr { .. } => {
+            MultiModifier(..) | AttrProcMacro(..) | SyntaxExtension::NonMacroAttr { .. } => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", path));
                 self.cx.trace_macros_diag();
