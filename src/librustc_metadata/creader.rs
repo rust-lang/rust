@@ -614,7 +614,7 @@ impl<'a> CrateLoader<'a> {
             match decl {
                 ProcMacro::CustomDerive { trait_name, attributes, client } => {
                     let attrs = attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
-                    (trait_name, SyntaxExtension::ProcMacroDerive(
+                    (trait_name, SyntaxExtension::Derive(
                         Box::new(ProcMacroDerive {
                             client,
                             attrs: attrs.clone(),
@@ -624,13 +624,13 @@ impl<'a> CrateLoader<'a> {
                     ))
                 }
                 ProcMacro::Attr { name, client } => {
-                    (name, SyntaxExtension::AttrProcMacro(
+                    (name, SyntaxExtension::Attr(
                         Box::new(AttrProcMacro { client }),
                         root.edition,
                     ))
                 }
                 ProcMacro::Bang { name, client } => {
-                    (name, SyntaxExtension::ProcMacro {
+                    (name, SyntaxExtension::Bang {
                         expander: Box::new(BangProcMacro { client }),
                         allow_internal_unstable: None,
                         edition: root.edition,

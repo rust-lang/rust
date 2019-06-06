@@ -4,7 +4,7 @@ use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 
-use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
+use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension};
 use syntax::ext::base::MacroExpanderFn;
 use syntax::ext::hygiene::Transparency;
 use syntax::symbol::{Symbol, sym};
@@ -89,7 +89,7 @@ impl<'a> Registry<'a> {
         if name == sym::macro_rules {
             panic!("user-defined macros may not be named `macro_rules`");
         }
-        if let NormalTT { def_info: ref mut def_info @ None, .. } = extension {
+        if let SyntaxExtension::LegacyBang { def_info: ref mut def_info @ None, .. } = extension {
             *def_info = Some((ast::CRATE_NODE_ID, self.krate_span));
         }
         self.syntax_exts.push((name, extension));
@@ -98,10 +98,10 @@ impl<'a> Registry<'a> {
     /// Register a macro of the usual kind.
     ///
     /// This is a convenience wrapper for `register_syntax_extension`.
-    /// It builds for you a `NormalTT` that calls `expander`,
+    /// It builds for you a `SyntaxExtension::LegacyBang` that calls `expander`,
     /// and also takes care of interning the macro's name.
     pub fn register_macro(&mut self, name: &str, expander: MacroExpanderFn) {
-        self.register_syntax_extension(Symbol::intern(name), NormalTT {
+        self.register_syntax_extension(Symbol::intern(name), SyntaxExtension::LegacyBang {
             expander: Box::new(expander),
             def_info: None,
             transparency: Transparency::SemiTransparent,

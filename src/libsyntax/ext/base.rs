@@ -1,5 +1,3 @@
-pub use SyntaxExtension::*;
-
 use crate::ast::{self, Attribute, Name, PatKind};
 use crate::attr::HasAttrs;
 use crate::source_map::{SourceMap, Spanned, respan};
@@ -550,7 +548,7 @@ impl MacroKind {
 /// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
     /// A token-based function-like macro.
-    ProcMacro {
+    Bang {
         /// An expander with signature TokenStream -> TokenStream.
         expander: Box<dyn ProcMacro + sync::Sync + sync::Send>,
         /// Whitelist of unstable features that are treated as stable inside this macro.
@@ -560,7 +558,7 @@ pub enum SyntaxExtension {
     },
 
     /// An AST-based function-like macro.
-    NormalTT {
+    LegacyBang {
         /// An expander with signature TokenStream -> AST.
         expander: Box<dyn TTMacroExpander + sync::Sync + sync::Send>,
         /// Some info about the macro's definition point.
@@ -580,7 +578,7 @@ pub enum SyntaxExtension {
     },
 
     /// A token-based attribute macro.
-    AttrProcMacro(
+    Attr(
         /// An expander with signature (TokenStream, TokenStream) -> TokenStream.
         /// The first TokenSteam is the attribute itself, the second is the annotated item.
         /// The produced TokenSteam replaces the input TokenSteam.
@@ -590,7 +588,7 @@ pub enum SyntaxExtension {
     ),
 
     /// An AST-based attribute macro.
-    MultiModifier(
+    LegacyAttr(
         /// An expander with signature (AST, AST) -> AST.
         /// The first AST fragment is the attribute itself, the second is the annotated item.
         /// The produced AST fragment replaces the input AST fragment.
@@ -605,7 +603,7 @@ pub enum SyntaxExtension {
     },
 
     /// A token-based derive macro.
-    ProcMacroDerive(
+    Derive(
         /// An expander with signature TokenStream -> TokenStream (not yet).
         /// The produced TokenSteam is appended to the input TokenSteam.
         Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
@@ -616,7 +614,7 @@ pub enum SyntaxExtension {
     ),
 
     /// An AST-based derive macro.
-    BuiltinDerive(
+    LegacyDerive(
         /// An expander with signature AST -> AST.
         /// The produced AST fragment is appended to the input AST fragment.
         Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
@@ -627,41 +625,38 @@ impl SyntaxExtension {
     /// Returns which kind of macro calls this syntax extension.
     pub fn kind(&self) -> MacroKind {
         match *self {
-            SyntaxExtension::NormalTT { .. } |
-            SyntaxExtension::ProcMacro { .. } =>
-                MacroKind::Bang,
-            SyntaxExtension::NonMacroAttr { .. } |
-            SyntaxExtension::MultiModifier(..) |
-            SyntaxExtension::AttrProcMacro(..) =>
-                MacroKind::Attr,
-            SyntaxExtension::ProcMacroDerive(..) |
-            SyntaxExtension::BuiltinDerive(..) =>
-                MacroKind::Derive,
+            SyntaxExtension::Bang { .. } |
+            SyntaxExtension::LegacyBang { .. } => MacroKind::Bang,
+            SyntaxExtension::Attr(..) |
+            SyntaxExtension::LegacyAttr(..) |
+            SyntaxExtension::NonMacroAttr { .. } => MacroKind::Attr,
+            SyntaxExtension::Derive(..) |
+            SyntaxExtension::LegacyDerive(..) => MacroKind::Derive,
         }
     }
 
     pub fn default_transparency(&self) -> Transparency {
         match *self {
-            SyntaxExtension::NormalTT { transparency, .. } => transparency,
-            SyntaxExtension::ProcMacro { .. } |
-            SyntaxExtension::AttrProcMacro(..) |
-            SyntaxExtension::ProcMacroDerive(..) |
+            SyntaxExtension::LegacyBang { transparency, .. } => transparency,
+            SyntaxExtension::Bang { .. } |
+            SyntaxExtension::Attr(..) |
+            SyntaxExtension::Derive(..) |
             SyntaxExtension::NonMacroAttr { .. } => Transparency::Opaque,
-            SyntaxExtension::MultiModifier(..) |
-            SyntaxExtension::BuiltinDerive(..) => Transparency::SemiTransparent,
+            SyntaxExtension::LegacyAttr(..) |
+            SyntaxExtension::LegacyDerive(..) => Transparency::SemiTransparent,
         }
     }
 
     pub fn edition(&self, default_edition: Edition) -> Edition {
         match *self {
-            SyntaxExtension::NormalTT { edition, .. } |
-            SyntaxExtension::ProcMacro { edition, .. } |
-            SyntaxExtension::AttrProcMacro(.., edition) |
-            SyntaxExtension::ProcMacroDerive(.., edition) => edition,
+            SyntaxExtension::Bang { edition, .. } |
+            SyntaxExtension::LegacyBang { edition, .. } |
+            SyntaxExtension::Attr(.., edition) |
+            SyntaxExtension::Derive(.., edition) => edition,
             // Unstable legacy stuff
             SyntaxExtension::NonMacroAttr { .. } |
-            SyntaxExtension::MultiModifier(..) |
-            SyntaxExtension::BuiltinDerive(..) => default_edition,
+            SyntaxExtension::LegacyAttr(..) |
+            SyntaxExtension::LegacyDerive(..) => default_edition,
         }
     }
 }
