@@ -374,13 +374,13 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// will do a single needs_drop check for all the values.
 ///
 /// Types like Vec therefore just `drop_in_place(&mut self[..])` without using
-/// needs_drop explicitly. Types like HashMap, on the other hand, have to drop
+/// needs_drop explicitly. Types like `HashMap`, on the other hand, have to drop
 /// values one at a time and should use this API.
 ///
 ///
 /// # Examples
 ///
-/// Here's an example of how a collection might make use of needs_drop:
+/// Here's an example of how a collection might make use of `needs_drop`:
 ///
 /// ```
 /// use std::{mem, ptr};

@@ -84,6 +84,7 @@ impl Step for ToolBuild {
                 | "cargo"
                 | "clippy-driver"
                 | "miri"
+                | "rustfmt"
                 => {}
 
                 _ => return,
