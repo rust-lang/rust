@@ -12,9 +12,8 @@ use syntax_pos::Span;
 pub fn expand_deriving_hash(cx: &mut ExtCtxt<'_>,
                             span: Span,
                             mitem: &MetaItem,
-                            item: &Annotatable,
-                            push: &mut dyn FnMut(Annotatable)) {
-
+                            ref item: Annotatable)
+                            -> Vec<Annotatable> {
     let path = Path::new_(pathvec_std!(cx, hash::Hash), None, vec![], PathKind::Std);
 
     let typaram = &*deriving::hygienic_type_parameter(item, "__H");
@@ -48,7 +47,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt<'_>,
         associated_types: Vec::new(),
     };
 
-    hash_trait_def.expand(cx, mitem, item, push);
+    hash_trait_def.expand(cx, mitem, item)
 }
 
 fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> P<Expr> {
