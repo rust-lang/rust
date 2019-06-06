@@ -89,11 +89,15 @@ fn main() {
 
     let mut cmd = Command::new(rustc);
     cmd.args(&args)
-        .arg("--cfg")
-        .arg(format!("stage{}", stage))
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
     let mut maybe_crate = None;
+
+    // Non-zero stages must all be treated uniformly to avoid problems when attempting to uplift
+    // compiler libraries and such from stage 1 to 2.
+    if stage == "0" {
+        cmd.arg("--cfg").arg("bootstrap");
+    }
 
     // Print backtrace in case of ICE
     if env::var("RUSTC_BACKTRACE_ON_ICE").is_ok() && env::var("RUST_BACKTRACE").is_err() {
