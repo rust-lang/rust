@@ -199,7 +199,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let ignore;
         let edition;
         if let Some(Event::Start(Tag::CodeBlock(lang))) = event {
-            let parse_result = LangString::parse(&lang, self.check_error_codes);
+            let parse_result = LangString::parse(&lang, self.check_error_codes, false);
             if !parse_result.rust {
                 return Some(Event::Start(Tag::CodeBlock(lang)));
             }
@@ -551,7 +551,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes: ErrorCodes) {
+pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes: ErrorCodes,
+                                           enable_per_target_ignores: bool) {
     let mut parser = Parser::new(doc);
     let mut prev_offset = 0;
     let mut nb_lines = 0;
@@ -564,7 +565,7 @@ pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes
                 let block_info = if s.is_empty() {
                     LangString::all_false()
                 } else {
-                    LangString::parse(&*s, error_codes)
+                    LangString::parse(&*s, error_codes, enable_per_target_ignores)
                 };
                 if !block_info.rust {
                     continue;
@@ -639,7 +640,11 @@ impl LangString {
         }
     }
 
-    fn parse(string: &str, allow_error_code_check: ErrorCodes) -> LangString {
+    fn parse(
+        string: &str,
+        allow_error_code_check: ErrorCodes,
+        enable_per_target_ignores: bool
+    ) -> LangString {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
@@ -660,7 +665,7 @@ impl LangString {
                 }
                 "no_run" => { data.no_run = true; seen_rust_tags = !seen_other_tags; }
                 "ignore" => { data.ignore = Ignore::All; seen_rust_tags = !seen_other_tags; }
-                x if x.starts_with("ignore-") => {
+                x if enable_per_target_ignores && x.starts_with("ignore-") => {
                     ignores.push(x.trim_start_matches("ignore-").to_owned());
                     seen_rust_tags = !seen_other_tags;
                 }
@@ -941,7 +946,7 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
                 let lang_string = if syntax.is_empty() {
                     LangString::all_false()
                 } else {
-                    LangString::parse(&*syntax, ErrorCodes::Yes)
+                    LangString::parse(&*syntax, ErrorCodes::Yes, false)
                 };
 
                 if lang_string.rust {

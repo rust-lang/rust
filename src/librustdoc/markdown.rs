@@ -147,7 +147,7 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> i32 {
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
 
-    find_testable_code(&input_str, &mut collector, codes);
+    find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores);
 
     options.test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&options.test_args, collector.tests,

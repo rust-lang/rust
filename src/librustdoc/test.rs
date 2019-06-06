@@ -325,7 +325,7 @@ fn run_test(
         cmd = Command::new(tool);
         cmd.arg(output_file);
         cmd.args(runtool_args);
-    }else{
+    } else {
         cmd = Command::new(output_file);
     }
 
@@ -857,7 +857,10 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
             self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
-            markdown::find_testable_code(&doc, self.collector, self.codes);
+            markdown::find_testable_code(&doc,
+                                         self.collector,
+                                         self.codes,
+                                         self.collector.enable_per_target_ignores);
         }
 
         nested(self);
