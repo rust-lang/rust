@@ -579,6 +579,7 @@ pub enum SyntaxExtension {
     NormalTT {
         expander: Box<dyn TTMacroExpander + sync::Sync + sync::Send>,
         def_info: Option<(ast::NodeId, Span)>,
+        transparency: Transparency,
         /// Whether the contents of the macro can
         /// directly use `#[unstable]` things.
         ///
@@ -605,21 +606,12 @@ pub enum SyntaxExtension {
 
     /// An attribute-like procedural macro that derives a builtin trait.
     BuiltinDerive(Box<dyn MultiItemModifier + sync::Sync + sync::Send>),
-
-    /// A declarative macro, e.g., `macro m() {}`.
-    DeclMacro {
-        expander: Box<dyn TTMacroExpander + sync::Sync + sync::Send>,
-        def_info: Option<(ast::NodeId, Span)>,
-        is_transparent: bool,
-        edition: Edition,
-    }
 }
 
 impl SyntaxExtension {
     /// Returns which kind of macro calls this syntax extension.
     pub fn kind(&self) -> MacroKind {
         match *self {
-            SyntaxExtension::DeclMacro { .. } |
             SyntaxExtension::NormalTT { .. } |
             SyntaxExtension::ProcMacro { .. } =>
                 MacroKind::Bang,
@@ -635,19 +627,19 @@ impl SyntaxExtension {
 
     pub fn default_transparency(&self) -> Transparency {
         match *self {
+            SyntaxExtension::NormalTT { transparency, .. } => transparency,
             SyntaxExtension::ProcMacro { .. } |
             SyntaxExtension::AttrProcMacro(..) |
             SyntaxExtension::ProcMacroDerive(..) |
-            SyntaxExtension::DeclMacro { is_transparent: false, .. } => Transparency::Opaque,
-            SyntaxExtension::DeclMacro { is_transparent: true, .. } => Transparency::Transparent,
-            _ => Transparency::SemiTransparent,
+            SyntaxExtension::NonMacroAttr { .. } => Transparency::Opaque,
+            SyntaxExtension::MultiModifier(..) |
+            SyntaxExtension::BuiltinDerive(..) => Transparency::SemiTransparent,
         }
     }
 
     pub fn edition(&self, default_edition: Edition) -> Edition {
         match *self {
             SyntaxExtension::NormalTT { edition, .. } |
-            SyntaxExtension::DeclMacro { edition, .. } |
             SyntaxExtension::ProcMacro { edition, .. } |
             SyntaxExtension::AttrProcMacro(.., edition) |
             SyntaxExtension::ProcMacroDerive(.., edition) => edition,

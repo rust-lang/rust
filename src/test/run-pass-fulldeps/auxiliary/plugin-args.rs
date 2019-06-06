@@ -13,6 +13,7 @@ use syntax::ast;
 use syntax::ext::hygiene;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::base::{TTMacroExpander, ExtCtxt, MacResult, MacEager, NormalTT};
+use syntax::ext::hygiene::Transparency;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -43,6 +44,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         NormalTT {
             expander: Box::new(Expander { args: args, }),
             def_info: None,
+            transparency: Transparency::SemiTransparent,
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
