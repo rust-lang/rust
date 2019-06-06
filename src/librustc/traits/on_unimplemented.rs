@@ -52,7 +52,7 @@ fn parse_error(tcx: TyCtxt<'_, '_, '_>, span: Span,
 }
 
 impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
-    pub fn parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    fn parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                  trait_def_id: DefId,
                  items: &[NestedMetaItem],
                  span: Span,
@@ -215,7 +215,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
 }
 
 impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
-    pub fn try_parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    fn try_parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      trait_def_id: DefId,
                      from: LocalInternedString,
                      err_sp: Span)
