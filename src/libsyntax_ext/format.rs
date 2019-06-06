@@ -1043,7 +1043,9 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
                     let mut show_doc_note = false;
 
                     let mut suggestions = vec![];
-                    for sub in foreign::$kind::iter_subs(fmt_str) {
+                    // account for `"` and account for raw strings `r#`
+                    let padding = str_style.map(|i| i + 2).unwrap_or(1);
+                    for sub in foreign::$kind::iter_subs(fmt_str, padding) {
                         let trn = match sub.translate() {
                             Some(trn) => trn,
 
@@ -1064,9 +1066,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
                         }
 
                         if let Some((start, end)) = pos {
-                            // account for `"` and account for raw strings `r#`
-                            let padding = str_style.map(|i| i + 2).unwrap_or(1);
-                            let sp = fmt_sp.from_inner_byte_pos(start + padding, end + padding);
+                            let sp = fmt_sp.from_inner_byte_pos(start, end);
                             suggestions.push((sp, trn));
                         } else {
                             diag.help(&format!("`{}` should be written as `{}`", sub, trn));

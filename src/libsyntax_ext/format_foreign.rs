@@ -263,10 +263,10 @@ pub mod printf {
     }
 
     /// Returns an iterator over all substitutions in a given string.
-    pub fn iter_subs(s: &str) -> Substitutions<'_> {
+    pub fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
         Substitutions {
             s,
-            pos: 0,
+            pos: start_pos,
         }
     }
 
@@ -711,7 +711,7 @@ pub mod printf {
         #[test]
         fn test_iter() {
             let s = "The %d'th word %% is: `%.*s` %!\n";
-            let subs: Vec<_> = iter_subs(s).map(|sub| sub.translate()).collect();
+            let subs: Vec<_> = iter_subs(s, 0).map(|sub| sub.translate()).collect();
             assert_eq!(
                 subs.iter().map(|ms| ms.as_ref().map(|s| &s[..])).collect::<Vec<_>>(),
                 vec![Some("{}"), None, Some("{:.*}"), None]
@@ -804,10 +804,10 @@ pub mod shell {
     }
 
     /// Returns an iterator over all substitutions in a given string.
-    pub fn iter_subs(s: &str) -> Substitutions<'_> {
+    pub fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
         Substitutions {
             s,
-            pos: 0,
+            pos: start_pos,
         }
     }
 
@@ -940,7 +940,7 @@ pub mod shell {
         fn test_iter() {
             use super::iter_subs;
             let s = "The $0'th word $$ is: `$WORD` $!\n";
-            let subs: Vec<_> = iter_subs(s).map(|sub| sub.translate()).collect();
+            let subs: Vec<_> = iter_subs(s, 0).map(|sub| sub.translate()).collect();
             assert_eq!(
                 subs.iter().map(|ms| ms.as_ref().map(|s| &s[..])).collect::<Vec<_>>(),
                 vec![Some("{0}"), None, Some("{WORD}")]
