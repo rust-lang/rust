@@ -700,8 +700,8 @@ pub(crate) fn format_impl(
             option.allow_single_line();
         }
 
-        let misssing_span = mk_sp(self_ty.span.hi(), item.span.hi());
-        let where_span_end = context.snippet_provider.opt_span_before(misssing_span, "{");
+        let missing_span = mk_sp(self_ty.span.hi(), item.span.hi());
+        let where_span_end = context.snippet_provider.opt_span_before(missing_span, "{");
         let where_clause_str = rewrite_where_clause(
             context,
             &generics.where_clause,
@@ -765,15 +765,15 @@ pub(crate) fn format_impl(
         }
 
         result.push('{');
-
-        let snippet = context.snippet(item.span);
+        // this is an impl body snippet(impl SampleImple { /* here */ })
+        let snippet = context.snippet(mk_sp(item.span.hi(), self_ty.span.hi()));
         let open_pos = snippet.find_uncommented("{")? + 1;
 
         if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_context(context);
             let item_indent = offset.block_only().block_indent(context.config);
             visitor.block_indent = item_indent;
-            visitor.last_pos = item.span.lo() + BytePos(open_pos as u32);
+            visitor.last_pos = self_ty.span.hi() + BytePos(open_pos as u32);
 
             visitor.visit_attrs(&item.attrs, ast::AttrStyle::Inner);
             visitor.visit_impl_items(items);
