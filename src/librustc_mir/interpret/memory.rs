@@ -876,4 +876,21 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
         Ok(())
     }
+
+    pub fn force_ptr(
+        &self,
+        scalar: Scalar<M::PointerTag>,
+    ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
+        match scalar {
+            Scalar::Ptr(ptr) => Ok(ptr),
+            _ => M::int_to_ptr(scalar.to_u64()?, &self.extra)
+        }
+    }
+
+    pub fn force_bits(&self, scalar: Scalar<M::PointerTag>) -> EvalResult<'tcx, u128> {
+        match scalar.to_bits_or_ptr(self.pointer_size(), self) {
+            Err(ptr) => Ok(M::ptr_to_int(ptr, &self.extra)? as u128),
+            Ok(bits) => Ok(bits)
+        }
+    }
 }

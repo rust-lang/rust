@@ -10,8 +10,9 @@ use rustc::mir;
 use rustc::ty::{self, query::TyCtxtAt};
 
 use super::{
-    Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
-    InterpretCx, PlaceTy, OpTy, ImmTy, MemoryKind,
+    Allocation, AllocId, EvalResult, Scalar, Pointer, EvalError, InterpError,
+    AllocationExtra, InterpretCx, PlaceTy, OpTy, ImmTy, MemoryKind,
+
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -210,4 +211,18 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         extra: Self::FrameExtra,
     ) -> EvalResult<'tcx>;
+
+    fn int_to_ptr(
+        _int: u64,
+        _extra: &Self::MemoryExtra
+    ) -> EvalResult<'tcx, Pointer<Self::PointerTag>> {
+            Err(EvalError::from(InterpError::ReadBytesAsPointer))
+        }
+
+    fn ptr_to_int(
+        _ptr: Pointer<Self::PointerTag>,
+        _extra: &Self::MemoryExtra
+    ) -> EvalResult<'tcx, u64> {
+        Err(EvalError::from(InterpError::ReadPointerAsBytes))
+    }
 }

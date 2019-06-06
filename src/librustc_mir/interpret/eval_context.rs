@@ -14,10 +14,8 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
-    ErrorHandled,
-    GlobalId, Scalar, Pointer, FrameInfo, AllocId,
-    EvalResult, InterpError,
-    truncate, sign_extend,
+    ErrorHandled, GlobalId, Scalar, Pointer, FrameInfo, AllocId,
+    EvalResult, InterpError, truncate, sign_extend,
 };
 use rustc_data_structures::fx::FxHashMap;
 
@@ -772,5 +770,18 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     #[inline(always)]
     pub fn truncate(&self, value: u128, ty: TyLayout<'_>) -> u128 {
         truncate(value, ty.size)
+    }
+
+    #[inline(always)]
+    pub fn force_ptr(
+        &self,
+        scalar: Scalar<M::PointerTag>,
+    ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
+        self.memory.force_ptr(scalar)
+    }
+
+    #[inline(always)]
+    pub fn force_bits(&self, scalar: Scalar<M::PointerTag>) -> EvalResult<'tcx, u128> {
+        self.memory.force_bits(scalar)
     }
 }
