@@ -4,7 +4,7 @@ use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 
-use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT, IdentTT};
+use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::MacroExpanderFn;
 use syntax::symbol::{Symbol, sym};
 use syntax::ast;
@@ -108,9 +108,6 @@ impl<'a> Registry<'a> {
                     unstable_feature,
                     edition,
                 }
-            }
-            IdentTT { expander, span: _, allow_internal_unstable } => {
-                IdentTT { expander, span: Some(self.krate_span), allow_internal_unstable }
             }
             _ => extension,
         }));
