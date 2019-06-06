@@ -16,6 +16,12 @@ warning: attempt to divide by zero
 LL |     println!("{}", 1/(1-1));
    |                    ^^^^^^^
 
+warning: this expression will panic at runtime
+  --> $DIR/promoted_errors.rs:9:20
+   |
+LL |     println!("{}", 1/(1-1));
+   |                    ^^^^^^^ attempt to divide by zero
+
 warning: attempt to divide by zero
   --> $DIR/promoted_errors.rs:11:14
    |
@@ -33,6 +39,12 @@ warning: attempt to divide by zero
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^
+
+warning: this expression will panic at runtime
+  --> $DIR/promoted_errors.rs:14:20
+   |
+LL |     println!("{}", 1/(false as u32));
+   |                    ^^^^^^^^^^^^^^^^ attempt to divide by zero
 
 warning: attempt to divide by zero
   --> $DIR/promoted_errors.rs:16:14
