@@ -185,7 +185,7 @@ use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind, Instance};
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::session::config::EntryFnType;
-use rustc::mir::{self, Location, Place, PlaceBase, Promoted, Static, StaticKind};
+use rustc::mir::{self, Location, PlaceBase, Promoted, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::{MonoItem, InstantiationMode};
 use rustc::mir::interpret::{Scalar, GlobalId, GlobalAlloc, ErrorHandled};
@@ -655,14 +655,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_terminator_kind(kind, location);
     }
 
-    fn visit_place(&mut self,
-                    place: &mir::Place<'tcx>,
-                    context: mir::visit::PlaceContext,
-                    location: Location) {
-        match place {
-            Place::Base(
-                PlaceBase::Static(box Static{ kind:StaticKind::Static(def_id), .. })
-            ) => {
+    fn visit_place_base(&mut self,
+                        place_base: &mir::PlaceBase<'tcx>,
+                        _context: mir::visit::PlaceContext,
+                        location: Location) {
+        match place_base {
+            PlaceBase::Static(box Static { kind: StaticKind::Static(def_id), .. }) => {
                 debug!("visiting static {:?} @ {:?}", def_id, location);
 
                 let tcx = self.tcx;
@@ -671,10 +669,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     self.output.push(MonoItem::Static(*def_id));
                 }
             }
-            _ => {}
+            PlaceBase::Static(box Static { kind: StaticKind::Promoted(_), .. }) => {
+                // FIXME: should we handle promoteds here instead of eagerly in collect_neighbours?
+            }
+            PlaceBase::Local(_) => {
+                // Locals have no relevance for collector
+            }
         }
-
-        self.super_place(place, context, location);
     }
 }
 

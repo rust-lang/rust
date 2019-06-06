@@ -70,6 +70,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
 #![feature(associated_type_defaults)]
+#![feature(bound_cloned)]
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
