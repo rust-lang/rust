@@ -39,8 +39,8 @@ use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
 use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
-use self::type_variable::TypeVariableOrigin;
-use self::unify_key::{ToType, ConstVariableOrigin};
+use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use self::unify_key::{ToType, ConstVariableOrigin, ConstVariableOriginKind};
 
 pub mod at;
 pub mod canonical;
@@ -1110,13 +1110,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let ty_var_id = self.type_variables.borrow_mut().new_var(
                     self.universe(),
                     false,
-                    TypeVariableOrigin::TypeParameterDefinition(span, param.name),
+                    TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::TypeParameterDefinition(param.name),
+                        span,
+                    },
                 );
 
                 self.tcx.mk_ty_var(ty_var_id).into()
             }
             GenericParamDefKind::Const { .. } => {
-                let origin = ConstVariableOrigin::ConstParameterDefinition(span, param.name);
+                let origin = ConstVariableOrigin {
+                    kind: ConstVariableOriginKind::ConstParameterDefinition(param.name),
+                    span,
+                };
                 let const_var_id =
                     self.const_unification_table
                         .borrow_mut()
@@ -1412,8 +1418,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         T: TypeFoldable<'tcx>
     {
         let fld_r = |br| self.next_region_var(LateBoundRegion(span, br, lbrct));
-        let fld_t = |_| self.next_ty_var(TypeVariableOrigin::MiscVariable(span));
-        let fld_c = |_, ty| self.next_const_var(ty, ConstVariableOrigin::MiscVariable(span));
+        let fld_t = |_| {
+            self.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::MiscVariable,
+                span,
+            })
+        };
+        let fld_c = |_, ty| self.next_const_var(ty, ConstVariableOrigin {
+            kind: ConstVariableOriginKind:: MiscVariable,
+            span,
+        });
         self.tcx.replace_bound_vars(value, fld_r, fld_t, fld_c)
     }
 

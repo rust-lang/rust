@@ -270,15 +270,16 @@ where
         projection_ty: ty::ProjectionTy<'tcx>,
         value_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
-        use crate::infer::type_variable::TypeVariableOrigin;
+        use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
         use crate::traits::WhereClause;
         use syntax_pos::DUMMY_SP;
 
         match value_ty.sty {
             ty::Projection(other_projection_ty) => {
-                let var = self
-                    .infcx
-                    .next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
+                let var = self.infcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: DUMMY_SP,
+                });
                 self.relate_projection_ty(projection_ty, var);
                 self.relate_projection_ty(other_projection_ty, var);
                 var

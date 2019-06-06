@@ -20,7 +20,7 @@
 //! a lattice.
 
 use super::InferCtxt;
-use super::type_variable::TypeVariableOrigin;
+use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 
 use crate::traits::ObligationCause;
 use crate::ty::TyVar;
@@ -79,12 +79,18 @@ pub fn super_lattice_tys<'a, 'gcx, 'tcx, L>(this: &mut L,
         // iterate on the subtype obligations that are returned, but I
         // think this suffices. -nmatsakis
         (&ty::Infer(TyVar(..)), _) => {
-            let v = infcx.next_ty_var(TypeVariableOrigin::LatticeVariable(this.cause().span));
+            let v = infcx.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::LatticeVariable,
+                span: this.cause().span,
+            });
             this.relate_bound(v, b, a)?;
             Ok(v)
         }
         (_, &ty::Infer(TyVar(..))) => {
-            let v = infcx.next_ty_var(TypeVariableOrigin::LatticeVariable(this.cause().span));
+            let v = infcx.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::LatticeVariable,
+                span: this.cause().span,
+            });
             this.relate_bound(v, a, b)?;
             Ok(v)
         }

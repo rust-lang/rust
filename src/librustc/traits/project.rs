@@ -14,7 +14,7 @@ use super::util;
 
 use crate::hir::def_id::DefId;
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
-use crate::infer::type_variable::TypeVariableOrigin;
+use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::mir::interpret::{GlobalId, ConstValue};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_macros::HashStable;
@@ -475,7 +475,11 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             let tcx = selcx.infcx().tcx;
             let def_id = projection_ty.item_def_id;
             let ty_var = selcx.infcx().next_ty_var(
-                TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
+                TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::NormalizeProjectionType,
+                    span: tcx.def_span(def_id),
+                },
+            );
             let projection = ty::Binder::dummy(ty::ProjectionPredicate {
                 projection_ty,
                 ty: ty_var
@@ -810,7 +814,11 @@ fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tc
     let tcx = selcx.infcx().tcx;
     let def_id = projection_ty.item_def_id;
     let new_value = selcx.infcx().next_ty_var(
-        TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
+        TypeVariableOrigin {
+            kind: TypeVariableOriginKind::NormalizeProjectionType,
+            span: tcx.def_span(def_id),
+        },
+    );
     Normalized {
         value: new_value,
         obligations: vec![trait_obligation]

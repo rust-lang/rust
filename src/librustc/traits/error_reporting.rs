@@ -21,7 +21,7 @@ use crate::hir;
 use crate::hir::Node;
 use crate::hir::def_id::DefId;
 use crate::infer::{self, InferCtxt};
-use crate::infer::type_variable::TypeVariableOrigin;
+use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::session::DiagnosticMessageId;
 use crate::ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use crate::ty::GenericParamDefKind;
@@ -1464,7 +1464,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     let infcx = self.infcx;
                     self.var_map.entry(ty).or_insert_with(||
                         infcx.next_ty_var(
-                            TypeVariableOrigin::TypeParameterDefinition(DUMMY_SP, name)))
+                            TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::TypeParameterDefinition(name),
+                                span: DUMMY_SP,
+                            }
+                        )
+                    )
                 } else {
                     ty.super_fold_with(self)
                 }

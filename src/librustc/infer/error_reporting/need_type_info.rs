@@ -2,7 +2,7 @@ use crate::hir::def::Namespace;
 use crate::hir::{self, Local, Pat, Body, HirId};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::infer::InferCtxt;
-use crate::infer::type_variable::TypeVariableOrigin;
+use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::ty::{self, Ty, Infer, TyVar};
 use crate::ty::print::Print;
 use syntax::source_map::CompilerDesugaringKind;
@@ -83,8 +83,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) -> String {
         if let ty::Infer(ty::TyVar(ty_vid)) = ty.sty {
             let ty_vars = self.type_variables.borrow();
-            if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
-                *ty_vars.var_origin(ty_vid) {
+            if let TypeVariableOriginKind::TypeParameterDefinition(name) =
+                ty_vars.var_origin(ty_vid).kind {
                 return name.to_string();
             }
         }
@@ -122,8 +122,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
             let ty_vars = self.type_variables.borrow();
             let getter = move |ty_vid| {
-                if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
-                    *ty_vars.var_origin(ty_vid) {
+                if let TypeVariableOriginKind::TypeParameterDefinition(name) =
+                    ty_vars.var_origin(ty_vid).kind {
                     return Some(name.to_string());
                 }
                 None

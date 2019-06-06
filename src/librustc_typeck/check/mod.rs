@@ -99,7 +99,7 @@ use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_target::spec::abi::Abi;
 use rustc::infer::opaque_types::OpaqueTypeDecl;
-use rustc::infer::type_variable::{TypeVariableOrigin};
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
@@ -365,7 +365,12 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     /// hard constraint exists, creates a fresh type variable.
     fn coercion_target_type(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, span: Span) -> Ty<'tcx> {
         self.only_has_type(fcx)
-            .unwrap_or_else(|| fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span)))
+            .unwrap_or_else(|| {
+                fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span,
+                })
+            })
     }
 }
 
@@ -930,7 +935,10 @@ impl<'a, 'gcx, 'tcx> GatherLocalsVisitor<'a, 'gcx, 'tcx> {
         match ty_opt {
             None => {
                 // infer the variable's type
-                let var_ty = self.fcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
+                let var_ty = self.fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span,
+                });
                 self.fcx.locals.borrow_mut().insert(nid, LocalTy {
                     decl_ty: var_ty,
                     revealed_ty: var_ty
@@ -1064,7 +1072,10 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let span = body.value.span;
 
     if body.is_generator && can_be_generator.is_some() {
-        let yield_ty = fcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
+        let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
+            kind: TypeVariableOriginKind::TypeInference,
+            span,
+        });
         fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
         fcx.yield_ty = Some(yield_ty);
     }
@@ -1098,7 +1109,10 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // This ensures that all nested generators appear before the entry of this generator.
     // resolve_generator_interiors relies on this property.
     let gen_ty = if can_be_generator.is_some() && body.is_generator {
-        let interior = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
+        let interior = fcx.next_ty_var(TypeVariableOrigin {
+            kind: TypeVariableOriginKind::MiscVariable,
+            span,
+        });
         fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior));
         Some(GeneratorTypes {
             yield_ty: fcx.yield_ty.unwrap(),
@@ -1136,7 +1150,11 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let mut actual_return_ty = coercion.complete(&fcx);
     if actual_return_ty.is_never() {
         actual_return_ty = fcx.next_diverging_ty_var(
-            TypeVariableOrigin::DivergingFn(span));
+            TypeVariableOrigin {
+                kind: TypeVariableOriginKind::DivergingFn,
+                span,
+            },
+        );
     }
     fcx.demand_suptype(span, revealed_ret_ty, actual_return_ty);
 
@@ -1930,7 +1948,10 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
-        self.next_ty_var(TypeVariableOrigin::TypeInference(span))
+        self.next_ty_var(TypeVariableOrigin {
+            kind: TypeVariableOriginKind::TypeInference,
+            span,
+        })
     }
 
     fn ty_infer_for_def(&self,
@@ -2638,7 +2659,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // If some lookup succeeds, write callee into table and extract index/element
             // type from the method signature.
             // If some lookup succeeded, install method in table
-            let input_ty = self.next_ty_var(TypeVariableOrigin::AutoDeref(base_expr.span));
+            let input_ty = self.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::AutoDeref,
+                span: base_expr.span,
+            });
             let method = self.try_overloaded_place_op(
                 expr.span, self_ty, &[input_ty], needs, PlaceOp::Index);
 
@@ -3136,7 +3160,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             assert!(!self.tables.borrow().adjustments().contains_key(expr.hir_id),
                     "expression with never type wound up being adjusted");
             let adj_ty = self.next_diverging_ty_var(
-                TypeVariableOrigin::AdjustmentType(expr.span));
+                TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::AdjustmentType,
+                    span: expr.span,
+                },
+            );
             self.apply_adjustments(expr, vec![Adjustment {
                 kind: Adjust::NeverToAny,
                 target: adj_ty
@@ -4362,8 +4390,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 });
 
                 let element_ty = if !args.is_empty() {
-                    let coerce_to = uty.unwrap_or_else(
-                        || self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span)));
+                    let coerce_to = uty.unwrap_or_else(|| {
+                        self.next_ty_var(TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::TypeInference,
+                            span: expr.span,
+                        })
+                    });
                     let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
                     assert_eq!(self.diverges.get(), Diverges::Maybe);
                     for e in args {
@@ -4373,7 +4405,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     coerce.complete(self)
                 } else {
-                    self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span))
+                    self.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::TypeInference,
+                        span: expr.span,
+                    })
                 };
                 tcx.mk_array(element_ty, args.len() as u64)
             }
@@ -4409,7 +4444,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         (uty, uty)
                     }
                     None => {
-                        let ty = self.next_ty_var(TypeVariableOrigin::MiscVariable(element.span));
+                        let ty = self.next_ty_var(TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::MiscVariable,
+                            span: element.span,
+                        });
                         let element_ty = self.check_expr_has_type_or_error(&element, ty);
                         (element_ty, ty)
                     }
