@@ -747,16 +747,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         let opt_expanded = match *ext {
-            DeclMacro { ref expander, def_info, edition, .. } => {
-                if let Err(dummy_span) = validate_and_set_expn_info(self, def_info.map(|(_, s)| s),
-                                                                    None, false, false, None,
-                                                                    edition) {
-                    dummy_span
-                } else {
-                    kind.make_from(expander.expand(self.cx, span, mac.node.stream(), None))
-                }
-            }
-
             NormalTT {
                 ref expander,
                 def_info,
@@ -765,6 +755,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 local_inner_macros,
                 unstable_feature,
                 edition,
+                ..
             } => {
                 if let Err(dummy_span) = validate_and_set_expn_info(self, def_info.map(|(_, s)| s),
                                                                     allow_internal_unstable.clone(),

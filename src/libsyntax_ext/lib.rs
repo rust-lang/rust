@@ -42,6 +42,7 @@ pub mod proc_macro_impl;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension, MultiModifier};
+use syntax::ext::hygiene::Transparency;
 use syntax::edition::Edition;
 use syntax::symbol::{sym, Symbol};
 
@@ -59,6 +60,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                      NormalTT {
                         expander: Box::new($f as MacroExpanderFn),
                         def_info: None,
+                        transparency: Transparency::SemiTransparent,
                         allow_internal_unstable: None,
                         allow_internal_unsafe: false,
                         local_inner_macros: false,
@@ -102,6 +104,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
              NormalTT {
                 expander: Box::new(format::expand_format_args),
                 def_info: None,
+                transparency: Transparency::SemiTransparent,
                 allow_internal_unstable: Some(vec![sym::fmt_internals].into()),
                 allow_internal_unsafe: false,
                 local_inner_macros: false,
@@ -112,6 +115,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
              NormalTT {
                  expander: Box::new(format::expand_format_args_nl),
                  def_info: None,
+                 transparency: Transparency::SemiTransparent,
                  allow_internal_unstable: Some(vec![sym::fmt_internals].into()),
                  allow_internal_unsafe: false,
                  local_inner_macros: false,

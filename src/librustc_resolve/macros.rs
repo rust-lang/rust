@@ -242,8 +242,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn check_unused_macros(&self) {
         for did in self.unused_macros.iter() {
             let id_span = match *self.macro_map[did] {
-                SyntaxExtension::NormalTT { def_info, .. } |
-                SyntaxExtension::DeclMacro { def_info, .. } => def_info,
+                SyntaxExtension::NormalTT { def_info, .. } => def_info,
                 _ => None,
             };
             if let Some((id, span)) = id_span {

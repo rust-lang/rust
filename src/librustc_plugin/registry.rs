@@ -6,6 +6,7 @@ use rustc::util::nodemap::FxHashMap;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::MacroExpanderFn;
+use syntax::ext::hygiene::Transparency;
 use syntax::symbol::{Symbol, sym};
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
@@ -84,33 +85,14 @@ impl<'a> Registry<'a> {
     /// Register a syntax extension of any kind.
     ///
     /// This is the most general hook into `libsyntax`'s expansion behavior.
-    pub fn register_syntax_extension(&mut self, name: ast::Name, extension: SyntaxExtension) {
+    pub fn register_syntax_extension(&mut self, name: ast::Name, mut extension: SyntaxExtension) {
         if name == sym::macro_rules {
             panic!("user-defined macros may not be named `macro_rules`");
         }
-        self.syntax_exts.push((name, match extension {
-            NormalTT {
-                expander,
-                def_info: _,
-                allow_internal_unstable,
-                allow_internal_unsafe,
-                local_inner_macros,
-                unstable_feature,
-                edition,
-            } => {
-                let nid = ast::CRATE_NODE_ID;
-                NormalTT {
-                    expander,
-                    def_info: Some((nid, self.krate_span)),
-                    allow_internal_unstable,
-                    allow_internal_unsafe,
-                    local_inner_macros,
-                    unstable_feature,
-                    edition,
-                }
-            }
-            _ => extension,
-        }));
+        if let NormalTT { def_info: ref mut def_info @ None, .. } = extension {
+            *def_info = Some((ast::CRATE_NODE_ID, self.krate_span));
+        }
+        self.syntax_exts.push((name, extension));
     }
 
     /// Register a macro of the usual kind.
@@ -122,6 +104,7 @@ impl<'a> Registry<'a> {
         self.register_syntax_extension(Symbol::intern(name), NormalTT {
             expander: Box::new(expander),
             def_info: None,
+            transparency: Transparency::SemiTransparent,
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
