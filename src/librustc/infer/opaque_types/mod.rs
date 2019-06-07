@@ -9,6 +9,7 @@ use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{InternalSubsts, Kind, SubstsRef, UnpackedKind};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use crate::util::nodemap::DefIdMap;
+use errors::DiagnosticBuilder;
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
 
@@ -499,13 +500,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 }
 
-pub fn report_unexpected_hidden_region(
+pub fn unexpected_hidden_region_diagnostic(
     tcx: TyCtxt<'tcx>,
     region_scope_tree: Option<&region::ScopeTree>,
     opaque_type_def_id: DefId,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
-) {
+) -> DiagnosticBuilder<'tcx> {
     let span = tcx.def_span(opaque_type_def_id);
     let mut err = struct_span_err!(
         tcx.sess,
@@ -573,7 +574,7 @@ pub fn report_unexpected_hidden_region(
         }
     }
 
-    err.emit();
+    err
 }
 
 // Visitor that requires that (almost) all regions in the type visited outlive
@@ -724,13 +725,13 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
             None => {
                 if !self.map_missing_regions_to_empty && !self.tainted_by_errors {
                     if let Some(hidden_ty) = self.hidden_ty.take() {
-                        report_unexpected_hidden_region(
+                        unexpected_hidden_region_diagnostic(
                             self.tcx,
                             None,
                             self.opaque_type_def_id,
                             hidden_ty,
                             r,
-                        );
+                        ).emit();
                     }
                 }
                 self.tcx.lifetimes.re_empty

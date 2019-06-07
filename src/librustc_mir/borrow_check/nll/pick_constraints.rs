@@ -71,10 +71,12 @@ impl<'tcx> PickConstraintSet<'tcx, ty::RegionVid> {
         p_c: &PickConstraint<'tcx>,
         mut to_region_vid: impl FnMut(ty::Region<'tcx>) -> ty::RegionVid,
     ) {
+        debug!("push_constraint(p_c={:?})", p_c);
         let pick_region_vid: ty::RegionVid = to_region_vid(p_c.pick_region);
         let next_constraint = self.first_constraints.get(&pick_region_vid).cloned();
         let start_index = self.option_regions.len();
         let end_index = start_index + p_c.option_regions.len();
+        debug!("push_constraint: pick_region_vid={:?}", pick_region_vid);
         let constraint_index = self.constraints.push(NllPickConstraint {
             next_constraint,
             pick_region_vid,
@@ -136,6 +138,12 @@ impl<'tcx, R> PickConstraintSet<'tcx, R>
 where
     R: Copy + Hash + Eq,
 {
+    crate fn all_indices(
+        &self,
+    ) -> impl Iterator<Item = NllPickConstraintIndex> {
+        self.constraints.indices()
+    }
+
     /// Iterate down the constraint indices associated with a given
     /// peek-region.  You can then use `option_regions` and other
     /// methods to access data.

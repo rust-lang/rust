@@ -385,13 +385,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         option_regions: _,
                     } => {
                         let hidden_ty = self.resolve_vars_if_possible(&hidden_ty);
-                        opaque_types::report_unexpected_hidden_region(
+                        opaque_types::unexpected_hidden_region_diagnostic(
                             self.tcx,
                             Some(region_scope_tree),
                             opaque_type_def_id,
                             hidden_ty,
                             pick_region,
-                        );
+                        ).emit();
                     }
                 }
             }
