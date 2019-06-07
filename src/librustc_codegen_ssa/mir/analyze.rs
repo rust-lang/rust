@@ -189,16 +189,9 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                     }
                 }
 
-                // A deref projection only reads the pointer, never needs the place.
-                if let mir::ProjectionElem::Deref = proj.elem {
-                    return self.visit_place(
-                        &proj.base,
-                        PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                        location
-                    );
-                }
-
-                context = if context.is_mutating_use() {
+                context = if proj.elem == mir::ProjectionElem::Deref {
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
+                } else if context.is_mutating_use() {
                     PlaceContext::MutatingUse(MutatingUseContext::Projection)
                 } else {
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
