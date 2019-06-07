@@ -341,6 +341,7 @@ bootstrap_tool!(
     Compiletest, "src/tools/compiletest", "compiletest", llvm_tools = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
+    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server";
     RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
 );
@@ -386,40 +387,6 @@ impl Step for ErrorIndex {
             tool: "error_index_generator",
             mode: Mode::ToolRustc,
             path: "src/tools/error_index_generator",
-            is_optional_tool: false,
-            source_type: SourceType::InTree,
-            extra_features: Vec::new(),
-        }).expect("expected to build -- essential tool")
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct RemoteTestServer {
-    pub compiler: Compiler,
-    pub target: Interned<String>,
-}
-
-impl Step for RemoteTestServer {
-    type Output = PathBuf;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/remote-test-server")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RemoteTestServer {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
-            target: run.target,
-        });
-    }
-
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: "remote-test-server",
-            mode: Mode::ToolStd,
-            path: "src/tools/remote-test-server",
             is_optional_tool: false,
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
