@@ -20,7 +20,7 @@ mod math;
 
 use core::{f32, f64};
 
-pub use math::*;
+pub use self::math::*;
 
 /// Approximate equality with 1 ULP of tolerance
 #[doc(hidden)]
