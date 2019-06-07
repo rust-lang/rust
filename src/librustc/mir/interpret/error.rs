@@ -179,10 +179,15 @@ pub fn struct_error<'a, 'gcx, 'tcx>(
     struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
 }
 
+/// Packages the kind of error we got from the const code interpreter
+/// up with a Rust-level backtrace of where the error occured.
+/// Thsese should always be constructed by calling `.into()` on
+/// a `InterpError`. In `librustc_mir::interpret`, we have the `err!`
+/// macro for this
 #[derive(Debug, Clone)]
 pub struct EvalError<'tcx> {
     pub kind: InterpError<'tcx, u64>,
-    pub backtrace: Option<Box<Backtrace>>,
+    backtrace: Option<Box<Backtrace>>,
 }
 
 impl<'tcx> EvalError<'tcx> {
