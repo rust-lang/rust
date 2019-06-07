@@ -301,6 +301,8 @@ impl<'a> Parser<'a> {
 
     fn to_span_index(&self, pos: usize) -> InnerOffset {
         let mut pos = pos;
+        // This handles the raw string case, the raw argument is the number of #
+        // in r###"..."### (we need to add one because of the `r`).
         let raw = self.style.map(|raw| raw + 1).unwrap_or(0);
         for skip in &self.skips {
             if pos > *skip {
