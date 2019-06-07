@@ -4,7 +4,7 @@ use crate::ext::expand::Marker;
 use crate::ext::tt::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 use crate::ext::tt::quoted;
 use crate::mut_visit::noop_visit_tt;
-use crate::parse::token::{self, NtTT, Token};
+use crate::parse::token::{self, NtTT, TokenKind};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use smallvec::{smallvec, SmallVec};
@@ -18,7 +18,7 @@ use std::rc::Rc;
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
 enum Frame {
     Delimited { forest: Lrc<quoted::Delimited>, idx: usize, span: DelimSpan },
-    Sequence { forest: Lrc<quoted::SequenceRepetition>, idx: usize, sep: Option<Token> },
+    Sequence { forest: Lrc<quoted::SequenceRepetition>, idx: usize, sep: Option<TokenKind> },
 }
 
 impl Frame {
@@ -119,7 +119,7 @@ pub fn transcribe(
                             Some((tt, _)) => tt.span(),
                             None => DUMMY_SP,
                         };
-                        result.push(TokenTree::Token(prev_span, sep).into());
+                        result.push(TokenTree::token(sep, prev_span).into());
                     }
                     continue;
                 }
@@ -225,7 +225,7 @@ pub fn transcribe(
                             result.push(tt.clone().into());
                         } else {
                             sp = sp.apply_mark(cx.current_expansion.mark);
-                            let token = TokenTree::Token(sp, Token::Interpolated(nt.clone()));
+                            let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
                             result.push(token.into());
                         }
                     } else {
@@ -241,8 +241,8 @@ pub fn transcribe(
                     let ident =
                         Ident::new(ident.name, ident.span.apply_mark(cx.current_expansion.mark));
                     sp = sp.apply_mark(cx.current_expansion.mark);
-                    result.push(TokenTree::Token(sp, token::Dollar).into());
-                    result.push(TokenTree::Token(sp, token::Token::from_ast_ident(ident)).into());
+                    result.push(TokenTree::token(token::Dollar, sp).into());
+                    result.push(TokenTree::token(TokenKind::from_ast_ident(ident), sp).into());
                 }
             }
 
@@ -259,9 +259,9 @@ pub fn transcribe(
 
             // Nothing much to do here. Just push the token to the result, being careful to
             // preserve syntax context.
-            quoted::TokenTree::Token(sp, tok) => {
+            quoted::TokenTree::Token(token) => {
                 let mut marker = Marker(cx.current_expansion.mark);
-                let mut tt = TokenTree::Token(sp, tok);
+                let mut tt = TokenTree::Token(token);
                 noop_visit_tt(&mut tt, &mut marker);
                 result.push(tt.into());
             }

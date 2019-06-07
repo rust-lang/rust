@@ -2,22 +2,22 @@ pub use BinOpToken::*;
 pub use Nonterminal::*;
 pub use DelimToken::*;
 pub use LitKind::*;
-pub use Token::*;
+pub use TokenKind::*;
 
 use crate::ast::{self};
-use crate::parse::ParseSess;
+use crate::parse::{parse_stream_from_source_str, ParseSess};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::symbol::kw;
-use crate::syntax::parse::parse_stream_from_source_str;
 use crate::tokenstream::{self, DelimSpan, TokenStream, TokenTree};
 
-use syntax_pos::symbol::{self, Symbol};
-use syntax_pos::{self, Span, FileName};
+use syntax_pos::symbol::Symbol;
+use syntax_pos::{self, Span, FileName, DUMMY_SP};
 use log::info;
 
 use std::fmt;
 use std::mem;
+use std::ops::Deref;
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
@@ -117,8 +117,8 @@ impl Lit {
     }
 }
 
-pub(crate) fn ident_can_begin_expr(ident: ast::Ident, is_raw: bool) -> bool {
-    let ident_token: Token = Ident(ident, is_raw);
+pub(crate) fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) -> bool {
+    let ident_token = Token::new(Ident(name, is_raw), span);
 
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
@@ -145,11 +145,11 @@ pub(crate) fn ident_can_begin_expr(ident: ast::Ident, is_raw: bool) -> bool {
         kw::While,
         kw::Yield,
         kw::Static,
-    ].contains(&ident.name)
+    ].contains(&name)
 }
 
-fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
-    let ident_token: Token = Ident(ident, is_raw);
+fn ident_can_begin_type(name: ast::Name, span: Span, is_raw: bool) -> bool {
+    let ident_token = Token::new(Ident(name, is_raw), span);
 
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
@@ -162,11 +162,11 @@ fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
         kw::Extern,
         kw::Typeof,
         kw::Dyn,
-    ].contains(&ident.name)
+    ].contains(&name)
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
-pub enum Token {
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
     Lt,
@@ -209,8 +209,8 @@ pub enum Token {
     Literal(Lit),
 
     /* Name components */
-    Ident(ast::Ident, /* is_raw */ bool),
-    Lifetime(ast::Ident),
+    Ident(ast::Name, /* is_raw */ bool),
+    Lifetime(ast::Name),
 
     Interpolated(Lrc<Nonterminal>),
 
@@ -231,14 +231,20 @@ pub enum Token {
     Eof,
 }
 
-// `Token` is used a lot. Make sure it doesn't unintentionally get bigger.
+// `TokenKind` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Token, 16);
+static_assert_size!(TokenKind, 16);
 
-impl Token {
-    /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
-    pub fn from_ast_ident(ident: ast::Ident) -> Token {
-        Ident(ident, ident.is_raw_guess())
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub span: Span,
+}
+
+impl TokenKind {
+    /// Recovers a `TokenKind` from an `ast::Ident`. This creates a raw identifier if necessary.
+    pub fn from_ast_ident(ident: ast::Ident) -> TokenKind {
+        Ident(ident.name, ident.is_raw_guess())
     }
 
     crate fn is_like_plus(&self) -> bool {
@@ -247,12 +253,14 @@ impl Token {
             _ => false,
         }
     }
+}
 
+impl Token {
     /// Returns `true` if the token can appear at the start of an expression.
     crate fn can_begin_expr(&self) -> bool {
-        match *self {
-            Ident(ident, is_raw)              =>
-                ident_can_begin_expr(ident, is_raw), // value name or keyword
+        match self.kind {
+            Ident(name, is_raw)              =>
+                ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
             OpenDelim(..)                     | // tuple, array or block
             Literal(..)                       | // literal
             Not                               | // operator not
@@ -282,9 +290,9 @@ impl Token {
 
     /// Returns `true` if the token can appear at the start of a type.
     crate fn can_begin_type(&self) -> bool {
-        match *self {
-            Ident(ident, is_raw)        =>
-                ident_can_begin_type(ident, is_raw), // type name or keyword
+        match self.kind {
+            Ident(name, is_raw)        =>
+                ident_can_begin_type(name, self.span, is_raw), // type name or keyword
             OpenDelim(Paren)            | // tuple
             OpenDelim(Bracket)          | // array
             Not                         | // never
@@ -302,7 +310,9 @@ impl Token {
             _ => false,
         }
     }
+}
 
+impl TokenKind {
     /// Returns `true` if the token can appear at the start of a const param.
     pub fn can_begin_const_arg(&self) -> bool {
         match self {
@@ -316,14 +326,18 @@ impl Token {
             _ => self.can_begin_literal_or_bool(),
         }
     }
+}
 
+impl Token {
     /// Returns `true` if the token can appear at the start of a generic bound.
     crate fn can_begin_bound(&self) -> bool {
         self.is_path_start() || self.is_lifetime() || self.is_keyword(kw::For) ||
         self == &Question || self == &OpenDelim(Paren)
     }
+}
 
-    pub fn lit(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Token {
+impl TokenKind {
+    pub fn lit(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> TokenKind {
         Literal(Lit::new(kind, symbol, suffix))
     }
 
@@ -348,8 +362,8 @@ impl Token {
         match *self {
             Literal(..)  => true,
             BinOp(Minus) => true,
-            Ident(ident, false) if ident.name == kw::True => true,
-            Ident(ident, false) if ident.name == kw::False => true,
+            Ident(name, false) if name == kw::True => true,
+            Ident(name, false) if name == kw::False => true,
             Interpolated(ref nt) => match **nt {
                 NtLiteral(..) => true,
                 _             => false,
@@ -357,11 +371,13 @@ impl Token {
             _            => false,
         }
     }
+}
 
+impl Token {
     /// Returns an identifier if this token is an identifier.
     pub fn ident(&self) -> Option<(ast::Ident, /* is_raw */ bool)> {
-        match *self {
-            Ident(ident, is_raw) => Some((ident, is_raw)),
+        match self.kind {
+            Ident(name, is_raw) => Some((ast::Ident::new(name, self.span), is_raw)),
             Interpolated(ref nt) => match **nt {
                 NtIdent(ident, is_raw) => Some((ident, is_raw)),
                 _ => None,
@@ -369,10 +385,11 @@ impl Token {
             _ => None,
         }
     }
+
     /// Returns a lifetime identifier if this token is a lifetime.
     pub fn lifetime(&self) -> Option<ast::Ident> {
-        match *self {
-            Lifetime(ident) => Some(ident),
+        match self.kind {
+            Lifetime(name) => Some(ast::Ident::new(name, self.span)),
             Interpolated(ref nt) => match **nt {
                 NtLifetime(ident) => Some(ident),
                 _ => None,
@@ -380,22 +397,44 @@ impl Token {
             _ => None,
         }
     }
+}
+
+impl TokenKind {
+    /// Returns an identifier name if this token is an identifier.
+    pub fn ident_name(&self) -> Option<(ast::Name, /* is_raw */ bool)> {
+        match *self {
+            Ident(name, is_raw) => Some((name, is_raw)),
+            Interpolated(ref nt) => match **nt {
+                NtIdent(ident, is_raw) => Some((ident.name, is_raw)),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+    /// Returns a lifetime name if this token is a lifetime.
+    pub fn lifetime_name(&self) -> Option<ast::Name> {
+        match *self {
+            Lifetime(name) => Some(name),
+            Interpolated(ref nt) => match **nt {
+                NtLifetime(ident) => Some(ident.name),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
     /// Returns `true` if the token is an identifier.
     pub fn is_ident(&self) -> bool {
-        self.ident().is_some()
+        self.ident_name().is_some()
     }
     /// Returns `true` if the token is a lifetime.
     crate fn is_lifetime(&self) -> bool {
-        self.lifetime().is_some()
+        self.lifetime_name().is_some()
     }
 
     /// Returns `true` if the token is a identifier whose name is the given
     /// string slice.
     crate fn is_ident_named(&self, name: Symbol) -> bool {
-        match self.ident() {
-            Some((ident, _)) => ident.name == name,
-            None => false
-        }
+        self.ident_name().map_or(false, |(ident_name, _)| ident_name == name)
     }
 
     /// Returns `true` if the token is an interpolated path.
@@ -417,24 +456,30 @@ impl Token {
     crate fn is_qpath_start(&self) -> bool {
         self == &Lt || self == &BinOp(Shl)
     }
+}
 
+impl Token {
     crate fn is_path_start(&self) -> bool {
         self == &ModSep || self.is_qpath_start() || self.is_path() ||
         self.is_path_segment_keyword() || self.is_ident() && !self.is_reserved_ident()
     }
+}
 
+impl TokenKind {
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: Symbol) -> bool {
-        self.ident().map(|(ident, is_raw)| ident.name == kw && !is_raw).unwrap_or(false)
+        self.ident_name().map(|(name, is_raw)| name == kw && !is_raw).unwrap_or(false)
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
-        match self.ident() {
-            Some((id, false)) => id.is_path_segment_keyword(),
+        match self.ident_name() {
+            Some((name, false)) => name.is_path_segment_keyword(),
             _ => false,
         }
     }
+}
 
+impl Token {
     // Returns true for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
@@ -467,8 +512,10 @@ impl Token {
             _ => false,
         }
     }
+}
 
-    crate fn glue(self, joint: Token) -> Option<Token> {
+impl TokenKind {
+    crate fn glue(self, joint: TokenKind) -> Option<TokenKind> {
         Some(match self {
             Eq => match joint {
                 Eq => EqEq,
@@ -514,13 +561,7 @@ impl Token {
                 _ => return None,
             },
             SingleQuote => match joint {
-                Ident(ident, false) => {
-                    let name = Symbol::intern(&format!("'{}", ident));
-                    Lifetime(symbol::Ident {
-                        name,
-                        span: ident.span,
-                    })
-                }
+                Ident(name, false) => Lifetime(Symbol::intern(&format!("'{}", name))),
                 _ => return None,
             },
 
@@ -534,7 +575,7 @@ impl Token {
 
     /// Returns tokens that are likely to be typed accidentally instead of the current token.
     /// Enables better error recovery when the wrong token is found.
-    crate fn similar_tokens(&self) -> Option<Vec<Token>> {
+    crate fn similar_tokens(&self) -> Option<Vec<TokenKind>> {
         match *self {
             Comma => Some(vec![Dot, Lt, Semi]),
             Semi => Some(vec![Colon, Comma]),
@@ -544,7 +585,7 @@ impl Token {
 
     // See comments in `Nonterminal::to_tokenstream` for why we care about
     // *probably* equal here rather than actual equality
-    crate fn probably_equal_for_proc_macro(&self, other: &Token) -> bool {
+    crate fn probably_equal_for_proc_macro(&self, other: &TokenKind) -> bool {
         if mem::discriminant(self) != mem::discriminant(other) {
             return false
         }
@@ -590,15 +631,45 @@ impl Token {
 
             (&Literal(a), &Literal(b)) => a == b,
 
-            (&Lifetime(a), &Lifetime(b)) => a.name == b.name,
-            (&Ident(a, b), &Ident(c, d)) => b == d && (a.name == c.name ||
-                                                       a.name == kw::DollarCrate ||
-                                                       c.name == kw::DollarCrate),
+            (&Lifetime(a), &Lifetime(b)) => a == b,
+            (&Ident(a, b), &Ident(c, d)) => b == d && (a == c ||
+                                                       a == kw::DollarCrate ||
+                                                       c == kw::DollarCrate),
 
             (&Interpolated(_), &Interpolated(_)) => false,
 
             _ => panic!("forgot to add a token?"),
         }
+    }
+}
+
+impl Token {
+    crate fn new(kind: TokenKind, span: Span) -> Self {
+        Token { kind, span }
+    }
+
+    /// Some token that will be thrown away later.
+    crate fn dummy() -> Self {
+        Token::new(TokenKind::Whitespace, DUMMY_SP)
+    }
+
+    /// Return this token by value and leave a dummy token in its place.
+    crate fn take(&mut self) -> Self {
+        mem::replace(self, Token::dummy())
+    }
+}
+
+impl PartialEq<TokenKind> for Token {
+    fn eq(&self, rhs: &TokenKind) -> bool {
+        self.kind == *rhs
+    }
+}
+
+// FIXME: Remove this after all necessary methods are moved from `TokenKind` to `Token`.
+impl Deref for Token {
+    type Target = TokenKind;
+    fn deref(&self) -> &Self::Target {
+        &self.kind
     }
 }
 
@@ -691,12 +762,10 @@ impl Nonterminal {
                 prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span)
             }
             Nonterminal::NtIdent(ident, is_raw) => {
-                let token = Token::Ident(ident, is_raw);
-                Some(TokenTree::Token(ident.span, token).into())
+                Some(TokenTree::token(Ident(ident.name, is_raw), ident.span).into())
             }
             Nonterminal::NtLifetime(ident) => {
-                let token = Token::Lifetime(ident);
-                Some(TokenTree::Token(ident.span, token).into())
+                Some(TokenTree::token(Lifetime(ident.name), ident.span).into())
             }
             Nonterminal::NtTT(ref tt) => {
                 Some(tt.clone().into())
@@ -743,7 +812,7 @@ impl Nonterminal {
     }
 }
 
-crate fn is_op(tok: &Token) -> bool {
+crate fn is_op(tok: &TokenKind) -> bool {
     match *tok {
         OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
         Ident(..) | Lifetime(..) | Interpolated(..) |
@@ -781,8 +850,8 @@ fn prepend_attrs(sess: &ParseSess,
         // For simple paths, push the identifier directly
         if attr.path.segments.len() == 1 && attr.path.segments[0].args.is_none() {
             let ident = attr.path.segments[0].ident;
-            let token = Ident(ident, ident.as_str().starts_with("r#"));
-            brackets.push(tokenstream::TokenTree::Token(ident.span, token));
+            let token = Ident(ident.name, ident.as_str().starts_with("r#"));
+            brackets.push(tokenstream::TokenTree::token(token, ident.span));
 
         // ... and for more complicated paths, fall back to a reparse hack that
         // should eventually be removed.
@@ -796,7 +865,7 @@ fn prepend_attrs(sess: &ParseSess,
         // The span we list here for `#` and for `[ ... ]` are both wrong in
         // that it encompasses more than each token, but it hopefully is "good
         // enough" for now at least.
-        builder.push(tokenstream::TokenTree::Token(attr.span, Pound));
+        builder.push(tokenstream::TokenTree::token(Pound, attr.span));
         let delim_span = DelimSpan::from_single(attr.span);
         builder.push(tokenstream::TokenTree::Delimited(
             delim_span, DelimToken::Bracket, brackets.build().into()));

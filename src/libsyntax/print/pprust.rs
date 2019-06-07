@@ -6,7 +6,7 @@ use crate::ast::{Attribute, MacDelimiter, GenericArg};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::attr;
 use crate::source_map::{self, SourceMap, Spanned};
-use crate::parse::token::{self, BinOpToken, Nonterminal, Token};
+use crate::parse::token::{self, BinOpToken, Nonterminal, TokenKind};
 use crate::parse::lexer::comments;
 use crate::parse::{self, ParseSess};
 use crate::print::pp::{self, Breaks};
@@ -189,7 +189,7 @@ pub fn literal_to_string(lit: token::Lit) -> String {
     out
 }
 
-pub fn token_to_string(tok: &Token) -> String {
+pub fn token_to_string(tok: &TokenKind) -> String {
     match *tok {
         token::Eq                   => "=".to_string(),
         token::Lt                   => "<".to_string(),
@@ -724,10 +724,10 @@ pub trait PrintState<'a> {
     /// expression arguments as expressions). It can be done! I think.
     fn print_tt(&mut self, tt: tokenstream::TokenTree) -> io::Result<()> {
         match tt {
-            TokenTree::Token(_, ref tk) => {
-                self.writer().word(token_to_string(tk))?;
-                match *tk {
-                    parse::token::DocComment(..) => {
+            TokenTree::Token(ref token) => {
+                self.writer().word(token_to_string(&token))?;
+                match token.kind {
+                    token::DocComment(..) => {
                         self.writer().hardbreak()
                     }
                     _ => Ok(())

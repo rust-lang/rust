@@ -9,7 +9,8 @@ use errors::DiagnosticBuilder;
 use syntax::ast;
 use syntax::ext::base::{self, *};
 use syntax::feature_gate;
-use syntax::parse::{self, token};
+use syntax::parse;
+use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::ast::AsmDialect;
@@ -86,8 +87,8 @@ fn parse_inline_asm<'a>(
     let first_colon = tts.iter()
         .position(|tt| {
             match *tt {
-                tokenstream::TokenTree::Token(_, token::Colon) |
-                tokenstream::TokenTree::Token(_, token::ModSep) => true,
+                tokenstream::TokenTree::Token(Token { kind: token::Colon, .. }) |
+                tokenstream::TokenTree::Token(Token { kind: token::ModSep, .. }) => true,
                 _ => false,
             }
         })
@@ -259,7 +260,7 @@ fn parse_inline_asm<'a>(
         loop {
             // MOD_SEP is a double colon '::' without space in between.
             // When encountered, the state must be advanced twice.
-            match (&p.token, state.next(), state.next().next()) {
+            match (&p.token.kind, state.next(), state.next().next()) {
                 (&token::Colon, StateNone, _) |
                 (&token::ModSep, _, StateNone) => {
                     p.bump();

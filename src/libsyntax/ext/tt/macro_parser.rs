@@ -74,11 +74,11 @@ pub use NamedMatch::*;
 pub use ParseResult::*;
 use TokenTreeOrTokenTreeSlice::*;
 
-use crate::ast::Ident;
+use crate::ast::{Ident, Name};
 use crate::ext::tt::quoted::{self, TokenTree};
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::{Parser, PathStyle};
-use crate::parse::token::{self, DocComment, Nonterminal, Token};
+use crate::parse::token::{self, DocComment, Nonterminal, Token, TokenKind};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream};
@@ -199,7 +199,7 @@ struct MatcherPos<'root, 'tt: 'root> {
     seq_op: Option<quoted::KleeneOp>,
 
     /// The separator if we are in a repetition.
-    sep: Option<Token>,
+    sep: Option<TokenKind>,
 
     /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
     /// before we enter the sequence.
@@ -273,7 +273,7 @@ pub enum ParseResult<T> {
     Success(T),
     /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
-    Failure(syntax_pos::Span, Token, &'static str),
+    Failure(Token, &'static str),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(syntax_pos::Span, String),
 }
@@ -417,7 +417,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub fn parse_failure_msg(tok: Token) -> String {
+pub fn parse_failure_msg(tok: TokenKind) -> String {
     match tok {
         token::Eof => "unexpected end of macro invocation".to_string(),
         _ => format!(
@@ -428,11 +428,11 @@ pub fn parse_failure_msg(tok: Token) -> String {
 }
 
 /// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
-fn token_name_eq(t1: &Token, t2: &Token) -> bool {
-    if let (Some((id1, is_raw1)), Some((id2, is_raw2))) = (t1.ident(), t2.ident()) {
-        id1.name == id2.name && is_raw1 == is_raw2
-    } else if let (Some(id1), Some(id2)) = (t1.lifetime(), t2.lifetime()) {
-        id1.name == id2.name
+fn token_name_eq(t1: &TokenKind, t2: &TokenKind) -> bool {
+    if let (Some((name1, is_raw1)), Some((name2, is_raw2))) = (t1.ident_name(), t2.ident_name()) {
+        name1 == name2 && is_raw1 == is_raw2
+    } else if let (Some(name1), Some(name2)) = (t1.lifetime_name(), t2.lifetime_name()) {
+        name1 == name2
     } else {
         *t1 == *t2
     }
@@ -467,7 +467,6 @@ fn inner_parse_loop<'root, 'tt>(
     eof_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     bb_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     token: &Token,
-    span: syntax_pos::Span,
 ) -> ParseResult<()> {
     // Pop items from `cur_items` until it is empty.
     while let Some(mut item) = cur_items.pop() {
@@ -510,7 +509,7 @@ fn inner_parse_loop<'root, 'tt>(
                     // Add matches from this repetition to the `matches` of `up`
                     for idx in item.match_lo..item.match_hi {
                         let sub = item.matches[idx].clone();
-                        let span = DelimSpan::from_pair(item.sp_open, span);
+                        let span = DelimSpan::from_pair(item.sp_open, token.span);
                         new_pos.push_match(idx, MatchedSeq(sub, span));
                     }
 
@@ -598,7 +597,7 @@ fn inner_parse_loop<'root, 'tt>(
                 TokenTree::MetaVarDecl(_, _, id) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
-                    if may_begin_with(id.name, token) {
+                    if may_begin_with(token, id.name) {
                         bb_items.push(item);
                     }
                 }
@@ -609,7 +608,8 @@ fn inner_parse_loop<'root, 'tt>(
                 //
                 // At the beginning of the loop, if we reach the end of the delimited submatcher,
                 // we pop the stack to backtrack out of the descent.
-                seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
+                seq @ TokenTree::Delimited(..) |
+                seq @ TokenTree::Token(Token { kind: DocComment(..), .. }) => {
                     let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
                     let idx = item.idx;
                     item.stack.push(MatcherTtFrame {
@@ -621,7 +621,7 @@ fn inner_parse_loop<'root, 'tt>(
                 }
 
                 // We just matched a normal token. We can just advance the parser.
-                TokenTree::Token(_, ref t) if token_name_eq(t, token) => {
+                TokenTree::Token(t) if token_name_eq(&t, token) => {
                     item.idx += 1;
                     next_items.push(item);
                 }
@@ -697,10 +697,9 @@ pub fn parse(
             &mut eof_items,
             &mut bb_items,
             &parser.token,
-            parser.span,
         ) {
             Success(_) => {}
-            Failure(sp, tok, t) => return Failure(sp, tok, t),
+            Failure(token, msg) => return Failure(token, msg),
             Error(sp, msg) => return Error(sp, msg),
         }
 
@@ -727,12 +726,11 @@ pub fn parse(
                 );
             } else {
                 return Failure(
-                    if parser.span.is_dummy() {
+                    Token::new(token::Eof, if parser.span.is_dummy() {
                         parser.span
                     } else {
                         sess.source_map().next_point(parser.span)
-                    },
-                    token::Eof,
+                    }),
                     "missing tokens in macro arguments",
                 );
             }
@@ -770,8 +768,7 @@ pub fn parse(
         // then there is a syntax error.
         else if bb_items.is_empty() && next_items.is_empty() {
             return Failure(
-                parser.span,
-                parser.token.clone(),
+                parser.token.take(),
                 "no rules expected this token in macro call",
             );
         }
@@ -807,10 +804,9 @@ pub fn parse(
 
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
+fn get_macro_name(token: &TokenKind) -> Option<(Name, bool)> {
     match *token {
-        token::Ident(ident, is_raw) if ident.name != kw::Underscore =>
-            Some((ident, is_raw)),
+        token::Ident(name, is_raw) if name != kw::Underscore => Some((name, is_raw)),
         _ => None,
     }
 }
@@ -819,7 +815,7 @@ fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
 ///
 /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
 /// token. Be conservative (return true) if not sure.
-fn may_begin_with(name: Symbol, token: &Token) -> bool {
+fn may_begin_with(token: &Token, name: Name) -> bool {
     /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
     fn may_be_ident(nt: &token::Nonterminal) -> bool {
         match *nt {
@@ -831,16 +827,16 @@ fn may_begin_with(name: Symbol, token: &Token) -> bool {
     match name {
         sym::expr => token.can_begin_expr(),
         sym::ty => token.can_begin_type(),
-        sym::ident => get_macro_ident(token).is_some(),
+        sym::ident => get_macro_name(token).is_some(),
         sym::literal => token.can_begin_literal_or_bool(),
-        sym::vis => match *token {
+        sym::vis => match token.kind {
             // The follow-set of :vis + "priv" keyword + interpolated
-            Token::Comma | Token::Ident(..) | Token::Interpolated(_) => true,
+            token::Comma | token::Ident(..) | token::Interpolated(_) => true,
             _ => token.can_begin_type(),
         },
-        sym::block => match *token {
-            Token::OpenDelim(token::Brace) => true,
-            Token::Interpolated(ref nt) => match **nt {
+        sym::block => match token.kind {
+            token::OpenDelim(token::Brace) => true,
+            token::Interpolated(ref nt) => match **nt {
                 token::NtItem(_)
                 | token::NtPat(_)
                 | token::NtTy(_)
@@ -852,39 +848,39 @@ fn may_begin_with(name: Symbol, token: &Token) -> bool {
             },
             _ => false,
         },
-        sym::path | sym::meta => match *token {
-            Token::ModSep | Token::Ident(..) => true,
-            Token::Interpolated(ref nt) => match **nt {
+        sym::path | sym::meta => match token.kind {
+            token::ModSep | token::Ident(..) => true,
+            token::Interpolated(ref nt) => match **nt {
                 token::NtPath(_) | token::NtMeta(_) => true,
                 _ => may_be_ident(&nt),
             },
             _ => false,
         },
-        sym::pat => match *token {
-            Token::Ident(..) |               // box, ref, mut, and other identifiers (can stricten)
-            Token::OpenDelim(token::Paren) |    // tuple pattern
-            Token::OpenDelim(token::Bracket) |  // slice pattern
-            Token::BinOp(token::And) |          // reference
-            Token::BinOp(token::Minus) |        // negative literal
-            Token::AndAnd |                     // double reference
-            Token::Literal(..) |                // literal
-            Token::DotDot |                     // range pattern (future compat)
-            Token::DotDotDot |                  // range pattern (future compat)
-            Token::ModSep |                     // path
-            Token::Lt |                         // path (UFCS constant)
-            Token::BinOp(token::Shl) => true,   // path (double UFCS)
-            Token::Interpolated(ref nt) => may_be_ident(nt),
+        sym::pat => match token.kind {
+            token::Ident(..) |               // box, ref, mut, and other identifiers (can stricten)
+            token::OpenDelim(token::Paren) |    // tuple pattern
+            token::OpenDelim(token::Bracket) |  // slice pattern
+            token::BinOp(token::And) |          // reference
+            token::BinOp(token::Minus) |        // negative literal
+            token::AndAnd |                     // double reference
+            token::Literal(..) |                // literal
+            token::DotDot |                     // range pattern (future compat)
+            token::DotDotDot |                  // range pattern (future compat)
+            token::ModSep |                     // path
+            token::Lt |                         // path (UFCS constant)
+            token::BinOp(token::Shl) => true,   // path (double UFCS)
+            token::Interpolated(ref nt) => may_be_ident(nt),
             _ => false,
         },
-        sym::lifetime => match *token {
-            Token::Lifetime(_) => true,
-            Token::Interpolated(ref nt) => match **nt {
+        sym::lifetime => match token.kind {
+            token::Lifetime(_) => true,
+            token::Interpolated(ref nt) => match **nt {
                 token::NtLifetime(_) | token::NtTT(_) => true,
                 _ => false,
             },
             _ => false,
         },
-        _ => match *token {
+        _ => match token.kind {
             token::CloseDelim(_) => false,
             _ => true,
         },
@@ -930,10 +926,10 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> Nonterminal {
         sym::literal => token::NtLiteral(panictry!(p.parse_literal_maybe_minus())),
         sym::ty => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
-        sym::ident => if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
+        sym::ident => if let Some((name, is_raw)) = get_macro_name(&p.token) {
             let span = p.span;
             p.bump();
-            token::NtIdent(Ident::new(ident.name, span), is_raw)
+            token::NtIdent(Ident::new(name, span), is_raw)
         } else {
             let token_str = pprust::token_to_string(&p.token);
             p.fatal(&format!("expected ident, found {}", &token_str)).emit();

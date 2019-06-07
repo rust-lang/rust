@@ -12,8 +12,8 @@ use std::io;
 use std::io::prelude::*;
 
 use syntax::source_map::{SourceMap, FilePathMapping};
-use syntax::parse::lexer::{self, TokenAndSpan};
-use syntax::parse::token;
+use syntax::parse::lexer;
+use syntax::parse::token::{self, Token};
 use syntax::parse;
 use syntax::symbol::{kw, sym};
 use syntax_pos::{Span, FileName};
@@ -186,9 +186,9 @@ impl<'a> Classifier<'a> {
     }
 
     /// Gets the next token out of the lexer.
-    fn try_next_token(&mut self) -> Result<TokenAndSpan, HighlightError> {
+    fn try_next_token(&mut self) -> Result<Token, HighlightError> {
         match self.lexer.try_next_token() {
-            Ok(tas) => Ok(tas),
+            Ok(token) => Ok(token),
             Err(_) => Err(HighlightError::LexError),
         }
     }
@@ -205,7 +205,7 @@ impl<'a> Classifier<'a> {
                                    -> Result<(), HighlightError> {
         loop {
             let next = self.try_next_token()?;
-            if next.tok == token::Eof {
+            if next == token::Eof {
                 break;
             }
 
@@ -218,9 +218,9 @@ impl<'a> Classifier<'a> {
     // Handles an individual token from the lexer.
     fn write_token<W: Writer>(&mut self,
                               out: &mut W,
-                              tas: TokenAndSpan)
+                              token: Token)
                               -> Result<(), HighlightError> {
-        let klass = match tas.tok {
+        let klass = match token.kind {
             token::Shebang(s) => {
                 out.string(Escape(&s.as_str()), Class::None)?;
                 return Ok(());
@@ -234,7 +234,7 @@ impl<'a> Classifier<'a> {
             // reference or dereference operator or a reference or pointer type, instead of the
             // bit-and or multiplication operator.
             token::BinOp(token::And) | token::BinOp(token::Star)
-                if self.lexer.peek().tok != token::Whitespace => Class::RefKeyWord,
+                if self.lexer.peek() != &token::Whitespace => Class::RefKeyWord,
 
             // Consider this as part of a macro invocation if there was a
             // leading identifier.
@@ -257,7 +257,7 @@ impl<'a> Classifier<'a> {
             token::Question => Class::QuestionMark,
 
             token::Dollar => {
-                if self.lexer.peek().tok.is_ident() {
+                if self.lexer.peek().kind.is_ident() {
                     self.in_macro_nonterminal = true;
                     Class::MacroNonTerminal
                 } else {
@@ -280,9 +280,9 @@ impl<'a> Classifier<'a> {
                 // as an attribute.
 
                 // Case 1: #![inner_attribute]
-                if self.lexer.peek().tok == token::Not {
+                if self.lexer.peek() == &token::Not {
                     self.try_next_token()?; // NOTE: consumes `!` token!
-                    if self.lexer.peek().tok == token::OpenDelim(token::Bracket) {
+                    if self.lexer.peek() == &token::OpenDelim(token::Bracket) {
                         self.in_attribute = true;
                         out.enter_span(Class::Attribute)?;
                     }
@@ -292,7 +292,7 @@ impl<'a> Classifier<'a> {
                 }
 
                 // Case 2: #[outer_attribute]
-                if self.lexer.peek().tok == token::OpenDelim(token::Bracket) {
+                if self.lexer.peek() == &token::OpenDelim(token::Bracket) {
                     self.in_attribute = true;
                     out.enter_span(Class::Attribute)?;
                 }
@@ -325,8 +325,8 @@ impl<'a> Classifier<'a> {
             }
 
             // Keywords are also included in the identifier set.
-            token::Ident(ident, is_raw) => {
-                match ident.name {
+            token::Ident(name, is_raw) => {
+                match name {
                     kw::Ref | kw::Mut if !is_raw => Class::RefKeyWord,
 
                     kw::SelfLower | kw::SelfUpper => Class::Self_,
@@ -335,13 +335,13 @@ impl<'a> Classifier<'a> {
                     sym::Option | sym::Result => Class::PreludeTy,
                     sym::Some | sym::None | sym::Ok | sym::Err => Class::PreludeVal,
 
-                    _ if tas.tok.is_reserved_ident() => Class::KeyWord,
+                    _ if token.is_reserved_ident() => Class::KeyWord,
 
                     _ => {
                         if self.in_macro_nonterminal {
                             self.in_macro_nonterminal = false;
                             Class::MacroNonTerminal
-                        } else if self.lexer.peek().tok == token::Not {
+                        } else if self.lexer.peek() == &token::Not {
                             self.in_macro = true;
                             Class::Macro
                         } else {
@@ -359,7 +359,7 @@ impl<'a> Classifier<'a> {
 
         // Anything that didn't return above is the simple case where we the
         // class just spans a single token, so we can use the `string` method.
-        out.string(Escape(&self.snip(tas.sp)), klass)?;
+        out.string(Escape(&self.snip(token.span)), klass)?;
 
         Ok(())
     }

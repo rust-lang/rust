@@ -855,7 +855,7 @@ pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) 
 
 pub fn walk_tt<'a, V: Visitor<'a>>(visitor: &mut V, tt: TokenTree) {
     match tt {
-        TokenTree::Token(_, tok) => visitor.visit_token(tok),
+        TokenTree::Token(token) => visitor.visit_token(token),
         TokenTree::Delimited(_, _, tts) => visitor.visit_tts(tts),
     }
 }

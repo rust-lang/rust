@@ -261,9 +261,8 @@ for tokenstream::TokenTree {
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            tokenstream::TokenTree::Token(span, ref token) => {
-                span.hash_stable(hcx, hasher);
-                hash_token(token, hcx, hasher);
+            tokenstream::TokenTree::Token(ref token) => {
+                token.hash_stable(hcx, hasher);
             }
             tokenstream::TokenTree::Delimited(span, delim, ref tts) => {
                 span.hash_stable(hcx, hasher);
@@ -306,69 +305,74 @@ impl_stable_hash_for!(struct token::Lit {
     suffix
 });
 
-fn hash_token<'a, 'gcx, W: StableHasherResult>(
-    token: &token::Token,
-    hcx: &mut StableHashingContext<'a>,
-    hasher: &mut StableHasher<W>,
-) {
-    mem::discriminant(token).hash_stable(hcx, hasher);
-    match *token {
-        token::Token::Eq |
-        token::Token::Lt |
-        token::Token::Le |
-        token::Token::EqEq |
-        token::Token::Ne |
-        token::Token::Ge |
-        token::Token::Gt |
-        token::Token::AndAnd |
-        token::Token::OrOr |
-        token::Token::Not |
-        token::Token::Tilde |
-        token::Token::At |
-        token::Token::Dot |
-        token::Token::DotDot |
-        token::Token::DotDotDot |
-        token::Token::DotDotEq |
-        token::Token::Comma |
-        token::Token::Semi |
-        token::Token::Colon |
-        token::Token::ModSep |
-        token::Token::RArrow |
-        token::Token::LArrow |
-        token::Token::FatArrow |
-        token::Token::Pound |
-        token::Token::Dollar |
-        token::Token::Question |
-        token::Token::SingleQuote |
-        token::Token::Whitespace |
-        token::Token::Comment |
-        token::Token::Eof => {}
+impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            token::Eq |
+            token::Lt |
+            token::Le |
+            token::EqEq |
+            token::Ne |
+            token::Ge |
+            token::Gt |
+            token::AndAnd |
+            token::OrOr |
+            token::Not |
+            token::Tilde |
+            token::At |
+            token::Dot |
+            token::DotDot |
+            token::DotDotDot |
+            token::DotDotEq |
+            token::Comma |
+            token::Semi |
+            token::Colon |
+            token::ModSep |
+            token::RArrow |
+            token::LArrow |
+            token::FatArrow |
+            token::Pound |
+            token::Dollar |
+            token::Question |
+            token::SingleQuote |
+            token::Whitespace |
+            token::Comment |
+            token::Eof => {}
 
-        token::Token::BinOp(bin_op_token) |
-        token::Token::BinOpEq(bin_op_token) => {
-            std_hash::Hash::hash(&bin_op_token, hasher);
+            token::BinOp(bin_op_token) |
+            token::BinOpEq(bin_op_token) => {
+                std_hash::Hash::hash(&bin_op_token, hasher);
+            }
+
+            token::OpenDelim(delim_token) |
+            token::CloseDelim(delim_token) => {
+                std_hash::Hash::hash(&delim_token, hasher);
+            }
+            token::Literal(lit) => lit.hash_stable(hcx, hasher),
+
+            token::Ident(name, is_raw) => {
+                name.hash_stable(hcx, hasher);
+                is_raw.hash_stable(hcx, hasher);
+            }
+            token::Lifetime(name) => name.hash_stable(hcx, hasher),
+
+            token::Interpolated(_) => {
+                bug!("interpolated tokens should not be present in the HIR")
+            }
+
+            token::DocComment(val) |
+            token::Shebang(val) => val.hash_stable(hcx, hasher),
         }
-
-        token::Token::OpenDelim(delim_token) |
-        token::Token::CloseDelim(delim_token) => {
-            std_hash::Hash::hash(&delim_token, hasher);
-        }
-        token::Token::Literal(lit) => lit.hash_stable(hcx, hasher),
-
-        token::Token::Ident(ident, is_raw) => {
-            ident.name.hash_stable(hcx, hasher);
-            is_raw.hash_stable(hcx, hasher);
-        }
-        token::Token::Lifetime(ident) => ident.name.hash_stable(hcx, hasher),
-
-        token::Token::Interpolated(_) => {
-            bug!("interpolated tokens should not be present in the HIR")
-        }
-
-        token::Token::DocComment(val) |
-        token::Token::Shebang(val) => val.hash_stable(hcx, hasher),
     }
 }
+
+impl_stable_hash_for!(struct token::Token {
+    kind,
+    span
+});
 
 impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItem {
     MetaItem(meta_item),

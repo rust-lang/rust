@@ -1,9 +1,9 @@
 //! Code related to parsing literals.
 
-use crate::ast::{self, Ident, Lit, LitKind};
+use crate::ast::{self, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
-use crate::parse::token::{self, Token};
+use crate::parse::token::{self, Token, TokenKind};
 use crate::parse::unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
@@ -228,10 +228,10 @@ impl Lit {
     }
 
     /// Converts arbitrary token into an AST literal.
-    crate fn from_token(token: &Token, span: Span) -> Result<Lit, LitError> {
-        let lit = match *token {
-            token::Ident(ident, false) if ident.name == kw::True || ident.name == kw::False =>
-                token::Lit::new(token::Bool, ident.name, None),
+    crate fn from_token(token: &Token) -> Result<Lit, LitError> {
+        let lit = match token.kind {
+            token::Ident(name, false) if name == kw::True || name == kw::False =>
+                token::Lit::new(token::Bool, name, None),
             token::Literal(lit) =>
                 lit,
             token::Interpolated(ref nt) => {
@@ -245,7 +245,7 @@ impl Lit {
             _ => return Err(LitError::NotLiteral)
         };
 
-        Lit::from_lit_token(lit, span)
+        Lit::from_lit_token(lit, token.span)
     }
 
     /// Attempts to recover an AST literal from semantic literal.
@@ -258,10 +258,10 @@ impl Lit {
     /// Losslessly convert an AST literal into a token stream.
     crate fn tokens(&self) -> TokenStream {
         let token = match self.token.kind {
-            token::Bool => token::Ident(Ident::new(self.token.symbol, self.span), false),
+            token::Bool => token::Ident(self.token.symbol, false),
             _ => token::Literal(self.token),
         };
-        TokenTree::Token(self.span, token).into()
+        TokenTree::token(token, self.span).into()
     }
 }
 
@@ -272,44 +272,43 @@ impl<'a> Parser<'a> {
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`.
             recovered = self.look_ahead(1, |t| {
-                if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = *t {
+                if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix })
+                        = t.kind {
                     let next_span = self.look_ahead_span(1);
                     if self.span.hi() == next_span.lo() {
                         let s = String::from("0.") + &symbol.as_str();
-                        let token = Token::lit(token::Float, Symbol::intern(&s), suffix);
-                        return Some((token, self.span.to(next_span)));
+                        let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
+                        return Some(Token::new(kind, self.span.to(next_span)));
                     }
                 }
                 None
             });
-            if let Some((ref token, span)) = recovered {
+            if let Some(token) = &recovered {
                 self.bump();
                 self.diagnostic()
-                    .struct_span_err(span, "float literals must have an integer part")
+                    .struct_span_err(token.span, "float literals must have an integer part")
                     .span_suggestion(
-                        span,
+                        token.span,
                         "must have an integer part",
-                        pprust::token_to_string(&token),
+                        pprust::token_to_string(token),
                         Applicability::MachineApplicable,
                     )
                     .emit();
             }
         }
 
-        let (token, span) = recovered.as_ref().map_or((&self.token, self.span),
-                                                      |(token, span)| (token, *span));
-
-        match Lit::from_token(token, span) {
+        let token = recovered.as_ref().unwrap_or(&self.token);
+        match Lit::from_token(token) {
             Ok(lit) => {
                 self.bump();
                 Ok(lit)
             }
             Err(LitError::NotLiteral) => {
                 let msg = format!("unexpected token: {}", self.this_token_descr());
-                Err(self.span_fatal(span, &msg))
+                Err(self.span_fatal(token.span, &msg))
             }
             Err(err) => {
-                let lit = token.expect_lit();
+                let (lit, span) = (token.expect_lit(), token.span);
                 self.bump();
                 err.report(&self.sess.span_diagnostic, lit, span);
                 let lit = token::Lit::new(token::Err, lit.symbol, lit.suffix);

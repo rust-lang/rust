@@ -10,7 +10,7 @@ use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use crate::mut_visit::*;
 use crate::parse::{DirectoryOwnership, PResult, ParseSess};
-use crate::parse::token::{self, Token};
+use crate::parse::token;
 use crate::parse::parser::Parser;
 use crate::ptr::P;
 use crate::symbol::Symbol;
@@ -585,14 +585,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             AttrProcMacro(ref mac, ..) => {
                 self.gate_proc_macro_attr_item(attr.span, &item);
-                let item_tok = TokenTree::Token(DUMMY_SP, Token::Interpolated(Lrc::new(match item {
+                let item_tok = TokenTree::token(token::Interpolated(Lrc::new(match item {
                     Annotatable::Item(item) => token::NtItem(item),
                     Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
                     Annotatable::ImplItem(item) => token::NtImplItem(item.into_inner()),
                     Annotatable::ForeignItem(item) => token::NtForeignItem(item.into_inner()),
                     Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
                     Annotatable::Expr(expr) => token::NtExpr(expr),
-                }))).into();
+                })), DUMMY_SP).into();
                 let input = self.extract_proc_macro_attr_input(attr.tokens, attr.span);
                 let tok_result = mac.expand(self.cx, attr.span, input, item_tok);
                 let res = self.parse_ast_fragment(tok_result, invoc.fragment_kind,

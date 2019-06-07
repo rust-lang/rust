@@ -2,8 +2,9 @@ use crate::ast::{
     self, Arg, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
 };
-use crate::parse::{SeqSep, token, PResult, Parser};
+use crate::parse::{SeqSep, PResult, Parser};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
+use crate::parse::token::{self, TokenKind};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::source_map::Spanned;
@@ -201,12 +202,12 @@ impl<'a> Parser<'a> {
             self.span,
             &format!("expected identifier, found {}", self.this_token_descr()),
         );
-        if let token::Ident(ident, false) = &self.token {
-            if ident.is_raw_guess() {
+        if let token::Ident(name, false) = self.token.kind {
+            if Ident::new(name, self.span).is_raw_guess() {
                 err.span_suggestion(
                     self.span,
                     "you can escape reserved keywords to use them as identifiers",
-                    format!("r#{}", ident),
+                    format!("r#{}", name),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -229,8 +230,8 @@ impl<'a> Parser<'a> {
 
     pub fn expected_one_of_not_found(
         &mut self,
-        edible: &[token::Token],
-        inedible: &[token::Token],
+        edible: &[TokenKind],
+        inedible: &[TokenKind],
     ) -> PResult<'a, bool /* recovered */> {
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
@@ -294,7 +295,7 @@ impl<'a> Parser<'a> {
                 Applicability::MaybeIncorrect,
             );
         }
-        let sp = if self.token == token::Token::Eof {
+        let sp = if self.token == token::Eof {
             // This is EOF, don't want to point at the following char, but rather the last token
             self.prev_span
         } else {
@@ -368,7 +369,7 @@ impl<'a> Parser<'a> {
 
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
-    crate fn eat_to_tokens(&mut self, kets: &[&token::Token]) {
+    crate fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
         let handler = self.diagnostic();
 
         if let Err(ref mut err) = self.parse_seq_to_before_tokens(
@@ -388,7 +389,7 @@ impl<'a> Parser<'a> {
     /// let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>();
     ///                                                        ^^ help: remove extra angle brackets
     /// ```
-    crate fn check_trailing_angle_brackets(&mut self, segment: &PathSegment, end: token::Token) {
+    crate fn check_trailing_angle_brackets(&mut self, segment: &PathSegment, end: TokenKind) {
         // This function is intended to be invoked after parsing a path segment where there are two
         // cases:
         //
@@ -726,13 +727,13 @@ impl<'a> Parser<'a> {
     /// closing delimiter.
     pub fn unexpected_try_recover(
         &mut self,
-        t: &token::Token,
+        t: &TokenKind,
     ) -> PResult<'a, bool /* recovered */> {
         let token_str = pprust::token_to_string(t);
         let this_token_str = self.this_token_descr();
-        let (prev_sp, sp) = match (&self.token, self.subparser_name) {
+        let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
             // Point at the end of the macro call when reaching end of macro arguments.
-            (token::Token::Eof, Some(_)) => {
+            (token::Eof, Some(_)) => {
                 let sp = self.sess.source_map().next_point(self.span);
                 (sp, sp)
             }
@@ -740,14 +741,14 @@ impl<'a> Parser<'a> {
             // This happens when the parser finds an empty TokenStream.
             _ if self.prev_span == DUMMY_SP => (self.span, self.span),
             // EOF, don't want to point at the following char, but rather the last token.
-            (token::Token::Eof, None) => (self.prev_span, self.span),
+            (token::Eof, None) => (self.prev_span, self.span),
             _ => (self.sess.source_map().next_point(self.prev_span), self.span),
         };
         let msg = format!(
             "expected `{}`, found {}",
             token_str,
-            match (&self.token, self.subparser_name) {
-                (token::Token::Eof, Some(origin)) => format!("end of {}", origin),
+            match (&self.token.kind, self.subparser_name) {
+                (token::Eof, Some(origin)) => format!("end of {}", origin),
                 _ => this_token_str,
             },
         );
@@ -903,7 +904,7 @@ impl<'a> Parser<'a> {
 
     crate fn recover_closing_delimiter(
         &mut self,
-        tokens: &[token::Token],
+        tokens: &[TokenKind],
         mut err: DiagnosticBuilder<'a>,
     ) -> PResult<'a, bool> {
         let mut pos = None;
@@ -989,7 +990,7 @@ impl<'a> Parser<'a> {
                break_on_semi, break_on_block);
         loop {
             debug!("recover_stmt_ loop {:?}", self.token);
-            match self.token {
+            match self.token.kind {
                 token::OpenDelim(token::DelimToken::Brace) => {
                     brace_depth += 1;
                     self.bump();
@@ -1074,7 +1075,7 @@ impl<'a> Parser<'a> {
     }
 
     crate fn eat_incorrect_doc_comment(&mut self, applied_to: &str) {
-        if let token::DocComment(_) = self.token {
+        if let token::DocComment(_) = self.token.kind {
             let mut err = self.diagnostic().struct_span_err(
                 self.span,
                 &format!("documentation comments cannot be applied to {}", applied_to),
@@ -1214,8 +1215,8 @@ impl<'a> Parser<'a> {
     }
 
     crate fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
-        let (span, msg) = match (&self.token, self.subparser_name) {
-            (&token::Token::Eof, Some(origin)) => {
+        let (span, msg) = match (&self.token.kind, self.subparser_name) {
+            (&token::Eof, Some(origin)) => {
                 let sp = self.sess.source_map().next_point(self.span);
                 (sp, format!("expected expression, found end of {}", origin))
             }

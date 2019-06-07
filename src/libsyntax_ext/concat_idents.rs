@@ -3,7 +3,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use syntax::ast;
 use syntax::ext::base::{self, *};
 use syntax::feature_gate;
-use syntax::parse::token;
+use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax_pos::symbol::{Symbol, sym};
@@ -30,7 +30,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
     for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {
             match *e {
-                TokenTree::Token(_, token::Comma) => {}
+                TokenTree::Token(Token { kind: token::Comma, .. }) => {}
                 _ => {
                     cx.span_err(sp, "concat_idents! expecting comma.");
                     return DummyResult::any(sp);
@@ -38,8 +38,8 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
             }
         } else {
             match *e {
-                TokenTree::Token(_, token::Ident(ident, _)) =>
-                    res_str.push_str(&ident.as_str()),
+                TokenTree::Token(Token { kind: token::Ident(name, _), .. }) =>
+                    res_str.push_str(&name.as_str()),
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");
                     return DummyResult::any(sp);

@@ -1958,9 +1958,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 name,
                 template
             ),
-            None => if let Some(TokenTree::Token(_, token::Eq)) = attr.tokens.trees().next() {
-                // All key-value attributes are restricted to meta-item syntax.
-                attr.parse_meta(self.context.parse_sess).map_err(|mut err| err.emit()).ok();
+            None => if let Some(TokenTree::Token(token)) = attr.tokens.trees().next() {
+                if token == token::Eq {
+                    // All key-value attributes are restricted to meta-item syntax.
+                    attr.parse_meta(self.context.parse_sess).map_err(|mut err| err.emit()).ok();
+                }
             }
         }
     }

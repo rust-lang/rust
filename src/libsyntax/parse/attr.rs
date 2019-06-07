@@ -24,7 +24,7 @@ impl<'a> Parser<'a> {
         let mut just_parsed_doc_comment = false;
         loop {
             debug!("parse_outer_attributes: self.token={:?}", self.token);
-            match self.token {
+            match self.token.kind {
                 token::Pound => {
                     let inner_error_reason = if just_parsed_doc_comment {
                         "an inner attribute is not permitted following an outer doc comment"
@@ -81,7 +81,7 @@ impl<'a> Parser<'a> {
         debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
                inner_parse_policy,
                self.token);
-        let (span, path, tokens, style) = match self.token {
+        let (span, path, tokens, style) = match self.token.kind {
             token::Pound => {
                 let lo = self.span;
                 self.bump();
@@ -140,7 +140,7 @@ impl<'a> Parser<'a> {
     /// PATH `=` TOKEN_TREE
     /// The delimiters or `=` are still put into the resulting token stream.
     crate fn parse_meta_item_unrestricted(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
-        let meta = match self.token {
+        let meta = match self.token.kind {
             token::Interpolated(ref nt) => match **nt {
                 Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
                 _ => None,
@@ -157,9 +157,9 @@ impl<'a> Parser<'a> {
                self.check(&token::OpenDelim(DelimToken::Brace)) {
                    self.parse_token_tree().into()
             } else if self.eat(&token::Eq) {
-                let eq = TokenTree::Token(self.prev_span, token::Eq);
+                let eq = TokenTree::token(token::Eq, self.prev_span);
                 let mut is_interpolated_expr = false;
-                if let token::Interpolated(nt) = &self.token {
+                if let token::Interpolated(nt) = &self.token.kind {
                     if let token::NtExpr(..) = **nt {
                         is_interpolated_expr = true;
                     }
@@ -188,7 +188,7 @@ impl<'a> Parser<'a> {
     crate fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
-            match self.token {
+            match self.token.kind {
                 token::Pound => {
                     // Don't even try to parse if it's not an inner attribute.
                     if !self.look_ahead(1, |t| t == &token::Not) {
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
     /// meta_item : IDENT ( '=' UNSUFFIXED_LIT | '(' meta_item_inner? ')' )? ;
     /// meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
-        let nt_meta = match self.token {
+        let nt_meta = match self.token.kind {
             token::Interpolated(ref nt) => match **nt {
                 token::NtMeta(ref e) => Some(e.clone()),
                 _ => None,

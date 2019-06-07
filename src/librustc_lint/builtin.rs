@@ -1414,15 +1414,9 @@ impl KeywordIdents {
     fn check_tokens(&mut self, cx: &EarlyContext<'_>, tokens: TokenStream) {
         for tt in tokens.into_trees() {
             match tt {
-                TokenTree::Token(span, tok) => match tok.ident() {
-                    // only report non-raw idents
-                    Some((ident, false)) => {
-                        self.check_ident_token(cx, UnderMacro(true), ast::Ident {
-                            span: span.substitute_dummy(ident.span),
-                            ..ident
-                        });
-                    }
-                    _ => {},
+                // Only report non-raw idents.
+                TokenTree::Token(token) => if let Some((ident, false)) = token.ident() {
+                    self.check_ident_token(cx, UnderMacro(true), ident);
                 }
                 TokenTree::Delimited(_, _, tts) => {
                     self.check_tokens(cx, tts)

@@ -8,7 +8,7 @@ use syntax::attr::{mark_used, mark_known};
 use syntax::source_map::Span;
 use syntax::ext::base::*;
 use syntax::parse;
-use syntax::parse::token::{self, Token};
+use syntax::parse::token;
 use syntax::tokenstream;
 use syntax::visit::Visitor;
 use syntax_pos::DUMMY_SP;
@@ -68,8 +68,8 @@ impl MultiItemModifier for ProcMacroDerive {
         // Mark attributes as known, and used.
         MarkAttrs(&self.attrs).visit_item(&item);
 
-        let token = Token::Interpolated(Lrc::new(token::NtItem(item)));
-        let input = tokenstream::TokenTree::Token(DUMMY_SP, token).into();
+        let token = token::Interpolated(Lrc::new(token::NtItem(item)));
+        let input = tokenstream::TokenTree::token(token, DUMMY_SP).into();
 
         let server = proc_macro_server::Rustc::new(ecx);
         let stream = match self.client.run(&EXEC_STRATEGY, server, input) {

@@ -5,7 +5,8 @@ use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::feature_gate::UnstableFeatures;
 use crate::parse::parser::Parser;
-use crate::syntax::parse::parser::emit_unclosed_delims;
+use crate::parse::parser::emit_unclosed_delims;
+use crate::parse::token::TokenKind;
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::diagnostics::plugin::ErrorMap;
 use crate::print::pprust::token_to_string;
@@ -239,7 +240,7 @@ fn maybe_source_file_to_parser(
     let mut parser = stream_to_parser(sess, stream, None);
     parser.unclosed_delims = unclosed_delims;
     if parser.token == token::Eof && parser.span.is_dummy() {
-        parser.span = Span::new(end_pos, end_pos, parser.span.ctxt());
+        parser.token.span = Span::new(end_pos, end_pos, parser.span.ctxt());
     }
 
     Ok(parser)
@@ -311,7 +312,7 @@ pub fn maybe_file_to_stream(
             for unmatched in unmatched_braces {
                 let mut db = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
                     "incorrect close delimiter: `{}`",
-                    token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),
+                    token_to_string(&token::CloseDelim(unmatched.found_delim)),
                 ));
                 db.span_label(unmatched.found_span, "incorrect close delimiter");
                 if let Some(sp) = unmatched.candidate_span {
@@ -358,13 +359,13 @@ pub fn stream_to_parser_with_base_dir<'a>(
 /// A sequence separator.
 pub struct SeqSep {
     /// The seperator token.
-    pub sep: Option<token::Token>,
+    pub sep: Option<TokenKind>,
     /// `true` if a trailing separator is allowed.
     pub trailing_sep_allowed: bool,
 }
 
 impl SeqSep {
-    pub fn trailing_allowed(t: token::Token) -> SeqSep {
+    pub fn trailing_allowed(t: TokenKind) -> SeqSep {
         SeqSep {
             sep: Some(t),
             trailing_sep_allowed: true,
@@ -382,10 +383,12 @@ impl SeqSep {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{self, Ident, PatKind};
+    use crate::ast::{self, Name, PatKind};
     use crate::attr::first_attr_value_str_by_name;
     use crate::ptr::P;
+    use crate::parse::token::Token;
     use crate::print::pprust::item_to_string;
+    use crate::symbol::{kw, sym};
     use crate::tokenstream::{DelimSpan, TokenTree};
     use crate::util::parser_testing::string_to_stream;
     use crate::util::parser_testing::{string_to_expr, string_to_item};
@@ -417,8 +420,6 @@ mod tests {
     #[test]
     fn string_to_tts_macro () {
         with_default_globals(|| {
-            use crate::symbol::sym;
-
             let tts: Vec<_> =
                 string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).trees().collect();
             let tts: &[TokenTree] = &tts[..];
@@ -426,19 +427,20 @@ mod tests {
             match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
                 (
                     4,
-                    Some(&TokenTree::Token(_, token::Ident(name_macro_rules, false))),
-                    Some(&TokenTree::Token(_, token::Not)),
-                    Some(&TokenTree::Token(_, token::Ident(name_zip, false))),
+                    Some(&TokenTree::Token(Token {
+                        kind: token::Ident(name_macro_rules, false), ..
+                    })),
+                    Some(&TokenTree::Token(Token { kind: token::Not, .. })),
+                    Some(&TokenTree::Token(Token { kind: token::Ident(name_zip, false), .. })),
                     Some(&TokenTree::Delimited(_, macro_delim, ref macro_tts)),
                 )
-                if name_macro_rules.name == sym::macro_rules
-                && name_zip.name.as_str() == "zip" => {
+                if name_macro_rules == sym::macro_rules && name_zip.as_str() == "zip" => {
                     let tts = &macro_tts.trees().collect::<Vec<_>>();
                     match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
                         (
                             3,
                             Some(&TokenTree::Delimited(_, first_delim, ref first_tts)),
-                            Some(&TokenTree::Token(_, token::FatArrow)),
+                            Some(&TokenTree::Token(Token { kind: token::FatArrow, .. })),
                             Some(&TokenTree::Delimited(_, second_delim, ref second_tts)),
                         )
                         if macro_delim == token::Paren => {
@@ -446,20 +448,24 @@ mod tests {
                             match (tts.len(), tts.get(0), tts.get(1)) {
                                 (
                                     2,
-                                    Some(&TokenTree::Token(_, token::Dollar)),
-                                    Some(&TokenTree::Token(_, token::Ident(ident, false))),
+                                    Some(&TokenTree::Token(Token { kind: token::Dollar, .. })),
+                                    Some(&TokenTree::Token(Token {
+                                        kind: token::Ident(name, false), ..
+                                    })),
                                 )
-                                if first_delim == token::Paren && ident.name.as_str() == "a" => {},
+                                if first_delim == token::Paren && name.as_str() == "a" => {},
                                 _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
                             }
                             let tts = &second_tts.trees().collect::<Vec<_>>();
                             match (tts.len(), tts.get(0), tts.get(1)) {
                                 (
                                     2,
-                                    Some(&TokenTree::Token(_, token::Dollar)),
-                                    Some(&TokenTree::Token(_, token::Ident(ident, false))),
+                                    Some(&TokenTree::Token(Token { kind: token::Dollar, .. })),
+                                    Some(&TokenTree::Token(Token {
+                                        kind: token::Ident(name, false), ..
+                                    })),
                                 )
-                                if second_delim == token::Paren && ident.name.as_str() == "a" => {},
+                                if second_delim == token::Paren && name.as_str() == "a" => {},
                                 _ => panic!("value 4: {:?} {:?}", second_delim, second_tts),
                             }
                         },
@@ -477,26 +483,23 @@ mod tests {
             let tts = string_to_stream("fn a (b : i32) { b; }".to_string());
 
             let expected = TokenStream::new(vec![
-                TokenTree::Token(sp(0, 2), token::Ident(Ident::from_str("fn"), false)).into(),
-                TokenTree::Token(sp(3, 4), token::Ident(Ident::from_str("a"), false)).into(),
+                TokenTree::token(token::Ident(kw::Fn, false), sp(0, 2)).into(),
+                TokenTree::token(token::Ident(Name::intern("a"), false), sp(3, 4)).into(),
                 TokenTree::Delimited(
                     DelimSpan::from_pair(sp(5, 6), sp(13, 14)),
                     token::DelimToken::Paren,
                     TokenStream::new(vec![
-                        TokenTree::Token(sp(6, 7),
-                                         token::Ident(Ident::from_str("b"), false)).into(),
-                        TokenTree::Token(sp(8, 9), token::Colon).into(),
-                        TokenTree::Token(sp(10, 13),
-                                         token::Ident(Ident::from_str("i32"), false)).into(),
+                        TokenTree::token(token::Ident(Name::intern("b"), false), sp(6, 7)).into(),
+                        TokenTree::token(token::Colon, sp(8, 9)).into(),
+                        TokenTree::token(token::Ident(sym::i32, false), sp(10, 13)).into(),
                     ]).into(),
                 ).into(),
                 TokenTree::Delimited(
                     DelimSpan::from_pair(sp(15, 16), sp(20, 21)),
                     token::DelimToken::Brace,
                     TokenStream::new(vec![
-                        TokenTree::Token(sp(17, 18),
-                                         token::Ident(Ident::from_str("b"), false)).into(),
-                        TokenTree::Token(sp(18, 19), token::Semi).into(),
+                        TokenTree::token(token::Ident(Name::intern("b"), false), sp(17, 18)).into(),
+                        TokenTree::token(token::Semi, sp(18, 19)).into(),
                     ]).into(),
                 ).into()
             ]);
@@ -603,8 +606,6 @@ mod tests {
 
     #[test] fn crlf_doc_comments() {
         with_default_globals(|| {
-            use crate::symbol::sym;
-
             let sess = ParseSess::new(FilePathMapping::empty());
 
             let name_1 = FileName::Custom("crlf_source_1".to_string());

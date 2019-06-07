@@ -149,16 +149,16 @@ fn parse_args<'a>(
         } // accept trailing commas
         if named || (p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq)) {
             named = true;
-            let ident = if let token::Ident(i, _) = p.token {
+            let name = if let token::Ident(name, _) = p.token.kind {
                 p.bump();
-                i
+                name
             } else {
                 return Err(ecx.struct_span_err(
                     p.span,
                     "expected ident, positional arguments cannot follow named arguments",
                 ));
             };
-            let name: &str = &ident.as_str();
+            let name: &str = &name.as_str();
 
             p.expect(&token::Eq)?;
             let e = p.parse_expr()?;

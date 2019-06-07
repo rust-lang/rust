@@ -4,7 +4,7 @@ use syntax::ast::{self, *};
 use syntax::source_map::Spanned;
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
-use syntax::parse::token::{self, Token};
+use syntax::parse::token::{self, TokenKind};
 use syntax::parse::parser::Parser;
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -29,12 +29,12 @@ pub fn expand_assert<'cx>(
     let panic_call = Mac_ {
         path: Path::from_ident(Ident::new(sym::panic, sp)),
         tts: custom_message.unwrap_or_else(|| {
-            TokenStream::from(TokenTree::Token(
-                DUMMY_SP,
-                Token::lit(token::Str, Symbol::intern(&format!(
+            TokenStream::from(TokenTree::token(
+                TokenKind::lit(token::Str, Symbol::intern(&format!(
                     "assertion failed: {}",
                     pprust::expr_to_string(&cond_expr).escape_debug()
                 )), None),
+                DUMMY_SP,
             ))
         }).into(),
         delim: MacDelimiter::Parenthesis,
@@ -103,7 +103,8 @@ fn parse_assert<'a>(
     //
     // Parse this as an actual message, and suggest inserting a comma. Eventually, this should be
     // turned into an error.
-    let custom_message = if let token::Literal(token::Lit { kind: token::Str, .. }) = parser.token {
+    let custom_message = if let token::Literal(token::Lit { kind: token::Str, .. })
+                                = parser.token.kind {
         let mut err = cx.struct_span_warn(parser.span, "unexpected string literal");
         let comma_span = cx.source_map().next_point(parser.prev_span);
         err.span_suggestion_short(

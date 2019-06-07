@@ -55,7 +55,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
         use syntax::parse::token::*;
 
         let joint = is_joint == Joint;
-        let (span, token) = match tree {
+        let Token { kind, span } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
                 return TokenTree::Group(Group {
@@ -64,7 +64,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                     span,
                 });
             }
-            tokenstream::TokenTree::Token(span, token) => (span, token),
+            tokenstream::TokenTree::Token(token) => token,
         };
 
         macro_rules! tt {
@@ -93,7 +93,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             }};
         }
 
-        match token {
+        match kind {
             Eq => op!('='),
             Lt => op!('<'),
             Le => op!('<', '='),
@@ -142,11 +142,10 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             Question => op!('?'),
             SingleQuote => op!('\''),
 
-            Ident(ident, false) if ident.name == kw::DollarCrate =>
-                tt!(Ident::dollar_crate()),
-            Ident(ident, is_raw) => tt!(Ident::new(ident.name, is_raw)),
-            Lifetime(ident) => {
-                let ident = ident.without_first_quote();
+            Ident(name, false) if name == kw::DollarCrate => tt!(Ident::dollar_crate()),
+            Ident(name, is_raw) => tt!(Ident::new(name, is_raw)),
+            Lifetime(name) => {
+                let ident = ast::Ident::new(name, span).without_first_quote();
                 stack.push(tt!(Ident::new(ident.name, false)));
                 tt!(Punct::new('\'', true))
             }
@@ -159,12 +158,12 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                     escaped.extend(ch.escape_debug());
                 }
                 let stream = vec![
-                    Ident(ast::Ident::new(sym::doc, span), false),
+                    Ident(sym::doc, false),
                     Eq,
-                    Token::lit(token::Str, Symbol::intern(&escaped), None),
+                    TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
                 ]
                 .into_iter()
-                .map(|token| tokenstream::TokenTree::Token(span, token))
+                .map(|kind| tokenstream::TokenTree::token(kind, span))
                 .collect();
                 stack.push(TokenTree::Group(Group {
                     delimiter: Delimiter::Bracket,
@@ -211,8 +210,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 .into();
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
-                let token = Ident(ast::Ident::new(sym, span), is_raw);
-                return tokenstream::TokenTree::Token(span, token).into();
+                return tokenstream::TokenTree::token(Ident(sym, is_raw), span).into();
             }
             TokenTree::Literal(self::Literal {
                 lit: token::Lit { kind: token::Integer, symbol, suffix },
@@ -220,9 +218,9 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             }) if symbol.as_str().starts_with("-") => {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
-                let integer = Token::lit(token::Integer, symbol, suffix);
-                let a = tokenstream::TokenTree::Token(span, minus);
-                let b = tokenstream::TokenTree::Token(span, integer);
+                let integer = TokenKind::lit(token::Integer, symbol, suffix);
+                let a = tokenstream::TokenTree::token(minus, span);
+                let b = tokenstream::TokenTree::token(integer, span);
                 return vec![a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal {
@@ -231,17 +229,17 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             }) if symbol.as_str().starts_with("-") => {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
-                let float = Token::lit(token::Float, symbol, suffix);
-                let a = tokenstream::TokenTree::Token(span, minus);
-                let b = tokenstream::TokenTree::Token(span, float);
+                let float = TokenKind::lit(token::Float, symbol, suffix);
+                let a = tokenstream::TokenTree::token(minus, span);
+                let b = tokenstream::TokenTree::token(float, span);
                 return vec![a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal { lit, span }) => {
-                return tokenstream::TokenTree::Token(span, Literal(lit)).into()
+                return tokenstream::TokenTree::token(Literal(lit), span).into()
             }
         };
 
-        let token = match ch {
+        let kind = match ch {
             '=' => Eq,
             '<' => Lt,
             '>' => Gt,
@@ -267,7 +265,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             _ => unreachable!(),
         };
 
-        let tree = tokenstream::TokenTree::Token(span, token);
+        let tree = tokenstream::TokenTree::token(kind, span);
         TokenStream::new(vec![(tree, if joint { Joint } else { NonJoint })])
     }
 }
@@ -338,7 +336,8 @@ impl Ident {
         if !Self::is_valid(&string) {
             panic!("`{:?}` is not a valid identifier", string)
         }
-        if is_raw && !ast::Ident::from_interned_str(sym.as_interned_str()).can_be_raw() {
+        // Get rid of gensyms to conservatively check rawness on the string contents only.
+        if is_raw && !sym.as_interned_str().as_symbol().can_be_raw() {
             panic!("`{}` cannot be a raw identifier", string);
         }
         Ident { sym, is_raw, span }

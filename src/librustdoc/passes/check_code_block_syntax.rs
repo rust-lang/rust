@@ -1,5 +1,5 @@
 use errors::Applicability;
-use syntax::parse::lexer::{TokenAndSpan, StringReader as Lexer};
+use syntax::parse::lexer::{StringReader as Lexer};
 use syntax::parse::{ParseSess, token};
 use syntax::source_map::FilePathMapping;
 use syntax_pos::FileName;
@@ -33,8 +33,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         );
 
         let errors = Lexer::new_or_buffered_errs(&sess, source_file, None).and_then(|mut lexer| {
-            while let Ok(TokenAndSpan { tok, .. }) = lexer.try_next_token() {
-                if tok == token::Eof {
+            while let Ok(token::Token { kind, .. }) = lexer.try_next_token() {
+                if kind == token::Eof {
                     break;
                 }
             }

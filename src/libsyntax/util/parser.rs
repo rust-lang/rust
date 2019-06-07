@@ -1,4 +1,4 @@
-use crate::parse::token::{Token, BinOpToken};
+use crate::parse::token::{self, TokenKind, BinOpToken};
 use crate::symbol::kw;
 use crate::ast::{self, BinOpKind};
 
@@ -69,34 +69,34 @@ pub enum Fixity {
 
 impl AssocOp {
     /// Creates a new AssocOP from a token
-    pub fn from_token(t: &Token) -> Option<AssocOp> {
+    pub fn from_token(t: &TokenKind) -> Option<AssocOp> {
         use AssocOp::*;
         match *t {
-            Token::BinOpEq(k) => Some(AssignOp(k)),
-            Token::Eq => Some(Assign),
-            Token::BinOp(BinOpToken::Star) => Some(Multiply),
-            Token::BinOp(BinOpToken::Slash) => Some(Divide),
-            Token::BinOp(BinOpToken::Percent) => Some(Modulus),
-            Token::BinOp(BinOpToken::Plus) => Some(Add),
-            Token::BinOp(BinOpToken::Minus) => Some(Subtract),
-            Token::BinOp(BinOpToken::Shl) => Some(ShiftLeft),
-            Token::BinOp(BinOpToken::Shr) => Some(ShiftRight),
-            Token::BinOp(BinOpToken::And) => Some(BitAnd),
-            Token::BinOp(BinOpToken::Caret) => Some(BitXor),
-            Token::BinOp(BinOpToken::Or) => Some(BitOr),
-            Token::Lt => Some(Less),
-            Token::Le => Some(LessEqual),
-            Token::Ge => Some(GreaterEqual),
-            Token::Gt => Some(Greater),
-            Token::EqEq => Some(Equal),
-            Token::Ne => Some(NotEqual),
-            Token::AndAnd => Some(LAnd),
-            Token::OrOr => Some(LOr),
-            Token::DotDot => Some(DotDot),
-            Token::DotDotEq => Some(DotDotEq),
+            token::BinOpEq(k) => Some(AssignOp(k)),
+            token::Eq => Some(Assign),
+            token::BinOp(BinOpToken::Star) => Some(Multiply),
+            token::BinOp(BinOpToken::Slash) => Some(Divide),
+            token::BinOp(BinOpToken::Percent) => Some(Modulus),
+            token::BinOp(BinOpToken::Plus) => Some(Add),
+            token::BinOp(BinOpToken::Minus) => Some(Subtract),
+            token::BinOp(BinOpToken::Shl) => Some(ShiftLeft),
+            token::BinOp(BinOpToken::Shr) => Some(ShiftRight),
+            token::BinOp(BinOpToken::And) => Some(BitAnd),
+            token::BinOp(BinOpToken::Caret) => Some(BitXor),
+            token::BinOp(BinOpToken::Or) => Some(BitOr),
+            token::Lt => Some(Less),
+            token::Le => Some(LessEqual),
+            token::Ge => Some(GreaterEqual),
+            token::Gt => Some(Greater),
+            token::EqEq => Some(Equal),
+            token::Ne => Some(NotEqual),
+            token::AndAnd => Some(LAnd),
+            token::OrOr => Some(LOr),
+            token::DotDot => Some(DotDot),
+            token::DotDotEq => Some(DotDotEq),
             // DotDotDot is no longer supported, but we need some way to display the error
-            Token::DotDotDot => Some(DotDotEq),
-            Token::Colon => Some(Colon),
+            token::DotDotDot => Some(DotDotEq),
+            token::Colon => Some(Colon),
             _ if t.is_keyword(kw::As) => Some(As),
             _ => None
         }

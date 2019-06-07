@@ -921,10 +921,9 @@ pub struct Interner {
 
 impl Interner {
     fn prefill(init: &[&'static str]) -> Self {
-        let symbols = (0 .. init.len() as u32).map(Symbol::new);
         Interner {
-            strings: init.to_vec(),
-            names: init.iter().copied().zip(symbols).collect(),
+            strings: init.into(),
+            names: init.iter().copied().zip((0..).map(Symbol::new)).collect(),
             ..Default::default()
         }
     }
@@ -1019,6 +1018,21 @@ impl Symbol {
     pub fn is_doc_keyword(self) -> bool {
         self <= kw::Union
     }
+
+    /// A keyword or reserved identifier that can be used as a path segment.
+    pub fn is_path_segment_keyword(self) -> bool {
+        self == kw::Super ||
+        self == kw::SelfLower ||
+        self == kw::SelfUpper ||
+        self == kw::Crate ||
+        self == kw::PathRoot ||
+        self == kw::DollarCrate
+    }
+
+    /// This symbol can be a raw identifier.
+    pub fn can_be_raw(self) -> bool {
+        self != kw::Invalid && self != kw::Underscore && !self.is_path_segment_keyword()
+    }
 }
 
 impl Ident {
@@ -1049,24 +1063,13 @@ impl Ident {
 
     /// A keyword or reserved identifier that can be used as a path segment.
     pub fn is_path_segment_keyword(self) -> bool {
-        self.name == kw::Super ||
-        self.name == kw::SelfLower ||
-        self.name == kw::SelfUpper ||
-        self.name == kw::Crate ||
-        self.name == kw::PathRoot ||
-        self.name == kw::DollarCrate
-    }
-
-    /// This identifier can be a raw identifier.
-    pub fn can_be_raw(self) -> bool {
-        self.name != kw::Invalid && self.name != kw::Underscore &&
-        !self.is_path_segment_keyword()
+        self.name.is_path_segment_keyword()
     }
 
     /// We see this identifier in a normal identifier position, like variable name or a type.
     /// How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
-        self.can_be_raw() && self.is_reserved()
+        self.name.can_be_raw() && self.is_reserved()
     }
 }
 

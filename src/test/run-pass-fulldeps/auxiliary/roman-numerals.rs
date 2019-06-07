@@ -1,3 +1,9 @@
+// WARNING WARNING WARNING WARNING WARNING
+// =======================================
+//
+// This code also appears in src/doc/unstable-book/src/language-features/plugin.md.
+// Please keep the two copies in sync!  FIXME: have rustdoc read this file
+
 // force-host
 
 #![crate_type="dylib"]
@@ -8,21 +14,15 @@ extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 
-use syntax::parse::token;
+use syntax::parse::token::{self, Token};
 use syntax::tokenstream::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
-use syntax::ext::build::AstBuilder;  // trait for expr_usize
+use syntax::ext::build::AstBuilder;  // A trait for expr_usize.
 use syntax_pos::Span;
 use rustc_plugin::Registry;
 
-// WARNING WARNING WARNING WARNING WARNING
-// =======================================
-//
-// This code also appears in src/doc/unstable-book/src/language-features/plugin.md.
-// Please keep the two copies in sync!  FIXME: have rustdoc read this file
-
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
-        -> Box<MacResult + 'static> {
+        -> Box<dyn MacResult + 'static> {
 
     static NUMERALS: &'static [(&'static str, usize)] = &[
         ("M", 1000), ("CM", 900), ("D", 500), ("CD", 400),
@@ -38,7 +38,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     }
 
     let text = match args[0] {
-        TokenTree::Token(_, token::Ident(s, _)) => s.to_string(),
+        TokenTree::Token(Token { kind: token::Ident(s, _), .. }) => s.to_string(),
         _ => {
             cx.span_err(sp, "argument should be a single identifier");
             return DummyResult::any(sp);

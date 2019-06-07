@@ -1,6 +1,6 @@
-use crate::ast::{self, Ident};
+use crate::ast;
 use crate::parse::ParseSess;
-use crate::parse::token::{self, Token};
+use crate::parse::token::{self, Token, TokenKind};
 use crate::symbol::{sym, Symbol};
 use crate::parse::unescape;
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
@@ -12,28 +12,12 @@ use core::unicode::property::Pattern_White_Space;
 use std::borrow::Cow;
 use std::char;
 use std::iter;
-use std::mem::replace;
 use rustc_data_structures::sync::Lrc;
 use log::debug;
 
 pub mod comments;
 mod tokentrees;
 mod unicode_chars;
-
-#[derive(Clone, Debug)]
-pub struct TokenAndSpan {
-    pub tok: Token,
-    pub sp: Span,
-}
-
-impl Default for TokenAndSpan {
-    fn default() -> Self {
-        TokenAndSpan {
-            tok: token::Whitespace,
-            sp: syntax_pos::DUMMY_SP,
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct UnmatchedBrace {
@@ -56,8 +40,7 @@ pub struct StringReader<'a> {
     /// Stop reading src at this index.
     crate end_src_index: usize,
     // cached:
-    peek_tok: Token,
-    peek_span: Span,
+    peek_token: Token,
     peek_span_src_raw: Span,
     fatal_errs: Vec<DiagnosticBuilder<'a>>,
     // cache a direct reference to the source text, so that we don't have to
@@ -78,16 +61,7 @@ impl<'a> StringReader<'a> {
         (real, raw)
     }
 
-    fn mk_ident(&self, string: &str) -> Ident {
-        let mut ident = Ident::from_str(string);
-        if let Some(span) = self.override_span {
-            ident.span = span;
-        }
-
-        ident
-    }
-
-    fn unwrap_or_abort(&mut self, res: Result<TokenAndSpan, ()>) -> TokenAndSpan {
+    fn unwrap_or_abort(&mut self, res: Result<Token, ()>) -> Token {
         match res {
             Ok(tok) => tok,
             Err(_) => {
@@ -97,18 +71,15 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
+    fn next_token(&mut self) -> Token where Self: Sized {
         let res = self.try_next_token();
         self.unwrap_or_abort(res)
     }
 
     /// Returns the next token. EFFECT: advances the string_reader.
-    pub fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
+    pub fn try_next_token(&mut self) -> Result<Token, ()> {
         assert!(self.fatal_errs.is_empty());
-        let ret_val = TokenAndSpan {
-            tok: replace(&mut self.peek_tok, token::Whitespace),
-            sp: self.peek_span,
-        };
+        let ret_val = self.peek_token.take();
         self.advance_token()?;
         Ok(ret_val)
     }
@@ -135,10 +106,10 @@ impl<'a> StringReader<'a> {
         return None;
     }
 
-    fn try_real_token(&mut self) -> Result<TokenAndSpan, ()> {
+    fn try_real_token(&mut self) -> Result<Token, ()> {
         let mut t = self.try_next_token()?;
         loop {
-            match t.tok {
+            match t.kind {
                 token::Whitespace | token::Comment | token::Shebang(_) => {
                     t = self.try_next_token()?;
                 }
@@ -149,7 +120,7 @@ impl<'a> StringReader<'a> {
         Ok(t)
     }
 
-    pub fn real_token(&mut self) -> TokenAndSpan {
+    pub fn real_token(&mut self) -> Token {
         let res = self.try_real_token();
         self.unwrap_or_abort(res)
     }
@@ -173,7 +144,7 @@ impl<'a> StringReader<'a> {
     }
 
     fn fatal(&self, m: &str) -> FatalError {
-        self.fatal_span(self.peek_span, m)
+        self.fatal_span(self.peek_token.span, m)
     }
 
     crate fn emit_fatal_errors(&mut self) {
@@ -194,12 +165,8 @@ impl<'a> StringReader<'a> {
         buffer
     }
 
-    pub fn peek(&self) -> TokenAndSpan {
-        // FIXME(pcwalton): Bad copy!
-        TokenAndSpan {
-            tok: self.peek_tok.clone(),
-            sp: self.peek_span,
-        }
+    pub fn peek(&self) -> &Token {
+        &self.peek_token
     }
 
     /// For comments.rs, which hackily pokes into next_pos and ch
@@ -229,9 +196,7 @@ impl<'a> StringReader<'a> {
             ch: Some('\n'),
             source_file,
             end_src_index: src.len(),
-            // dummy values; not read
-            peek_tok: token::Eof,
-            peek_span: syntax_pos::DUMMY_SP,
+            peek_token: Token::dummy(),
             peek_span_src_raw: syntax_pos::DUMMY_SP,
             src,
             fatal_errs: Vec::new(),
@@ -336,31 +301,24 @@ impl<'a> StringReader<'a> {
         self.err_span_(from_pos, to_pos, &m[..]);
     }
 
-    /// Advance peek_tok and peek_span to refer to the next token, and
+    /// Advance peek_token to refer to the next token, and
     /// possibly update the interner.
     fn advance_token(&mut self) -> Result<(), ()> {
         match self.scan_whitespace_or_comment() {
             Some(comment) => {
-                self.peek_span_src_raw = comment.sp;
-                self.peek_span = comment.sp;
-                self.peek_tok = comment.tok;
+                self.peek_span_src_raw = comment.span;
+                self.peek_token = comment;
             }
             None => {
-                if self.is_eof() {
-                    self.peek_tok = token::Eof;
-                    let (real, raw) = self.mk_sp_and_raw(
-                        self.source_file.end_pos,
-                        self.source_file.end_pos,
-                    );
-                    self.peek_span = real;
-                    self.peek_span_src_raw = raw;
+                let (kind, start_pos, end_pos) = if self.is_eof() {
+                    (token::Eof, self.source_file.end_pos, self.source_file.end_pos)
                 } else {
-                    let start_bytepos = self.pos;
-                    self.peek_tok = self.next_token_inner()?;
-                    let (real, raw) = self.mk_sp_and_raw(start_bytepos, self.pos);
-                    self.peek_span = real;
-                    self.peek_span_src_raw = raw;
+                    let start_pos = self.pos;
+                    (self.next_token_inner()?, start_pos, self.pos)
                 };
+                let (real, raw) = self.mk_sp_and_raw(start_pos, end_pos);
+                self.peek_token = Token::new(kind, real);
+                self.peek_span_src_raw = raw;
             }
         }
 
@@ -527,7 +485,7 @@ impl<'a> StringReader<'a> {
 
     /// PRECONDITION: self.ch is not whitespace
     /// Eats any kind of comment.
-    fn scan_comment(&mut self) -> Option<TokenAndSpan> {
+    fn scan_comment(&mut self) -> Option<Token> {
         if let Some(c) = self.ch {
             if c.is_whitespace() {
                 let msg = "called consume_any_line_comment, but there was whitespace";
@@ -563,14 +521,14 @@ impl<'a> StringReader<'a> {
                         self.bump();
                     }
 
-                    let tok = if doc_comment {
+                    let kind = if doc_comment {
                         self.with_str_from(start_bpos, |string| {
                             token::DocComment(Symbol::intern(string))
                         })
                     } else {
                         token::Comment
                     };
-                    Some(TokenAndSpan { tok, sp: self.mk_sp(start_bpos, self.pos) })
+                    Some(Token::new(kind, self.mk_sp(start_bpos, self.pos)))
                 }
                 Some('*') => {
                     self.bump();
@@ -594,10 +552,10 @@ impl<'a> StringReader<'a> {
                     while !self.ch_is('\n') && !self.is_eof() {
                         self.bump();
                     }
-                    return Some(TokenAndSpan {
-                        tok: token::Shebang(self.name_from(start)),
-                        sp: self.mk_sp(start, self.pos),
-                    });
+                    return Some(Token::new(
+                        token::Shebang(self.name_from(start)),
+                        self.mk_sp(start, self.pos),
+                    ));
                 }
             }
             None
@@ -608,7 +566,7 @@ impl<'a> StringReader<'a> {
 
     /// If there is whitespace, shebang, or a comment, scan it. Otherwise,
     /// return `None`.
-    fn scan_whitespace_or_comment(&mut self) -> Option<TokenAndSpan> {
+    fn scan_whitespace_or_comment(&mut self) -> Option<Token> {
         match self.ch.unwrap_or('\0') {
             // # to handle shebang at start of file -- this is the entry point
             // for skipping over all "junk"
@@ -622,10 +580,7 @@ impl<'a> StringReader<'a> {
                 while is_pattern_whitespace(self.ch) {
                     self.bump();
                 }
-                let c = Some(TokenAndSpan {
-                    tok: token::Whitespace,
-                    sp: self.mk_sp(start_bpos, self.pos),
-                });
+                let c = Some(Token::new(token::Whitespace, self.mk_sp(start_bpos, self.pos)));
                 debug!("scanning whitespace: {:?}", c);
                 c
             }
@@ -634,7 +589,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Might return a sugared-doc-attr
-    fn scan_block_comment(&mut self) -> Option<TokenAndSpan> {
+    fn scan_block_comment(&mut self) -> Option<Token> {
         // block comments starting with "/**" or "/*!" are doc-comments
         let is_doc_comment = self.ch_is('*') || self.ch_is('!');
         let start_bpos = self.pos - BytePos(2);
@@ -671,7 +626,7 @@ impl<'a> StringReader<'a> {
 
         self.with_str_from(start_bpos, |string| {
             // but comments with only "*"s between two "/"s are not
-            let tok = if is_block_doc_comment(string) {
+            let kind = if is_block_doc_comment(string) {
                 let string = if has_cr {
                     self.translate_crlf(start_bpos,
                                         string,
@@ -684,10 +639,7 @@ impl<'a> StringReader<'a> {
                 token::Comment
             };
 
-            Some(TokenAndSpan {
-                tok,
-                sp: self.mk_sp(start_bpos, self.pos),
-            })
+            Some(Token::new(kind, self.mk_sp(start_bpos, self.pos)))
         })
     }
 
@@ -847,7 +799,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn binop(&mut self, op: token::BinOpToken) -> Token {
+    fn binop(&mut self, op: token::BinOpToken) -> TokenKind {
         self.bump();
         if self.ch_is('=') {
             self.bump();
@@ -859,7 +811,7 @@ impl<'a> StringReader<'a> {
 
     /// Returns the next token from the string, advances the input past that
     /// token, and updates the interner
-    fn next_token_inner(&mut self) -> Result<Token, ()> {
+    fn next_token_inner(&mut self) -> Result<TokenKind, ()> {
         let c = self.ch;
 
         if ident_start(c) {
@@ -897,17 +849,17 @@ impl<'a> StringReader<'a> {
 
                 return Ok(self.with_str_from(start, |string| {
                     // FIXME: perform NFKC normalization here. (Issue #2253)
-                    let ident = self.mk_ident(string);
+                    let name = ast::Name::intern(string);
 
                     if is_raw_ident {
                         let span = self.mk_sp(raw_start, self.pos);
-                        if !ident.can_be_raw() {
-                            self.err_span(span, &format!("`{}` cannot be a raw identifier", ident));
+                        if !name.can_be_raw() {
+                            self.err_span(span, &format!("`{}` cannot be a raw identifier", name));
                         }
                         self.sess.raw_identifier_spans.borrow_mut().push(span);
                     }
 
-                    token::Ident(ident, is_raw_ident)
+                    token::Ident(name, is_raw_ident)
                 }));
             }
         }
@@ -916,7 +868,7 @@ impl<'a> StringReader<'a> {
             let (kind, symbol) = self.scan_number(c.unwrap());
             let suffix = self.scan_optional_raw_name();
             debug!("next_token_inner: scanned number {:?}, {:?}, {:?}", kind, symbol, suffix);
-            return Ok(Token::lit(kind, symbol, suffix));
+            return Ok(TokenKind::lit(kind, symbol, suffix));
         }
 
         match c.expect("next_token_inner called at EOF") {
@@ -1077,15 +1029,8 @@ impl<'a> StringReader<'a> {
                         let symbol = self.name_from(start);
                         self.bump();
                         self.validate_char_escape(start_with_quote);
-                        return Ok(Token::lit(token::Char, symbol, None));
+                        return Ok(TokenKind::lit(token::Char, symbol, None));
                     }
-
-                    // Include the leading `'` in the real identifier, for macro
-                    // expansion purposes. See #12512 for the gory details of why
-                    // this is necessary.
-                    let ident = self.with_str_from(start_with_quote, |lifetime_name| {
-                        self.mk_ident(lifetime_name)
-                    });
 
                     if starts_with_number {
                         // this is a recovered lifetime written `'1`, error but accept it
@@ -1096,13 +1041,16 @@ impl<'a> StringReader<'a> {
                         );
                     }
 
-                    return Ok(token::Lifetime(ident));
+                    // Include the leading `'` in the real identifier, for macro
+                    // expansion purposes. See #12512 for the gory details of why
+                    // this is necessary.
+                    return Ok(token::Lifetime(self.name_from(start_with_quote)));
                 }
                 let msg = "unterminated character literal";
                 let symbol = self.scan_single_quoted_string(start_with_quote, msg);
                 self.validate_char_escape(start_with_quote);
                 let suffix = self.scan_optional_raw_name();
-                Ok(Token::lit(token::Char, symbol, suffix))
+                Ok(TokenKind::lit(token::Char, symbol, suffix))
             }
             'b' => {
                 self.bump();
@@ -1127,7 +1075,7 @@ impl<'a> StringReader<'a> {
                 };
                 let suffix = self.scan_optional_raw_name();
 
-                Ok(Token::lit(kind, symbol, suffix))
+                Ok(TokenKind::lit(kind, symbol, suffix))
             }
             '"' => {
                 let start_with_quote = self.pos;
@@ -1135,7 +1083,7 @@ impl<'a> StringReader<'a> {
                 let symbol = self.scan_double_quoted_string(msg);
                 self.validate_str_escape(start_with_quote);
                 let suffix = self.scan_optional_raw_name();
-                Ok(Token::lit(token::Str, symbol, suffix))
+                Ok(TokenKind::lit(token::Str, symbol, suffix))
             }
             'r' => {
                 let start_bpos = self.pos;
@@ -1213,7 +1161,7 @@ impl<'a> StringReader<'a> {
                 };
                 let suffix = self.scan_optional_raw_name();
 
-                Ok(Token::lit(token::StrRaw(hash_count), symbol, suffix))
+                Ok(TokenKind::lit(token::StrRaw(hash_count), symbol, suffix))
             }
             '-' => {
                 if self.nextch_is('>') {
@@ -1610,27 +1558,26 @@ mod tests {
                                         &sh,
                                         "/* my source file */ fn main() { println!(\"zebra\"); }\n"
                                             .to_string());
-            let id = Ident::from_str("fn");
-            assert_eq!(string_reader.next_token().tok, token::Comment);
-            assert_eq!(string_reader.next_token().tok, token::Whitespace);
+            assert_eq!(string_reader.next_token(), token::Comment);
+            assert_eq!(string_reader.next_token(), token::Whitespace);
             let tok1 = string_reader.next_token();
-            let tok2 = TokenAndSpan {
-                tok: token::Ident(id, false),
-                sp: Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
-            };
-            assert_eq!(tok1.tok, tok2.tok);
-            assert_eq!(tok1.sp, tok2.sp);
-            assert_eq!(string_reader.next_token().tok, token::Whitespace);
+            let tok2 = Token::new(
+                token::Ident(Symbol::intern("fn"), false),
+                Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
+            );
+            assert_eq!(tok1.kind, tok2.kind);
+            assert_eq!(tok1.span, tok2.span);
+            assert_eq!(string_reader.next_token(), token::Whitespace);
             // the 'main' id is already read:
             assert_eq!(string_reader.pos.clone(), BytePos(28));
             // read another token:
             let tok3 = string_reader.next_token();
-            let tok4 = TokenAndSpan {
-                tok: mk_ident("main"),
-                sp: Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
-            };
-            assert_eq!(tok3.tok, tok4.tok);
-            assert_eq!(tok3.sp, tok4.sp);
+            let tok4 = Token::new(
+                mk_ident("main"),
+                Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
+            );
+            assert_eq!(tok3.kind, tok4.kind);
+            assert_eq!(tok3.span, tok4.span);
             // the lparen is already read:
             assert_eq!(string_reader.pos.clone(), BytePos(29))
         })
@@ -1638,19 +1585,19 @@ mod tests {
 
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
-    fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<Token>) {
+    fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<TokenKind>) {
         for expected_tok in &expected {
-            assert_eq!(&string_reader.next_token().tok, expected_tok);
+            assert_eq!(&string_reader.next_token(), expected_tok);
         }
     }
 
     // make the identifier by looking up the string in the interner
-    fn mk_ident(id: &str) -> Token {
-        Token::from_ast_ident(Ident::from_str(id))
+    fn mk_ident(id: &str) -> TokenKind {
+        TokenKind::from_ast_ident(Ident::from_str(id))
     }
 
-    fn mk_lit(kind: token::LitKind, symbol: &str, suffix: Option<&str>) -> Token {
-        Token::lit(kind, Symbol::intern(symbol), suffix.map(Symbol::intern))
+    fn mk_lit(kind: token::LitKind, symbol: &str, suffix: Option<&str>) -> TokenKind {
+        TokenKind::lit(kind, Symbol::intern(symbol), suffix.map(Symbol::intern))
     }
 
     #[test]
@@ -1698,7 +1645,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token(),
                        mk_lit(token::Char, "a", None));
         })
     }
@@ -1708,7 +1655,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token(),
                        mk_lit(token::Char, " ", None));
         })
     }
@@ -1718,7 +1665,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token(),
                        mk_lit(token::Char, "\\n", None));
         })
     }
@@ -1728,8 +1675,8 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token().tok,
-                       token::Lifetime(Ident::from_str("'abc")));
+            assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token(),
+                       token::Lifetime(Symbol::intern("'abc")));
         })
     }
 
@@ -1738,7 +1685,7 @@ mod tests {
         with_default_globals(|| {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token(),
                        mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None));
         })
     }
@@ -1750,10 +1697,10 @@ mod tests {
             let sh = mk_sess(sm.clone());
             macro_rules! test {
                 ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
-                    assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token().tok,
+                    assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token(),
                                mk_lit(token::$tok_type, $tok_contents, Some("suffix")));
                     // with a whitespace separator:
-                    assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token().tok,
+                    assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
                                mk_lit(token::$tok_type, $tok_contents, None));
                 }}
             }
@@ -1768,11 +1715,11 @@ mod tests {
             test!("1.0", Float, "1.0");
             test!("1.0e10", Float, "1.0e10");
 
-            assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token(),
                        mk_lit(token::Integer, "2", Some("us")));
-            assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token(),
                        mk_lit(token::StrRaw(3), "raw", Some("suffix")));
-            assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token(),
                        mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")));
         })
     }
@@ -1790,11 +1737,8 @@ mod tests {
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let sh = mk_sess(sm.clone());
             let mut lexer = setup(&sm, &sh, "/* /* */ */'a'".to_string());
-            match lexer.next_token().tok {
-                token::Comment => {}
-                _ => panic!("expected a comment!"),
-            }
-            assert_eq!(lexer.next_token().tok, mk_lit(token::Char, "a", None));
+            assert_eq!(lexer.next_token(), token::Comment);
+            assert_eq!(lexer.next_token(), mk_lit(token::Char, "a", None));
         })
     }
 
@@ -1805,11 +1749,10 @@ mod tests {
             let sh = mk_sess(sm.clone());
             let mut lexer = setup(&sm, &sh, "// test\r\n/// test\r\n".to_string());
             let comment = lexer.next_token();
-            assert_eq!(comment.tok, token::Comment);
-            assert_eq!((comment.sp.lo(), comment.sp.hi()), (BytePos(0), BytePos(7)));
-            assert_eq!(lexer.next_token().tok, token::Whitespace);
-            assert_eq!(lexer.next_token().tok,
-                    token::DocComment(Symbol::intern("/// test")));
+            assert_eq!(comment.kind, token::Comment);
+            assert_eq!((comment.span.lo(), comment.span.hi()), (BytePos(0), BytePos(7)));
+            assert_eq!(lexer.next_token(), token::Whitespace);
+            assert_eq!(lexer.next_token(), token::DocComment(Symbol::intern("/// test")));
         })
     }
 }

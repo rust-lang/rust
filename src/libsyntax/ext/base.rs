@@ -265,10 +265,13 @@ impl<F> TTMacroExpander for F
 
         impl MutVisitor for AvoidInterpolatedIdents {
             fn visit_tt(&mut self, tt: &mut tokenstream::TokenTree) {
-                if let tokenstream::TokenTree::Token(_, token::Interpolated(nt)) = tt {
-                    if let token::NtIdent(ident, is_raw) = **nt {
-                        *tt = tokenstream::TokenTree::Token(ident.span,
-                                                            token::Ident(ident, is_raw));
+                if let tokenstream::TokenTree::Token(token) = tt {
+                    if let token::Interpolated(nt) = &token.kind {
+                        if let token::NtIdent(ident, is_raw) = **nt {
+                            *tt = tokenstream::TokenTree::token(
+                                token::Ident(ident.name, is_raw), ident.span
+                            );
+                        }
                     }
                 }
                 mut_visit::noop_visit_tt(tt, self)
