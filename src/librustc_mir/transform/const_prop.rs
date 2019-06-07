@@ -17,8 +17,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::layout::{
-    LayoutOf, TyLayout, LayoutError,
-    HasTyCtxt, TargetDataLayout, HasDataLayout,
+    LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout, Size,
 };
 
 use crate::interpret::{
@@ -333,6 +332,12 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                             this.ecx.operand_field(eval, field.index() as u64)
                         })?;
                     },
+                    ProjectionElem::Deref => {
+                        trace!("processing deref");
+                        eval = self.use_ecx(source_info, |this| {
+                            this.ecx.deref_operand(eval)
+                        })?.into();
+                    }
                     // We could get more projections by using e.g., `operand_projection`,
                     // but we do not even have the stack frame set up properly so
                     // an `Index` projection would throw us off-track.
@@ -363,8 +368,12 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             Rvalue::Use(ref op) => {
                 self.eval_operand(op, source_info)
             },
+            Rvalue::Ref(_, _, ref place) => {
+                let src = self.eval_place(place, source_info)?;
+                let mplace = src.try_as_mplace().ok()?;
+                Some(ImmTy::from_scalar(mplace.ptr.into(), place_layout).into())
+            },
             Rvalue::Repeat(..) |
-            Rvalue::Ref(..) |
             Rvalue::Aggregate(..) |
             Rvalue::NullaryOp(NullOp::Box, _) |
             Rvalue::Discriminant(..) => None,
@@ -376,10 +385,30 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     this.ecx.cast(op, kind, dest.into())?;
                     Ok(dest.into())
                 })
-            }
+            },
+            Rvalue::Len(ref place) => {
+                let place = self.eval_place(&place, source_info)?;
+                let mplace = place.try_as_mplace().ok()?;
 
-            // FIXME(oli-obk): evaluate static/constant slice lengths
-            Rvalue::Len(_) => None,
+                if let ty::Slice(_) = mplace.layout.ty.sty {
+                    let len = mplace.meta.unwrap().to_usize(&self.ecx).unwrap();
+
+                    Some(ImmTy {
+                        imm: Immediate::Scalar(
+                            Scalar::from_uint(
+                                len,
+                                Size::from_bits(
+                                    self.tcx.sess.target.usize_ty.bit_width().unwrap() as u64
+                                )
+                            ).into(),
+                        ),
+                        layout: self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
+                    }.into())
+                } else {
+                    trace!("not slice: {:?}", mplace.layout.ty.sty);
+                    None
+                }
+            },
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some(
                     ImmTy {
@@ -525,12 +554,10 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source_info: SourceInfo,
     ) {
         trace!("attepting to replace {:?} with {:?}", rval, value);
-        self.ecx.validate_operand(
-            value,
-            vec![],
-            None,
-            true,
-        ).expect("value should already be a valid const");
+        if let Err(e) = self.ecx.validate_operand(value, vec![], None, true) {
+            trace!("validation error, attempt failed: {:?}", e);
+            return;
+        }
 
         // FIXME> figure out what tho do when try_read_immediate fails
         let imm = self.use_ecx(source_info, |this| {

@@ -663,6 +663,23 @@ where
         Ok(())
     }
 
+    /// Write an `Immediate` to memory.
+    #[inline(always)]
+    pub fn write_immediate_to_mplace(
+        &mut self,
+        src: Immediate<M::PointerTag>,
+        dest: MPlaceTy<'tcx, M::PointerTag>,
+    ) -> EvalResult<'tcx> {
+        self.write_immediate_to_mplace_no_validate(src, dest)?;
+
+        if M::enforce_validity(self) {
+            // Data got changed, better make sure it matches the type!
+            self.validate_operand(dest.into(), vec![], None, /*const_mode*/ false)?;
+        }
+
+        Ok(())
+    }
+
     /// Write an immediate to a place.
     /// If you use this you are responsible for validating that things got copied at the
     /// right type.
