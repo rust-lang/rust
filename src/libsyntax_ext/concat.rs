@@ -22,7 +22,6 @@ pub fn expand_syntax_ext(
         match e.node {
             ast::ExprKind::Lit(ref lit) => match lit.node {
                 ast::LitKind::Str(ref s, _)
-                | ast::LitKind::Err(ref s)
                 | ast::LitKind::Float(ref s, _)
                 | ast::LitKind::FloatUnsuffixed(ref s) => {
                     accumulator.push_str(&s.as_str());
@@ -40,6 +39,9 @@ pub fn expand_syntax_ext(
                 }
                 ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..) => {
                     cx.span_err(e.span, "cannot concatenate a byte string literal");
+                }
+                ast::LitKind::Err(_) => {
+                    has_errors = true;
                 }
             },
             ast::ExprKind::Err => {

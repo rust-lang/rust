@@ -168,9 +168,6 @@ pub fn literal_to_string(lit: token::Lit) -> String {
     let mut out = match kind {
         token::Byte          => format!("b'{}'", symbol),
         token::Char          => format!("'{}'", symbol),
-        token::Bool          |
-        token::Float         |
-        token::Integer       => symbol.to_string(),
         token::Str           => format!("\"{}\"", symbol),
         token::StrRaw(n)     => format!("r{delim}\"{string}\"{delim}",
                                         delim="#".repeat(n as usize),
@@ -179,7 +176,10 @@ pub fn literal_to_string(lit: token::Lit) -> String {
         token::ByteStrRaw(n) => format!("br{delim}\"{string}\"{delim}",
                                         delim="#".repeat(n as usize),
                                         string=symbol),
-        token::Err           => format!("'{}'", symbol),
+        token::Integer       |
+        token::Float         |
+        token::Bool          |
+        token::Err           => symbol.to_string(),
     };
 
     if let Some(suffix) = suffix {

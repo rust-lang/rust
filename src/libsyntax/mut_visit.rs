@@ -1101,7 +1101,6 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
             vis.visit_expr(rhs);
         }
         ExprKind::Unary(_unop, ohs) => vis.visit_expr(ohs),
-        ExprKind::Lit(_lit) => {}
         ExprKind::Cast(expr, ty) => {
             vis.visit_expr(expr);
             vis.visit_ty(ty);
@@ -1225,7 +1224,7 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
         }
         ExprKind::Try(expr) => vis.visit_expr(expr),
         ExprKind::TryBlock(body) => vis.visit_block(body),
-        ExprKind::Err => {}
+        ExprKind::Lit(_) | ExprKind::Err => {}
     }
     vis.visit_id(id);
     vis.visit_span(span);

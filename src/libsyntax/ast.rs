@@ -1368,7 +1368,7 @@ pub enum LitKind {
     FloatUnsuffixed(Symbol),
     /// A boolean literal.
     Bool(bool),
-    /// A recovered character literal that contains mutliple `char`s, most likely a typo.
+    /// Placeholder for a literal that wasn't well-formed in some way.
     Err(Symbol),
 }
 
@@ -1406,10 +1406,10 @@ impl LitKind {
             | LitKind::ByteStr(..)
             | LitKind::Byte(..)
             | LitKind::Char(..)
-            | LitKind::Err(..)
             | LitKind::Int(_, LitIntType::Unsuffixed)
             | LitKind::FloatUnsuffixed(..)
-            | LitKind::Bool(..) => true,
+            | LitKind::Bool(..)
+            | LitKind::Err(..) => true,
             // suffixed variants
             LitKind::Int(_, LitIntType::Signed(..))
             | LitKind::Int(_, LitIntType::Unsigned(..))
