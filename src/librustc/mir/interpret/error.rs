@@ -182,7 +182,7 @@ pub fn struct_error<'a, 'gcx, 'tcx>(
 #[derive(Debug, Clone)]
 pub struct EvalError<'tcx> {
     pub kind: InterpError<'tcx, u64>,
-    pub backtrace: Option<Box<Backtrace>>,
+    backtrace: Option<Box<Backtrace>>,
 }
 
 impl<'tcx> EvalError<'tcx> {
