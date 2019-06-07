@@ -81,7 +81,7 @@ pub struct Params {
                   target_os = "cloudabi",
                   target_os = "macos", target_os = "ios",
                   target_os = "freebsd",
-                  target_os = "openbsd", target_os = "bitrig",
+                  target_os = "openbsd",
                   target_os = "redox",
                   target_os = "fuchsia",
                   windows,

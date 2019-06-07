@@ -34,7 +34,6 @@ use total_len_is_::_51______;
         target_os = "ios",
         target_os = "freebsd",
         target_os = "openbsd",
-        target_os = "bitrig",
         target_os = "redox",
         target_os = "fuchsia",
         windows,
