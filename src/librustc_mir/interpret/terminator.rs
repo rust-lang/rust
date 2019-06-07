@@ -79,7 +79,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 let (fn_def, abi) = match func.layout.ty.sty {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
-                        let fn_ptr = self.read_scalar(func)?.to_ptr()?;
+                        let fn_ptr = self.force_ptr(self.read_scalar(func)?.not_undef()?)?;
                         let instance = self.memory.get_fn(fn_ptr)?;
                         (instance, caller_abi)
                     }

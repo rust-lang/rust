@@ -232,7 +232,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         }
 
         // check for integer pointers before alignment to report better errors
-        let ptr = ptr.to_ptr()?;
+        let ptr = self.force_ptr(ptr)?;
         self.memory.check_align(ptr.into(), ptr_align)?;
         match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
