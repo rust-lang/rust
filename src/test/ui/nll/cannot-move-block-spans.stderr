@@ -5,7 +5,7 @@ LL |     let x = { *r };
    |               ^^
    |               |
    |               move occurs because `*r` has type `std::string::String`, which does not implement the `Copy` trait
-   |               help: consider removing the `*`: `r`
+   |               help: consider borrowing here: `&*r`
 
 error[E0507]: cannot move out of `*r` which is behind a shared reference
   --> $DIR/cannot-move-block-spans.rs:6:22
@@ -14,7 +14,7 @@ LL |     let y = unsafe { *r };
    |                      ^^
    |                      |
    |                      move occurs because `*r` has type `std::string::String`, which does not implement the `Copy` trait
-   |                      help: consider removing the `*`: `r`
+   |                      help: consider borrowing here: `&*r`
 
 error[E0507]: cannot move out of `*r` which is behind a shared reference
   --> $DIR/cannot-move-block-spans.rs:7:26
@@ -23,7 +23,7 @@ LL |     let z = loop { break *r; };
    |                          ^^
    |                          |
    |                          move occurs because `*r` has type `std::string::String`, which does not implement the `Copy` trait
-   |                          help: consider removing the `*`: `r`
+   |                          help: consider borrowing here: `&*r`
 
 error[E0508]: cannot move out of type `[std::string::String; 2]`, a non-copy array
   --> $DIR/cannot-move-block-spans.rs:11:15
@@ -62,7 +62,7 @@ LL |     let x = { let mut u = 0; u += 1; *r };
    |                                      ^^
    |                                      |
    |                                      move occurs because `*r` has type `std::string::String`, which does not implement the `Copy` trait
-   |                                      help: consider removing the `*`: `r`
+   |                                      help: consider borrowing here: `&*r`
 
 error[E0507]: cannot move out of `*r` which is behind a shared reference
   --> $DIR/cannot-move-block-spans.rs:18:45
@@ -71,7 +71,7 @@ LL |     let y = unsafe { let mut u = 0; u += 1; *r };
    |                                             ^^
    |                                             |
    |                                             move occurs because `*r` has type `std::string::String`, which does not implement the `Copy` trait
-   |                                             help: consider removing the `*`: `r`
+   |                                             help: consider borrowing here: `&*r`
 
 error[E0507]: cannot move out of `*r` which is behind a shared reference
   --> $DIR/cannot-move-block-spans.rs:19:49
@@ -80,7 +80,7 @@ LL |     let z = loop { let mut u = 0; u += 1; break *r; u += 2; };
    |                                                 ^^
    |                                                 |
    |                                                 move occurs because `*r` has type `std::string::String`, which does not implement the `Copy` trait
-   |                                                 help: consider removing the `*`: `r`
+   |                                                 help: consider borrowing here: `&*r`
 
 error: aborting due to 9 previous errors
 

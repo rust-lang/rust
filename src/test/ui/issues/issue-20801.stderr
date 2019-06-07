@@ -5,7 +5,7 @@ LL |     let a = unsafe { *mut_ref() };
    |                      ^^^^^^^^^^
    |                      |
    |                      move occurs because value has type `T`, which does not implement the `Copy` trait
-   |                      help: consider removing the `*`: `mut_ref()`
+   |                      help: consider borrowing here: `&*mut_ref()`
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/issue-20801.rs:29:22
@@ -14,7 +14,7 @@ LL |     let b = unsafe { *imm_ref() };
    |                      ^^^^^^^^^^
    |                      |
    |                      move occurs because value has type `T`, which does not implement the `Copy` trait
-   |                      help: consider removing the `*`: `imm_ref()`
+   |                      help: consider borrowing here: `&*imm_ref()`
 
 error[E0507]: cannot move out of a raw pointer
   --> $DIR/issue-20801.rs:32:22
@@ -23,7 +23,7 @@ LL |     let c = unsafe { *mut_ptr() };
    |                      ^^^^^^^^^^
    |                      |
    |                      move occurs because value has type `T`, which does not implement the `Copy` trait
-   |                      help: consider removing the `*`: `mut_ptr()`
+   |                      help: consider borrowing here: `&*mut_ptr()`
 
 error[E0507]: cannot move out of a raw pointer
   --> $DIR/issue-20801.rs:35:22
@@ -32,7 +32,7 @@ LL |     let d = unsafe { *const_ptr() };
    |                      ^^^^^^^^^^^^
    |                      |
    |                      move occurs because value has type `T`, which does not implement the `Copy` trait
-   |                      help: consider removing the `*`: `const_ptr()`
+   |                      help: consider borrowing here: `&*const_ptr()`
 
 error: aborting due to 4 previous errors
 

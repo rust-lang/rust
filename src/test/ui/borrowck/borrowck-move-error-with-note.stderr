@@ -2,7 +2,7 @@ error[E0507]: cannot move out of `f.0` which is behind a shared reference
   --> $DIR/borrowck-move-error-with-note.rs:11:11
    |
 LL |     match *f {
-   |           ^^ help: consider removing the `*`: `f`
+   |           ^^ help: consider borrowing here: `&*f`
 LL |         Foo::Foo1(num1,
    |                   ---- data moved here
 LL |                   num2) => (),

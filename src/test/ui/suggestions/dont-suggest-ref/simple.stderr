@@ -2,7 +2,7 @@ error[E0507]: cannot move out of `s.0` which is behind a shared reference
   --> $DIR/simple.rs:38:17
    |
 LL |     let X(_t) = *s;
-   |           --    ^^ help: consider removing the `*`: `s`
+   |           --    ^^ help: consider borrowing here: `&*s`
    |           |
    |           data moved here
    |           move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
@@ -11,7 +11,7 @@ error[E0507]: cannot move out of `r.0` which is behind a shared reference
   --> $DIR/simple.rs:42:30
    |
 LL |     if let Either::One(_t) = *r { }
-   |                        --    ^^ help: consider removing the `*`: `r`
+   |                        --    ^^ help: consider borrowing here: `&*r`
    |                        |
    |                        data moved here
    |                        move occurs because `_t` has type `X`, which does not implement the `Copy` trait
@@ -20,7 +20,7 @@ error[E0507]: cannot move out of `r.0` which is behind a shared reference
   --> $DIR/simple.rs:46:33
    |
 LL |     while let Either::One(_t) = *r { }
-   |                           --    ^^ help: consider removing the `*`: `r`
+   |                           --    ^^ help: consider borrowing here: `&*r`
    |                           |
    |                           data moved here
    |                           move occurs because `_t` has type `X`, which does not implement the `Copy` trait
@@ -29,7 +29,7 @@ error[E0507]: cannot move out of `r.0` which is behind a shared reference
   --> $DIR/simple.rs:50:11
    |
 LL |     match *r {
-   |           ^^ help: consider removing the `*`: `r`
+   |           ^^ help: consider borrowing here: `&*r`
 ...
 LL |         Either::One(_t)
    |                     --
@@ -41,7 +41,7 @@ error[E0507]: cannot move out of `r.0` which is behind a shared reference
   --> $DIR/simple.rs:57:11
    |
 LL |     match *r {
-   |           ^^ help: consider removing the `*`: `r`
+   |           ^^ help: consider borrowing here: `&*r`
 ...
 LL |         Either::One(_t) => (),
    |                     --
@@ -53,7 +53,7 @@ error[E0507]: cannot move out of `sm.0` which is behind a mutable reference
   --> $DIR/simple.rs:66:17
    |
 LL |     let X(_t) = *sm;
-   |           --    ^^^ help: consider removing the `*`: `sm`
+   |           --    ^^^ help: consider borrowing here: `&*sm`
    |           |
    |           data moved here
    |           move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
@@ -62,7 +62,7 @@ error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
   --> $DIR/simple.rs:70:30
    |
 LL |     if let Either::One(_t) = *rm { }
-   |                        --    ^^^ help: consider removing the `*`: `rm`
+   |                        --    ^^^ help: consider borrowing here: `&*rm`
    |                        |
    |                        data moved here
    |                        move occurs because `_t` has type `X`, which does not implement the `Copy` trait
@@ -71,7 +71,7 @@ error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
   --> $DIR/simple.rs:74:33
    |
 LL |     while let Either::One(_t) = *rm { }
-   |                           --    ^^^ help: consider removing the `*`: `rm`
+   |                           --    ^^^ help: consider borrowing here: `&*rm`
    |                           |
    |                           data moved here
    |                           move occurs because `_t` has type `X`, which does not implement the `Copy` trait
@@ -80,7 +80,7 @@ error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
   --> $DIR/simple.rs:78:11
    |
 LL |     match *rm {
-   |           ^^^ help: consider removing the `*`: `rm`
+   |           ^^^ help: consider borrowing here: `&*rm`
 ...
 LL |         Either::One(_t)
    |                     --
@@ -92,7 +92,7 @@ error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
   --> $DIR/simple.rs:85:11
    |
 LL |     match *rm {
-   |           ^^^ help: consider removing the `*`: `rm`
+   |           ^^^ help: consider borrowing here: `&*rm`
 ...
 LL |         Either::One(_t) => (),
    |                     --
@@ -104,7 +104,7 @@ error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
   --> $DIR/simple.rs:93:11
    |
 LL |     match *rm {
-   |           ^^^ help: consider removing the `*`: `rm`
+   |           ^^^ help: consider borrowing here: `&*rm`
 ...
 LL |         Either::One(_t) => (),
    |                     --
