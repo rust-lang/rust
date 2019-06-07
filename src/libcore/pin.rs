@@ -1,10 +1,10 @@
 //! Types that pin data to its location in memory.
 //!
-//! It is sometimes useful to have objects that are guaranteed to not move,
+//! It is sometimes useful to have objects that are guaranteed not to move,
 //! in the sense that their placement in memory does not change, and can thus be relied upon.
 //! A prime example of such a scenario would be building self-referential structs,
-//! since moving an object with pointers to itself will invalidate them,
-//! which could cause undefined behavior.
+//! as moving an object with pointers to itself will invalidate them, which could cause undefined
+//! behavior.
 //!
 //! A [`Pin<P>`] ensures that the pointee of any pointer type `P` has a stable location in memory,
 //! meaning it cannot be moved elsewhere and its memory cannot be deallocated
@@ -15,9 +15,10 @@
 //! moving the values they contain: you can move out of a `Box<T>`, or you can use [`mem::swap`].
 //! [`Pin<P>`] wraps a pointer type `P`, so `Pin<Box<T>>` functions much like a regular `Box<T>`:
 //! when a `Pin<Box<T>>` gets dropped, so do its contents, and the memory gets deallocated.
-//! Similarily, `Pin<&mut T>` is a lot like `&mut T`. However, [`Pin<P>`] does not let clients
+//! Similarly, `Pin<&mut T>` is a lot like `&mut T`. However, [`Pin<P>`] does not let clients
 //! actually obtain a `Box<T>` or `&mut T` to pinned data, which implies that you cannot use
 //! operations such as [`mem::swap`]:
+//!
 //! ```
 //! use std::pin::Pin;
 //! fn swap_pins<T>(x: Pin<&mut T>, y: Pin<&mut T>) {
@@ -39,19 +40,19 @@
 //! as a "`P`-style pointer" to a pinned `P::Target` -- so, a `Pin<Box<T>>` is
 //! an owned pointer to a pinned `T`, and a `Pin<Rc<T>>` is a reference-counted
 //! pointer to a pinned `T`.
-//! For correctness, [`Pin<P>`] relies on the [`Deref`] and [`DerefMut`] implementations
-//! to not move out of their `self` parameter, and to only ever return a pointer
-//! to pinned data when they are called on a pinned pointer.
+//! For correctness, [`Pin<P>`] relies on the implementations of [`Deref`] and
+//! [`DerefMut`] not to move out of their `self` parameter, and only ever to
+//! return a pointer to pinned data when they are called on a pinned pointer.
 //!
 //! # `Unpin`
 //!
-//! However, these restrictions are usually not necessary. Many types are always freely
-//! movable, even when pinned, because they do not rely on having a stable address.
-//! This includes all the basic types (like `bool`, `i32`, references)
-//! as well as types consisting solely of these types.
-//! Types that do not care about pinning implement the [`Unpin`] auto-trait, which
-//! cancels the effect of [`Pin<P>`]. For `T: Unpin`, `Pin<Box<T>>` and `Box<T>` function
-//! identically, as do `Pin<&mut T>` and `&mut T`.
+//! Many types are always freely movable, even when pinned, because they do not
+//! rely on having a stable address. This includes all the basic types (like
+//! `bool`, `i32`, and references) as well as types consisting solely of these
+//! types. Types that do not care about pinning implement the [`Unpin`]
+//! auto-trait, which cancels the effect of [`Pin<P>`]. For `T: Unpin`,
+//! `Pin<Box<T>>` and `Box<T>` function identically, as do `Pin<&mut T>` and
+//! `&mut T`.
 //!
 //! Note that pinning and `Unpin` only affect the pointed-to type `P::Target`, not the pointer
 //! type `P` itself that got wrapped in `Pin<P>`. For example, whether or not `Box<T>` is
@@ -65,11 +66,11 @@
 //! use std::marker::PhantomPinned;
 //! use std::ptr::NonNull;
 //!
-//! // This is a self-referential struct since the slice field points to the data field.
+//! // This is a self-referential struct because the slice field points to the data field.
 //! // We cannot inform the compiler about that with a normal reference,
-//! // since this pattern cannot be described with the usual borrowing rules.
-//! // Instead we use a raw pointer, though one which is known to not be null,
-//! // since we know it's pointing at the string.
+//! // as this pattern cannot be described with the usual borrowing rules.
+//! // Instead we use a raw pointer, though one which is known not to be null,
+//! // as we know it's pointing at the string.
 //! struct Unmovable {
 //!     data: String,
 //!     slice: NonNull<String>,
@@ -146,7 +147,7 @@
 //! section needs to function correctly.
 //!
 //! Notice that this guarantee does *not* mean that memory does not leak! It is still
-//! completely okay not to ever call `drop` on a pinned element (e.g., you can still
+//! completely okay not ever to call `drop` on a pinned element (e.g., you can still
 //! call [`mem::forget`] on a `Pin<Box<T>>`). In the example of the doubly-linked
 //! list, that element would just stay in the list. However you may not free or reuse the storage
 //! *without calling `drop`*.
@@ -192,7 +193,7 @@
 //!     `Unpin`. This is the default, but `Unpin` is a safe trait, so as the author of
 //!     the wrapper it is your responsibility *not* to add something like
 //!     `impl<T> Unpin for Wrapper<T>`. (Notice that adding a projection operation
-//!     requires unsafe code, so the fact that `Unpin` is a safe trait  does not break
+//!     requires unsafe code, so the fact that `Unpin` is a safe trait does not break
 //!     the principle that you only have to worry about any of this if you use `unsafe`.)
 //! 2.  The destructor of the wrapper must not move structural fields out of its argument. This
 //!     is the exact point that was raised in the [previous section][drop-impl]: `drop` takes
