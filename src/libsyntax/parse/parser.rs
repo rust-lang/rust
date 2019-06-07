@@ -58,7 +58,6 @@ use log::debug;
 use std::borrow::Cow;
 use std::cmp;
 use std::mem;
-use std::ops::Deref;
 use std::path::{self, Path, PathBuf};
 use std::slice;
 
@@ -248,15 +247,6 @@ impl<'a> Drop for Parser<'a> {
     fn drop(&mut self) {
         let diag = self.diagnostic();
         emit_unclosed_delims(&mut self.unclosed_delims, diag);
-    }
-}
-
-// FIXME: Parser uses `self.span` all the time.
-// Remove this impl if you think that using `self.token.span` instead is acceptable.
-impl Deref for Parser<'_> {
-    type Target = Token;
-    fn deref(&self) -> &Self::Target {
-        &self.token
     }
 }
 
