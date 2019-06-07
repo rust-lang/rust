@@ -51,7 +51,7 @@ pub struct Config {
     pub test_compare_mode: bool,
     pub llvm_libunwind: bool,
 
-    pub run_host_only: bool,
+    pub skip_only_host_steps: bool,
 
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
@@ -416,7 +416,9 @@ impl Config {
         }
 
         // If --target was specified but --host wasn't specified, don't run any host-only tests.
-        config.run_host_only = !(flags.host.is_empty() && !flags.target.is_empty());
+        let has_hosts = !flags.host.is_empty();
+        let has_targets = !flags.target.is_empty();
+        config.skip_only_host_steps = !has_hosts && has_targets;
 
         let toml = file.map(|file| {
             let contents = t!(fs::read_to_string(&file));
