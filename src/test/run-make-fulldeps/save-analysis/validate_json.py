@@ -68,19 +68,21 @@ for def_ in analysis['defs']:
     if 'sig' not in def_ or def_['sig'] is None:
         continue
 
+    out = os.path.join(out_dir, def_['name'] + '.rs')
+
     # write out sigs to check parsing
-    with open(os.path.join(out_dir, def_['name'] + '.rs'), 'w') as f:
+    with open(out, 'w+') as f:
         if def_['kind'] in ['Function', 'Struct', 'Enum']:
             f.write(def_['sig']['text'])
-        if def_['kind'] == 'Field':
+        elif def_['kind'] == 'Field':
             f.write('struct _test {')
             f.write(def_['sig']['text'])
             f.write('}')
-        if def_['kind'] in ['TupleVariant', 'StructVariant']:
+        elif def_['kind'] in ['TupleVariant', 'StructVariant']:
             f.write('enum _test {')
             f.write(def_['sig']['text'])
             f.write('}')
-        if def_['kind'] == 'Method':
+        elif def_['kind'] == 'Method':
             f.write('impl _test {')
             f.write(def_['sig']['text'])
             f.write('}')

@@ -35,12 +35,14 @@ use syntax::print::pprust;
 
 use std::fmt::Write;
 
+use log::warn;
+
 pub fn item_signature(item: &ast::Item, scx: &SaveContext<'_, '_>) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
     let mut b = SigBuilder::new();
-    item.make(&mut b, None, scx).ok()?;
+    item.make(&mut b, None, scx).unwrap_or_else(|e| warn!("item sig failed: {}", e));
     Some(b.build())
 }
 
@@ -52,7 +54,7 @@ pub fn foreign_item_signature(
         return None;
     }
     let mut b = SigBuilder::new();
-    item.make(&mut b, None, scx).ok()?;
+    item.make(&mut b, None, scx).unwrap_or_else(|e| warn!("item sig failed: {}", e));
     Some(b.build())
 }
 
@@ -63,7 +65,7 @@ pub fn field_signature(field: &ast::StructField, scx: &SaveContext<'_, '_>) -> O
         return None;
     }
     let mut b = SigBuilder::new();
-    field.make(&mut b, None, scx).ok()?;
+    field.make(&mut b, None, scx).unwrap_or_else(|e| warn!("item sig failed: {}", e));
     Some(b.build())
 }
 
@@ -73,7 +75,7 @@ pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext<'_, '_>) -> O
         return None;
     }
     let mut b = SigBuilder::new();
-    variant.node.make(&mut b, None, scx).ok()?;
+    variant.node.make(&mut b, None, scx).unwrap_or_else(|e| warn!("item sig failed: {}", e));
     Some(b.build())
 }
 
@@ -88,7 +90,8 @@ pub fn method_signature(
         return None;
     }
     let mut b = SigBuilder::new();
-    make_method_signature(&mut b, id, ident, generics, m, scx).ok()?;
+    make_method_signature(&mut b, id, ident, generics, m, scx)
+        .unwrap_or_else(|e| warn!("item sig failed: {}", e));
     Some(b.build())
 }
 
@@ -104,7 +107,8 @@ pub fn assoc_const_signature(
     }
 
     let mut b = SigBuilder::new();
-    make_assoc_const_signature(&mut b, id, ident, ty, default, scx).ok();
+    make_assoc_const_signature(&mut b, id, ident, ty, default, scx)
+        .unwrap_or_else(|e| warn!("item sig failed: {}", e));
     Some(b.build())
 }
 
@@ -120,7 +124,8 @@ pub fn assoc_type_signature(
     }
 
     let mut b = SigBuilder::new();
-    make_assoc_type_signature(&mut b, id, ident, bounds, default, scx).ok();
+    make_assoc_type_signature(&mut b, id, ident, bounds, default, scx)
+        .unwrap_or_else(|e| warn!("item sig failed: {}", e));
     Some(b.build())
 }
 
@@ -614,13 +619,12 @@ impl Sig for ast::Variant_ {
     fn make(
         &self,
         b: &mut SigBuilder,
-        parent_id: Option<NodeId>,
+        _parent_id: Option<NodeId>,
         scx: &SaveContext<'_, '_>,
     ) -> Result {
+        let id = self.id;
         match self.data {
             ast::VariantData::Struct(ref fields, r) => {
-                // FIXME no id for variant?
-                let id = parent_id.unwrap();
                 def_!(b, id_from_node_id(id, scx), "{}", self.ident.to_string());
                 text!(b, " {{ ");
                 if r {
