@@ -36,7 +36,8 @@ codegen-units = 0
 # enabled by `debuginfo-level = 1`. Full debuginfo is also enabled by
 # `debuginfo-level = 2`. Debug assertions can also be enabled with
 # `debug-assertions = true`. Note that `debug = true` will make your build
-# slower, so you may want to try individually enabling debuginfo and assertions.
+# slower, so you may want to try individually enabling debuginfo and assertions
+# or enable only line debuginfo which is basically free.
 debug = true
 ```
 
