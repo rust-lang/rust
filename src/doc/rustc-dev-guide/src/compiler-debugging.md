@@ -46,9 +46,10 @@ stack backtrace:
   37: rustc_driver::run_compiler
 ```
 
-If you want line numbers for the stack trace, you can enable
-`debuginfo-level = 1` or `debuginfo-level = 2` in your config.toml and rebuild the
-compiler. Then the backtrace will look like this:
+If you want line numbers for the stack trace, you can enable `debug = true` in
+your config.toml and rebuild the compiler (`debuginfo-level = 1` will also add
+line numbers, but `debug = true` gives full debuginfo). Then the backtrace will 
+look like this:
 
 ```text
 stack backtrace:
