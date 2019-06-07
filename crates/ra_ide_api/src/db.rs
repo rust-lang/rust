@@ -5,7 +5,7 @@ use std::{
 
 use ra_db::{
     CheckCanceled, FileId, Canceled, SourceDatabase,
-    salsa,
+    salsa::{self, Database},
 };
 
 use crate::{LineIndex, symbol_index::{self, SymbolsDatabase}};
@@ -49,6 +49,8 @@ impl Default for RootDatabase {
         db.set_crate_graph(Default::default());
         db.set_local_roots(Default::default());
         db.set_library_roots(Default::default());
+        db.query_mut(ra_db::ParseQuery).set_lru_capacity(128);
+        db.query_mut(hir::db::ParseMacroQuery).set_lru_capacity(128);
         db
     }
 }
