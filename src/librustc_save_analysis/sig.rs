@@ -42,7 +42,7 @@ pub fn item_signature(item: &ast::Item, scx: &SaveContext<'_, '_>) -> Option<Sig
         return None;
     }
     let mut b = SigBuilder::new();
-    item.make(&mut b, None, scx).unwrap_or_else(|e| warn!("item sig failed: {}", e));
+    item.make(&mut b, None, scx).map_err(|e| warn!("item sig failed: {}", e)).ok()?;
     Some(b.build())
 }
 
@@ -54,7 +54,7 @@ pub fn foreign_item_signature(
         return None;
     }
     let mut b = SigBuilder::new();
-    item.make(&mut b, None, scx).unwrap_or_else(|e| warn!("item sig failed: {}", e));
+    item.make(&mut b, None, scx).map_err(|e| warn!("item sig failed: {}", e)).ok();
     Some(b.build())
 }
 
@@ -65,7 +65,7 @@ pub fn field_signature(field: &ast::StructField, scx: &SaveContext<'_, '_>) -> O
         return None;
     }
     let mut b = SigBuilder::new();
-    field.make(&mut b, None, scx).unwrap_or_else(|e| warn!("item sig failed: {}", e));
+    field.make(&mut b, None, scx).map_err(|e| warn!("item sig failed: {}", e)).ok()?;
     Some(b.build())
 }
 
@@ -75,7 +75,7 @@ pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext<'_, '_>) -> O
         return None;
     }
     let mut b = SigBuilder::new();
-    variant.node.make(&mut b, None, scx).unwrap_or_else(|e| warn!("item sig failed: {}", e));
+    variant.node.make(&mut b, None, scx).map_err(|e| warn!("item sig failed: {}", e)).ok()?;
     Some(b.build())
 }
 
@@ -91,7 +91,8 @@ pub fn method_signature(
     }
     let mut b = SigBuilder::new();
     make_method_signature(&mut b, id, ident, generics, m, scx)
-        .unwrap_or_else(|e| warn!("item sig failed: {}", e));
+        .map_err(|e| warn!("item sig failed: {}", e))
+        .ok()?;
     Some(b.build())
 }
 
@@ -108,7 +109,8 @@ pub fn assoc_const_signature(
 
     let mut b = SigBuilder::new();
     make_assoc_const_signature(&mut b, id, ident, ty, default, scx)
-        .unwrap_or_else(|e| warn!("item sig failed: {}", e));
+        .map_err(|e| warn!("item sig failed: {}", e))
+        .ok()?;
     Some(b.build())
 }
 
@@ -125,7 +127,8 @@ pub fn assoc_type_signature(
 
     let mut b = SigBuilder::new();
     make_assoc_type_signature(&mut b, id, ident, bounds, default, scx)
-        .unwrap_or_else(|e| warn!("item sig failed: {}", e));
+        .map_err(|e| warn!("item sig failed: {}", e))
+        .ok()?;
     Some(b.build())
 }
 
@@ -203,7 +206,7 @@ impl Sig for ast::Ty {
                 text!(b, "&");
                 if let &Some(ref l) = lifetime {
                     // FIXME id?
-                    text!(b, "'{} ", l.ident);
+                    text!(b, "{} ", l.ident);
                 }
                 if let ast::Mutability::Mutable = mt.mutbl {
                     text!(b, "mut ");
@@ -499,6 +502,7 @@ impl Sig for ast::FnHeader {
         if self.abi != rustc_target::spec::abi::Abi::Rust {
             text!(b, "extern {} ", self.abi.to_string());
         }
+        text!(b, "fn ");
 
         Ok(())
     }
@@ -771,18 +775,48 @@ fn make_method_signature(
     scx: &SaveContext<'_, '_>,
 ) -> Result {
     m.header.make(b, Some(id), scx)?;
-    text!(b, "fn ");
 
     name_and_generics(b, generics, id, ident, scx)?;
 
     text!(b, "(");
-    for i in &m.decl.inputs {
+
+    let mut inputs = &m.decl.inputs[..];
+
+    if inputs.len() > 0 {
+        match inputs[0].ty.node {
+            ast::TyKind::ImplicitSelf => {
+                // [ref] [mut] self
+                // FIXME descend into pattern
+                text!(b, "{}, ", pprust::pat_to_string(&inputs[0].pat));
+                inputs = &inputs[1..];
+            }
+            ast::TyKind::Rptr(ref lifetime, ref mt) => {
+                if let ast::TyKind::ImplicitSelf = mt.ty.node {
+                    text!(b, "&");
+                    if let &Some(ref l) = lifetime {
+                        // FIXME id?
+                        text!(b, "{} ", l.ident);
+                    }
+                    if let ast::Mutability::Mutable = mt.mutbl {
+                        text!(b, "mut ");
+                    };
+
+                    text!(b, "self, ");
+                    inputs = &inputs[1..];
+                }
+            } // FIXME need to handle self: Pin<&Self> here?? dont think so
+            _ => {}
+        }
+    }
+
+    for i in inputs {
         // FIXME should descend into patterns to add defs.
-        text!(b, "{}: ", pprust::pat_to_string(&i.pat));
+        text!(b, "{}:", pprust::pat_to_string(&i.pat));
         i.ty.make(b, Some(i.id), scx)?;
         // FIXME trailing comma
-        text!(b, ",");
+        text!(b, ", ");
     }
+
     text!(b, ")");
 
     if let ast::FunctionRetTy::Ty(ref t) = m.decl.output {

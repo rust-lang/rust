@@ -75,14 +75,14 @@ for def_ in analysis['defs']:
         if def_['kind'] in ['Function', 'Struct', 'Enum']:
             f.write(def_['sig']['text'])
         elif def_['kind'] == 'Field':
-            f.write('struct _test {')
+            f.write('struct _test { ')
             f.write(def_['sig']['text'])
-            f.write('}')
+            f.write(' }')
         elif def_['kind'] in ['TupleVariant', 'StructVariant']:
-            f.write('enum _test {')
+            f.write('enum _test { ')
             f.write(def_['sig']['text'])
-            f.write('}')
+            f.write(' }')
         elif def_['kind'] == 'Method':
-            f.write('impl _test {')
+            f.write('impl _test { ')
             f.write(def_['sig']['text'])
-            f.write('}')
+            f.write(' }')
