@@ -15,6 +15,7 @@ use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::base::{to_immediate, wants_msvc_seh, compare_simd_types};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
+use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
 use syntax::ast::{self, FloatTy};
@@ -81,13 +82,14 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Valu
 impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
-        callee_ty: Ty<'tcx>,
+        instance: ty::Instance<'tcx>,
         fn_ty: &FnType<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
     ) {
         let tcx = self.tcx;
+        let callee_ty = instance.ty(tcx);
 
         let (def_id, substs) = match callee_ty.sty {
             ty::FnDef(def_id, substs) => (def_id, substs),
@@ -206,8 +208,11 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.const_usize(self.layout_of(tp_ty).align.pref.bytes())
             }
             "type_name" => {
-                let tp_ty = substs.type_at(0);
-                let ty_name = self.tcx.type_name(tp_ty);
+                let gid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                let ty_name = self.tcx.const_eval(ty::ParamEnv::reveal_all().and(gid)).unwrap();
                 OperandRef::from_const(self, ty_name).immediate_or_packed_pair(self)
             }
             "type_id" => {

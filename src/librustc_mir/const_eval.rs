@@ -13,8 +13,10 @@ use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
+use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
+use crate::interpret::alloc_type_name;
 
 use syntax::source_map::{Span, DUMMY_SP};
 
@@ -604,9 +606,40 @@ pub fn const_eval_provider<'tcx>(
             other => return other,
         }
     }
+
+    if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
+        let ty = key.value.instance.ty(tcx);
+        let substs = match ty.sty {
+            ty::FnDef(_, substs) => substs,
+            _ => bug!("intrinsic with type {:?}", ty),
+        };
+        return Ok(eval_intrinsic(tcx, def_id, substs));
+    }
+
     tcx.const_eval_raw(key).and_then(|val| {
         validate_and_turn_into_const(tcx, val, key)
     })
+}
+
+fn eval_intrinsic<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    substs: SubstsRef<'tcx>,
+) -> &'tcx ty::Const<'tcx> {
+    match &*tcx.item_name(def_id).as_str() {
+        "type_name" => {
+            let alloc = alloc_type_name(tcx, substs.type_at(0));
+            tcx.mk_const(ty::Const {
+                val: ConstValue::Slice {
+                    data: alloc,
+                    start: 0,
+                    end: alloc.bytes.len(),
+                },
+                ty: tcx.mk_static_str(),
+            })
+        },
+        other => bug!("`{}` is not a zero arg intrinsic", other),
+    }
 }
 
 pub fn const_eval_raw_provider<'tcx>(
