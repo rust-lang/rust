@@ -270,14 +270,9 @@ pub struct Build {
 #[derive(Debug)]
 struct Crate {
     name: Interned<String>,
-    version: String,
     deps: HashSet<Interned<String>>,
     id: String,
     path: PathBuf,
-    doc_step: String,
-    build_step: String,
-    test_step: String,
-    bench_step: String,
 }
 
 impl Crate {
