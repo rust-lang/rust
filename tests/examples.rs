@@ -2,9 +2,10 @@ mod features {
     use std::{
         env,
         fs::{read_to_string, File},
-        io::{BufRead, Write},
+        io::Write,
         path::Path,
         process::{Command, Stdio},
+        str,
     };
 
     fn test_example2(name: &str, path: &Path, expected_path: &Path, expected_result: bool) {
@@ -78,37 +79,57 @@ mod features {
             cmd.env("RUST_SEMVER_API_GUIDELINES", "true");
         }
 
+        let expected_output = read_to_string(&expected_path)
+            .expect(&format!(
+                "could not read expected output from file {}",
+                expected_path.display()
+            ))
+            .lines()
+            .map(|l| l.trim_end())
+            .map(|l| l.to_string() + "\n")
+            .collect::<String>()
+            .trim_end()
+            .to_string();
+
         let output = cmd.output().expect("could not run rust-semverver");
 
-        let expected_output =
-            read_to_string(&expected_path).expect("could not read expected output from file");
+        let new_output = {
+            let stdout: &str = str::from_utf8(&output.stdout)
+                .expect("could not read line from rust-semverver output")
+                .trim_end();
+            let stderr: &str = str::from_utf8(&output.stderr)
+                .expect("could not read line from rust-semverver output")
+                .trim_end();
 
-        let new_output = output
-            .stdout
-            .lines()
-            .chain(output.stderr.lines())
-            .map(|r| r.expect("could not read line from rust-semverver output"))
-            .map(|line| {
-                // sanitize paths for reproducibility
-                (match line.find("-->") {
-                    Some(idx) => {
-                        let (start, end) = line.split_at(idx);
-                        match end.find(name) {
-                            Some(idx) => format!("{}--> {}", start, end.split_at(idx).1),
-                            None => line,
+            stdout
+                .lines()
+                .chain(stderr.lines())
+                .map(|l| l.trim_end())
+                .map(|line| {
+                    // sanitize paths for reproducibility
+                    (match line.find("-->") {
+                        Some(idx) => {
+                            let (start, end) = line.split_at(idx);
+                            match end.find(name) {
+                                Some(idx) => format!("{}--> {}", start, end.split_at(idx).1),
+                                None => line.to_string(),
+                            }
                         }
+                        None => line.to_string(),
+                    })
+                })
+                .map(|l| {
+                    if cfg!(target_os = "windows") {
+                        l.replace('\\', "/")
+                    } else {
+                        l
                     }
-                    None => line,
-                }) + "\n"
-            })
-            .map(|l| {
-                if cfg!(target_os = "windows") {
-                    l.replace('\\', "/")
-                } else {
-                    l
-                }
-            })
-            .collect::<String>();
+                })
+                .map(|l| l + "\n")
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
 
         if expected_output != new_output {
             eprintln!("rust-semverver failed to produce the expected result");
@@ -120,17 +141,17 @@ mod features {
             match std::env::var_os("CI") {
                 None => {
                     eprintln!(
-                        "For details, try this command: \n\n    diff {} {}\n\n",
+                        "For details, try this command:\n\n    diff {} {}\n\n",
                         expected_path.display(),
                         new_path.display()
                     );
                 }
                 Some(_) => {
                     eprintln!("=== Expected output ===");
-                    eprint!("{}", expected_output);
+                    eprintln!("{}", expected_output);
                     eprintln!("=== End of expected output ===");
                     eprintln!("=== Actual output ===");
-                    eprint!("{}", new_output);
+                    eprintln!("{}", new_output);
                     eprintln!("=== End of actual output ===");
                 }
             };
