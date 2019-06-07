@@ -162,7 +162,7 @@ impl RecoverQPath for Expr {
 
 impl<'a> Parser<'a> {
     pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
-        self.span_fatal(self.span, m)
+        self.span_fatal(self.token.span, m)
     }
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
@@ -174,7 +174,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn bug(&self, m: &str) -> ! {
-        self.sess.span_diagnostic.span_bug(self.span, m)
+        self.sess.span_diagnostic.span_bug(self.token.span, m)
     }
 
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) {
@@ -199,13 +199,13 @@ impl<'a> Parser<'a> {
 
     crate fn expected_ident_found(&self) -> DiagnosticBuilder<'a> {
         let mut err = self.struct_span_err(
-            self.span,
+            self.token.span,
             &format!("expected identifier, found {}", self.this_token_descr()),
         );
         if let token::Ident(name, false) = self.token.kind {
-            if Ident::new(name, self.span).is_raw_guess() {
+            if Ident::new(name, self.token.span).is_raw_guess() {
                 err.span_suggestion(
-                    self.span,
+                    self.token.span,
                     "you can escape reserved keywords to use them as identifiers",
                     format!("r#{}", name),
                     Applicability::MaybeIncorrect,
@@ -213,12 +213,12 @@ impl<'a> Parser<'a> {
             }
         }
         if let Some(token_descr) = self.token_descr() {
-            err.span_label(self.span, format!("expected identifier, found {}", token_descr));
+            err.span_label(self.token.span, format!("expected identifier, found {}", token_descr));
         } else {
-            err.span_label(self.span, "expected identifier");
+            err.span_label(self.token.span, "expected identifier");
             if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
                 err.span_suggestion(
-                    self.span,
+                    self.token.span,
                     "remove this comma",
                     String::new(),
                     Applicability::MachineApplicable,
@@ -277,11 +277,11 @@ impl<'a> Parser<'a> {
                 (self.sess.source_map().next_point(self.prev_span),
                 format!("expected {} here", expect)))
         };
-        self.last_unexpected_token_span = Some(self.span);
+        self.last_unexpected_token_span = Some(self.token.span);
         let mut err = self.fatal(&msg_exp);
         if self.token.is_ident_named(sym::and) {
             err.span_suggestion_short(
-                self.span,
+                self.token.span,
                 "use `&&` instead of `and` for the boolean operator",
                 "&&".to_string(),
                 Applicability::MaybeIncorrect,
@@ -289,7 +289,7 @@ impl<'a> Parser<'a> {
         }
         if self.token.is_ident_named(sym::or) {
             err.span_suggestion_short(
-                self.span,
+                self.token.span,
                 "use `||` instead of `or` for the boolean operator",
                 "||".to_string(),
                 Applicability::MaybeIncorrect,
@@ -326,7 +326,7 @@ impl<'a> Parser<'a> {
             self.token.is_keyword(kw::While)
         );
         let cm = self.sess.source_map();
-        match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
+        match (cm.lookup_line(self.token.span.lo()), cm.lookup_line(sp.lo())) {
             (Ok(ref a), Ok(ref b)) if a.line != b.line && is_semi_suggestable => {
                 // The spans are in different lines, expected `;` and found `let` or `return`.
                 // High likelihood that it is only a missing `;`.
@@ -352,16 +352,16 @@ impl<'a> Parser<'a> {
                 //   |                   -^^^^^ unexpected token
                 //   |                   |
                 //   |                   expected one of 8 possible tokens here
-                err.span_label(self.span, label_exp);
+                err.span_label(self.token.span, label_exp);
             }
             _ if self.prev_span == syntax_pos::DUMMY_SP => {
                 // Account for macro context where the previous span might not be
                 // available to avoid incorrect output (#54841).
-                err.span_label(self.span, "unexpected token");
+                err.span_label(self.token.span, "unexpected token");
             }
             _ => {
                 err.span_label(sp, label_exp);
-                err.span_label(self.span, "unexpected token");
+                err.span_label(self.token.span, "unexpected token");
             }
         }
         Err(err)
@@ -429,7 +429,7 @@ impl<'a> Parser<'a> {
 
         // Keep the span at the start so we can highlight the sequence of `>` characters to be
         // removed.
-        let lo = self.span;
+        let lo = self.token.span;
 
         // We need to look-ahead to see if we have `>` characters without moving the cursor forward
         // (since we might have the field access case and the characters we're eating are
@@ -474,7 +474,7 @@ impl<'a> Parser<'a> {
             // Eat from where we started until the end token so that parsing can continue
             // as if we didn't have those extra angle brackets.
             self.eat_to_tokens(&[&end]);
-            let span = lo.until(self.span);
+            let span = lo.until(self.token.span);
 
             let plural = number_of_gt > 1 || number_of_shr >= 1;
             self.diagnostic()
@@ -502,7 +502,7 @@ impl<'a> Parser<'a> {
         match lhs.node {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // respan to include both operators
-                let op_span = op.span.to(self.span);
+                let op_span = op.span.to(self.token.span);
                 let mut err = self.diagnostic().struct_span_err(op_span,
                     "chained comparison operators require parentheses");
                 if op.node == BinOpKind::Lt &&
@@ -734,15 +734,15 @@ impl<'a> Parser<'a> {
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
             // Point at the end of the macro call when reaching end of macro arguments.
             (token::Eof, Some(_)) => {
-                let sp = self.sess.source_map().next_point(self.span);
+                let sp = self.sess.source_map().next_point(self.token.span);
                 (sp, sp)
             }
             // We don't want to point at the following span after DUMMY_SP.
             // This happens when the parser finds an empty TokenStream.
-            _ if self.prev_span == DUMMY_SP => (self.span, self.span),
+            _ if self.prev_span == DUMMY_SP => (self.token.span, self.token.span),
             // EOF, don't want to point at the following char, but rather the last token.
-            (token::Eof, None) => (self.prev_span, self.span),
-            _ => (self.sess.source_map().next_point(self.prev_span), self.span),
+            (token::Eof, None) => (self.prev_span, self.token.span),
+            _ => (self.sess.source_map().next_point(self.prev_span), self.token.span),
         };
         let msg = format!(
             "expected `{}`, found {}",
@@ -789,7 +789,7 @@ impl<'a> Parser<'a> {
             // interpreting `await { <expr> }?` as `<expr>?.await`.
             self.parse_block_expr(
                 None,
-                self.span,
+                self.token.span,
                 BlockCheckMode::Default,
                 ThinVec::new(),
             )
@@ -819,9 +819,9 @@ impl<'a> Parser<'a> {
             self.look_ahead(1, |t| t == &token::CloseDelim(token::Paren))
         {
             // future.await()
-            let lo = self.span;
+            let lo = self.token.span;
             self.bump(); // (
-            let sp = lo.to(self.span);
+            let sp = lo.to(self.token.span);
             self.bump(); // )
             self.struct_span_err(sp, "incorrect use of `await`")
                 .span_suggestion(
@@ -854,7 +854,7 @@ impl<'a> Parser<'a> {
         next_sp: Span,
         maybe_path: bool,
     ) {
-        err.span_label(self.span, "expecting a type here because of type ascription");
+        err.span_label(self.token.span, "expecting a type here because of type ascription");
         let cm = self.sess.source_map();
         let next_pos = cm.lookup_char_pos(next_sp.lo());
         let op_pos = cm.lookup_char_pos(cur_op_span.hi());
@@ -911,7 +911,7 @@ impl<'a> Parser<'a> {
         // we want to use the last closing delim that would apply
         for (i, unmatched) in self.unclosed_delims.iter().enumerate().rev() {
             if tokens.contains(&token::CloseDelim(unmatched.expected_delim))
-                && Some(self.span) > unmatched.unclosed_span
+                && Some(self.token.span) > unmatched.unclosed_span
             {
                 pos = Some(i);
             }
@@ -1070,28 +1070,28 @@ impl<'a> Parser<'a> {
     crate fn expected_semi_or_open_brace(&mut self) -> PResult<'a, ast::TraitItem> {
         let token_str = self.this_token_descr();
         let mut err = self.fatal(&format!("expected `;` or `{{`, found {}", token_str));
-        err.span_label(self.span, "expected `;` or `{`");
+        err.span_label(self.token.span, "expected `;` or `{`");
         Err(err)
     }
 
     crate fn eat_incorrect_doc_comment(&mut self, applied_to: &str) {
         if let token::DocComment(_) = self.token.kind {
             let mut err = self.diagnostic().struct_span_err(
-                self.span,
+                self.token.span,
                 &format!("documentation comments cannot be applied to {}", applied_to),
             );
-            err.span_label(self.span, "doc comments are not allowed here");
+            err.span_label(self.token.span, "doc comments are not allowed here");
             err.emit();
             self.bump();
         } else if self.token == token::Pound && self.look_ahead(1, |t| {
             *t == token::OpenDelim(token::Bracket)
         }) {
-            let lo = self.span;
+            let lo = self.token.span;
             // Skip every token until next possible arg.
             while self.token != token::CloseDelim(token::Bracket) {
                 self.bump();
             }
-            let sp = lo.to(self.span);
+            let sp = lo.to(self.token.span);
             self.bump();
             let mut err = self.diagnostic().struct_span_err(
                 sp,
@@ -1217,16 +1217,16 @@ impl<'a> Parser<'a> {
     crate fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
-                let sp = self.sess.source_map().next_point(self.span);
+                let sp = self.sess.source_map().next_point(self.token.span);
                 (sp, format!("expected expression, found end of {}", origin))
             }
-            _ => (self.span, format!(
+            _ => (self.token.span, format!(
                 "expected expression, found {}",
                 self.this_token_descr(),
             )),
         };
         let mut err = self.struct_span_err(span, &msg);
-        let sp = self.sess.source_map().start_point(self.span);
+        let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
             self.sess.expr_parentheses_needed(&mut err, *sp, None);
         }

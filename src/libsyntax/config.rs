@@ -121,7 +121,7 @@ impl<'a> StripUnconfigured<'a> {
             let mut expanded_attrs = Vec::with_capacity(1);
 
             while !parser.check(&token::CloseDelim(token::Paren)) {
-                let lo = parser.span.lo();
+                let lo = parser.token.span.lo();
                 let (path, tokens) = parser.parse_meta_item_unrestricted()?;
                 expanded_attrs.push((path, tokens, parser.prev_span.with_lo(lo)));
                 parser.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Paren)])?;

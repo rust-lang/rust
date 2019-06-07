@@ -735,9 +735,9 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
             raw_attr.clone(),
         );
 
-        let start_span = parser.span;
+        let start_span = parser.token.span;
         let (path, tokens) = panictry!(parser.parse_meta_item_unrestricted());
-        let end_span = parser.span;
+        let end_span = parser.token.span;
         if parser.token != token::Eof {
             parse_sess.span_diagnostic
                 .span_err(start_span.to(end_span), "invalid crate attribute");

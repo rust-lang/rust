@@ -275,10 +275,10 @@ impl<'a> Parser<'a> {
                 if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix })
                         = t.kind {
                     let next_span = self.look_ahead_span(1);
-                    if self.span.hi() == next_span.lo() {
+                    if self.token.span.hi() == next_span.lo() {
                         let s = String::from("0.") + &symbol.as_str();
                         let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
-                        return Some(Token::new(kind, self.span.to(next_span)));
+                        return Some(Token::new(kind, self.token.span.to(next_span)));
                     }
                 }
                 None

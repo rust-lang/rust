@@ -142,7 +142,7 @@ fn parse_args<'a>(
 
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
-            return Err(ecx.struct_span_err(p.span, "expected token: `,`"));
+            return Err(ecx.struct_span_err(p.token.span, "expected token: `,`"));
         }
         if p.token == token::Eof {
             break;
@@ -154,7 +154,7 @@ fn parse_args<'a>(
                 name
             } else {
                 return Err(ecx.struct_span_err(
-                    p.span,
+                    p.token.span,
                     "expected ident, positional arguments cannot follow named arguments",
                 ));
             };

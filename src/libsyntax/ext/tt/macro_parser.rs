@@ -675,7 +675,7 @@ pub fn parse(
     //
     // This MatcherPos instance is allocated on the stack. All others -- and
     // there are frequently *no* others! -- are allocated on the heap.
-    let mut initial = initial_matcher_pos(ms, parser.span);
+    let mut initial = initial_matcher_pos(ms, parser.token.span);
     let mut cur_items = smallvec![MatcherPosHandle::Ref(&mut initial)];
     let mut next_items = Vec::new();
 
@@ -721,15 +721,15 @@ pub fn parse(
                 return nameize(sess, ms, matches);
             } else if eof_items.len() > 1 {
                 return Error(
-                    parser.span,
+                    parser.token.span,
                     "ambiguity: multiple successful parses".to_string(),
                 );
             } else {
                 return Failure(
-                    Token::new(token::Eof, if parser.span.is_dummy() {
-                        parser.span
+                    Token::new(token::Eof, if parser.token.span.is_dummy() {
+                        parser.token.span
                     } else {
-                        sess.source_map().next_point(parser.span)
+                        sess.source_map().next_point(parser.token.span)
                     }),
                     "missing tokens in macro arguments",
                 );
@@ -753,7 +753,7 @@ pub fn parse(
                 .join(" or ");
 
             return Error(
-                parser.span,
+                parser.token.span,
                 format!(
                     "local ambiguity: multiple parsing options: {}",
                     match next_items.len() {
@@ -927,7 +927,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> Nonterminal {
         sym::ty => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
         sym::ident => if let Some((name, is_raw)) = get_macro_name(&p.token) {
-            let span = p.span;
+            let span = p.token.span;
             p.bump();
             token::NtIdent(Ident::new(name, span), is_raw)
         } else {
