@@ -1,3 +1,5 @@
+#![feature(generators)]
+
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 #![allow(unreachable_code)]
@@ -141,6 +143,12 @@ fn r#match() {
     assert_eq!(val, ());
 }
 
+fn i_yield() {
+    static || {
+        yield yield yield yield yield yield yield yield yield;
+    };
+}
+
 pub fn main() {
     strange();
     funny();
@@ -157,4 +165,5 @@ pub fn main() {
     special_characters();
     punch_card();
     r#match();
+    i_yield();
 }
