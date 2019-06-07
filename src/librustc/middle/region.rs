@@ -371,6 +371,19 @@ struct RegionResolutionVisitor<'tcx> {
 
     // The number of expressions and patterns visited in the current body
     expr_and_pat_count: usize,
+    // When this is 'true', we record the Scopes we encounter
+    // when processing a Yield expression. This allows us to fix
+    // up their indices.
+    pessimistic_yield: bool,
+    // Stores scopes when pessimistic_yield is true.
+    // Each time we encounter an ExprKind::AssignOp, we push
+    // a new Vec into the outermost Vec. This inner Vec is uesd
+    // to store any scopes we encounter when visiting the inenr expressions
+    // of the AssignOp. Once we finish visiting the inner expressions, we pop
+    // off the inner Vec, and process the Scopes it contains.
+    // This allows us to handle nested AssignOps - while a terrible idea,
+    // they are valid Rust, so we need to handle them.
+    fixup_scopes: Vec<Vec<Scope>>,
 
     // Generated scope tree:
     scope_tree: ScopeTree,
@@ -947,12 +960,108 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
         }
     }
 
+    let prev_pessimistic = visitor.pessimistic_yield;
+
+    // Ordinarily, we can rely on the visit order of HIR intravisit
+    // to correspond to the actual exectuion order of statements.
+    // However, there's a weird corner case with compund assignment
+    // operators (e.g. 'a += b'). The evaluation order depends on whether
+    // or not the operator is overloaded (e.g. whether or not a trait
+    // like AddAssign is implemented).
+
+    // For primitive types (which, despite having a trait impl, don't actually
+    // end up calling it), the evluation order is right-to-left. For example,
+    // the following code snippet:
+    //
+    //    let y = &mut 0;
+    //    *{println!("LHS!"); y} += {println!("RHS!"); 1};
+    //
+    // will print:
+    //
+    // RHS!
+    // LHS!
+    //
+    // However, if the operator is used on a non-primitive type,
+    // the evaluation order will be left-to-right, since the operator
+    // actually get desugared to a method call. For example, this
+    // nearly identical code snippet:
+    //
+    //     let y = &mut String::new();
+    //    *{println!("LHS String"); y} += {println!("RHS String"); "hi"};
+    //
+    // will print:
+    // LHS String
+    // RHS String
+    //
+    // To determine the actual execution order, we need to perform
+    // trait resolution. Unfortunately, we need to be able to compute
+    // yield_in_scope before type checking is even done, as it gets
+    // used by AST borrowcheck
+    //
+    // Fortunately, we don't need to know the actual execution order.
+    // It sufficies to know the 'worst case' order with respect to yields.
+    // Specifically, we need to know the highest 'expr_and_pat_count'
+    // that we could assign to the yield expression. To do this,
+    // we pick the greater of the two values from the left-hand
+    // and right-hand expressions. This makes us overly conservative
+    // about what types could possibly live across yield points,
+    // but we will never fail to detect that a type does actually
+    // live across a yield point. The latter part is critical -
+    // we're already overly conservative about what types will live
+    // across yield points, as the generated MIR will determine
+    // when things are actually live. However, for typecheck to work
+    // properly, we can't miss any types.
+
+
     match expr.node {
         // Manually recurse over closures, because they are the only
         // case of nested bodies that share the parent environment.
         hir::ExprKind::Closure(.., body, _, _) => {
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
+        },
+        hir::ExprKind::AssignOp(_, ref left_expression, ref right_expression) => {
+            debug!("resolve_expr - enabling pessimistic_yield, was previously {}",
+                   prev_pessimistic);
+
+            visitor.fixup_scopes.push(vec![]);
+            visitor.pessimistic_yield = true;
+
+            // If the actual execution order turns out to be right-to-left,
+            // then we're fine. However, if the actual execution order is left-to-right,
+            // then we'll assign too low of a count to any 'yield' expressions
+            // we encounter in 'right_expression' - they should really occur after all of the
+            // expressions in 'left_expression'.
+            visitor.visit_expr(&right_expression);
+
+            visitor.pessimistic_yield = prev_pessimistic;
+
+            let target_scopes = visitor.fixup_scopes.pop().unwrap();
+            debug!("resolve_expr - restoring pessimistic_yield to {}", prev_pessimistic);
+
+
+            visitor.visit_expr(&left_expression);
+            debug!("resolve_expr - fixing up counts to {}", visitor.expr_and_pat_count);
+
+            for scope in target_scopes {
+                let (span, count) = visitor.scope_tree.yield_in_scope.get_mut(&scope).unwrap();
+                let count = *count;
+                let span = *span;
+
+                // expr_and_pat_count never decreases. Since we recorded counts in yield_in_scope
+                // before walking the left-hand side, it should be impossible for the recorded
+                // count to be greater than the left-hand side count.
+                if count > visitor.expr_and_pat_count {
+                    bug!("Encountered greater count {} at span {:?} - expected no greater than {}",
+                         count, span, visitor.expr_and_pat_count);
+                }
+                let new_count = visitor.expr_and_pat_count;
+                debug!("resolve_expr - increasing count for scope {:?} from {} to {} at span {:?}",
+                       scope, count, new_count, span);
+
+                visitor.scope_tree.yield_in_scope.insert(scope, (span, new_count));
+            }
+
         }
 
         _ => intravisit::walk_expr(visitor, expr)
@@ -972,6 +1081,10 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
                 source: *source,
             };
             visitor.scope_tree.yield_in_scope.insert(scope, data);
+            if visitor.pessimistic_yield {
+                debug!("resolve_expr in pessimistic_yield - marking scope {:?} for fixup", scope);
+                visitor.fixup_scopes.last_mut().unwrap().push(scope);
+            }
 
             // Keep traversing up while we can.
             match visitor.scope_tree.parent_map.get(&scope) {
@@ -1360,6 +1473,8 @@ fn region_scope_tree<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ScopeTree 
                 var_parent: None,
             },
             terminating_scopes: Default::default(),
+            pessimistic_yield: false,
+            fixup_scopes: vec![]
         };
 
         let body = tcx.hir().body(body_id);

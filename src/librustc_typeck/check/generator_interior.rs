@@ -28,8 +28,14 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
               source_span: Span) {
         use syntax_pos::DUMMY_SP;
 
+        debug!("generator_interior: attempting to record type {:?} {:?} {:?} {:?}",
+               ty, scope, expr, source_span);
+
+
         let live_across_yield = scope.map(|s| {
             self.region_scope_tree.yield_in_scope(s).and_then(|yield_data| {
+
+
                 // If we are recording an expression that is the last yield
                 // in the scope, or that has a postorder CFG index larger
                 // than the one of all of the yields, then its value can't
