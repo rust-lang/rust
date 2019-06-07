@@ -49,8 +49,9 @@ impl Default for RootDatabase {
         db.set_crate_graph(Default::default());
         db.set_local_roots(Default::default());
         db.set_library_roots(Default::default());
-        db.query_mut(ra_db::ParseQuery).set_lru_capacity(128);
-        db.query_mut(hir::db::ParseMacroQuery).set_lru_capacity(128);
+        let lru_cap = ra_db::DEFAULT_LRU_CAP;
+        db.query_mut(ra_db::ParseQuery).set_lru_capacity(lru_cap);
+        db.query_mut(hir::db::ParseMacroQuery).set_lru_capacity(lru_cap);
         db
     }
 }

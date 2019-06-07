@@ -43,8 +43,12 @@ fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
 impl BatchDatabase {
     pub fn load(crate_graph: CrateGraph, vfs: &mut Vfs) -> BatchDatabase {
         let mut db = BatchDatabase { runtime: salsa::Runtime::default() };
-        db.query_mut(ra_db::ParseQuery).set_lru_capacity(128);
-        db.query_mut(ra_hir::db::ParseMacroQuery).set_lru_capacity(128);
+        let lru_cap = std::env::var("RA_LRU_CAP")
+            .ok()
+            .and_then(|it| it.parse::<usize>().ok())
+            .unwrap_or(ra_db::DEFAULT_LRU_CAP);
+        db.query_mut(ra_db::ParseQuery).set_lru_capacity(lru_cap);
+        db.query_mut(ra_hir::db::ParseMacroQuery).set_lru_capacity(lru_cap);
         db.set_crate_graph(Arc::new(crate_graph));
 
         // wait until Vfs has loaded all roots

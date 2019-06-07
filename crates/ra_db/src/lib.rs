@@ -65,6 +65,8 @@ pub struct FileRange {
     pub range: TextRange,
 }
 
+pub const DEFAULT_LRU_CAP: usize = 128;
+
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in rust-analyzer is derived from these queries.
 #[salsa::query_group(SourceDatabaseStorage)]
