@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
                     just_parsed_doc_comment = false;
                 }
                 token::DocComment(s) => {
-                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.span);
+                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.token.span);
                     if attr.style != ast::AttrStyle::Outer {
                         let mut err = self.fatal("expected outer doc comment");
                         err.note("inner doc comments like this (starting with \
@@ -83,7 +83,7 @@ impl<'a> Parser<'a> {
                self.token);
         let (span, path, tokens, style) = match self.token.kind {
             token::Pound => {
-                let lo = self.span;
+                let lo = self.token.span;
                 self.bump();
 
                 if let InnerAttributeParsePolicy::Permitted = inner_parse_policy {
@@ -93,7 +93,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     if let InnerAttributeParsePolicy::NotPermitted { reason } = inner_parse_policy
                     {
-                        let span = self.span;
+                        let span = self.token.span;
                         self.diagnostic()
                             .struct_span_err(span, reason)
                             .note("inner attributes, like `#![no_std]`, annotate the item \
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
                 }
                 token::DocComment(s) => {
                     // we need to get the position of this token before we bump.
-                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.span);
+                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, self.token.span);
                     if attr.style == ast::AttrStyle::Inner {
                         attrs.push(attr);
                         self.bump();
@@ -249,7 +249,7 @@ impl<'a> Parser<'a> {
             return Ok(meta);
         }
 
-        let lo = self.span;
+        let lo = self.token.span;
         let path = self.parse_path(PathStyle::Mod)?;
         let node = self.parse_meta_item_kind()?;
         let span = lo.to(self.prev_span);
@@ -284,7 +284,7 @@ impl<'a> Parser<'a> {
 
         let found = self.this_token_to_string();
         let msg = format!("expected unsuffixed literal or identifier, found `{}`", found);
-        Err(self.diagnostic().struct_span_err(self.span, &msg))
+        Err(self.diagnostic().struct_span_err(self.token.span, &msg))
     }
 
     /// matches meta_seq = ( COMMASEP(meta_item_inner) )
