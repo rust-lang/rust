@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 77)
-  FN_DEF@[0; 76)
+SOURCE_FILE@[0; 110)
+  FN_DEF@[0; 109)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
     NAME@[3; 6)
@@ -8,7 +8,7 @@ SOURCE_FILE@[0; 77)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 76)
+    BLOCK@[9; 109)
       L_CURLY@[9; 10) "{"
       WHITESPACE@[10; 15) "\n    "
       LET_STMT@[15; 21)
@@ -66,6 +66,36 @@ SOURCE_FILE@[0; 77)
         LITERAL@[71; 73)
           INT_NUMBER@[71; 73) "92"
         SEMI@[73; 74) ";"
-      WHITESPACE@[74; 75) "\n"
-      R_CURLY@[75; 76) "}"
-  WHITESPACE@[76; 77) "\n"
+      WHITESPACE@[74; 79) "\n    "
+      LET_STMT@[79; 88)
+        LET_KW@[79; 82) "let"
+        WHITESPACE@[82; 83) " "
+        BIND_PAT@[83; 84)
+          NAME@[83; 84)
+            IDENT@[83; 84) "e"
+        COLON@[84; 85) ":"
+        WHITESPACE@[85; 86) " "
+        NEVER_TYPE@[86; 87)
+          EXCL@[86; 87) "!"
+        SEMI@[87; 88) ";"
+      WHITESPACE@[88; 93) "\n    "
+      LET_STMT@[93; 107)
+        LET_KW@[93; 96) "let"
+        WHITESPACE@[96; 97) " "
+        PLACEHOLDER_PAT@[97; 98)
+          UNDERSCORE@[97; 98) "_"
+        COLON@[98; 99) ":"
+        WHITESPACE@[99; 100) " "
+        NEVER_TYPE@[100; 101)
+          EXCL@[100; 101) "!"
+        WHITESPACE@[101; 102) " "
+        EQ@[102; 103) "="
+        WHITESPACE@[103; 104) " "
+        BLOCK_EXPR@[104; 106)
+          BLOCK@[104; 106)
+            L_CURLY@[104; 105) "{"
+            R_CURLY@[105; 106) "}"
+        SEMI@[106; 107) ";"
+      WHITESPACE@[107; 108) "\n"
+      R_CURLY@[108; 109) "}"
+  WHITESPACE@[109; 110) "\n"
