@@ -28,17 +28,15 @@ settings (and possibly others, such as `llvm.ccache`):
 assertions = true
 
 [rust]
-# This enables some assertions, but more importantly it enables the `debug!`
-# logging macros that are essential for debugging `rustc`.
-debug-assertions = true
-
 # This will make your build more parallel; it costs a bit of runtime
 # performance perhaps (less inlining) but it's worth it.
 codegen-units = 0
 
-# This enables full debuginfo (`debuginfo-level = 2`). The line debuginfo (which is a
-# more important part and enables e.g. line numbers in backtraces) is also enabled by
-# `debuginfo-level = 1`.
+# This enables full debuginfo and debug assertions. The line debuginfo is also
+# enabled by `debuginfo-level = 1`. Full debuginfo is also enabled by
+# `debuginfo-level = 2`. Debug assertions can also be enabled with
+# `debug-assertions = true`. Note that `debug = true` will make your build
+# slower, so you may want to try individually enabling debuginfo and assertions.
 debug = true
 ```
 
