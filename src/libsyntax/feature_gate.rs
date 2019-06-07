@@ -560,6 +560,10 @@ declare_features! (
     // Allows the user of associated type bounds.
     (active, associated_type_bounds, "1.34.0", Some(52662), None),
 
+    // Allows calling constructor functions in `const fn`
+    // FIXME Create issue
+    (active, const_constructor, "1.37.0", Some(61456), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

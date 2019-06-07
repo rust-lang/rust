@@ -78,7 +78,8 @@ fn main() {
 //     let mut _0: Test;
 //
 //     bb0: {
-//         _0 = Test::X(move _1,);
+//         ((_0 as X).0: usize) = move _1;
+//         discriminant(_0) = 0;
 //         return;
 //     }
 // }
