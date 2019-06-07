@@ -645,6 +645,11 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.fabs.v4f64", fn(t_v4f64) -> t_v4f64);
         ifn!("llvm.fabs.v8f64", fn(t_v8f64) -> t_v8f64);
 
+        ifn!("llvm.minnum.f32", fn(t_f32, t_f32) -> t_f32);
+        ifn!("llvm.minnum.f64", fn(t_f64, t_f64) -> t_f64);
+        ifn!("llvm.maxnum.f32", fn(t_f32, t_f32) -> t_f32);
+        ifn!("llvm.maxnum.f64", fn(t_f64, t_f64) -> t_f64);
+
         ifn!("llvm.floor.f32", fn(t_f32) -> t_f32);
         ifn!("llvm.floor.v2f32", fn(t_v2f32) -> t_v2f32);
         ifn!("llvm.floor.v4f32", fn(t_v4f32) -> t_v4f32);

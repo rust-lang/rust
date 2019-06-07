@@ -70,7 +70,8 @@ pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
         "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
         "saturating_add" | "saturating_sub" |
         "rotate_left" | "rotate_right" |
-        "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse"
+        "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse" |
+        "minnumf32" | "minnumf64" | "maxnumf32" | "maxnumf64"
         => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }
@@ -272,6 +273,10 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             "fabsf32"      => (0, vec![ tcx.types.f32 ], tcx.types.f32),
             "fabsf64"      => (0, vec![ tcx.types.f64 ], tcx.types.f64),
+            "minnumf32"    => (0, vec![ tcx.types.f32, tcx.types.f32 ], tcx.types.f32),
+            "minnumf64"    => (0, vec![ tcx.types.f64, tcx.types.f64 ], tcx.types.f64),
+            "maxnumf32"    => (0, vec![ tcx.types.f32, tcx.types.f32 ], tcx.types.f32),
+            "maxnumf64"    => (0, vec![ tcx.types.f64, tcx.types.f64 ], tcx.types.f64),
             "copysignf32"  => (0, vec![ tcx.types.f32, tcx.types.f32 ], tcx.types.f32),
             "copysignf64"  => (0, vec![ tcx.types.f64, tcx.types.f64 ], tcx.types.f64),
             "floorf32"     => (0, vec![ tcx.types.f32 ], tcx.types.f32),
