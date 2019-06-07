@@ -5419,10 +5419,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if !infer_args_for_err.contains(&index) {
                         // Check whether the user has provided generic arguments.
                         if let Some(ref data) = segments[index].args {
-                            return (Some(data), segments[index].infer_types);
+                            return (Some(data), segments[index].infer_args);
                         }
                     }
-                    return (None, segments[index].infer_types);
+                    return (None, segments[index].infer_args);
                 }
 
                 (None, true)
@@ -5443,13 +5443,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             },
             // Provide substitutions for parameters for which arguments are inferred.
-            |substs, param, infer_types| {
+            |substs, param, infer_args| {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
                         self.re_infer(span, Some(param)).unwrap().into()
                     }
                     GenericParamDefKind::Type { has_default, .. } => {
-                        if !infer_types && has_default {
+                        if !infer_args && has_default {
                             // If we have a default, then we it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.

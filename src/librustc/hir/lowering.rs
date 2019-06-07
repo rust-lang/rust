@@ -2168,7 +2168,7 @@ impl<'a> LoweringContext<'a> {
         itctx: ImplTraitContext<'_>,
         explicit_owner: Option<NodeId>,
     ) -> hir::PathSegment {
-        let (mut generic_args, infer_types) = if let Some(ref generic_args) = segment.args {
+        let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
             let msg = "parenthesized type parameters may only be used with a `Fn` trait";
             match **generic_args {
                 GenericArgs::AngleBracketed(ref data) => {
@@ -2305,7 +2305,7 @@ impl<'a> LoweringContext<'a> {
             Some(id),
             Some(self.lower_res(res)),
             generic_args,
-            infer_types,
+            infer_args,
         )
     }
 

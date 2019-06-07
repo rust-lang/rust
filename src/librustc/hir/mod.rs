@@ -348,7 +348,7 @@ pub struct PathSegment {
     /// This only applies to expression and pattern paths, and
     /// out of those only the segments with no type parameters
     /// to begin with, e.g., `Vec::new` is `<Vec<..>>::new::<..>`.
-    pub infer_types: bool,
+    pub infer_args: bool,
 }
 
 impl PathSegment {
@@ -358,7 +358,7 @@ impl PathSegment {
             ident,
             hir_id: None,
             res: None,
-            infer_types: true,
+            infer_args: true,
             args: None,
         }
     }
@@ -368,13 +368,13 @@ impl PathSegment {
         hir_id: Option<HirId>,
         res: Option<Res>,
         args: GenericArgs,
-        infer_types: bool,
+        infer_args: bool,
     ) -> Self {
         PathSegment {
             ident,
             hir_id,
             res,
-            infer_types,
+            infer_args,
             args: if args.is_empty() {
                 None
             } else {
