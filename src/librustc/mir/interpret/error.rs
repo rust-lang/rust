@@ -180,12 +180,12 @@ pub fn struct_error<'a, 'gcx, 'tcx>(
 }
 
 #[derive(Debug, Clone)]
-pub struct EvalError<'tcx> {
+pub struct InterpErrorInfo<'tcx> {
     pub kind: InterpError<'tcx, u64>,
     pub backtrace: Option<Box<Backtrace>>,
 }
 
-impl<'tcx> EvalError<'tcx> {
+impl<'tcx> InterpErrorInfo<'tcx> {
     pub fn print_backtrace(&mut self) {
         if let Some(ref mut backtrace) = self.backtrace {
             print_backtrace(&mut *backtrace);
@@ -198,7 +198,7 @@ fn print_backtrace(backtrace: &mut Backtrace) {
     eprintln!("\n\nAn error occurred in miri:\n{:?}", backtrace);
 }
 
-impl<'tcx> From<InterpError<'tcx, u64>> for EvalError<'tcx> {
+impl<'tcx> From<InterpError<'tcx, u64>> for InterpErrorInfo<'tcx> {
     fn from(kind: InterpError<'tcx, u64>) -> Self {
         let backtrace = match env::var("RUST_CTFE_BACKTRACE") {
             // Matching `RUST_BACKTRACE` -- we treat "0" the same as "not present".
@@ -215,7 +215,7 @@ impl<'tcx> From<InterpError<'tcx, u64>> for EvalError<'tcx> {
             },
             _ => None,
         };
-        EvalError {
+        InterpErrorInfo {
             kind,
             backtrace,
         }
@@ -315,7 +315,7 @@ pub enum InterpError<'tcx, O> {
     InfiniteLoop,
 }
 
-pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
+pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 
 impl<'tcx, O> InterpError<'tcx, O> {
     pub fn description(&self) -> &str {
@@ -451,7 +451,7 @@ impl<'tcx, O> InterpError<'tcx, O> {
     }
 }
 
-impl<'tcx> fmt::Display for EvalError<'tcx> {
+impl<'tcx> fmt::Display for InterpErrorInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.kind)
     }

@@ -4,7 +4,7 @@
 use rustc::ty::layout::{self, TyLayout, VariantIdx};
 use rustc::ty;
 use rustc::mir::interpret::{
-    EvalResult,
+    InterpResult,
 };
 
 use super::{
@@ -23,7 +23,7 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
     fn to_op(
         self,
         ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>>;
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
 
     /// Creates this from an `MPlaceTy`.
     fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self;
@@ -33,14 +33,14 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
         self,
         ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         variant: VariantIdx,
-    ) -> EvalResult<'tcx, Self>;
+    ) -> InterpResult<'tcx, Self>;
 
     /// Projects to the n-th field.
     fn project_field(
         self,
         ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         field: u64,
-    ) -> EvalResult<'tcx, Self>;
+    ) -> InterpResult<'tcx, Self>;
 }
 
 // Operands and memory-places are both values.
@@ -57,7 +57,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     fn to_op(
         self,
         _ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         Ok(self)
     }
 
@@ -71,7 +71,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
         self,
         ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         variant: VariantIdx,
-    ) -> EvalResult<'tcx, Self> {
+    ) -> InterpResult<'tcx, Self> {
         ecx.operand_downcast(self, variant)
     }
 
@@ -80,7 +80,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
         self,
         ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         field: u64,
-    ) -> EvalResult<'tcx, Self> {
+    ) -> InterpResult<'tcx, Self> {
         ecx.operand_field(self, field)
     }
 }
@@ -96,7 +96,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     fn to_op(
         self,
         _ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         Ok(self.into())
     }
 
@@ -110,7 +110,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
         self,
         ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         variant: VariantIdx,
-    ) -> EvalResult<'tcx, Self> {
+    ) -> InterpResult<'tcx, Self> {
         ecx.mplace_downcast(self, variant)
     }
 
@@ -119,7 +119,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
         self,
         ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
         field: u64,
-    ) -> EvalResult<'tcx, Self> {
+    ) -> InterpResult<'tcx, Self> {
         ecx.mplace_field(self, field)
     }
 }
@@ -137,25 +137,25 @@ macro_rules! make_value_visitor {
             // Recursive actions, ready to be overloaded.
             /// Visits the given value, dispatching as appropriate to more specialized visitors.
             #[inline(always)]
-            fn visit_value(&mut self, v: Self::V) -> EvalResult<'tcx>
+            fn visit_value(&mut self, v: Self::V) -> InterpResult<'tcx>
             {
                 self.walk_value(v)
             }
             /// Visits the given value as a union. No automatic recursion can happen here.
             #[inline(always)]
-            fn visit_union(&mut self, _v: Self::V) -> EvalResult<'tcx>
+            fn visit_union(&mut self, _v: Self::V) -> InterpResult<'tcx>
             {
                 Ok(())
             }
             /// Visits this value as an aggregate, you are getting an iterator yielding
-            /// all the fields (still in an `EvalResult`, you have to do error handling yourself).
+            /// all the fields (still in an `InterpResult`, you have to do error handling yourself).
             /// Recurses into the fields.
             #[inline(always)]
             fn visit_aggregate(
                 &mut self,
                 v: Self::V,
-                fields: impl Iterator<Item=EvalResult<'tcx, Self::V>>,
-            ) -> EvalResult<'tcx> {
+                fields: impl Iterator<Item=InterpResult<'tcx, Self::V>>,
+            ) -> InterpResult<'tcx> {
                 self.walk_aggregate(v, fields)
             }
 
@@ -170,7 +170,7 @@ macro_rules! make_value_visitor {
                 _old_val: Self::V,
                 _field: usize,
                 new_val: Self::V,
-            ) -> EvalResult<'tcx> {
+            ) -> InterpResult<'tcx> {
                 self.visit_value(new_val)
             }
 
@@ -181,7 +181,7 @@ macro_rules! make_value_visitor {
                 _old_val: Self::V,
                 _variant: VariantIdx,
                 new_val: Self::V,
-            ) -> EvalResult<'tcx> {
+            ) -> InterpResult<'tcx> {
                 self.visit_value(new_val)
             }
 
@@ -191,7 +191,7 @@ macro_rules! make_value_visitor {
             /// it is meant to provide the chance for additional checks when a value of uninhabited
             /// layout is detected.
             #[inline(always)]
-            fn visit_uninhabited(&mut self) -> EvalResult<'tcx>
+            fn visit_uninhabited(&mut self) -> InterpResult<'tcx>
             { Ok(()) }
             /// Called whenever we reach a value with scalar layout.
             /// We do NOT provide a `ScalarMaybeUndef` here to avoid accessing memory if the
@@ -201,7 +201,7 @@ macro_rules! make_value_visitor {
             /// it is meant to provide the chance for additional checks when a value of scalar
             /// layout is detected.
             #[inline(always)]
-            fn visit_scalar(&mut self, _v: Self::V, _layout: &layout::Scalar) -> EvalResult<'tcx>
+            fn visit_scalar(&mut self, _v: Self::V, _layout: &layout::Scalar) -> InterpResult<'tcx>
             { Ok(()) }
 
             /// Called whenever we reach a value of primitive type. There can be no recursion
@@ -209,22 +209,22 @@ macro_rules! make_value_visitor {
             /// We do *not* provide an `ImmTy` here because some implementations might want
             /// to write to the place this primitive lives in.
             #[inline(always)]
-            fn visit_primitive(&mut self, _v: Self::V) -> EvalResult<'tcx>
+            fn visit_primitive(&mut self, _v: Self::V) -> InterpResult<'tcx>
             { Ok(()) }
 
             // Default recursors. Not meant to be overloaded.
             fn walk_aggregate(
                 &mut self,
                 v: Self::V,
-                fields: impl Iterator<Item=EvalResult<'tcx, Self::V>>,
-            ) -> EvalResult<'tcx> {
+                fields: impl Iterator<Item=InterpResult<'tcx, Self::V>>,
+            ) -> InterpResult<'tcx> {
                 // Now iterate over it.
                 for (idx, field_val) in fields.enumerate() {
                     self.visit_field(v, idx, field_val?)?;
                 }
                 Ok(())
             }
-            fn walk_value(&mut self, v: Self::V) -> EvalResult<'tcx>
+            fn walk_value(&mut self, v: Self::V) -> InterpResult<'tcx>
             {
                 trace!("walk_value: type: {}", v.layout().ty);
                 // If this is a multi-variant layout, we have to find the right one and proceed with
@@ -306,7 +306,7 @@ macro_rules! make_value_visitor {
                     layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
                         // FIXME: We collect in a vec because otherwise there are lifetime
                         // errors: Projecting to a field needs access to `ecx`.
-                        let fields: Vec<EvalResult<'tcx, Self::V>> =
+                        let fields: Vec<InterpResult<'tcx, Self::V>> =
                             (0..offsets.len()).map(|i| {
                                 v.project_field(self.ecx(), i as u64)
                             })

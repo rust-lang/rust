@@ -24,7 +24,7 @@ use syntax::source_map::{Span, DUMMY_SP};
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Immediate, Scalar,
     RawConst, ConstValue,
-    EvalResult, EvalError, InterpError, GlobalId, InterpretCx, StackPopCleanup,
+    InterpResult, InterpErrorInfo, InterpError, GlobalId, InterpretCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
 };
@@ -57,7 +57,7 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Body<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = mk_eval_cx(tcx, span, param_env);
     eval_body_using_ecx(&mut ecx, cid, mir, param_env)
@@ -141,7 +141,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Body<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
     let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
@@ -176,8 +176,8 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     Ok(ret)
 }
 
-impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
-    fn into(self) -> EvalError<'tcx> {
+impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
+    fn into(self) -> InterpErrorInfo<'tcx> {
         InterpError::MachineError(self.to_string()).into()
     }
 }
@@ -333,7 +333,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         args: &[OpTy<'tcx>],
         dest: Option<PlaceTy<'tcx>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
+    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         debug!("eval_fn_call: {:?}", instance);
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def_id) = instance.def {
@@ -372,7 +372,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         if ecx.emulate_intrinsic(instance, args, dest)? {
             return Ok(());
         }
@@ -388,7 +388,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> InterpResult<'tcx, (Scalar, bool)> {
         Err(
             ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
         )
@@ -397,7 +397,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn find_foreign_static(
         _def_id: DefId,
         _tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
         err!(ReadForeignStatic)
     }
 
@@ -423,13 +423,13 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn box_alloc(
         _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Err(
             ConstEvalError::NeedsRfc("heap allocations via `box` keyword".to_string()).into(),
         )
     }
 
-    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
+    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         {
             let steps = &mut ecx.machine.steps_since_detector_enabled;
 
@@ -456,7 +456,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     #[inline(always)]
     fn stack_push(
         _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
@@ -465,7 +465,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn stack_pop(
         _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _extra: (),
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 }
@@ -511,7 +511,7 @@ pub fn const_variant_index<'a, 'tcx>(
 
 pub fn error_to_const_error<'a, 'mir, 'tcx>(
     ecx: &InterpretCx<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
-    mut error: EvalError<'tcx>
+    mut error: InterpErrorInfo<'tcx>
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
     let stacktrace = ecx.generate_stacktrace(None);

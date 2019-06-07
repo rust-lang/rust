@@ -1,6 +1,6 @@
 use rustc::ty::{self, Ty, Instance};
 use rustc::ty::layout::{Size, Align, LayoutOf};
-use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
+use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic};
 
 use super::{InterpretCx, InterpError, Machine, MemoryKind};
 
@@ -15,7 +15,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &mut self,
         ty: Ty<'tcx>,
         poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
-    ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         trace!("get_vtable(trait_ref={:?})", poly_trait_ref);
 
         let (ty, poly_trait_ref) = self.tcx.erase_regions(&(ty, poly_trait_ref));
@@ -102,7 +102,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub fn read_drop_type_from_vtable(
         &self,
         vtable: Pointer<M::PointerTag>,
-    ) -> EvalResult<'tcx, (ty::Instance<'tcx>, Ty<'tcx>)> {
+    ) -> InterpResult<'tcx, (ty::Instance<'tcx>, Ty<'tcx>)> {
         // we don't care about the pointee type, we just want a pointer
         self.memory.check_align(vtable.into(), self.tcx.data_layout.pointer_align.abi)?;
         let drop_fn = self.memory
@@ -121,7 +121,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub fn read_size_and_align_from_vtable(
         &self,
         vtable: Pointer<M::PointerTag>,
-    ) -> EvalResult<'tcx, (Size, Align)> {
+    ) -> InterpResult<'tcx, (Size, Align)> {
         let pointer_size = self.pointer_size();
         self.memory.check_align(vtable.into(), self.tcx.data_layout.pointer_align.abi)?;
         let alloc = self.memory.get(vtable.alloc_id)?;
