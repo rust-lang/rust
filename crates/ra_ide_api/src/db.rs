@@ -41,6 +41,12 @@ impl salsa::Database for RootDatabase {
 
 impl Default for RootDatabase {
     fn default() -> RootDatabase {
+        RootDatabase::new(None)
+    }
+}
+
+impl RootDatabase {
+    pub fn new(lru_capacity: Option<usize>) -> RootDatabase {
         let mut db = RootDatabase {
             runtime: salsa::Runtime::default(),
             last_gc: time::Instant::now(),
@@ -49,9 +55,9 @@ impl Default for RootDatabase {
         db.set_crate_graph(Default::default());
         db.set_local_roots(Default::default());
         db.set_library_roots(Default::default());
-        let lru_cap = ra_db::DEFAULT_LRU_CAP;
-        db.query_mut(ra_db::ParseQuery).set_lru_capacity(lru_cap);
-        db.query_mut(hir::db::ParseMacroQuery).set_lru_capacity(lru_cap);
+        let lru_capacity = lru_capacity.unwrap_or(ra_db::DEFAULT_LRU_CAP);
+        db.query_mut(ra_db::ParseQuery).set_lru_capacity(lru_capacity);
+        db.query_mut(hir::db::ParseMacroQuery).set_lru_capacity(lru_capacity);
         db
     }
 }

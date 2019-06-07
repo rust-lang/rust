@@ -35,7 +35,8 @@ export class Server {
             initializationOptions: {
                 publishDecorations: true,
                 showWorkspaceLoaded:
-                    Server.config.showWorkspaceLoadedNotification
+                    Server.config.showWorkspaceLoadedNotification,
+                lruCapacity: Server.config.lruCapacity
             },
             traceOutputChannel
         };

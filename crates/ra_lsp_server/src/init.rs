@@ -17,11 +17,17 @@ pub struct InitializationOptions {
     /// Defaults to `true`
     #[serde(deserialize_with = "nullable_bool_true")]
     pub show_workspace_loaded: bool,
+
+    pub lru_capacity: Option<usize>,
 }
 
 impl Default for InitializationOptions {
     fn default() -> InitializationOptions {
-        InitializationOptions { publish_decorations: false, show_workspace_loaded: true }
+        InitializationOptions {
+            publish_decorations: false,
+            show_workspace_loaded: true,
+            lru_capacity: None,
+        }
     }
 }
 
@@ -54,8 +60,10 @@ mod test {
         assert_eq!(default, serde_json::from_str(r#"{}"#).unwrap());
         assert_eq!(
             default,
-            serde_json::from_str(r#"{"publishDecorations":null, "showWorkspaceLoaded":null}"#)
-                .unwrap()
+            serde_json::from_str(
+                r#"{"publishDecorations":null, "showWorkspaceLoaded":null, "lruCapacity":null}"#
+            )
+            .unwrap()
         );
     }
 }

@@ -73,7 +73,7 @@ pub fn main_loop(
         loaded_workspaces
     };
 
-    let mut state = WorldState::new(ws_roots, workspaces);
+    let mut state = WorldState::new(ws_roots, workspaces, options.lru_capacity);
 
     let pool = ThreadPool::new(THREADPOOL_SIZE);
     let (task_sender, task_receiver) = unbounded::<Task>();
