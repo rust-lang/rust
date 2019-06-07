@@ -271,14 +271,13 @@ impl<'a> Parser<'a> {
         let mut recovered = None;
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`.
-            recovered = self.look_ahead(1, |t| {
+            recovered = self.look_ahead(1, |next_token| {
                 if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix })
-                        = t.kind {
-                    let next_span = self.look_ahead_span(1);
-                    if self.token.span.hi() == next_span.lo() {
+                        = next_token.kind {
+                    if self.token.span.hi() == next_token.span.lo() {
                         let s = String::from("0.") + &symbol.as_str();
                         let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
-                        return Some(Token::new(kind, self.token.span.to(next_span)));
+                        return Some(Token::new(kind, self.token.span.to(next_token.span)));
                     }
                 }
                 None

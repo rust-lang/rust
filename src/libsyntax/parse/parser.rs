@@ -1064,18 +1064,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    crate fn look_ahead_span(&self, dist: usize) -> Span {
-        if dist == 0 {
-            return self.token.span
-        }
-
-        match self.token_cursor.frame.tree_cursor.look_ahead(dist - 1) {
-            Some(TokenTree::Token(token)) => token.span,
-            Some(TokenTree::Delimited(span, ..)) => span.entire(),
-            None => self.look_ahead_span(dist - 1),
-        }
-    }
-
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
     fn is_keyword_ahead(&self, dist: usize, kws: &[Symbol]) -> bool {
         self.look_ahead(dist, |t| kws.iter().any(|&kw| t.is_keyword(kw)))
@@ -3067,7 +3055,7 @@ impl<'a> Parser<'a> {
                         let mut err =
                             self.sess.span_diagnostic.struct_span_err(self.token.span, &msg);
                         let span_after_type = parser_snapshot_after_type.token.span;
-                        err.span_label(self.look_ahead_span(1).to(span_after_type),
+                        err.span_label(self.look_ahead(1, |t| t.span).to(span_after_type),
                                        "interpreted as generic arguments");
                         err.span_label(self.token.span, format!("not interpreted as {}", op_noun));
 
