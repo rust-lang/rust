@@ -36,9 +36,10 @@ debug-assertions = true
 # performance perhaps (less inlining) but it's worth it.
 codegen-units = 0
 
-# I always enable full debuginfo, however the line debuginfo (which is a more important part
-# and enables e.g. line numbers in backtraces) is enabled by `debuginfo-level = 1` too.
-debuginfo-level = 2
+# This enables full debuginfo (`debuginfo-level = 2`). The line debuginfo (which is a
+# more important part and enables e.g. line numbers in backtraces) is also enabled by
+# `debuginfo-level = 1`.
+debug = true
 ```
 
 ### What is `x.py`?
