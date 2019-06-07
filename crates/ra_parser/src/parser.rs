@@ -272,7 +272,7 @@ impl<'t> Parser<'t> {
             T![=] if jn1 && la2 == T![=] => Some((T![==], 2)),
             T![=] if jn1 && la2 == T![>] => Some((T![=>], 2)),
 
-            T![!] if la2 == T![=] => Some((T![!=], 2)),
+            T![!] if jn1 && la2 == T![=] => Some((T![!=], 2)),
             T![-] if la2 == T![>] => Some((T![->], 2)),
             _ => None,
         }

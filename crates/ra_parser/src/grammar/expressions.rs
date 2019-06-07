@@ -137,12 +137,14 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
         m.complete(p, EXPR_STMT);
     }
 
-    // test let_stmt;
+    // test let_stmt
     // fn foo() {
     //     let a;
     //     let b: i32;
     //     let c = 92;
     //     let d: i32 = 92;
+    //     let e: !;
+    //     let _: ! = {};
     // }
     fn let_stmt(p: &mut Parser, m: Marker, with_semi: StmtWithSemi) {
         assert!(p.at(T![let]));
