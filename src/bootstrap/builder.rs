@@ -59,7 +59,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
     const DEFAULT: bool = false;
 
-    /// Run this rule for all hosts without cross compiling.
+    /// If true, then this rule should be skipped if --target was specified, but --host was not
     const ONLY_HOSTS: bool = false;
 
     /// Primary function to execute this rule. Can call `builder.ensure()`
@@ -163,7 +163,7 @@ impl StepDescription {
 
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts {
-            if !builder.config.run_host_only {
+            if builder.config.skip_only_host_steps {
                 return; // don't run anything
             } else {
                 &builder.hosts
@@ -1338,7 +1338,7 @@ mod __test {
         let mut config = Config::default_opts();
         // don't save toolstates
         config.save_toolstates = None;
-        config.run_host_only = true;
+        config.skip_only_host_steps = false;
         config.dry_run = true;
         // try to avoid spurious failures in dist where we create/delete each others file
         let dir = config.out.join("tmp-rustbuild-tests").join(
@@ -1583,7 +1583,7 @@ mod __test {
     #[test]
     fn dist_with_target_flag() {
         let mut config = configure(&["B"], &["C"]);
-        config.run_host_only = false; // as-if --target=C was passed
+        config.skip_only_host_steps = true; // as-if --target=C was passed
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
@@ -1831,7 +1831,7 @@ mod __test {
     #[test]
     fn build_with_target_flag() {
         let mut config = configure(&["B"], &["C"]);
-        config.run_host_only = false;
+        config.skip_only_host_steps = true;
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
