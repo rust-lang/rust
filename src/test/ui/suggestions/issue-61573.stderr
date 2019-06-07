@@ -1,0 +1,16 @@
+error: unexpected `,` in pattern
+  --> $DIR/issue-61573.rs:2:10
+   |
+LL |     let a, b = x;
+   |          ^
+help: try adding parentheses to match on a tuple..
+   |
+LL |     let (a, b) = x;
+   |         ^^^^^^
+help: ..or a vertical bar to match on multiple alternatives
+   |
+LL |     let a | b = x;
+   |         ^^^^^
+
+error: aborting due to previous error
+
