@@ -6,14 +6,14 @@ use rustc::ty::layout::{self, TyLayout, LayoutOf};
 use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{EvalResult, PointerArithmetic, InterpError, Scalar};
+use rustc::mir::interpret::{InterpResult, PointerArithmetic, InterpError, Scalar};
 use super::{
     InterpretCx, Machine, Immediate, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup
 };
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
     #[inline]
-    pub fn goto_block(&mut self, target: Option<mir::BasicBlock>) -> EvalResult<'tcx> {
+    pub fn goto_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
         if let Some(target) = target {
             self.frame_mut().block = target;
             self.frame_mut().stmt = 0;
@@ -26,7 +26,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub(super) fn eval_terminator(
         &mut self,
         terminator: &mir::Terminator<'tcx>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         use rustc::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
@@ -206,7 +206,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         rust_abi: bool,
         caller_arg: &mut impl Iterator<Item=OpTy<'tcx, M::PointerTag>>,
         callee_arg: PlaceTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         if rust_abi && callee_arg.layout.is_zst() {
             // Nothing to do.
             trace!("Skipping callee ZST");
@@ -234,7 +234,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         args: &[OpTy<'tcx, M::PointerTag>],
         dest: Option<PlaceTy<'tcx, M::PointerTag>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", instance);
 
         match instance.def {
@@ -337,7 +337,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                                 .chain((0..untuple_arg.layout.fields.count()).into_iter()
                                     .map(|i| self.operand_field(untuple_arg, i as u64))
                                 )
-                                .collect::<EvalResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>()?)
+                                .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>()?)
                         } else {
                             // Plain arg passing
                             Cow::from(args)
@@ -457,7 +457,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         instance: ty::Instance<'tcx>,
         span: Span,
         target: mir::BasicBlock,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
         // We take the address of the object.  This may well be unaligned, which is fine
         // for us here.  However, unaligned accesses will probably make the actual drop

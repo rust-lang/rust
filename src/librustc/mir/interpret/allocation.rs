@@ -1,7 +1,7 @@
 //! The virtual memory representation of the MIR interpreter.
 
 use super::{
-    Pointer, EvalResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
+    Pointer, InterpResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
 };
 
 use crate::ty::layout::{Size, Align};
@@ -82,7 +82,7 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
         _alloc: &Allocation<Tag, Self>,
         _ptr: Pointer<Tag>,
         _size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
@@ -92,7 +92,7 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
         _alloc: &mut Allocation<Tag, Self>,
         _ptr: Pointer<Tag>,
         _size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
@@ -103,7 +103,7 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
         _alloc: &mut Allocation<Tag, Self>,
         _ptr: Pointer<Tag>,
         _size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 }
@@ -156,7 +156,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         &self,
         ptr: Pointer<Tag>,
         msg: CheckInAllocMsg,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let allocation_size = self.bytes.len() as u64;
         ptr.check_in_alloc(Size::from_bytes(allocation_size), msg)
     }
@@ -169,7 +169,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
         msg: CheckInAllocMsg,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         self.check_bounds_ptr(ptr.offset(size, cx)?, msg)
     }
@@ -191,7 +191,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         size: Size,
         check_defined_and_ptr: bool,
         msg: CheckInAllocMsg,
-    ) -> EvalResult<'tcx, &[u8]>
+    ) -> InterpResult<'tcx, &[u8]>
     {
         self.check_bounds(cx, ptr, size, msg)?;
 
@@ -217,7 +217,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx, &[u8]>
+    ) -> InterpResult<'tcx, &[u8]>
     {
         self.get_bytes_internal(cx, ptr, size, true, CheckInAllocMsg::MemoryAccessTest)
     }
@@ -230,7 +230,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx, &[u8]>
+    ) -> InterpResult<'tcx, &[u8]>
     {
         self.get_bytes_internal(cx, ptr, size, false, CheckInAllocMsg::MemoryAccessTest)
     }
@@ -242,7 +242,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx, &mut [u8]>
+    ) -> InterpResult<'tcx, &mut [u8]>
     {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_bounds(cx, ptr, size, CheckInAllocMsg::MemoryAccessTest)?;
@@ -267,7 +267,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-    ) -> EvalResult<'tcx, &[u8]>
+    ) -> InterpResult<'tcx, &[u8]>
     {
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         let offset = ptr.offset.bytes() as usize;
@@ -292,7 +292,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
         allow_ptr_and_undef: bool,
-    ) -> EvalResult<'tcx>
+    ) -> InterpResult<'tcx>
     {
         // Check bounds and relocations on the edges
         self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
@@ -312,7 +312,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         src: &[u8],
-    ) -> EvalResult<'tcx>
+    ) -> InterpResult<'tcx>
     {
         let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64))?;
         bytes.clone_from_slice(src);
@@ -326,7 +326,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         val: u8,
         count: Size
-    ) -> EvalResult<'tcx>
+    ) -> InterpResult<'tcx>
     {
         let bytes = self.get_bytes_mut(cx, ptr, count)?;
         for b in bytes {
@@ -348,7 +348,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size
-    ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>>
+    ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>>
     {
         // get_bytes_unchecked tests relocation edges
         let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
@@ -383,7 +383,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-    ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>>
+    ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>>
     {
         self.read_scalar(cx, ptr, cx.data_layout().pointer_size)
     }
@@ -402,7 +402,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         val: ScalarMaybeUndef<Tag>,
         type_size: Size,
-    ) -> EvalResult<'tcx>
+    ) -> InterpResult<'tcx>
     {
         let val = match val {
             ScalarMaybeUndef::Scalar(scalar) => scalar,
@@ -438,7 +438,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         val: ScalarMaybeUndef<Tag>
-    ) -> EvalResult<'tcx>
+    ) -> InterpResult<'tcx>
     {
         let ptr_size = cx.data_layout().pointer_size;
         self.write_scalar(cx, ptr.into(), val, ptr_size)
@@ -468,7 +468,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         if self.relocations(cx, ptr, size).is_empty() {
             Ok(())
         } else {
@@ -487,7 +487,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
             // Find all relocations overlapping the given range.
@@ -525,7 +525,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         self.check_relocations(cx, ptr, Size::ZERO)?;
         self.check_relocations(cx, ptr.offset(size, cx)?, Size::ZERO)?;
         Ok(())
@@ -538,7 +538,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// Checks that a range of bytes is defined. If not, returns the `ReadUndefBytes`
     /// error which will report the first byte which is undefined.
     #[inline]
-    fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> EvalResult<'tcx> {
+    fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
         self.undef_mask.is_range_defined(
             ptr.offset,
             ptr.offset + size,
@@ -550,7 +550,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
         new_state: bool,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         if size.bytes() == 0 {
             return Ok(());
         }

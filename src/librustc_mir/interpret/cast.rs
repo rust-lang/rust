@@ -6,7 +6,7 @@ use syntax::symbol::sym;
 
 use rustc_apfloat::ieee::{Single, Double};
 use rustc::mir::interpret::{
-    Scalar, EvalResult, Pointer, PointerArithmetic, InterpError,
+    Scalar, InterpResult, Pointer, PointerArithmetic, InterpError,
 };
 use rustc::mir::CastKind;
 use rustc_apfloat::Float;
@@ -28,7 +28,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         src: OpTy<'tcx, M::PointerTag>,
         kind: CastKind,
         dest: PlaceTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         use rustc::mir::CastKind::*;
         match kind {
             Pointer(PointerCast::Unsize) => {
@@ -80,7 +80,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                         if self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
                             bug!("reifying a fn ptr that requires const arguments");
                         }
-                        let instance: EvalResult<'tcx, _> = ty::Instance::resolve(
+                        let instance: InterpResult<'tcx, _> = ty::Instance::resolve(
                             *self.tcx,
                             self.param_env,
                             def_id,
@@ -131,7 +131,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         val: Scalar<M::PointerTag>,
         src_layout: TyLayout<'tcx>,
         dest_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::ty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", val, src_layout.ty, dest_layout.ty);
 
@@ -151,7 +151,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         v: u128,
         src_layout: TyLayout<'tcx>,
         dest_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         let signed = src_layout.abi.is_signed();
         let v = if signed {
             self.sign_extend(v, src_layout)
@@ -199,7 +199,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         bits: u128,
         fty: FloatTy,
         dest_ty: Ty<'tcx>
-    ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::ty::TyKind::*;
         use rustc_apfloat::FloatConvert;
         match dest_ty.sty {
@@ -247,7 +247,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &self,
         ptr: Pointer<M::PointerTag>,
         ty: Ty<'tcx>
-    ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::ty::TyKind::*;
         match ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc,
@@ -267,7 +267,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         // The pointee types
         sty: Ty<'tcx>,
         dty: Ty<'tcx>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // A<Struct> -> A<Trait> conversion
         let (src_pointee_ty, dest_pointee_ty) = self.tcx.struct_lockstep_tails(sty, dty);
 
@@ -305,7 +305,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &mut self,
         src: OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} into {:?}", src, dest);
         match (&src.layout.ty.sty, &dest.layout.ty.sty) {
             (&ty::Ref(_, s, _), &ty::Ref(_, d, _)) |

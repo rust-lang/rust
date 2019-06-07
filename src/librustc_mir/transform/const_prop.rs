@@ -11,7 +11,7 @@ use rustc::mir::{
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
 };
-use rustc::mir::interpret::{InterpError, Scalar, GlobalId, EvalResult};
+use rustc::mir::interpret::{InterpError, Scalar, GlobalId, InterpResult};
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
@@ -156,7 +156,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         f: F
     ) -> Option<T>
     where
-        F: FnOnce(&mut Self) -> EvalResult<'tcx, T>,
+        F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         self.ecx.tcx.span = source_info.span;
         let lint_root = match self.source_scope_local_data {
