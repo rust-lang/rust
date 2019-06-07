@@ -311,7 +311,11 @@ impl<'a> Parser<'a> {
                 let (lit, span) = (token.expect_lit(), token.span);
                 self.bump();
                 err.report(&self.sess.span_diagnostic, lit, span);
-                let lit = token::Lit::new(token::Err, lit.symbol, lit.suffix);
+                // Pack possible quotes and prefixes from the original literal into
+                // the error literal's symbol so they can be pretty-printed faithfully.
+                let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
+                let symbol = Symbol::intern(&pprust::literal_to_string(suffixless_lit));
+                let lit = token::Lit::new(token::Err, symbol, lit.suffix);
                 Lit::from_lit_token(lit, span).map_err(|_| unreachable!())
             }
         }

@@ -34,15 +34,6 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
             let allocation = tcx.intern_const_alloc(allocation);
             ConstValue::Slice { data: allocation, start: 0, end: s.len() }
         },
-        LitKind::Err(ref s) => {
-            let s = s.as_str();
-            let allocation = Allocation::from_byte_aligned_bytes(s.as_bytes());
-            let allocation = tcx.intern_const_alloc(allocation);
-            return Ok(tcx.mk_const(ty::Const {
-                val: ConstValue::Slice{ data: allocation, start: 0, end: s.len() },
-                ty: tcx.types.err,
-            }));
-        },
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::Ptr(id.into()))
@@ -66,6 +57,7 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
         }
         LitKind::Bool(b) => ConstValue::Scalar(Scalar::from_bool(b)),
         LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
+        LitKind::Err(_) => unreachable!(),
     };
     Ok(tcx.mk_const(ty::Const { val: lit, ty }))
 }
