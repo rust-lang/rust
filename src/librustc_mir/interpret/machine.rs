@@ -10,9 +10,8 @@ use rustc::mir;
 use rustc::ty::{self, query::TyCtxtAt};
 
 use super::{
-    Allocation, AllocId, EvalResult, Scalar, Pointer, EvalError, InterpError,
+    Allocation, AllocId, InterpResult, Scalar, Pointer, InterpErrorInfo, InterpError,
     AllocationExtra, InterpretCx, PlaceTy, OpTy, ImmTy, MemoryKind,
-
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -100,7 +99,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
 
     /// Called before a basic block terminator is executed.
     /// You can use this to detect endlessly running programs.
-    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>;
+    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx>;
 
     /// Entry point to all function calls.
     ///
@@ -118,7 +117,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
+    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
     /// Directly process an intrinsic without pushing a stack frame.
     /// If this returns successfully, the engine will take care of jumping to the next block.
@@ -127,7 +126,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: PlaceTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx>;
+    ) -> InterpResult<'tcx>;
 
     /// Called for read access to a foreign static item.
     ///
@@ -139,7 +138,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     fn find_foreign_static(
         def_id: DefId,
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation>>;
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation>>;
 
     /// Called for all binary operations on integer(-like) types when one operand is a pointer
     /// value, and for the `Offset` operation that is inherently about pointers.
@@ -150,13 +149,13 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Self::PointerTag>,
         right: ImmTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx, (Scalar<Self::PointerTag>, bool)>;
+    ) -> InterpResult<'tcx, (Scalar<Self::PointerTag>, bool)>;
 
     /// Heap allocations via the `box` keyword.
     fn box_alloc(
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx>;
+    ) -> InterpResult<'tcx>;
 
     /// Called to initialize the "extra" state of an allocation and make the pointers
     /// it contains (in relocations) tagged.  The way we construct allocations is
@@ -197,32 +196,32 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _kind: mir::RetagKind,
         _place: PlaceTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
     /// Called immediately before a new stack frame got pushed
     fn stack_push(
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-    ) -> EvalResult<'tcx, Self::FrameExtra>;
+    ) -> InterpResult<'tcx, Self::FrameExtra>;
 
     /// Called immediately after a stack frame gets popped
     fn stack_pop(
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         extra: Self::FrameExtra,
-    ) -> EvalResult<'tcx>;
+    ) -> InterpResult<'tcx>;
 
     fn int_to_ptr(
         _int: u64,
         _extra: &Self::MemoryExtra
-    ) -> EvalResult<'tcx, Pointer<Self::PointerTag>> {
-            Err(EvalError::from(InterpError::ReadBytesAsPointer))
+    ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
+            Err(InterpErrorInfo::from(InterpError::ReadBytesAsPointer))
         }
 
     fn ptr_to_int(
         _ptr: Pointer<Self::PointerTag>,
         _extra: &Self::MemoryExtra
-    ) -> EvalResult<'tcx, u64> {
-        Err(EvalError::from(InterpError::ReadPointerAsBytes))
+    ) -> InterpResult<'tcx, u64> {
+        Err(InterpErrorInfo::from(InterpError::ReadPointerAsBytes))
     }
 }
