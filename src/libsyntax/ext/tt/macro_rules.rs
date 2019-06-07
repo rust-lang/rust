@@ -909,7 +909,7 @@ fn check_matcher_core(sess: &ParseSess,
                             continue 'each_last;
                         }
                         IsInFollow::Yes => {}
-                        IsInFollow::No(ref possible) => {
+                        IsInFollow::No(possible) => {
                             let may_be = if last.tokens.len() == 1 &&
                                 suffix_first.tokens.len() == 1
                             {
@@ -933,7 +933,7 @@ fn check_matcher_core(sess: &ParseSess,
                                 format!("not allowed after `{}` fragments", frag_spec),
                             );
                             let msg = "allowed there are: ";
-                            match &possible[..] {
+                            match possible {
                                 &[] => {}
                                 &[t] => {
                                     err.note(&format!(
@@ -997,7 +997,7 @@ fn frag_can_be_followed_by_any(frag: &str) -> bool {
 
 enum IsInFollow {
     Yes,
-    No(Vec<&'static str>),
+    No(&'static [&'static str]),
     Invalid(String, &'static str),
 }
 
@@ -1029,28 +1029,28 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 IsInFollow::Yes
             },
             "stmt" | "expr"  => {
-                let tokens = vec!["`=>`", "`,`", "`;`"];
+                const TOKENS: &[&str] = &["`=>`", "`,`", "`;`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Semi => IsInFollow::Yes,
-                        _ => IsInFollow::No(tokens),
+                        _ => IsInFollow::No(TOKENS),
                     },
-                    _ => IsInFollow::No(tokens),
+                    _ => IsInFollow::No(TOKENS),
                 }
             },
             "pat" => {
-                let tokens = vec!["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
+                const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | BinOp(token::Or) => IsInFollow::Yes,
                         Ident(name, false) if name == kw::If || name == kw::In => IsInFollow::Yes,
-                        _ => IsInFollow::No(tokens),
+                        _ => IsInFollow::No(TOKENS),
                     },
-                    _ => IsInFollow::No(tokens),
+                    _ => IsInFollow::No(TOKENS),
                 }
             },
             "path" | "ty" => {
-                let tokens = vec![
+                const TOKENS: &[&str] = &[
                     "`{`", "`[`", "`=>`", "`,`", "`>`","`=`", "`:`", "`;`", "`|`", "`as`",
                     "`where`",
                 ];
@@ -1062,11 +1062,11 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                         BinOp(token::Or) => IsInFollow::Yes,
                         Ident(name, false) if name == kw::As ||
                                               name == kw::Where => IsInFollow::Yes,
-                        _ => IsInFollow::No(tokens),
+                        _ => IsInFollow::No(TOKENS),
                     },
                     TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::block =>
                         IsInFollow::Yes,
-                    _ => IsInFollow::No(tokens),
+                    _ => IsInFollow::No(TOKENS),
                 }
             },
             "ident" | "lifetime" => {
@@ -1084,7 +1084,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
             },
             "vis" => {
                 // Explicitly disallow `priv`, on the off chance it comes back.
-                let tokens = vec!["`,`", "an ident", "a type"];
+                const TOKENS: &[&str] = &["`,`", "an ident", "a type"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         Comma => IsInFollow::Yes,
@@ -1092,14 +1092,14 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                         _ => if token.can_begin_type() {
                             IsInFollow::Yes
                         } else {
-                            IsInFollow::No(tokens)
+                            IsInFollow::No(TOKENS)
                         }
                     },
                     TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::ident
                                                        || frag.name == sym::ty
                                                        || frag.name == sym::path =>
                         IsInFollow::Yes,
-                    _ => IsInFollow::No(tokens),
+                    _ => IsInFollow::No(TOKENS),
                 }
             },
             "" => IsInFollow::Yes, // kw::Invalid
