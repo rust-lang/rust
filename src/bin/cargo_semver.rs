@@ -352,9 +352,13 @@ impl<'a> SourceInfo<'a> {
     /// Construct a new source info for `crates.io`.
     pub fn new(config: &'a cargo::Config) -> Result<SourceInfo<'a>> {
         let source_id = SourceId::crates_io(config)?;
-        let source = source_id.load(config, &HashSet::new())?;
+        let mut source = source_id.load(config, &HashSet::new())?;
 
         debug!("source id loaded: {:?}", source_id);
+
+        // Update the index.  Without this we would not be able to fetch recent packages if the
+        // index is not up-to-date.
+        source.update()?;
 
         Ok(Self {
             id: source_id,
