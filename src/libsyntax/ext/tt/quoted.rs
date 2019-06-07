@@ -375,7 +375,7 @@ fn parse_kleene_op(
             .as_ref()
             .map(tokenstream::TokenTree::span)
             .unwrap_or(span)),
-    }   
+    }
 }
 
 /// Attempt to parse a single Kleene star, possibly with a separator.
