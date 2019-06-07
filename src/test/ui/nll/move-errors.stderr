@@ -5,7 +5,7 @@ LL |     let b = *a;
    |             ^^
    |             |
    |             move occurs because `*a` has type `A`, which does not implement the `Copy` trait
-   |             help: consider removing the `*`: `a`
+   |             help: consider borrowing here: `&*a`
 
 error[E0508]: cannot move out of type `[A; 1]`, a non-copy array
   --> $DIR/move-errors.rs:12:13
@@ -24,7 +24,7 @@ LL |     let s = **r;
    |             ^^^
    |             |
    |             move occurs because `**r` has type `A`, which does not implement the `Copy` trait
-   |             help: consider removing the `*`: `*r`
+   |             help: consider borrowing here: `&**r`
 
 error[E0507]: cannot move out of an `Rc`
   --> $DIR/move-errors.rs:27:13
@@ -33,7 +33,7 @@ LL |     let s = *r;
    |             ^^
    |             |
    |             move occurs because value has type `A`, which does not implement the `Copy` trait
-   |             help: consider removing the `*`: `r`
+   |             help: consider borrowing here: `&*r`
 
 error[E0508]: cannot move out of type `[A; 1]`, a non-copy array
   --> $DIR/move-errors.rs:32:13
@@ -49,7 +49,7 @@ error[E0507]: cannot move out of `a.0` which is behind a shared reference
   --> $DIR/move-errors.rs:38:16
    |
 LL |     let A(s) = *a;
-   |           -    ^^ help: consider removing the `*`: `a`
+   |           -    ^^ help: consider borrowing here: `&*a`
    |           |
    |           data moved here
    |           move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
@@ -148,7 +148,7 @@ error[E0507]: cannot move out of `x.0` which is behind a shared reference
   --> $DIR/move-errors.rs:110:11
    |
 LL |     match *x {
-   |           ^^ help: consider removing the `*`: `x`
+   |           ^^ help: consider borrowing here: `&*x`
 LL |
 LL |         Ok(s) | Err(s) => (),
    |            -
