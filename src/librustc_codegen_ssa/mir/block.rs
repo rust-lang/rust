@@ -667,8 +667,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }).collect();
 
 
-            let callee_ty = instance.as_ref().unwrap().ty(bx.tcx());
-            bx.codegen_intrinsic_call(callee_ty, &fn_ty, &args, dest,
+            bx.codegen_intrinsic_call(*instance.as_ref().unwrap(), &fn_ty, &args, dest,
                                       terminator.source_info.span);
 
             if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
