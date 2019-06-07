@@ -2768,7 +2768,10 @@ impl Clean<Type> for hir::Ty {
                 };
                 let length = match cx.tcx.const_eval(param_env.and(cid)) {
                     Ok(length) => print_const(cx, length),
-                    Err(_) => "_".to_string(),
+                    Err(_) => cx.sess()
+                                .source_map()
+                                .span_to_snippet(cx.tcx.def_span(def_id))
+                                .unwrap_or_else(|_| "_".to_string()),
                 };
                 Array(box ty.clean(cx), length)
             },

@@ -5,7 +5,7 @@ LL |         let _b = *y;
    |                  ^^
    |                  |
    |                  move occurs because `*y` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
-   |                  help: consider removing the `*`: `y`
+   |                  help: consider borrowing here: `&*y`
 
 error: aborting due to previous error
 

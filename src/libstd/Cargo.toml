@@ -87,3 +87,5 @@ std_detect_dlsym_getauxval = []
 [package.metadata.fortanix-sgx]
 # Maximum possible number of threads when testing
 threads = 125
+# Maximum heap size
+heap_size = 0x8000000

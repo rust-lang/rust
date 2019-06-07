@@ -37,3 +37,11 @@ ENV SCRIPT python2.7 ../x.py test --target $TARGETS \
   src/libstd \
   src/liballoc \
   src/libcore
+
+# Debug assertions in rustc are largely covered by other builders, and LLVM
+# assertions cause this builder to slow down by quite a large amount and don't
+# buy us a huge amount over other builders (not sure if we've ever seen an
+# asmjs-specific backend assertion trip), so disable assertions for these
+# tests.
+ENV NO_LLVM_ASSERTIONS=1
+ENV NO_DEBUG_ASSERTIONS=1

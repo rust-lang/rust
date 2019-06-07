@@ -503,32 +503,12 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 move_from,
                 ..
             } => {
-                let try_remove_deref = match move_from {
-                    Place::Projection(box Projection {
-                        elem: ProjectionElem::Deref,
-                        ..
-                    }) => true,
-                    _ => false,
-                };
-                if try_remove_deref && snippet.starts_with('*') {
-                    // The snippet doesn't start with `*` in (e.g.) index
-                    // expressions `a[b]`, which roughly desugar to
-                    // `*Index::index(&a, b)` or
-                    // `*IndexMut::index_mut(&mut a, b)`.
-                    err.span_suggestion(
-                        span,
-                        "consider removing the `*`",
-                        snippet[1..].to_owned(),
-                        Applicability::Unspecified,
-                    );
-                } else {
-                    err.span_suggestion(
-                        span,
-                        "consider borrowing here",
-                        format!("&{}", snippet),
-                        Applicability::Unspecified,
-                    );
-                }
+                err.span_suggestion(
+                    span,
+                    "consider borrowing here",
+                    format!("&{}", snippet),
+                    Applicability::Unspecified,
+                );
 
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.mir, self.infcx.tcx).ty;
