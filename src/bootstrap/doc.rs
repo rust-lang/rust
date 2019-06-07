@@ -876,11 +876,6 @@ impl Step for UnstableBookGen {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
 
-        builder.ensure(compile::Std {
-            compiler: builder.compiler(builder.top_stage, builder.config.build),
-            target,
-        });
-
         builder.info(&format!("Generating unstable book md files ({})", target));
         let out = builder.md_doc_out(target).join("unstable-book");
         builder.create_dir(&out);
