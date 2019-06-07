@@ -14,7 +14,7 @@ use super::{
 
 mod type_name;
 
-pub use type_name::*;
+pub(crate) use type_name::alloc_type_name;
 
 fn numeric_intrinsic<'tcx, Tag>(
     name: &str,
