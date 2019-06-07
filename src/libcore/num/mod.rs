@@ -1993,13 +1993,10 @@ assert_eq!((-10", stringify!($SelfT), ").signum(), -1);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_sign")]
             #[inline]
-            pub fn signum(self) -> Self {
-                match self {
-                    n if n > 0 =>  1,
-                    0          =>  0,
-                    _          => -1,
-                }
+            pub const fn signum(self) -> Self {
+                (self > 0) as Self - (self < 0) as Self
             }
         }
 
