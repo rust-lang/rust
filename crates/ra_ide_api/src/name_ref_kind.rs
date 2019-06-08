@@ -1,11 +1,12 @@
 use ra_syntax::{AstNode, AstPtr, ast};
 use hir::Either;
-use crate::db::RootDatabase;
 use test_utils::tested_by;
+
+use crate::db::RootDatabase;
 
 pub enum NameRefKind {
     Method(hir::Function),
-    Macro(hir::MacroByExampleDef),
+    Macro(hir::MacroDef),
     FieldAccess(hir::StructField),
     AssocItem(hir::ImplItem),
     Def(hir::ModuleDef),

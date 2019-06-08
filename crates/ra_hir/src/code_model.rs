@@ -939,6 +939,15 @@ pub struct MacroDef {
     pub(crate) id: MacroDefId,
 }
 
+impl MacroDef {
+    pub fn source(
+        &self,
+        db: &(impl DefDatabase + AstDatabase),
+    ) -> (HirFileId, TreeArc<ast::MacroCall>) {
+        (self.id.0.file_id(), self.id.0.to_node(db))
+    }
+}
+
 pub enum Container {
     Trait(Trait),
     ImplBlock(ImplBlock),

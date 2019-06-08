@@ -10,7 +10,7 @@ use std::sync::Arc;
 use rustc_hash::{FxHashSet, FxHashMap};
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
-    SyntaxNode, AstPtr, TextUnit, SyntaxNodePtr, TextRange,TreeArc,
+    SyntaxNode, AstPtr, TextUnit, SyntaxNodePtr, TextRange,
     ast::{self, AstNode, NameOwner},
     algo::find_node_at_offset,
     SyntaxKind::*,
@@ -18,10 +18,9 @@ use ra_syntax::{
 
 use crate::{
     HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody, PerNs, Name,
-    AsName, Module, HirFileId, Crate, Trait, Resolver, Ty,Path,
+    AsName, Module, HirFileId, Crate, Trait, Resolver, Ty, Path, MacroDef,
     expr::{BodySourceMap, scope::{ScopeId, ExprScopes}},
-    ids::{LocationCtx, MacroDefId},
-    docs::{docs_from_ast,Documentation},
+    ids::LocationCtx,
     expr, AstId,
 };
 
@@ -182,25 +181,8 @@ pub enum PathResolution {
     /// A generic parameter
     GenericParam(u32),
     SelfType(crate::ImplBlock),
-    Macro(MacroByExampleDef),
+    Macro(MacroDef),
     AssocItem(crate::ImplItem),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroByExampleDef {
-    pub(crate) id: MacroDefId,
-}
-
-impl MacroByExampleDef {
-    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::MacroCall>) {
-        (self.id.0.file_id(), self.id.0.to_node(db))
-    }
-}
-
-impl crate::Docs for MacroByExampleDef {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        docs_from_ast(&*self.source(db).1)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -284,10 +266,10 @@ impl SourceAnalyzer {
         &self,
         db: &impl HirDatabase,
         macro_call: &ast::MacroCall,
-    ) -> Option<MacroByExampleDef> {
+    ) -> Option<MacroDef> {
         let id =
             self.resolver.resolve_macro_call(db, macro_call.path().and_then(Path::from_ast))?;
-        Some(MacroByExampleDef { id })
+        Some(MacroDef { id })
     }
 
     pub fn resolve_hir_path(
