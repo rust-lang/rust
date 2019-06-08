@@ -10,6 +10,16 @@ mod full {
     };
 
     fn test_full(crate_name: &str, old_version: &str, new_version: &str, expected_result: bool) {
+        // Full test are not working on windows.  See issue #105.
+        if std::env::var_os("CI").is_some() && cfg!(all(target_os = "windows", target_env = "msvc"))
+        {
+            eprintln!(
+                "Skipping full test of crate {} ({} -> {}) on windows. See issue #105.",
+                crate_name, old_version, new_version
+            );
+            return;
+        }
+
         // Add target dir to PATH so cargo-semver will call the right rust-semverver
         if let Some(path) = env::var_os("PATH") {
             let mut paths = env::split_paths(&path).collect::<Vec<_>>();
