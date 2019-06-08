@@ -33,8 +33,8 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                    span: Span,
                                    token_tree: &[TokenTree])
                                    -> Box<dyn MacResult+'cx> {
-    let code = match (token_tree.len(), token_tree.get(0)) {
-        (1, Some(&TokenTree::Token(Token { kind: token::Ident(code, _), .. }))) => code,
+    let code = match token_tree {
+        &[TokenTree::Token(Token { kind: token::Ident(code, _), .. })] => code,
         _ => unreachable!()
     };
 
@@ -66,22 +66,15 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                        span: Span,
                                        token_tree: &[TokenTree])
                                        -> Box<dyn MacResult+'cx> {
-    let (code, description) = match (
-        token_tree.len(),
-        token_tree.get(0),
-        token_tree.get(1),
-        token_tree.get(2)
-    ) {
-        (1, Some(&TokenTree::Token(Token { kind: token::Ident(code, _), .. })), None, None) => {
+    let (code, description) = match  token_tree {
+        &[TokenTree::Token(Token { kind: token::Ident(code, _), .. })] => {
             (code, None)
         },
-        (3, Some(&TokenTree::Token(Token { kind: token::Ident(code, _), .. })),
-            Some(&TokenTree::Token(Token { kind: token::Comma, .. })),
-            Some(&TokenTree::Token(Token {
-                kind: token::Literal(token::Lit { symbol, .. }), ..
-            }))) => {
+        &[TokenTree::Token(Token { kind: token::Ident(code, _), .. }),
+          TokenTree::Token(Token { kind: token::Comma, .. }),
+          TokenTree::Token(Token { kind: token::Literal(token::Lit { symbol, .. }), ..})] => {
             (code, Some(symbol))
-        }
+        },
         _ => unreachable!()
     };
 

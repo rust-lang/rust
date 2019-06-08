@@ -25,8 +25,8 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
              -> P<Expr>
     {
         let op = |cx: &mut ExtCtxt<'_>, span: Span, self_f: P<Expr>, other_fs: &[P<Expr>]| {
-            let other_f = match (other_fs.len(), other_fs.get(0)) {
-                (1, Some(o_f)) => o_f,
+            let other_f = match other_fs {
+                [o_f] => o_f,
                 _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`"),
             };
 

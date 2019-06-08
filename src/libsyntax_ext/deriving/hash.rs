@@ -52,8 +52,8 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt<'_>,
 }
 
 fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> P<Expr> {
-    let state_expr = match (substr.nonself_args.len(), substr.nonself_args.get(0)) {
-        (1, Some(o_f)) => o_f,
+    let state_expr = match &substr.nonself_args {
+        &[o_f] => o_f,
         _ => {
             cx.span_bug(trait_span,
                         "incorrect number of arguments in `derive(Hash)`")
