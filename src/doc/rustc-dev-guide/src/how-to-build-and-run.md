@@ -41,6 +41,9 @@ codegen-units = 0
 debug = true
 ```
 
+If you have already built `rustc`, then you may have to execute `rm -rf build` for subsequent
+configuration changes to take effect.
+
 ### What is `x.py`?
 
 `x.py` is the script used to orchestrate the tooling in the `rustc` repository.
