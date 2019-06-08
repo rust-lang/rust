@@ -65,6 +65,13 @@ Add this to your `Cargo.toml`:
 hashbrown = "0.4"
 ```
 
+Then:
+
+```rs
+use hashbrown::HashMap;
+let mut map = HashMap::new();
+```
+
 This crate has the following Cargo features:
 
 - `nightly`: Enables nightly-only features: `no_std` support and `#[may_dangle]`.
