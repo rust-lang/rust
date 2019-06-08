@@ -69,7 +69,7 @@ pub use self::{
     expr::ExprScopes,
     resolve::Resolution,
     generics::{GenericParams, GenericParam, HasGenericParams},
-    source_binder::{SourceAnalyzer, PathResolution, ScopeEntryWithSyntax,MacroByExampleDef},
+    source_binder::{SourceAnalyzer, PathResolution, ScopeEntryWithSyntax},
 };
 
 pub use self::code_model::{

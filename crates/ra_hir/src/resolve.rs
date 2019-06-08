@@ -148,8 +148,8 @@ impl Resolver {
             PathResult::from_resolution(self.resolve_name(db, &Name::self_param()))
         } else {
             let (item_map, module) = match self.module() {
-                Some(m) => m,
-                _ => return PathResult::empty(),
+                Some(it) => it,
+                None => return PathResult::empty(),
             };
             let (module_res, segment_index) = item_map.resolve_path(db, module, path);
 

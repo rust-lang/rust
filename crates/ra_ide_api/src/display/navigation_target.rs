@@ -238,10 +238,7 @@ impl NavigationTarget {
         }
     }
 
-    pub(crate) fn from_macro_def(
-        db: &RootDatabase,
-        macro_call: hir::MacroByExampleDef,
-    ) -> NavigationTarget {
+    pub(crate) fn from_macro_def(db: &RootDatabase, macro_call: hir::MacroDef) -> NavigationTarget {
         let (file_id, node) = macro_call.source(db);
         log::debug!("nav target {}", node.syntax().debug_dump());
         NavigationTarget::from_named(file_id.original_file(db), &*node)

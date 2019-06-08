@@ -323,6 +323,8 @@ impl CrateDefMap {
         (res.resolved_def, res.segment_index)
     }
 
+    // FIXME: This seems to do the same work as `resolve_path_with_macro`, but
+    // using a completely different code path. Seems bad, huh?
     pub(crate) fn find_macro(
         &self,
         db: &impl DefDatabase,
