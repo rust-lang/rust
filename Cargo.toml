@@ -19,7 +19,7 @@ faerie = "0.10.0"
 
 #goblin = "0.0.17"
 ar = "0.7.0"
-bitflags = "1.0.3"
+bitflags = "1.1.0"
 byteorder = "1.2.7"
 libc = "0.2.53"
 tempfile = "3.0.7"
