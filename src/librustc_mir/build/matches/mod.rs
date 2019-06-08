@@ -1737,7 +1737,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 pat_span,
             }))),
         };
-        let for_arm_body = self.local_decls.push(local.clone());
+        let for_arm_body = self.local_decls.push(local);
         let locals = if has_guard.0 {
             let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
                 // This variable isn't mutated but has a name, so has to be

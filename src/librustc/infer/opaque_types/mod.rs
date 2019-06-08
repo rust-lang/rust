@@ -307,7 +307,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             let required_region_bounds = tcx.required_region_bounds(
                 opaque_type,
-                bounds.predicates.clone(),
+                bounds.predicates,
             );
             debug_assert!(!required_region_bounds.is_empty());
 

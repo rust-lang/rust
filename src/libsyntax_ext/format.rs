@@ -887,7 +887,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt<'_>,
     };
 
     let fmt_str = &*fmt.node.0.as_str();  // for the suggestions below
-    let mut parser = parse::Parser::new(fmt_str, str_style, skips.clone(), append_newline);
+    let mut parser = parse::Parser::new(fmt_str, str_style, skips, append_newline);
 
     let mut unverified_pieces = Vec::new();
     while let Some(piece) = parser.next() {
