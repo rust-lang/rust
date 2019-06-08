@@ -281,6 +281,26 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
+    pub fn from_u8(i: u8) -> Self {
+        Scalar::Raw { data: i as u128, size: 1 }
+    }
+
+    #[inline]
+    pub fn from_u16(i: u16) -> Self {
+        Scalar::Raw { data: i as u128, size: 2 }
+    }
+
+    #[inline]
+    pub fn from_u32(i: u32) -> Self {
+        Scalar::Raw { data: i as u128, size: 4 }
+    }
+
+    #[inline]
+    pub fn from_u64(i: u64) -> Self {
+        Scalar::Raw { data: i as u128, size: 8 }
+    }
+
+    #[inline]
     pub fn from_int(i: impl Into<i128>, size: Size) -> Self {
         let i = i.into();
         // `into` performed sign extension, we have to truncate
@@ -294,12 +314,14 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_f32(f: Single) -> Self {
-        Scalar::Raw { data: f.to_bits() as u128, size: 4 }
+        // We trust apfloat to give us properly truncated data
+        Scalar::Raw { data: f.to_bits(), size: 4 }
     }
 
     #[inline]
     pub fn from_f64(f: Double) -> Self {
-        Scalar::Raw { data: f.to_bits() as u128, size: 8 }
+        // We trust apfloat to give us properly truncated data
+        Scalar::Raw { data: f.to_bits(), size: 8 }
     }
 
     #[inline]
