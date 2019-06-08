@@ -132,6 +132,20 @@ impl<Tag> fmt::Display for Scalar<Tag> {
     }
 }
 
+impl<Tag> From<Single> for Scalar<Tag> {
+    #[inline(always)]
+    fn from(f: Single) -> Self {
+        Scalar::from_f32(f)
+    }
+}
+
+impl<Tag> From<Double> for Scalar<Tag> {
+    #[inline(always)]
+    fn from(f: Double) -> Self {
+        Scalar::from_f64(f)
+    }
+}
+
 impl<'tcx> Scalar<()> {
     #[inline(always)]
     fn check_data(data: u128, size: u8) {

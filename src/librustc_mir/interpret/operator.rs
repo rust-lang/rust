@@ -43,7 +43,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         bin_op: mir::BinOp,
         l: char,
         r: char,
-    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool)> {
+    ) -> (Scalar<M::PointerTag>, bool) {
         use rustc::mir::BinOp::*;
 
         let res = match bin_op {
@@ -55,7 +55,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             Ge => l >= r,
             _ => bug!("Invalid operation on char: {:?}", bin_op),
         };
-        return Ok((Scalar::from_bool(res), false));
+        return (Scalar::from_bool(res), false);
     }
 
     fn binary_bool_op(
@@ -63,7 +63,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         bin_op: mir::BinOp,
         l: bool,
         r: bool,
-    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool)> {
+    ) -> (Scalar<M::PointerTag>, bool) {
         use rustc::mir::BinOp::*;
 
         let res = match bin_op {
@@ -78,44 +78,32 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             BitXor => l ^ r,
             _ => bug!("Invalid operation on bool: {:?}", bin_op),
         };
-        return Ok((Scalar::from_bool(res), false));
+        return (Scalar::from_bool(res), false);
     }
 
-    fn binary_float_op(
+    fn binary_float_op<F: Float + Into<Scalar<M::PointerTag>>>(
         &self,
         bin_op: mir::BinOp,
-        fty: FloatTy,
-        // passing in raw bits
-        l: u128,
-        r: u128,
-    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool)> {
+        l: F,
+        r: F,
+    ) -> (Scalar<M::PointerTag>, bool) {
         use rustc::mir::BinOp::*;
 
-        macro_rules! float_math {
-            ($ty:path, $from_float:ident) => {{
-                let l = <$ty>::from_bits(l);
-                let r = <$ty>::from_bits(r);
-                let val = match bin_op {
-                    Eq => Scalar::from_bool(l == r),
-                    Ne => Scalar::from_bool(l != r),
-                    Lt => Scalar::from_bool(l < r),
-                    Le => Scalar::from_bool(l <= r),
-                    Gt => Scalar::from_bool(l > r),
-                    Ge => Scalar::from_bool(l >= r),
-                    Add => Scalar::$from_float((l + r).value),
-                    Sub => Scalar::$from_float((l - r).value),
-                    Mul => Scalar::$from_float((l * r).value),
-                    Div => Scalar::$from_float((l / r).value),
-                    Rem => Scalar::$from_float((l % r).value),
-                    _ => bug!("invalid float op: `{:?}`", bin_op),
-                };
-                return Ok((val, false));
-            }};
-        }
-        match fty {
-            FloatTy::F32 => float_math!(Single, from_f32),
-            FloatTy::F64 => float_math!(Double, from_f64),
-        }
+        let val = match bin_op {
+            Eq => Scalar::from_bool(l == r),
+            Ne => Scalar::from_bool(l != r),
+            Lt => Scalar::from_bool(l < r),
+            Le => Scalar::from_bool(l <= r),
+            Gt => Scalar::from_bool(l > r),
+            Ge => Scalar::from_bool(l >= r),
+            Add => (l + r).value.into(),
+            Sub => (l - r).value.into(),
+            Mul => (l * r).value.into(),
+            Div => (l / r).value.into(),
+            Rem => (l % r).value.into(),
+            _ => bug!("invalid float op: `{:?}`", bin_op),
+        };
+        return (val, false);
     }
 
     fn binary_int_op(
@@ -284,21 +272,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         match left.layout.ty.sty {
             ty::Char => {
                 assert_eq!(left.layout.ty, right.layout.ty);
-                let left = left.to_scalar()?.to_char()?;
-                let right = right.to_scalar()?.to_char()?;
-                self.binary_char_op(bin_op, left, right)
+                let left = left.to_scalar()?;
+                let right = right.to_scalar()?;
+                Ok(self.binary_char_op(bin_op, left.to_char()?, right.to_char()?))
             }
             ty::Bool => {
                 assert_eq!(left.layout.ty, right.layout.ty);
-                let left = left.to_scalar()?.to_bool()?;
-                let right = right.to_scalar()?.to_bool()?;
-                self.binary_bool_op(bin_op, left, right)
+                let left = left.to_scalar()?;
+                let right = right.to_scalar()?;
+                Ok(self.binary_bool_op(bin_op, left.to_bool()?, right.to_bool()?))
             }
             ty::Float(fty) => {
                 assert_eq!(left.layout.ty, right.layout.ty);
-                let left = left.to_bits()?;
-                let right = right.to_bits()?;
-                self.binary_float_op(bin_op, fty, left, right)
+                let left = left.to_scalar()?;
+                let right = right.to_scalar()?;
+                Ok(match fty {
+                    FloatTy::F32 => self.binary_float_op(bin_op, left.to_f32()?, right.to_f32()?),
+                    FloatTy::F64 => self.binary_float_op(bin_op, left.to_f64()?, right.to_f64()?),
+                })
             }
             _ => {
                 // Must be integer(-like) types.  Don't forget about == on fn pointers.
