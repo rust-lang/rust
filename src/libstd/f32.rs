@@ -188,7 +188,7 @@ impl f32 {
         if self.is_nan() {
             NAN
         } else {
-            unsafe { intrinsics::copysignf32(1.0, self) }
+            1.0_f32.copysign(self)
         }
     }
 
