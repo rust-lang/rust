@@ -240,10 +240,49 @@ pub struct Token {
     pub span: Span,
 }
 
+impl TokenKind {
+    pub fn lit(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> TokenKind {
+        Literal(Lit::new(kind, symbol, suffix))
+    }
+
+    /// Returns tokens that are likely to be typed accidentally instead of the current token.
+    /// Enables better error recovery when the wrong token is found.
+    crate fn similar_tokens(&self) -> Option<Vec<TokenKind>> {
+        match *self {
+            Comma => Some(vec![Dot, Lt, Semi]),
+            Semi => Some(vec![Colon, Comma]),
+            _ => None
+        }
+    }
+}
+
 impl Token {
+    crate fn new(kind: TokenKind, span: Span) -> Self {
+        Token { kind, span }
+    }
+
+    /// Some token that will be thrown away later.
+    crate fn dummy() -> Self {
+        Token::new(TokenKind::Whitespace, DUMMY_SP)
+    }
+
     /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
-    crate fn from_ast_ident(ident: ast::Ident) -> Token {
+    crate fn from_ast_ident(ident: ast::Ident) -> Self {
         Token::new(Ident(ident.name, ident.is_raw_guess()), ident.span)
+    }
+
+    /// Return this token by value and leave a dummy token in its place.
+    crate fn take(&mut self) -> Self {
+        mem::replace(self, Token::dummy())
+    }
+
+    crate fn is_op(&self) -> bool {
+        match self.kind {
+            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
+            Ident(..) | Lifetime(..) | Interpolated(..) |
+            Whitespace | Comment | Shebang(..) | Eof => false,
+            _ => true,
+        }
     }
 
     crate fn is_like_plus(&self) -> bool {
@@ -327,15 +366,7 @@ impl Token {
         self.is_path_start() || self.is_lifetime() || self.is_keyword(kw::For) ||
         self == &Question || self == &OpenDelim(Paren)
     }
-}
 
-impl TokenKind {
-    pub fn lit(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> TokenKind {
-        Literal(Lit::new(kind, symbol, suffix))
-    }
-}
-
-impl Token {
     /// Returns `true` if the token is any literal
     crate fn is_lit(&self) -> bool {
         match self.kind {
@@ -535,21 +566,7 @@ impl Token {
 
         Some(Token::new(kind, self.span.to(joint.span)))
     }
-}
 
-impl TokenKind {
-    /// Returns tokens that are likely to be typed accidentally instead of the current token.
-    /// Enables better error recovery when the wrong token is found.
-    crate fn similar_tokens(&self) -> Option<Vec<TokenKind>> {
-        match *self {
-            Comma => Some(vec![Dot, Lt, Semi]),
-            Semi => Some(vec![Colon, Comma]),
-            _ => None
-        }
-    }
-}
-
-impl Token {
     // See comments in `Nonterminal::to_tokenstream` for why we care about
     // *probably* equal here rather than actual equality
     crate fn probably_equal_for_proc_macro(&self, other: &Token) -> bool {
@@ -607,20 +624,6 @@ impl Token {
 
             _ => panic!("forgot to add a token?"),
         }
-    }
-
-    crate fn new(kind: TokenKind, span: Span) -> Self {
-        Token { kind, span }
-    }
-
-    /// Some token that will be thrown away later.
-    crate fn dummy() -> Self {
-        Token::new(TokenKind::Whitespace, DUMMY_SP)
-    }
-
-    /// Return this token by value and leave a dummy token in its place.
-    crate fn take(&mut self) -> Self {
-        mem::replace(self, Token::dummy())
     }
 }
 
@@ -766,17 +769,6 @@ impl Nonterminal {
                    going with stringified version");
         }
         return tokens_for_real
-    }
-}
-
-impl Token {
-    crate fn is_op(&self) -> bool {
-        match self.kind {
-            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
-            Ident(..) | Lifetime(..) | Interpolated(..) |
-            Whitespace | Comment | Shebang(..) | Eof => false,
-            _ => true,
-        }
     }
 }
 
