@@ -196,7 +196,7 @@ impl Module {
     /// `None` for the crate root.
     pub fn declaration_source(
         self,
-        db: &impl HirDatabase,
+        db: &(impl DefDatabase + AstDatabase),
     ) -> Option<(HirFileId, TreeArc<ast::Module>)> {
         let def_map = db.crate_def_map(self.krate);
         let decl = def_map[self.module_id].declaration?;
