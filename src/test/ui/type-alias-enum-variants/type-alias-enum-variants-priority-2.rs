@@ -1,5 +1,3 @@
-#![feature(type_alias_enum_variants)]
-
 enum E {
     V(u8)
 }

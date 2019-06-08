@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(type_alias_enum_variants)]
-
 #![allow(irrefutable_let_patterns)]
 
 #[allow(dead_code)]

@@ -3,8 +3,6 @@
 
 // compile-pass
 
-#![feature(type_alias_enum_variants)]
-
 enum Opt<T> {
     N,
     S(T),

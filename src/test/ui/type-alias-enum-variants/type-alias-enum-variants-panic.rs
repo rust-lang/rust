@@ -1,7 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(type_alias_enum_variants)]
-
 #![allow(unreachable_code)]
 
 enum Enum { Variant {} }

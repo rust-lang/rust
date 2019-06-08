@@ -1,5 +1,5 @@
 error[E0109]: type arguments are not allowed for this type
-  --> $DIR/type-alias-enum-variants.rs:9:27
+  --> $DIR/type-alias-enum-variants.rs:7:27
    |
 LL |     let _ = Alias::None::<u8>; // Error
    |                           ^^ type argument not allowed

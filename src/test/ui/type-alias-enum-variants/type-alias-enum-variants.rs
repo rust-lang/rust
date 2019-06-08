@@ -1,5 +1,3 @@
-#![feature(type_alias_enum_variants)]
-
 type Alias<T> = Option<T>;
 
 fn main() {

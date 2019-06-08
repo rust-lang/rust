@@ -1,7 +1,5 @@
 // compile-pass
 
-#![feature(type_alias_enum_variants)]
-
 enum Outer<T> {
     A(T)
 }

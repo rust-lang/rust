@@ -1,5 +1,3 @@
-#![feature(type_alias_enum_variants)]
-
 enum Enum<T> { TSVariant(T), SVariant { v: T } }
 type Alias<T> = Enum<T>;
 type AliasFixed = Enum<()>;

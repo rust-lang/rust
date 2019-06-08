@@ -1,4 +1,4 @@
-#![feature(type_alias_enum_variants)]
+// run-pass
 
 #[derive(Debug, PartialEq, Eq)]
 enum Foo {
