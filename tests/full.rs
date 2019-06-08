@@ -3,12 +3,23 @@ mod full {
     use std::{
         env,
         fs::{read_to_string, File},
-        io::{BufRead, Write},
+        io::Write,
         path::Path,
         process::{Command, Stdio},
+        str,
     };
 
     fn test_full(crate_name: &str, old_version: &str, new_version: &str, expected_result: bool) {
+        // Full test are not working on windows.  See issue #105.
+        if std::env::var_os("CI").is_some() && cfg!(all(target_os = "windows", target_env = "msvc"))
+        {
+            eprintln!(
+                "Skipping full test of crate {} ({} -> {}) on windows. See issue #105.",
+                crate_name, old_version, new_version
+            );
+            return;
+        }
+
         // Add target dir to PATH so cargo-semver will call the right rust-semverver
         if let Some(path) = env::var_os("PATH") {
             let mut paths = env::split_paths(&path).collect::<Vec<_>>();
@@ -58,33 +69,53 @@ mod full {
 
         let expected_path = Path::new("tests/full_cases").join(&filename);
 
-        let expected_output =
-            read_to_string(&expected_path).expect("could not read expected output from file");
-
-        let new_output = output
-            .stdout
+        let expected_output = read_to_string(&expected_path)
+            .expect(&format!(
+                "could not read expected output from file {}",
+                expected_path.display()
+            ))
             .lines()
-            .chain(output.stderr.lines())
-            .map(|r| r.expect("could not read line from cargo-semver output"))
-            .skip_while(|line|
-                // skip everything before the first important bit of info
-                !line.starts_with("version bump") &&
-                // ...unless debugging is enabled
-                !log_enabled!(Level::Debug))
-            .map(|line| {
-                // sanitize paths for reproducibility
-                (match line.find("-->") {
-                    Some(idx) => {
-                        let (start, end) = line.split_at(idx);
-                        match end.find(crate_name) {
-                            Some(idx) => format!("{}--> {}", start, end.split_at(idx).1),
-                            None => line,
+            .map(|l| l.trim_end())
+            .map(|l| l.to_string() + "\n")
+            .collect::<String>()
+            .trim_end()
+            .to_string();
+
+        let new_output = {
+            let stdout: &str = str::from_utf8(&output.stdout)
+                .expect("could not read line from rust-semverver output")
+                .trim_end();
+            let stderr: &str = str::from_utf8(&output.stderr)
+                .expect("could not read line from rust-semverver output")
+                .trim_end();
+
+            stdout
+                .lines()
+                .chain(stderr.lines())
+                .map(|l| l.trim_end())
+                .skip_while(|line|
+                    // skip everything before the first important bit of info
+                    !line.starts_with("version bump") &&
+                        // ...unless debugging is enabled
+                        !log_enabled!(Level::Debug))
+                .map(|line| {
+                    // sanitize paths for reproducibility
+                    (match line.find("-->") {
+                        Some(idx) => {
+                            let (start, end) = line.split_at(idx);
+                            match end.find(crate_name) {
+                                Some(idx) => format!("{}--> {}", start, end.split_at(idx).1),
+                                None => line.to_string(),
+                            }
                         }
-                    }
-                    None => line,
-                }) + "\n"
-            })
-            .collect::<String>();
+                        None => line.to_string(),
+                    })
+                })
+                .map(|l| l + "\n")
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        };
 
         if expected_output != new_output {
             eprintln!("cargo-semver failed to produce the expected output");
@@ -96,17 +127,17 @@ mod full {
             match std::env::var_os("CI") {
                 None => {
                     eprintln!(
-                        "For details, try this command: \n\n    diff {} {}\n\n",
+                        "For details, try this command:\n\n    diff {} {}\n\n",
                         expected_path.display(),
                         new_path.display()
                     );
                 }
                 Some(_) => {
                     eprintln!("=== Expected output ===");
-                    eprint!("{}", expected_output);
+                    eprintln!("{}", expected_output);
                     eprintln!("=== End of expected output ===");
                     eprintln!("=== Actual output ===");
-                    eprint!("{}", new_output);
+                    eprintln!("{}", new_output);
                     eprintln!("=== End of actual output ===");
                 }
             };
