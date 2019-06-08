@@ -21,25 +21,21 @@ const ZERO_ROTATE_RIGHT: i8 = 0b0111_1001i8.rotate_right(0);
 const MULTIPLE_ROTATE_LEFT: i32 = 0b0010_0001i32.rotate_left(128);
 const MULTIPLE_ROTATE_RIGHT: i32 = 0b0010_0001i32.rotate_right(128);
 
-fn ident<T>(ident: T) -> T {
-    ident
-}
-
 fn main() {
-    assert_eq!(LEFT, ident(0xb301));
-    assert_eq!(RIGHT, ident(0x0100_00b3));
+    assert_eq!(LEFT, 0xb301);
+    assert_eq!(RIGHT, 0x0100_00b3);
 
-    assert_eq!(LEFT_OVERFLOW, ident(0));
-    assert_eq!(RIGHT_OVERFLOW, ident(0));
-    assert_eq!(ONE_LEFT_OVERFLOW, ident(0b0001_0000_0000_0000));
-    assert_eq!(ONE_RIGHT_OVERFLOW, ident(0b0001_0000));
+    assert_eq!(LEFT_OVERFLOW, 0);
+    assert_eq!(RIGHT_OVERFLOW, 0);
+    assert_eq!(ONE_LEFT_OVERFLOW, 0b0001_0000_0000_0000);
+    assert_eq!(ONE_RIGHT_OVERFLOW, 0b0001_0000);
 
-    assert_eq!(NON_ZERO_LEFT_OVERFLOW, ident(0b0010_0000_0000_0000));
-    assert_eq!(NON_ZERO_RIGHT_OVERFLOW, ident(0b0000_0000_0010_0000));
+    assert_eq!(NON_ZERO_LEFT_OVERFLOW, 0b0010_0000_0000_0000);
+    assert_eq!(NON_ZERO_RIGHT_OVERFLOW, 0b0000_0000_0010_0000);
 
-    assert_eq!(ZERO_ROTATE_LEFT, ident(0b0010_0001));
-    assert_eq!(ZERO_ROTATE_RIGHT, ident(0b0111_1001));
+    assert_eq!(ZERO_ROTATE_LEFT, 0b0010_0001);
+    assert_eq!(ZERO_ROTATE_RIGHT, 0b0111_1001);
 
-    assert_eq!(MULTIPLE_ROTATE_LEFT, ident(0b0010_0001));
-    assert_eq!(MULTIPLE_ROTATE_RIGHT, ident(0b0010_0001));
+    assert_eq!(MULTIPLE_ROTATE_LEFT, 0b0010_0001);
+    assert_eq!(MULTIPLE_ROTATE_RIGHT, 0b0010_0001);
 }
