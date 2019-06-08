@@ -5294,13 +5294,7 @@ impl<A, B> SlicePartialEq<B> for [A]
             return false;
         }
 
-        for i in 0..self.len() {
-            if !self[i].eq(&other[i]) {
-                return false;
-            }
-        }
-
-        true
+        self.iter().zip(other.iter()).all(|(x, y)| x == y)
     }
 }
 
@@ -5317,13 +5311,7 @@ impl<A> SlicePartialEq<A> for [A]
             return true;
         }
 
-        for i in 0..self.len() {
-            if !self[i].eq(&other[i]) {
-                return false;
-            }
-        }
-
-        true
+        self.iter().zip(other.iter()).all(|(x, y)| x == y)
     }
 }
 
