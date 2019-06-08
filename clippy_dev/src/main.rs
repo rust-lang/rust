@@ -88,10 +88,18 @@ fn print_lints() {
 fn update_lints(update_mode: &UpdateMode) {
     let lint_list: Vec<Lint> = gather_all().collect();
 
+    let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list.clone().into_iter()).collect();
+    let lint_count = usable_lints.len();
+
+    let mut sorted_usable_lints = usable_lints.clone();
+    sorted_usable_lints.sort_by_key(|lint| lint.name.clone());
+
     std::fs::write(
         "../src/lintlist.rs",
         &format!(
             "\
+//! This file is managed by util/dev update_lints. Do not edit.
+
 /// Lint data parsed from the Clippy source code.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Lint {{
@@ -103,14 +111,11 @@ pub struct Lint {{
 }}
 
 pub const ALL_LINTS: [Lint; {}] = {:#?};\n",
-            lint_list.len(),
-            lint_list
+            sorted_usable_lints.len(),
+            sorted_usable_lints
         ),
     )
     .expect("can write to file");
-
-    let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list.clone().into_iter()).collect();
-    let lint_count = usable_lints.len();
 
     let mut file_change = replace_region_in_file(
         "../README.md",
