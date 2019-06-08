@@ -112,6 +112,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
 
 fn describe_lints() {
     use lintlist::*;
+    use std::collections::HashSet;
 
     println!(
         "
@@ -143,11 +144,13 @@ Available lint options:
 
     let scoped = |x: &str| format!("clippy::{}", x);
 
+    let lint_groups: HashSet<_> = lints.iter().map(|lint| lint.group).collect();
+
     println!("Lint checks provided by clippy:\n");
     println!("    {}  {:7.7}  meaning", padded("name"), "default");
     println!("    {}  {:7.7}  -------", padded("----"), "-------");
 
-    let print_lints = |lints: Vec<&Lint>| {
+    let print_lints = |lints: &[&Lint]| {
         for lint in lints {
             let name = lint.name.replace("_", "-");
             println!("    {}  {:7.7}  {}", padded(&scoped(&name)), "unknown", lint.desc);
@@ -155,37 +158,44 @@ Available lint options:
         println!("\n");
     };
 
-    print_lints(lints);
+    print_lints(&lints);
 
-    // let max_name_len = max("warnings".len(),
-    //                        plugin_groups.iter()
-    //                                     .chain(&builtin_groups)
-    //                                     .map(|&(s, _)| s.chars().count())
-    //                                     .max()
-    //                                     .unwrap_or(0));
+    let max_name_len = std::cmp::max(
+        "warnings".len(),
+        lint_groups
+            .iter()
+            .map(|group| group.len())
+            .map(|len| len + "clippy::".len())
+            .max()
+            .unwrap_or(0),
+    );
 
-    // let padded = |x: &str| {
-    //     let mut s = " ".repeat(max_name_len - x.chars().count());
-    //     s.push_str(x);
-    //     s
-    // };
+    let padded = |x: &str| {
+        let mut s = " ".repeat(max_name_len - x.chars().count());
+        s.push_str(x);
+        s
+    };
 
-    // println!("Lint groups provided by rustc:\n");
-    // println!("    {}  {}", padded("name"), "sub-lints");
-    // println!("    {}  {}", padded("----"), "---------");
-    // println!("    {}  {}", padded("warnings"), "all lints that are set to issue warnings");
+    println!("Lint groups provided by rustc:\n");
+    println!("    {}  sub-lints", padded("name"));
+    println!("    {}  ---------", padded("----"));
+    // println!("    {}  all lints that are set to issue warnings", padded("warnings"));
 
-    // let print_lint_groups = |lints: Vec<(&'static str, Vec<lint::LintId>)>| {
-    //     for (name, to) in lints {
-    //         let name = name.to_lowercase().replace("_", "-");
-    //         let desc = to.into_iter()
-    //                      .map(|x| x.to_string().replace("_", "-"))
-    //                      .collect::<Vec<String>>()
-    //                      .join(", ");
-    //         println!("    {}  {}", padded(&name), desc);
-    //     }
-    //     println!("\n");
-    // };
+    let print_lint_groups = || {
+        for group in lint_groups {
+            let name = group.to_lowercase().replace("_", "-");
+            let desc = lints.iter()
+                .filter(|&lint| lint.group == group)
+                .map(|lint| lint.name)
+                .map(|name| name.replace("_", "-"))
+                .collect::<Vec<String>>()
+                .join(", ");
+            println!("    {}  {}", padded(&name), desc);
+        }
+        println!("\n");
+    };
+
+    print_lint_groups();
 
     // print_lint_groups(builtin_groups);
 
@@ -295,17 +305,18 @@ pub fn main() {
                 exit(0);
             }
 
-            let args: Vec<_> = std::env::args().collect();
-
-            if !wrapper_mode
-                && args.windows(2).any(|args| {
+            let should_describe_lints = || {
+                let args: Vec<_> = std::env::args().collect();
+                args.windows(2).any(|args| {
                     args[1] == "help"
                         && match args[0].as_str() {
                             "-W" | "-A" | "-D" | "-F" => true,
                             _ => false,
                         }
                 })
-            {
+            };
+
+            if !wrapper_mode && should_describe_lints() {
                 describe_lints();
                 exit(0);
             }
