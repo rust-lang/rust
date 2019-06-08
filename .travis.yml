@@ -2,6 +2,10 @@ language: rust
 rust: nightly
 sudo: false
 
+notifications:
+  email:
+    on_failure: always
+
 matrix:
   fast_finish: true
   include:
