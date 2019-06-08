@@ -393,7 +393,7 @@ impl Analysis {
         self.with_db(|db| {
             symbol_index::world_symbols(db, query)
                 .into_iter()
-                .map(NavigationTarget::from_symbol)
+                .map(|s| NavigationTarget::from_symbol(db, s))
                 .collect::<Vec<_>>()
         })
     }

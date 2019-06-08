@@ -72,7 +72,7 @@ pub(crate) fn reference_definition(
             }
         }
         Some(Pat(pat)) => return Exact(NavigationTarget::from_pat(db, file_id, pat)),
-        Some(SelfParam(par)) => return Exact(NavigationTarget::from_self_param(file_id, par)),
+        Some(SelfParam(par)) => return Exact(NavigationTarget::from_self_param(db, file_id, par)),
         Some(GenericParam(_)) => {
             // FIXME: go to the generic param def
         }
@@ -82,7 +82,7 @@ pub(crate) fn reference_definition(
     // Fallback index based approach:
     let navs = crate::symbol_index::index_resolve(db, name_ref)
         .into_iter()
-        .map(NavigationTarget::from_symbol)
+        .map(|s| NavigationTarget::from_symbol(db, s))
         .collect();
     Approximate(navs)
 }

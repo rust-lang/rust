@@ -1,6 +1,6 @@
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    SyntaxNode, AstNode, SmolStr, TextRange, TreeArc, AstPtr,
+    SyntaxNode, AstNode, SmolStr, TextRange, AstPtr,
     SyntaxKind::{self, NAME},
     ast::{self, NameOwner, VisibilityOwner, TypeAscriptionOwner},
     algo::visit::{visitor, Visitor},
@@ -22,6 +22,9 @@ pub struct NavigationTarget {
     full_range: TextRange,
     focus_range: Option<TextRange>,
     container_name: Option<SmolStr>,
+
+    pub(crate) description: Option<String>,
+    pub(crate) docs: Option<String>,
 }
 
 impl NavigationTarget {
@@ -63,7 +66,10 @@ impl NavigationTarget {
         NavigationTarget::from_named(file_id, pat)
     }
 
-    pub(crate) fn from_symbol(symbol: FileSymbol) -> NavigationTarget {
+    pub(crate) fn from_symbol(db: &RootDatabase, symbol: FileSymbol) -> NavigationTarget {
+        let file = db.parse(symbol.file_id).tree;
+        let node = symbol.ptr.to_node(file.syntax()).to_owned();
+
         NavigationTarget {
             file_id: symbol.file_id,
             name: symbol.name.clone(),
@@ -71,6 +77,8 @@ impl NavigationTarget {
             full_range: symbol.ptr.range(),
             focus_range: symbol.name_range,
             container_name: symbol.container_name.clone(),
+            description: description_inner(&node),
+            docs: docs_inner(&node),
         }
     }
 
@@ -84,6 +92,8 @@ impl NavigationTarget {
             ast::PatKind::BindPat(pat) => return NavigationTarget::from_bind_pat(file_id, &pat),
             _ => ("_".into(), pat.syntax_node_ptr().range()),
         };
+        let node = pat.to_node(file.syntax()).syntax().to_owned();
+
         NavigationTarget {
             file_id,
             name,
@@ -91,14 +101,20 @@ impl NavigationTarget {
             focus_range: None,
             kind: NAME,
             container_name: None,
+            description: description_inner(&node),
+            docs: docs_inner(&node),
         }
     }
 
     pub(crate) fn from_self_param(
+        db: &RootDatabase,
         file_id: FileId,
         par: AstPtr<ast::SelfParam>,
     ) -> NavigationTarget {
         let (name, full_range) = ("self".into(), par.syntax_node_ptr().range());
+        let file = db.parse(file_id).tree;
+        let node = par.to_node(file.syntax()).syntax().to_owned();
+
         NavigationTarget {
             file_id,
             name,
@@ -106,6 +122,8 @@ impl NavigationTarget {
             focus_range: None,
             kind: NAME,
             container_name: None,
+            description: description_inner(&node),
+            docs: docs_inner(&node),
         }
     }
 
@@ -290,83 +308,72 @@ impl NavigationTarget {
             focus_range,
             // ptr: Some(LocalSyntaxPtr::new(node)),
             container_name: None,
+            description: description_inner(node),
+            docs: docs_inner(node),
         }
     }
+}
 
-    pub(crate) fn node(&self, db: &RootDatabase) -> Option<TreeArc<SyntaxNode>> {
-        let source_file = db.parse(self.file_id()).tree;
-        let source_file = source_file.syntax();
-        let node = source_file
-            .descendants()
-            .find(|node| node.kind() == self.kind() && node.range() == self.full_range())?
-            .to_owned();
-        Some(node)
+fn docs_inner(node: &SyntaxNode) -> Option<String> {
+    fn doc_comments<N: ast::DocCommentsOwner>(node: &N) -> Option<String> {
+        node.doc_comment_text()
     }
 
-    pub(crate) fn docs(&self, db: &RootDatabase) -> Option<String> {
-        let node = self.node(db)?;
-        fn doc_comments<N: ast::DocCommentsOwner>(node: &N) -> Option<String> {
-            node.doc_comment_text()
+    visitor()
+        .visit(doc_comments::<ast::FnDef>)
+        .visit(doc_comments::<ast::StructDef>)
+        .visit(doc_comments::<ast::EnumDef>)
+        .visit(doc_comments::<ast::TraitDef>)
+        .visit(doc_comments::<ast::Module>)
+        .visit(doc_comments::<ast::TypeAliasDef>)
+        .visit(doc_comments::<ast::ConstDef>)
+        .visit(doc_comments::<ast::StaticDef>)
+        .visit(doc_comments::<ast::NamedFieldDef>)
+        .visit(doc_comments::<ast::EnumVariant>)
+        .visit(doc_comments::<ast::MacroCall>)
+        .accept(&node)?
+}
+
+/// Get a description of this node.
+///
+/// e.g. `struct Name`, `enum Name`, `fn Name`
+fn description_inner(node: &SyntaxNode) -> Option<String> {
+    // FIXME: After type inference is done, add type information to improve the output
+    fn visit_ascribed_node<T>(node: &T, prefix: &str) -> Option<String>
+    where
+        T: NameOwner + VisibilityOwner + TypeAscriptionOwner,
+    {
+        let mut string = visit_node(node, prefix)?;
+
+        if let Some(type_ref) = node.ascribed_type() {
+            string.push_str(": ");
+            type_ref.syntax().text().push_to(&mut string);
         }
 
-        visitor()
-            .visit(doc_comments::<ast::FnDef>)
-            .visit(doc_comments::<ast::StructDef>)
-            .visit(doc_comments::<ast::EnumDef>)
-            .visit(doc_comments::<ast::TraitDef>)
-            .visit(doc_comments::<ast::Module>)
-            .visit(doc_comments::<ast::TypeAliasDef>)
-            .visit(doc_comments::<ast::ConstDef>)
-            .visit(doc_comments::<ast::StaticDef>)
-            .visit(doc_comments::<ast::NamedFieldDef>)
-            .visit(doc_comments::<ast::EnumVariant>)
-            .visit(doc_comments::<ast::MacroCall>)
-            .accept(&node)?
+        Some(string)
     }
 
-    /// Get a description of this node.
-    ///
-    /// e.g. `struct Name`, `enum Name`, `fn Name`
-    pub(crate) fn description(&self, db: &RootDatabase) -> Option<String> {
-        // FIXME: After type inference is done, add type information to improve the output
-        let node = self.node(db)?;
-
-        fn visit_ascribed_node<T>(node: &T, prefix: &str) -> Option<String>
-        where
-            T: NameOwner + VisibilityOwner + TypeAscriptionOwner,
-        {
-            let mut string = visit_node(node, prefix)?;
-
-            if let Some(type_ref) = node.ascribed_type() {
-                string.push_str(": ");
-                type_ref.syntax().text().push_to(&mut string);
-            }
-
-            Some(string)
-        }
-
-        fn visit_node<T>(node: &T, label: &str) -> Option<String>
-        where
-            T: NameOwner + VisibilityOwner,
-        {
-            let mut string =
-                node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
-            string.push_str(label);
-            string.push_str(node.name()?.text().as_str());
-            Some(string)
-        }
-
-        visitor()
-            .visit(|node: &ast::FnDef| Some(crate::display::function_label(node)))
-            .visit(|node: &ast::StructDef| visit_node(node, "struct "))
-            .visit(|node: &ast::EnumDef| visit_node(node, "enum "))
-            .visit(|node: &ast::TraitDef| visit_node(node, "trait "))
-            .visit(|node: &ast::Module| visit_node(node, "mod "))
-            .visit(|node: &ast::TypeAliasDef| visit_node(node, "type "))
-            .visit(|node: &ast::ConstDef| visit_ascribed_node(node, "const "))
-            .visit(|node: &ast::StaticDef| visit_ascribed_node(node, "static "))
-            .visit(|node: &ast::NamedFieldDef| visit_ascribed_node(node, ""))
-            .visit(|node: &ast::EnumVariant| Some(node.name()?.text().to_string()))
-            .accept(&node)?
+    fn visit_node<T>(node: &T, label: &str) -> Option<String>
+    where
+        T: NameOwner + VisibilityOwner,
+    {
+        let mut string =
+            node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
+        string.push_str(label);
+        string.push_str(node.name()?.text().as_str());
+        Some(string)
     }
+
+    visitor()
+        .visit(|node: &ast::FnDef| Some(crate::display::function_label(node)))
+        .visit(|node: &ast::StructDef| visit_node(node, "struct "))
+        .visit(|node: &ast::EnumDef| visit_node(node, "enum "))
+        .visit(|node: &ast::TraitDef| visit_node(node, "trait "))
+        .visit(|node: &ast::Module| visit_node(node, "mod "))
+        .visit(|node: &ast::TypeAliasDef| visit_node(node, "type "))
+        .visit(|node: &ast::ConstDef| visit_ascribed_node(node, "const "))
+        .visit(|node: &ast::StaticDef| visit_ascribed_node(node, "static "))
+        .visit(|node: &ast::NamedFieldDef| visit_ascribed_node(node, ""))
+        .visit(|node: &ast::EnumVariant| Some(node.name()?.text().to_string()))
+        .accept(&node)?
 }
