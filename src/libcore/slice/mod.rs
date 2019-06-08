@@ -5304,6 +5304,29 @@ impl<A, B> SlicePartialEq<B> for [A]
     }
 }
 
+// Use an equal-pointer optimization when types are `Eq`
+impl<A> SlicePartialEq<A> for [A]
+    where A: PartialEq<A> + Eq
+{
+    default fn equal(&self, other: &[A]) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+
+        if self.as_ptr() == other.as_ptr() {
+            return true;
+        }
+
+        for i in 0..self.len() {
+            if !self[i].eq(&other[i]) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
 // Use memcmp for bytewise equality when the types allow
 impl<A> SlicePartialEq<A> for [A]
     where A: PartialEq<A> + BytewiseEquality
@@ -5409,7 +5432,7 @@ impl SliceOrd<u8> for [u8] {
 #[doc(hidden)]
 /// Trait implemented for types that can be compared for equality using
 /// their bytewise representation
-trait BytewiseEquality { }
+trait BytewiseEquality: Eq + Copy { }
 
 macro_rules! impl_marker_for {
     ($traitname:ident, $($ty:ty)*) => {
