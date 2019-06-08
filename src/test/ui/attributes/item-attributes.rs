@@ -1,80 +1,77 @@
-#![allow(non_camel_case_types)]
-#![allow(non_upper_case_globals)]
-#![allow(unused_attributes)]
-#![allow(dead_code)]
-#![allow(unknown_lints)]
 // These are attributes of the implicit crate. Really this just needs to parse
 // for completeness since .rs files linked from .rc files support this
 // notation to specify their module's attributes
 
-#![feature(custom_attribute)]
-#![allow(unused_attribute)]
-#![attr1 = "val"]
-#![attr2 = "val"]
-#![attr3]
-#![attr4(attr5)]
+// compile-pass
+
+#![feature(rustc_attrs)]
+
+#![rustc_dummy = "val"]
+#![rustc_dummy = "val"]
+#![rustc_dummy]
+#![rustc_dummy(attr5)]
 
 #![crate_id="foobar#0.1"]
 
 // These are attributes of the following mod
-#[attr1 = "val"]
-#[attr2 = "val"]
+#[rustc_dummy = "val"]
+#[rustc_dummy = "val"]
 mod test_first_item_in_file_mod {}
 
 mod test_single_attr_outer {
-    #[attr = "val"]
-    pub static x: isize = 10;
+    #[rustc_dummy = "val"]
+    pub static X: isize = 10;
 
-    #[attr = "val"]
+    #[rustc_dummy = "val"]
     pub fn f() { }
 
-    #[attr = "val"]
+    #[rustc_dummy = "val"]
     pub mod mod1 {}
 
     pub mod rustrt {
-        #[attr = "val"]
+        #[rustc_dummy = "val"]
         extern {}
     }
 }
 
 mod test_multi_attr_outer {
-    #[attr1 = "val"]
-    #[attr2 = "val"]
-    pub static x: isize = 10;
+    #[rustc_dummy = "val"]
+    #[rustc_dummy = "val"]
+    pub static X: isize = 10;
 
-    #[attr1 = "val"]
-    #[attr2 = "val"]
+    #[rustc_dummy = "val"]
+    #[rustc_dummy = "val"]
     pub fn f() { }
 
-    #[attr1 = "val"]
-    #[attr2 = "val"]
+    #[rustc_dummy = "val"]
+    #[rustc_dummy = "val"]
     pub mod mod1 {}
 
     pub mod rustrt {
-        #[attr1 = "val"]
-        #[attr2 = "val"]
+        #[rustc_dummy = "val"]
+        #[rustc_dummy = "val"]
         extern {}
     }
 
-    #[attr1 = "val"]
-    #[attr2 = "val"]
-    struct t {x: isize}
+    #[rustc_dummy = "val"]
+    #[rustc_dummy = "val"]
+    struct T {x: isize}
 }
 
 mod test_stmt_single_attr_outer {
     pub fn f() {
-        #[attr = "val"]
-        static x: isize = 10;
+        #[rustc_dummy = "val"]
+        static X: isize = 10;
 
-        #[attr = "val"]
+        #[rustc_dummy = "val"]
         fn f() { }
 
-        #[attr = "val"]
+        #[rustc_dummy = "val"]
         mod mod1 {
         }
 
         mod rustrt {
-            #[attr = "val"]
+            #[rustc_dummy = "val"]
             extern {
             }
         }
@@ -84,22 +81,22 @@ mod test_stmt_single_attr_outer {
 mod test_stmt_multi_attr_outer {
     pub fn f() {
 
-        #[attr1 = "val"]
-        #[attr2 = "val"]
-        static x: isize = 10;
+        #[rustc_dummy = "val"]
+        #[rustc_dummy = "val"]
+        static X: isize = 10;
 
-        #[attr1 = "val"]
-        #[attr2 = "val"]
+        #[rustc_dummy = "val"]
+        #[rustc_dummy = "val"]
         fn f() { }
 
-        #[attr1 = "val"]
-        #[attr2 = "val"]
+        #[rustc_dummy = "val"]
+        #[rustc_dummy = "val"]
         mod mod1 {
         }
 
         mod rustrt {
-            #[attr1 = "val"]
-            #[attr2 = "val"]
+            #[rustc_dummy = "val"]
+            #[rustc_dummy = "val"]
             extern {
             }
         }
@@ -109,16 +106,16 @@ mod test_stmt_multi_attr_outer {
 mod test_attr_inner {
     pub mod m {
         // This is an attribute of mod m
-        #![attr = "val"]
+        #![rustc_dummy = "val"]
     }
 }
 
 mod test_attr_inner_then_outer {
     pub mod m {
         // This is an attribute of mod m
-        #![attr = "val"]
+        #![rustc_dummy = "val"]
         // This is an attribute of fn f
-        #[attr = "val"]
+        #[rustc_dummy = "val"]
         fn f() { }
     }
 }
@@ -126,11 +123,11 @@ mod test_attr_inner_then_outer {
 mod test_attr_inner_then_outer_multi {
     pub mod m {
         // This is an attribute of mod m
-        #![attr1 = "val"]
-        #![attr2 = "val"]
+        #![rustc_dummy = "val"]
+        #![rustc_dummy = "val"]
         // This is an attribute of fn f
-        #[attr1 = "val"]
-        #[attr2 = "val"]
+        #[rustc_dummy = "val"]
+        #[rustc_dummy = "val"]
         fn f() { }
     }
 }
@@ -138,25 +135,25 @@ mod test_attr_inner_then_outer_multi {
 mod test_distinguish_syntax_ext {
     pub fn f() {
         format!("test{}", "s");
-        #[attr = "val"]
+        #[rustc_dummy = "val"]
         fn g() { }
     }
 }
 
 mod test_other_forms {
-    #[attr]
-    #[attr(word)]
-    #[attr(attr(word))]
-    #[attr(key1 = "val", key2 = "val", attr)]
+    #[rustc_dummy]
+    #[rustc_dummy(word)]
+    #[rustc_dummy(attr(word))]
+    #[rustc_dummy(key1 = "val", key2 = "val", attr)]
     pub fn f() { }
 }
 
 mod test_foreign_items {
     pub mod rustrt {
         extern {
-            #![attr]
+            #![rustc_dummy]
 
-            #[attr]
+            #[rustc_dummy]
             fn rust_get_test_int() -> u32;
         }
     }
@@ -178,7 +175,7 @@ mod test_foreign_items {
 }*/
 
 fn test_fn_inner() {
-    #![inner_fn_attr]
+    #![rustc_dummy]
 }
 
-pub fn main() { }
+fn main() {}

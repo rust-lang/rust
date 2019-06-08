@@ -1,5 +1,4 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![feature(custom_attribute)]
 #![feature(nll)]
 #![deny(rust_2018_idioms)]
 #![deny(internal)]

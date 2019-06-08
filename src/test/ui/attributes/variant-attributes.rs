@@ -1,38 +1,37 @@
-#![allow(unused_attributes)]
-#![allow(non_camel_case_types)]
-#![allow(dead_code)]
+// compile-pass
 // pp-exact - Make sure we actually print the attributes
 // pretty-expanded FIXME #23616
 
-#![feature(custom_attribute)]
+#![allow(non_camel_case_types)]
+#![feature(rustc_attrs)]
 
 enum crew_of_enterprise_d {
 
-    #[captain]
+    #[rustc_dummy]
     jean_luc_picard,
 
-    #[oldcommander]
+    #[rustc_dummy]
     william_t_riker,
 
-    #[chief_medical_officer]
+    #[rustc_dummy]
     beverly_crusher,
 
-    #[ships_councellor]
+    #[rustc_dummy]
     deanna_troi,
 
-    #[lieutenant_oldcommander]
+    #[rustc_dummy]
     data,
 
-    #[chief_of_security]
+    #[rustc_dummy]
     worf,
 
-    #[chief_engineer]
+    #[rustc_dummy]
     geordi_la_forge,
 }
 
 fn boldly_go(_crew_member: crew_of_enterprise_d, _where: String) { }
 
-pub fn main() {
+fn main() {
     boldly_go(crew_of_enterprise_d::worf,
               "where no one has gone before".to_string());
 }

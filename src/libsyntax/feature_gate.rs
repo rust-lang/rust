@@ -1331,6 +1331,16 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                                 "internal implementation detail",
                                                 cfg_fn!(rustc_attrs))),
 
+    (sym::rustc_allocator, Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                                sym::rustc_attrs,
+                                                "internal implementation detail",
+                                                cfg_fn!(rustc_attrs))),
+
+    (sym::rustc_dummy, Normal, template!(Word /* doesn't matter*/), Gated(Stability::Unstable,
+                                         sym::rustc_attrs,
+                                         "used by the test suite",
+                                         cfg_fn!(rustc_attrs))),
+
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     (
         sym::doc,
@@ -1957,12 +1967,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         match attr_info {
-            Some(&(name, _, template, _)) => self.check_builtin_attribute(
-                attr,
-                name,
-                template
-            ),
-            None => if let Some(TokenTree::Token(token)) = attr.tokens.trees().next() {
+            // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
+            Some(&(name, _, template, _)) if name != sym::rustc_dummy =>
+                self.check_builtin_attribute(attr, name, template),
+            _ => if let Some(TokenTree::Token(token)) = attr.tokens.trees().next() {
                 if token == token::Eq {
                     // All key-value attributes are restricted to meta-item syntax.
                     attr.parse_meta(self.context.parse_sess).map_err(|mut err| err.emit()).ok();

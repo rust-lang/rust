@@ -1,9 +1,9 @@
-#![feature(custom_attribute)]
+#![feature(rustc_attrs)]
 
 macro_rules! check {
     ($expr: expr) => (
-        #[my_attr = $expr] //~ ERROR unexpected token: `-0`
-                           //~| ERROR unexpected token: `0 + 0`
+        #[rustc_dummy = $expr] //~ ERROR unexpected token: `-0`
+                               //~| ERROR unexpected token: `0 + 0`
         use main as _;
     );
 }

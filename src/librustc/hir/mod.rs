@@ -2574,7 +2574,7 @@ bitflags! {
         /// `#[cold]`: a hint to LLVM that this function, when called, is never on
         /// the hot path.
         const COLD                      = 1 << 0;
-        /// `#[allocator]`: a hint to LLVM that the pointer returned from this
+        /// `#[rustc_allocator]`: a hint to LLVM that the pointer returned from this
         /// function is never null.
         const ALLOCATOR                 = 1 << 1;
         /// `#[unwind]`: an indicator that this function may unwind despite what

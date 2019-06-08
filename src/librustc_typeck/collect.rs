@@ -2445,7 +2445,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
     for attr in attrs.iter() {
         if attr.check_name(sym::cold) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
-        } else if attr.check_name(sym::allocator) {
+        } else if attr.check_name(sym::rustc_allocator) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
         } else if attr.check_name(sym::unwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::UNWIND;
