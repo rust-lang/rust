@@ -42,8 +42,8 @@
 	url = https://github.com/rust-lang-nursery/edition-guide.git
 [submodule "src/llvm-project"]
 	path = src/llvm-project
-	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/9.0-2019-09-19
+	url = https://github.com/avr-rust/llvm-project.git
+	branch = avr-rustc/8.0-2019-03-18 # FIXME: update to 9.0
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git
