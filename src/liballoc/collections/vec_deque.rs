@@ -2709,7 +2709,7 @@ impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
 impl<T> From<Vec<T>> for VecDeque<T> {
-    /// Turn a `Vec<T>` into a `VecDeque<T>`.
+    /// Turn a [`Vec<T>`] into a [`VecDeque<T>`].
     ///
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
@@ -2762,7 +2762,7 @@ impl<T> From<Vec<T>> for VecDeque<T> {
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
 impl<T> From<VecDeque<T>> for Vec<T> {
-    /// Turn a `VecDeque<T>` into a `Vec<T>`.
+    /// Turn a [`VecDeque<T>`] into a [`Vec<T>`].
     ///
     /// This never needs to re-allocate, but does need to do O(n) data movement if
     /// the circular buffer doesn't happen to be at the beginning of the allocation.
