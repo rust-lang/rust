@@ -1,7 +1,6 @@
 use rustc::mir;
 use rustc::ty::{self, layout::TyLayout};
 use syntax::ast::FloatTy;
-use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc::mir::interpret::{InterpResult, Scalar};
 
@@ -335,13 +334,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 Ok(Scalar::from_bool(res))
             }
             ty::Float(fty) => {
-                let val = val.to_bits(layout.size)?;
                 let res = match (un_op, fty) {
-                    (Neg, FloatTy::F32) => Single::to_bits(-Single::from_bits(val)),
-                    (Neg, FloatTy::F64) => Double::to_bits(-Double::from_bits(val)),
+                    (Neg, FloatTy::F32) => Scalar::from_f32(-val.to_f32()?),
+                    (Neg, FloatTy::F64) => Scalar::from_f64(-val.to_f64()?),
                     _ => bug!("Invalid float op {:?}", un_op)
                 };
-                Ok(Scalar::from_uint(res, layout.size))
+                Ok(res)
             }
             _ => {
                 assert!(layout.ty.is_integral());
