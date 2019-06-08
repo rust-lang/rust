@@ -281,6 +281,19 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
             None
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<A> {
+        if let Some(minus_n) = self.end.sub_usize(n) {
+            if minus_n > self.start {
+                self.end = minus_n.sub_one();
+                return Some(self.end.clone())
+            }
+        }
+
+        self.end = self.start.clone();
+        None
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
