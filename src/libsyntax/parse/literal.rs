@@ -271,14 +271,13 @@ impl<'a> Parser<'a> {
         let mut recovered = None;
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`.
-            recovered = self.look_ahead(1, |t| {
+            recovered = self.look_ahead(1, |next_token| {
                 if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix })
-                        = t.kind {
-                    let next_span = self.look_ahead_span(1);
-                    if self.span.hi() == next_span.lo() {
+                        = next_token.kind {
+                    if self.token.span.hi() == next_token.span.lo() {
                         let s = String::from("0.") + &symbol.as_str();
                         let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
-                        return Some(Token::new(kind, self.span.to(next_span)));
+                        return Some(Token::new(kind, self.token.span.to(next_token.span)));
                     }
                 }
                 None
@@ -311,7 +310,11 @@ impl<'a> Parser<'a> {
                 let (lit, span) = (token.expect_lit(), token.span);
                 self.bump();
                 err.report(&self.sess.span_diagnostic, lit, span);
-                let lit = token::Lit::new(token::Err, lit.symbol, lit.suffix);
+                // Pack possible quotes and prefixes from the original literal into
+                // the error literal's symbol so they can be pretty-printed faithfully.
+                let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
+                let symbol = Symbol::intern(&pprust::literal_to_string(suffixless_lit));
+                let lit = token::Lit::new(token::Err, symbol, lit.suffix);
                 Lit::from_lit_token(lit, span).map_err(|_| unreachable!())
             }
         }

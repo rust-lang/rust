@@ -714,7 +714,6 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::AddrOf(_, ref subexpression) | ExprKind::Unary(_, ref subexpression) => {
             visitor.visit_expr(subexpression)
         }
-        ExprKind::Lit(_) => {}
         ExprKind::Cast(ref subexpression, ref typ) | ExprKind::Type(ref subexpression, ref typ) => {
             visitor.visit_expr(subexpression);
             visitor.visit_ty(typ)
@@ -826,7 +825,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::TryBlock(ref body) => {
             visitor.visit_block(body)
         }
-        ExprKind::Err => {}
+        ExprKind::Lit(_) | ExprKind::Err => {}
     }
 
     visitor.visit_expr_post(expression)

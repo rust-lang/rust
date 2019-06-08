@@ -47,7 +47,7 @@ impl<'a> ParserAnyMacro<'a> {
         let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
             if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
                 if !e.span.is_dummy() {  // early end of macro arm (#52866)
-                    e.replace_span_with(parser.sess.source_map().next_point(parser.span));
+                    e.replace_span_with(parser.sess.source_map().next_point(parser.token.span));
                 }
                 let msg = &e.message[0];
                 e.message[0] = (
@@ -63,7 +63,7 @@ impl<'a> ParserAnyMacro<'a> {
                 if parser.sess.source_map().span_to_filename(arm_span).is_real() {
                     e.span_label(arm_span, "in this macro arm");
                 }
-            } else if !parser.sess.source_map().span_to_filename(parser.span).is_real() {
+            } else if !parser.sess.source_map().span_to_filename(parser.token.span).is_real() {
                 e.span_label(site_span, "in this macro invocation");
             }
             e

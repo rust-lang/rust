@@ -166,7 +166,7 @@ impl f64 {
         if self.is_nan() {
             NAN
         } else {
-            unsafe { intrinsics::copysignf64(1.0, self) }
+            1.0_f64.copysign(self)
         }
     }
 

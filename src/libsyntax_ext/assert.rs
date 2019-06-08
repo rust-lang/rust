@@ -85,7 +85,7 @@ fn parse_assert<'a>(
     if parser.token == token::Semi {
         let mut err = cx.struct_span_warn(sp, "macro requires an expression as an argument");
         err.span_suggestion(
-            parser.span,
+            parser.token.span,
             "try removing semicolon",
             String::new(),
             Applicability::MaybeIncorrect
@@ -105,7 +105,7 @@ fn parse_assert<'a>(
     // turned into an error.
     let custom_message = if let token::Literal(token::Lit { kind: token::Str, .. })
                                 = parser.token.kind {
-        let mut err = cx.struct_span_warn(parser.span, "unexpected string literal");
+        let mut err = cx.struct_span_warn(parser.token.span, "unexpected string literal");
         let comma_span = cx.source_map().next_point(parser.prev_span);
         err.span_suggestion_short(
             comma_span,
