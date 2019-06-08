@@ -75,7 +75,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
     config: MiriConfig,
-) -> EvalResult<'tcx, InterpretCx<'a, 'mir, 'tcx, Evaluator<'tcx>>> {
+) -> InterpResult<'tcx, InterpretCx<'a, 'mir, 'tcx, Evaluator<'tcx>>> {
     let mut ecx = InterpretCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
@@ -225,7 +225,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     };
 
     // Perform the main execution.
-    let res: EvalResult = (|| {
+    let res: InterpResult = (|| {
         ecx.run()?;
         ecx.run_tls_dtors()
     })();
@@ -407,7 +407,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
+    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         ecx.find_fn(instance, args, dest, ret)
     }
 
@@ -417,7 +417,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         ecx.call_intrinsic(instance, args, dest)
     }
 
@@ -427,14 +427,14 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
-    ) -> EvalResult<'tcx, (Scalar<Tag>, bool)> {
+    ) -> InterpResult<'tcx, (Scalar<Tag>, bool)> {
         ecx.ptr_op(bin_op, left, right)
     }
 
     fn box_alloc(
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Tag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         trace!("box_alloc for {:?}", dest.layout.ty);
         // Call the `exchange_malloc` lang item.
         let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();
@@ -476,7 +476,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     fn find_foreign_static(
         def_id: DefId,
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation>> {
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
             Some(name) => name.as_str(),
@@ -498,7 +498,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn before_terminator(_ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>
+    fn before_terminator(_ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx>
     {
         // We are not interested in detecting loops.
         Ok(())
@@ -553,7 +553,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         kind: mir::RetagKind,
         place: PlaceTy<'tcx, Tag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag || !Self::enforce_validity(ecx) {
             // No tracking, or no retagging. The latter is possible because a dependency of ours
             // might be called with different flags than we are, so there are `Retag`
@@ -569,7 +569,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn stack_push(
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-    ) -> EvalResult<'tcx, stacked_borrows::CallId> {
+    ) -> InterpResult<'tcx, stacked_borrows::CallId> {
         Ok(ecx.memory().extra.borrow_mut().new_call())
     }
 
@@ -577,7 +577,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     fn stack_pop(
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         extra: stacked_borrows::CallId,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(ecx.memory().extra.borrow_mut().end_call(extra))
     }
 }

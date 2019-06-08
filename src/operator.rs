@@ -9,7 +9,7 @@ pub trait EvalContextExt<'tcx> {
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
-    ) -> EvalResult<'tcx, (Scalar<Tag>, bool)>;
+    ) -> InterpResult<'tcx, (Scalar<Tag>, bool)>;
 
     fn ptr_int_arithmetic(
         &self,
@@ -17,20 +17,20 @@ pub trait EvalContextExt<'tcx> {
         left: Pointer<Tag>,
         right: u128,
         signed: bool,
-    ) -> EvalResult<'tcx, (Scalar<Tag>, bool)>;
+    ) -> InterpResult<'tcx, (Scalar<Tag>, bool)>;
 
     fn ptr_eq(
         &self,
         left: Scalar<Tag>,
         right: Scalar<Tag>,
-    ) -> EvalResult<'tcx, bool>;
+    ) -> InterpResult<'tcx, bool>;
 
     fn pointer_offset_inbounds(
         &self,
         ptr: Scalar<Tag>,
         pointee_ty: Ty<'tcx>,
         offset: i64,
-    ) -> EvalResult<'tcx, Scalar<Tag>>;
+    ) -> InterpResult<'tcx, Scalar<Tag>>;
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
@@ -39,7 +39,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
-    ) -> EvalResult<'tcx, (Scalar<Tag>, bool)> {
+    ) -> InterpResult<'tcx, (Scalar<Tag>, bool)> {
         use rustc::mir::BinOp::*;
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
@@ -138,7 +138,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         &self,
         left: Scalar<Tag>,
         right: Scalar<Tag>,
-    ) -> EvalResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, bool> {
         let size = self.pointer_size();
         Ok(match (left, right) {
             (Scalar::Raw { .. }, Scalar::Raw { .. }) =>
@@ -236,7 +236,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         left: Pointer<Tag>,
         right: u128,
         signed: bool,
-    ) -> EvalResult<'tcx, (Scalar<Tag>, bool)> {
+    ) -> InterpResult<'tcx, (Scalar<Tag>, bool)> {
         use rustc::mir::BinOp::*;
 
         fn map_to_primval((res, over): (Pointer<Tag>, bool)) -> (Scalar<Tag>, bool) {
@@ -328,7 +328,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         ptr: Scalar<Tag>,
         pointee_ty: Ty<'tcx>,
         offset: i64,
-    ) -> EvalResult<'tcx, Scalar<Tag>> {
+    ) -> InterpResult<'tcx, Scalar<Tag>> {
         // FIXME: assuming here that type size is less than `i64::max_value()`.
         let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
         let offset = offset

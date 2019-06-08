@@ -17,7 +17,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
+    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         trace!("eval_fn_call: {:#?}, {:?}", instance, dest.map(|place| *place));
 
@@ -76,7 +76,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
     fn free(
         &mut self,
         ptr: Scalar<Tag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if !ptr.is_null_ptr(this) {
             this.memory_mut().deallocate(
@@ -92,7 +92,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         &mut self,
         old_ptr: Scalar<Tag>,
         new_size: u64,
-    ) -> EvalResult<'tcx, Scalar<Tag>> {
+    ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
         let align = this.tcx.data_layout.pointer_align.abi;
         if old_ptr.is_null_ptr(this) {
@@ -139,7 +139,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
@@ -895,13 +895,13 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         Ok(())
     }
 
-    fn write_null(&mut self, dest: PlaceTy<'tcx, Tag>) -> EvalResult<'tcx> {
+    fn write_null(&mut self, dest: PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
         self.eval_context_mut().write_scalar(Scalar::from_int(0, dest.layout.size), dest)
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
     /// if the path could be resolved, and None otherwise
-    fn eval_path_scalar(&mut self, path: &[&str]) -> EvalResult<'tcx, Option<ScalarMaybeUndef<Tag>>> {
+    fn eval_path_scalar(&mut self, path: &[&str]) -> InterpResult<'tcx, Option<ScalarMaybeUndef<Tag>>> {
         let this = self.eval_context_mut();
         if let Ok(instance) = this.resolve_path(path) {
             let cid = GlobalId {
@@ -920,7 +920,7 @@ fn gen_random<'a, 'mir, 'tcx>(
     this: &mut MiriEvalContext<'a, 'mir, 'tcx>,
     len: usize,
     dest: Scalar<Tag>,
-) -> EvalResult<'tcx>  {
+) -> InterpResult<'tcx>  {
     if len == 0 {
         // Nothing to do
         return Ok(());

@@ -1,5 +1,5 @@
 use rustc::mir;
-use rustc::mir::interpret::{EvalResult, PointerArithmetic};
+use rustc::mir::interpret::{InterpResult, PointerArithmetic};
 use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty;
 
@@ -15,7 +15,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if this.emulate_intrinsic(instance, args, dest)? {
             return Ok(());
