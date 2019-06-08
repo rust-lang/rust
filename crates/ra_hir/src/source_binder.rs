@@ -277,7 +277,7 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         path: &crate::Path,
     ) -> PerNs<crate::Resolution> {
-        self.resolver.resolve_path(db, path)
+        self.resolver.resolve_path_without_assoc_items(db, path)
     }
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &ast::Path) -> Option<PathResolution> {
@@ -294,7 +294,7 @@ impl SourceAnalyzer {
             }
         }
         let hir_path = crate::Path::from_ast(path)?;
-        let res = self.resolver.resolve_path(db, &hir_path);
+        let res = self.resolver.resolve_path_without_assoc_items(db, &hir_path);
         let res = res.clone().take_types().or_else(|| res.take_values())?;
         let res = match res {
             crate::Resolution::Def(it) => PathResolution::Def(it),

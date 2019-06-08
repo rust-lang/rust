@@ -165,7 +165,11 @@ impl Resolver {
 
     /// Returns the fully resolved path if we were able to resolve it.
     /// otherwise returns `PerNs::none`
-    pub(crate) fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<Resolution> {
+    pub(crate) fn resolve_path_without_assoc_items(
+        &self,
+        db: &impl HirDatabase,
+        path: &Path,
+    ) -> PerNs<Resolution> {
         // into_fully_resolved() returns the fully resolved path or PerNs::none() otherwise
         self.resolve_path_segments(db, path).into_fully_resolved()
     }
