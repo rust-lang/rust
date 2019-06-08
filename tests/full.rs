@@ -4,21 +4,21 @@ mod full {
         env,
         fs::{read_to_string, File},
         io::Write,
-        path::Path,
+        path::{Path, PathBuf},
         process::{Command, Stdio},
         str,
     };
 
     fn test_full(crate_name: &str, old_version: &str, new_version: &str, expected_result: bool) {
         // Full test are not working on windows.  See issue #105.
-        if std::env::var_os("CI").is_some() && cfg!(all(target_os = "windows", target_env = "msvc"))
+        /* if std::env::var_os("CI").is_some() && cfg!(all(target_os = "windows", target_env = "msvc"))
         {
             eprintln!(
                 "Skipping full test of crate {} ({} -> {}) on windows. See issue #105.",
                 crate_name, old_version, new_version
             );
             return;
-        }
+        } */
 
         // Add target dir to PATH so cargo-semver will call the right rust-semverver
         if let Some(path) = env::var_os("PATH") {
@@ -67,7 +67,15 @@ mod full {
             crate_name, old_version, new_version, file_ext
         );
 
-        let expected_path = Path::new("tests/full_cases").join(&filename);
+        let expected_path = {
+            let mut buf = PathBuf::new();
+
+            buf.push("tests");
+            buf.push("full_cases");
+            buf.push(&filename);
+
+            buf
+        };
 
         let expected_output = read_to_string(&expected_path)
             .expect(&format!(
