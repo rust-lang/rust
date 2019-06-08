@@ -12,7 +12,7 @@ use rustc::mir;
 use rustc::mir::interpret::{
     AllocId, Pointer, Scalar,
     Relocations, Allocation, UndefMask,
-    EvalResult, InterpError,
+    InterpResult, InterpError,
 };
 
 use rustc::ty::{self, TyCtxt};
@@ -29,18 +29,18 @@ use crate::const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
 pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir> {
-    /// The set of all `EvalSnapshot` *hashes* observed by this detector.
+    /// The set of all `InterpSnapshot` *hashes* observed by this detector.
     ///
     /// When a collision occurs in this table, we store the full snapshot in
     /// `snapshots`.
     hashes: FxHashSet<u64>,
 
-    /// The set of all `EvalSnapshot`s observed by this detector.
+    /// The set of all `InterpSnapshot`s observed by this detector.
     ///
-    /// An `EvalSnapshot` will only be fully cloned once it has caused a
+    /// An `InterpSnapshot` will only be fully cloned once it has caused a
     /// collision in `hashes`. As a result, the detector must observe at least
     /// *two* full cycles of an infinite loop before it triggers.
-    snapshots: FxHashSet<EvalSnapshot<'a, 'mir, 'tcx>>,
+    snapshots: FxHashSet<InterpSnapshot<'a, 'mir, 'tcx>>,
 }
 
 impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
@@ -51,7 +51,7 @@ impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
         span: Span,
         memory: &Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>],
-    ) -> EvalResult<'tcx, ()> {
+    ) -> InterpResult<'tcx, ()> {
         // Compute stack's hash before copying anything
         let mut hcx = tcx.get_stable_hashing_context();
         let mut hasher = StableHasher::<u64>::new();
@@ -72,7 +72,7 @@ impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
         // We need to make a full copy. NOW things that to get really expensive.
         info!("snapshotting the state of the interpreter");
 
-        if self.snapshots.insert(EvalSnapshot::new(memory, stack)) {
+        if self.snapshots.insert(InterpSnapshot::new(memory, stack)) {
             // Spurious collision or first cycle
             return Ok(())
         }
@@ -384,18 +384,18 @@ impl<'a, 'b, 'mir, 'tcx: 'a+'mir> SnapshotContext<'b>
 /// The virtual machine state during const-evaluation at a given point in time.
 /// We assume the `CompileTimeInterpreter` has no interesting extra state that
 /// is worth considering here.
-struct EvalSnapshot<'a, 'mir, 'tcx: 'a + 'mir> {
+struct InterpSnapshot<'a, 'mir, 'tcx: 'a + 'mir> {
     memory: Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
     stack: Vec<Frame<'mir, 'tcx>>,
 }
 
-impl<'a, 'mir, 'tcx: 'a + 'mir> EvalSnapshot<'a, 'mir, 'tcx>
+impl<'a, 'mir, 'tcx: 'a + 'mir> InterpSnapshot<'a, 'mir, 'tcx>
 {
     fn new(
         memory: &Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>]
     ) -> Self {
-        EvalSnapshot {
+        InterpSnapshot {
             memory: memory.clone(),
             stack: stack.into(),
         }
@@ -411,7 +411,7 @@ impl<'a, 'mir, 'tcx: 'a + 'mir> EvalSnapshot<'a, 'mir, 'tcx>
 
 }
 
-impl<'a, 'mir, 'tcx> Hash for EvalSnapshot<'a, 'mir, 'tcx>
+impl<'a, 'mir, 'tcx> Hash for InterpSnapshot<'a, 'mir, 'tcx>
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Implement in terms of hash stable, so that k1 == k2 -> hash(k1) == hash(k2)
@@ -422,16 +422,16 @@ impl<'a, 'mir, 'tcx> Hash for EvalSnapshot<'a, 'mir, 'tcx>
     }
 }
 
-impl_stable_hash_for!(impl<'tcx, 'b, 'mir> for struct EvalSnapshot<'b, 'mir, 'tcx> {
+impl_stable_hash_for!(impl<'tcx, 'b, 'mir> for struct InterpSnapshot<'b, 'mir, 'tcx> {
     // Not hashing memory: Avoid hashing memory all the time during execution
     memory -> _,
     stack,
 });
 
-impl<'a, 'mir, 'tcx> Eq for EvalSnapshot<'a, 'mir, 'tcx>
+impl<'a, 'mir, 'tcx> Eq for InterpSnapshot<'a, 'mir, 'tcx>
 {}
 
-impl<'a, 'mir, 'tcx> PartialEq for EvalSnapshot<'a, 'mir, 'tcx>
+impl<'a, 'mir, 'tcx> PartialEq for InterpSnapshot<'a, 'mir, 'tcx>
 {
     fn eq(&self, other: &Self) -> bool {
         // FIXME: This looks to be a *ridiculously expensive* comparison operation.

@@ -7,7 +7,7 @@ use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::mir::BinOp;
 use rustc::mir::interpret::{
-    EvalResult, InterpError, Scalar,
+    InterpResult, InterpError, Scalar,
 };
 
 use super::{
@@ -22,7 +22,7 @@ fn numeric_intrinsic<'tcx, Tag>(
     name: &str,
     bits: u128,
     kind: Primitive,
-) -> EvalResult<'tcx, Scalar<Tag>> {
+) -> InterpResult<'tcx, Scalar<Tag>> {
     let size = match kind {
         Primitive::Int(integer, _) => integer.size(),
         _ => bug!("invalid `{}` argument: {:?}", name, bits),
@@ -46,7 +46,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
         dest: PlaceTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
@@ -231,7 +231,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
         dest: Option<PlaceTy<'tcx, M::PointerTag>>,
-    ) -> EvalResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, bool> {
         let def_id = instance.def_id();
         // Some fn calls are actually BinOp intrinsics
         if let Some((op, oflo)) = self.tcx.is_binop_lang_item(def_id) {

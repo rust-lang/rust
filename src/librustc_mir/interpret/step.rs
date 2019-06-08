@@ -4,7 +4,7 @@
 
 use rustc::mir;
 use rustc::ty::layout::LayoutOf;
-use rustc::mir::interpret::{EvalResult, Scalar, PointerArithmetic};
+use rustc::mir::interpret::{InterpResult, Scalar, PointerArithmetic};
 
 use super::{InterpretCx, Machine};
 
@@ -36,7 +36,7 @@ fn binop_right_homogeneous(op: mir::BinOp) -> bool {
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
-    pub fn run(&mut self) -> EvalResult<'tcx> {
+    pub fn run(&mut self) -> InterpResult<'tcx> {
         while self.step()? {}
         Ok(())
     }
@@ -44,7 +44,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     /// Returns `true` as long as there are more things to do.
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
-    pub fn step(&mut self) -> EvalResult<'tcx, bool> {
+    pub fn step(&mut self) -> InterpResult<'tcx, bool> {
         if self.stack.is_empty() {
             return Ok(false);
         }
@@ -70,7 +70,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         Ok(true)
     }
 
-    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx> {
+    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
         use rustc::mir::StatementKind::*;
@@ -136,7 +136,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
         place: &mir::Place<'tcx>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let dest = self.eval_place(place)?;
 
         use rustc::mir::Rvalue::*;
@@ -277,7 +277,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         Ok(())
     }
 
-    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx> {
+    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
         self.tcx.span = terminator.source_info.span;
         self.memory.tcx.span = terminator.source_info.span;

@@ -3,7 +3,7 @@ use rustc::ty::{self, layout::{Size, TyLayout}};
 use syntax::ast::FloatTy;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
-use rustc::mir::interpret::{EvalResult, Scalar};
+use rustc::mir::interpret::{InterpResult, Scalar};
 
 use super::{InterpretCx, PlaceTy, Immediate, Machine, ImmTy};
 
@@ -17,7 +17,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         left: ImmTy<'tcx, M::PointerTag>,
         right: ImmTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let (val, overflowed) = self.binary_op(op, left, right)?;
         let val = Immediate::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
         self.write_immediate(val, dest)
@@ -31,7 +31,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         left: ImmTy<'tcx, M::PointerTag>,
         right: ImmTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let (val, _overflowed) = self.binary_op(op, left, right)?;
         self.write_scalar(val, dest)
     }
@@ -43,7 +43,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         bin_op: mir::BinOp,
         l: char,
         r: char,
-    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
+    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         use rustc::mir::BinOp::*;
 
         let res = match bin_op {
@@ -63,7 +63,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         bin_op: mir::BinOp,
         l: bool,
         r: bool,
-    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
+    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         use rustc::mir::BinOp::*;
 
         let res = match bin_op {
@@ -88,7 +88,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         // passing in raw bits
         l: u128,
         r: u128,
-    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
+    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         use rustc::mir::BinOp::*;
 
         macro_rules! float_math {
@@ -128,7 +128,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         left_layout: TyLayout<'tcx>,
         r: u128,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
+    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         use rustc::mir::BinOp::*;
 
         // Shift ops can have an RHS with a different numeric type.
@@ -279,7 +279,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, M::PointerTag>,
         right: ImmTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
+    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
             bin_op, *left, left.layout.ty, *right, right.layout.ty);
 
@@ -329,7 +329,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &self,
         un_op: mir::UnOp,
         val: ImmTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, Scalar<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         use rustc::mir::UnOp::*;
 
         let layout = val.layout;

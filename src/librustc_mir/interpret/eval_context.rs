@@ -16,7 +16,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
     ErrorHandled,
     GlobalId, Scalar, Pointer, FrameInfo, AllocId,
-    EvalResult, InterpError,
+    InterpResult, InterpError,
     truncate, sign_extend,
 };
 use rustc_data_structures::fx::FxHashMap;
@@ -135,7 +135,7 @@ pub enum LocalValue<Tag=(), Id=AllocId> {
 }
 
 impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
-    pub fn access(&self) -> EvalResult<'tcx, Operand<Tag>> {
+    pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
         match self.value {
             LocalValue::Dead => err!(DeadLocal),
             LocalValue::Uninitialized =>
@@ -148,7 +148,7 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     /// to do so; otherwise return the `MemPlace` to consult instead.
     pub fn access_mut(
         &mut self,
-    ) -> EvalResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
+    ) -> InterpResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
         match self.value {
             LocalValue::Dead => err!(DeadLocal),
             LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
@@ -190,7 +190,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
     for InterpretCx<'a, 'mir, 'tcx, M>
 {
     type Ty = Ty<'tcx>;
-    type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
+    type TyLayout = InterpResult<'tcx, TyLayout<'tcx>>;
 
     #[inline]
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
@@ -259,7 +259,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     pub(super) fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
         substs: T,
-    ) -> EvalResult<'tcx, T> {
+    ) -> InterpResult<'tcx, T> {
         match self.stack.last() {
             Some(frame) => Ok(self.tcx.subst_and_normalize_erasing_regions(
                 frame.instance.substs,
@@ -278,7 +278,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         &self,
         def_id: DefId,
         substs: SubstsRef<'tcx>
-    ) -> EvalResult<'tcx, ty::Instance<'tcx>> {
+    ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("param_env: {:#?}", self.param_env);
         let substs = self.subst_and_normalize_erasing_regions(substs)?;
@@ -302,7 +302,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     pub fn load_mir(
         &self,
         instance: ty::InstanceDef<'tcx>,
-    ) -> EvalResult<'tcx, &'tcx mir::Body<'tcx>> {
+    ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let did = instance.def_id();
         if did.is_local()
@@ -325,7 +325,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     pub(super) fn monomorphize<T: TypeFoldable<'tcx> + Subst<'tcx>>(
         &self,
         t: T,
-    ) -> EvalResult<'tcx, T> {
+    ) -> InterpResult<'tcx, T> {
         match self.stack.last() {
             Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)),
             None => if t.needs_subst() {
@@ -352,7 +352,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
         layout: Option<TyLayout<'tcx>>,
-    ) -> EvalResult<'tcx, TyLayout<'tcx>> {
+    ) -> InterpResult<'tcx, TyLayout<'tcx>> {
         match frame.locals[local].layout.get() {
             None => {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
@@ -375,7 +375,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         &self,
         metadata: Option<Scalar<M::PointerTag>>,
         layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Size, Align)>> {
+    ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
             return Ok(Some((layout.size, layout.align.abi)));
         }
@@ -467,7 +467,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     pub fn size_and_align_of_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx, Option<(Size, Align)>> {
+    ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         self.size_and_align_of(mplace.meta, mplace.layout)
     }
 
@@ -478,7 +478,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         mir: &'mir mir::Body<'tcx>,
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         if self.stack.len() > 0 {
             info!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
         }
@@ -546,7 +546,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         }
     }
 
-    pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
+    pub(super) fn pop_stack_frame(&mut self) -> InterpResult<'tcx> {
         info!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect(
@@ -611,7 +611,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     pub fn storage_live(
         &mut self,
         local: mir::Local
-    ) -> EvalResult<'tcx, LocalValue<M::PointerTag>> {
+    ) -> InterpResult<'tcx, LocalValue<M::PointerTag>> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
@@ -634,7 +634,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     pub(super) fn deallocate_local(
         &mut self,
         local: LocalValue<M::PointerTag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // FIXME: should we tell the user that there was a local which was never written to?
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             trace!("deallocating local");
@@ -648,7 +648,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     pub fn const_eval_raw(
         &self,
         gid: GlobalId<'tcx>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let param_env = if self.tcx.is_static(gid.instance.def_id()) {
             ty::ParamEnv::reveal_all()
         } else {
