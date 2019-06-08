@@ -710,23 +710,10 @@ macro_rules! make_mir_visitor {
                                 proj: & $($mutability)? Projection<'tcx>,
                                 context: PlaceContext,
                                 location: Location) {
-                // this is duplicated with `super_place` in preparation for changing `Place` to be
+                // this is calling `super_place` in preparation for changing `Place` to be
                 // a struct with a base and a slice of projections. `visit_place` should only ever
                 // be called for the base place now.
-                match & $($mutability)? proj.base {
-                    Place::Base(place_base) => {
-                        self.visit_place_base(place_base, context, location);
-                    }
-                    Place::Projection(proj) => {
-                        let context = if context.is_mutating_use() {
-                            PlaceContext::MutatingUse(MutatingUseContext::Projection)
-                        } else {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-                        };
-
-                        self.visit_projection(proj, context, location);
-                    }
-                }
+                self.super_place(& $($mutability)? proj.base, context, location);
                 match & $($mutability)? proj.elem {
                     ProjectionElem::Deref => {
                     }
