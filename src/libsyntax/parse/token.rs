@@ -241,21 +241,19 @@ pub struct Token {
     pub span: Span,
 }
 
-impl TokenKind {
-    /// Recovers a `TokenKind` from an `ast::Ident`. This creates a raw identifier if necessary.
-    pub fn from_ast_ident(ident: ast::Ident) -> TokenKind {
-        Ident(ident.name, ident.is_raw_guess())
+impl Token {
+    /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
+    crate fn from_ast_ident(ident: ast::Ident) -> Token {
+        Token::new(Ident(ident.name, ident.is_raw_guess()), ident.span)
     }
 
     crate fn is_like_plus(&self) -> bool {
-        match *self {
+        match self.kind {
             BinOp(Plus) | BinOpEq(Plus) => true,
             _ => false,
         }
     }
-}
 
-impl Token {
     /// Returns `true` if the token can appear at the start of an expression.
     crate fn can_begin_expr(&self) -> bool {
         match self.kind {
@@ -310,12 +308,10 @@ impl Token {
             _ => false,
         }
     }
-}
 
-impl TokenKind {
     /// Returns `true` if the token can appear at the start of a const param.
-    pub fn can_begin_const_arg(&self) -> bool {
-        match self {
+    crate fn can_begin_const_arg(&self) -> bool {
+        match self.kind {
             OpenDelim(Brace) => true,
             Interpolated(ref nt) => match **nt {
                 NtExpr(..) => true,
@@ -326,9 +322,7 @@ impl TokenKind {
             _ => self.can_begin_literal_or_bool(),
         }
     }
-}
 
-impl Token {
     /// Returns `true` if the token can appear at the start of a generic bound.
     crate fn can_begin_bound(&self) -> bool {
         self.is_path_start() || self.is_lifetime() || self.is_keyword(kw::For) ||
@@ -340,17 +334,19 @@ impl TokenKind {
     pub fn lit(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> TokenKind {
         Literal(Lit::new(kind, symbol, suffix))
     }
+}
 
+impl Token {
     /// Returns `true` if the token is any literal
     crate fn is_lit(&self) -> bool {
-        match *self {
+        match self.kind {
             Literal(..) => true,
             _           => false,
         }
     }
 
     crate fn expect_lit(&self) -> Lit {
-        match *self {
+        match self.kind {
             Literal(lit) => lit,
             _=> panic!("`expect_lit` called on non-literal"),
         }
@@ -359,7 +355,7 @@ impl TokenKind {
     /// Returns `true` if the token is any literal, a minus (which can prefix a literal,
     /// for example a '-42', or one of the boolean idents).
     crate fn can_begin_literal_or_bool(&self) -> bool {
-        match *self {
+        match self.kind {
             Literal(..)  => true,
             BinOp(Minus) => true,
             Ident(name, false) if name == kw::True => true,
@@ -371,9 +367,7 @@ impl TokenKind {
             _            => false,
         }
     }
-}
 
-impl Token {
     /// Returns an identifier if this token is an identifier.
     pub fn ident(&self) -> Option<(ast::Ident, /* is_raw */ bool)> {
         match self.kind {
@@ -397,49 +391,25 @@ impl Token {
             _ => None,
         }
     }
-}
 
-impl TokenKind {
-    /// Returns an identifier name if this token is an identifier.
-    pub fn ident_name(&self) -> Option<(ast::Name, /* is_raw */ bool)> {
-        match *self {
-            Ident(name, is_raw) => Some((name, is_raw)),
-            Interpolated(ref nt) => match **nt {
-                NtIdent(ident, is_raw) => Some((ident.name, is_raw)),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-    /// Returns a lifetime name if this token is a lifetime.
-    pub fn lifetime_name(&self) -> Option<ast::Name> {
-        match *self {
-            Lifetime(name) => Some(name),
-            Interpolated(ref nt) => match **nt {
-                NtLifetime(ident) => Some(ident.name),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
     /// Returns `true` if the token is an identifier.
     pub fn is_ident(&self) -> bool {
-        self.ident_name().is_some()
+        self.ident().is_some()
     }
     /// Returns `true` if the token is a lifetime.
     crate fn is_lifetime(&self) -> bool {
-        self.lifetime_name().is_some()
+        self.lifetime().is_some()
     }
 
     /// Returns `true` if the token is a identifier whose name is the given
     /// string slice.
     crate fn is_ident_named(&self, name: Symbol) -> bool {
-        self.ident_name().map_or(false, |(ident_name, _)| ident_name == name)
+        self.ident().map_or(false, |(ident, _)| ident.name == name)
     }
 
     /// Returns `true` if the token is an interpolated path.
     fn is_path(&self) -> bool {
-        if let Interpolated(ref nt) = *self {
+        if let Interpolated(ref nt) = self.kind {
             if let NtPath(..) = **nt {
                 return true;
             }
@@ -456,33 +426,27 @@ impl TokenKind {
     crate fn is_qpath_start(&self) -> bool {
         self == &Lt || self == &BinOp(Shl)
     }
-}
 
-impl Token {
     crate fn is_path_start(&self) -> bool {
         self == &ModSep || self.is_qpath_start() || self.is_path() ||
         self.is_path_segment_keyword() || self.is_ident() && !self.is_reserved_ident()
     }
-}
 
-impl TokenKind {
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: Symbol) -> bool {
-        self.ident_name().map(|(name, is_raw)| name == kw && !is_raw).unwrap_or(false)
+        self.ident().map(|(id, is_raw)| id.name == kw && !is_raw).unwrap_or(false)
     }
 
-    pub fn is_path_segment_keyword(&self) -> bool {
-        match self.ident_name() {
-            Some((name, false)) => name.is_path_segment_keyword(),
+    crate fn is_path_segment_keyword(&self) -> bool {
+        match self.ident() {
+            Some((id, false)) => id.is_path_segment_keyword(),
             _ => false,
         }
     }
-}
 
-impl Token {
     // Returns true for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
-    pub fn is_special_ident(&self) -> bool {
+    crate fn is_special_ident(&self) -> bool {
         match self.ident() {
             Some((id, false)) => id.is_special(),
             _ => false,
@@ -512,55 +476,53 @@ impl Token {
             _ => false,
         }
     }
-}
 
-impl TokenKind {
-    crate fn glue(self, joint: TokenKind) -> Option<TokenKind> {
-        Some(match self {
-            Eq => match joint {
+    crate fn glue(self, joint: Token) -> Option<Token> {
+        let kind = match self.kind {
+            Eq => match joint.kind {
                 Eq => EqEq,
                 Gt => FatArrow,
                 _ => return None,
             },
-            Lt => match joint {
+            Lt => match joint.kind {
                 Eq => Le,
                 Lt => BinOp(Shl),
                 Le => BinOpEq(Shl),
                 BinOp(Minus) => LArrow,
                 _ => return None,
             },
-            Gt => match joint {
+            Gt => match joint.kind {
                 Eq => Ge,
                 Gt => BinOp(Shr),
                 Ge => BinOpEq(Shr),
                 _ => return None,
             },
-            Not => match joint {
+            Not => match joint.kind {
                 Eq => Ne,
                 _ => return None,
             },
-            BinOp(op) => match joint {
+            BinOp(op) => match joint.kind {
                 Eq => BinOpEq(op),
                 BinOp(And) if op == And => AndAnd,
                 BinOp(Or) if op == Or => OrOr,
                 Gt if op == Minus => RArrow,
                 _ => return None,
             },
-            Dot => match joint {
+            Dot => match joint.kind {
                 Dot => DotDot,
                 DotDot => DotDotDot,
                 _ => return None,
             },
-            DotDot => match joint {
+            DotDot => match joint.kind {
                 Dot => DotDotDot,
                 Eq => DotDotEq,
                 _ => return None,
             },
-            Colon => match joint {
+            Colon => match joint.kind {
                 Colon => ModSep,
                 _ => return None,
             },
-            SingleQuote => match joint {
+            SingleQuote => match joint.kind {
                 Ident(name, false) => Lifetime(Symbol::intern(&format!("'{}", name))),
                 _ => return None,
             },
@@ -570,9 +532,13 @@ impl TokenKind {
             Question | OpenDelim(..) | CloseDelim(..) |
             Literal(..) | Ident(..) | Lifetime(..) | Interpolated(..) | DocComment(..) |
             Whitespace | Comment | Shebang(..) | Eof => return None,
-        })
-    }
+        };
 
+        Some(Token::new(kind, self.span.to(joint.span)))
+    }
+}
+
+impl TokenKind {
     /// Returns tokens that are likely to be typed accidentally instead of the current token.
     /// Enables better error recovery when the wrong token is found.
     crate fn similar_tokens(&self) -> Option<Vec<TokenKind>> {
@@ -582,14 +548,16 @@ impl TokenKind {
             _ => None
         }
     }
+}
 
+impl Token {
     // See comments in `Nonterminal::to_tokenstream` for why we care about
     // *probably* equal here rather than actual equality
     crate fn probably_equal_for_proc_macro(&self, other: &TokenKind) -> bool {
-        if mem::discriminant(self) != mem::discriminant(other) {
+        if mem::discriminant(&self.kind) != mem::discriminant(other) {
             return false
         }
-        match (self, other) {
+        match (&self.kind, other) {
             (&Eq, &Eq) |
             (&Lt, &Lt) |
             (&Le, &Le) |
@@ -641,9 +609,7 @@ impl TokenKind {
             _ => panic!("forgot to add a token?"),
         }
     }
-}
 
-impl Token {
     crate fn new(kind: TokenKind, span: Span) -> Self {
         Token { kind, span }
     }

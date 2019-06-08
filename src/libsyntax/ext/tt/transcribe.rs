@@ -4,7 +4,7 @@ use crate::ext::expand::Marker;
 use crate::ext::tt::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 use crate::ext::tt::quoted;
 use crate::mut_visit::noop_visit_tt;
-use crate::parse::token::{self, NtTT, Token, TokenKind};
+use crate::parse::token::{self, NtTT, Token};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use smallvec::{smallvec, SmallVec};
@@ -237,7 +237,7 @@ pub fn transcribe(
                         Ident::new(ident.name, ident.span.apply_mark(cx.current_expansion.mark));
                     sp = sp.apply_mark(cx.current_expansion.mark);
                     result.push(TokenTree::token(token::Dollar, sp).into());
-                    result.push(TokenTree::token(TokenKind::from_ast_ident(ident), sp).into());
+                    result.push(TokenTree::Token(Token::from_ast_ident(ident)).into());
                 }
             }
 

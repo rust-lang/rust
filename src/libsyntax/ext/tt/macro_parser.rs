@@ -428,13 +428,13 @@ pub fn parse_failure_msg(tok: TokenKind) -> String {
 }
 
 /// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
-fn token_name_eq(t1: &TokenKind, t2: &TokenKind) -> bool {
-    if let (Some((name1, is_raw1)), Some((name2, is_raw2))) = (t1.ident_name(), t2.ident_name()) {
-        name1 == name2 && is_raw1 == is_raw2
-    } else if let (Some(name1), Some(name2)) = (t1.lifetime_name(), t2.lifetime_name()) {
-        name1 == name2
+fn token_name_eq(t1: &Token, t2: &Token) -> bool {
+    if let (Some((ident1, is_raw1)), Some((ident2, is_raw2))) = (t1.ident(), t2.ident()) {
+        ident1.name == ident2.name && is_raw1 == is_raw2
+    } else if let (Some(ident1), Some(ident2)) = (t1.lifetime(), t2.lifetime()) {
+        ident1.name == ident2.name
     } else {
-        *t1 == *t2
+        t1.kind == t2.kind
     }
 }
 
@@ -712,7 +712,7 @@ pub fn parse(
 
         // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
         // either the parse is ambiguous (which should never happen) or there is a syntax error.
-        if token_name_eq(&parser.token, &token::Eof) {
+        if parser.token == token::Eof {
             if eof_items.len() == 1 {
                 let matches = eof_items[0]
                     .matches

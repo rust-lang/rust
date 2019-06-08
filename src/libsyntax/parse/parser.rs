@@ -2627,9 +2627,11 @@ impl<'a> Parser<'a> {
                     token::Ident(name, _) => name,
                     _ => unreachable!()
                 };
-                let mut err = self.fatal(&format!("unknown macro variable `{}`", name));
-                err.span_label(self.token.span, "unknown macro variable");
-                err.emit();
+                let span = self.prev_span.to(self.token.span);
+                self.diagnostic()
+                    .struct_span_fatal(span, &format!("unknown macro variable `{}`", name))
+                    .span_label(span, "unknown macro variable")
+                    .emit();
                 self.bump();
                 return
             }
