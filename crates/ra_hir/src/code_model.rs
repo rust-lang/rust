@@ -319,12 +319,6 @@ impl Module {
     }
 }
 
-impl Docs for Module {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        self.declaration_source(db).and_then(|it| docs_from_ast(&*it.1))
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructField {
     pub(crate) parent: VariantDef,
@@ -352,15 +346,6 @@ impl StructField {
 
     pub fn parent_def(&self, _db: &impl HirDatabase) -> VariantDef {
         self.parent
-    }
-}
-
-impl Docs for StructField {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        match self.source(db).1 {
-            FieldSource::Named(named) => docs_from_ast(&*named),
-            FieldSource::Pos(..) => return None,
-        }
     }
 }
 
@@ -425,12 +410,6 @@ impl Struct {
     }
 }
 
-impl Docs for Struct {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        docs_from_ast(&*self.source(db).1)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Union {
     pub(crate) id: StructId,
@@ -461,12 +440,6 @@ impl Union {
         let p = self.generic_params(db);
         let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
         r
-    }
-}
-
-impl Docs for Union {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        docs_from_ast(&*self.source(db).1)
     }
 }
 
@@ -519,12 +492,6 @@ impl Enum {
     }
 }
 
-impl Docs for Enum {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        docs_from_ast(&*self.source(db).1)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
     pub(crate) parent: Enum,
@@ -565,12 +532,6 @@ impl EnumVariant {
             .flat_map(|it| it.iter())
             .find(|(_id, data)| data.name == *name)
             .map(|(id, _)| StructField { parent: (*self).into(), id })
-    }
-}
-
-impl Docs for EnumVariant {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        docs_from_ast(&*self.source(db).1)
     }
 }
 
@@ -757,12 +718,6 @@ impl Function {
     }
 }
 
-impl Docs for Function {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        docs_from_ast(&*self.source(db).1)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Const {
     pub(crate) id: ConstId,
@@ -803,12 +758,6 @@ impl Const {
             .map(|ib| ib.resolver(db))
             .unwrap_or_else(|| self.module(db).resolver(db));
         r
-    }
-}
-
-impl Docs for Const {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        docs_from_ast(&*self.source(db).1)
     }
 }
 
@@ -884,12 +833,6 @@ impl Static {
     }
 }
 
-impl Docs for Static {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        docs_from_ast(&*self.source(db).1)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Trait {
     pub(crate) id: TraitId,
@@ -933,12 +876,6 @@ impl Trait {
         let p = self.generic_params(db);
         let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
         r
-    }
-}
-
-impl Docs for Trait {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        docs_from_ast(&*self.source(db).1)
     }
 }
 
@@ -998,11 +935,6 @@ impl TypeAlias {
     }
 }
 
-impl Docs for TypeAlias {
-    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
-        docs_from_ast(&*self.source(db).1)
-    }
-}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDef {
     pub(crate) id: MacroDefId,
