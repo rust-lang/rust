@@ -1,14 +1,7 @@
 //! This file is managed by util/dev update_lints. Do not edit.
 
-/// Lint data parsed from the Clippy source code.
-#[derive(Clone, PartialEq, Debug)]
-pub struct Lint {
-    pub name: &'static str,
-    pub group: &'static str,
-    pub desc: &'static str,
-    pub deprecation: Option<&'static str>,
-    pub module: &'static str,
-}
+mod lint;
+use lint::Lint;
 
 pub const ALL_LINTS: [Lint; 304] = [
     Lint {

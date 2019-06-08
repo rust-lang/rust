@@ -95,20 +95,13 @@ fn update_lints(update_mode: &UpdateMode) {
     sorted_usable_lints.sort_by_key(|lint| lint.name.clone());
 
     std::fs::write(
-        "../src/lintlist.rs",
+        "../src/lintlist/mod.rs",
         &format!(
             "\
 //! This file is managed by util/dev update_lints. Do not edit.
 
-/// Lint data parsed from the Clippy source code.
-#[derive(Clone, PartialEq, Debug)]
-pub struct Lint {{
-    pub name: &'static str,
-    pub group: &'static str,
-    pub desc: &'static str,
-    pub deprecation: Option<&'static str>,
-    pub module: &'static str,
-}}
+mod lint;
+use lint::Lint;
 
 pub const ALL_LINTS: [Lint; {}] = {:#?};\n",
             sorted_usable_lints.len(),
