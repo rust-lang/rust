@@ -11,5 +11,5 @@ use std::ptr::Unique;
 const PTR: *mut u32 = Unique::empty().as_ptr();
 
 pub fn main() {
-    assert_eq!(PTR, b(Unique::<u32>::empty()).as_ptr());
+    assert_eq!(PTR, b(Unique::<u32>::empty)().as_ptr());
 }

@@ -11,6 +11,6 @@ const DANGLING: NonNull<u32> = NonNull::dangling();
 const CASTED: NonNull<u32> = NonNull::cast(NonNull::<i32>::dangling());
 
 pub fn main() {
-    assert_eq!(DANGLING, b(NonNull::dangling()));
-    assert_eq!(CASTED, b(NonNull::dangling()));
+    assert_eq!(DANGLING, b(NonNull::dangling)());
+    assert_eq!(CASTED, b(NonNull::dangling)());
 }
