@@ -712,7 +712,7 @@ macro_rules! make_mir_visitor {
                                 location: Location) {
                 // this is calling `super_place` in preparation for changing `Place` to be
                 // a struct with a base and a slice of projections. `visit_place` should only ever
-                // be called for the base place now.
+                // be called for the outermost place now.
                 self.super_place(& $($mutability)? proj.base, context, location);
                 match & $($mutability)? proj.elem {
                     ProjectionElem::Deref => {
