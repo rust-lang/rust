@@ -11,6 +11,7 @@ const DANGLING: NonNull<u32> = NonNull::dangling();
 const CASTED: NonNull<u32> = NonNull::cast(NonNull::<i32>::dangling());
 
 pub fn main() {
-    assert_eq!(DANGLING, b(NonNull::dangling)());
-    assert_eq!(CASTED, b(NonNull::dangling)());
+    // Be super-extra paranoid and cast the fn items to fn pointers before blackboxing them.
+    assert_eq!(DANGLING, b::<fn() -> _>(NonNull::dangling)());
+    assert_eq!(CASTED, b::<fn() -> _>(NonNull::dangling)());
 }

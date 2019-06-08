@@ -11,5 +11,6 @@ use std::ptr::Unique;
 const PTR: *mut u32 = Unique::empty().as_ptr();
 
 pub fn main() {
-    assert_eq!(PTR, b(Unique::<u32>::empty)().as_ptr());
+    // Be super-extra paranoid and cast the fn items to fn pointers before blackboxing them.
+    assert_eq!(PTR, b::<fn() -> _>(Unique::<u32>::empty)().as_ptr());
 }
