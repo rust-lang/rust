@@ -1,5 +1,5 @@
 error[E0658]: The attribute `mutable_doc` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/lint-unknown-attr.rs:6:4
+  --> $DIR/unknown-attr.rs:5:4
    |
 LL | #![mutable_doc]
    |    ^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![mutable_doc]
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `dance` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/lint-unknown-attr.rs:8:3
+  --> $DIR/unknown-attr.rs:7:3
    |
 LL | #[dance] mod a {}
    |   ^^^^^
@@ -17,7 +17,7 @@ LL | #[dance] mod a {}
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `dance` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/lint-unknown-attr.rs:10:3
+  --> $DIR/unknown-attr.rs:9:3
    |
 LL | #[dance] fn main() {}
    |   ^^^^^

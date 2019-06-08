@@ -1,5 +1,4 @@
-// When denying at the crate level, be sure to not get random warnings from the
-// injected intrinsics by the compiler.
+// Unknown attributes fall back to feature gated custom attributes.
 
 #![feature(custom_inner_attributes)]
 

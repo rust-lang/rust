@@ -1,5 +1,5 @@
 error[E0658]: The attribute `fixed_stack_segment` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/lint-obsolete-attr.rs:6:3
+  --> $DIR/obsolete-attr.rs:5:3
    |
 LL | #[fixed_stack_segment] fn f() {}
    |   ^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #[fixed_stack_segment] fn f() {}
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `ab_isize` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/lint-obsolete-attr.rs:4:3
+  --> $DIR/obsolete-attr.rs:3:3
    |
 LL | #[ab_isize="stdcall"] extern {}
    |   ^^^^^^^^

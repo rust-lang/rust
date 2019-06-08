@@ -1,5 +1,4 @@
-// When denying at the crate level, be sure to not get random warnings from the
-// injected intrinsics by the compiler.
+// Obsolete attributes fall back to feature gated custom attributes.
 
 #[ab_isize="stdcall"] extern {} //~ ERROR attribute `ab_isize` is currently unknown
 
