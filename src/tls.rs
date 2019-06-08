@@ -4,7 +4,7 @@ use rustc_target::abi::LayoutOf;
 use rustc::{ty, ty::layout::HasDataLayout, mir};
 
 use crate::{
-    EvalResult, InterpError, StackPopCleanup,
+    InterpResult, InterpError, StackPopCleanup,
     MPlaceTy, Scalar, Tag,
 };
 
@@ -53,7 +53,7 @@ impl<'tcx> TlsData<'tcx> {
         new_key
     }
 
-    pub fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx> {
+    pub fn delete_tls_key(&mut self, key: TlsKey) -> InterpResult<'tcx> {
         match self.keys.remove(&key) {
             Some(_) => {
                 trace!("TLS key {} removed", key);
@@ -63,7 +63,7 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Scalar<Tag>> {
+    pub fn load_tls(&mut self, key: TlsKey) -> InterpResult<'tcx, Scalar<Tag>> {
         match self.keys.get(&key) {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
@@ -73,7 +73,7 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn store_tls(&mut self, key: TlsKey, new_data: Scalar<Tag>) -> EvalResult<'tcx> {
+    pub fn store_tls(&mut self, key: TlsKey, new_data: Scalar<Tag>) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(&mut TlsEntry { ref mut data, .. }) => {
                 trace!("TLS key {} stored: {:?}", key, new_data);
@@ -131,7 +131,7 @@ impl<'tcx> TlsData<'tcx> {
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
 pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
-    fn run_tls_dtors(&mut self) -> EvalResult<'tcx> {
+    fn run_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let mut dtor = this.machine.tls.fetch_tls_dtor(None, &*this.tcx);
         // FIXME: replace loop by some structure that works with stepping

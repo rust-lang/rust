@@ -9,7 +9,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'
 
 pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
     /// Gets an instance for a path.
-    fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>> {
+    fn resolve_path(&self, path: &[&str]) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         let this = self.eval_context_ref();
         this.tcx
             .crates()
@@ -49,8 +49,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         &self,
         place: MPlaceTy<'tcx, Tag>,
         size: Size,
-        mut action: impl FnMut(Pointer<Tag>, Size, bool) -> EvalResult<'tcx>,
-    ) -> EvalResult<'tcx> {
+        mut action: impl FnMut(Pointer<Tag>, Size, bool) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         trace!("visit_frozen(place={:?}, size={:?})", *place, size);
         debug_assert_eq!(size,
@@ -120,7 +120,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         /// Visiting the memory covered by a `MemPlace`, being aware of
         /// whether we are inside an `UnsafeCell` or not.
         struct UnsafeCellVisitor<'ecx, 'a, 'mir, 'tcx, F>
-            where F: FnMut(MPlaceTy<'tcx, Tag>) -> EvalResult<'tcx>
+            where F: FnMut(MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>
         {
             ecx: &'ecx MiriEvalContext<'a, 'mir, 'tcx>,
             unsafe_cell_action: F,
@@ -131,7 +131,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         for
             UnsafeCellVisitor<'ecx, 'a, 'mir, 'tcx, F>
         where
-            F: FnMut(MPlaceTy<'tcx, Tag>) -> EvalResult<'tcx>
+            F: FnMut(MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>
         {
             type V = MPlaceTy<'tcx, Tag>;
 
@@ -141,7 +141,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             }
 
             // Hook to detect `UnsafeCell`.
-            fn visit_value(&mut self, v: MPlaceTy<'tcx, Tag>) -> EvalResult<'tcx>
+            fn visit_value(&mut self, v: MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>
             {
                 trace!("UnsafeCellVisitor: {:?} {:?}", *v, v.layout.ty);
                 let is_unsafe_cell = match v.layout.ty.sty {
@@ -164,8 +164,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             fn visit_aggregate(
                 &mut self,
                 place: MPlaceTy<'tcx, Tag>,
-                fields: impl Iterator<Item=EvalResult<'tcx, MPlaceTy<'tcx, Tag>>>,
-            ) -> EvalResult<'tcx> {
+                fields: impl Iterator<Item=InterpResult<'tcx, MPlaceTy<'tcx, Tag>>>,
+            ) -> InterpResult<'tcx> {
                 match place.layout.fields {
                     layout::FieldPlacement::Array { .. } => {
                         // For the array layout, we know the iterator will yield sorted elements so
@@ -174,7 +174,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                     }
                     layout::FieldPlacement::Arbitrary { .. } => {
                         // Gather the subplaces and sort them before visiting.
-                        let mut places = fields.collect::<EvalResult<'tcx, Vec<MPlaceTy<'tcx, Tag>>>>()?;
+                        let mut places = fields.collect::<InterpResult<'tcx, Vec<MPlaceTy<'tcx, Tag>>>>()?;
                         places.sort_by_key(|place| place.ptr.get_ptr_offset(self.ecx()));
                         self.walk_aggregate(place, places.into_iter().map(Ok))
                     }
@@ -186,7 +186,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             }
 
             // We have to do *something* for unions.
-            fn visit_union(&mut self, v: MPlaceTy<'tcx, Tag>) -> EvalResult<'tcx>
+            fn visit_union(&mut self, v: MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>
             {
                 // With unions, we fall back to whatever the type says, to hopefully be consistent
                 // with LLVM IR.
@@ -200,7 +200,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             }
 
             // We should never get to a primitive, but always short-circuit somewhere above.
-            fn visit_primitive(&mut self, _v: MPlaceTy<'tcx, Tag>) -> EvalResult<'tcx>
+            fn visit_primitive(&mut self, _v: MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>
             {
                 bug!("we should always short-circuit before coming to a primitive")
             }

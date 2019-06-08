@@ -9,7 +9,7 @@ use rustc::hir::{MutMutable, MutImmutable};
 use rustc::mir::RetagKind;
 
 use crate::{
-    EvalResult, InterpError, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
+    InterpResult, InterpError, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
     MemoryKind, MiriMemoryKind, RangeMap, Allocation, AllocationExtra, AllocId, CheckInAllocMsg,
     Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
@@ -266,7 +266,7 @@ impl<'tcx> Stack {
     }
 
     /// Check if the given item is protected.
-    fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> EvalResult<'tcx> {
+    fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
         if let Some(call) = item.protector {
             if global.is_active(call) {
                 if let Some(tag) = tag {
@@ -291,7 +291,7 @@ impl<'tcx> Stack {
         access: AccessKind,
         tag: Tag,
         global: &GlobalState,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
@@ -340,7 +340,7 @@ impl<'tcx> Stack {
         &mut self,
         tag: Tag,
         global: &GlobalState,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
         self.find_granting(AccessKind::Write, tag)
             .ok_or_else(|| InterpError::MachineError(format!(
@@ -365,7 +365,7 @@ impl<'tcx> Stack {
         derived_from: Tag,
         new: Item,
         global: &GlobalState,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // Figure out which access `perm` corresponds to.
         let access = if new.perm.grants(AccessKind::Write) {
             AccessKind::Write
@@ -440,8 +440,8 @@ impl<'tcx> Stacks {
         &self,
         ptr: Pointer<Tag>,
         size: Size,
-        f: impl Fn(&mut Stack, &GlobalState) -> EvalResult<'tcx>,
-    ) -> EvalResult<'tcx> {
+        f: impl Fn(&mut Stack, &GlobalState) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx> {
         let global = self.global.borrow();
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
@@ -483,7 +483,7 @@ impl AllocationExtra<Tag> for Stacks {
         alloc: &Allocation<Tag, Stacks>,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         trace!("read access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
         alloc.extra.for_each(ptr, size, |stack, global| {
             stack.access(AccessKind::Read, ptr.tag, global)?;
@@ -496,7 +496,7 @@ impl AllocationExtra<Tag> for Stacks {
         alloc: &mut Allocation<Tag, Stacks>,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         trace!("write access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
         alloc.extra.for_each(ptr, size, |stack, global| {
             stack.access(AccessKind::Write, ptr.tag, global)?;
@@ -509,7 +509,7 @@ impl AllocationExtra<Tag> for Stacks {
         alloc: &mut Allocation<Tag, Stacks>,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
         alloc.extra.for_each(ptr, size, |stack, global| {
             stack.dealloc(ptr.tag, global)
@@ -528,7 +528,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         kind: RefKind,
         new_tag: Tag,
         protect: bool,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let protector = if protect { Some(this.frame().extra) } else { None };
         let ptr = place.ptr.to_ptr()?;
@@ -572,7 +572,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         val: ImmTy<'tcx, Tag>,
         kind: RefKind,
         protect: bool,
-    ) -> EvalResult<'tcx, Immediate<Tag>> {
+    ) -> InterpResult<'tcx, Immediate<Tag>> {
         let this = self.eval_context_mut();
         // We want a place for where the ptr *points to*, so we get one.
         let place = this.ref_to_mplace(val)?;
@@ -605,7 +605,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         &mut self,
         kind: RetagKind,
         place: PlaceTy<'tcx, Tag>
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         // Determine mutability and whether to add a protector.
         // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
@@ -660,7 +660,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             }
 
             // Primitives of reference type, that is the one thing we are interested in.
-            fn visit_primitive(&mut self, place: MPlaceTy<'tcx, Tag>) -> EvalResult<'tcx>
+            fn visit_primitive(&mut self, place: MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>
             {
                 // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
                 // making it useless.
