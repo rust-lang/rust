@@ -211,7 +211,7 @@ impl<'a> TokenTreesReader<'a> {
                 let raw = self.string_reader.peek_span_src_raw;
                 self.real_token();
                 let is_joint = raw.hi() == self.string_reader.peek_span_src_raw.lo()
-                    && token::is_op(&self.token);
+                    && self.token.is_op();
                 Ok((tt, if is_joint { Joint } else { NonJoint }))
             }
         }

@@ -6,7 +6,7 @@ use crate::ast::{Attribute, MacDelimiter, GenericArg};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::attr;
 use crate::source_map::{self, SourceMap, Spanned};
-use crate::parse::token::{self, BinOpToken, Nonterminal, TokenKind};
+use crate::parse::token::{self, BinOpToken, Nonterminal, Token, TokenKind};
 use crate::parse::lexer::comments;
 use crate::parse::{self, ParseSess};
 use crate::print::pp::{self, Breaks};
@@ -189,7 +189,7 @@ pub fn literal_to_string(lit: token::Lit) -> String {
     out
 }
 
-pub fn token_to_string(tok: &TokenKind) -> String {
+pub fn token_kind_to_string(tok: &TokenKind) -> String {
     match *tok {
         token::Eq                   => "=".to_string(),
         token::Lt                   => "<".to_string(),
@@ -248,6 +248,10 @@ pub fn token_to_string(tok: &TokenKind) -> String {
 
         token::Interpolated(ref nt) => nonterminal_to_string(nt),
     }
+}
+
+pub fn token_to_string(token: &Token) -> String {
+    token_kind_to_string(&token.kind)
 }
 
 pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
@@ -734,11 +738,11 @@ pub trait PrintState<'a> {
                 }
             }
             TokenTree::Delimited(_, delim, tts) => {
-                self.writer().word(token_to_string(&token::OpenDelim(delim)))?;
+                self.writer().word(token_kind_to_string(&token::OpenDelim(delim)))?;
                 self.writer().space()?;
                 self.print_tts(tts)?;
                 self.writer().space()?;
-                self.writer().word(token_to_string(&token::CloseDelim(delim)))
+                self.writer().word(token_kind_to_string(&token::CloseDelim(delim)))
             },
         }
     }

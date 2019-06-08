@@ -3,7 +3,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
-#![feature(custom_attribute)]
 #![feature(libc)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(stmt_expr_attributes)]

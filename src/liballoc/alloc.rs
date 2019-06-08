@@ -15,7 +15,8 @@ extern "Rust" {
     // them from the `#[global_allocator]` attribute if there is one, or uses the
     // default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
     // otherwise.
-    #[allocator]
+    #[cfg_attr(bootstrap, allocator)]
+    #[cfg_attr(not(bootstrap), rustc_allocator)]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
     #[rustc_allocator_nounwind]

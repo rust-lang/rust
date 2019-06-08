@@ -2,7 +2,7 @@
 #![feature(test)]
 
 extern crate test;
-use test::black_box as b;
+use test::black_box as b; // prevent promotion of the argument and const-propagation of the result
 
 const BE_U32: u32 = 55u32.to_be();
 const LE_U32: u32 = 55u32.to_le();

@@ -55,10 +55,10 @@ LL |     ($($a:ty, $b:ty)* -) => ();
    = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$ty:ty` is followed by `-`, which is not allowed for `ty` fragments
-  --> $DIR/macro-input-future-proofing.rs:18:7
+  --> $DIR/macro-input-future-proofing.rs:18:15
    |
 LL |     ($($ty:ty)-+) => ();
-   |       ^^^^^^^^ not allowed after `ty` fragments
+   |               ^ not allowed after `ty` fragments
    |
    = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 

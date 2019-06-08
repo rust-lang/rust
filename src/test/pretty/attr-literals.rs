@@ -1,13 +1,14 @@
-// pp-exact
 // Tests literals in attributes.
 
-#![feature(custom_attribute)]
+// pp-exact
+
+#![feature(rustc_attrs)]
 
 fn main() {
-    #![hello("hi", 1, 2, 1.012, pi = 3.14, bye, name("John"))]
-    #[align = 8]
+    #![rustc_dummy("hi", 1, 2, 1.012, pi = 3.14, bye, name("John"))]
+    #[rustc_dummy = 8]
     fn f() { }
 
-    #[vector(1, 2, 3)]
+    #[rustc_dummy(1, 2, 3)]
     fn g() { }
 }

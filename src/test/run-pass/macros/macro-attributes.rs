@@ -1,5 +1,4 @@
 // run-pass
-#![feature(custom_attribute)]
 
 macro_rules! compiles_fine {
     (#[$at:meta]) => {

@@ -2,8 +2,6 @@
 // aux-build:derive-clona.rs
 // aux-build:test-macros.rs
 
-#![feature(custom_attribute)]
-
 #[macro_use]
 extern crate derive_foo;
 #[macro_use]
@@ -25,10 +23,12 @@ macro_rules! attr_proc_mac {
 //~^ ERROR cannot find
 struct Foo;
 
-#[attr_proc_macra] // OK, interpreted as a custom attribute
+// Interpreted as a feature gated custom attribute
+#[attr_proc_macra] //~ ERROR attribute `attr_proc_macra` is currently unknown
 struct Bar;
 
-#[FooWithLongNan]  // OK, interpreted as a custom attribute
+// Interpreted as a feature gated custom attribute
+#[FooWithLongNan] //~ ERROR attribute `FooWithLongNan` is currently unknown
 struct Asdf;
 
 #[derive(Dlone)]

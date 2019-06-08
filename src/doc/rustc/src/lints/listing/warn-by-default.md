@@ -728,19 +728,17 @@ This lint detects attributes that were not used by the compiler. Some
 example code that triggers this lint:
 
 ```rust
-#![feature(custom_attribute)]
-
-#![mutable_doc]
+#![macro_export]
 ```
 
 This will produce:
 
 ```text
 warning: unused attribute
- --> src/main.rs:4:1
+ --> src/main.rs:1:1
   |
-4 | #![mutable_doc]
-  | ^^^^^^^^^^^^^^^
+1 | #![macro_export]
+  | ^^^^^^^^^^^^^^^^
   |
 ```
 

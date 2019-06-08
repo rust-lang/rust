@@ -1,5 +1,5 @@
 error: unexpected token: `!`
-  --> $DIR/attr-eq-token-tree.rs:3:13
+  --> $DIR/attr-eq-token-tree.rs:1:13
    |
 LL | #[my_attr = !]
    |             ^

@@ -1,5 +1,23 @@
+error[E0658]: The attribute `attr_proc_macra` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/resolve-error.rs:27:3
+   |
+LL | #[attr_proc_macra]
+   |   ^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `FooWithLongNan` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/resolve-error.rs:31:3
+   |
+LL | #[FooWithLongNan]
+   |   ^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
 error: cannot find derive macro `FooWithLongNan` in this scope
-  --> $DIR/resolve-error.rs:24:10
+  --> $DIR/resolve-error.rs:22:10
    |
 LL | #[derive(FooWithLongNan)]
    |          ^^^^^^^^^^^^^^ help: try: `FooWithLongName`
@@ -46,5 +64,6 @@ error: cannot find macro `bang_proc_macrp!` in this scope
 LL |     bang_proc_macrp!();
    |     ^^^^^^^^^^^^^^^ help: you could try the macro: `bang_proc_macro`
 
-error: aborting due to 8 previous errors
+error: aborting due to 10 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

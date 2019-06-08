@@ -257,7 +257,7 @@ impl<'a> Classifier<'a> {
             token::Question => Class::QuestionMark,
 
             token::Dollar => {
-                if self.lexer.peek().kind.is_ident() {
+                if self.lexer.peek().is_ident() {
                     self.in_macro_nonterminal = true;
                     Class::MacroNonTerminal
                 } else {
