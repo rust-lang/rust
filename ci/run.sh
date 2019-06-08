@@ -8,6 +8,11 @@ export RUST_BACKTRACE=full
 cargo build
 cargo test --verbose -- --nocapture
 
+# avoid weird cygwin issues for now
+if [ -n "$APPVEYOR" ]; then
+    exit 0
+fi
+
 case "${TRAVIS_OS_NAME}" in
     *"linux"*)
         TEST_TARGET=x86_64-unknown-linux-gnu cargo test --verbose -- --nocapture
