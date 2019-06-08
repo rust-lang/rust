@@ -1,6 +1,6 @@
+// compile-pass
 // pp-exact - Make sure we actually print the attributes
 
-#![allow(unused)]
 #![feature(rustc_attrs)]
 
 struct Cat {

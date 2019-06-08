@@ -1,7 +1,7 @@
+// compile-pass
 // pp-exact - Make sure we actually print the attributes
 // pretty-expanded FIXME #23616
 
-#![allow(unused)]
 #![allow(non_camel_case_types)]
 #![feature(rustc_attrs)]
 

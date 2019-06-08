@@ -2,7 +2,8 @@
 // for completeness since .rs files linked from .rc files support this
 // notation to specify their module's attributes
 
-#![allow(unused)]
+// compile-pass
+
 #![feature(rustc_attrs)]
 
 #![rustc_dummy = "val"]

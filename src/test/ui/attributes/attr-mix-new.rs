@@ -1,6 +1,6 @@
+// compile-pass
 // pretty-expanded FIXME #23616
 
-#![allow(unused)]
 #![feature(rustc_attrs)]
 
 #[rustc_dummy(bar)]

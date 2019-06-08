@@ -1,4 +1,5 @@
-#![allow(unused)]
+// compile-pass
+
 #![feature(rustc_attrs)]
 
 struct Cat {
