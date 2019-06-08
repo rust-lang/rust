@@ -199,7 +199,7 @@ struct MatcherPos<'root, 'tt: 'root> {
     seq_op: Option<quoted::KleeneOp>,
 
     /// The separator if we are in a repetition.
-    sep: Option<TokenKind>,
+    sep: Option<Token>,
 
     /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
     /// before we enter the sequence.

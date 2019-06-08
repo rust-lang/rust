@@ -59,7 +59,7 @@ pub struct SequenceRepetition {
     /// The sequence of token trees
     pub tts: Vec<TokenTree>,
     /// The optional separator
-    pub separator: Option<TokenKind>,
+    pub separator: Option<Token>,
     /// Whether the sequence can be repeated zero (*), or one or more times (+)
     pub op: KleeneOp,
     /// The number of `Match`s that appear in the sequence (and subsequences)
@@ -424,7 +424,7 @@ fn parse_sep_and_kleene_op<I>(
     attrs: &[ast::Attribute],
     edition: Edition,
     macro_node_id: NodeId,
-) -> (Option<TokenKind>, KleeneOp)
+) -> (Option<Token>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
@@ -449,7 +449,7 @@ fn parse_sep_and_kleene_op_2015<I>(
     _features: &Features,
     _attrs: &[ast::Attribute],
     macro_node_id: NodeId,
-) -> (Option<TokenKind>, KleeneOp)
+) -> (Option<Token>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
@@ -502,7 +502,7 @@ where
                              a hard error in an upcoming edition",
                         );
 
-                        return (Some(token::Question), op);
+                        return (Some(Token::new(token::Question, op1_span)), op);
                     }
 
                     // #2 is a random token (this is an error) :(
@@ -541,7 +541,7 @@ where
             }
 
             // #2 is a KleeneOp :D
-            Ok(Ok((op, _))) => return (Some(token.kind), op),
+            Ok(Ok((op, _))) => return (Some(token), op),
 
             // #2 is a random token :(
             Ok(Err(token)) => token.span,
@@ -567,7 +567,7 @@ fn parse_sep_and_kleene_op_2018<I>(
     sess: &ParseSess,
     _features: &Features,
     _attrs: &[ast::Attribute],
-) -> (Option<TokenKind>, KleeneOp)
+) -> (Option<Token>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
@@ -596,7 +596,7 @@ where
             }
 
             // #2 is a KleeneOp :D
-            Ok(Ok((op, _))) => return (Some(token.kind), op),
+            Ok(Ok((op, _))) => return (Some(token), op),
 
             // #2 is a random token :(
             Ok(Err(token)) => token.span,
