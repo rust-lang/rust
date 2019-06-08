@@ -101,7 +101,7 @@ fn format_project<T: FormatHandler>(
     let files = modules::ModResolver::new(
         context.parse_session.source_map(),
         directory_ownership.unwrap_or(parse::DirectoryOwnership::UnownedViaMod(false)),
-        input_is_stdin,
+        !(input_is_stdin || config.skip_children()),
     )
     .visit_crate(&krate)
     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;

@@ -18,7 +18,7 @@ pub(crate) struct ModResolver<'a, 'b> {
     source_map: &'b source_map::SourceMap,
     directory: Directory,
     file_map: FileModMap<'a>,
-    is_input_stdin: bool,
+    recursive: bool,
 }
 
 #[derive(Clone)]
@@ -32,7 +32,7 @@ impl<'a, 'b> ModResolver<'a, 'b> {
     pub(crate) fn new(
         source_map: &'b source_map::SourceMap,
         directory_ownership: DirectoryOwnership,
-        is_input_stdin: bool,
+        recursive: bool,
     ) -> Self {
         ModResolver {
             directory: Directory {
@@ -41,7 +41,7 @@ impl<'a, 'b> ModResolver<'a, 'b> {
             },
             file_map: BTreeMap::new(),
             source_map,
-            is_input_stdin,
+            recursive,
         }
     }
 
@@ -57,7 +57,7 @@ impl<'a, 'b> ModResolver<'a, 'b> {
         };
 
         // Skip visiting sub modules when the input is from stdin.
-        if !self.is_input_stdin {
+        if self.recursive {
             self.visit_mod(&krate.module)?;
         }
 
