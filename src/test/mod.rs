@@ -25,6 +25,9 @@ const SKIP_FILE_WHITE_LIST: &[&str] = &[
     // so we do not want to test this file directly.
     "configs/skip_children/foo/mod.rs",
     "issue-3434/no_entry.rs",
+    // These files and directory are a part of modules defined inside `cfg_if!`.
+    "cfg_if/mod.rs",
+    "cfg_if/detect",
 ];
 
 struct TestSetting {
@@ -53,10 +56,19 @@ where
         .expect("Failed to join a test thread")
 }
 
+fn is_subpath<P>(path: &Path, subpath: &P) -> bool
+where
+    P: AsRef<Path>,
+{
+    (0..path.components().count())
+        .map(|i| path.components().take(i))
+        .any(|c| c.zip(subpath.as_ref().components()).all(|(a, b)| a == b))
+}
+
 fn is_file_skip(path: &Path) -> bool {
     SKIP_FILE_WHITE_LIST
         .iter()
-        .any(|file_path| path.ends_with(file_path))
+        .any(|file_path| is_subpath(path, file_path))
 }
 
 // Returns a `Vec` containing `PathBuf`s of files with an  `rs` extension in the
