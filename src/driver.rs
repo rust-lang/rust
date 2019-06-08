@@ -48,8 +48,9 @@ pub fn codegen_crate<'a, 'tcx>(
 fn run_jit<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, log: &mut Option<File>) -> ! {
     use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
-    let mut jit_module: Module<SimpleJITBackend> =
-        Module::new(SimpleJITBuilder::new(cranelift_module::default_libcall_names()));
+    let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new(
+        cranelift_module::default_libcall_names(),
+    ));
     assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
 
     let sig = Signature {
@@ -115,9 +116,9 @@ fn run_aot<'a, 'tcx: 'a>(
     };
 
     let emit_module = |name: &str,
-                        kind: ModuleKind,
-                        mut module: Module<FaerieBackend>,
-                        debug: Option<DebugContext>| {
+                       kind: ModuleKind,
+                       mut module: Module<FaerieBackend>,
+                       debug: Option<DebugContext>| {
         module.finalize_definitions();
         let mut artifact = module.finish().artifact;
 
@@ -251,9 +252,7 @@ fn trans_mono_item<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
                 match inst.def {
                     InstanceDef::Item(_)
                     | InstanceDef::DropGlue(_, _)
-                    | InstanceDef::Virtual(_, _)
-                        if inst.def_id().krate == LOCAL_CRATE =>
-                    {
+                    | InstanceDef::Virtual(_, _) => {
                         let mut mir = ::std::io::Cursor::new(Vec::new());
                         crate::rustc_mir::util::write_mir_pretty(
                             tcx,
