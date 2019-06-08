@@ -610,23 +610,26 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
         };
         let resolver = &self.resolver;
-        let typable: Option<TypableDef> = match resolver.resolve_path(self.db, &path).take_types() {
-            Some(Resolution::Def(def)) => def.into(),
-            Some(Resolution::LocalBinding(..)) => {
-                // this cannot happen
-                log::error!("path resolved to local binding in type ns");
-                return (Ty::Unknown, None);
-            }
-            Some(Resolution::GenericParam(..)) => {
-                // generic params can't be used in struct literals
-                return (Ty::Unknown, None);
-            }
-            Some(Resolution::SelfType(..)) => {
-                // FIXME this is allowed in an impl for a struct, handle this
-                return (Ty::Unknown, None);
-            }
-            None => return (Ty::Unknown, None),
-        };
+        let typable: Option<TypableDef> =
+            // FIXME: this should resolve assoc items as well, see this example:
+            // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
+            match resolver.resolve_path_without_assoc_items(self.db, &path).take_types() {
+                Some(Resolution::Def(def)) => def.into(),
+                Some(Resolution::LocalBinding(..)) => {
+                    // this cannot happen
+                    log::error!("path resolved to local binding in type ns");
+                    return (Ty::Unknown, None);
+                }
+                Some(Resolution::GenericParam(..)) => {
+                    // generic params can't be used in struct literals
+                    return (Ty::Unknown, None);
+                }
+                Some(Resolution::SelfType(..)) => {
+                    // FIXME this is allowed in an impl for a struct, handle this
+                    return (Ty::Unknown, None);
+                }
+                None => return (Ty::Unknown, None),
+            };
         let def = match typable {
             None => return (Ty::Unknown, None),
             Some(it) => it,

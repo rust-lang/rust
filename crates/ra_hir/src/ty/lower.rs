@@ -65,7 +65,7 @@ impl Ty {
 
     pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Self {
         // Resolve the path (in type namespace)
-        let resolution = resolver.resolve_path(db, path).take_types();
+        let resolution = resolver.resolve_path_without_assoc_items(db, path).take_types();
 
         let def = match resolution {
             Some(Resolution::Def(def)) => def,
@@ -216,7 +216,7 @@ impl TraitRef {
         path: &Path,
         explicit_self_ty: Option<Ty>,
     ) -> Option<Self> {
-        let resolved = match resolver.resolve_path(db, &path).take_types()? {
+        let resolved = match resolver.resolve_path_without_assoc_items(db, &path).take_types()? {
             Resolution::Def(ModuleDef::Trait(tr)) => tr,
             _ => return None,
         };

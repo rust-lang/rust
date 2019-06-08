@@ -2,11 +2,11 @@
 use std::sync::Arc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
+use either::Either;
 
 use crate::{
-    ModuleDef, Trait,
+    ModuleDef, Trait, MacroDef,
     code_model::Crate,
-    MacroDefId,
     db::HirDatabase,
     name::{Name, KnownName},
     nameres::{PerNs, CrateDefMap, CrateModuleId},
@@ -130,13 +130,16 @@ impl Resolver {
         resolution
     }
 
-    pub(crate) fn resolve_macro_call(
+    pub(crate) fn resolve_path_as_macro(
         &self,
         db: &impl HirDatabase,
-        path: Option<Path>,
-    ) -> Option<MacroDefId> {
-        let m = self.module()?;
-        m.0.find_macro(db, m.1, &path?)
+        path: &Path,
+    ) -> Option<MacroDef> {
+        let (item_map, module) = self.module()?;
+        match item_map.resolve_path_with_macro(db, module, path) {
+            (Either::Right(macro_def), None) => Some(macro_def),
+            _ => None,
+        }
     }
 
     /// Returns the resolved path segments
@@ -165,7 +168,11 @@ impl Resolver {
 
     /// Returns the fully resolved path if we were able to resolve it.
     /// otherwise returns `PerNs::none`
-    pub(crate) fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<Resolution> {
+    pub(crate) fn resolve_path_without_assoc_items(
+        &self,
+        db: &impl HirDatabase,
+        path: &Path,
+    ) -> PerNs<Resolution> {
         // into_fully_resolved() returns the fully resolved path or PerNs::none() otherwise
         self.resolve_path_segments(db, path).into_fully_resolved()
     }
