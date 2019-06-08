@@ -16,26 +16,22 @@ const SHR_B: (u32, bool) = 0x10u32.overflowing_shr(132);
 const NEG_A: (u32, bool) = 0u32.overflowing_neg();
 const NEG_B: (u32, bool) = core::u32::MAX.overflowing_neg();
 
-fn ident<T>(ident: T) -> T {
-    ident
-}
-
 fn main() {
-    assert_eq!(ADD_A, ident((7, false)));
-    assert_eq!(ADD_B, ident((0, true)));
+    assert_eq!(ADD_A, (7, false));
+    assert_eq!(ADD_B, (0, true));
 
-    assert_eq!(SUB_A, ident((3, false)));
-    assert_eq!(SUB_B, ident((u32::max_value(), true)));
+    assert_eq!(SUB_A, (3, false));
+    assert_eq!(SUB_B, (u32::max_value(), true));
 
-    assert_eq!(MUL_A, ident((10, false)));
-    assert_eq!(MUL_B, ident((1410065408, true)));
+    assert_eq!(MUL_A, (10, false));
+    assert_eq!(MUL_B, (1410065408, true));
 
-    assert_eq!(SHL_A, ident((0x10, false)));
-    assert_eq!(SHL_B, ident((0x10, true)));
+    assert_eq!(SHL_A, (0x10, false));
+    assert_eq!(SHL_B, (0x10, true));
 
-    assert_eq!(SHR_A, ident((0x1, false)));
-    assert_eq!(SHR_B, ident((0x1, true)));
+    assert_eq!(SHR_A, (0x1, false));
+    assert_eq!(SHR_B, (0x1, true));
 
-    assert_eq!(NEG_A, ident((0, false)));
-    assert_eq!(NEG_B, ident((1, true)));
+    assert_eq!(NEG_A, (0, false));
+    assert_eq!(NEG_B, (1, true));
 }

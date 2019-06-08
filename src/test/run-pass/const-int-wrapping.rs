@@ -16,26 +16,22 @@ const SHR_B: u32 = 128u32.wrapping_shr(128);
 const NEG_A: u32 = 5u32.wrapping_neg();
 const NEG_B: u32 = 1234567890u32.wrapping_neg();
 
-fn ident<T>(ident: T) -> T {
-    ident
-}
-
 fn main() {
-    assert_eq!(ADD_A, ident(255));
-    assert_eq!(ADD_B, ident(199));
+    assert_eq!(ADD_A, 255);
+    assert_eq!(ADD_B, 199);
 
-    assert_eq!(SUB_A, ident(0));
-    assert_eq!(SUB_B, ident(101));
+    assert_eq!(SUB_A, 0);
+    assert_eq!(SUB_B, 101);
 
-    assert_eq!(MUL_A, ident(120));
-    assert_eq!(MUL_B, ident(44));
+    assert_eq!(MUL_A, 120);
+    assert_eq!(MUL_B, 44);
 
-    assert_eq!(SHL_A, ident(128));
-    assert_eq!(SHL_B, ident(1));
+    assert_eq!(SHL_A, 128);
+    assert_eq!(SHL_B, 1);
 
-    assert_eq!(SHR_A, ident(1));
-    assert_eq!(SHR_B, ident(128));
+    assert_eq!(SHR_A, 1);
+    assert_eq!(SHR_B, 128);
 
-    assert_eq!(NEG_A, ident(4294967291));
-    assert_eq!(NEG_B, ident(3060399406));
+    assert_eq!(NEG_A, 4294967291);
+    assert_eq!(NEG_B, 3060399406);
 }
