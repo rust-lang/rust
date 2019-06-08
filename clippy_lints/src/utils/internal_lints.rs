@@ -1,4 +1,6 @@
-use crate::utils::{match_def_path, match_type, paths, span_help_and_lint, span_lint, walk_ptrs_ty};
+use crate::utils::{
+    match_def_path, match_type, method_calls, paths, span_help_and_lint, span_lint, span_lint_and_sugg, walk_ptrs_ty,
+};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
@@ -7,6 +9,7 @@ use rustc::hir::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::Applicability;
 use syntax::ast::{Crate as AstCrate, ItemKind, Name};
 use syntax::source_map::Span;
 use syntax_pos::symbol::LocalInternedString;
@@ -70,6 +73,29 @@ declare_clippy_lint! {
     pub COMPILER_LINT_FUNCTIONS,
     internal,
     "usage of the lint functions of the compiler instead of the utils::* variant"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for calls to `cx.outer().expn_info()` and suggests to use
+    /// the `cx.outer_expn_info()`
+    ///
+    /// **Why is this bad?** `cx.outer_expn_info()` is faster and more concise.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust
+    /// expr.span.ctxt().outer().expn_info()
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// expr.span.ctxt().outer_expn_info()
+    /// ```
+    pub OUTER_EXPN_INFO,
+    internal,
+    "using `cx.outer().expn_info()` instead of `cx.outer_expn_info()`"
 }
 
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
@@ -246,6 +272,37 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
                     path.ident.span,
                     "usage of a compiler lint function",
                     &format!("please use the Clippy variant of this function: `{}`", sugg),
+                );
+            }
+        }
+    }
+}
+
+pub struct OuterExpnInfoPass;
+
+impl_lint_pass!(OuterExpnInfoPass => [OUTER_EXPN_INFO]);
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnInfoPass {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+        let (method_names, arg_lists) = method_calls(expr, 2);
+        let method_names: Vec<LocalInternedString> = method_names.iter().map(|s| s.as_str()).collect();
+        let method_names: Vec<&str> = method_names.iter().map(std::convert::AsRef::as_ref).collect();
+        if_chain! {
+            if let ["expn_info", "outer"] = method_names.as_slice();
+            let args = arg_lists[1];
+            if args.len() == 1;
+            let self_arg = &args[0];
+            let self_ty = walk_ptrs_ty(cx.tables.expr_ty(self_arg));
+            if match_type(cx, self_ty, &paths::SYNTAX_CONTEXT);
+            then {
+                span_lint_and_sugg(
+                    cx,
+                    OUTER_EXPN_INFO,
+                    expr.span.trim_start(self_arg.span).unwrap_or(expr.span),
+                    "usage of `outer().expn_info()`",
+                    "try",
+                    ".outer_expn_info()".to_string(),
+                    Applicability::MachineApplicable,
                 );
             }
         }
