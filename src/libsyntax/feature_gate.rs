@@ -1331,6 +1331,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                                 "internal implementation detail",
                                                 cfg_fn!(rustc_attrs))),
 
+    (sym::rustc_allocator, Whitelisted, template!(Word), Gated(Stability::Unstable,
+                                                sym::rustc_attrs,
+                                                "internal implementation detail",
+                                                cfg_fn!(rustc_attrs))),
+
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     (
         sym::doc,

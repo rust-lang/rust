@@ -513,6 +513,7 @@ symbols! {
         rust_2018_preview,
         rust_begin_unwind,
         rustc,
+        rustc_allocator,
         rustc_allocator_nounwind,
         rustc_allow_const_fn_ptr,
         rustc_args_required_const,
