@@ -482,8 +482,8 @@ mod prim_pointer { }
 /// an array. Indeed, this provides most of the API for working with arrays.
 /// Slices have a dynamic size and do not coerce to arrays.
 ///
-/// There is no way to move elements out of an array. See [`mem::replace`][replace]
-/// for an alternative.
+/// You can move elements out of an array with a slice pattern. If you want
+/// one element, see [`mem::replace`][replace].
 ///
 /// # Examples
 ///
