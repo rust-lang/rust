@@ -1,6 +1,6 @@
 // skip-codegen
 // compile-pass
-#![feature(custom_attribute)]
+
 macro_rules! mac {
     {} => {
         #[cfg(attr)]

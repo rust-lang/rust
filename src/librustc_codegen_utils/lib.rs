@@ -8,7 +8,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
-#![feature(custom_attribute)]
 #![feature(never_type)]
 #![feature(nll)]
 #![allow(unused_attributes)]
