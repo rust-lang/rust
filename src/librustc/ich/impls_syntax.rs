@@ -170,14 +170,14 @@ impl_stable_hash_for!(struct ::syntax::ast::Lit {
 
 impl_stable_hash_for!(enum ::syntax::ast::LitKind {
     Str(value, style),
-    Err(value),
     ByteStr(value),
     Byte(value),
     Char(value),
     Int(value, lit_int_type),
     Float(value, float_ty),
     FloatUnsuffixed(value),
-    Bool(value)
+    Bool(value),
+    Err(value)
 });
 
 impl_stable_hash_for_spanned!(::syntax::ast::LitKind);
