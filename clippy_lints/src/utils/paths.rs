@@ -101,6 +101,7 @@ pub const STDOUT: [&str; 4] = ["std", "io", "stdio", "stdout"];
 pub const STD_MEM_TRANSMUTE: [&str; 3] = ["std", "mem", "transmute"];
 pub const STD_PTR_NULL: [&str; 3] = ["std", "ptr", "null"];
 pub const STRING: [&str; 3] = ["alloc", "string", "String"];
+pub const SYNTAX_CONTEXT: [&str; 3] = ["syntax_pos", "hygiene", "SyntaxContext"];
 pub const TO_OWNED: [&str; 3] = ["alloc", "borrow", "ToOwned"];
 pub const TO_OWNED_METHOD: [&str; 4] = ["alloc", "borrow", "ToOwned", "to_owned"];
 pub const TO_STRING: [&str; 3] = ["alloc", "string", "ToString"];
