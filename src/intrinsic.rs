@@ -1,3 +1,4 @@
+use rustc_apfloat::Float;
 use rustc::mir;
 use rustc::mir::interpret::{InterpResult, PointerArithmetic};
 use rustc::ty::layout::{self, LayoutOf, Size};
@@ -240,6 +241,28 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     _ => bug!(),
                 };
                 this.binop_ignore_overflow(op, a, b, dest)?;
+            }
+
+            "minnumf32" | "maxnumf32" => {
+                let a = this.read_scalar(args[0])?.to_f32()?;
+                let b = this.read_scalar(args[1])?.to_f32()?;
+                let res = if intrinsic_name.get().starts_with("min") {
+                    a.min(b)
+                } else {
+                    a.max(b)
+                };
+                this.write_scalar(Scalar::from_f32(res), dest)?;
+            }
+
+            "minnumf64" | "maxnumf64" => {
+                let a = this.read_scalar(args[0])?.to_f64()?;
+                let b = this.read_scalar(args[1])?.to_f64()?;
+                let res = if intrinsic_name.get().starts_with("min") {
+                    a.min(b)
+                } else {
+                    a.max(b)
+                };
+                this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
             "exact_div" => {
