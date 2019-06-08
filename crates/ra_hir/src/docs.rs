@@ -1,24 +1,24 @@
 use ra_syntax::ast;
 
-use crate::{HirDatabase, Module, StructField, Struct, Enum, EnumVariant, Static, Const, Function, Union};
+use crate::{HirDatabase, Module, StructField, Struct, Enum, EnumVariant, Static, Const, Function, Union, Trait, TypeAlias, FieldSource};
 
 /// Holds documentation
 #[derive(Debug, Clone)]
 pub struct Documentation(String);
 
 impl Documentation {
-    pub fn new(s: &str) -> Self {
-        Self(s.into())
+    fn new(s: &str) -> Documentation {
+        Documentation(s.into())
     }
 
-    pub fn contents(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         &self.0
     }
 }
 
 impl Into<String> for Documentation {
     fn into(self) -> String {
-        self.contents().into()
+        self.0.clone()
     }
 }
 

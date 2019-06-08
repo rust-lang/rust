@@ -1,26 +1,20 @@
-use ra_ide_api::Documentation;
-
-pub(crate) fn sanitize_markdown(docs: Documentation) -> Documentation {
-    let docs: String = docs.into();
-
-    // Massage markdown
+pub(crate) fn mark_fenced_blocks_as_rust(src: &str) -> String {
     let mut processed_lines = Vec::new();
     let mut in_code_block = false;
-    for line in docs.lines() {
+    for line in src.lines() {
         if line.starts_with("```") {
-            in_code_block = !in_code_block;
+            in_code_block ^= true
         }
 
         let line = if in_code_block && line.starts_with("```") && !line.contains("rust") {
-            "```rust".into()
+            "```rust"
         } else {
-            line.to_string()
+            line
         };
 
         processed_lines.push(line);
     }
-
-    Documentation::new(&processed_lines.join("\n"))
+    processed_lines.join("\n")
 }
 
 #[cfg(test)]
@@ -30,9 +24,6 @@ mod tests {
     #[test]
     fn test_codeblock_adds_rust() {
         let comment = "```\nfn some_rust() {}\n```";
-        assert_eq!(
-            sanitize_markdown(Documentation::new(comment)).contents(),
-            "```rust\nfn some_rust() {}\n```"
-        );
+        assert_eq!(mark_fenced_blocks_as_rust(comment), "```rust\nfn some_rust() {}\n```");
     }
 }

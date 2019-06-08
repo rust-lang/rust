@@ -12,7 +12,6 @@ use crate::{
     ty::{TraitRef, InferenceResult, primitive::{IntTy, FloatTy, Signedness, IntBitness, FloatBitness}},
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::HasGenericParams,
-    docs::{Documentation, Docs, docs_from_ast},
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeAliasId, MacroDefId},
     impl_block::ImplBlock,
     resolve::Resolver,
