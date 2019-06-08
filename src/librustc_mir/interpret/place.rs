@@ -669,7 +669,7 @@ where
         &mut self,
         src: Immediate<M::PointerTag>,
         dest: MPlaceTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         self.write_immediate_to_mplace_no_validate(src, dest)?;
 
         if M::enforce_validity(self) {
