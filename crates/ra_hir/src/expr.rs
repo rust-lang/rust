@@ -827,25 +827,25 @@ where
             ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::MacroCall(e) => {
-                // very hacky.FIXME change to use the macro resolution
-                let path = e.path().and_then(Path::from_ast);
-
                 let ast_id = self
                     .db
                     .ast_id_map(self.current_file_id)
                     .ast_id(e)
                     .with_file_id(self.current_file_id);
 
-                if let Some(def) = self.resolver.resolve_macro_call(self.db, path) {
-                    let call_id = MacroCallLoc { def, ast_id }.id(self.db);
-                    let file_id = call_id.as_file(MacroFileKind::Expr);
-                    if let Some(node) = self.db.parse_or_expand(file_id) {
-                        if let Some(expr) = ast::Expr::cast(&*node) {
-                            log::debug!("macro expansion {}", expr.syntax().debug_dump());
-                            let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
-                            let id = self.collect_expr(&expr);
-                            self.current_file_id = old_file_id;
-                            return id;
+                if let Some(path) = e.path().and_then(Path::from_ast) {
+                    if let Some(def) = self.resolver.resolve_path_as_macro(self.db, &path) {
+                        let call_id = MacroCallLoc { def: def.id, ast_id }.id(self.db);
+                        let file_id = call_id.as_file(MacroFileKind::Expr);
+                        if let Some(node) = self.db.parse_or_expand(file_id) {
+                            if let Some(expr) = ast::Expr::cast(&*node) {
+                                log::debug!("macro expansion {}", expr.syntax().debug_dump());
+                                let old_file_id =
+                                    std::mem::replace(&mut self.current_file_id, file_id);
+                                let id = self.collect_expr(&expr);
+                                self.current_file_id = old_file_id;
+                                return id;
+                            }
                         }
                     }
                 }

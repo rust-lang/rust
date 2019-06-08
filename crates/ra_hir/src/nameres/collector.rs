@@ -138,15 +138,35 @@ where
         }
     }
 
-    fn define_macro(&mut self, name: Name, macro_id: MacroDefId, export: bool) {
-        if export {
-            self.def_map.public_macros.insert(name.clone(), macro_id);
+    fn define_macro(
+        &mut self,
+        module_id: CrateModuleId,
+        name: Name,
+        macro_id: MacroDefId,
+        export: bool,
+    ) {
+        // macro-by-example in Rust have completely weird name resolution logic,
+        // unlike anything else in the language. We'd don't fully implement yet,
+        // just give a somewhat precise approximation.
+        //
+        // Specifically, we store a set of visible macros in each module, just
+        // like how we do with usual items. This is wrong, however, because
+        // macros can be shadowed and their scopes are mostly unrelated to
+        // modules. To paper over the second problem, we also maintain
+        // `global_macro_scope` which works when we construct `CrateDefMap`, but
+        // is completely ignored in expressions.
+        //
+        // What we should do is that, in CrateDefMap, we should maintain a
+        // separate tower of macro scopes, with ids. Then, for each item in the
+        // module, we need to store it's macro scope.
+        let def = Either::Right(MacroDef { id: macro_id });
 
-            let def = Either::Right(MacroDef { id: macro_id });
-            self.update(self.def_map.root, None, &[(name.clone(), def)]);
-        } else {
-            self.def_map.local_macros.insert(name.clone(), macro_id);
+        // In Rust, `#[macro_export]` macros are unconditionally visible at the
+        // crate root, even if the parent modules is **not** visible.
+        if export {
+            self.update(self.def_map.root, None, &[(name.clone(), def.clone())]);
         }
+        self.update(module_id, None, &[(name.clone(), def)]);
         self.global_macro_scope.insert(name, macro_id);
     }
 
@@ -589,7 +609,7 @@ where
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
                 let macro_id = MacroDefId(mac.ast_id.with_file_id(self.file_id));
-                self.def_collector.define_macro(name.clone(), macro_id, mac.export)
+                self.def_collector.define_macro(self.module_id, name.clone(), macro_id, mac.export)
             }
             return;
         }
@@ -694,9 +714,7 @@ mod tests {
                 prelude: None,
                 root,
                 modules,
-                public_macros: FxHashMap::default(),
                 poison_macros: FxHashSet::default(),
-                local_macros: FxHashMap::default(),
                 diagnostics: Vec::new(),
             }
         };

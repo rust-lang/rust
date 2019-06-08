@@ -92,7 +92,6 @@ pub struct CrateDefMap {
     extern_prelude: FxHashMap<Name, ModuleDef>,
     root: CrateModuleId,
     modules: Arena<CrateModuleId, ModuleData>,
-    public_macros: FxHashMap<Name, MacroDefId>,
 
     /// Some macros are not well-behavior, which leads to infinite loop
     /// e.g. macro_rules! foo { ($ty:ty) => { foo!($ty); } }
@@ -106,7 +105,6 @@ pub struct CrateDefMap {
     /// However, do we want to put it as a global variable?
     poison_macros: FxHashSet<MacroDefId>,
 
-    local_macros: FxHashMap<Name, MacroDefId>,
     diagnostics: Vec<DefDiagnostic>,
 }
 
@@ -249,9 +247,7 @@ impl CrateDefMap {
                 prelude: None,
                 root,
                 modules,
-                public_macros: FxHashMap::default(),
                 poison_macros: FxHashSet::default(),
-                local_macros: FxHashMap::default(),
                 diagnostics: Vec::new(),
             }
         };
@@ -313,7 +309,7 @@ impl CrateDefMap {
         (res.resolved_def.left().unwrap_or_else(PerNs::none), res.segment_index)
     }
 
-    fn resolve_path_with_macro(
+    pub(crate) fn resolve_path_with_macro(
         &self,
         db: &impl DefDatabase,
         original_module: CrateModuleId,
@@ -321,27 +317,6 @@ impl CrateDefMap {
     ) -> (ItemOrMacro, Option<usize>) {
         let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
         (res.resolved_def, res.segment_index)
-    }
-
-    // FIXME: This seems to do the same work as `resolve_path_with_macro`, but
-    // using a completely different code path. Seems bad, huh?
-    pub(crate) fn find_macro(
-        &self,
-        db: &impl DefDatabase,
-        original_module: CrateModuleId,
-        path: &Path,
-    ) -> Option<MacroDefId> {
-        let name = path.expand_macro_expr()?;
-        // search local first
-        // FIXME: Remove public_macros check when we have a correct local_macors implementation
-        let local =
-            self.public_macros.get(&name).or_else(|| self.local_macros.get(&name)).map(|it| *it);
-        if local.is_some() {
-            return local;
-        }
-
-        let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
-        res.resolved_def.right().map(|m| m.id)
     }
 
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
@@ -511,7 +486,7 @@ impl CrateDefMap {
         let from_scope = self[module]
             .scope
             .get_item_or_macro(name)
-            .unwrap_or_else(|| Either::Left(PerNs::none()));;
+            .unwrap_or_else(|| Either::Left(PerNs::none()));
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
         let from_prelude = self.resolve_in_prelude(db, name);

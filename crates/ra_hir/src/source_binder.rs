@@ -267,9 +267,8 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         macro_call: &ast::MacroCall,
     ) -> Option<MacroDef> {
-        let id =
-            self.resolver.resolve_macro_call(db, macro_call.path().and_then(Path::from_ast))?;
-        Some(MacroDef { id })
+        let path = macro_call.path().and_then(Path::from_ast)?;
+        self.resolver.resolve_path_as_macro(db, &path)
     }
 
     pub fn resolve_hir_path(

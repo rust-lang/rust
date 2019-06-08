@@ -21,6 +21,7 @@ fn macro_rules_are_globally_visible() {
    ⋮crate
    ⋮Foo: t v
    ⋮nested: t
+   ⋮structs: m
    ⋮
    ⋮crate::nested
    ⋮Bar: t v
@@ -46,6 +47,7 @@ fn macro_rules_can_define_modules() {
     );
     assert_snapshot_matches!(map, @r###"
    ⋮crate
+   ⋮m: m
    ⋮n1: t
    ⋮
    ⋮crate::n1
@@ -127,8 +129,11 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
             "foo": ("/lib.rs", []),
         },
     );
-    assert_snapshot_matches!(map, @r###"crate
-Foo: t v
-bar: m
-foo: m"###);
+    assert_snapshot_matches!(map, @r###"
+   ⋮crate
+   ⋮Foo: t v
+   ⋮bar: m
+   ⋮baz: m
+   ⋮foo: m
+    "###);
 }
