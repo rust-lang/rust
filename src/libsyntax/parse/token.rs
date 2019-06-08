@@ -17,7 +17,6 @@ use log::info;
 
 use std::fmt;
 use std::mem;
-use std::ops::Deref;
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
@@ -553,11 +552,11 @@ impl TokenKind {
 impl Token {
     // See comments in `Nonterminal::to_tokenstream` for why we care about
     // *probably* equal here rather than actual equality
-    crate fn probably_equal_for_proc_macro(&self, other: &TokenKind) -> bool {
-        if mem::discriminant(&self.kind) != mem::discriminant(other) {
+    crate fn probably_equal_for_proc_macro(&self, other: &Token) -> bool {
+        if mem::discriminant(&self.kind) != mem::discriminant(&other.kind) {
             return false
         }
-        match (&self.kind, other) {
+        match (&self.kind, &other.kind) {
             (&Eq, &Eq) |
             (&Lt, &Lt) |
             (&Le, &Le) |
@@ -628,14 +627,6 @@ impl Token {
 impl PartialEq<TokenKind> for Token {
     fn eq(&self, rhs: &TokenKind) -> bool {
         self.kind == *rhs
-    }
-}
-
-// FIXME: Remove this after all necessary methods are moved from `TokenKind` to `Token`.
-impl Deref for Token {
-    type Target = TokenKind;
-    fn deref(&self) -> &Self::Target {
-        &self.kind
     }
 }
 
@@ -778,12 +769,14 @@ impl Nonterminal {
     }
 }
 
-crate fn is_op(tok: &TokenKind) -> bool {
-    match *tok {
-        OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
-        Ident(..) | Lifetime(..) | Interpolated(..) |
-        Whitespace | Comment | Shebang(..) | Eof => false,
-        _ => true,
+impl Token {
+    crate fn is_op(&self) -> bool {
+        match self.kind {
+            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
+            Ident(..) | Lifetime(..) | Interpolated(..) |
+            Whitespace | Comment | Shebang(..) | Eof => false,
+            _ => true,
+        }
     }
 }
 

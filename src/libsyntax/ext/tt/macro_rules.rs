@@ -200,7 +200,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
 
     let (token, label) = best_failure.expect("ran no matchers");
     let span = token.span.substitute_dummy(sp);
-    let mut err = cx.struct_span_err(span, &parse_failure_msg(token.kind));
+    let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
     err.span_label(span, label);
     if let Some(sp) = def_span {
         if cx.source_map().span_to_filename(sp).is_real() && !sp.is_dummy() {
@@ -288,7 +288,7 @@ pub fn compile(
     let argument_map = match parse(sess, body.stream(), &argument_gram, None, true) {
         Success(m) => m,
         Failure(token, msg) => {
-            let s = parse_failure_msg(token.kind);
+            let s = parse_failure_msg(&token);
             let sp = token.span.substitute_dummy(def.span);
             let mut err = sess.span_diagnostic.struct_span_fatal(sp, &s);
             err.span_label(sp, msg);

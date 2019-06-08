@@ -126,14 +126,6 @@ impl TokenTree {
         }
     }
 
-    /// Indicates if the stream is a token that is equal to the provided token.
-    pub fn eq_token(&self, t: TokenKind) -> bool {
-        match self {
-            TokenTree::Token(token) => *token == t,
-            _ => false,
-        }
-    }
-
     pub fn joint(self) -> TokenStream {
         TokenStream::new(vec![(self, Joint)])
     }

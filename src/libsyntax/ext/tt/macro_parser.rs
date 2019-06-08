@@ -78,7 +78,7 @@ use crate::ast::{Ident, Name};
 use crate::ext::tt::quoted::{self, TokenTree};
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::{Parser, PathStyle};
-use crate::parse::token::{self, DocComment, Nonterminal, Token, TokenKind};
+use crate::parse::token::{self, DocComment, Nonterminal, Token};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream};
@@ -417,12 +417,12 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub fn parse_failure_msg(tok: TokenKind) -> String {
-    match tok {
+pub fn parse_failure_msg(tok: &Token) -> String {
+    match tok.kind {
         token::Eof => "unexpected end of macro invocation".to_string(),
         _ => format!(
             "no rules expected the token `{}`",
-            pprust::token_to_string(&tok)
+            pprust::token_to_string(tok)
         ),
     }
 }
@@ -804,8 +804,8 @@ pub fn parse(
 
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_name(token: &TokenKind) -> Option<(Name, bool)> {
-    match *token {
+fn get_macro_name(token: &Token) -> Option<(Name, bool)> {
+    match token.kind {
         token::Ident(name, is_raw) if name != kw::Underscore => Some((name, is_raw)),
         _ => None,
     }

@@ -23,16 +23,6 @@ pub struct Delimited {
 }
 
 impl Delimited {
-    /// Returns the opening delimiter (possibly `NoDelim`).
-    pub fn open_token(&self) -> TokenKind {
-        token::OpenDelim(self.delim)
-    }
-
-    /// Returns the closing delimiter (possibly `NoDelim`).
-    pub fn close_token(&self) -> TokenKind {
-        token::CloseDelim(self.delim)
-    }
-
     /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
     pub fn open_tt(&self, span: Span) -> TokenTree {
         let open_span = if span.is_dummy() {
@@ -40,7 +30,7 @@ impl Delimited {
         } else {
             span.with_lo(span.lo() + BytePos(self.delim.len() as u32))
         };
-        TokenTree::token(self.open_token(), open_span)
+        TokenTree::token(token::OpenDelim(self.delim), open_span)
     }
 
     /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
@@ -50,7 +40,7 @@ impl Delimited {
         } else {
             span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
         };
-        TokenTree::token(self.close_token(), close_span)
+        TokenTree::token(token::CloseDelim(self.delim), close_span)
     }
 }
 
@@ -282,7 +272,7 @@ where
             Some(tokenstream::TokenTree::Delimited(span, delim, tts)) => {
                 // Must have `(` not `{` or `[`
                 if delim != token::Paren {
-                    let tok = pprust::token_to_string(&token::OpenDelim(delim));
+                    let tok = pprust::token_kind_to_string(&token::OpenDelim(delim));
                     let msg = format!("expected `(`, found `{}`", tok);
                     sess.span_diagnostic.span_err(span.entire(), &msg);
                 }
@@ -371,8 +361,8 @@ where
 
 /// Takes a token and returns `Some(KleeneOp)` if the token is `+` `*` or `?`. Otherwise, return
 /// `None`.
-fn kleene_op(token: &TokenKind) -> Option<KleeneOp> {
-    match *token {
+fn kleene_op(token: &Token) -> Option<KleeneOp> {
+    match token.kind {
         token::BinOp(token::Star) => Some(KleeneOp::ZeroOrMore),
         token::BinOp(token::Plus) => Some(KleeneOp::OneOrMore),
         token::Question => Some(KleeneOp::ZeroOrOne),
