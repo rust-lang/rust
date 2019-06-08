@@ -1,5 +1,5 @@
 use rustc::mir;
-use rustc::ty::{self, layout::{Size, TyLayout}};
+use rustc::ty::{self, layout::TyLayout};
 use syntax::ast::FloatTy;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
@@ -92,11 +92,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         use rustc::mir::BinOp::*;
 
         macro_rules! float_math {
-            ($ty:path, $size:expr) => {{
+            ($ty:path, $from_float:ident) => {{
                 let l = <$ty>::from_bits(l);
                 let r = <$ty>::from_bits(r);
-                let bitify = |res: ::rustc_apfloat::StatusAnd<$ty>|
-                    Scalar::from_uint(res.value.to_bits(), Size::from_bytes($size));
                 let val = match bin_op {
                     Eq => Scalar::from_bool(l == r),
                     Ne => Scalar::from_bool(l != r),
@@ -104,19 +102,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     Le => Scalar::from_bool(l <= r),
                     Gt => Scalar::from_bool(l > r),
                     Ge => Scalar::from_bool(l >= r),
-                    Add => bitify(l + r),
-                    Sub => bitify(l - r),
-                    Mul => bitify(l * r),
-                    Div => bitify(l / r),
-                    Rem => bitify(l % r),
+                    Add => Scalar::$from_float((l + r).value),
+                    Sub => Scalar::$from_float((l - r).value),
+                    Mul => Scalar::$from_float((l * r).value),
+                    Div => Scalar::$from_float((l / r).value),
+                    Rem => Scalar::$from_float((l % r).value),
                     _ => bug!("invalid float op: `{:?}`", bin_op),
                 };
                 return Ok((val, false));
             }};
         }
         match fty {
-            FloatTy::F32 => float_math!(Single, 4),
-            FloatTy::F64 => float_math!(Double, 8),
+            FloatTy::F32 => float_math!(Single, from_f32),
+            FloatTy::F64 => float_math!(Double, from_f64),
         }
     }
 

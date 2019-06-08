@@ -1,5 +1,6 @@
 use std::fmt;
 use rustc_macros::HashStable;
+use rustc_apfloat::{Float, ieee::{Double, Single}};
 
 use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}, subst::SubstsRef};
 use crate::ty::PlaceholderConst;
@@ -292,12 +293,12 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn from_f32(f: f32) -> Self {
+    pub fn from_f32(f: Single) -> Self {
         Scalar::Raw { data: f.to_bits() as u128, size: 4 }
     }
 
     #[inline]
-    pub fn from_f64(f: f64) -> Self {
+    pub fn from_f64(f: Double) -> Self {
         Scalar::Raw { data: f.to_bits() as u128, size: 8 }
     }
 
@@ -427,13 +428,15 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn to_f32(self) -> InterpResult<'static, f32> {
-        Ok(f32::from_bits(self.to_u32()?))
+    pub fn to_f32(self) -> InterpResult<'static, Single> {
+        // Going through `u32` to check size and truncation.
+        Ok(Single::from_bits(self.to_u32()? as u128))
     }
 
     #[inline]
-    pub fn to_f64(self) -> InterpResult<'static, f64> {
-        Ok(f64::from_bits(self.to_u64()?))
+    pub fn to_f64(self) -> InterpResult<'static, Double> {
+        // Going through `u64` to check size and truncation.
+        Ok(Double::from_bits(self.to_u64()? as u128))
     }
 }
 
@@ -517,12 +520,12 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     }
 
     #[inline(always)]
-    pub fn to_f32(self) -> InterpResult<'tcx, f32> {
+    pub fn to_f32(self) -> InterpResult<'tcx, Single> {
         self.not_undef()?.to_f32()
     }
 
     #[inline(always)]
-    pub fn to_f64(self) -> InterpResult<'tcx, f64> {
+    pub fn to_f64(self) -> InterpResult<'tcx, Double> {
         self.not_undef()?.to_f64()
     }
 

@@ -166,21 +166,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 Ok(Scalar::from_uint(v, dest_layout.size))
             }
 
-            Float(FloatTy::F32) if signed => Ok(Scalar::from_uint(
-                Single::from_i128(v as i128).value.to_bits(),
-                Size::from_bits(32)
+            Float(FloatTy::F32) if signed => Ok(Scalar::from_f32(
+                Single::from_i128(v as i128).value
             )),
-            Float(FloatTy::F64) if signed => Ok(Scalar::from_uint(
-                Double::from_i128(v as i128).value.to_bits(),
-                Size::from_bits(64)
+            Float(FloatTy::F64) if signed => Ok(Scalar::from_f64(
+                Double::from_i128(v as i128).value
             )),
-            Float(FloatTy::F32) => Ok(Scalar::from_uint(
-                Single::from_u128(v).value.to_bits(),
-                Size::from_bits(32)
+            Float(FloatTy::F32) => Ok(Scalar::from_f32(
+                Single::from_u128(v).value
             )),
-            Float(FloatTy::F64) => Ok(Scalar::from_uint(
-                Double::from_u128(v).value.to_bits(),
-                Size::from_bits(64)
+            Float(FloatTy::F64) => Ok(Scalar::from_f64(
+                Double::from_u128(v).value
             )),
 
             Char => {
@@ -223,22 +219,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 Ok(Scalar::from_int(v, Size::from_bits(width as u64)))
             },
             // f64 -> f32
-            Float(FloatTy::F32) if fty == FloatTy::F64 => {
-                Ok(Scalar::from_uint(
-                    Single::to_bits(Double::from_bits(bits).convert(&mut false).value),
-                    Size::from_bits(32),
-                ))
-            },
+            Float(FloatTy::F32) if fty == FloatTy::F64 =>
+                Ok(Scalar::from_f32(Double::from_bits(bits).convert(&mut false).value)),
             // f32 -> f64
-            Float(FloatTy::F64) if fty == FloatTy::F32 => {
-                Ok(Scalar::from_uint(
-                    Double::to_bits(Single::from_bits(bits).convert(&mut false).value),
-                    Size::from_bits(64),
-                ))
-            },
+            Float(FloatTy::F64) if fty == FloatTy::F32 =>
+                Ok(Scalar::from_f64(Single::from_bits(bits).convert(&mut false).value)),
             // identity cast
-            Float(FloatTy:: F64) => Ok(Scalar::from_uint(bits, Size::from_bits(64))),
-            Float(FloatTy:: F32) => Ok(Scalar::from_uint(bits, Size::from_bits(32))),
+            Float(FloatTy::F64) if fty == FloatTy::F64 =>
+                Ok(Scalar::from_uint(bits, Size::from_bits(64))),
+            Float(FloatTy::F32) if fty == FloatTy::F32 =>
+                Ok(Scalar::from_uint(bits, Size::from_bits(32))),
             _ => err!(Unimplemented(format!("float to {:?} cast", dest_ty))),
         }
     }
