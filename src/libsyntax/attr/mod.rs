@@ -20,7 +20,7 @@ use crate::source_map::{BytePos, Spanned, dummy_spanned};
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::parser::Parser;
 use crate::parse::{self, ParseSess, PResult};
-use crate::parse::token::{self, Token, TokenKind};
+use crate::parse::token::{self, Token};
 use crate::ptr::P;
 use crate::symbol::{sym, Symbol};
 use crate::ThinVec;
@@ -467,8 +467,7 @@ impl MetaItem {
                                              segment.ident.span.ctxt());
                 idents.push(TokenTree::token(token::ModSep, mod_sep_span).into());
             }
-            idents.push(TokenTree::token(TokenKind::from_ast_ident(segment.ident),
-                                         segment.ident.span).into());
+            idents.push(TokenTree::Token(Token::from_ast_ident(segment.ident)).into());
             last_pos = segment.ident.span.hi();
         }
         self.node.tokens(self.span).append_to_tree_and_joint_vec(&mut idents);

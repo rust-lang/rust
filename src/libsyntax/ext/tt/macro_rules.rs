@@ -17,7 +17,7 @@ use crate::symbol::{Symbol, kw, sym};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use errors::FatalError;
-use syntax_pos::{Span, DUMMY_SP, symbol::Ident};
+use syntax_pos::{Span, symbol::Ident};
 use log::debug;
 
 use rustc_data_structures::fx::{FxHashMap};
@@ -200,7 +200,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt<'_>,
 
     let (token, label) = best_failure.expect("ran no matchers");
     let span = token.span.substitute_dummy(sp);
-    let mut err = cx.struct_span_err(span, &parse_failure_msg(token.kind));
+    let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
     err.span_label(span, label);
     if let Some(sp) = def_span {
         if cx.source_map().span_to_filename(sp).is_real() && !sp.is_dummy() {
@@ -266,17 +266,19 @@ pub fn compile(
     let argument_gram = vec![
         quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
             tts: vec![
-                quoted::TokenTree::MetaVarDecl(DUMMY_SP, lhs_nm, ast::Ident::from_str("tt")),
-                quoted::TokenTree::token(token::FatArrow, DUMMY_SP),
-                quoted::TokenTree::MetaVarDecl(DUMMY_SP, rhs_nm, ast::Ident::from_str("tt")),
+                quoted::TokenTree::MetaVarDecl(def.span, lhs_nm, ast::Ident::from_str("tt")),
+                quoted::TokenTree::token(token::FatArrow, def.span),
+                quoted::TokenTree::MetaVarDecl(def.span, rhs_nm, ast::Ident::from_str("tt")),
             ],
-            separator: Some(if body.legacy { token::Semi } else { token::Comma }),
+            separator: Some(Token::new(
+                if body.legacy { token::Semi } else { token::Comma }, def.span
+            )),
             op: quoted::KleeneOp::OneOrMore,
             num_captures: 2,
         })),
         // to phase into semicolon-termination instead of semicolon-separation
         quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
-            tts: vec![quoted::TokenTree::token(token::Semi, DUMMY_SP)],
+            tts: vec![quoted::TokenTree::token(token::Semi, def.span)],
             separator: None,
             op: quoted::KleeneOp::ZeroOrMore,
             num_captures: 0
@@ -286,7 +288,7 @@ pub fn compile(
     let argument_map = match parse(sess, body.stream(), &argument_gram, None, true) {
         Success(m) => m,
         Failure(token, msg) => {
-            let s = parse_failure_msg(token.kind);
+            let s = parse_failure_msg(&token);
             let sp = token.span.substitute_dummy(def.span);
             let mut err = sess.span_diagnostic.struct_span_fatal(sp, &s);
             err.span_label(sp, msg);
@@ -608,9 +610,8 @@ impl FirstSets {
                         // If the sequence contents can be empty, then the first
                         // token could be the separator token itself.
 
-                        if let (Some(ref sep), true) = (seq_rep.separator.clone(),
-                                                        subfirst.maybe_empty) {
-                            first.add_one_maybe(TokenTree::token(sep.clone(), sp.entire()));
+                        if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
+                            first.add_one_maybe(TokenTree::Token(sep.clone()));
                         }
 
                         // Reverse scan: Sequence comes before `first`.
@@ -658,9 +659,8 @@ impl FirstSets {
                             // If the sequence contents can be empty, then the first
                             // token could be the separator token itself.
 
-                            if let (Some(ref sep), true) = (seq_rep.separator.clone(),
-                                                            subfirst.maybe_empty) {
-                                first.add_one_maybe(TokenTree::token(sep.clone(), sp.entire()));
+                            if let (Some(sep), true) = (&seq_rep.separator, subfirst.maybe_empty) {
+                                first.add_one_maybe(TokenTree::Token(sep.clone()));
                             }
 
                             assert!(first.maybe_empty);
@@ -851,7 +851,7 @@ fn check_matcher_core(sess: &ParseSess,
                 // against SUFFIX
                 continue 'each_token;
             }
-            TokenTree::Sequence(sp, ref seq_rep) => {
+            TokenTree::Sequence(_, ref seq_rep) => {
                 suffix_first = build_suffix_first();
                 // The trick here: when we check the interior, we want
                 // to include the separator (if any) as a potential
@@ -864,9 +864,9 @@ fn check_matcher_core(sess: &ParseSess,
                 // work of cloning it? But then again, this way I may
                 // get a "tighter" span?
                 let mut new;
-                let my_suffix = if let Some(ref u) = seq_rep.separator {
+                let my_suffix = if let Some(sep) = &seq_rep.separator {
                     new = suffix_first.clone();
-                    new.add_one_maybe(TokenTree::token(u.clone(), sp.entire()));
+                    new.add_one_maybe(TokenTree::Token(sep.clone()));
                     &new
                 } else {
                     &suffix_first

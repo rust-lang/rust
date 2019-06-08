@@ -126,14 +126,6 @@ impl TokenTree {
         }
     }
 
-    /// Indicates if the stream is a token that is equal to the provided token.
-    pub fn eq_token(&self, t: TokenKind) -> bool {
-        match self {
-            TokenTree::Token(token) => *token == t,
-            _ => false,
-        }
-    }
-
     pub fn joint(self) -> TokenStream {
         TokenStream::new(vec![(self, Joint)])
     }
@@ -430,11 +422,10 @@ impl TokenStreamBuilder {
         let last_tree_if_joint = self.0.last().and_then(TokenStream::last_tree_if_joint);
         if let Some(TokenTree::Token(last_token)) = last_tree_if_joint {
             if let Some((TokenTree::Token(token), is_joint)) = stream.first_tree_and_joint() {
-                if let Some(glued_tok) = last_token.kind.glue(token.kind) {
+                if let Some(glued_tok) = last_token.glue(token) {
                     let last_stream = self.0.pop().unwrap();
                     self.push_all_but_last_tree(&last_stream);
-                    let glued_span = last_token.span.to(token.span);
-                    let glued_tt = TokenTree::token(glued_tok, glued_span);
+                    let glued_tt = TokenTree::Token(glued_tok);
                     let glued_tokenstream = TokenStream::new(vec![(glued_tt, is_joint)]);
                     self.0.push(glued_tokenstream);
                     self.push_all_but_first_tree(&stream);

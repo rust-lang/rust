@@ -729,7 +729,7 @@ impl<'a> Parser<'a> {
         &mut self,
         t: &TokenKind,
     ) -> PResult<'a, bool /* recovered */> {
-        let token_str = pprust::token_to_string(t);
+        let token_str = pprust::token_kind_to_string(t);
         let this_token_str = self.this_token_descr();
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
             // Point at the end of the macro call when reaching end of macro arguments.

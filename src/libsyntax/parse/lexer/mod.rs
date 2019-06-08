@@ -1501,7 +1501,7 @@ fn char_at(s: &str, byte: usize) -> char {
 mod tests {
     use super::*;
 
-    use crate::ast::{Ident, CrateConfig};
+    use crate::ast::CrateConfig;
     use crate::symbol::Symbol;
     use crate::source_map::{SourceMap, FilePathMapping};
     use crate::feature_gate::UnstableFeatures;
@@ -1562,7 +1562,7 @@ mod tests {
             assert_eq!(string_reader.next_token(), token::Whitespace);
             let tok1 = string_reader.next_token();
             let tok2 = Token::new(
-                token::Ident(Symbol::intern("fn"), false),
+                mk_ident("fn"),
                 Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
             );
             assert_eq!(tok1.kind, tok2.kind);
@@ -1593,7 +1593,7 @@ mod tests {
 
     // make the identifier by looking up the string in the interner
     fn mk_ident(id: &str) -> TokenKind {
-        TokenKind::from_ast_ident(Ident::from_str(id))
+        token::Ident(Symbol::intern(id), false)
     }
 
     fn mk_lit(kind: token::LitKind, symbol: &str, suffix: Option<&str>) -> TokenKind {

@@ -401,7 +401,7 @@ crate enum TokenType {
 impl TokenType {
     crate fn to_string(&self) -> String {
         match *self {
-            TokenType::Token(ref t) => format!("`{}`", pprust::token_to_string(t)),
+            TokenType::Token(ref t) => format!("`{}`", pprust::token_kind_to_string(t)),
             TokenType::Keyword(kw) => format!("`{}`", kw),
             TokenType::Operator => "an operator".to_string(),
             TokenType::Lifetime => "lifetime".to_string(),
@@ -418,7 +418,7 @@ impl TokenType {
 ///
 /// Types can also be of the form `IDENT(u8, u8) -> u8`, however this assumes
 /// that `IDENT` is not the ident of a fn trait.
-fn can_continue_type_after_non_fn_ident(t: &TokenKind) -> bool {
+fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
     t == &token::ModSep || t == &token::Lt ||
     t == &token::BinOp(token::Shl)
 }
@@ -586,10 +586,10 @@ impl<'a> Parser<'a> {
         edible: &[TokenKind],
         inedible: &[TokenKind],
     ) -> PResult<'a, bool /* recovered */> {
-        if edible.contains(&self.token) {
+        if edible.contains(&self.token.kind) {
             self.bump();
             Ok(false)
-        } else if inedible.contains(&self.token) {
+        } else if inedible.contains(&self.token.kind) {
             // leave it in the input
             Ok(false)
         } else if self.last_unexpected_token_span == Some(self.token.span) {
@@ -951,7 +951,7 @@ impl<'a> Parser<'a> {
                         Err(mut e) => {
                             // Attempt to keep parsing if it was a similar separator
                             if let Some(ref tokens) = t.similar_tokens() {
-                                if tokens.contains(&self.token) {
+                                if tokens.contains(&self.token.kind) {
                                     self.bump();
                                 }
                             }
@@ -1756,7 +1756,7 @@ impl<'a> Parser<'a> {
     fn parse_path_segment(&mut self, style: PathStyle) -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
 
-        let is_args_start = |token: &TokenKind| match *token {
+        let is_args_start = |token: &Token| match token.kind {
             token::Lt | token::BinOp(token::Shl) | token::OpenDelim(token::Paren)
             | token::LArrow => true,
             _ => false,
@@ -2627,9 +2627,11 @@ impl<'a> Parser<'a> {
                     token::Ident(name, _) => name,
                     _ => unreachable!()
                 };
-                let mut err = self.fatal(&format!("unknown macro variable `{}`", name));
-                err.span_label(self.token.span, "unknown macro variable");
-                err.emit();
+                let span = self.prev_span.to(self.token.span);
+                self.diagnostic()
+                    .struct_span_fatal(span, &format!("unknown macro variable `{}`", name))
+                    .span_label(span, "unknown macro variable")
+                    .emit();
                 self.bump();
                 return
             }
@@ -2820,7 +2822,7 @@ impl<'a> Parser<'a> {
                 LhsExpr::AttributesParsed(attrs) => Some(attrs),
                 _ => None,
             };
-            if [token::DotDot, token::DotDotDot, token::DotDotEq].contains(&self.token) {
+            if [token::DotDot, token::DotDotDot, token::DotDotEq].contains(&self.token.kind) {
                 return self.parse_prefix_range_expr(attrs);
             } else {
                 self.parse_prefix_expr(attrs)?
@@ -3097,7 +3099,7 @@ impl<'a> Parser<'a> {
             self.err_dotdotdot_syntax(self.token.span);
         }
 
-        debug_assert!([token::DotDot, token::DotDotDot, token::DotDotEq].contains(&self.token),
+        debug_assert!([token::DotDot, token::DotDotDot, token::DotDotEq].contains(&self.token.kind),
                       "parse_prefix_range_expr: token {:?} is not DotDot/DotDotEq",
                       self.token);
         let tok = self.token.clone();
@@ -7865,7 +7867,7 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, handler: 
     for unmatched in unclosed_delims.iter() {
         let mut err = handler.struct_span_err(unmatched.found_span, &format!(
             "incorrect close delimiter: `{}`",
-            pprust::token_to_string(&token::CloseDelim(unmatched.found_delim)),
+            pprust::token_kind_to_string(&token::CloseDelim(unmatched.found_delim)),
         ));
         err.span_label(unmatched.found_span, "incorrect close delimiter");
         if let Some(sp) = unmatched.candidate_span {

@@ -4,11 +4,10 @@ use crate::ext::expand::Marker;
 use crate::ext::tt::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 use crate::ext::tt::quoted;
 use crate::mut_visit::noop_visit_tt;
-use crate::parse::token::{self, NtTT, TokenKind};
+use crate::parse::token::{self, NtTT, Token};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use smallvec::{smallvec, SmallVec};
-use syntax_pos::DUMMY_SP;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -18,7 +17,7 @@ use std::rc::Rc;
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
 enum Frame {
     Delimited { forest: Lrc<quoted::Delimited>, idx: usize, span: DelimSpan },
-    Sequence { forest: Lrc<quoted::SequenceRepetition>, idx: usize, sep: Option<TokenKind> },
+    Sequence { forest: Lrc<quoted::SequenceRepetition>, idx: usize, sep: Option<Token> },
 }
 
 impl Frame {
@@ -109,17 +108,13 @@ pub fn transcribe(
         else {
             // Otherwise, if we have just reached the end of a sequence and we can keep repeating,
             // go back to the beginning of the sequence.
-            if let Frame::Sequence { ref mut idx, ref sep, .. } = *stack.last_mut().unwrap() {
-                let (ref mut repeat_idx, repeat_len) = *repeats.last_mut().unwrap();
+            if let Frame::Sequence { idx, sep, .. } = stack.last_mut().unwrap() {
+                let (repeat_idx, repeat_len) = repeats.last_mut().unwrap();
                 *repeat_idx += 1;
-                if *repeat_idx < repeat_len {
+                if repeat_idx < repeat_len {
                     *idx = 0;
-                    if let Some(sep) = sep.clone() {
-                        let prev_span = match result.last() {
-                            Some((tt, _)) => tt.span(),
-                            None => DUMMY_SP,
-                        };
-                        result.push(TokenTree::token(sep, prev_span).into());
+                    if let Some(sep) = sep {
+                        result.push(TokenTree::Token(sep.clone()).into());
                     }
                     continue;
                 }
@@ -242,7 +237,7 @@ pub fn transcribe(
                         Ident::new(ident.name, ident.span.apply_mark(cx.current_expansion.mark));
                     sp = sp.apply_mark(cx.current_expansion.mark);
                     result.push(TokenTree::token(token::Dollar, sp).into());
-                    result.push(TokenTree::token(TokenKind::from_ast_ident(ident), sp).into());
+                    result.push(TokenTree::Token(Token::from_ast_ident(ident)).into());
                 }
             }
 
