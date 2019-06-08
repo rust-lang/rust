@@ -110,21 +110,108 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
     }
 }
 
-pub fn main() {
-    rustc_driver::init_rustc_env_logger();
-    exit(
-        rustc_driver::report_ices_to_stderr_if_any(move || {
-            use std::env;
+fn describe_lints() {
+    use lintlist::*;
 
-            if std::env::args().any(|a| a == "--version" || a == "-V") {
-                let version_info = rustc_tools_util::get_version_info!();
-                println!("{}", version_info);
-                exit(0);
-            }
+    println!(
+        "
+Available lint options:
+    -W <foo>           Warn about <foo>
+    -A <foo>           Allow <foo>
+    -D <foo>           Deny <foo>
+    -F <foo>           Forbid <foo> (deny <foo> and all attempts to override)
 
-            if std::env::args().any(|a| a == "--help" || a == "-h") {
-                println!(
-                    "\
+"
+    );
+
+    let mut lints: Vec<_> = ALL_LINTS.iter().collect();
+    // The sort doesn't case-fold but it's doubtful we care.
+    lints.sort_by_cached_key(|x: &&Lint| ("unknown", x.name));
+
+    let max_name_len = lints
+        .iter()
+        .map(|lint| lint.name.len())
+        .map(|len| len + "clippy::".len())
+        .max()
+        .unwrap_or(0);
+
+    let padded = |x: &str| {
+        let mut s = " ".repeat(max_name_len - x.chars().count());
+        s.push_str(x);
+        s
+    };
+
+    let scoped = |x: &str| format!("clippy::{}", x);
+
+    println!("Lint checks provided by clippy:\n");
+    println!("    {}  {:7.7}  meaning", padded("name"), "default");
+    println!("    {}  {:7.7}  -------", padded("----"), "-------");
+
+    let print_lints = |lints: Vec<&Lint>| {
+        for lint in lints {
+            let name = lint.name.replace("_", "-");
+            println!("    {}  {:7.7}  {}", padded(&scoped(&name)), "unknown", lint.desc);
+        }
+        println!("\n");
+    };
+
+    print_lints(lints);
+
+    // let max_name_len = max("warnings".len(),
+    //                        plugin_groups.iter()
+    //                                     .chain(&builtin_groups)
+    //                                     .map(|&(s, _)| s.chars().count())
+    //                                     .max()
+    //                                     .unwrap_or(0));
+
+    // let padded = |x: &str| {
+    //     let mut s = " ".repeat(max_name_len - x.chars().count());
+    //     s.push_str(x);
+    //     s
+    // };
+
+    // println!("Lint groups provided by rustc:\n");
+    // println!("    {}  {}", padded("name"), "sub-lints");
+    // println!("    {}  {}", padded("----"), "---------");
+    // println!("    {}  {}", padded("warnings"), "all lints that are set to issue warnings");
+
+    // let print_lint_groups = |lints: Vec<(&'static str, Vec<lint::LintId>)>| {
+    //     for (name, to) in lints {
+    //         let name = name.to_lowercase().replace("_", "-");
+    //         let desc = to.into_iter()
+    //                      .map(|x| x.to_string().replace("_", "-"))
+    //                      .collect::<Vec<String>>()
+    //                      .join(", ");
+    //         println!("    {}  {}", padded(&name), desc);
+    //     }
+    //     println!("\n");
+    // };
+
+    // print_lint_groups(builtin_groups);
+
+    // match (loaded_plugins, plugin.len(), plugin_groups.len()) {
+    //     (false, 0, _) | (false, _, 0) => {
+    //         println!("Compiler plugins can provide additional lints and lint groups. To see a \
+    //                   listing of these, re-run `rustc -W help` with a crate filename.");
+    //     }
+    //     (false, ..) => panic!("didn't load lint plugins but got them anyway!"),
+    //     (true, 0, 0) => println!("This crate does not load any lint plugins or lint groups."),
+    //     (true, l, g) => {
+    //         if l > 0 {
+    //             println!("Lint checks provided by plugins loaded by this crate:\n");
+    //             print_lints(plugin);
+    //         }
+    //         if g > 0 {
+    //             println!("Lint groups provided by plugins loaded by this crate:\n");
+    //             print_lint_groups(plugin_groups);
+    //         }
+    //     }
+    // }
+}
+
+fn display_help() {
+    println!(
+        "\
 Checks a package to catch common mistakes and improve your Rust code.
 
 Usage:
@@ -148,11 +235,18 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
     #[allow(clippy::needless_lifetimes)]
 "
-                );
+    );
+}
 
-                for lint in &lintlist::ALL_LINTS[..] {
-                    println!("clippy::{},", lint.name);
-                }
+pub fn main() {
+    rustc_driver::init_rustc_env_logger();
+    exit(
+        rustc_driver::report_ices_to_stderr_if_any(move || {
+            use std::env;
+
+            if std::env::args().any(|a| a == "--version" || a == "-V") {
+                let version_info = rustc_tools_util::get_version_info!();
+                println!("{}", version_info);
                 exit(0);
             }
 
@@ -189,13 +283,33 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
             // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
             // We're invoking the compiler programmatically, so we ignore this/
-            if orig_args.len() <= 1 {
-                std::process::exit(1);
-            }
-            if Path::new(&orig_args[1]).file_stem() == Some("rustc".as_ref()) {
+            let wrapper_mode = Path::new(&orig_args[1]).file_stem() == Some("rustc".as_ref());
+
+            if wrapper_mode {
                 // we still want to be able to invoke it normally though
                 orig_args.remove(1);
             }
+
+            if !wrapper_mode && std::env::args().any(|a| a == "--help" || a == "-h") {
+                display_help();
+                exit(0);
+            }
+
+            let args: Vec<_> = std::env::args().collect();
+
+            if !wrapper_mode
+                && args.windows(2).any(|args| {
+                    args[1] == "help"
+                        && match args[0].as_str() {
+                            "-W" | "-A" | "-D" | "-F" => true,
+                            _ => false,
+                        }
+                })
+            {
+                describe_lints();
+                exit(0);
+            }
+
             // this conditional check for the --sysroot flag is there so users can call
             // `clippy_driver` directly
             // without having to pass --sysroot or anything

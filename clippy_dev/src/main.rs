@@ -100,8 +100,8 @@ fn update_lints(update_mode: &UpdateMode) {
             "\
 //! This file is managed by util/dev update_lints. Do not edit.
 
-mod lint;
-use lint::Lint;
+pub mod lint;
+pub use lint::Lint;
 
 pub const ALL_LINTS: [Lint; {}] = {:#?};\n",
             sorted_usable_lints.len(),
