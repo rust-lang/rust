@@ -1,12 +1,11 @@
-#![feature(custom_attribute)]
-
 type A = rustfmt; //~ ERROR expected type, found tool module `rustfmt`
 type B = rustfmt::skip; //~ ERROR expected type, found tool attribute `rustfmt::skip`
 
 #[derive(rustfmt)] //~ ERROR cannot find derive macro `rustfmt` in this scope
 struct S;
 
-#[rustfmt] // OK, interpreted as a custom attribute
+// Interpreted as a feature gated custom attribute
+#[rustfmt] //~ ERROR attribute `rustfmt` is currently unknown
 fn check() {}
 
 #[rustfmt::skip] // OK

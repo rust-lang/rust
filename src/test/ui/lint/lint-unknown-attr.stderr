@@ -1,26 +1,30 @@
-error: unused attribute
-  --> $DIR/lint-unknown-attr.rs:9:1
-   |
-LL | #[dance] mod a {}
-   | ^^^^^^^^
-   |
-note: lint level defined here
-  --> $DIR/lint-unknown-attr.rs:5:9
-   |
-LL | #![deny(unused_attributes)]
-   |         ^^^^^^^^^^^^^^^^^
-
-error: unused attribute
-  --> $DIR/lint-unknown-attr.rs:11:1
-   |
-LL | #[dance] fn main() {}
-   | ^^^^^^^^
-
-error: unused attribute
-  --> $DIR/lint-unknown-attr.rs:7:1
+error[E0658]: The attribute `mutable_doc` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/lint-unknown-attr.rs:6:4
    |
 LL | #![mutable_doc]
-   | ^^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `dance` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/lint-unknown-attr.rs:8:3
+   |
+LL | #[dance] mod a {}
+   |   ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `dance` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/lint-unknown-attr.rs:10:3
+   |
+LL | #[dance] fn main() {}
+   |   ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0658`.
