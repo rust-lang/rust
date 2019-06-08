@@ -494,7 +494,6 @@ impl<T: ?Sized> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(as_cell)]
     /// use std::cell::Cell;
     ///
     /// let slice: &mut [i32] = &mut [1, 2, 3];
@@ -504,7 +503,7 @@ impl<T: ?Sized> Cell<T> {
     /// assert_eq!(slice_cell.len(), 3);
     /// ```
     #[inline]
-    #[unstable(feature = "as_cell", issue="43038")]
+    #[stable(feature = "as_cell", since = "1.37.0")]
     pub fn from_mut(t: &mut T) -> &Cell<T> {
         unsafe {
             &*(t as *mut T as *const Cell<T>)
@@ -541,7 +540,6 @@ impl<T> Cell<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(as_cell)]
     /// use std::cell::Cell;
     ///
     /// let slice: &mut [i32] = &mut [1, 2, 3];
@@ -550,7 +548,7 @@ impl<T> Cell<[T]> {
     ///
     /// assert_eq!(slice_cell.len(), 3);
     /// ```
-    #[unstable(feature = "as_cell", issue="43038")]
+    #[stable(feature = "as_cell", since = "1.37.0")]
     pub fn as_slice_of_cells(&self) -> &[Cell<T>] {
         unsafe {
             &*(self as *const Cell<[T]> as *const [Cell<T>])

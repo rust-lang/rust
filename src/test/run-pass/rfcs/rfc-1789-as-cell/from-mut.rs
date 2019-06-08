@@ -1,5 +1,4 @@
 // run-pass
-#![feature(as_cell)]
 
 use std::cell::Cell;
 
