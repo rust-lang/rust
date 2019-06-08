@@ -1192,8 +1192,6 @@ impl Step for Rls {
         t!(fs::create_dir_all(&image));
 
         // Prepare the image directory
-        // We expect RLS to build, because we've exited this step above if tool
-        // state for RLS isn't testing.
         let rls = builder.ensure(tool::Rls {
             compiler,
             target,
@@ -1274,6 +1272,11 @@ impl Step for Clippy {
         let image = tmp.join("clippy-image");
         drop(fs::remove_dir_all(&image));
         builder.create_dir(&image);
+        
+        if !builder.config.toolstate.miri.testing() {
+            println!("skipping Dist Miri stage{} ({})", stage, target);
+            return None
+        }
 
         // Prepare the image directory
         // We expect clippy to build, because we've exited this step above if tool
