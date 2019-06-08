@@ -105,7 +105,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: &[tokenstrea
             while self.p.token != token::Eof {
                 match panictry!(self.p.parse_item()) {
                     Some(item) => ret.push(item),
-                    None => self.p.diagnostic().span_fatal(self.p.span,
+                    None => self.p.diagnostic().span_fatal(self.p.token.span,
                                                            &format!("expected item, found `{}`",
                                                                     self.p.this_token_to_string()))
                                                .raise()
