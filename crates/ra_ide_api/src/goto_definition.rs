@@ -1,6 +1,6 @@
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    AstNode, ast,
+    AstNode, ast::{self, DocCommentsOwner},
     algo::{
         find_node_at_offset,
         visit::{visitor, Visitor},
@@ -114,17 +114,39 @@ pub(crate) fn name_definition(
 
 fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> {
     visitor()
-        .visit(|node: &ast::StructDef| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::EnumDef| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::EnumVariant| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::FnDef| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::TypeAliasDef| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::ConstDef| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::StaticDef| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::TraitDef| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::NamedFieldDef| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::Module| NavigationTarget::from_named(file_id, node))
-        .visit(|node: &ast::MacroCall| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::StructDef| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
+        .visit(|node: &ast::EnumDef| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
+        .visit(|node: &ast::EnumVariant| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
+        .visit(|node: &ast::FnDef| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
+        .visit(|node: &ast::TypeAliasDef| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
+        .visit(|node: &ast::ConstDef| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
+        .visit(|node: &ast::StaticDef| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
+        .visit(|node: &ast::TraitDef| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
+        .visit(|node: &ast::NamedFieldDef| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
+        .visit(|node: &ast::Module| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
+        .visit(|node: &ast::MacroCall| {
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text())
+        })
         .accept(node)
 }
 
