@@ -1,15 +1,12 @@
-// run-pass
-#![allow(unused_attributes)]
-#![allow(non_camel_case_types)]
+#![allow(unused)]
+#![feature(rustc_attrs)]
 
-#![feature(custom_attribute)]
-
-struct cat {
-  name: String,
+struct Cat {
+    name: String,
 }
 
-impl Drop for cat {
-    #[cat_dropper]
+impl Drop for Cat {
+    #[rustc_dummy]
     /**
        Actually, cats don't always land on their feet when you drop them.
     */
@@ -18,16 +15,16 @@ impl Drop for cat {
     }
 }
 
-#[cat_maker]
+#[rustc_dummy]
 /**
 Maybe it should technically be a kitten_maker.
 */
-fn cat(name: String) -> cat {
-    cat {
+fn cat(name: String) -> Cat {
+    Cat {
         name: name
     }
 }
 
-pub fn main() {
-  let _kitty = cat("Spotty".to_string());
+fn main() {
+    let _kitty = cat("Spotty".to_string());
 }

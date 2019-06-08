@@ -1,31 +1,28 @@
-// run-pass
-#![allow(unused_attributes)]
-#![allow(non_camel_case_types)]
-
 // pp-exact - Make sure we print all the attributes
 // pretty-expanded FIXME #23616
 
-#![feature(custom_attribute)]
+#![allow(unused)]
+#![feature(rustc_attrs)]
 
-#[frobable]
-trait frobable {
-    #[frob_attr]
+#[rustc_dummy]
+trait Frobable {
+    #[rustc_dummy]
     fn frob(&self);
-    #[defrob_attr]
+    #[rustc_dummy]
     fn defrob(&self);
 }
 
-#[int_frobable]
-impl frobable for isize {
-    #[frob_attr1]
+#[rustc_dummy]
+impl Frobable for isize {
+    #[rustc_dummy]
     fn frob(&self) {
-        #![frob_attr2]
+        #![rustc_dummy]
     }
 
-    #[defrob_attr1]
+    #[rustc_dummy]
     fn defrob(&self) {
-        #![defrob_attr2]
+        #![rustc_dummy]
     }
 }
 
-pub fn main() { }
+fn main() {}

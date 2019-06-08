@@ -1,8 +1,7 @@
 // compile-pass
-#![allow(unused_attributes)]
 // compile-flags:--cfg set1
 
-#![cfg_attr(set1, feature(custom_attribute))]
+#![cfg_attr(set1, feature(rustc_attrs))]
+#![rustc_dummy]
 
-#![foobar]
 fn main() {}

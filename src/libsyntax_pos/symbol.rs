@@ -527,6 +527,7 @@ symbols! {
         rustc_diagnostic_macros,
         rustc_dirty,
         rustc_doc_only_macro,
+        rustc_dummy,
         rustc_dump_env_program_clauses,
         rustc_dump_program_clauses,
         rustc_dump_user_substs,

@@ -1,20 +1,20 @@
 // pp-exact
 
-#![feature(custom_attribute)]
 #![feature(box_syntax)]
+#![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 
 fn main() { }
 
 fn _0() {
 
-    #[attr]
+    #[rustc_dummy]
     foo();
 }
 
 fn _1() {
 
-    #[attr]
+    #[rustc_dummy]
     unsafe {
         // code
     }
@@ -22,11 +22,11 @@ fn _1() {
 
 fn _2() {
 
-    #[attr]
+    #[rustc_dummy]
     { foo(); }
 
     {
-        #![attr]
+        #![rustc_dummy]
 
         foo()
     }
@@ -34,51 +34,51 @@ fn _2() {
 
 fn _3() {
 
-    #[attr]
+    #[rustc_dummy]
     match () { _ => { } }
 }
 
 fn _4() {
 
-    #[attr]
+    #[rustc_dummy]
     match () {
-        #![attr]
+        #![rustc_dummy]
         _ => (),
     }
 
     let _ =
-        #[attr] match () {
-                    #![attr]
-                    () => (),
-                };
+        #[rustc_dummy] match () {
+                           #![rustc_dummy]
+                           () => (),
+                       };
 }
 
 fn _5() {
 
-    #[attr]
+    #[rustc_dummy]
     let x = 1;
 
-    let x = #[attr] 1;
+    let x = #[rustc_dummy] 1;
 
     let y = ();
     let z = ();
 
-    foo3(x, #[attr] y, z);
+    foo3(x, #[rustc_dummy] y, z);
 
-    qux(3 + #[attr] 2);
+    qux(3 + #[rustc_dummy] 2);
 }
 
 fn _6() {
 
-    #[attr]
-    [#![attr] 1, 2, 3];
+    #[rustc_dummy]
+    [#![rustc_dummy] 1, 2, 3];
 
-    let _ = #[attr] [#![attr] 1, 2, 3];
+    let _ = #[rustc_dummy] [#![rustc_dummy] 1, 2, 3];
 
-    #[attr]
-    [#![attr] 1; 4];
+    #[rustc_dummy]
+    [#![rustc_dummy] 1; 4];
 
-    let _ = #[attr] [#![attr] 1; 4];
+    let _ = #[rustc_dummy] [#![rustc_dummy] 1; 4];
 }
 
 struct Foo {
@@ -89,45 +89,41 @@ struct Bar(());
 
 fn _7() {
 
-    #[attr]
-    Foo{#![attr] data: (),};
+    #[rustc_dummy]
+    Foo{#![rustc_dummy] data: (),};
 
-    let _ = #[attr] Foo{#![attr] data: (),};
+    let _ = #[rustc_dummy] Foo{#![rustc_dummy] data: (),};
 }
 
 fn _8() {
 
-    #[attr]
-    (#![attr] );
+    #[rustc_dummy]
+    (#![rustc_dummy] );
 
-    #[attr]
-    (#![attr] 0);
+    #[rustc_dummy]
+    (#![rustc_dummy] 0);
 
-    #[attr]
-    (#![attr] 0,);
+    #[rustc_dummy]
+    (#![rustc_dummy] 0,);
 
-    #[attr]
-    (#![attr] 0, 1);
+    #[rustc_dummy]
+    (#![rustc_dummy] 0, 1);
 }
 
 fn _9() {
     macro_rules! stmt_mac((  ) => { let _ = (  ) ; });
 
-    #[attr]
+    #[rustc_dummy]
     stmt_mac!();
 
-    /*
-    // pre existing pp bug: delimiter styles gets lost:
-
-    #[attr]
+    #[rustc_dummy]
     stmt_mac!{ };
 
-    #[attr]
+    #[rustc_dummy]
     stmt_mac![];
 
-    #[attr]
-    stmt_mac!{ } // pre-existing pp bug: compiler ICEs with a None unwrap
-    */
+    #[rustc_dummy]
+    stmt_mac!{ }
 
     let _ = ();
 }
@@ -135,138 +131,131 @@ fn _9() {
 macro_rules! expr_mac((  ) => { (  ) });
 
 fn _10() {
-
-    let _ = #[attr] expr_mac!();
-
-    /*
-    // pre existing pp bug: delimiter styles gets lost:
-    let _ = #[attr] expr_mac![];
-    let _ = #[attr] expr_mac!{};
-    */
+    let _ = #[rustc_dummy] expr_mac!();
+    let _ = #[rustc_dummy] expr_mac![];
+    let _ = #[rustc_dummy] expr_mac!{ };
 }
 
 fn _11() {
-    let _ = #[attr] box 0;
-    let _: [(); 0] = #[attr] [#![attr] ];
-    let _ = #[attr] [#![attr] 0, 0];
-    let _ = #[attr] [#![attr] 0; 0];
-    let _ = #[attr] foo();
-    let _ = #[attr] 1i32.clone();
-    let _ = #[attr] (#![attr] );
-    let _ = #[attr] (#![attr] 0);
-    let _ = #[attr] (#![attr] 0,);
-    let _ = #[attr] (#![attr] 0, 0);
-    let _ = #[attr] 0 + #[attr] 0;
-    let _ = #[attr] !0;
-    let _ = #[attr] -0i32;
-    let _ = #[attr] false;
-    let _ = #[attr] 'c';
-    let _ = #[attr] 0;
-    let _ = #[attr] 0 as usize;
+    let _ = #[rustc_dummy] box 0;
+    let _: [(); 0] = #[rustc_dummy] [#![rustc_dummy] ];
+    let _ = #[rustc_dummy] [#![rustc_dummy] 0, 0];
+    let _ = #[rustc_dummy] [#![rustc_dummy] 0; 0];
+    let _ = #[rustc_dummy] foo();
+    let _ = #[rustc_dummy] 1i32.clone();
+    let _ = #[rustc_dummy] (#![rustc_dummy] );
+    let _ = #[rustc_dummy] (#![rustc_dummy] 0);
+    let _ = #[rustc_dummy] (#![rustc_dummy] 0,);
+    let _ = #[rustc_dummy] (#![rustc_dummy] 0, 0);
+    let _ = #[rustc_dummy] 0 + #[rustc_dummy] 0;
+    let _ = #[rustc_dummy] !0;
+    let _ = #[rustc_dummy] -0i32;
+    let _ = #[rustc_dummy] false;
+    let _ = #[rustc_dummy] 'c';
+    let _ = #[rustc_dummy] 0;
+    let _ = #[rustc_dummy] 0 as usize;
     let _ =
-        #[attr] while false {
-                    #![attr]
-                };
+        #[rustc_dummy] while false {
+                           #![rustc_dummy]
+                       };
     let _ =
-        #[attr] while let None = Some(()) {
-                    #![attr]
-                };
+        #[rustc_dummy] while let None = Some(()) {
+                           #![rustc_dummy]
+                       };
     let _ =
-        #[attr] for _ in 0..0 {
-                    #![attr]
-                };
+        #[rustc_dummy] for _ in 0..0 {
+                           #![rustc_dummy]
+                       };
     // FIXME: pp bug, two spaces after the loop
     let _ =
-        #[attr] loop  {
-                    #![attr]
-                };
+        #[rustc_dummy] loop  {
+                           #![rustc_dummy]
+                       };
     let _ =
-        #[attr] match false {
-                    #![attr]
-                    _ => (),
-                };
-    let _ = #[attr] || #[attr] ();
-    let _ = #[attr] move || #[attr] ();
+        #[rustc_dummy] match false {
+                           #![rustc_dummy]
+                           _ => (),
+                       };
+    let _ = #[rustc_dummy] || #[rustc_dummy] ();
+    let _ = #[rustc_dummy] move || #[rustc_dummy] ();
     let _ =
-        #[attr] ||
-                    {
-                        #![attr]
-                        #[attr]
-                        ()
-                    };
+        #[rustc_dummy] ||
+                           {
+                               #![rustc_dummy]
+                               #[rustc_dummy]
+                               ()
+                           };
     let _ =
-        #[attr] move ||
-                    {
-                        #![attr]
-                        #[attr]
-                        ()
-                    };
+        #[rustc_dummy] move ||
+                           {
+                               #![rustc_dummy]
+                               #[rustc_dummy]
+                               ()
+                           };
     let _ =
-        #[attr] {
-                    #![attr]
-                };
+        #[rustc_dummy] {
+                           #![rustc_dummy]
+                       };
     let _ =
-        #[attr] {
-                    #![attr]
-                    let _ = ();
-                };
+        #[rustc_dummy] {
+                           #![rustc_dummy]
+                           let _ = ();
+                       };
     let _ =
-        #[attr] {
-                    #![attr]
-                    let _ = ();
-                    ()
-                };
+        #[rustc_dummy] {
+                           #![rustc_dummy]
+                           let _ = ();
+                           ()
+                       };
     let mut x = 0;
-    let _ = #[attr] x = 15;
-    let _ = #[attr] x += 15;
+    let _ = #[rustc_dummy] x = 15;
+    let _ = #[rustc_dummy] x += 15;
     let s = Foo{data: (),};
-    let _ = #[attr] s.data;
-    let _ = (#[attr] s).data;
+    let _ = #[rustc_dummy] s.data;
+    let _ = (#[rustc_dummy] s).data;
     let t = Bar(());
-    let _ = #[attr] t.0;
-    let _ = (#[attr] t).0;
+    let _ = #[rustc_dummy] t.0;
+    let _ = (#[rustc_dummy] t).0;
     let v = vec!(0);
-    let _ = #[attr] v[0];
-    let _ = (#[attr] v)[0];
-    let _ = #[attr] 0..#[attr] 0;
-    let _ = #[attr] 0..;
-    let _ = #[attr] (0..0);
-    let _ = #[attr] (0..);
-    let _ = #[attr] (..0);
-    let _ = #[attr] (..);
-    let _: fn(&u32) -> u32 = #[attr] std::clone::Clone::clone;
-    let _ = #[attr] &0;
-    let _ = #[attr] &mut 0;
-    let _ = #[attr] &#[attr] 0;
-    let _ = #[attr] &mut #[attr] 0;
+    let _ = #[rustc_dummy] v[0];
+    let _ = (#[rustc_dummy] v)[0];
+    let _ = #[rustc_dummy] 0..#[rustc_dummy] 0;
+    let _ = #[rustc_dummy] 0..;
+    let _ = #[rustc_dummy] (0..0);
+    let _ = #[rustc_dummy] (0..);
+    let _ = #[rustc_dummy] (..0);
+    let _ = #[rustc_dummy] (..);
+    let _: fn(&u32) -> u32 = #[rustc_dummy] std::clone::Clone::clone;
+    let _ = #[rustc_dummy] &0;
+    let _ = #[rustc_dummy] &mut 0;
+    let _ = #[rustc_dummy] &#[rustc_dummy] 0;
+    let _ = #[rustc_dummy] &mut #[rustc_dummy] 0;
     // FIXME: pp bug, extra space after keyword?
-    while false { let _ = #[attr] continue ; }
-    while true { let _ = #[attr] break ; }
-    || #[attr] return;
-    let _ = #[attr] expr_mac!();
-    /* FIXME: pp bug, losing delimiter styles
-    let _ = #[attr] expr_mac![];
-    let _ = #[attr] expr_mac!{};
-    */
-    let _ = #[attr] Foo{#![attr] data: (),};
-    let _ = #[attr] Foo{#![attr] ..s};
-    let _ = #[attr] Foo{#![attr] data: (), ..s};
-    let _ = #[attr] (#![attr] 0);
+    while false { let _ = #[rustc_dummy] continue ; }
+    while true { let _ = #[rustc_dummy] break ; }
+    || #[rustc_dummy] return;
+    let _ = #[rustc_dummy] expr_mac!();
+    let _ = #[rustc_dummy] expr_mac![];
+    let _ = #[rustc_dummy] expr_mac!{ };
+    let _ = #[rustc_dummy] Foo{#![rustc_dummy] data: (),};
+    let _ = #[rustc_dummy] Foo{#![rustc_dummy] ..s};
+    let _ = #[rustc_dummy] Foo{#![rustc_dummy] data: (), ..s};
+    let _ = #[rustc_dummy] (#![rustc_dummy] 0);
 }
 
 fn _12() {
-    #[attr]
+    #[rustc_dummy]
     let _ = 0;
 
-    #[attr]
+    #[rustc_dummy]
     0;
 
-    #[attr]
+    #[rustc_dummy]
     expr_mac!();
 
-    #[attr]
+    #[rustc_dummy]
     {
-        #![attr]
+        #![rustc_dummy]
     }
 }
 

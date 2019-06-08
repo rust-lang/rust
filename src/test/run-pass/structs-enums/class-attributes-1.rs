@@ -1,21 +1,19 @@
-// run-pass
-#![allow(unused_attributes)]
-#![allow(non_camel_case_types)]
-
 // pp-exact - Make sure we actually print the attributes
-#![feature(custom_attribute)]
 
-struct cat {
+#![allow(unused)]
+#![feature(rustc_attrs)]
+
+struct Cat {
     name: String,
 }
 
-impl Drop for cat {
-    #[cat_dropper]
+impl Drop for Cat {
+    #[rustc_dummy]
     fn drop(&mut self) { println!("{} landed on hir feet" , self . name); }
 }
 
 
-#[cat_maker]
-fn cat(name: String) -> cat { cat{name: name,} }
+#[rustc_dummy]
+fn cat(name: String) -> Cat { Cat{name: name,} }
 
-pub fn main() { let _kitty = cat("Spotty".to_string()); }
+fn main() { let _kitty = cat("Spotty".to_string()); }

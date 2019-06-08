@@ -1,13 +1,12 @@
-#![allow(unused_attributes)]
-
 // pretty-expanded FIXME #23616
 
-#![feature(custom_attribute, test)]
+#![allow(unused)]
+#![feature(rustc_attrs)]
+#![feature(test)]
 
 mod m {
-    #[foo = "bar"]
+    #[rustc_dummy = "bar"]
     extern crate test;
 }
 
-pub fn main() {
-}
+fn main() {}

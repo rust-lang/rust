@@ -1,14 +1,11 @@
-#![allow(unused_attributes)]
-#![allow(unknown_lints)]
-
 // pretty-expanded FIXME #23616
 
-#![allow(unused_attribute)]
-#![feature(custom_attribute)]
+#![allow(unused)]
+#![feature(rustc_attrs)]
 
-#[foo(bar)]
+#[rustc_dummy(bar)]
 mod foo {
   #![feature(globs)]
 }
 
-pub fn main() {}
+fn main() {}
