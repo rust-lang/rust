@@ -429,7 +429,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::UnaryOp(op, ref operand) => {
                 let operand = self.codegen_operand(&mut bx, operand);
                 let lloperand = operand.immediate();
-                let is_float = operand.layout.ty.is_fp();
+                let is_float = operand.layout.ty.is_floating_point();
                 let llval = match op {
                     mir::UnOp::Not => bx.not(lloperand),
                     mir::UnOp::Neg => if is_float {
@@ -536,7 +536,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rhs: Bx::Value,
         input_ty: Ty<'tcx>,
     ) -> Bx::Value {
-        let is_float = input_ty.is_fp();
+        let is_float = input_ty.is_floating_point();
         let is_signed = input_ty.is_signed();
         let is_unit = input_ty.is_unit();
         match op {
