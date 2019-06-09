@@ -8,7 +8,7 @@ use ra_syntax::{
 use hir::{ModuleSource, FieldSource, ImplItem};
 
 use crate::{FileSymbol, db::RootDatabase};
-use super::description::Description;
+use super::short_label::ShortLabel;
 
 /// `NavigationTarget` represents and element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.
@@ -142,7 +142,7 @@ impl NavigationTarget {
                 None,
                 node.syntax(),
                 node.doc_comment_text(),
-                node.description(),
+                node.short_label(),
             ),
         }
     }
@@ -157,7 +157,7 @@ impl NavigationTarget {
                 None,
                 source.syntax(),
                 source.doc_comment_text(),
-                source.description(),
+                source.short_label(),
             );
         }
         NavigationTarget::from_module(db, module)
@@ -169,7 +169,7 @@ impl NavigationTarget {
             file_id.original_file(db),
             &*fn_def,
             fn_def.doc_comment_text(),
-            fn_def.description(),
+            fn_def.short_label(),
         )
     }
 
@@ -178,7 +178,7 @@ impl NavigationTarget {
         let file_id = file_id.original_file(db);
         match field {
             FieldSource::Named(it) => {
-                NavigationTarget::from_named(file_id, &*it, it.doc_comment_text(), it.description())
+                NavigationTarget::from_named(file_id, &*it, it.doc_comment_text(), it.short_label())
             }
             FieldSource::Pos(it) => {
                 NavigationTarget::from_syntax(file_id, "".into(), None, it.syntax(), None, None)
@@ -194,7 +194,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             hir::AdtDef::Union(s) => {
@@ -203,7 +203,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             hir::AdtDef::Enum(s) => {
@@ -212,7 +212,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
         }
@@ -231,7 +231,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             hir::ModuleDef::Union(s) => {
@@ -240,7 +240,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             hir::ModuleDef::Const(s) => {
@@ -249,7 +249,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             hir::ModuleDef::Static(s) => {
@@ -258,7 +258,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             hir::ModuleDef::Enum(e) => {
@@ -267,7 +267,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             hir::ModuleDef::EnumVariant(var) => {
@@ -276,7 +276,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             hir::ModuleDef::Trait(e) => {
@@ -285,7 +285,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             hir::ModuleDef::TypeAlias(e) => {
@@ -294,7 +294,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             hir::ModuleDef::BuiltinType(..) => {
@@ -328,7 +328,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
             ImplItem::TypeAlias(a) => {
@@ -337,7 +337,7 @@ impl NavigationTarget {
                     file_id.original_file(db),
                     &*node,
                     node.doc_comment_text(),
-                    node.description(),
+                    node.short_label(),
                 )
             }
         }
@@ -446,15 +446,15 @@ fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<Str
     // FIXME: After type inference is done, add type information to improve the output
 
     visitor()
-        .visit(|node: &ast::FnDef| node.description())
-        .visit(|node: &ast::StructDef| node.description())
-        .visit(|node: &ast::EnumDef| node.description())
-        .visit(|node: &ast::TraitDef| node.description())
-        .visit(|node: &ast::Module| node.description())
-        .visit(|node: &ast::TypeAliasDef| node.description())
-        .visit(|node: &ast::ConstDef| node.description())
-        .visit(|node: &ast::StaticDef| node.description())
-        .visit(|node: &ast::NamedFieldDef| node.description())
-        .visit(|node: &ast::EnumVariant| node.description())
+        .visit(|node: &ast::FnDef| node.short_label())
+        .visit(|node: &ast::StructDef| node.short_label())
+        .visit(|node: &ast::EnumDef| node.short_label())
+        .visit(|node: &ast::TraitDef| node.short_label())
+        .visit(|node: &ast::Module| node.short_label())
+        .visit(|node: &ast::TypeAliasDef| node.short_label())
+        .visit(|node: &ast::ConstDef| node.short_label())
+        .visit(|node: &ast::StaticDef| node.short_label())
+        .visit(|node: &ast::NamedFieldDef| node.short_label())
+        .visit(|node: &ast::EnumVariant| node.short_label())
         .accept(&node)?
 }

@@ -13,7 +13,7 @@ use crate::{
     db::RootDatabase,
     RangeInfo,
     name_ref_kind::{NameRefKind::*, classify_name_ref},
-    display::Description,
+    display::ShortLabel,
 };
 
 pub(crate) fn goto_definition(
@@ -116,34 +116,34 @@ pub(crate) fn name_definition(
 fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> {
     visitor()
         .visit(|node: &ast::StructDef| {
-            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.description())
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.short_label())
         })
         .visit(|node: &ast::EnumDef| {
-            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.description())
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.short_label())
         })
         .visit(|node: &ast::EnumVariant| {
-            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.description())
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.short_label())
         })
         .visit(|node: &ast::FnDef| {
-            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.description())
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.short_label())
         })
         .visit(|node: &ast::TypeAliasDef| {
-            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.description())
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.short_label())
         })
         .visit(|node: &ast::ConstDef| {
-            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.description())
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.short_label())
         })
         .visit(|node: &ast::StaticDef| {
-            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.description())
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.short_label())
         })
         .visit(|node: &ast::TraitDef| {
-            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.description())
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.short_label())
         })
         .visit(|node: &ast::NamedFieldDef| {
-            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.description())
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.short_label())
         })
         .visit(|node: &ast::Module| {
-            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.description())
+            NavigationTarget::from_named(file_id, node, node.doc_comment_text(), node.short_label())
         })
         .visit(|node: &ast::MacroCall| {
             NavigationTarget::from_named(file_id, node, node.doc_comment_text(), None)
