@@ -119,6 +119,13 @@ fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
     package.targets.into_iter()
 }
 
+/// Returns the path to the `miri` binary
+fn find_miri() -> PathBuf {
+    let mut path = std::env::current_exe().expect("current executable path invalid");
+    path.set_file_name("miri");
+    path
+}
+
 /// Make sure that the `miri` and `rustc` binary are from the same sysroot.
 /// This can be violated e.g. when miri is locally built and installed with a different
 /// toolchain than what is used when `cargo miri` is run.
@@ -126,7 +133,7 @@ fn test_sysroot_consistency() {
     fn get_sysroot(mut cmd: Command) -> PathBuf {
         let out = cmd.arg("--print").arg("sysroot")
             .output().expect("Failed to run rustc to get sysroot info");
-        assert!(out.status.success(), "Bad statuc code when getting sysroot info");
+        assert!(out.status.success(), "Bad status code when getting sysroot info");
         let sysroot = out.stdout.lines().nth(0)
             .expect("didn't get at least one line for the sysroot").unwrap();
         PathBuf::from(sysroot).canonicalize()
@@ -134,11 +141,7 @@ fn test_sysroot_consistency() {
     }
 
     let rustc_sysroot = get_sysroot(Command::new("rustc"));
-    let miri_sysroot = {
-        let mut path = std::env::current_exe().expect("current executable path invalid");
-        path.set_file_name("miri");
-        get_sysroot(Command::new(path))
-    };
+    let miri_sysroot = get_sysroot(Command::new(find_miri()));
 
     if rustc_sysroot != miri_sysroot {
         show_error(format!(
@@ -451,9 +454,7 @@ fn inside_cargo_rustc() {
     };
 
     let mut command = if needs_miri {
-        let mut path = std::env::current_exe().expect("current executable path invalid");
-        path.set_file_name("miri");
-        Command::new(path)
+        Command::new(find_miri())
     } else {
         Command::new("rustc")
     };
