@@ -926,125 +926,135 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 /// For functions (constant or not), it also records
 /// candidates for promotion in `promotion_candidates`.
 impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
-    fn visit_place(&mut self,
-                    place: &Place<'tcx>,
-                    context: PlaceContext,
-                    location: Location) {
-        debug!("visit_place: place={:?} context={:?} location={:?}", place, context, location);
-        place.iterate(|place_base, place_projections| {
-            match place_base {
-                PlaceBase::Local(_) => {}
-                PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. }) => {
-                    unreachable!()
-                }
-                PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. }) => {
-                    if self.tcx
-                           .get_attrs(*def_id)
-                           .iter()
-                           .any(|attr| attr.check_name(sym::thread_local)) {
-                        if self.mode != Mode::Fn {
-                            span_err!(self.tcx.sess, self.span, E0625,
-                                      "thread-local statics cannot be \
-                                       accessed at compile-time");
-                        }
-                        return;
-                    }
-
-                    // Only allow statics (not consts) to refer to other statics.
-                    if self.mode == Mode::Static || self.mode == Mode::StaticMut {
-                        if self.mode == Mode::Static && context.is_mutating_use() {
-                            // this is not strictly necessary as miri will also bail out
-                            // For interior mutability we can't really catch this statically as that
-                            // goes through raw pointers and intermediate temporaries, so miri has
-                            // to catch this anyway
-                            self.tcx.sess.span_err(
-                                self.span,
-                                "cannot mutate statics in the initializer of another static",
-                            );
-                        }
-                        return;
-                    }
-                    unleash_miri!(self);
-
+    fn visit_place_base(
+        &mut self,
+        place_base: &PlaceBase<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        self.super_place_base(place_base, context, location);
+        match place_base {
+            PlaceBase::Local(_) => {}
+            PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. }) => {
+                unreachable!()
+            }
+            PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. }) => {
+                if self.tcx
+                        .get_attrs(*def_id)
+                        .iter()
+                        .any(|attr| attr.check_name(sym::thread_local)) {
                     if self.mode != Mode::Fn {
-                        let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
-                                                       "{}s cannot refer to statics, use \
-                                                        a constant instead", self.mode);
-                        if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                            err.note(
-                                "Static and const variables can refer to other const variables. \
-                                 But a const variable cannot refer to a static variable."
-                            );
-                            err.help(
-                                "To fix this, the value can be extracted as a const and then used."
-                            );
+                        span_err!(self.tcx.sess, self.span, E0625,
+                                    "thread-local statics cannot be \
+                                    accessed at compile-time");
+                    }
+                    return;
+                }
+
+                // Only allow statics (not consts) to refer to other statics.
+                if self.mode == Mode::Static || self.mode == Mode::StaticMut {
+                    if self.mode == Mode::Static && context.is_mutating_use() {
+                        // this is not strictly necessary as miri will also bail out
+                        // For interior mutability we can't really catch this statically as that
+                        // goes through raw pointers and intermediate temporaries, so miri has
+                        // to catch this anyway
+                        self.tcx.sess.span_err(
+                            self.span,
+                            "cannot mutate statics in the initializer of another static",
+                        );
+                    }
+                    return;
+                }
+                unleash_miri!(self);
+
+                if self.mode != Mode::Fn {
+                    let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
+                                                    "{}s cannot refer to statics, use \
+                                                    a constant instead", self.mode);
+                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                        err.note(
+                            "Static and const variables can refer to other const variables. \
+                                But a const variable cannot refer to a static variable."
+                        );
+                        err.help(
+                            "To fix this, the value can be extracted as a const and then used."
+                        );
+                    }
+                    err.emit()
+                }
+            }
+        }
+    }
+
+    fn visit_projection(
+        &mut self,
+        proj: &Projection<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        debug!(
+            "visit_place_projection: proj={:?} context={:?} location={:?}",
+            proj, context, location,
+        );
+        self.super_projection(proj, context, location);
+        match proj.elem {
+            ProjectionElem::Deref => {
+                if context.is_mutating_use() {
+                    // `not_const` errors out in const contexts
+                    self.not_const()
+                }
+                let base_ty = proj.base.ty(self.mir, self.tcx).ty;
+                match self.mode {
+                    Mode::Fn => {},
+                    _ => {
+                        if let ty::RawPtr(_) = base_ty.sty {
+                            if !self.tcx.features().const_raw_ptr_deref {
+                                emit_feature_err(
+                                    &self.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
+                                    self.span, GateIssue::Language,
+                                    &format!(
+                                        "dereferencing raw pointers in {}s is unstable",
+                                        self.mode,
+                                    ),
+                                );
+                            }
                         }
-                        err.emit()
                     }
                 }
             }
 
-            for proj in place_projections {
-                match proj.elem {
-                    ProjectionElem::Deref => {
-                        if context.is_mutating_use() {
-                            // `not_const` errors out in const contexts
-                            self.not_const()
-                        }
-                        let base_ty = proj.base.ty(self.mir, self.tcx).ty;
+            ProjectionElem::ConstantIndex {..} |
+            ProjectionElem::Subslice {..} |
+            ProjectionElem::Field(..) |
+            ProjectionElem::Index(_) => {
+                let base_ty = proj.base.ty(self.mir, self.tcx).ty;
+                if let Some(def) = base_ty.ty_adt_def() {
+                    if def.is_union() {
                         match self.mode {
-                            Mode::Fn => {},
-                            _ => {
-                                if let ty::RawPtr(_) = base_ty.sty {
-                                    if !self.tcx.features().const_raw_ptr_deref {
-                                        emit_feature_err(
-                                            &self.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
-                                            self.span, GateIssue::Language,
-                                            &format!(
-                                                "dereferencing raw pointers in {}s is unstable",
-                                                self.mode,
-                                            ),
-                                        );
-                                    }
+                            Mode::ConstFn => {
+                                if !self.tcx.features().const_fn_union {
+                                    emit_feature_err(
+                                        &self.tcx.sess.parse_sess, sym::const_fn_union,
+                                        self.span, GateIssue::Language,
+                                        "unions in const fn are unstable",
+                                    );
                                 }
-                            }
+                            },
+
+                            | Mode::Fn
+                            | Mode::Static
+                            | Mode::StaticMut
+                            | Mode::Const
+                            => {},
                         }
-                    }
-
-                    ProjectionElem::ConstantIndex {..} |
-                    ProjectionElem::Subslice {..} |
-                    ProjectionElem::Field(..) |
-                    ProjectionElem::Index(_) => {
-                        let base_ty = proj.base.ty(self.mir, self.tcx).ty;
-                        if let Some(def) = base_ty.ty_adt_def() {
-                            if def.is_union() {
-                                match self.mode {
-                                    Mode::ConstFn => {
-                                        if !self.tcx.features().const_fn_union {
-                                            emit_feature_err(
-                                                &self.tcx.sess.parse_sess, sym::const_fn_union,
-                                                self.span, GateIssue::Language,
-                                                "unions in const fn are unstable",
-                                            );
-                                        }
-                                    },
-
-                                    | Mode::Fn
-                                    | Mode::Static
-                                    | Mode::StaticMut
-                                    | Mode::Const
-                                    => {},
-                                }
-                            }
-                        }
-                    }
-
-                    ProjectionElem::Downcast(..) => {
-                        self.not_const()
                     }
                 }
             }
-        });
+
+            ProjectionElem::Downcast(..) => {
+                self.not_const()
+            }
+        }
     }
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
@@ -1069,17 +1079,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         // Check nested operands and places.
         if let Rvalue::Ref(_, kind, ref place) = *rvalue {
             // Special-case reborrows.
-            let mut is_reborrow = false;
+            let mut reborrow_place = None;
             if let Place::Projection(ref proj) = *place {
                 if let ProjectionElem::Deref = proj.elem {
                     let base_ty = proj.base.ty(self.mir, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.sty {
-                        is_reborrow = true;
+                        reborrow_place = Some(&proj.base);
                     }
                 }
             }
 
-            if is_reborrow {
+            if let Some(place) = reborrow_place {
                 let ctx = match kind {
                     BorrowKind::Shared => PlaceContext::NonMutatingUse(
                         NonMutatingUseContext::SharedBorrow,
@@ -1094,7 +1104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         MutatingUseContext::Borrow,
                     ),
                 };
-                self.super_place(place, ctx, location);
+                self.visit_place(place, ctx, location);
             } else {
                 self.super_rvalue(rvalue, location);
             }

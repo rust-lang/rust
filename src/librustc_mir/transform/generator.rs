@@ -103,11 +103,11 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
                     place: &mut Place<'tcx>,
                     context: PlaceContext,
                     location: Location) {
-        if *place == Place::Base(PlaceBase::Local(self_arg())) {
-            *place = Place::Projection(Box::new(Projection {
-                base: place.clone(),
+        if place.base_local() == Some(self_arg()) {
+            replace_base(place, Place::Projection(Box::new(Projection {
+                base: Place::Base(PlaceBase::Local(self_arg())),
                 elem: ProjectionElem::Deref,
-            }));
+            })));
         } else {
             self.super_place(place, context, location);
         }
@@ -130,14 +130,22 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                     place: &mut Place<'tcx>,
                     context: PlaceContext,
                     location: Location) {
-        if *place == Place::Base(PlaceBase::Local(self_arg())) {
-            *place = Place::Projection(Box::new(Projection {
-                base: place.clone(),
+        if place.base_local() == Some(self_arg()) {
+            replace_base(place, Place::Projection(Box::new(Projection {
+                base: Place::Base(PlaceBase::Local(self_arg())),
                 elem: ProjectionElem::Field(Field::new(0), self.ref_gen_ty),
-            }));
+            })));
         } else {
             self.super_place(place, context, location);
         }
+    }
+}
+
+fn replace_base(place: &mut Place<'tcx>, new_base: Place<'tcx>) {
+    if let Place::Projection(proj) = place {
+        replace_base(&mut proj.base, new_base);
+    } else {
+        *place = new_base;
     }
 }
 
@@ -236,10 +244,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                     place: &mut Place<'tcx>,
                     context: PlaceContext,
                     location: Location) {
-        if let Place::Base(PlaceBase::Local(l)) = *place {
+        if let Some(l) = place.base_local() {
             // Replace an Local in the remap with a generator struct access
             if let Some(&(ty, variant_index, idx)) = self.remap.get(&l) {
-                *place = self.make_field(variant_index, idx, ty);
+                replace_base(place, self.make_field(variant_index, idx, ty));
             }
         } else {
             self.super_place(place, context, location);

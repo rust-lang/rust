@@ -160,8 +160,9 @@ macro_rules! make_mir_visitor {
 
             fn visit_projection(&mut self,
                                 place: & $($mutability)? Projection<'tcx>,
+                                context: PlaceContext,
                                 location: Location) {
-                self.super_projection(place, location);
+                self.super_projection(place, context, location);
             }
 
             fn visit_constant(&mut self,
@@ -686,8 +687,7 @@ macro_rules! make_mir_visitor {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
                         };
 
-                        self.visit_place(& $($mutability)? proj.base, context, location);
-                        self.visit_projection(proj, location);
+                        self.visit_projection(proj, context, location);
                     }
                 }
             }
@@ -708,7 +708,12 @@ macro_rules! make_mir_visitor {
 
             fn super_projection(&mut self,
                                 proj: & $($mutability)? Projection<'tcx>,
+                                context: PlaceContext,
                                 location: Location) {
+                // this is calling `super_place` in preparation for changing `Place` to be
+                // a struct with a base and a slice of projections. `visit_place` should only ever
+                // be called for the outermost place now.
+                self.super_place(& $($mutability)? proj.base, context, location);
                 match & $($mutability)? proj.elem {
                     ProjectionElem::Deref => {
                     }
