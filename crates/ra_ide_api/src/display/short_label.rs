@@ -70,23 +70,23 @@ fn short_label_from_ascribed_node<T>(node: &T, prefix: &str) -> Option<String>
 where
     T: NameOwner + VisibilityOwner + TypeAscriptionOwner,
 {
-    let mut string = short_label_from_node(node, prefix)?;
+    let mut buf = short_label_from_node(node, prefix)?;
 
     if let Some(type_ref) = node.ascribed_type() {
-        string.push_str(": ");
-        type_ref.syntax().text().push_to(&mut string);
+        buf.push_str(": ");
+        type_ref.syntax().text().push_to(&mut buf);
     }
 
-    Some(string)
+    Some(buf)
 }
 
 fn short_label_from_node<T>(node: &T, label: &str) -> Option<String>
 where
     T: NameOwner + VisibilityOwner,
 {
-    let mut string =
+    let mut buf =
         node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
-    string.push_str(label);
-    string.push_str(node.name()?.text().as_str());
-    Some(string)
+    buf.push_str(label);
+    buf.push_str(node.name()?.text().as_str());
+    Some(buf)
 }
