@@ -125,9 +125,17 @@ Available lint options:
 "
     );
 
+    let lint_level = |lint: &Lint| {
+        LINT_LEVELS
+            .iter()
+            .find(|level_mapping| level_mapping.0 == lint.group)
+            .map(|(_, level)| level)
+            .unwrap()
+    };
+
     let mut lints: Vec<_> = ALL_LINTS.iter().collect();
     // The sort doesn't case-fold but it's doubtful we care.
-    lints.sort_by_cached_key(|x: &&Lint| ("unknown", x.name));
+    lints.sort_by_cached_key(|x: &&Lint| (lint_level(x), x.name));
 
     let max_name_len = lints
         .iter()
@@ -153,7 +161,7 @@ Available lint options:
     let print_lints = |lints: &[&Lint]| {
         for lint in lints {
             let name = lint.name.replace("_", "-");
-            println!("    {}  {:7.7}  {}", padded(&scoped(&name)), "unknown", lint.desc);
+            println!("    {}  {:7.7}  {}", padded(&scoped(&name)), lint_level(lint), lint.desc);
         }
         println!("\n");
     };
@@ -179,12 +187,12 @@ Available lint options:
     println!("Lint groups provided by rustc:\n");
     println!("    {}  sub-lints", padded("name"));
     println!("    {}  ---------", padded("----"));
-    // println!("    {}  all lints that are set to issue warnings", padded("warnings"));
 
     let print_lint_groups = || {
         for group in lint_groups {
             let name = group.to_lowercase().replace("_", "-");
-            let desc = lints.iter()
+            let desc = lints
+                .iter()
                 .filter(|&lint| lint.group == group)
                 .map(|lint| lint.name)
                 .map(|name| name.replace("_", "-"))
@@ -196,27 +204,6 @@ Available lint options:
     };
 
     print_lint_groups();
-
-    // print_lint_groups(builtin_groups);
-
-    // match (loaded_plugins, plugin.len(), plugin_groups.len()) {
-    //     (false, 0, _) | (false, _, 0) => {
-    //         println!("Compiler plugins can provide additional lints and lint groups. To see a \
-    //                   listing of these, re-run `rustc -W help` with a crate filename.");
-    //     }
-    //     (false, ..) => panic!("didn't load lint plugins but got them anyway!"),
-    //     (true, 0, 0) => println!("This crate does not load any lint plugins or lint groups."),
-    //     (true, l, g) => {
-    //         if l > 0 {
-    //             println!("Lint checks provided by plugins loaded by this crate:\n");
-    //             print_lints(plugin);
-    //         }
-    //         if g > 0 {
-    //             println!("Lint groups provided by plugins loaded by this crate:\n");
-    //             print_lint_groups(plugin_groups);
-    //         }
-    //     }
-    // }
 }
 
 fn display_help() {
