@@ -13,7 +13,7 @@ use std::convert::TryInto;
 use std::fmt::Display;
 use syntax::ast;
 use syntax::parse::token;
-use syntax::print::pprust::token_to_string;
+use syntax::print::pprust::token_kind_to_string;
 use syntax::source_map::{CharPos, Span};
 use syntax::util::parser::AssocOp;
 use syntax_pos::{BytePos, Pos};
@@ -384,7 +384,7 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
             rhs
         ),
         AssocOp::Assign => format!("{} = {}", lhs, rhs),
-        AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, token_to_string(&token::BinOp(op)), rhs),
+        AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, token_kind_to_string(&token::BinOp(op)), rhs),
         AssocOp::As => format!("{} as {}", lhs, rhs),
         AssocOp::DotDot => format!("{}..{}", lhs, rhs),
         AssocOp::DotDotEq => format!("{}..={}", lhs, rhs),
