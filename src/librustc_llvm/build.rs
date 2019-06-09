@@ -234,6 +234,21 @@ fn main() {
         }
     }
 
+    // Some LLVM linker flags (-L and -l) may be needed even when linking
+    // librustc_llvm, for example when using static libc++, we may need to
+    // manually specify the library search path and -ldl -lpthread as link
+    // dependencies.
+    let llvm_linker_flags = env::var_os("LLVM_LINKER_FLAGS");
+    if let Some(s) = llvm_linker_flags {
+        for lib in s.into_string().unwrap().split_whitespace() {
+            if lib.starts_with("-l") {
+                println!("cargo:rustc-link-lib={}", &lib[2..]);
+            } else if lib.starts_with("-L") {
+                println!("cargo:rustc-link-search=native={}", &lib[2..]);
+            }
+        }
+    }
+
     let llvm_static_stdcpp = env::var_os("LLVM_STATIC_STDCPP");
     let llvm_use_libcxx = env::var_os("LLVM_USE_LIBCXX");
 

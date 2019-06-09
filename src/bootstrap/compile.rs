@@ -775,6 +775,10 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
                     cargo.env("CFG_LLVM_ROOT", s);
                 }
             }
+            // Some LLVM linker flags (-L and -l) may be needed to link librustc_llvm.
+            if let Some(ref s) = builder.config.llvm_ldflags {
+                cargo.env("LLVM_LINKER_FLAGS", s);
+            }
             // Building with a static libstdc++ is only supported on linux right now,
             // not for MSVC or macOS
             if builder.config.llvm_static_stdcpp &&
