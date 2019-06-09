@@ -1,0 +1,14 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/issue-61336-1.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+
+error: array lengths can't depend on generic parameters
+  --> $DIR/issue-61336-1.rs:5:9
+   |
+LL |     [x; N]
+   |         ^
+
+error: aborting due to previous error
+
