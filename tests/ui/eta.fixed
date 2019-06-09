@@ -184,3 +184,22 @@ fn make_lazy(f: impl Fn() -> fn(u8) -> u8) -> impl Fn(u8) -> u8 {
     // called. This changes semantics, so the closure must stay.
     Box::new(move |x| f()(x))
 }
+
+fn call<F: FnOnce(&mut String) -> String>(f: F) -> String {
+    f(&mut "Hello".to_owned())
+}
+fn test_difference_in_mutability() {
+    call(|s| s.clone());
+}
+
+struct Bar;
+impl std::ops::Deref for Bar {
+    type Target = str;
+    fn deref(&self) -> &str {
+        "hi"
+    }
+}
+
+fn test_deref_with_trait_method() {
+    let _ = [Bar].iter().map(|s| s.to_string()).collect::<Vec<_>>();
+}
