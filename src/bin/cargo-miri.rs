@@ -125,7 +125,6 @@ fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
 fn test_sysroot_consistency() {
     fn get_sysroot(mut cmd: Command) -> PathBuf {
         let out = cmd.arg("--print").arg("sysroot")
-            .env_remove("MIRI_SYSROOT") // We want to test their "native" sysroot, not the manually set one
             .output().expect("Failed to run rustc to get sysroot info");
         assert!(out.status.success(), "Bad statuc code when getting sysroot info");
         let sysroot = out.stdout.lines().nth(0)
@@ -298,7 +297,7 @@ path = "lib.rs"
         Some(target) => target == rustc_version::version_meta().unwrap().host,
     };
     let sysroot = if is_host { dir.join("HOST") } else { PathBuf::from(dir) };
-    std::env::set_var("MIRI_SYSROOT", &sysroot);
+    std::env::set_var("MIRI_SYSROOT", &sysroot); // pass the env var to the processes we spawn, which will turn it into "--sysroot" flags
     if print_env {
         println!("MIRI_SYSROOT={}", sysroot.display());
     } else if !ask_user {
@@ -425,9 +424,9 @@ fn inside_cargo_rustc() {
 
     let rustc_args = std::env::args().skip(2); // skip `cargo rustc`
     let mut args: Vec<String> = rustc_args
-            .chain(Some("--sysroot".to_owned()))
-            .chain(Some(sysroot))
-            .collect();
+        .chain(Some("--sysroot".to_owned()))
+        .chain(Some(sysroot))
+        .collect();
     args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
 
     // See if we can find the `cargo-miri` markers. Those only get added to the binary we want to
@@ -458,7 +457,6 @@ fn inside_cargo_rustc() {
     } else {
         Command::new("rustc")
     };
-    command.env_remove("MIRI_SYSROOT"); // we already set the --sysroot flag
     command.args(&args);
     if has_arg_flag("-v") {
         eprintln!("+ {:?}", command);

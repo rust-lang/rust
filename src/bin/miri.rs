@@ -165,12 +165,7 @@ fn main() {
 
     // Determine sysroot.
     let sysroot_flag = "--sysroot".to_string();
-    if let Ok(sysroot) = std::env::var("MIRI_SYSROOT") {
-        // MIRI_SYSROOT takes priority. rustc will ensure for us that this errors if there
-        // already is a "--sysroot" flag (because now there would be two).
-        rustc_args.push(sysroot_flag);
-        rustc_args.push(sysroot);
-    } else if !rustc_args.contains(&sysroot_flag) {
+    if !rustc_args.contains(&sysroot_flag) {
         // We need to *always* set a --sysroot, as the "default" rustc uses is
         // somewhere in the directory miri was built in.
         // If neither MIRI_SYSROOT nor --sysroot are given, fall back to env

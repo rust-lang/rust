@@ -250,9 +250,12 @@ Several `-Z` flags are relevant for Miri:
 
 Moreover, Miri recognizes some environment variables:
 
-* `MIRI_SYSROOT` (recognized by `miri`, `cargo miri` and the test suite)
-  indicates the sysroot to use.
-* `MIRI_TARGET` (recognized by the test suite) indicates which target
+* `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
+  Miri executions, also [see above][testing-miri].
+* `MIRI_SYSROOT` (recognized by `cargo miri` and the test suite)
+  indicates the sysroot to use.  To do the same thing with `miri`
+  directly, use the `--sysroot` flag.
+* `MIRI_TEST_TARGET` (recognized by the test suite) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target`
   flag for the same purpose.
 
