@@ -51,13 +51,13 @@ matrix:
     # We don't want to run these always because they go towards
     # the build limit within the Travis rust-lang account.
     # The jobs are approximately sorted by execution time
-    # disabled cargo integration test due to https://github.com/rust-lang/rust-clippy/issues/4121
+    # disabled cargo and rls integration test due to https://github.com/rust-lang/rust-clippy/issues/4121
     #- env: INTEGRATION=rust-lang/cargo
     #  if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang-nursery/chalk
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    - env: INTEGRATION=rust-lang/rls
-      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
+    #- env: INTEGRATION=rust-lang/rls
+    #  if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=Geal/nom
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang/rustfmt
