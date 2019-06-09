@@ -1,5 +1,5 @@
 error: expected type, found variant `V`
-  --> $DIR/type-alias-enum-variants-priority-3.rs:5:15
+  --> $DIR/type-alias-enum-variants-priority-3.rs:8:15
    |
 LL | fn check() -> <E>::V {}
    |               ^^^^^^
