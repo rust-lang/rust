@@ -458,6 +458,7 @@ fn inside_cargo_rustc() {
     } else {
         Command::new("rustc")
     };
+    command.env_remove("MIRI_SYSROOT"); // we already set the --sysroot flag
     command.args(&args);
     if has_arg_flag("-v") {
         eprintln!("+ {:?}", command);
