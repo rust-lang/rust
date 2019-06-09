@@ -23,9 +23,8 @@ pub struct NavigationTarget {
     full_range: TextRange,
     focus_range: Option<TextRange>,
     container_name: Option<SmolStr>,
-
-    pub(crate) description: Option<String>,
-    pub(crate) docs: Option<String>,
+    description: Option<String>,
+    docs: Option<String>,
 }
 
 impl NavigationTarget {
@@ -53,6 +52,14 @@ impl NavigationTarget {
 
     pub fn full_range(&self) -> TextRange {
         self.full_range
+    }
+
+    pub fn docs(&self) -> Option<String> {
+        self.docs.clone()
+    }
+
+    pub fn description(&self) -> Option<String> {
+        self.description.clone()
     }
 
     /// A "most interesting" range withing the `full_range`.
