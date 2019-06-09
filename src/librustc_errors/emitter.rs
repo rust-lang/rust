@@ -1,3 +1,12 @@
+//! The current rustc diagnostics emitter.
+//!
+//! An `Emitter` takes care of generating the output from a `DiagnosticBuilder` struct.
+//!
+//! There are various `Emitter` implementations that generate different output formats such as
+//! JSON and human readable output.
+//!
+//! The output types are defined in `librustc::session::config::ErrorOutputType`.
+
 use Destination::*;
 
 use syntax_pos::{SourceFile, Span, MultiSpan};
