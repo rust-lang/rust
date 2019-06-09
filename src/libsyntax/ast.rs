@@ -1770,6 +1770,7 @@ pub struct InlineAsm {
 /// E.g., `bar: usize` as in `fn foo(bar: usize)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Arg {
+    pub attrs: ThinVec<Attribute>,
     pub ty: P<Ty>,
     pub pat: P<Pat>,
     pub id: NodeId,
@@ -1817,7 +1818,7 @@ impl Arg {
         }
     }
 
-    pub fn from_self(eself: ExplicitSelf, eself_ident: Ident) -> Arg {
+    pub fn from_self(attrs: ThinVec<Attribute>, eself: ExplicitSelf, eself_ident: Ident) -> Arg {
         let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,
@@ -1825,6 +1826,7 @@ impl Arg {
             span,
         });
         let arg = |mutbl, ty| Arg {
+            attrs,
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
                 node: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),

@@ -444,6 +444,7 @@ symbols! {
         panic_implementation,
         panic_runtime,
         partial_cmp,
+        param_attrs,
         PartialOrd,
         passes,
         pat,

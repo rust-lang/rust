@@ -963,9 +963,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn arg(&self, span: Span, ident: ast::Ident, ty: P<ast::Ty>) -> ast::Arg {
         let arg_pat = self.pat_ident(span, ident);
         ast::Arg {
-            ty,
+            attrs: ThinVec::default(),
+            id: ast::DUMMY_NODE_ID,
             pat: arg_pat,
-            id: ast::DUMMY_NODE_ID
+            ty,
         }
     }
 

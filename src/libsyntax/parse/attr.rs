@@ -18,6 +18,14 @@ const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
                                                      permitted in this context";
 
 impl<'a> Parser<'a> {
+    crate fn parse_arg_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
+        let attrs = self.parse_outer_attributes()?;
+        attrs.iter().for_each(|a|
+            self.sess.param_attr_spans.borrow_mut().push(a.span)
+        );
+        Ok(attrs)
+    }
+
     /// Parse attributes that appear before an item
     crate fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
@@ -35,7 +43,8 @@ impl<'a> Parser<'a> {
                     };
                     let inner_parse_policy =
                         InnerAttributeParsePolicy::NotPermitted { reason: inner_error_reason };
-                    attrs.push(self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?);
+                    let attr = self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?;
+                    attrs.push(attr);
                     just_parsed_doc_comment = false;
                 }
                 token::DocComment(s) => {

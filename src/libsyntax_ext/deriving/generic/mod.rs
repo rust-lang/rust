@@ -928,7 +928,7 @@ impl<'a> MethodDef<'a> {
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
                 let ident = Ident::with_empty_ctxt(kw::SelfLower).with_span_pos(trait_.span);
-                ast::Arg::from_self(explicit_self, ident)
+                ast::Arg::from_self(ThinVec::default(), explicit_self, ident)
             });
             let nonself_args = arg_types.into_iter()
                 .map(|(name, ty)| cx.arg(trait_.span, name, ty));

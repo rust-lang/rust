@@ -1,0 +1,68 @@
+error: unused variable: `b`
+  --> $DIR/param-attrs-cfg.rs:24:23
+   |
+LL |     #[cfg(something)] b: i32,
+   |                       ^ help: consider prefixing with an underscore: `_b`
+   |
+note: lint level defined here
+  --> $DIR/param-attrs-cfg.rs:4:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unused variable: `c`
+  --> $DIR/param-attrs-cfg.rs:26:40
+   |
+LL |     #[cfg_attr(nothing, cfg(nothing))] c: i32,
+   |                                        ^ help: consider prefixing with an underscore: `_c`
+
+error: unused variable: `b`
+  --> $DIR/param-attrs-cfg.rs:72:27
+   |
+LL |         #[cfg(something)] b: i32,
+   |                           ^ help: consider prefixing with an underscore: `_b`
+
+error: unused variable: `c`
+  --> $DIR/param-attrs-cfg.rs:74:44
+   |
+LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
+   |                                            ^ help: consider prefixing with an underscore: `_c`
+
+error: unused variable: `b`
+  --> $DIR/param-attrs-cfg.rs:47:27
+   |
+LL |         #[cfg(something)] b: i32,
+   |                           ^ help: consider prefixing with an underscore: `_b`
+
+error: unused variable: `c`
+  --> $DIR/param-attrs-cfg.rs:49:44
+   |
+LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
+   |                                            ^ help: consider prefixing with an underscore: `_c`
+
+error: unused variable: `b`
+  --> $DIR/param-attrs-cfg.rs:36:27
+   |
+LL |         #[cfg(something)] b: i32,
+   |                           ^ help: consider prefixing with an underscore: `_b`
+
+error: unused variable: `c`
+  --> $DIR/param-attrs-cfg.rs:38:44
+   |
+LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
+   |                                            ^ help: consider prefixing with an underscore: `_c`
+
+error: unused variable: `b`
+  --> $DIR/param-attrs-cfg.rs:58:27
+   |
+LL |         #[cfg(something)] b: i32,
+   |                           ^ help: consider prefixing with an underscore: `_b`
+
+error: unused variable: `c`
+  --> $DIR/param-attrs-cfg.rs:60:44
+   |
+LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
+   |                                            ^ help: consider prefixing with an underscore: `_c`
+
+error: aborting due to 10 previous errors
+

@@ -28,7 +28,7 @@ crate fn dummy_arg(ident: Ident) -> Arg {
         span: ident.span,
         id: ast::DUMMY_NODE_ID
     };
-    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID }
+    Arg { attrs: ThinVec::default(), id: ast::DUMMY_NODE_ID, pat, ty: P(ty) }
 }
 
 pub enum Error {
@@ -1074,11 +1074,11 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    crate fn eat_incorrect_doc_comment(&mut self, applied_to: &str) {
+    crate fn eat_incorrect_doc_comment_for_arg_type(&mut self) {
         if let token::DocComment(_) = self.token.kind {
             let mut err = self.diagnostic().struct_span_err(
                 self.token.span,
-                &format!("documentation comments cannot be applied to {}", applied_to),
+                "documentation comments cannot be applied to a function parameter's type",
             );
             err.span_label(self.token.span, "doc comments are not allowed here");
             err.emit();
@@ -1095,7 +1095,7 @@ impl<'a> Parser<'a> {
             self.bump();
             let mut err = self.diagnostic().struct_span_err(
                 sp,
-                &format!("attributes cannot be applied to {}", applied_to),
+                "attributes cannot be applied to a function parameter's type",
             );
             err.span_label(sp, "attributes are not allowed here");
             err.emit();
