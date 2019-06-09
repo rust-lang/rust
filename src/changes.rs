@@ -344,14 +344,22 @@ user code is guaranteed to use them in a read-only fashion."
 user code that tries to mutate them will break."
             }
             VarianceLoosened => {
-                "The variance of a type or region parameter in an item loosens iff <TODO>."
+                "The variance of a type or region parameter in an item loosens if an invariant
+parameter becomes co-, contra- or bivariant, or a co- or contravariant parameter becomes
+bivariant. See https://doc.rust-lang.org/nomicon/subtyping.html for an explanation of the
+concept of variance in Rust."
             }
             VarianceTightened => {
-                "The variance of a type or region parameter in an item tightens iff <TODO>."
+                "The variance of a type or region parameter in an item tightens if a variant
+parameter becomes co-, contra- or invariant, or a co- or contravairant parameter becomes
+invariant. See https://doc.rust-lang.org/nomicon/subtyping.html for an explanation of the
+concept of variance in Rust."
             }
             VarianceChanged { .. } => {
-                "Switching the variance of a type or region parameter is breaking, if it goes
-from covariant to contravariant, or vice-versa."
+                "Switching the variance of a type or region parameter is breaking if it is
+changed from covariant to contravariant, or vice-versa.
+See https://doc.rust-lang.org/nomicon/subtyping.html for an explanation of the concept of
+variance in Rust."
             }
             RegionParameterAdded => {
                 "Adding a new region parameter is a breaking change, because it can break
@@ -360,7 +368,7 @@ before."
             }
             RegionParameterRemoved => {
                 "Removing a region parameter is a breaking change, because it can break
-explicit type annotations, well as prevent region inference working as
+explicit type annotations, as well as prevent region inference working as
 before."
             }
             TypeParameterAdded { defaulted: true } => {
