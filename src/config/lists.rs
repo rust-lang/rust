@@ -1,6 +1,6 @@
 //! Configuration options related to rewriting a list.
 
-use config_proc_macro::config_type;
+use rustfmt_config_proc_macro::config_type;
 
 use crate::config::IndentStyle;
 

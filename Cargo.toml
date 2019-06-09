@@ -60,7 +60,7 @@ ignore = "0.4.6"
 annotate-snippets = { version = "0.5.0", features = ["ansi_term"] }
 structopt = "0.2.15"
 
-config_proc_macro = { path = "config_proc_macro" }
+rustfmt-config_proc_macro = { version = "0.1", path = "config_proc_macro" }
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`

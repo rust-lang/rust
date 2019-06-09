@@ -1,8 +1,12 @@
 [package]
-name = "config_proc_macro"
+name = "rustfmt-config_proc_macro"
 version = "0.1.0"
 authors = ["topecongiro <seuchida@gmail.com>"]
 edition = "2018"
+description = "A collection of procedural macros for rustfmt"
+license = "Apache-2.0/MIT"
+categories = ["development-tools::procedural-macro-helpers"]
+repository = "https://github.com/rust-lang/rustfmt"
 
 [lib]
 proc-macro = true
