@@ -1242,6 +1242,8 @@ impl<'a> StringReader<'a> {
         id
     }
 
+    /// Scans a raw (byte) string, returning byte position range for `"<literal>"`
+    /// (including quotes) along with `#` character count in `(b)r##..."<literal>"##...`;
     fn scan_raw_string(&mut self) -> (BytePos, BytePos, u16) {
         let start_bpos = self.pos;
         self.bump();
