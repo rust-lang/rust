@@ -887,12 +887,14 @@ impl<'tcx> ChangeSet<'tcx> {
     }
 
     /// Format the contents of a change set for user output.
-    pub fn output(&self,
-                  session: &Session,
-                  version: &str,
-                  verbose: bool,
-                  compact: bool,
-                  api_guidelines: bool) {
+    pub fn output(
+        &self,
+        session: &Session,
+        version: &str,
+        verbose: bool,
+        compact: bool,
+        api_guidelines: bool,
+    ) {
         if let Ok(mut new_version) = Version::parse(version) {
             if new_version.major == 0 {
                 new_version.increment_patch();

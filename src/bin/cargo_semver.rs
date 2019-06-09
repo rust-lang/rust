@@ -96,10 +96,7 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
     // Obtain WorkInfo for the "current"
     let current = if let Some(name_and_version) = matches.opt_str("C") {
         // -C "name:version" requires fetching the appropriate package:
-        WorkInfo::remote(
-            config,
-            &PackageNameAndVersion::parse(&name_and_version)?,
-        )?
+        WorkInfo::remote(config, &PackageNameAndVersion::parse(&name_and_version)?)?
     } else if let Some(path) = matches.opt_str("c").map(PathBuf::from) {
         // -c "local_path":
         WorkInfo::local(config, &find_root_manifest_for_wd(&path)?)?
