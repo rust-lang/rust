@@ -2035,6 +2035,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn is_fn_ptr(&self) -> bool {
+        match self.sty {
+            FnPtr(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_impl_trait(&self) -> bool {
         match self.sty {
             Opaque(..) => true,

@@ -292,10 +292,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             }
             _ => {
                 // Must be integer(-like) types.  Don't forget about == on fn pointers.
-                assert!(left.layout.ty.is_integral() || left.layout.ty.is_unsafe_ptr() ||
-                    left.layout.ty.is_fn());
-                assert!(right.layout.ty.is_integral() || right.layout.ty.is_unsafe_ptr() ||
-                    right.layout.ty.is_fn());
+                assert!(
+                    left.layout.ty.is_integral()   ||
+                    left.layout.ty.is_unsafe_ptr() || left.layout.ty.is_fn_ptr(),
+                    "Unexpected LHS type {:?} for BinOp {:?}", left.layout.ty, bin_op);
+                assert!(
+                    right.layout.ty.is_integral()   ||
+                    right.layout.ty.is_unsafe_ptr() || right.layout.ty.is_fn_ptr(),
+                    "Unexpected RHS type {:?} for BinOp {:?}", right.layout.ty, bin_op);
 
                 // Handle operations that support pointer values
                 if left.to_scalar_ptr()?.is_ptr() ||
