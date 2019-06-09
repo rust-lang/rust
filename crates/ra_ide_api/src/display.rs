@@ -4,13 +4,15 @@
 mod function_signature;
 mod navigation_target;
 mod structure;
+mod short_label;
 
-use crate::db::RootDatabase;
 use ra_syntax::{ast::{self, AstNode, TypeParamsOwner}, SyntaxKind::{ATTR, COMMENT}};
 
 pub use navigation_target::NavigationTarget;
 pub use structure::{StructureNode, file_structure};
 pub use function_signature::FunctionSignature;
+
+pub(crate) use short_label::ShortLabel;
 
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
     FunctionSignature::from(node).to_string()
@@ -73,10 +75,10 @@ where
 
 // FIXME: this should not really use navigation target. Rather, approximately
 // resolved symbol should return a `DefId`.
-pub(crate) fn doc_text_for(db: &RootDatabase, nav: NavigationTarget) -> Option<String> {
-    match (nav.description(db), nav.docs(db)) {
+pub(crate) fn doc_text_for(nav: NavigationTarget) -> Option<String> {
+    match (nav.description(), nav.docs()) {
         (Some(desc), docs) => Some(rust_code_markup_with_doc(desc, docs)),
-        (None, Some(docs)) => Some(docs),
+        (None, Some(docs)) => Some(docs.to_string()),
         _ => None,
     }
 }

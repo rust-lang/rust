@@ -86,13 +86,13 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         use crate::goto_definition::{ReferenceResult::*, reference_definition};
         let ref_result = reference_definition(db, position.file_id, name_ref);
         match ref_result {
-            Exact(nav) => res.extend(doc_text_for(db, nav)),
+            Exact(nav) => res.extend(doc_text_for(nav)),
             Approximate(navs) => {
                 // We are no longer exact
                 res.exact = false;
 
                 for nav in navs {
-                    res.extend(doc_text_for(db, nav))
+                    res.extend(doc_text_for(nav))
                 }
             }
         }
@@ -104,7 +104,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
         if let Some(navs) = navs {
             for nav in navs {
-                res.extend(doc_text_for(db, nav))
+                res.extend(doc_text_for(nav))
             }
         }
 

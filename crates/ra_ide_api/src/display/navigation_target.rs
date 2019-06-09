@@ -1,13 +1,14 @@
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    SyntaxNode, AstNode, SmolStr, TextRange, TreeArc, AstPtr,
+    SyntaxNode, AstNode, SmolStr, TextRange, AstPtr,
     SyntaxKind::{self, NAME},
-    ast::{self, NameOwner, VisibilityOwner, TypeAscriptionOwner},
+    ast::{self, DocCommentsOwner},
     algo::visit::{visitor, Visitor},
 };
 use hir::{ModuleSource, FieldSource, ImplItem};
 
 use crate::{FileSymbol, db::RootDatabase};
+use super::short_label::ShortLabel;
 
 /// `NavigationTarget` represents and element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.
@@ -22,6 +23,8 @@ pub struct NavigationTarget {
     full_range: TextRange,
     focus_range: Option<TextRange>,
     container_name: Option<SmolStr>,
+    description: Option<String>,
+    docs: Option<String>,
 }
 
 impl NavigationTarget {
@@ -51,6 +54,14 @@ impl NavigationTarget {
         self.full_range
     }
 
+    pub fn docs(&self) -> Option<&str> {
+        self.docs.as_ref().map(String::as_str)
+    }
+
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_ref().map(String::as_str)
+    }
+
     /// A "most interesting" range withing the `full_range`.
     ///
     /// Typically, `full_range` is the whole syntax node,
@@ -60,10 +71,10 @@ impl NavigationTarget {
     }
 
     pub(crate) fn from_bind_pat(file_id: FileId, pat: &ast::BindPat) -> NavigationTarget {
-        NavigationTarget::from_named(file_id, pat)
+        NavigationTarget::from_named(file_id, pat, None, None)
     }
 
-    pub(crate) fn from_symbol(symbol: FileSymbol) -> NavigationTarget {
+    pub(crate) fn from_symbol(db: &RootDatabase, symbol: FileSymbol) -> NavigationTarget {
         NavigationTarget {
             file_id: symbol.file_id,
             name: symbol.name.clone(),
@@ -71,6 +82,8 @@ impl NavigationTarget {
             full_range: symbol.ptr.range(),
             focus_range: symbol.name_range,
             container_name: symbol.container_name.clone(),
+            description: description_from_symbol(db, &symbol),
+            docs: docs_from_symbol(db, &symbol),
         }
     }
 
@@ -84,6 +97,7 @@ impl NavigationTarget {
             ast::PatKind::BindPat(pat) => return NavigationTarget::from_bind_pat(file_id, &pat),
             _ => ("_".into(), pat.syntax_node_ptr().range()),
         };
+
         NavigationTarget {
             file_id,
             name,
@@ -91,6 +105,8 @@ impl NavigationTarget {
             focus_range: None,
             kind: NAME,
             container_name: None,
+            description: None, //< No documentation for Description
+            docs: None,        //< No documentation for Pattern
         }
     }
 
@@ -99,6 +115,7 @@ impl NavigationTarget {
         par: AstPtr<ast::SelfParam>,
     ) -> NavigationTarget {
         let (name, full_range) = ("self".into(), par.syntax_node_ptr().range());
+
         NavigationTarget {
             file_id,
             name,
@@ -106,6 +123,8 @@ impl NavigationTarget {
             focus_range: None,
             kind: NAME,
             container_name: None,
+            description: None, //< No document node for SelfParam
+            docs: None,        //< No document node for SelfParam
         }
     }
 
@@ -115,11 +134,16 @@ impl NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         match source {
             ModuleSource::SourceFile(node) => {
-                NavigationTarget::from_syntax(file_id, name, None, node.syntax())
+                NavigationTarget::from_syntax(file_id, name, None, node.syntax(), None, None)
             }
-            ModuleSource::Module(node) => {
-                NavigationTarget::from_syntax(file_id, name, None, node.syntax())
-            }
+            ModuleSource::Module(node) => NavigationTarget::from_syntax(
+                file_id,
+                name,
+                None,
+                node.syntax(),
+                node.doc_comment_text(),
+                node.short_label(),
+            ),
         }
     }
 
@@ -127,23 +151,37 @@ impl NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         if let Some((file_id, source)) = module.declaration_source(db) {
             let file_id = file_id.as_original_file();
-            return NavigationTarget::from_syntax(file_id, name, None, source.syntax());
+            return NavigationTarget::from_syntax(
+                file_id,
+                name,
+                None,
+                source.syntax(),
+                source.doc_comment_text(),
+                source.short_label(),
+            );
         }
         NavigationTarget::from_module(db, module)
     }
 
     pub(crate) fn from_function(db: &RootDatabase, func: hir::Function) -> NavigationTarget {
         let (file_id, fn_def) = func.source(db);
-        NavigationTarget::from_named(file_id.original_file(db), &*fn_def)
+        NavigationTarget::from_named(
+            file_id.original_file(db),
+            &*fn_def,
+            fn_def.doc_comment_text(),
+            fn_def.short_label(),
+        )
     }
 
     pub(crate) fn from_field(db: &RootDatabase, field: hir::StructField) -> NavigationTarget {
         let (file_id, field) = field.source(db);
         let file_id = file_id.original_file(db);
         match field {
-            FieldSource::Named(it) => NavigationTarget::from_named(file_id, &*it),
+            FieldSource::Named(it) => {
+                NavigationTarget::from_named(file_id, &*it, it.doc_comment_text(), it.short_label())
+            }
             FieldSource::Pos(it) => {
-                NavigationTarget::from_syntax(file_id, "".into(), None, it.syntax())
+                NavigationTarget::from_syntax(file_id, "".into(), None, it.syntax(), None, None)
             }
         }
     }
@@ -152,15 +190,30 @@ impl NavigationTarget {
         match adt_def {
             hir::AdtDef::Struct(s) => {
                 let (file_id, node) = s.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             hir::AdtDef::Union(s) => {
                 let (file_id, node) = s.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             hir::AdtDef::Enum(s) => {
                 let (file_id, node) = s.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
         }
     }
@@ -174,35 +227,75 @@ impl NavigationTarget {
             hir::ModuleDef::Function(func) => NavigationTarget::from_function(db, func),
             hir::ModuleDef::Struct(s) => {
                 let (file_id, node) = s.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             hir::ModuleDef::Union(s) => {
                 let (file_id, node) = s.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             hir::ModuleDef::Const(s) => {
                 let (file_id, node) = s.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             hir::ModuleDef::Static(s) => {
                 let (file_id, node) = s.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             hir::ModuleDef::Enum(e) => {
                 let (file_id, node) = e.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             hir::ModuleDef::EnumVariant(var) => {
                 let (file_id, node) = var.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             hir::ModuleDef::Trait(e) => {
                 let (file_id, node) = e.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             hir::ModuleDef::TypeAlias(e) => {
                 let (file_id, node) = e.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             hir::ModuleDef::BuiltinType(..) => {
                 return None;
@@ -221,6 +314,8 @@ impl NavigationTarget {
             "impl".into(),
             None,
             node.syntax(),
+            None,
+            None,
         )
     }
 
@@ -229,11 +324,21 @@ impl NavigationTarget {
             ImplItem::Method(f) => NavigationTarget::from_function(db, f),
             ImplItem::Const(c) => {
                 let (file_id, node) = c.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
             ImplItem::TypeAlias(a) => {
                 let (file_id, node) = a.source(db);
-                NavigationTarget::from_named(file_id.original_file(db), &*node)
+                NavigationTarget::from_named(
+                    file_id.original_file(db),
+                    &*node,
+                    node.doc_comment_text(),
+                    node.short_label(),
+                )
             }
         }
     }
@@ -241,7 +346,12 @@ impl NavigationTarget {
     pub(crate) fn from_macro_def(db: &RootDatabase, macro_call: hir::MacroDef) -> NavigationTarget {
         let (file_id, node) = macro_call.source(db);
         log::debug!("nav target {}", node.syntax().debug_dump());
-        NavigationTarget::from_named(file_id.original_file(db), &*node)
+        NavigationTarget::from_named(
+            file_id.original_file(db),
+            &*node,
+            node.doc_comment_text(),
+            None,
+        )
     }
 
     #[cfg(test)]
@@ -269,11 +379,16 @@ impl NavigationTarget {
     }
 
     /// Allows `NavigationTarget` to be created from a `NameOwner`
-    pub(crate) fn from_named(file_id: FileId, node: &impl ast::NameOwner) -> NavigationTarget {
+    pub(crate) fn from_named(
+        file_id: FileId,
+        node: &impl ast::NameOwner,
+        docs: Option<String>,
+        description: Option<String>,
+    ) -> NavigationTarget {
         //FIXME: use `_` instead of empty string
         let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
         let focus_range = node.name().map(|it| it.syntax().range());
-        NavigationTarget::from_syntax(file_id, name, focus_range, node.syntax())
+        NavigationTarget::from_syntax(file_id, name, focus_range, node.syntax(), docs, description)
     }
 
     fn from_syntax(
@@ -281,6 +396,8 @@ impl NavigationTarget {
         name: SmolStr,
         focus_range: Option<TextRange>,
         node: &SyntaxNode,
+        docs: Option<String>,
+        description: Option<String>,
     ) -> NavigationTarget {
         NavigationTarget {
             file_id,
@@ -290,83 +407,52 @@ impl NavigationTarget {
             focus_range,
             // ptr: Some(LocalSyntaxPtr::new(node)),
             container_name: None,
+            description,
+            docs,
         }
     }
+}
 
-    pub(crate) fn node(&self, db: &RootDatabase) -> Option<TreeArc<SyntaxNode>> {
-        let source_file = db.parse(self.file_id()).tree;
-        let source_file = source_file.syntax();
-        let node = source_file
-            .descendants()
-            .find(|node| node.kind() == self.kind() && node.range() == self.full_range())?
-            .to_owned();
-        Some(node)
+fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
+    let file = db.parse(symbol.file_id).tree;
+    let node = symbol.ptr.to_node(file.syntax()).to_owned();
+
+    fn doc_comments<N: ast::DocCommentsOwner>(node: &N) -> Option<String> {
+        node.doc_comment_text()
     }
 
-    pub(crate) fn docs(&self, db: &RootDatabase) -> Option<String> {
-        let node = self.node(db)?;
-        fn doc_comments<N: ast::DocCommentsOwner>(node: &N) -> Option<String> {
-            node.doc_comment_text()
-        }
+    visitor()
+        .visit(doc_comments::<ast::FnDef>)
+        .visit(doc_comments::<ast::StructDef>)
+        .visit(doc_comments::<ast::EnumDef>)
+        .visit(doc_comments::<ast::TraitDef>)
+        .visit(doc_comments::<ast::Module>)
+        .visit(doc_comments::<ast::TypeAliasDef>)
+        .visit(doc_comments::<ast::ConstDef>)
+        .visit(doc_comments::<ast::StaticDef>)
+        .visit(doc_comments::<ast::NamedFieldDef>)
+        .visit(doc_comments::<ast::EnumVariant>)
+        .visit(doc_comments::<ast::MacroCall>)
+        .accept(&node)?
+}
 
-        visitor()
-            .visit(doc_comments::<ast::FnDef>)
-            .visit(doc_comments::<ast::StructDef>)
-            .visit(doc_comments::<ast::EnumDef>)
-            .visit(doc_comments::<ast::TraitDef>)
-            .visit(doc_comments::<ast::Module>)
-            .visit(doc_comments::<ast::TypeAliasDef>)
-            .visit(doc_comments::<ast::ConstDef>)
-            .visit(doc_comments::<ast::StaticDef>)
-            .visit(doc_comments::<ast::NamedFieldDef>)
-            .visit(doc_comments::<ast::EnumVariant>)
-            .visit(doc_comments::<ast::MacroCall>)
-            .accept(&node)?
-    }
+/// Get a description of a symbol.
+///
+/// e.g. `struct Name`, `enum Name`, `fn Name`
+fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
+    let file = db.parse(symbol.file_id).tree;
+    let node = symbol.ptr.to_node(file.syntax()).to_owned();
 
-    /// Get a description of this node.
-    ///
-    /// e.g. `struct Name`, `enum Name`, `fn Name`
-    pub(crate) fn description(&self, db: &RootDatabase) -> Option<String> {
-        // FIXME: After type inference is done, add type information to improve the output
-        let node = self.node(db)?;
-
-        fn visit_ascribed_node<T>(node: &T, prefix: &str) -> Option<String>
-        where
-            T: NameOwner + VisibilityOwner + TypeAscriptionOwner,
-        {
-            let mut string = visit_node(node, prefix)?;
-
-            if let Some(type_ref) = node.ascribed_type() {
-                string.push_str(": ");
-                type_ref.syntax().text().push_to(&mut string);
-            }
-
-            Some(string)
-        }
-
-        fn visit_node<T>(node: &T, label: &str) -> Option<String>
-        where
-            T: NameOwner + VisibilityOwner,
-        {
-            let mut string =
-                node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
-            string.push_str(label);
-            string.push_str(node.name()?.text().as_str());
-            Some(string)
-        }
-
-        visitor()
-            .visit(|node: &ast::FnDef| Some(crate::display::function_label(node)))
-            .visit(|node: &ast::StructDef| visit_node(node, "struct "))
-            .visit(|node: &ast::EnumDef| visit_node(node, "enum "))
-            .visit(|node: &ast::TraitDef| visit_node(node, "trait "))
-            .visit(|node: &ast::Module| visit_node(node, "mod "))
-            .visit(|node: &ast::TypeAliasDef| visit_node(node, "type "))
-            .visit(|node: &ast::ConstDef| visit_ascribed_node(node, "const "))
-            .visit(|node: &ast::StaticDef| visit_ascribed_node(node, "static "))
-            .visit(|node: &ast::NamedFieldDef| visit_ascribed_node(node, ""))
-            .visit(|node: &ast::EnumVariant| Some(node.name()?.text().to_string()))
-            .accept(&node)?
-    }
+    visitor()
+        .visit(|node: &ast::FnDef| node.short_label())
+        .visit(|node: &ast::StructDef| node.short_label())
+        .visit(|node: &ast::EnumDef| node.short_label())
+        .visit(|node: &ast::TraitDef| node.short_label())
+        .visit(|node: &ast::Module| node.short_label())
+        .visit(|node: &ast::TypeAliasDef| node.short_label())
+        .visit(|node: &ast::ConstDef| node.short_label())
+        .visit(|node: &ast::StaticDef| node.short_label())
+        .visit(|node: &ast::NamedFieldDef| node.short_label())
+        .visit(|node: &ast::EnumVariant| node.short_label())
+        .accept(&node)?
 }
