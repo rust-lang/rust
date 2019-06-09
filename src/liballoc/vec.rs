@@ -1369,6 +1369,85 @@ impl<T> Vec<T> {
     }
 }
 
+#[cfg(not(bootstrap))]
+impl<T, const N: usize> Vec<[T; N]> {
+    /// Flatten a `Vec<[T; N]>` into an N-times longer `Vec<T>`.
+    ///
+    /// This is O(1) and non-allocating.
+    ///
+    /// # Panics
+    ///
+    /// If the length of the result would be too large to store in a `usize`,
+    /// which can only happen if `T` is a zero-sized type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_flatten)]
+    ///
+    /// let v = vec![ [1, 2, 3], [7, 8, 9] ];
+    /// assert_eq!(v.flatten(), [1, 2, 3, 7, 8, 9]);
+    ///
+    /// let v = vec![[0; 7]; 13];
+    /// assert_eq!(v.flatten().len(), 7 * 13);
+    ///
+    /// let v = vec![[(); 500]; 2_000];
+    /// assert_eq!(v.flatten().len(), 1_000_000);
+    ///
+    /// enum Never {}
+    /// let v: Vec<[Never; 0]> = vec![[], [], []];
+    /// assert_eq!(v.flatten().len(), 0);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(vec_flatten)]
+    ///
+    /// let v = vec![[(); std::usize::MAX]; 2];
+    /// v.flatten(); // panics for length overflow
+    /// ```
+    #[inline]
+    #[unstable(feature = "vec_flatten", issue = "88888888",
+        reason = "new API, and needs const generics stabilized first")]
+    pub fn flatten(mut self) -> Vec<T> {
+        if N == 0 {
+            // The allocator-related safety implications of switching pointers
+            // between ZSTs and other types are non-obvious, so just do the
+            // simple thing -- this check is compile-time anyway.
+            return Vec::new();
+        }
+
+        let ptr = self.as_mut_ptr() as *mut T;
+        let (len, cap) =
+            if mem::size_of::<T>() == 0 {
+                // Since ZSTs are limited only by the size of the counters,
+                // it's completely possible to overflow here.  Capacity just
+                // saturates because it usually comes in as `usize::MAX` so
+                // checking the multiplication would make it almost always panic.
+                (
+                    self.len().checked_mul(N).expect("length overflow"),
+                    self.capacity().saturating_mul(N),
+                )
+            } else {
+                // But for types with an actual size these multiplications
+                // cannot overflow as the memory is allocated in self, so don't
+                // codegen a reference to panic machinery.
+                (self.len() * N, self.capacity() *  N)
+            };
+        mem::forget(self);
+
+        // SAFETY:
+        // - The pointer came from the same allocator with which it's being used.
+        // - The layout of the allocation hasn't changed, because the alignment
+        //   of an array matches that of its elements and we increased the length
+        //   by the appropriate amount to counteract the decrease in type size.
+        // - Length is less than or equal to capacity because we increased both
+        //   proportionately or set capacity to the largest possible value.
+        unsafe {
+            Vec::from_raw_parts(ptr, len, cap)
+        }
+    }
+}
+
 impl<T: Clone> Vec<T> {
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
