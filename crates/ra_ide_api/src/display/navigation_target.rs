@@ -443,8 +443,6 @@ fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<Str
     let file = db.parse(symbol.file_id).tree;
     let node = symbol.ptr.to_node(file.syntax()).to_owned();
 
-    // FIXME: After type inference is done, add type information to improve the output
-
     visitor()
         .visit(|node: &ast::FnDef| node.short_label())
         .visit(|node: &ast::StructDef| node.short_label())
