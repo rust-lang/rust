@@ -3,7 +3,6 @@
 // min-llvm-version 7.0
 
 #![crate_type = "lib"]
-#![feature(repr_align_enum)]
 
 #[repr(align(64))]
 pub enum Align64 {
