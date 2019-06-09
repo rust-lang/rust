@@ -1011,7 +1011,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         if regular_traits.is_empty() && auto_traits.is_empty() {
             span_err!(tcx.sess, span, E0224,
-                "at least one non-builtin trait is required for an object type");
+                "at least one non-builtin trait, outside of &send, is required for an object type");
             return tcx.types.err;
         }
 
