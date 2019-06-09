@@ -3971,6 +3971,16 @@ impl str {
     /// [`to_ascii_uppercase`].
     ///
     /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut s = String::from("Grüße, Jürgen ❤");
+    ///
+    /// s.make_ascii_uppercase();
+    ///
+    /// assert_eq!("GRüßE, JüRGEN ❤", s);
+    /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     pub fn make_ascii_uppercase(&mut self) {
         let me = unsafe { self.as_bytes_mut() };
@@ -3986,6 +3996,16 @@ impl str {
     /// [`to_ascii_lowercase`].
     ///
     /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut s = String::from("Grüße, Jürgen ❤");
+    ///
+    /// s.make_ascii_lowercase();
+    ///
+    /// assert_eq!("grüße, jürgen ❤", s);
+    /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     pub fn make_ascii_lowercase(&mut self) {
         let me = unsafe { self.as_bytes_mut() };
