@@ -4,7 +4,7 @@ error: expected identifier, found `+`
 LL |     { $+ } => {
    |        ^
 
-error: expected `*` or `+`
+error: expected one of: `*`, `+`, or `?`
   --> $DIR/issue-33569.rs:4:13
    |
 LL |         $(x)(y)

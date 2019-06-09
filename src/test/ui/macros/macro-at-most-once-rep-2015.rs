@@ -1,6 +1,6 @@
-// Tests that `?` is a Kleene op and not a macro separator in the 2018 edition.
+// Tests that `?` is a Kleene op and not a macro separator in the 2015 edition.
 
-// edition:2018
+// edition:2015
 
 macro_rules! foo {
     ($(a)?) => {};
