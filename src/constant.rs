@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc::mir::interpret::{
-    read_target_uint, AllocId, GlobalAlloc, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
+    read_target_uint, AllocId, GlobalAlloc, Allocation, ConstValue, InterpResult, GlobalId, Scalar,
 };
 use rustc::ty::Const;
 use rustc_mir::interpret::{
@@ -140,7 +140,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
     const_: Const<'tcx>,
 ) -> CPlace<'tcx> {
     // Adapted from https://github.com/rust-lang/rust/pull/53671/files#diff-e0b58bb6712edaa8595ad7237542c958L551
-    let result = || -> EvalResult<'tcx, &'tcx Allocation> {
+    let result = || -> InterpResult<'tcx, &'tcx Allocation> {
         let mut ecx = InterpretCx::new(
             fx.tcx.at(DUMMY_SP),
             ty::ParamEnv::reveal_all(),
@@ -349,7 +349,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         false
     }
 
-    fn before_terminator(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
+    fn before_terminator(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         panic!();
     }
 
@@ -359,7 +359,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         _: &[OpTy<'tcx>],
         _: Option<PlaceTy<'tcx>>,
         _: Option<BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir Body<'tcx>>> {
+    ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
         panic!();
     }
 
@@ -368,14 +368,14 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: PlaceTy<'tcx>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         panic!();
     }
 
     fn find_foreign_static(
         _: DefId,
         _: ::rustc::ty::query::TyCtxtAt<'a, 'tcx, 'tcx>,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation>> {
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
         panic!();
     }
 
@@ -384,11 +384,11 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         _: mir::BinOp,
         _: ImmTy<'tcx>,
         _: ImmTy<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> InterpResult<'tcx, (Scalar, bool)> {
         panic!();
     }
 
-    fn box_alloc(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> EvalResult<'tcx> {
+    fn box_alloc(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> InterpResult<'tcx> {
         panic!();
     }
 
@@ -405,11 +405,11 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         ()
     }
 
-    fn stack_push(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
+    fn stack_push(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 
-    fn stack_pop(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>, _: ()) -> EvalResult<'tcx> {
+    fn stack_pop(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>, _: ()) -> InterpResult<'tcx> {
         Ok(())
     }
 }
