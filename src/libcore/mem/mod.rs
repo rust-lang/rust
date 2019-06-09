@@ -510,6 +510,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// A simple example:
 ///
 /// ```
+/// #![feature(mem_take)]
+///
 /// use std::mem;
 ///
 /// let mut v: Vec<i32> = vec![1, 2];
@@ -540,7 +542,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// `self`, allowing it to be returned:
 ///
 /// ```
-/// # #![allow(dead_code)]
+/// #![feature(mem_take)]
+///
 /// use std::mem;
 ///
 /// # struct Buffer<T> { buf: Vec<T> }
