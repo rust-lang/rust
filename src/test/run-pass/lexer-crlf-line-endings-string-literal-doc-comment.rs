@@ -30,6 +30,9 @@ literal";
     let s = r"string
 literal";
     assert_eq!(s, "string\nliteral");
+    let s = br"byte string
+literal";
+    assert_eq!(s, "byte string\nliteral".as_bytes());
 
     // validate that our source file has CRLF endings
     let source = include_str!("lexer-crlf-line-endings-string-literal-doc-comment.rs");
