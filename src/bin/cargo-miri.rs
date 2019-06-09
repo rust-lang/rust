@@ -421,38 +421,13 @@ fn in_cargo_miri() {
 }
 
 fn inside_cargo_rustc() {
-    let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
-    let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-    let sys_root = if let Ok(sysroot) = ::std::env::var("MIRI_SYSROOT") {
-        sysroot
-    } else if let (Some(home), Some(toolchain)) = (home, toolchain) {
-        format!("{}/toolchains/{}", home, toolchain)
-    } else {
-        option_env!("RUST_SYSROOT")
-            .map(|s| s.to_owned())
-            .or_else(|| {
-                Command::new("rustc")
-                    .arg("--print")
-                    .arg("sysroot")
-                    .output()
-                    .ok()
-                    .and_then(|out| String::from_utf8(out.stdout).ok())
-                    .map(|s| s.trim().to_owned())
-            })
-            .expect("need to specify `RUST_SYSROOT` env var during miri compilation, or use rustup or multirust")
-    };
+    let sysroot = std::env::var("MIRI_SYSROOT").expect("The wrapper should have set MIRI_SYSROOT");
 
-    // This conditional check for the `--sysroot` flag is there so that users can call `cargo-miri`
-    // directly without having to pass `--sysroot` or anything.
-    let rustc_args = std::env::args().skip(2);
-    let mut args: Vec<String> = if std::env::args().any(|s| s == "--sysroot") {
-        rustc_args.collect()
-    } else {
-        rustc_args
+    let rustc_args = std::env::args().skip(2); // skip `cargo rustc`
+    let mut args: Vec<String> = rustc_args
             .chain(Some("--sysroot".to_owned()))
-            .chain(Some(sys_root))
-            .collect()
-    };
+            .chain(Some(sysroot))
+            .collect();
     args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
 
     // See if we can find the `cargo-miri` markers. Those only get added to the binary we want to
