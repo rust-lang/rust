@@ -105,7 +105,7 @@ fn format_project<T: FormatHandler>(
     )
     .visit_crate(&krate)
     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-    for (path, (module, _)) in files {
+    for (path, module) in files {
         let should_ignore = !input_is_stdin && ignore_path_set.is_match(&path);
         if (config.skip_children() && path != main_file) || should_ignore {
             continue;

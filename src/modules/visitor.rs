@@ -5,6 +5,8 @@ use syntax::symbol::kw;
 use syntax::visit::Visitor;
 use syntax_pos::Symbol;
 
+use crate::attr::MetaVisitor;
+
 pub(crate) struct ModItem {
     pub(crate) item: ast::Item,
 }
@@ -101,5 +103,42 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
         }
 
         Ok(())
+    }
+}
+
+/// Extracts `path = "foo.rs"` from attributes.
+#[derive(Default)]
+pub(crate) struct PathVisitor {
+    /// A list of path defined in attributes.
+    paths: Vec<String>,
+}
+
+impl PathVisitor {
+    pub(crate) fn paths(self) -> Vec<String> {
+        self.paths
+    }
+}
+
+impl<'ast> MetaVisitor<'ast> for PathVisitor {
+    fn visit_meta_name_value(&mut self, meta_item: &'ast ast::MetaItem, lit: &'ast ast::Lit) {
+        if meta_item.check_name(Symbol::intern("path")) && lit.node.is_str() {
+            self.paths.push(lit_to_str(lit));
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn lit_to_str(lit: &ast::Lit) -> String {
+    match lit.node {
+        ast::LitKind::Str(symbol, ..) => symbol.to_string(),
+        _ => unreachable!(),
+    }
+}
+
+#[cfg(windows)]
+fn lit_to_str(lit: &ast::Lit) -> String {
+    match lit.node {
+        ast::LitKind::Str(symbol, ..) => symbol.as_str().replace("/", "\\"),
+        _ => unreachable!(),
     }
 }

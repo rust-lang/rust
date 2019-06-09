@@ -28,6 +28,11 @@ const SKIP_FILE_WHITE_LIST: &[&str] = &[
     // These files and directory are a part of modules defined inside `cfg_if!`.
     "cfg_if/mod.rs",
     "cfg_if/detect",
+    // These files and directory are a part of modules defined inside `cfg_attr(..)`.
+    "cfg_mod/dir",
+    "cfg_mod/bar.rs",
+    "cfg_mod/foo.rs",
+    "cfg_mod/wasm32.rs",
 ];
 
 struct TestSetting {
