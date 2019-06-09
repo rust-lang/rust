@@ -139,12 +139,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             // Floating point
             Float(FloatTy::F32) => self.cast_from_float(val.to_f32()?, dest_layout.ty),
             Float(FloatTy::F64) => self.cast_from_float(val.to_f64()?, dest_layout.ty),
-            // Integer(-like), including fn ptr casts
+            // Integer(-like), including fn ptr casts and casts from enums that
+            // are represented as integers (this excludes univariant enums, which
+            // are handled in `cast` directly).
             _ => {
                 assert!(
-                    src_layout.ty.is_bool() || src_layout.ty.is_char() ||
-                    src_layout.ty.is_integral()   || src_layout.ty.is_region_ptr() ||
-                    src_layout.ty.is_unsafe_ptr() || src_layout.ty.is_fn_ptr(),
+                    src_layout.ty.is_bool()       || src_layout.ty.is_char()     ||
+                    src_layout.ty.is_enum()       || src_layout.ty.is_integral() ||
+                    src_layout.ty.is_unsafe_ptr() || src_layout.ty.is_fn_ptr()   ||
+                    src_layout.ty.is_region_ptr(),
                     "Unexpected cast from type {:?}", src_layout.ty
                 );
                 match val.to_bits_or_ptr(src_layout.size, self) {
