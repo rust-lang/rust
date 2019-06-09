@@ -77,7 +77,7 @@ fn main() {
         cli::exit_with_error(&config, e);
     }
 
-    if let Err(e) = run(&config, &matches, matches.opt_present("e")) {
+    if let Err(e) = run(&config, &matches) {
         cli::exit_with_error(&config, e);
     }
 }
@@ -86,9 +86,12 @@ fn main() {
 /// "stable" version, compile them both into `rlib`s, and report the breaking
 /// introduced in the "current" version with respect to the "stable" version.
 // TODO: possibly reduce the complexity by finding where some info can be taken from directly
-fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Result<()> {
+fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
     use cargo::util::important_paths::find_root_manifest_for_wd;
     debug!("running cargo-semver");
+
+    let explain = matches.opt_present("e");
+    let compact = matches.opt_present("compact");
 
     // Obtain WorkInfo for the "current"
     let current = if let Some(name_and_version) = matches.opt_str("C") {
@@ -170,6 +173,7 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
         .stdin(Stdio::piped())
         .env("RUST_SEMVER_CRATE_VERSION", stable_version)
         .env("RUST_SEMVER_VERBOSE", format!("{}", explain))
+        .env("RUST_SEMVER_COMPACT", format!("{}", compact))
         .env(
             "RUST_SEMVER_API_GUIDELINES",
             if matches.opt_present("a") {
@@ -236,6 +240,11 @@ mod cli {
             "",
             "no-default-features",
             "Do not activate the `default` feature",
+        );
+        opts.optflag(
+            "",
+            "compact",
+            "Only output the suggested version on stdout for further processing",
         );
         opts.optopt(
             "s",

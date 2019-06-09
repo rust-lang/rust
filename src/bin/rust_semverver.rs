@@ -46,6 +46,8 @@ fn main() {
 
                     let verbose =
                         std::env::var("RUST_SEMVER_VERBOSE") == Ok("true".to_string());
+                    let compact =
+                        std::env::var("RUST_SEMVER_COMPACT") == Ok("true".to_string());
                     let api_guidelines =
                         std::env::var("RUST_SEMVER_API_GUIDELINES") == Ok("true".to_string());
                     let version = if let Ok(ver) = std::env::var("RUST_SEMVER_CRATE_VERSION") {
@@ -84,7 +86,7 @@ fn main() {
                         if let [(_, old_def_id), (_, new_def_id)] = *crates.as_slice() {
                             debug!("running semver analysis");
                             let changes = run_analysis(tcx, old_def_id, new_def_id);
-                            changes.output(tcx.sess, &version, verbose, api_guidelines);
+                            changes.output(tcx.sess, &version, verbose, compact, api_guidelines);
                         } else {
                             tcx.sess.err("could not find crate old and new crates");
                         }

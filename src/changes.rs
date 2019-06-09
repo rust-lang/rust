@@ -879,7 +879,12 @@ impl<'tcx> ChangeSet<'tcx> {
     }
 
     /// Format the contents of a change set for user output.
-    pub fn output(&self, session: &Session, version: &str, verbose: bool, api_guidelines: bool) {
+    pub fn output(&self,
+                  session: &Session,
+                  version: &str,
+                  verbose: bool,
+                  compact: bool,
+                  api_guidelines: bool) {
         if let Ok(mut new_version) = Version::parse(version) {
             if new_version.major == 0 {
                 new_version.increment_patch();
@@ -891,10 +896,14 @@ impl<'tcx> ChangeSet<'tcx> {
                 }
             }
 
-            println!(
-                "version bump: {} -> ({}) -> {}",
-                version, self.max, new_version
-            );
+            if compact {
+                println!("{}", new_version);
+            } else {
+                println!(
+                    "version bump: {} -> ({}) -> {}",
+                    version, self.max, new_version
+                );
+            }
         } else {
             println!("max change: {}, could not parse {}", self.max, version);
         }
