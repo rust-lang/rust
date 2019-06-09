@@ -1348,7 +1348,7 @@ impl<'a> StringReader<'a> {
 
     fn validate_raw_str_escape(&self, content_start: BytePos, content_end: BytePos) {
         self.with_str_from_to(content_start, content_end, |lit: &str| {
-            unescape::unescape_raw_str(lit, unescape::Mode::Str, &mut |range, c| {
+            unescape::unescape_raw_str(lit, &mut |range, c| {
                 if let Err(err) = c {
                     emit_unescape_error(
                         &self.sess.span_diagnostic,
@@ -1365,7 +1365,7 @@ impl<'a> StringReader<'a> {
 
     fn validate_raw_byte_str_escape(&self, content_start: BytePos, content_end: BytePos) {
         self.with_str_from_to(content_start, content_end, |lit: &str| {
-            unescape::unescape_raw_str(lit, unescape::Mode::ByteStr, &mut |range, c| {
+            unescape::unescape_raw_byte_str(lit, &mut |range, c| {
                 if let Err(err) = c {
                     emit_unescape_error(
                         &self.sess.span_diagnostic,

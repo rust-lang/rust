@@ -4,8 +4,9 @@ use crate::ast::{self, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
 use crate::parse::token::{self, Token, TokenKind};
-use crate::parse::unescape::{self, unescape_str, unescape_byte_str, unescape_raw_str};
 use crate::parse::unescape::{unescape_char, unescape_byte};
+use crate::parse::unescape::{unescape_str, unescape_byte_str};
+use crate::parse::unescape::{unescape_raw_str, unescape_raw_byte_str};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
@@ -144,7 +145,7 @@ impl LitKind {
                 let symbol = if s.contains('\r') {
                     let mut buf = String::with_capacity(s.len());
                     let mut error = Ok(());
-                    unescape_raw_str(&s, unescape::Mode::Str, &mut |_, unescaped_char| {
+                    unescape_raw_str(&s, &mut |_, unescaped_char| {
                         match unescaped_char {
                             Ok(c) => buf.push(c),
                             Err(_) => error = Err(LitError::LexerError),
@@ -172,7 +173,26 @@ impl LitKind {
                 buf.shrink_to_fit();
                 LitKind::ByteStr(Lrc::new(buf))
             }
-            token::ByteStrRaw(_) => LitKind::ByteStr(Lrc::new(symbol.to_string().into_bytes())),
+            token::ByteStrRaw(_) => {
+                let s = symbol.as_str();
+                let bytes = if s.contains('\r') {
+                    let mut buf = Vec::with_capacity(s.len());
+                    let mut error = Ok(());
+                    unescape_raw_byte_str(&s, &mut |_, unescaped_byte| {
+                        match unescaped_byte {
+                            Ok(c) => buf.push(c),
+                            Err(_) => error = Err(LitError::LexerError),
+                        }
+                    });
+                    error?;
+                    buf.shrink_to_fit();
+                    buf
+                } else {
+                    symbol.to_string().into_bytes()
+                };
+
+                LitKind::ByteStr(Lrc::new(bytes))
+            },
             token::Err => LitKind::Err(symbol),
         })
     }

@@ -71,29 +71,24 @@ where
 /// sequence of characters or errors.
 /// NOTE: Raw strings do not perform any explicit character escaping, here we
 /// only translate CRLF to LF and produce errors on bare CR.
-pub(crate) fn unescape_raw_str<F>(literal_text: &str, mode: Mode, callback: &mut F)
+pub(crate) fn unescape_raw_str<F>(literal_text: &str, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
-    let mut byte_offset: usize = 0;
+    unescape_raw_str_or_byte_str(literal_text, Mode::Str, callback)
+}
 
-    let mut chars = literal_text.chars().peekable();
-    while let Some(curr) = chars.next() {
-        let (result, scanned) = match (curr, chars.peek()) {
-            ('\r', Some('\n')) => {
-                chars.next();
-                (Ok('\n'), [Some('\r'), Some('\n')])
-            },
-            ('\r', _) =>
-                (Err(EscapeError::BareCarriageReturn), [Some('\r'), None]),
-            (c, _) if mode.is_bytes() && c > '\x7F' =>
-                (Err(EscapeError::NonAsciiCharInByteString), [Some(c), None]),
-            (c, _) => (Ok(c), [Some(c), None]),
-        };
-        let len_utf8: usize = scanned.iter().filter_map(|&x| x).map(char::len_utf8).sum();
-        callback(byte_offset..(byte_offset + len_utf8), result);
-        byte_offset += len_utf8;
-    }
+/// Takes a contents of a string literal (without quotes) and produces a
+/// sequence of characters or errors.
+/// NOTE: Raw strings do not perform any explicit character escaping, here we
+/// only translate CRLF to LF and produce errors on bare CR.
+pub(crate) fn unescape_raw_byte_str<F>(literal_text: &str, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<u8, EscapeError>),
+{
+    unescape_raw_str_or_byte_str(literal_text, Mode::ByteStr, &mut |range, char| {
+        callback(range, char.map(byte_from_char))
+    })
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -284,9 +279,38 @@ where
     }
 }
 
+/// Takes a contents of a string literal (without quotes) and produces a
+/// sequence of characters or errors.
+/// NOTE: Raw strings do not perform any explicit character escaping, here we
+/// only translate CRLF to LF and produce errors on bare CR.
+fn unescape_raw_str_or_byte_str<F>(literal_text: &str, mode: Mode, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
+{
+    let mut byte_offset: usize = 0;
+
+    let mut chars = literal_text.chars().peekable();
+    while let Some(curr) = chars.next() {
+        let (result, scanned) = match (curr, chars.peek()) {
+            ('\r', Some('\n')) => {
+                chars.next();
+                (Ok('\n'), [Some('\r'), Some('\n')])
+            },
+            ('\r', _) =>
+                (Err(EscapeError::BareCarriageReturn), [Some('\r'), None]),
+            (c, _) if mode.is_bytes() && !c.is_ascii() =>
+                (Err(EscapeError::NonAsciiCharInByteString), [Some(c), None]),
+            (c, _) => (Ok(c), [Some(c), None]),
+        };
+        let len_utf8: usize = scanned.iter().filter_map(|&x| x).map(char::len_utf8).sum();
+        callback(byte_offset..(byte_offset + len_utf8), result);
+        byte_offset += len_utf8;
+    }
+}
+
 fn byte_from_char(c: char) -> u8 {
     let res = c as u32;
-    assert!(res <= u8::max_value() as u32, "guaranteed because of Mode::Byte");
+    assert!(res <= u8::max_value() as u32, "guaranteed because of Mode::Byte(Str)");
     res as u8
 }
 
