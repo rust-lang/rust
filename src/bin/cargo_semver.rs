@@ -294,7 +294,8 @@ mod cli {
 
     /// Print a help message
     pub fn print_help(opts: &getopts::Options) {
-        let brief = "usage: cargo semver [options] [-- cargo options]";
+        // FIXME: pass remaining options to cargo
+        let brief = "usage: cargo semver [options]";
         print!("{}", opts.usage(brief));
     }
 
