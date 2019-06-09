@@ -119,6 +119,39 @@ fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
     package.targets.into_iter()
 }
 
+/// Make sure that the `miri` and `rustc` binary are from the same sysroot.
+/// This can be violated e.g. when miri is locally built and installed with a different
+/// toolchain than what is used when `cargo miri` is run.
+fn test_sysroot_consistency() {
+    fn get_sysroot(mut cmd: Command) -> PathBuf {
+        let out = cmd.arg("--print").arg("sysroot")
+            .env_remove("MIRI_SYSROOT") // We want to test their "native" sysroot, not the manually set one
+            .output().expect("Failed to run rustc to get sysroot info");
+        assert!(out.status.success(), "Bad statuc code when getting sysroot info");
+        let sysroot = out.stdout.lines().nth(0)
+            .expect("didn't get at least one line for the sysroot").unwrap();
+        PathBuf::from(sysroot).canonicalize()
+            .expect("Failed to canonicalize sysroot")
+    }
+
+    let rustc_sysroot = get_sysroot(Command::new("rustc"));
+    let miri_sysroot = {
+        let mut path = std::env::current_exe().expect("current executable path invalid");
+        path.set_file_name("miri");
+        get_sysroot(Command::new(path))
+    };
+
+    if rustc_sysroot != miri_sysroot {
+        show_error(format!(
+            "miri was built for a different sysroot than the rustc in your current toolchain.\n\
+             Make sure you use the same toolchain to run miri that you used to build it!\n\
+             rustc sysroot: `{}`\n\
+             miri sysroot: `{}`",
+             rustc_sysroot.display(), miri_sysroot.display()
+        ));
+    }
+}
+
 fn xargo_version() -> Option<(u32, u32, u32)> {
     let out = Command::new("xargo").arg("--version").output().ok()?;
     if !out.status.success() {
@@ -269,7 +302,7 @@ path = "lib.rs"
     if print_env {
         println!("MIRI_SYSROOT={}", sysroot.display());
     } else if !ask_user {
-        println!("A libstd for Miri is now available in `{}`", sysroot.display());
+        println!("A libstd for Miri is now available in `{}`.", sysroot.display());
     }
 }
 
@@ -312,6 +345,9 @@ fn in_cargo_miri() {
         }
     };
     let verbose = has_arg_flag("-v");
+
+    // Some basic sanity checks
+    test_sysroot_consistency();
 
     // We always setup.
     let ask = subcommand != MiriCommand::Setup;
