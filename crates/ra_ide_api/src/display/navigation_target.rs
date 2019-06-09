@@ -75,9 +75,6 @@ impl NavigationTarget {
     }
 
     pub(crate) fn from_symbol(db: &RootDatabase, symbol: FileSymbol) -> NavigationTarget {
-        let file = db.parse(symbol.file_id).tree;
-        let node = symbol.ptr.to_node(file.syntax()).to_owned();
-
         NavigationTarget {
             file_id: symbol.file_id,
             name: symbol.name.clone(),
@@ -85,7 +82,7 @@ impl NavigationTarget {
             full_range: symbol.ptr.range(),
             focus_range: symbol.name_range,
             container_name: symbol.container_name.clone(),
-            description: description_from_symbol(&node),
+            description: description_from_symbol(db, &symbol),
             docs: docs_from_symbol(db, &symbol),
         }
     }
@@ -442,7 +439,10 @@ fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
 /// Get a description of a symbol.
 ///
 /// e.g. `struct Name`, `enum Name`, `fn Name`
-fn description_from_symbol(node: &SyntaxNode) -> Option<String> {
+fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
+    let file = db.parse(symbol.file_id).tree;
+    let node = symbol.ptr.to_node(file.syntax()).to_owned();
+
     // FIXME: After type inference is done, add type information to improve the output
 
     visitor()
