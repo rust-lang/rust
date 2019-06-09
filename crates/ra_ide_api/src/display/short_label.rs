@@ -84,8 +84,7 @@ fn short_label_from_node<T>(node: &T, label: &str) -> Option<String>
 where
     T: NameOwner + VisibilityOwner,
 {
-    let mut buf =
-        node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
+    let mut buf = node.visibility().map(|v| format!("{} ", v.syntax().text())).unwrap_or_default();
     buf.push_str(label);
     buf.push_str(node.name()?.text().as_str());
     Some(buf)
