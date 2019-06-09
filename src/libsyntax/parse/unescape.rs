@@ -287,24 +287,26 @@ fn unescape_raw_str_or_byte_str<F>(literal_text: &str, mode: Mode, callback: &mu
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
-    let mut byte_offset: usize = 0;
+    assert!(mode.in_double_quotes());
+    let initial_len = literal_text.len();
 
-    let mut chars = literal_text.chars().peekable();
+    let mut chars = literal_text.chars();
     while let Some(curr) = chars.next() {
-        let (result, scanned) = match (curr, chars.peek()) {
+        let start = initial_len - chars.as_str().len() - curr.len_utf8();
+
+        let result = match (curr, chars.clone().next()) {
             ('\r', Some('\n')) => {
                 chars.next();
-                (Ok('\n'), [Some('\r'), Some('\n')])
+                Ok('\n')
             },
-            ('\r', _) =>
-                (Err(EscapeError::BareCarriageReturn), [Some('\r'), None]),
+            ('\r', _) => Err(EscapeError::BareCarriageReturn),
             (c, _) if mode.is_bytes() && !c.is_ascii() =>
-                (Err(EscapeError::NonAsciiCharInByteString), [Some(c), None]),
-            (c, _) => (Ok(c), [Some(c), None]),
+                Err(EscapeError::NonAsciiCharInByteString),
+            (c, _) => Ok(c),
         };
-        let len_utf8: usize = scanned.iter().filter_map(|&x| x).map(char::len_utf8).sum();
-        callback(byte_offset..(byte_offset + len_utf8), result);
-        byte_offset += len_utf8;
+        let end = initial_len - chars.as_str().len();
+
+        callback(start..end, result);
     }
 }
 
