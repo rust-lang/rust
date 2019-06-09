@@ -14,49 +14,49 @@ impl Description for ast::FnDef {
 
 impl Description for ast::StructDef {
     fn description(&self) -> Option<String> {
-        visit_node(self, "struct ")
+        description_from_node(self, "struct ")
     }
 }
 
 impl Description for ast::EnumDef {
     fn description(&self) -> Option<String> {
-        visit_node(self, "enum ")
+        description_from_node(self, "enum ")
     }
 }
 
 impl Description for ast::TraitDef {
     fn description(&self) -> Option<String> {
-        visit_node(self, "trait ")
+        description_from_node(self, "trait ")
     }
 }
 
 impl Description for ast::Module {
     fn description(&self) -> Option<String> {
-        visit_node(self, "mod ")
+        description_from_node(self, "mod ")
     }
 }
 
 impl Description for ast::TypeAliasDef {
     fn description(&self) -> Option<String> {
-        visit_node(self, "type ")
+        description_from_node(self, "type ")
     }
 }
 
 impl Description for ast::ConstDef {
     fn description(&self) -> Option<String> {
-        visit_ascribed_node(self, "const ")
+        description_from_ascribed_node(self, "const ")
     }
 }
 
 impl Description for ast::StaticDef {
     fn description(&self) -> Option<String> {
-        visit_ascribed_node(self, "static ")
+        description_from_ascribed_node(self, "static ")
     }
 }
 
 impl Description for ast::NamedFieldDef {
     fn description(&self) -> Option<String> {
-        visit_ascribed_node(self, "")
+        description_from_ascribed_node(self, "")
     }
 }
 
@@ -66,11 +66,11 @@ impl Description for ast::EnumVariant {
     }
 }
 
-fn visit_ascribed_node<T>(node: &T, prefix: &str) -> Option<String>
+fn description_from_ascribed_node<T>(node: &T, prefix: &str) -> Option<String>
 where
     T: NameOwner + VisibilityOwner + TypeAscriptionOwner,
 {
-    let mut string = visit_node(node, prefix)?;
+    let mut string = description_from_node(node, prefix)?;
 
     if let Some(type_ref) = node.ascribed_type() {
         string.push_str(": ");
@@ -80,7 +80,7 @@ where
     Some(string)
 }
 
-fn visit_node<T>(node: &T, label: &str) -> Option<String>
+fn description_from_node<T>(node: &T, label: &str) -> Option<String>
 where
     T: NameOwner + VisibilityOwner,
 {
