@@ -54,12 +54,12 @@ impl NavigationTarget {
         self.full_range
     }
 
-    pub fn docs(&self) -> Option<String> {
-        self.docs.clone()
+    pub fn docs(&self) -> Option<&str> {
+        self.docs.as_ref().map(String::as_str)
     }
 
-    pub fn description(&self) -> Option<String> {
-        self.description.clone()
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_ref().map(String::as_str)
     }
 
     /// A "most interesting" range withing the `full_range`.
