@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::attr;
 use syntax::parse::{
-    new_sub_parser_from_file, parser, token, DirectoryOwnership, PResult, ParseSess,
+    new_sub_parser_from_file, parser, token::TokenKind, DirectoryOwnership, PResult, ParseSess,
 };
 use syntax::source_map::{self, Span};
 use syntax::symbol::sym;
@@ -380,7 +380,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 DUMMY_SP,
             );
             parser.cfg_mods = false;
-            let lo = parser.span;
+            let lo = parser.token.span;
             // FIXME(topecongiro) Format inner attributes (#3606).
             let _mod_attrs = match parse_inner_attributes(&mut parser) {
                 Ok(attrs) => attrs,
@@ -429,10 +429,10 @@ fn find_path_value(attrs: &[ast::Attribute]) -> Option<Symbol> {
 fn parse_inner_attributes<'a>(parser: &mut parser::Parser<'a>) -> PResult<'a, Vec<ast::Attribute>> {
     let mut attrs: Vec<ast::Attribute> = vec![];
     loop {
-        match parser.token {
-            token::Pound => {
+        match parser.token.kind {
+            TokenKind::Pound => {
                 // Don't even try to parse if it's not an inner attribute.
-                if !parser.look_ahead(1, |t| t == &token::Not) {
+                if !parser.look_ahead(1, |t| t == &TokenKind::Not) {
                     break;
                 }
 
@@ -440,9 +440,9 @@ fn parse_inner_attributes<'a>(parser: &mut parser::Parser<'a>) -> PResult<'a, Ve
                 assert_eq!(attr.style, ast::AttrStyle::Inner);
                 attrs.push(attr);
             }
-            token::DocComment(s) => {
+            TokenKind::DocComment(s) => {
                 // we need to get the position of this token before we bump.
-                let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, parser.span);
+                let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, parser.token.span);
                 if attr.style == ast::AttrStyle::Inner {
                     attrs.push(attr);
                     parser.bump();
@@ -462,7 +462,7 @@ fn parse_mod_items<'a>(parser: &mut parser::Parser<'a>, inner_lo: Span) -> PResu
         items.push(item);
     }
 
-    let hi = if parser.span.is_dummy() {
+    let hi = if parser.token.span.is_dummy() {
         inner_lo
     } else {
         parser.prev_span

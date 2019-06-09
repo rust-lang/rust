@@ -1,5 +1,5 @@
 use syntax::ast;
-use syntax::parse::token::{DelimToken, Token};
+use syntax::parse::token::{DelimToken, TokenKind};
 use syntax::parse::{stream_to_parser_with_base_dir, Directory, ParseSess};
 use syntax::symbol::kw;
 use syntax::visit::Visitor;
@@ -55,7 +55,7 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
         parser.cfg_mods = false;
         let mut process_if_cfg = true;
 
-        while parser.token != Token::Eof {
+        while parser.token.kind != TokenKind::Eof {
             if process_if_cfg {
                 if !parser.eat_keyword(kw::If) {
                     return Err("Expected `if`");
@@ -65,11 +65,12 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
                     .map_err(|_| "Failed to parse attributes")?;
             }
 
-            if !parser.eat(&Token::OpenDelim(DelimToken::Brace)) {
+            if !parser.eat(&TokenKind::OpenDelim(DelimToken::Brace)) {
                 return Err("Expected an opening brace");
             }
 
-            while parser.token != Token::CloseDelim(DelimToken::Brace) && parser.token != Token::Eof
+            while parser.token != TokenKind::CloseDelim(DelimToken::Brace)
+                && parser.token.kind != TokenKind::Eof
             {
                 let item = match parser.parse_item() {
                     Ok(Some(item_ptr)) => item_ptr.into_inner(),
@@ -87,11 +88,11 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
                 }
             }
 
-            if !parser.eat(&Token::CloseDelim(DelimToken::Brace)) {
+            if !parser.eat(&TokenKind::CloseDelim(DelimToken::Brace)) {
                 return Err("Expected a closing brace");
             }
 
-            if parser.eat(&Token::Eof) {
+            if parser.eat(&TokenKind::Eof) {
                 break;
             }
 

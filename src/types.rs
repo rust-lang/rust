@@ -137,7 +137,7 @@ pub(crate) enum SegmentParam<'a> {
     Const(&'a ast::AnonConst),
     LifeTime(&'a ast::Lifetime),
     Type(&'a ast::Ty),
-    Binding(&'a ast::TypeBinding),
+    Binding(&'a ast::AssocTyConstraint),
 }
 
 impl<'a> SegmentParam<'a> {
@@ -167,20 +167,31 @@ impl<'a> Rewrite for SegmentParam<'a> {
             SegmentParam::Const(const_) => const_.rewrite(context, shape),
             SegmentParam::LifeTime(lt) => lt.rewrite(context, shape),
             SegmentParam::Type(ty) => ty.rewrite(context, shape),
-            SegmentParam::Binding(binding) => {
+            SegmentParam::Binding(assoc_ty_constraint) => {
                 let mut result = match context.config.type_punctuation_density() {
-                    TypeDensity::Wide => format!("{} = ", rewrite_ident(context, binding.ident)),
+                    TypeDensity::Wide => {
+                        format!("{} = ", rewrite_ident(context, assoc_ty_constraint.ident))
+                    }
                     TypeDensity::Compressed => {
-                        format!("{}=", rewrite_ident(context, binding.ident))
+                        format!("{}=", rewrite_ident(context, assoc_ty_constraint.ident))
                     }
                 };
                 let budget = shape.width.checked_sub(result.len())?;
-                let rewrite = binding
-                    .ty
+                let rewrite = assoc_ty_constraint
+                    .kind
                     .rewrite(context, Shape::legacy(budget, shape.indent + result.len()))?;
                 result.push_str(&rewrite);
                 Some(result)
             }
+        }
+    }
+}
+
+impl Rewrite for ast::AssocTyConstraintKind {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        match self {
+            ast::AssocTyConstraintKind::Equality { ty } => ty.rewrite(context, shape),
+            ast::AssocTyConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
         }
     }
 }
@@ -216,13 +227,13 @@ fn rewrite_segment(
     if let Some(ref args) = segment.args {
         match **args {
             ast::GenericArgs::AngleBracketed(ref data)
-                if !data.args.is_empty() || !data.bindings.is_empty() =>
+                if !data.args.is_empty() || !data.constraints.is_empty() =>
             {
                 let param_list = data
                     .args
                     .iter()
                     .map(SegmentParam::from_generic_arg)
-                    .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
+                    .chain(data.constraints.iter().map(|x| SegmentParam::Binding(&*x)))
                     .collect::<Vec<_>>();
 
                 // HACK: squeeze out the span between the identifier and the parameters.
