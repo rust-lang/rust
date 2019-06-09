@@ -328,13 +328,13 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_f32(f: Single) -> Self {
-        // We trust apfloat to give us properly truncated data
+        // We trust apfloat to give us properly truncated data.
         Scalar::Raw { data: f.to_bits(), size: 4 }
     }
 
     #[inline]
     pub fn from_f64(f: Double) -> Self {
-        // We trust apfloat to give us properly truncated data
+        // We trust apfloat to give us properly truncated data.
         Scalar::Raw { data: f.to_bits(), size: 8 }
     }
 
