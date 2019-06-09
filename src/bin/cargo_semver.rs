@@ -8,7 +8,8 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-use cargo::core::{Package, PackageId, PackageSet, Source, SourceId, SourceMap, Workspace};
+use cargo::core::{Package, PackageId, Source, SourceId, Workspace};
+use cargo::sources::RegistrySource;
 use curl::easy::Easy;
 use log::debug;
 use rand::Rng;
@@ -94,7 +95,6 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
         // -C "name:version" requires fetching the appropriate package:
         WorkInfo::remote(
             config,
-            SourceInfo::new(config)?,
             &PackageNameAndVersion::parse(&name_and_version)?,
         )?
     } else if let Some(path) = matches.opt_str("c").map(PathBuf::from) {
@@ -112,7 +112,7 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
         // -S "name:version" requires fetching the appropriate package:
         let info = PackageNameAndVersion::parse(&name_and_version)?;
         let version = info.version.to_owned();
-        let work_info = WorkInfo::remote(config, SourceInfo::new(config)?, &info)?;
+        let work_info = WorkInfo::remote(config, &info)?;
         (work_info, version)
     } else if let Some(path) = matches.opt_str("s") {
         // -s "local_path":
@@ -127,7 +127,7 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
             name: &name,
             version: &stable_crate.max_version,
         };
-        let work_info = WorkInfo::remote(config, SourceInfo::new(config)?, &info)?;
+        let work_info = WorkInfo::remote(config, &info)?;
         (work_info, stable_crate.max_version.clone())
     };
 
@@ -341,33 +341,6 @@ impl<'a> PackageNameAndVersion<'a> {
     }
 }
 
-/// A specification of a package source to fetch remote packages from.
-pub struct SourceInfo<'a> {
-    /// The source id to be used.
-    id: SourceId,
-    /// The source to be used.
-    source: Box<dyn Source + 'a>,
-}
-
-impl<'a> SourceInfo<'a> {
-    /// Construct a new source info for `crates.io`.
-    pub fn new(config: &'a cargo::Config) -> Result<SourceInfo<'a>> {
-        let source_id = SourceId::crates_io(config)?;
-        let mut source = source_id.load(config, &HashSet::new())?;
-
-        debug!("source id loaded: {:?}", source_id);
-
-        // Update the index.  Without this we would not be able to fetch recent packages if the
-        // index is not up-to-date.
-        source.update()?;
-
-        Ok(Self {
-            id: source_id,
-            source,
-        })
-    }
-}
-
 /// A specification of a package and it's workspace.
 pub struct WorkInfo<'a> {
     /// The package to be compiled.
@@ -388,25 +361,29 @@ impl<'a> WorkInfo<'a> {
     /// specified `PackageNameAndVersion` from the `source`.
     pub fn remote(
         config: &'a cargo::Config,
-        source: SourceInfo<'a>,
         &PackageNameAndVersion { name, version }: &PackageNameAndVersion,
     ) -> Result<WorkInfo<'a>> {
-        // TODO: fall back to locally cached package instance, or better yet, search for it
-        // first.
-        let package_ids = [PackageId::new(name, version, source.id)?];
-        debug!("(remote) package id: {:?}", package_ids[0]);
-        let sources = {
-            let mut s = SourceMap::new();
-            s.insert(source.source);
-            s
+        let source = {
+            let source_id = SourceId::crates_io(&config)?;
+            let mut source = RegistrySource::remote(source_id, &HashSet::new(), config);
+
+            debug!("source id loaded: {:?}", source_id);
+
+            source.update()?;
+
+            Box::new(source)
         };
 
-        let package_set = PackageSet::new(&package_ids, sources, config)?;
-        let package = package_set.get_one(package_ids[0])?;
+        // TODO: fall back to locally cached package instance, or better yet, search for it
+        // first.
+        let package_id = PackageId::new(name, version, source.source_id())?;
+        debug!("(remote) package id: {:?}", package_id);
+
+        let package = source.download_now(package_id, config)?;
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
 
         Ok(Self {
-            package: package.clone(),
+            package: package,
             workspace,
         })
     }
