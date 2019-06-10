@@ -12,8 +12,8 @@ use syntax_pos::Span;
 pub fn expand_deriving_eq(cx: &mut ExtCtxt<'_>,
                           span: Span,
                           mitem: &MetaItem,
-                          item: &Annotatable,
-                          push: &mut dyn FnMut(Annotatable)) {
+                          ref item: Annotatable)
+                          -> Vec<Annotatable> {
     let inline = cx.meta_word(span, sym::inline);
     let hidden = cx.meta_list_item_word(span, sym::hidden);
     let doc = cx.meta_list(span, sym::doc, vec![hidden]);
@@ -41,7 +41,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt<'_>,
                       }],
         associated_types: Vec::new(),
     };
-    trait_def.expand_ext(cx, mitem, item, push, true)
+    trait_def.expand_ext(cx, mitem, item, true)
 }
 
 fn cs_total_eq_assert(cx: &mut ExtCtxt<'_>,

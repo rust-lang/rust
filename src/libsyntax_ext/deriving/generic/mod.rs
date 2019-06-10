@@ -388,17 +388,17 @@ impl<'a> TraitDef<'a> {
     pub fn expand(self,
                   cx: &mut ExtCtxt<'_>,
                   mitem: &ast::MetaItem,
-                  item: &'a Annotatable,
-                  push: &mut dyn FnMut(Annotatable)) {
-        self.expand_ext(cx, mitem, item, push, false);
+                  item: &'a Annotatable)
+                  -> Vec<Annotatable> {
+        self.expand_ext(cx, mitem, item, false)
     }
 
     pub fn expand_ext(self,
                       cx: &mut ExtCtxt<'_>,
                       mitem: &ast::MetaItem,
                       item: &'a Annotatable,
-                      push: &mut dyn FnMut(Annotatable),
-                      from_scratch: bool) {
+                      from_scratch: bool)
+                      -> Vec<Annotatable> {
         match *item {
             Annotatable::Item(ref item) => {
                 let is_packed = item.attrs.iter().any(|attr| {
@@ -422,7 +422,7 @@ impl<'a> TraitDef<'a> {
                         // Non-ADT derive is an error, but it should have been
                         // set earlier; see
                         // libsyntax/ext/expand.rs:MacroExpander::expand()
-                        return;
+                        return Vec::new();
                     }
                 };
                 let is_always_copy =
@@ -453,7 +453,7 @@ impl<'a> TraitDef<'a> {
                         } else {
                             cx.span_err(mitem.span,
                                         "this trait cannot be derived for unions");
-                            return;
+                            return Vec::new();
                         }
                     }
                     _ => unreachable!(),
@@ -468,13 +468,13 @@ impl<'a> TraitDef<'a> {
                             .contains(&a.name_or_empty())
                     })
                     .cloned());
-                push(Annotatable::Item(P(ast::Item { attrs: attrs, ..(*newitem).clone() })))
+                vec![Annotatable::Item(P(ast::Item { attrs: attrs, ..(*newitem).clone() }))]
             }
             _ => {
                 // Non-Item derive is an error, but it should have been
                 // set earlier; see
                 // libsyntax/ext/expand.rs:MacroExpander::expand()
-                return;
+                Vec::new()
             }
         }
     }

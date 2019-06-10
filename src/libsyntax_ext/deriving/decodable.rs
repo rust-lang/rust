@@ -16,26 +16,26 @@ use syntax_pos::Span;
 pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt<'_>,
                                        span: Span,
                                        mitem: &MetaItem,
-                                       item: &Annotatable,
-                                       push: &mut dyn FnMut(Annotatable)) {
-    expand_deriving_decodable_imp(cx, span, mitem, item, push, "rustc_serialize")
+                                       item: Annotatable)
+                                       -> Vec<Annotatable> {
+    expand_deriving_decodable_imp(cx, span, mitem, item, "rustc_serialize")
 }
 
 pub fn expand_deriving_decodable(cx: &mut ExtCtxt<'_>,
                                  span: Span,
                                  mitem: &MetaItem,
-                                 item: &Annotatable,
-                                 push: &mut dyn FnMut(Annotatable)) {
+                                 item: Annotatable)
+                                 -> Vec<Annotatable> {
     warn_if_deprecated(cx, span, "Decodable");
-    expand_deriving_decodable_imp(cx, span, mitem, item, push, "serialize")
+    expand_deriving_decodable_imp(cx, span, mitem, item, "serialize")
 }
 
 fn expand_deriving_decodable_imp(cx: &mut ExtCtxt<'_>,
                                  span: Span,
                                  mitem: &MetaItem,
-                                 item: &Annotatable,
-                                 push: &mut dyn FnMut(Annotatable),
-                                 krate: &'static str) {
+                                 ref item: Annotatable,
+                                 krate: &'static str)
+                                 -> Vec<Annotatable> {
     let typaram = &*deriving::hygienic_type_parameter(item, "__D");
 
     let trait_def = TraitDef {
@@ -76,7 +76,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt<'_>,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, item)
 }
 
 fn decodable_substructure(cx: &mut ExtCtxt<'_>,

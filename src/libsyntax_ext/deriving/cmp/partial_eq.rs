@@ -12,8 +12,8 @@ use syntax_pos::Span;
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
                                   span: Span,
                                   mitem: &MetaItem,
-                                  item: &Annotatable,
-                                  push: &mut dyn FnMut(Annotatable)) {
+                                  ref item: Annotatable)
+                                  -> Vec<Annotatable> {
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
     fn cs_op(cx: &mut ExtCtxt<'_>,
@@ -99,5 +99,5 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
         methods,
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, item)
 }

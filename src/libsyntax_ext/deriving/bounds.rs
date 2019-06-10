@@ -9,16 +9,17 @@ use syntax_pos::Span;
 pub fn expand_deriving_unsafe_bound(cx: &mut ExtCtxt<'_>,
                                     span: Span,
                                     _: &MetaItem,
-                                    _: &Annotatable,
-                                    _: &mut dyn FnMut(Annotatable)) {
+                                    _: Annotatable)
+                                    -> Vec<Annotatable> {
     cx.span_err(span, "this unsafe trait should be implemented explicitly");
+    Vec::new()
 }
 
 pub fn expand_deriving_copy(cx: &mut ExtCtxt<'_>,
                             span: Span,
                             mitem: &MetaItem,
-                            item: &Annotatable,
-                            push: &mut dyn FnMut(Annotatable)) {
+                            ref item: Annotatable)
+                            -> Vec<Annotatable> {
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
@@ -31,5 +32,5 @@ pub fn expand_deriving_copy(cx: &mut ExtCtxt<'_>,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push);
+    trait_def.expand(cx, mitem, item)
 }

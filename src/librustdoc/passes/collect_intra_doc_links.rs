@@ -433,7 +433,7 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
             if let Res::Def(DefKind::Macro(MacroKind::ProcMacroStub), _) = res {
                 // skip proc-macro stubs, they'll cause `get_macro` to crash
             } else {
-                if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(res) {
+                if let SyntaxExtension::LegacyBang { .. } = *resolver.get_macro(res) {
                     return Some(res.map_id(|_| panic!("unexpected id")));
                 }
             }

@@ -13,8 +13,8 @@ use syntax_pos::Span;
 pub fn expand_deriving_default(cx: &mut ExtCtxt<'_>,
                                span: Span,
                                mitem: &MetaItem,
-                               item: &Annotatable,
-                               push: &mut dyn FnMut(Annotatable)) {
+                               ref item: Annotatable)
+                               -> Vec<Annotatable> {
     let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
@@ -40,7 +40,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt<'_>,
                       }],
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, item)
 }
 
 fn default_substructure(cx: &mut ExtCtxt<'_>,
