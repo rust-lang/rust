@@ -1,6 +1,5 @@
 use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
-use either::Either;
 use relative_path::RelativePathBuf;
 use test_utils::tested_by;
 use ra_db::FileId;
@@ -9,7 +8,7 @@ use ra_syntax::ast;
 use crate::{
     Function, Module, Struct, Union, Enum, Const, Static, Trait, TypeAlias, MacroDef,
     DefDatabase, HirFileId, Name, Path, AstDatabase,
-    KnownName,
+    KnownName, AstId,
     nameres::{
         Resolution, PerNs, ModuleDef, ReachedFixedPoint, ResolveMode,
         CrateDefMap, CrateModuleId, ModuleData, ItemOrMacro,
@@ -17,7 +16,7 @@ use crate::{
         raw,
     },
     ids::{AstItemDef, LocationCtx, MacroCallLoc, MacroCallId, MacroDefId, MacroFileKind},
-    AstId,
+    either::Either,
 };
 
 pub(super) fn collect_defs(
@@ -129,12 +128,7 @@ where
         let unresolved_imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
         // show unresolved imports in completion, etc
         for (module_id, import, import_data) in unresolved_imports {
-            self.record_resolved_import(
-                module_id,
-                Either::Left(PerNs::none()),
-                import,
-                &import_data,
-            )
+            self.record_resolved_import(module_id, Either::A(PerNs::none()), import, &import_data)
         }
     }
 
@@ -159,7 +153,7 @@ where
         // What we should do is that, in CrateDefMap, we should maintain a
         // separate tower of macro scopes, with ids. Then, for each item in the
         // module, we need to store it's macro scope.
-        let def = Either::Right(MacroDef { id: macro_id });
+        let def = Either::B(MacroDef { id: macro_id });
 
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
         // crate root, even if the parent modules is **not** visible.
@@ -203,7 +197,7 @@ where
                     .as_ident()
                     .expect("extern crate should have been desugared to one-element path"),
             );
-            (Either::Left(res), ReachedFixedPoint::Yes)
+            (Either::A(res), ReachedFixedPoint::Yes)
         } else {
             let res = self.def_map.resolve_path_fp_with_macro(
                 self.db,
@@ -225,7 +219,7 @@ where
     ) {
         if import.is_glob {
             log::debug!("glob import: {:?}", import);
-            match def.left().and_then(|item| item.take_types()) {
+            match def.a().and_then(|item| item.take_types()) {
                 Some(ModuleDef::Module(m)) => {
                     if import.is_prelude {
                         tested_by!(std_prelude);
@@ -238,11 +232,11 @@ where
                         let items = scope
                             .items
                             .iter()
-                            .map(|(name, res)| (name.clone(), Either::Left(res.clone())));
+                            .map(|(name, res)| (name.clone(), Either::A(res.clone())));
                         let macros = scope
                             .macros
                             .iter()
-                            .map(|(name, res)| (name.clone(), Either::Right(res.clone())));
+                            .map(|(name, res)| (name.clone(), Either::B(res.clone())));
 
                         let all = items.chain(macros).collect::<Vec<_>>();
                         self.update(module_id, Some(import_id), &all);
@@ -254,11 +248,11 @@ where
                         let items = scope
                             .items
                             .iter()
-                            .map(|(name, res)| (name.clone(), Either::Left(res.clone())));
+                            .map(|(name, res)| (name.clone(), Either::A(res.clone())));
                         let macros = scope
                             .macros
                             .iter()
-                            .map(|(name, res)| (name.clone(), Either::Right(res.clone())));
+                            .map(|(name, res)| (name.clone(), Either::B(res.clone())));
 
                         let all = items.chain(macros).collect::<Vec<_>>();
 
@@ -282,7 +276,7 @@ where
                                 import: Some(import_id),
                             };
                             let name = variant.name(self.db)?;
-                            Some((name, Either::Left(res)))
+                            Some((name, Either::A(res)))
                         })
                         .collect::<Vec<_>>();
                     self.update(module_id, Some(import_id), &resolutions);
@@ -302,16 +296,16 @@ where
 
                     // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
                     if import.is_extern_crate && module_id == self.def_map.root {
-                        if let Some(def) = def.left().and_then(|item| item.take_types()) {
+                        if let Some(def) = def.a().and_then(|item| item.take_types()) {
                             self.def_map.extern_prelude.insert(name.clone(), def);
                         }
                     }
 
                     let resolution = match def {
-                        Either::Left(item) => {
-                            Either::Left(Resolution { def: item, import: Some(import_id) })
+                        Either::A(item) => {
+                            Either::A(Resolution { def: item, import: Some(import_id) })
                         }
-                        Either::Right(macro_) => Either::Right(macro_),
+                        Either::B(macro_) => Either::B(macro_),
                     };
 
                     self.update(module_id, Some(import_id), &[(name, resolution)]);
@@ -346,7 +340,7 @@ where
         for (name, res) in resolutions {
             match res {
                 // item
-                Either::Left(res) => {
+                Either::A(res) => {
                     let existing = module_items.items.entry(name.clone()).or_default();
 
                     if existing.def.types.is_none() && res.def.types.is_some() {
@@ -369,7 +363,7 @@ where
                     }
                 }
                 // macro
-                Either::Right(res) => {
+                Either::B(res) => {
                     // Always shadowing
                     module_items.macros.insert(name.clone(), *res);
                 }
@@ -404,7 +398,7 @@ where
                 path,
             );
 
-            if let Some(def) = resolved_res.resolved_def.right() {
+            if let Some(def) = resolved_res.resolved_def.b() {
                 let call_id = MacroCallLoc { def: def.id, ast_id: *ast_id }.id(self.db);
                 resolved.push((*module_id, call_id, def.id));
                 res = ReachedFixedPoint::No;
@@ -570,7 +564,7 @@ where
             ),
             import: None,
         };
-        self.def_collector.update(self.module_id, None, &[(name, Either::Left(resolution))]);
+        self.def_collector.update(self.module_id, None, &[(name, Either::A(resolution))]);
         res
     }
 
@@ -601,7 +595,7 @@ where
             raw::DefKind::TypeAlias(ast_id) => PerNs::types(def!(TypeAlias, ast_id)),
         };
         let resolution = Resolution { def, import: None };
-        self.def_collector.update(self.module_id, None, &[(name, Either::Left(resolution))])
+        self.def_collector.update(self.module_id, None, &[(name, Either::A(resolution))])
     }
 
     fn collect_macro(&mut self, mac: &raw::MacroData) {

@@ -1079,7 +1079,6 @@ dependencies = [
  "chalk-ir 0.1.0 (git+https://github.com/flodiebold/chalk.git?branch=fuel)",
  "chalk-rust-ir 0.1.0 (git+https://github.com/flodiebold/chalk.git?branch=fuel)",
  "chalk-solve 0.1.0 (git+https://github.com/flodiebold/chalk.git?branch=fuel)",
- "either 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ena 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "flexi_logger 0.11.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "insta 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",

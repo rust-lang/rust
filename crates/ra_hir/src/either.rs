@@ -25,4 +25,22 @@ impl<A, B> Either<A, B> {
             Either::B(b) => Either::B(f2(b)),
         }
     }
+    pub fn a(self) -> Option<A> {
+        match self {
+            Either::A(it) => Some(it),
+            Either::B(_) => None,
+        }
+    }
+    pub fn b(self) -> Option<B> {
+        match self {
+            Either::A(_) => None,
+            Either::B(it) => Some(it),
+        }
+    }
+    pub fn as_ref(&self) -> Either<&A, &B> {
+        match self {
+            Either::A(it) => Either::A(it),
+            Either::B(it) => Either::B(it),
+        }
+    }
 }

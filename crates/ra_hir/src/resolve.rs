@@ -2,7 +2,6 @@
 use std::sync::Arc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use either::Either;
 
 use crate::{
     ModuleDef, Trait, MacroDef,
@@ -14,6 +13,7 @@ use crate::{
     expr::{scope::{ExprScopes, ScopeId}, PatId},
     impl_block::ImplBlock,
     path::Path,
+    either::Either,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -137,7 +137,7 @@ impl Resolver {
     ) -> Option<MacroDef> {
         let (item_map, module) = self.module()?;
         match item_map.resolve_path_with_macro(db, module, path) {
-            (Either::Right(macro_def), None) => Some(macro_def),
+            (Either::B(macro_def), None) => Some(macro_def),
             _ => None,
         }
     }

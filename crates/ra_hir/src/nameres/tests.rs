@@ -8,10 +8,9 @@ use std::sync::Arc;
 use ra_db::SourceDatabase;
 use test_utils::covers;
 use insta::assert_snapshot_matches;
-use either::Either;
 
 use crate::{
-    Crate,
+    Crate, Either,
     mock::{MockDatabase, CrateGraphFixture},
     nameres::Resolution,
 };
@@ -37,19 +36,17 @@ fn render_crate_def_map(map: &CrateDefMap) -> String {
         *buf += path;
         *buf += "\n";
 
-        let items =
-            map.modules[module].scope.items.iter().map(|(name, it)| (name, Either::Left(it)));
-        let macros =
-            map.modules[module].scope.macros.iter().map(|(name, m)| (name, Either::Right(m)));
+        let items = map.modules[module].scope.items.iter().map(|(name, it)| (name, Either::A(it)));
+        let macros = map.modules[module].scope.macros.iter().map(|(name, m)| (name, Either::B(m)));
         let mut entries = items.chain(macros).collect::<Vec<_>>();
 
         entries.sort_by_key(|(name, _)| *name);
         for (name, res) in entries {
             match res {
-                Either::Left(it) => {
+                Either::A(it) => {
                     *buf += &format!("{}: {}\n", name, dump_resolution(it));
                 }
-                Either::Right(_) => {
+                Either::B(_) => {
                     *buf += &format!("{}: m\n", name);
                 }
             }
