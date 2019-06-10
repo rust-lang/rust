@@ -100,11 +100,12 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_target::spec::abi::Abi;
 use rustc::infer::opaque_types::OpaqueTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{
-    self, AdtKind, CanonicalUserType, Ty, TyCtxt, GenericParamDefKind, Visibility,
+    self, AdtKind, CanonicalUserType, Ty, TyCtxt, Const, GenericParamDefKind, Visibility,
     ToPolyTraitRef, ToPredicate, RegionKind, UserType
 };
 use rustc::ty::adjustment::{
@@ -1938,8 +1939,11 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn re_infer(&self, span: Span, def: Option<&ty::GenericParamDef>)
-                -> Option<ty::Region<'tcx>> {
+    fn re_infer(
+        &self,
+        def: Option<&ty::GenericParamDef>,
+        span: Span,
+    ) -> Option<ty::Region<'tcx>> {
         let v = match def {
             Some(def) => infer::EarlyBoundRegion(span, def.name),
             None => infer::MiscVariable(span)
@@ -1947,20 +1951,37 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         Some(self.next_region_var(v))
     }
 
-    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
-        self.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::TypeInference,
-            span,
-        })
+    fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
+        if let Some(param) = param {
+            if let UnpackedKind::Type(ty) = self.var_for_def(span, param).unpack() {
+                return ty;
+            }
+            unreachable!()
+        } else {
+            self.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::TypeInference,
+                span,
+            })
+        }
     }
 
-    fn ty_infer_for_def(&self,
-                        ty_param_def: &ty::GenericParamDef,
-                        span: Span) -> Ty<'tcx> {
-        if let UnpackedKind::Type(ty) = self.var_for_def(span, ty_param_def).unpack() {
-            return ty;
+    fn ct_infer(
+        &self,
+        ty: Ty<'tcx>,
+        param: Option<&ty::GenericParamDef>,
+        span: Span,
+    ) -> &'tcx Const<'tcx> {
+        if let Some(param) = param {
+            if let UnpackedKind::Const(ct) = self.var_for_def(span, param).unpack() {
+                return ct;
+            }
+            unreachable!()
+        } else {
+            self.next_const_var(ty, ConstVariableOrigin {
+                kind: ConstVariableOriginKind::ConstInference,
+                span,
+            })
         }
-        unreachable!()
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -5419,10 +5440,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if !infer_args_for_err.contains(&index) {
                         // Check whether the user has provided generic arguments.
                         if let Some(ref data) = segments[index].args {
-                            return (Some(data), segments[index].infer_types);
+                            return (Some(data), segments[index].infer_args);
                         }
                     }
-                    return (None, segments[index].infer_types);
+                    return (None, segments[index].infer_args);
                 }
 
                 (None, true)
@@ -5443,13 +5464,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             },
             // Provide substitutions for parameters for which arguments are inferred.
-            |substs, param, infer_types| {
+            |substs, param, infer_args| {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        self.re_infer(span, Some(param)).unwrap().into()
+                        self.re_infer(Some(param), span).unwrap().into()
                     }
                     GenericParamDefKind::Type { has_default, .. } => {
-                        if !infer_types && has_default {
+                        if !infer_args && has_default {
                             // If we have a default, then we it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.

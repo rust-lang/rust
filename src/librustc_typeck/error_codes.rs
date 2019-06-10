@@ -1482,8 +1482,8 @@ impl <'a> Drop for MyWrapper<'a> {
 "##,
 
 E0121: r##"
-In order to be consistent with Rust's lack of global type inference, type
-placeholders are disallowed by design in item signatures.
+In order to be consistent with Rust's lack of global type inference,
+type and const placeholders are disallowed by design in item signatures.
 
 Examples of this error include:
 

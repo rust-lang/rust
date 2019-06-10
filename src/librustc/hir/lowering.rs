@@ -2168,7 +2168,7 @@ impl<'a> LoweringContext<'a> {
         itctx: ImplTraitContext<'_>,
         explicit_owner: Option<NodeId>,
     ) -> hir::PathSegment {
-        let (mut generic_args, infer_types) = if let Some(ref generic_args) = segment.args {
+        let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
             let msg = "parenthesized type parameters may only be used with a `Fn` trait";
             match **generic_args {
                 GenericArgs::AngleBracketed(ref data) => {
@@ -2230,9 +2230,9 @@ impl<'a> LoweringContext<'a> {
                 .collect();
             if expected_lifetimes > 0 && param_mode == ParamMode::Explicit {
                 let anon_lt_suggestion = vec!["'_"; expected_lifetimes].join(", ");
-                let no_ty_args = generic_args.args.len() == expected_lifetimes;
+                let no_non_lt_args = generic_args.args.len() == expected_lifetimes;
                 let no_bindings = generic_args.bindings.is_empty();
-                let (incl_angl_brckt, insertion_span, suggestion) = if no_ty_args && no_bindings {
+                let (incl_angl_brckt, insertion_sp, suggestion) = if no_non_lt_args && no_bindings {
                     // If there are no (non-implicit) generic args or associated type
                     // bindings, our suggestion includes the angle brackets.
                     (true, path_span.shrink_to_hi(), format!("<{}>", anon_lt_suggestion))
@@ -2240,7 +2240,7 @@ impl<'a> LoweringContext<'a> {
                     // Otherwise (sorry, this is kind of gross) we need to infer the
                     // place to splice in the `'_, ` from the generics that do exist.
                     let first_generic_span = first_generic_span
-                        .expect("already checked that type args or bindings exist");
+                        .expect("already checked that non-lifetime args or bindings exist");
                     (false, first_generic_span.shrink_to_lo(), format!("{}, ", anon_lt_suggestion))
                 };
                 match self.anonymous_lifetime_mode {
@@ -2263,7 +2263,7 @@ impl<'a> LoweringContext<'a> {
                             expected_lifetimes,
                             path_span,
                             incl_angl_brckt,
-                            insertion_span,
+                            insertion_sp,
                             suggestion,
                         );
                         err.emit();
@@ -2280,7 +2280,7 @@ impl<'a> LoweringContext<'a> {
                                 expected_lifetimes,
                                 path_span,
                                 incl_angl_brckt,
-                                insertion_span,
+                                insertion_sp,
                                 suggestion,
                             )
                         );
@@ -2305,7 +2305,7 @@ impl<'a> LoweringContext<'a> {
             Some(id),
             Some(self.lower_res(res)),
             generic_args,
-            infer_types,
+            infer_args,
         )
     }
 
@@ -2316,9 +2316,10 @@ impl<'a> LoweringContext<'a> {
         mut itctx: ImplTraitContext<'_>,
     ) -> (hir::GenericArgs, bool) {
         let &AngleBracketedArgs { ref args, ref constraints, .. } = data;
-        let has_types = args.iter().any(|arg| match arg {
+        let has_non_lt_args = args.iter().any(|arg| match arg {
+            ast::GenericArg::Lifetime(_) => false,
             ast::GenericArg::Type(_) => true,
-            _ => false,
+            ast::GenericArg::Const(_) => true,
         });
         (
             hir::GenericArgs {
@@ -2328,7 +2329,7 @@ impl<'a> LoweringContext<'a> {
                     .collect(),
                 parenthesized: false,
             },
-            !has_types && param_mode == ParamMode::Optional
+            !has_non_lt_args && param_mode == ParamMode::Optional
         )
     }
 
