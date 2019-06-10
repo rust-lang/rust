@@ -10,11 +10,10 @@ extern crate rustc_plugin;
 
 use std::borrow::ToOwned;
 use syntax::ast;
-use syntax::ext::hygiene;
 use syntax::ext::build::AstBuilder;
-use syntax::ext::base::{TTMacroExpander, ExtCtxt, MacResult, MacEager, NormalTT};
+use syntax::ext::base::{SyntaxExtension, TTMacroExpander, ExtCtxt, MacResult, MacEager};
+use syntax::ext::hygiene::Transparency;
 use syntax::print::pprust;
-use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use syntax::tokenstream::TokenStream;
@@ -29,7 +28,7 @@ impl TTMacroExpander for Expander {
                    ecx: &'cx mut ExtCtxt,
                    sp: Span,
                    _: TokenStream,
-                   _: Option<Span>) -> Box<MacResult+'cx> {
+                   _: Option<Span>) -> Box<dyn MacResult+'cx> {
         let args = self.args.iter().map(|i| pprust::meta_list_item_to_string(i))
             .collect::<Vec<_>>().join(", ");
         MacEager::expr(ecx.expr_str(sp, Symbol::intern(&args)))
@@ -40,9 +39,10 @@ impl TTMacroExpander for Expander {
 pub fn plugin_registrar(reg: &mut Registry) {
     let args = reg.args().to_owned();
     reg.register_syntax_extension(Symbol::intern("plugin_args"),
-        NormalTT {
+        SyntaxExtension::LegacyBang {
             expander: Box::new(Expander { args: args, }),
             def_info: None,
+            transparency: Transparency::SemiTransparent,
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,

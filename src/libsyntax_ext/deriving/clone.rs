@@ -13,8 +13,8 @@ use syntax_pos::Span;
 pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
                              span: Span,
                              mitem: &MetaItem,
-                             item: &Annotatable,
-                             push: &mut dyn FnMut(Annotatable)) {
+                             ref item: Annotatable)
+                             -> Vec<Annotatable> {
     // check if we can use a short form
     //
     // the short form is `fn clone(&self) -> Self { *self }`
@@ -100,7 +100,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand_ext(cx, mitem, item, push, is_shallow)
+    trait_def.expand_ext(cx, mitem, item, is_shallow)
 }
 
 fn cs_clone_shallow(name: &str,

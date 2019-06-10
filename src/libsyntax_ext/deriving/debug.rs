@@ -15,8 +15,8 @@ use syntax_pos::{DUMMY_SP, Span};
 pub fn expand_deriving_debug(cx: &mut ExtCtxt<'_>,
                              span: Span,
                              mitem: &MetaItem,
-                             item: &Annotatable,
-                             push: &mut dyn FnMut(Annotatable)) {
+                             ref item: Annotatable)
+                             -> Vec<Annotatable> {
     // &mut ::std::fmt::Formatter
     let fmtr = Ptr(Box::new(Literal(path_std!(cx, fmt::Formatter))),
                    Borrowed(None, ast::Mutability::Mutable));
@@ -44,7 +44,7 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt<'_>,
                       }],
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, item)
 }
 
 /// We use the debug builders to do the heavy lifting here
