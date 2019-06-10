@@ -121,9 +121,13 @@ pub fn create_session(
 }
 
 // Temporarily have stack size set to 32MB to deal with various crates with long method
-// chains or deep syntax trees.
+// chains or deep syntax trees, except when on Haiku.
 // FIXME(oli-obk): get https://github.com/rust-lang/rust/pull/55617 the finish line
-const STACK_SIZE: usize = 32 * 1024 * 1024; // 32MB
+#[cfg(not(target_os = "haiku"))]
+const STACK_SIZE: usize = 32 * 1024 * 1024;
+
+#[cfg(target_os = "haiku")]
+const STACK_SIZE: usize = 16 * 1024 * 1024;
 
 fn get_stack_size() -> Option<usize> {
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
