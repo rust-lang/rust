@@ -188,6 +188,11 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 
     /// Number of parent frames plus one -- so the topmost frame has depth 1.
     depth: usize,
+
+    /// Depth-first number of this node in the search graph -- a
+    /// pre-order index.  Basically a freshly incremented counter.
+    #[allow(dead_code)] // TODO
+    dfn: usize,
 }
 
 #[derive(Clone, Default)]
@@ -3770,12 +3775,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .to_poly_trait_ref()
             .fold_with(&mut self.freshener);
 
+        let dfn = previous_stack.cache.next_dfn();
         let depth = previous_stack.depth() + 1;
         TraitObligationStack {
             obligation,
             fresh_trait_ref,
             reached_depth: Cell::new(depth),
             previous: previous_stack,
+            dfn,
             depth,
         }
     }
@@ -3999,7 +4006,16 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
 
 #[derive(Default)]
 struct ProvisionalEvaluationCache<'tcx> {
+    dfn: Cell<usize>,
     _dummy: Vec<&'tcx ()>,
+}
+
+impl<'tcx> ProvisionalEvaluationCache<'tcx> {
+    fn next_dfn(&self) -> usize {
+        let result = self.dfn.get();
+        self.dfn.set(result + 1);
+        result
+    }
 }
 
 #[derive(Copy, Clone)]
