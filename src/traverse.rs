@@ -95,15 +95,15 @@ pub fn run_traversal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, new: DefId) {
                     if visited.insert(n_def_id) {
                         mod_queue.push_back((n_def_id, n_vis));
                     }
-                },
+                }
                 Def(n_kind, n_def_id) if n_vis == Public => {
                     match n_kind {
-                        TyAlias | Struct | Union | Enum | Trait => { 
+                        TyAlias | Struct | Union | Enum | Trait => {
                             println!("{:?}", n_def_id);
-                        },
+                        }
                         _ => (),
                     };
-                },
+                }
                 _ => (),
             }
         }
