@@ -34,7 +34,7 @@ except ImportError:
     from StringIO import StringIO
 
 try:
-    # completely optional type hinting
+    # Completely optional type hinting
     # (Python 2 compatible using comments,
     # see: https://mypy.readthedocs.io/en/latest/python2.html)
     # This is very helpful in typing-aware IDE like PyCharm.
@@ -43,9 +43,9 @@ except ImportError:
     pass
 
 
-# we don't use enum.Enum because of Python 2.7 compatibility
+# We don't use enum.Enum because of Python 2.7 compatibility.
 class UnicodeFiles(object):
-    # ReadMe does not contain any unicode data, we
+    # ReadMe does not contain any Unicode data, we
     # only use it to extract versions.
     README = "ReadMe.txt"
 
@@ -57,10 +57,14 @@ class UnicodeFiles(object):
     UNICODE_DATA = "UnicodeData.txt"
 
 
-UnicodeFiles.ALL_FILES = tuple(
-    getattr(UnicodeFiles, name) for name in dir(UnicodeFiles)
+# The order doesn't really matter (Python < 3.6 won't preserve it),
+# we only want to aggregate all the file names.
+ALL_UNICODE_FILES = tuple(
+    value for name, value in UnicodeFiles.__dict__.items()
     if not name.startswith("_")
 )
+
+assert len(ALL_UNICODE_FILES) == 7, "Unexpected number of unicode files"
 
 # The directory this file is located in.
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -97,18 +101,17 @@ EXPANDED_CATEGORIES = {
 
 # This is the (inclusive) range of surrogate codepoints.
 # These are not valid Rust characters.
-# - they are not valid Rust characters
 SURROGATE_CODEPOINTS_RANGE = (0xd800, 0xdfff)
 
 UnicodeData = namedtuple(
     "UnicodeData", (
-        # conversions:
+        # Conversions:
         "to_upper", "to_lower", "to_title",
 
-        # decompositions: canonical decompositions, compatibility decomp
+        # Decompositions: canonical decompositions, compatibility decomp
         "canon_decomp", "compat_decomp",
 
-        # grouped: general categories and combining characters
+        # Grouped: general categories and combining characters
         "general_categories", "combines",
     )
 )
@@ -136,10 +139,10 @@ def fetch_files(version=None):
         return have_version
 
     if version:
-        # check if the desired version exists on the server
+        # Check if the desired version exists on the server.
         get_fetch_url = lambda name: FETCH_URL_VERSION.format(version=version, filename=name)
     else:
-        # extract the latest version
+        # Extract the latest version.
         get_fetch_url = lambda name: FETCH_URL_LATEST.format(filename=name)
 
     readme_url = get_fetch_url(UnicodeFiles.README)
@@ -153,14 +156,14 @@ def fetch_files(version=None):
 
     download_dir = get_unicode_dir(unicode_version)
     if not os.path.exists(download_dir):
-        # for 2.7 compat, we don't use exist_ok=True
+        # For 2.7 compat, we don't use `exist_ok=True`.
         os.makedirs(download_dir)
 
-    for filename in UnicodeFiles.ALL_FILES:
+    for filename in ALL_UNICODE_FILES:
         file_path = get_unicode_file_path(unicode_version, filename)
 
         if os.path.exists(file_path):
-            # assume file on the server didn't change if it's been saved before
+            # Assume file on the server didn't change if it's been saved before.
             continue
 
         if filename == UnicodeFiles.README:
@@ -178,15 +181,16 @@ def check_stored_version(version):
     # type: (Optional[str]) -> Optional[UnicodeVersion]
     """
     Given desired Unicode version, return the version
-    if stored files are all present, and None otherwise.
+    if stored files are all present, and `None` otherwise.
     """
     if not version:
-        # should always check latest version
+        # If no desired version specified, we should check what's the latest
+        # version, skipping stored version checks.
         return None
 
     fetch_dir = os.path.join(FETCH_DIR, version)
 
-    for filename in UnicodeFiles.ALL_FILES:
+    for filename in ALL_UNICODE_FILES:
         file_path = os.path.join(fetch_dir, filename)
 
         if not os.path.exists(file_path):
@@ -199,11 +203,11 @@ def check_stored_version(version):
 def parse_readme_unicode_version(readme_content):
     # type: (str) -> UnicodeVersion
     """
-    Parse the Unicode version contained in their ReadMe.txt file.
+    Parse the Unicode version contained in their `ReadMe.txt` file.
     """
-    # "raw string" is necessary for \d not being treated as escape char
-    # (for the sake of compat with future Python versions)
-    # see: https://docs.python.org/3.6/whatsnew/3.6.html#deprecated-python-behavior
+    # "Raw string" is necessary for \d not being treated as escape char
+    # (for the sake of compat with future Python versions).
+    # See: https://docs.python.org/3.6/whatsnew/3.6.html#deprecated-python-behavior
     pattern = r"for Version (\d+)\.(\d+)\.(\d+) of the Unicode"
     groups = re.search(pattern, readme_content).groups()
 
@@ -213,7 +217,7 @@ def parse_readme_unicode_version(readme_content):
 def get_unicode_dir(unicode_version):
     # type: (UnicodeVersion) -> str
     """
-    Indicate where the unicode data files should be stored.
+    Indicate in which parent dir the Unicode data files should be stored.
 
     This returns a full, absolute path.
     """
@@ -223,7 +227,7 @@ def get_unicode_dir(unicode_version):
 def get_unicode_file_path(unicode_version, filename):
     # type: (UnicodeVersion, str) -> str
     """
-    Indicate where the unicode data file should be stored.
+    Indicate where the Unicode data file should be stored.
     """
     return os.path.join(get_unicode_dir(unicode_version), filename)
 
@@ -239,22 +243,22 @@ def is_surrogate(n):
 def load_unicode_data(file_path):
     # type: (str) -> UnicodeData
     """
-    Load main unicode data.
+    Load main Unicode data.
     """
-    # conversions
+    # Conversions
     to_lower = {}   # type: Dict[int, Tuple[int, int, int]]
     to_upper = {}   # type: Dict[int, Tuple[int, int, int]]
     to_title = {}   # type: Dict[int, Tuple[int, int, int]]
 
-    # decompositions
+    # Decompositions
     compat_decomp = {}   # type: Dict[int, List[int]]
     canon_decomp = {}    # type: Dict[int, List[int]]
 
-    # combining characters
+    # Combining characters
     # FIXME: combines are not used
     combines = defaultdict(set)   # type: Dict[str, Set[int]]
 
-    # categories
+    # Categories
     general_categories = defaultdict(set)   # type: Dict[str, Set[int]]
     category_assigned_codepoints = set()    # type: Set[int]
 
@@ -283,41 +287,42 @@ def load_unicode_data(file_path):
          decomp, deci, digit, num, mirror,
          old, iso, upcase, lowcase, titlecase) = data
 
-        # generate char to char direct common and simple conversions
-        # uppercase to lowercase
+        # Generate char to char direct common and simple conversions:
+
+        # Uppercase to lowercase
         if lowcase != "" and code_org != lowcase:
             to_lower[code] = (int(lowcase, 16), 0, 0)
 
-        # lowercase to uppercase
+        # Lowercase to uppercase
         if upcase != "" and code_org != upcase:
             to_upper[code] = (int(upcase, 16), 0, 0)
 
-        # title case
+        # Title case
         if titlecase.strip() != "" and code_org != titlecase:
             to_title[code] = (int(titlecase, 16), 0, 0)
 
-        # store decomposition, if given
+        # Store decomposition, if given
         if decomp:
             decompositions = decomp.split()[1:]
             decomp_code_points = [int(i, 16) for i in decompositions]
 
             if decomp.startswith("<"):
-                # compatibility decomposition
+                # Compatibility decomposition
                 compat_decomp[code] = decomp_code_points
             else:
-                # canonical decomposition
+                # Canonical decomposition
                 canon_decomp[code] = decomp_code_points
 
-        # place letter in categories as appropriate
+        # Place letter in categories as appropriate.
         for cat in itertools.chain((gencat, ), EXPANDED_CATEGORIES.get(gencat, [])):
             general_categories[cat].add(code)
             category_assigned_codepoints.add(code)
 
-        # record combining class, if any
+        # Record combining class, if any.
         if combine != "0":
             combines[combine].add(code)
 
-    # generate Not_Assigned from Assigned
+    # Generate Not_Assigned from Assigned.
     general_categories["Cn"] = get_unassigned_codepoints(category_assigned_codepoints)
 
     # Other contains Not_Assigned
@@ -336,7 +341,7 @@ def load_unicode_data(file_path):
 def load_special_casing(file_path, unicode_data):
     # type: (str, UnicodeData) -> None
     """
-    Load special casing data and enrich given unicode data.
+    Load special casing data and enrich given Unicode data.
     """
     for line in fileinput.input(file_path):
         data = line.split("#")[0].split(";")
@@ -474,9 +479,9 @@ def load_properties(file_path, interesting_props):
     Load properties data and return in grouped form.
     """
     props = defaultdict(list)   # type: Dict[str, List[Tuple[int, int]]]
-    # "raw string" is necessary for \. and \w not to be treated as escape chars
-    # (for the sake of compat with future Python versions)
-    # see: https://docs.python.org/3.6/whatsnew/3.6.html#deprecated-python-behavior
+    # "Raw string" is necessary for `\.` and `\w` not to be treated as escape chars
+    # (for the sake of compat with future Python versions).
+    # See: https://docs.python.org/3.6/whatsnew/3.6.html#deprecated-python-behavior
     re1 = re.compile(r"^ *([0-9A-F]+) *; *(\w+)")
     re2 = re.compile(r"^ *([0-9A-F]+)\.\.([0-9A-F]+) *; *(\w+)")
 
@@ -486,7 +491,7 @@ def load_properties(file_path, interesting_props):
             groups = match.groups()
 
             if len(groups) == 2:
-                # re1 matched
+                # `re1` matched (2 groups).
                 d_lo, prop = groups
                 d_hi = d_lo
             else:
@@ -502,7 +507,7 @@ def load_properties(file_path, interesting_props):
 
         props[prop].append((lo_value, hi_value))
 
-    # optimize if possible
+    # Optimize if possible.
     for prop in props:
         props[prop] = group_codepoints(ungroup_codepoints(props[prop]))
 
@@ -587,10 +592,10 @@ def compute_trie(raw_data, chunk_size):
     for i in range(len(raw_data) // chunk_size):
         data = raw_data[i * chunk_size : (i + 1) * chunk_size]
 
-        # postfix compression of child nodes (data chunks)
-        # (identical child nodes are shared)
+        # Postfix compression of child nodes (data chunks)
+        # (identical child nodes are shared).
 
-        # make a tuple out of the list so it's hashable
+        # Make a tuple out of the list so it's hashable.
         child = tuple(data)
         if child not in childmap:
             childmap[child] = len(childmap)
@@ -609,7 +614,7 @@ def generate_bool_trie(name, codepoint_ranges, is_pub=True):
     This yields string fragments that should be joined to produce
     the final string.
 
-    See: bool_trie.rs
+    See: `bool_trie.rs`.
     """
     chunk_size = 64
     rawdata = [False] * 0x110000
@@ -617,7 +622,7 @@ def generate_bool_trie(name, codepoint_ranges, is_pub=True):
         for cp in range(lo, hi + 1):
             rawdata[cp] = True
 
-    # convert to bitmap chunks of chunk_size bits each
+    # Convert to bitmap chunks of `chunk_size` bits each.
     chunks = []
     for i in range(0x110000 // chunk_size):
         chunk = 0
@@ -679,9 +684,9 @@ def generate_bool_trie(name, codepoint_ranges, is_pub=True):
 def generate_small_bool_trie(name, codepoint_ranges, is_pub=True):
     # type: (str, List[Tuple[int, int]], bool) -> Iterator[str]
     """
-    Generate Rust code for SmallBoolTrie struct.
+    Generate Rust code for `SmallBoolTrie` struct.
 
-    See: bool_trie.rs
+    See: `bool_trie.rs`.
     """
     last_chunk = max(hi // 64 for (lo, hi) in codepoint_ranges)
     n_chunks = last_chunk + 1
@@ -813,8 +818,8 @@ def main():
     unicode_version = fetch_files(args.version)
     print("Using Unicode version: {}".format(unicode_version.as_str))
 
-    # all the writing happens entirely in memory, we only write to file
-    # once we have generated the file content (it's not very large, <1 MB)
+    # All the writing happens entirely in memory, we only write to file
+    # once we have generated the file content (it's not very large, <1 MB).
     buf = StringIO()
     buf.write(PREAMBLE)
 
@@ -844,7 +849,7 @@ def main():
                             {"White_Space", "Join_Control", "Noncharacter_Code_Point",
                              "Pattern_White_Space"})
 
-    # category tables
+    # Category tables
     for (name, categories, category_subset) in (
             ("general_category", unicode_data.general_categories, ["N", "Cc"]),
             ("derived_property", derived, want_derived),
@@ -858,7 +863,8 @@ def main():
 
     tables_rs_path = os.path.join(THIS_DIR, "tables.rs")
 
-    # will overwrite the file if it exists
+    # Actually write out the file content.
+    # Will overwrite the file if it exists.
     with open(tables_rs_path, "w") as fd:
         fd.write(buf.getvalue())
 
