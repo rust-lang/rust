@@ -12,10 +12,7 @@ use rustc::mir::interpret::{
     InterpResult, InterpError, InboundsCheck,
     sign_extend, truncate,
 };
-use super::{
-    InterpretCx, Machine,
-    MemPlace, MPlaceTy, PlaceTy, Place,
-};
+use super::{InterpretCx, Machine, MemPlace, MPlaceTy, PlaceTy, Place};
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 
 /// A `Value` represents a single immediate self-contained Rust value.
@@ -187,6 +184,19 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag>
     #[inline]
     pub fn to_bits(self) -> InterpResult<'tcx, u128> {
         self.to_scalar()?.to_bits(self.layout.size)
+    }
+}
+
+impl<'tcx, Tag> OpTy<'tcx, Tag>
+{
+    /// This is used by [priroda](https://github.com/oli-obk/priroda) to create an `OpTy`.
+    ///
+    /// Do not use this from inside rustc.
+    pub fn from_op_and_layout_unchecked(op: Operand<Tag>, layout: TyLayout<'tcx>) -> Self {
+        OpTy {
+            op,
+            layout,
+        }
     }
 }
 
@@ -395,7 +405,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         })
     }
 
-    /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an OpTy from a local
     pub fn access_local(
         &self,
         frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
