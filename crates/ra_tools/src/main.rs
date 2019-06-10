@@ -1,7 +1,7 @@
 use clap::{App, SubCommand};
 use core::str;
 use failure::bail;
-use tools::{
+use ra_tools::{
     generate, gen_tests, install_format_hook, run, run_with_output, run_rustfmt,
     Overwrite, Result, run_fuzzer, run_clippy,
 };

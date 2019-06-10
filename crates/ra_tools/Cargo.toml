@@ -1,6 +1,6 @@
 [package]
 edition = "2018"
-name = "tools"
+name = "ra_tools"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 publish = false
