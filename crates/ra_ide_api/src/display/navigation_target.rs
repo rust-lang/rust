@@ -189,12 +189,12 @@ impl NavigationTarget {
     pub(crate) fn from_adt_def(db: &RootDatabase, adt_def: hir::AdtDef) -> NavigationTarget {
         match adt_def {
             hir::AdtDef::Struct(s) => {
-                let (file_id, node) = s.source(db);
+                let src = s.source(db);
                 NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                    node.doc_comment_text(),
-                    node.short_label(),
+                    src.file_id.original_file(db),
+                    &*src.ast,
+                    src.ast.doc_comment_text(),
+                    src.ast.short_label(),
                 )
             }
             hir::AdtDef::Union(s) => {
@@ -226,12 +226,12 @@ impl NavigationTarget {
             hir::ModuleDef::Module(module) => NavigationTarget::from_module(db, module),
             hir::ModuleDef::Function(func) => NavigationTarget::from_function(db, func),
             hir::ModuleDef::Struct(s) => {
-                let (file_id, node) = s.source(db);
+                let src = s.source(db);
                 NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                    node.doc_comment_text(),
-                    node.short_label(),
+                    src.file_id.original_file(db),
+                    &*src.ast,
+                    src.ast.doc_comment_text(),
+                    src.ast.short_label(),
                 )
             }
             hir::ModuleDef::Union(s) => {

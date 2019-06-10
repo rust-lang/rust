@@ -20,6 +20,17 @@ use crate::{
     type_ref::Mutability,
 };
 
+pub struct Source<T> {
+    pub file_id: HirFileId,
+    pub ast: T,
+}
+
+impl<T> From<(HirFileId, T)> for Source<T> {
+    fn from((file_id, ast): (HirFileId, T)) -> Self {
+        Source { file_id, ast }
+    }
+}
+
 /// hir::Crate describes a single crate. It's the main interface with which
 /// a crate's dependencies interact. Mostly, it should be just a proxy for the
 /// root module.
@@ -354,11 +365,8 @@ pub struct Struct {
 }
 
 impl Struct {
-    pub fn source(
-        self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, TreeArc<ast::StructDef>) {
-        self.id.source(db)
+    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
+        self.id.source(db).into()
     }
 
     pub fn module(self, db: &impl HirDatabase) -> Module {

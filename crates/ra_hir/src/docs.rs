@@ -76,7 +76,7 @@ pub(crate) fn documentation_query(
             FieldSource::Named(named) => docs_from_ast(&*named),
             FieldSource::Pos(..) => return None,
         },
-        DocDef::Struct(it) => docs_from_ast(&*it.source(db).1),
+        DocDef::Struct(it) => docs_from_ast(&*it.source(db).ast),
         DocDef::Enum(it) => docs_from_ast(&*it.source(db).1),
         DocDef::EnumVariant(it) => docs_from_ast(&*it.source(db).1),
         DocDef::Static(it) => docs_from_ast(&*it.source(db).1),

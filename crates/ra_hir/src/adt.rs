@@ -59,8 +59,8 @@ impl StructData {
         db: &(impl DefDatabase + AstDatabase),
         struct_: Struct,
     ) -> Arc<StructData> {
-        let (_, struct_def) = struct_.source(db);
-        Arc::new(StructData::new(&*struct_def))
+        let src = struct_.source(db);
+        Arc::new(StructData::new(&*src.ast))
     }
 }
 
@@ -211,9 +211,8 @@ impl StructField {
         let es;
         let (file_id, struct_kind) = match self.parent {
             VariantDef::Struct(s) => {
-                let (file_id, source) = s.source(db);
-                ss = source;
-                (file_id, ss.kind())
+                ss = s.source(db);
+                (ss.file_id, ss.ast.kind())
             }
             VariantDef::EnumVariant(e) => {
                 let (file_id, source) = e.source(db);

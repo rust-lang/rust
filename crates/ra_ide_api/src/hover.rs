@@ -136,8 +136,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                         res.extend(hover_text(it.doc_comment_text(), it.short_label()))
                     }
                     hir::ModuleDef::Struct(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                        let src = it.source(db);
+                        res.extend(hover_text(src.ast.doc_comment_text(), src.ast.short_label()))
                     }
                     hir::ModuleDef::Union(it) => {
                         let it = it.source(db).1;
@@ -176,8 +176,11 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 if let Some((adt_def, _)) = ty.as_adt() {
                     match adt_def {
                         hir::AdtDef::Struct(it) => {
-                            let it = it.source(db).1;
-                            res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                            let src = it.source(db);
+                            res.extend(hover_text(
+                                src.ast.doc_comment_text(),
+                                src.ast.short_label(),
+                            ))
                         }
                         hir::AdtDef::Union(it) => {
                             let it = it.source(db).1;
