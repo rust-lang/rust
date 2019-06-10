@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use log::*;
 
-use crate::common::{self, CompareMode, Config, Mode};
+use crate::common::{self, CompareMode, Config, Mode, ExtraMode};
 use crate::util;
 
 use crate::extract_gdb_version;
@@ -97,6 +97,12 @@ impl EarlyProps {
         let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
         let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
 
+        if let Some(fm) = &config.filter_mode {
+            if config.mode != Mode::Ui && !fm.contains(&ExtraMode::Mode(config.mode)) {
+                props.ignore = Ignore::Ignore;
+            }
+        }
+
         iter_header(testfile, None, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
             // and does not matches the current platform, skip the test
@@ -145,6 +151,22 @@ impl EarlyProps {
             if (config.mode == common::DebugInfoLldb || config.mode == common::DebugInfoGdbLldb) &&
                 props.ignore.can_run_lldb() && ignore_lldb(config, ln) {
                 props.ignore = props.ignore.no_lldb();
+            }
+
+            // Apply `--filter-mode` for ui tests.
+            if let (Some(fm), Mode::Ui) = (&config.filter_mode, config.mode) {
+                let keep = fm.contains(&ExtraMode::Mode(Mode::Ui)) || {
+                    let run = config.parse_run_pass(ln);
+                    let compile = config.parse_compile_pass(ln);
+                    match (run, compile) {
+                        (true, _) => fm.contains(&ExtraMode::Mode(Mode::RunPass)),
+                        (_, true) => fm.contains(&ExtraMode::CompilePass),
+                        (_, _) => fm.contains(&ExtraMode::Mode(Mode::CompileFail)),
+                    }
+                };
+                if !keep {
+                    props.ignore = Ignore::Ignore;
+                }
             }
 
             if let Some(s) = config.parse_aux_build(ln) {
