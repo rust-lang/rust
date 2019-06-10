@@ -15,18 +15,6 @@ pub enum LintLevel {
     Deny,
 }
 
-impl std::fmt::Display for LintLevel {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let s = match self {
-            LintLevel::Allow => "allow",
-            LintLevel::Warn => "warn",
-            LintLevel::Deny => "deny",
-        };
-
-        write!(f, "{}", s)
-    }
-}
-
 pub const LINT_LEVELS: [(&str, LintLevel); 8] = [
     ("correctness", LintLevel::Deny),
     ("style", LintLevel::Warn),

@@ -130,6 +130,11 @@ Available lint options:
             .iter()
             .find(|level_mapping| level_mapping.0 == lint.group)
             .map(|(_, level)| level)
+            .map(|level| match level {
+                LintLevel::Allow => "allow",
+                LintLevel::Warn => "warn",
+                LintLevel::Deny => "deny",
+            })
             .unwrap()
     };
 
@@ -184,7 +189,7 @@ Available lint options:
         s
     };
 
-    println!("Lint groups provided by rustc:\n");
+    println!("Lint groups provided by clippy:\n");
     println!("    {}  sub-lints", padded("name"));
     println!("    {}  ---------", padded("----"));
 
@@ -198,7 +203,7 @@ Available lint options:
                 .map(|name| name.replace("_", "-"))
                 .collect::<Vec<String>>()
                 .join(", ");
-            println!("    {}  {}", padded(&name), desc);
+            println!("    {}  {}", padded(&scoped(&name)), desc);
         }
         println!("\n");
     };
