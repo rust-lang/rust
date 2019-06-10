@@ -368,9 +368,9 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 let a = this.read_scalar(args[0])?.to_f32()?;
                 let b = this.read_scalar(args[1])?.to_f32()?;
                 let c = this.read_scalar(args[2])?.to_f32()?;
-                let res = (a*b).value + c;
+                let res = a.mul_add(b, c).value;
                 this.write_scalar(
-                    Scalar::from_f32(res.value),
+                    Scalar::from_f32(res),
                     dest,
                 )?;
             }
@@ -379,9 +379,9 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 let a = this.read_scalar(args[0])?.to_f64()?;
                 let b = this.read_scalar(args[1])?.to_f64()?;
                 let c = this.read_scalar(args[2])?.to_f64()?;
-                let res = (a*b).value + c;
+                let res = a.mul_add(b, c).value;
                 this.write_scalar(
-                    Scalar::from_f64(res.value),
+                    Scalar::from_f64(res),
                     dest,
                 )?;
             }
