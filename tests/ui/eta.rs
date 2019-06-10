@@ -178,7 +178,7 @@ fn test_redundant_closure_with_another_closure() {
     let a = Some(1u8).map(|a| closure(a));
 }
 
-fn make_lazy(f: fn() -> fn(u8) -> u8) -> impl Fn(u8) -> u8 {
+fn make_lazy(f: impl Fn() -> fn(u8) -> u8) -> impl Fn(u8) -> u8 {
     // Currently f is called when result of make_lazy is called.
     // If the closure is removed, f will be called when make_lazy itself is
     // called. This changes semantics, so the closure must stay.
