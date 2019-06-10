@@ -2,10 +2,10 @@ use std::process::Command;
 
 use failure::bail;
 
-use tools::{Result, run_rustfmt, run, project_root};
+use ra_tools::{Result, run_rustfmt, run, project_root, Overwrite};
 
-fn main() -> tools::Result<()> {
-    run_rustfmt(tools::Overwrite)?;
+fn main() -> Result<()> {
+    run_rustfmt(Overwrite)?;
     update_staged()
 }
 

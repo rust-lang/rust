@@ -121,7 +121,7 @@ pub fn install_format_hook() -> Result<()> {
         "./.git/hooks/pre-commit"
     });
     if !result_path.exists() {
-        run("cargo build --package tools --bin pre-commit", ".")?;
+        run("cargo build --package ra_tools --bin pre-commit", ".")?;
         if cfg!(windows) {
             fs::copy("./target/debug/pre-commit.exe", result_path)?;
         } else {
