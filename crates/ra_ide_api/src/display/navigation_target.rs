@@ -413,7 +413,7 @@ impl NavigationTarget {
     }
 }
 
-fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
+pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
     let file = db.parse(symbol.file_id).tree;
     let node = symbol.ptr.to_node(file.syntax()).to_owned();
 
@@ -439,7 +439,7 @@ fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
 /// Get a description of a symbol.
 ///
 /// e.g. `struct Name`, `enum Name`, `fn Name`
-fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
+pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
     let file = db.parse(symbol.file_id).tree;
     let node = symbol.ptr.to_node(file.syntax()).to_owned();
 

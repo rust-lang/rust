@@ -13,6 +13,7 @@ pub use structure::{StructureNode, file_structure};
 pub use function_signature::FunctionSignature;
 
 pub(crate) use short_label::ShortLabel;
+pub(crate) use navigation_target::{docs_from_symbol, description_from_symbol};
 
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
     FunctionSignature::from(node).to_string()
