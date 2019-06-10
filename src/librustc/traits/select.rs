@@ -154,12 +154,12 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     /// selection-context's freshener. Used to check for recursion.
     fresh_trait_ref: ty::PolyTraitRef<'tcx>,
 
-    /// Starts out as false -- if, during evaluation, we encounter a
-    /// cycle, then we will set this flag to true for all participants
-    /// in the cycle (apart from the "head" node). These participants
-    /// will then forego caching their results. This is not the most
-    /// efficient solution, but it addresses #60010. The problem we
-    /// are trying to prevent:
+    /// Starts out equal to `depth` -- if, during evaluation, we
+    /// encounter a cycle, then we will set this flag to the minimum
+    /// depth of that cycle for all participants in the cycle. These
+    /// participants will then forego caching their results. This is
+    /// not the most efficient solution, but it addresses #60010. The
+    /// problem we are trying to prevent:
     ///
     /// - If you have `A: AutoTrait` requires `B: AutoTrait` and `C: NonAutoTrait`
     /// - `B: AutoTrait` requires `A: AutoTrait` (coinductive cycle, ok)
@@ -182,7 +182,7 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     /// evaluate each member of a cycle up to N times, where N is the
     /// length of the cycle. This means the performance impact is
     /// bounded and we shouldn't have any terrible worst-cases.
-    in_cycle: Cell<bool>,
+    reached_depth: Cell<usize>,
 
     previous: TraitObligationStackList<'prev, 'tcx>,
 
@@ -877,14 +877,17 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let (result, dep_node) = self.in_task(|this| this.evaluate_stack(&stack));
         let result = result?;
 
-        if !stack.in_cycle.get() {
+        let reached_depth = stack.reached_depth.get();
+        if reached_depth >= stack.depth {
             debug!("CACHE MISS: EVAL({:?})={:?}", fresh_trait_ref, result);
             self.insert_evaluation_cache(obligation.param_env, fresh_trait_ref, dep_node, result);
         } else {
             debug!(
                 "evaluate_trait_predicate_recursively: skipping cache because {:?} \
-                 is a cycle participant",
+                 is a cycle participant (at depth {}, reached depth {})",
                 fresh_trait_ref,
+                stack.depth,
+                reached_depth,
             );
         }
 
@@ -986,10 +989,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // affect the inferencer state and (b) that if we see two
         // fresh regions with the same index, they refer to the same
         // unbound type variable.
-        if let Some(rec_index) = stack.iter()
-                 .skip(1) // skip top-most frame
-                 .position(|prev| stack.obligation.param_env == prev.obligation.param_env &&
-                                  stack.fresh_trait_ref == prev.fresh_trait_ref)
+        if let Some(cycle_depth) = stack.iter()
+            .skip(1) // skip top-most frame
+            .find(|prev| stack.obligation.param_env == prev.obligation.param_env &&
+                  stack.fresh_trait_ref == prev.fresh_trait_ref)
+            .map(|stack| stack.depth)
         {
             debug!("evaluate_stack({:?}) --> recursive", stack.fresh_trait_ref);
 
@@ -999,9 +1003,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // from the cycle head. We mark them as participating in a
             // cycle. This suppresses caching for those nodes. See
             // `in_cycle` field for more details.
-            for item in stack.iter().take(rec_index + 1) {
+            for item in stack.iter().take_while(|s| s.depth > cycle_depth) {
                 debug!("evaluate_stack: marking {:?} as cycle participant", item.fresh_trait_ref);
-                item.in_cycle.set(true);
+                item.update_reached_depth(cycle_depth);
             }
 
             // Subtle: when checking for a coinductive cycle, we do
@@ -1009,7 +1013,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // have erased regions) but rather the fully explicit
             // trait refs. This is important because it's only a cycle
             // if the regions match exactly.
-            let cycle = stack.iter().skip(1).take(rec_index + 1);
+            let cycle = stack.iter().skip(1).take_while(|s| s.depth >= cycle_depth);
             let cycle = cycle.map(|stack| ty::Predicate::Trait(stack.obligation.predicate));
             if self.coinductive_match(cycle) {
                 debug!(
@@ -1228,6 +1232,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         // If no match, compute result and insert into cache.
+        //
+        // FIXME(nikomatsakis) -- this cache is not taking into
+        // account cycles that may have occurred in forming the
+        // candidate. I don't know of any specific problems that
+        // result but it seems awfully suspicious.
         let (candidate, dep_node) =
             self.in_task(|this| this.candidate_from_obligation_no_cache(stack));
 
@@ -3743,12 +3752,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .to_poly_trait_ref()
             .fold_with(&mut self.freshener);
 
+        let depth = previous_stack.depth() + 1;
         TraitObligationStack {
             obligation,
             fresh_trait_ref,
-            in_cycle: Cell::new(false),
+            reached_depth: Cell::new(depth),
             previous: previous_stack,
-            depth: previous_stack.depth() + 1,
+            depth,
         }
     }
 
@@ -3943,6 +3953,21 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
 
     fn iter(&'o self) -> TraitObligationStackList<'o, 'tcx> {
         self.list()
+    }
+
+    /// Indicates that attempting to evaluate this stack entry
+    /// required accessing something from the stack at depth `reached_depth`.
+    fn update_reached_depth(&self, reached_depth: usize) {
+        assert!(
+            self.depth > reached_depth,
+            "invoked `update_reached_depth` with something under this stack: \
+             self.depth={} reached_depth={}",
+            self.depth,
+            reached_depth,
+        );
+        debug!("update_reached_depth(reached_depth={})", reached_depth);
+        let v = self.reached_depth.get();
+        self.reached_depth.set(v.min(reached_depth));
     }
 }
 
