@@ -660,9 +660,10 @@ impl<'body, 'tcx: 'body, 's> StorageConflictVisitor<'body, 'tcx, 's> {
                    flow_state: &FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>,
                    loc: Location) {
         // Ignore unreachable blocks.
-        if self.body.basic_blocks()[loc.block].is_unreachable() {
-            return;
-        }
+        match self.body.basic_blocks()[loc.block].terminator().kind {
+            TerminatorKind::Unreachable => return,
+            _ => (),
+        };
 
         let mut eligible_storage_live = flow_state.as_dense().clone();
         eligible_storage_live.intersect(&self.stored_locals);

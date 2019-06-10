@@ -1311,7 +1311,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     ) -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
         use SavedLocalEligibility::*;
         let tcx = self.tcx;
-        let recompute_memory_index = |offsets: &Vec<u32>| -> Vec<u32> {
+        let recompute_memory_index = |offsets: &[Size]| -> Vec<u32> {
             debug!("recompute_memory_index({:?})", offsets);
             let mut inverse_index = (0..offsets.len() as u32).collect::<Vec<_>>();
             inverse_index.sort_unstable_by_key(|i| offsets[*i as usize]);
@@ -1349,19 +1349,14 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         // get included in each variant that requested them in
         // GeneratorLayout.
         debug!("prefix = {:#?}", prefix);
-        let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
-            FieldPlacement::Arbitrary { offsets, memory_index } => {
-                let (offsets_a, offsets_b) =
-                    offsets.split_at(discr_index + 1);
-                let (memory_index_a, memory_index_b) =
-                    memory_index.split_at(discr_index + 1);
-                let outer_fields = FieldPlacement::Arbitrary {
-                    offsets: offsets_a.to_vec(),
-                    memory_index: recompute_memory_index(&memory_index_a.to_vec())
-                };
-                (outer_fields,
-                 offsets_b.to_vec(),
-                 recompute_memory_index(&memory_index_b.to_vec()))
+        let (outer_fields, promoted_offsets) = match prefix.fields {
+            FieldPlacement::Arbitrary { mut offsets, .. } => {
+                let offsets_b = offsets.split_off(discr_index + 1);
+                let offsets_a = offsets;
+
+                let memory_index = recompute_memory_index(&offsets_a);
+                let outer_fields = FieldPlacement::Arbitrary { offsets: offsets_a, memory_index };
+                (outer_fields, offsets_b)
             }
             _ => bug!(),
         };
@@ -1391,8 +1386,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 StructKind::Prefixed(prefix_size, prefix_align.abi))?;
             variant.variants = Variants::Single { index };
 
-            let (offsets, memory_index) = match variant.fields {
-                FieldPlacement::Arbitrary { offsets, memory_index } => (offsets, memory_index),
+            let offsets = match variant.fields {
+                FieldPlacement::Arbitrary { offsets, .. } => offsets,
                 _ => bug!(),
             };
 
@@ -1400,32 +1395,21 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             // the order they are mentioned by our GeneratorLayout.
             let mut next_variant_field = 0;
             let mut combined_offsets = Vec::new();
-            let mut combined_memory_index = Vec::new();
             for local in variant_fields.iter() {
                 match assignments[*local] {
                     Unassigned => bug!(),
                     Assigned(_) => {
                         combined_offsets.push(offsets[next_variant_field]);
-                        // Shift memory indices by the number of promoted
-                        // fields, which all come first. We may not use all
-                        // promoted fields in our variant but that's okay; we'll
-                        // renumber them below.
-                        combined_memory_index.push(
-                            promoted_memory_index.len() as u32 +
-                            memory_index[next_variant_field]);
                         next_variant_field += 1;
                     }
                     Ineligible(field_idx) => {
                         let field_idx = field_idx.unwrap() as usize;
                         combined_offsets.push(promoted_offsets[field_idx]);
-                        combined_memory_index.push(promoted_memory_index[field_idx]);
                     }
                 }
             }
-            variant.fields = FieldPlacement::Arbitrary {
-                offsets: combined_offsets,
-                memory_index: recompute_memory_index(&combined_memory_index),
-            };
+            let memory_index = recompute_memory_index(&combined_offsets);
+            variant.fields = FieldPlacement::Arbitrary { offsets: combined_offsets, memory_index };
 
             size = size.max(variant.size);
             align = align.max(variant.align);

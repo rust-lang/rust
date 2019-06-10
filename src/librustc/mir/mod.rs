@@ -1501,13 +1501,6 @@ impl<'tcx> BasicBlockData<'tcx> {
         self.terminator.as_mut().expect("invalid terminator state")
     }
 
-    pub fn is_unreachable(&self) -> bool {
-        match self.terminator().kind {
-            TerminatorKind::Unreachable => true,
-            _ => false,
-        }
-    }
-
     pub fn retain_statements<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut Statement<'_>) -> bool,
