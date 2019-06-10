@@ -50,8 +50,10 @@ pub fn main() {
     assert_approx_eq!(8f32.log2(), 3f32);
     assert_approx_eq!(f64::consts::E.log2(), f64::consts::LOG2_E);
 
-    assert_approx_eq!(1.0f32.mul_add(2.0f32, 5.0f32), 7.0f32);
-    assert_approx_eq!(0.0f64.mul_add(-2.0f64, f64::consts::E), f64::consts::E);
+    assert_approx_eq!(3.0f32.mul_add(2.0f32, 5.0f32), 11.0);
+    assert_eq!(0.0f32.mul_add(-2.0, f32::consts::E), f32::consts::E);
+    assert_approx_eq!(3.0f64.mul_add(2.0, 5.0), 11.0);
+    assert_eq!(0.0f64.mul_add(-2.0f64, f64::consts::E), f64::consts::E);
 
     assert_approx_eq!((-1.0f32).abs(), 1.0f32);
     assert_approx_eq!(34.2f64.abs(), 34.2f64);
