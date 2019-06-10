@@ -10,7 +10,7 @@ extern crate rustc_metadata;
 extern crate syntax;
 
 use log::debug;
-use rustc::{hir::def_id::*, middle::cstore::ExternCrate};
+use rustc::middle::cstore::ExternCrate;
 use rustc_driver::Callbacks;
 use rustc_interface::interface;
 use semverver::run_analysis;
@@ -64,10 +64,7 @@ fn main() {
                             .crates()
                             .iter()
                             .flat_map(|crate_num| {
-                                let def_id = DefId {
-                                    krate: *crate_num,
-                                    index: CRATE_DEF_INDEX,
-                                };
+                                let def_id = crate_num.as_def_id();
 
                                 match tcx.extern_crate(def_id) {
                                     Some(ExternCrate {

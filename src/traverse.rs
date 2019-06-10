@@ -84,22 +84,28 @@ pub fn run_traversal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, new: DefId) {
     let mut mod_queue = VecDeque::new();
 
     // Start off with the root module.
-    mod_queue.push_back((new, Public));
+    mod_queue.push_back((new, Vec::new(), Public));
 
     // Pull a module from the queue, with its global visibility.
-    while let Some((new_def_id, new_vis)) = mod_queue.pop_front() {
+    while let Some((new_def_id, idents, new_vis)) = mod_queue.pop_front() {
         for item in tcx.item_children(new_def_id).to_vec() {
             let n_vis = get_vis(new_vis, item);
             match item.res {
                 Def(Mod, n_def_id) => {
                     if visited.insert(n_def_id) {
-                        mod_queue.push_back((n_def_id, n_vis));
+                        let mut idents = idents.clone();
+                        idents.push(format!("{}", item.ident));
+
+                        mod_queue.push_back((n_def_id, idents, n_vis));
                     }
                 }
-                Def(n_kind, n_def_id) if n_vis == Public => {
+                Def(n_kind, _) if n_vis == Public => {
                     match n_kind {
                         TyAlias | Struct | Union | Enum | Trait => {
-                            println!("{:?}", n_def_id);
+                            let mut idents = idents.clone();
+                            idents.push(format!("{}", item.ident));
+
+                            println!("{}", idents.join("::"));
                         }
                         _ => (),
                     };
