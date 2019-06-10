@@ -606,7 +606,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("select({:?})", obligation);
         debug_assert!(!obligation.predicate.has_escaping_bound_vars());
 
-        let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
+        let pec = &ProvisionalEvaluationCache::default();
+        let stack = self.push_stack(TraitObligationStackList::empty(pec), obligation);
 
         let candidate = match self.candidate_from_obligation(&stack) {
             Err(SelectionError::Overflow) => {
@@ -666,7 +667,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
             this.evaluate_predicate_recursively(
-                TraitObligationStackList::empty(),
+                TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
                 obligation.clone(),
             )
         })
@@ -3968,6 +3969,10 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
         TraitObligationStackList::with(self)
     }
 
+    fn cache(&self) -> &'o ProvisionalEvaluationCache<'tcx> {
+        self.previous.cache
+    }
+
     fn iter(&'o self) -> TraitObligationStackList<'o, 'tcx> {
         self.list()
     }
@@ -3992,18 +3997,24 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
     }
 }
 
+#[derive(Default)]
+struct ProvisionalEvaluationCache<'tcx> {
+    _dummy: Vec<&'tcx ()>,
+}
+
 #[derive(Copy, Clone)]
 struct TraitObligationStackList<'o, 'tcx: 'o> {
+    cache: &'o ProvisionalEvaluationCache<'tcx>,
     head: Option<&'o TraitObligationStack<'o, 'tcx>>,
 }
 
 impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
-    fn empty() -> TraitObligationStackList<'o, 'tcx> {
-        TraitObligationStackList { head: None }
+    fn empty(cache: &'o ProvisionalEvaluationCache<'tcx>) -> TraitObligationStackList<'o, 'tcx> {
+        TraitObligationStackList { cache, head: None }
     }
 
     fn with(r: &'o TraitObligationStack<'o, 'tcx>) -> TraitObligationStackList<'o, 'tcx> {
-        TraitObligationStackList { head: Some(r) }
+        TraitObligationStackList { cache: r.cache(), head: Some(r) }
     }
 
     fn head(&self) -> Option<&'o TraitObligationStack<'o, 'tcx>> {
