@@ -2,18 +2,15 @@
 #![feature(result_map_or_else)]
 
 extern crate rustc;
-extern crate rustc_codegen_utils;
 extern crate rustc_driver;
-extern crate rustc_errors;
 extern crate rustc_interface;
-extern crate rustc_metadata;
 extern crate syntax;
 
 use log::debug;
 use rustc::{hir::def_id::*, middle::cstore::ExternCrate};
 use rustc_driver::Callbacks;
 use rustc_interface::interface;
-use semverver::run_analysis;
+use semverver::run_traversal;
 use std::{
     path::Path,
     process::{exit, Command},
@@ -31,36 +28,20 @@ fn show_version() {
 fn main() {
     rustc_driver::init_rustc_env_logger();
 
-    debug!("running rust-semverver compiler driver");
+    debug!("running rust-semver-public compiler driver");
+
     exit(
         {
             use std::env;
 
-            struct SemverCallbacks;
+            struct PubCallbacks;
 
-            impl Callbacks for SemverCallbacks {
+            impl Callbacks for PubCallbacks {
                 fn after_analysis(&mut self, compiler: &interface::Compiler) -> bool {
-                    debug!("running rust-semverver after_analysis callback");
-
-                    let verbose =
-                        env::var("RUST_SEMVER_VERBOSE") == Ok("true".to_string());
-                    let compact =
-                        env::var("RUST_SEMVER_COMPACT") == Ok("true".to_string());
-                    let api_guidelines =
-                        env::var("RUST_SEMVER_API_GUIDELINES") == Ok("true".to_string());
-                    let version = if let Ok(ver) = env::var("RUST_SEMVER_CRATE_VERSION") {
-                        ver
-                    } else {
-                        "no_version".to_owned()
-                    };
+                    debug!("running rust-semver-public after_analysis callback");
 
                     compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
-                        // To select the old and new crates we look at the position of the
-                        // declaration in the source file. The first one will be the `old`
-                        // and the other will be `new`. This is unfortunately a bit hacky...
-                        // See issue #64 for details.
-
-                        let mut crates: Vec<_> = tcx
+                        let krate = tcx
                             .crates()
                             .iter()
                             .flat_map(|crate_num| {
@@ -72,25 +53,21 @@ fn main() {
                                 match tcx.extern_crate(def_id) {
                                     Some(ExternCrate {
                                         span, direct: true, ..
-                                    }) if span.data().lo.to_usize() > 0 =>
-                                        Some((span.data().lo.to_usize(), def_id)),
+                                    }) if span.data().lo.to_usize() > 0 => Some(def_id),
                                     _ => None,
                                 }
                             })
-                            .collect();
+                            .next();
 
-                        crates.sort_by_key(|&(span_lo, _)| span_lo);
-
-                        if let [(_, old_def_id), (_, new_def_id)] = *crates.as_slice() {
+                        if let Some(krate_def_id) = krate {
                             debug!("running semver analysis");
-                            let changes = run_analysis(tcx, old_def_id, new_def_id);
-                            changes.output(tcx.sess, &version, verbose, compact, api_guidelines);
+                            run_traversal(tcx, krate_def_id);
                         } else {
-                            tcx.sess.err("could not find `old` and `new` crates");
+                            tcx.sess.err("could not find `new` crate");
                         }
                     });
 
-                    debug!("rust-semverver after_analysis callback finished!");
+                    debug!("rust-semver-public after_analysis callback finished!");
 
                     false
                 }
@@ -147,7 +124,7 @@ fn main() {
             };
 
             let args = args;
-            rustc_driver::run_compiler(&args, &mut SemverCallbacks, None, None)
+            rustc_driver::run_compiler(&args, &mut PubCallbacks, None, None)
         }
         .map_or_else(|_| 1, |_| 0),
     )

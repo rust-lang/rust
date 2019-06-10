@@ -69,6 +69,47 @@ pub fn run_analysis<'a, 'tcx>(
     changes
 }
 
+// Get the visibility of the inner item, given the outer item's visibility.
+fn get_vis(outer_vis: Visibility, def: Export<HirId>) -> Visibility {
+    if outer_vis == Public {
+        def.vis
+    } else {
+        outer_vis
+    }
+}
+
+pub fn run_traversal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, new: DefId) {
+    use rustc::hir::def::DefKind::*;
+    let mut visited = HashSet::new();
+    let mut mod_queue = VecDeque::new();
+
+    // Start off with the root module.
+    mod_queue.push_back((new, Public));
+
+    // Pull a module from the queue, with its global visibility.
+    while let Some((new_def_id, new_vis)) = mod_queue.pop_front() {
+        for item in tcx.item_children(new_def_id).to_vec() {
+            let n_vis = get_vis(new_vis, item);
+            match item.res {
+                Def(Mod, n_def_id) => {
+                    if visited.insert(n_def_id) {
+                        mod_queue.push_back((n_def_id, n_vis));
+                    }
+                },
+                Def(n_kind, n_def_id) if n_vis == Public => {
+                    match n_kind {
+                        TyAlias | Struct | Union | Enum | Trait => { 
+                            println!("{:?}", n_def_id);
+                        },
+                        _ => (),
+                    };
+                },
+                _ => (),
+            }
+        }
+    }
+}
+
 // Below functions constitute the first pass of analysis, in which module structure, ADT
 // structure, public and private status of items, and generics are examined for changes.
 
@@ -86,15 +127,6 @@ fn diff_structure<'a, 'tcx>(
     new: DefId,
 ) {
     use rustc::hir::def::DefKind::*;
-
-    // Get the visibility of the inner item, given the outer item's visibility.
-    fn get_vis(outer_vis: Visibility, def: Export<HirId>) -> Visibility {
-        if outer_vis == Public {
-            def.vis
-        } else {
-            outer_vis
-        }
-    }
 
     let mut visited = HashSet::new();
     let mut children = NameMapping::default();

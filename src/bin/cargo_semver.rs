@@ -107,6 +107,52 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
     };
     let name = current.package.name().to_owned();
 
+    if matches.opt_present("show-public") {
+        let (current_rlib, current_deps_output) =
+            current.rlib_and_dep_output(config, &name, true, matches)?;
+
+        let mut child = Command::new("rust-semver-public");
+        child
+            .arg("--crate-type=lib")
+            .args(&["--extern", &*format!("new={}", current_rlib.display())])
+            .args(&[format!("-L{}", current_deps_output.display())]);
+
+        if let Some(target) = matches.opt_str("target") {
+            child.args(&["--target", &target]);
+        }
+
+        if !matches.opt_present("no-default-features") {
+            child.args(&["--cfg", "feature=\"default\""]);
+        }
+
+        let mut child = child
+            .arg("-")
+            .stdin(Stdio::piped())
+            .spawn()
+            .map_err(|e| failure::err_msg(format!("could not spawn rustc: {}", e)))?;
+
+        if let Some(ref mut stdin) = child.stdin {
+            stdin.write_fmt(format_args!(
+                "#[allow(unused_extern_crates)] \
+                 extern crate new;"
+            ))?;
+        } else {
+            return Err(failure::err_msg(
+                "could not pipe to rustc (wtf?)".to_owned(),
+            ));
+        }
+
+        let exit_status = child
+            .wait()
+            .map_err(|e| failure::err_msg(format!("failed to wait for rustc: {}", e)))?;
+
+        return if exit_status.success() {
+            Ok(())
+        } else {
+            Err(failure::err_msg("rustc-semver-public errored".to_owned()))
+        };
+    }
+
     // Obtain WorkInfo for the "stable" version
     let (stable, stable_version) = if let Some(name_and_version) = matches.opt_str("S") {
         // -S "name:version" requires fetching the appropriate package:
@@ -226,6 +272,11 @@ mod cli {
             "q",
             "quiet",
             "surpress regular cargo output, print only important messages",
+        );
+        opts.optflag(
+            "",
+            "show-public",
+            "print the public types in the current crate given by -c or -C and exit",
         );
         opts.optflag("d", "debug", "print command to debug and exit");
         opts.optflag(

@@ -22,6 +22,10 @@ path = "src/bin/cargo_semver.rs"
 name = "rust-semverver"
 path = "src/bin/rust_semverver.rs"
 
+[[bin]]
+name = "rust-semver-public"
+path = "src/bin/rust_semver_public.rs"
+
 [dependencies]
 cargo = "0.36"
 crates-io = "0.24"

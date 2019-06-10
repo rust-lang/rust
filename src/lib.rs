@@ -14,4 +14,4 @@ mod translate;
 mod traverse;
 mod typeck;
 
-pub use self::traverse::run_analysis;
+pub use self::traverse::{run_analysis, run_traversal};
