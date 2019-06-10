@@ -525,6 +525,16 @@ mod prim_pointer { }
 /// for x in &array { }
 /// ```
 ///
+/// You can use a slice pattern to move elements out of an array:
+///
+/// ```
+/// fn move_away(_: String) { /* Do interesting things. */ }
+///
+/// let [john, roa] = ["John".to_string(), "Roa".to_string()];
+/// move_away(john);
+/// move_away(roa);
+/// ```
+///
 /// [slice]: primitive.slice.html
 /// [copy]: marker/trait.Copy.html
 /// [clone]: clone/trait.Clone.html
