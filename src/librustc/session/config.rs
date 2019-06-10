@@ -227,14 +227,14 @@ impl OutputType {
     }
 }
 
-/// The type of diagnostics output to generate
+/// The type of diagnostics output to generate.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorOutputType {
     /// Output meant for the consumption of humans.
     HumanReadable(HumanReadableErrorType),
     /// Output that's consumed by other tools such as `rustfix` or the `RLS`.
     Json {
-        /// Render the JSON in a human readable way (with indents and newlines)
+        /// Render the JSON in a human readable way (with indents and newlines).
         pretty: bool,
         /// The JSON output includes a `rendered` field that includes the rendered
         /// human output.
