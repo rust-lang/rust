@@ -8,7 +8,8 @@ extern crate test;
 use crate::common::CompareMode;
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{Config, TestPaths};
-use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
+use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb};
+use crate::common::{Mode, ExtraMode, Pretty};
 use getopts::Options;
 use std::env;
 use std::ffi::OsString;
@@ -127,6 +128,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "which sort of compile tests to run",
             "(compile-fail|run-fail|run-pass|\
              run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
+        )
+        .optopt(
+            "",
+            "filter-mode",
+            "only test files matching any of the comma separated list of modes",
+            "MODES"
         )
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "exact", "filters match exactly")
@@ -320,6 +327,17 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_ignored,
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
+        filter_mode: matches.opt_str("filter-mode").map(|fm| {
+            fm.split(',')
+                .map(|m| match m.parse::<ExtraMode>() {
+                    Ok(m) => m,
+                    _ => panic!(
+                        "--filter-mode only accepts valid modes; `{}` is not valid",
+                        m
+                    ),
+                })
+                .collect()
+        }),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
@@ -382,6 +400,18 @@ pub fn log_config(config: &Config) {
         ),
     );
     logv(c, format!("filter_exact: {}", config.filter_exact));
+    logv(
+        c,
+        format!(
+            "filter_mode: {}",
+            opt_str(&config.filter_mode.as_ref().map(|fm| {
+                fm.iter()
+                    .map(|m| format!("{}", m))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            }))
+        ),
+    );
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
     logv(
         c,
