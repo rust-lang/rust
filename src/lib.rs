@@ -125,7 +125,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         StackPopCleanup::None { cleanup: true },
     )?;
 
-    let mut args = ecx.frame().mir.args_iter();
+    let mut args = ecx.frame().body.args_iter();
 
     // First argument: pointer to `main()`.
     let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
@@ -252,7 +252,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             };
             e.print_backtrace();
             if let Some(frame) = ecx.stack().last() {
-                let block = &frame.mir.basic_blocks()[frame.block];
+                let block = &frame.body.basic_blocks()[frame.block];
                 let span = if frame.stmt < block.statements.len() {
                     block.statements[frame.stmt].source_info.span
                 } else {
@@ -451,7 +451,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             StackPopCleanup::None { cleanup: true },
         )?;
 
-        let mut args = ecx.frame().mir.args_iter();
+        let mut args = ecx.frame().body.args_iter();
         let layout = ecx.layout_of(dest.layout.ty.builtin_deref(false).unwrap().ty)?;
 
         // First argument: `size`.
