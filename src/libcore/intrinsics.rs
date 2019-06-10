@@ -1326,30 +1326,10 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 }
 
-mod real_intrinsics {
-  extern "rust-intrinsic" {
-    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-    /// and destination must *not* overlap.
-    /// For the full docs, see the stabilized wrapper [`copy_nonoverlapping`].
-    ///
-    /// [`copy_nonoverlapping`]: ../../std/ptr/fn.copy_nonoverlapping.html
-    pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-
-    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-    /// and destination may overlap.
-    /// For the full docs, see the stabilized wrapper [`copy`].
-    ///
-    /// [`copy`]: ../../std/ptr/fn.copy.html
-    pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
-
-    /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
-    /// `val`.
-    /// For the full docs, see the stabilized wrapper [`write_bytes`].
-    ///
-    /// [`write_bytes`]: ../../std/ptr/fn.write_bytes.html
-    pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
-  }
-}
+// Some functions are defined here because they accidentally got made
+// available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
+// (`transmute` also falls into this category, but it cannot be wrapped due to the
+// check that `T` and `U` have the same size.)
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
 /// and destination must *not* overlap.
@@ -1437,7 +1417,10 @@ mod real_intrinsics {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
-    real_intrinsics::copy_nonoverlapping(src, dst, count);
+    extern "rust-intrinsic" {
+        fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+    }
+    copy_nonoverlapping(src, dst, count);
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -1494,7 +1477,10 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
-    real_intrinsics::copy(src, dst, count)
+    extern "rust-intrinsic" {
+        fn copy<T>(src: *const T, dst: *mut T, count: usize);
+    }
+    copy(src, dst, count)
 }
 
 /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
@@ -1572,7 +1558,10 @@ pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
-    real_intrinsics::write_bytes(dst, val, count)
+    extern "rust-intrinsic" {
+        fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+    }
+    write_bytes(dst, val, count)
 }
 
 // Simple bootstrap implementations of minnum/maxnum for stage0 compilation.

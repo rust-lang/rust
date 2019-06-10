@@ -13,7 +13,7 @@ use crate::middle::resolve_lifetime as rl;
 use crate::namespace::Namespace;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
-use rustc::ty::{self, DefIdTree, Ty, TyCtxt, ToPredicate, TypeFoldable};
+use rustc::ty::{self, DefIdTree, Ty, TyCtxt, Const, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{Kind, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
@@ -49,18 +49,23 @@ pub trait AstConv<'gcx, 'tcx> {
                                  -> &'tcx ty::GenericPredicates<'tcx>;
 
     /// Returns the lifetime to use when a lifetime is omitted (and not elided).
-    fn re_infer(&self, span: Span, _def: Option<&ty::GenericParamDef>)
+    fn re_infer(
+        &self,
+        param: Option<&ty::GenericParamDef>,
+        span: Span,
+    )
                 -> Option<ty::Region<'tcx>>;
 
     /// Returns the type to use when a type is omitted.
-    fn ty_infer(&self, span: Span) -> Ty<'tcx>;
+    fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
 
-    /// Same as `ty_infer`, but with a known type parameter definition.
-    fn ty_infer_for_def(&self,
-                        _def: &ty::GenericParamDef,
-                        span: Span) -> Ty<'tcx> {
-        self.ty_infer(span)
-    }
+    /// Returns the const to use when a const is omitted.
+    fn ct_infer(
+        &self,
+        ty: Ty<'tcx>,
+        param: Option<&ty::GenericParamDef>,
+        span: Span,
+    ) -> &'tcx Const<'tcx>;
 
     /// Projecting an associated type from a (potentially)
     /// higher-ranked trait reference is more complicated, because of
@@ -156,7 +161,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
 
             None => {
-                self.re_infer(lifetime.span, def)
+                self.re_infer(def, lifetime.span)
                     .unwrap_or_else(|| {
                         // This indicates an illegal lifetime
                         // elision. `resolve_lifetime` should have
@@ -191,7 +196,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 span,
                 def_id,
                 generic_args,
-                item_segment.infer_types,
+                item_segment.infer_args,
                 None,
             )
         });
@@ -208,7 +213,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         seg: &hir::PathSegment,
         generics: &ty::Generics,
     ) -> bool {
-        let explicit = !seg.infer_types;
+        let explicit = !seg.infer_args;
         let impl_trait = generics.params.iter().any(|param| match param.kind {
             ty::GenericParamDefKind::Type {
                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
@@ -259,7 +264,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 GenericArgPosition::Value
             },
             def.parent.is_none() && def.has_self, // `has_self`
-            seg.infer_types || suppress_mismatch, // `infer_types`
+            seg.infer_args || suppress_mismatch, // `infer_args`
         ).0
     }
 
@@ -272,7 +277,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         args: &hir::GenericArgs,
         position: GenericArgPosition,
         has_self: bool,
-        infer_types: bool,
+        infer_args: bool,
     ) -> (bool, Option<Vec<Span>>) {
         // At this stage we are guaranteed that the generic arguments are in the correct order, e.g.
         // that lifetimes will proceed types. So it suffices to check the number of each generic
@@ -280,7 +285,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let param_counts = def.own_counts();
         let arg_counts = args.own_counts();
         let infer_lifetimes = position != GenericArgPosition::Type && arg_counts.lifetimes == 0;
-        let infer_consts = position != GenericArgPosition::Type && arg_counts.consts == 0;
 
         let mut defaults: ty::GenericParamCount = Default::default();
         for param in &def.params {
@@ -333,7 +337,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 offset
             );
             // We enforce the following: `required` <= `provided` <= `permitted`.
-            // For kinds without defaults (i.e., lifetimes), `required == permitted`.
+            // For kinds without defaults (e.g.., lifetimes), `required == permitted`.
             // For other kinds (i.e., types), `permitted` may be greater than `required`.
             if required <= provided && provided <= permitted {
                 return (reported_late_bound_region_err.unwrap_or(false), None);
@@ -404,7 +408,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             );
         }
         // FIXME(const_generics:defaults)
-        if !infer_consts || arg_counts.consts > param_counts.consts {
+        if !infer_args || arg_counts.consts > param_counts.consts {
             check_kind_count(
                 "const",
                 param_counts.consts,
@@ -414,7 +418,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             );
         }
         // Note that type errors are currently be emitted *after* const errors.
-        if !infer_types
+        if !infer_args
             || arg_counts.types > param_counts.types - defaults.types - has_self as usize {
             check_kind_count(
                 "type",
@@ -511,7 +515,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
 
             // Check whether this segment takes generic arguments and the user has provided any.
-            let (generic_args, infer_types) = args_for_def_id(def_id);
+            let (generic_args, infer_args) = args_for_def_id(def_id);
 
             let mut args = generic_args.iter().flat_map(|generic_args| generic_args.args.iter())
                 .peekable();
@@ -535,7 +539,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                             | (GenericArg::Const(_), GenericParamDefKind::Lifetime) => {
                                 // We expected a lifetime argument, but got a type or const
                                 // argument. That means we're inferring the lifetimes.
-                                substs.push(inferred_kind(None, param, infer_types));
+                                substs.push(inferred_kind(None, param, infer_args));
                                 params.next();
                             }
                             (_, _) => {
@@ -556,7 +560,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     (None, Some(&param)) => {
                         // If there are fewer arguments than parameters, it means
                         // we're inferring the remaining arguments.
-                        substs.push(inferred_kind(Some(&substs), param, infer_types));
+                        substs.push(inferred_kind(Some(&substs), param, infer_args));
                         args.next();
                         params.next();
                     }
@@ -592,7 +596,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         span: Span,
         def_id: DefId,
         generic_args: &'a hir::GenericArgs,
-        infer_types: bool,
+        infer_args: bool,
         self_ty: Option<Ty<'tcx>>)
         -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>)
     {
@@ -617,7 +621,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             &generic_args,
             GenericArgPosition::Type,
             has_self,
-            infer_types,
+            infer_args,
         );
 
         let is_object = self_ty.map_or(false, |ty| {
@@ -644,7 +648,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             self_ty.is_some(),
             self_ty,
             // Provide the generic args, and whether types should be inferred.
-            |_| (Some(generic_args), infer_types),
+            |_| (Some(generic_args), infer_args),
             // Provide substitutions for parameters for which (valid) arguments have been provided.
             |param, arg| {
                 match (&param.kind, arg) {
@@ -661,11 +665,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 }
             },
             // Provide substitutions for parameters for which arguments are inferred.
-            |substs, param, infer_types| {
+            |substs, param, infer_args| {
                 match param.kind {
                     GenericParamDefKind::Lifetime => tcx.lifetimes.re_static.into(),
                     GenericParamDefKind::Type { has_default, .. } => {
-                        if !infer_types && has_default {
+                        if !infer_args && has_default {
                             // No type parameter provided, but a default exists.
 
                             // If we are converting an object type, then the
@@ -693,13 +697,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                        .subst_spanned(tcx, substs.unwrap(), Some(span))
                                 ).into()
                             }
-                        } else if infer_types {
+                        } else if infer_args {
                             // No type parameters were provided, we can infer all.
-                            if !default_needs_object_self(param) {
-                                self.ty_infer_for_def(param, span).into()
+                            let param = if !default_needs_object_self(param) {
+                                Some(param)
                             } else {
-                                self.ty_infer(span).into()
-                            }
+                                None
+                            };
+                            self.ty_infer(param, span).into()
                         } else {
                             // We've already errored above about the mismatch.
                             tcx.types.err.into()
@@ -707,8 +712,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     }
                     GenericParamDefKind::Const => {
                         // FIXME(const_generics:defaults)
-                        // We've already errored above about the mismatch.
-                        tcx.consts.err.into()
+                        if infer_args {
+                            // No const parameters were provided, we can infer all.
+                            let ty = tcx.at(span).type_of(param.def_id);
+                            self.ct_infer(ty, Some(param), span).into()
+                        } else {
+                            // We've already errored above about the mismatch.
+                            tcx.consts.err.into()
+                        }
                     }
                 }
             },
@@ -880,7 +891,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             self.create_substs_for_ast_path(span,
                                             trait_def_id,
                                             generic_args,
-                                            trait_segment.infer_types,
+                                            trait_segment.infer_args,
                                             Some(self_ty))
         })
     }
@@ -1428,7 +1439,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 if tcx.named_region(lifetime.hir_id).is_some() {
                     self.ast_region_to_region(lifetime, None)
                 } else {
-                    self.re_infer(span, None).unwrap_or_else(|| {
+                    self.re_infer(None, span).unwrap_or_else(|| {
                         span_err!(tcx.sess, span, E0228,
                             "the lifetime bound for this object type cannot be deduced \
                              from context; please supply an explicit bound");
@@ -2122,7 +2133,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 // values in a ExprKind::Closure, or as
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
-                self.ty_infer(ast_ty.span)
+                self.ty_infer(None, ast_ty.span)
             }
             hir::TyKind::CVarArgs(lt) => {
                 let va_list_did = match tcx.lang_items().va_list() {

@@ -1196,7 +1196,7 @@ impl<'a> State<'a> {
 
         segment.with_generic_args(|generic_args| {
             if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
-                return self.print_generic_args(&generic_args, segment.infer_types, true);
+                return self.print_generic_args(&generic_args, segment.infer_args, true);
             }
             Ok(())
         })?;
@@ -1561,7 +1561,7 @@ impl<'a> State<'a> {
             if segment.ident.name != kw::PathRoot {
                self.print_ident(segment.ident)?;
                segment.with_generic_args(|generic_args| {
-                   self.print_generic_args(generic_args, segment.infer_types,
+                   self.print_generic_args(generic_args, segment.infer_args,
                                            colons_before_params)
                })?;
             }
@@ -1574,7 +1574,7 @@ impl<'a> State<'a> {
         if segment.ident.name != kw::PathRoot {
            self.print_ident(segment.ident)?;
            segment.with_generic_args(|generic_args| {
-               self.print_generic_args(generic_args, segment.infer_types, false)
+               self.print_generic_args(generic_args, segment.infer_args, false)
            })?;
         }
         Ok(())
@@ -1602,7 +1602,7 @@ impl<'a> State<'a> {
                         self.print_ident(segment.ident)?;
                         segment.with_generic_args(|generic_args| {
                             self.print_generic_args(generic_args,
-                                                    segment.infer_types,
+                                                    segment.infer_args,
                                                     colons_before_params)
                         })?;
                     }
@@ -1614,7 +1614,7 @@ impl<'a> State<'a> {
                 self.print_ident(item_segment.ident)?;
                 item_segment.with_generic_args(|generic_args| {
                     self.print_generic_args(generic_args,
-                                            item_segment.infer_types,
+                                            item_segment.infer_args,
                                             colons_before_params)
                 })
             }
@@ -1626,7 +1626,7 @@ impl<'a> State<'a> {
                 self.print_ident(item_segment.ident)?;
                 item_segment.with_generic_args(|generic_args| {
                     self.print_generic_args(generic_args,
-                                            item_segment.infer_types,
+                                            item_segment.infer_args,
                                             colons_before_params)
                 })
             }
@@ -1635,7 +1635,7 @@ impl<'a> State<'a> {
 
     fn print_generic_args(&mut self,
                              generic_args: &hir::GenericArgs,
-                             infer_types: bool,
+                             infer_args: bool,
                              colons_before_params: bool)
                              -> io::Result<()> {
         if generic_args.parenthesized {
@@ -1681,7 +1681,7 @@ impl<'a> State<'a> {
 
             // FIXME(eddyb): this would leak into error messages (e.g.,
             // "non-exhaustive patterns: `Some::<..>(_)` not covered").
-            if infer_types && false {
+            if infer_args && false {
                 start_or_comma(self)?;
                 self.s.word("..")?;
             }

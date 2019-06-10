@@ -598,7 +598,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
         let supplied_return = match decl.output {
             hir::Return(ref output) => astconv.ast_ty_to_ty(&output),
-            hir::DefaultReturn(_) => astconv.ty_infer(decl.output.span()),
+            hir::DefaultReturn(_) => astconv.ty_infer(None, decl.output.span()),
         };
 
         let result = ty::Binder::bind(self.tcx.mk_fn_sig(
