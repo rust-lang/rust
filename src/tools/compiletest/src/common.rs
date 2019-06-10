@@ -99,6 +99,33 @@ impl fmt::Display for Mode {
     }
 }
 
+/// Mode with extra forms.
+/// Used for `--filter-mode` to allow `compile-pass` to be used.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum ExtraMode {
+    Mode(Mode),
+    CompilePass,
+}
+
+impl FromStr for ExtraMode {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "compile-pass" => Ok(ExtraMode::CompilePass),
+            s => Mode::from_str(s).map(ExtraMode::Mode),
+        }
+    }
+}
+
+impl fmt::Display for ExtraMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ExtraMode::CompilePass => fmt::Display::fmt("compile-pass", f),
+            ExtraMode::Mode(mode) => mode.fmt(f),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum CompareMode {
     Nll,
@@ -183,6 +210,9 @@ pub struct Config {
 
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
+
+    /// Only run tests that match any of these modes.
+    pub filter_mode: Option<Vec<ExtraMode>>,
 
     /// Write out a parseable log of tests that were run
     pub logfile: Option<PathBuf>,
