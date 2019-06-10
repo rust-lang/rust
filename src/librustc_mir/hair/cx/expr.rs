@@ -4,7 +4,7 @@ use crate::hair::cx::block;
 use crate::hair::cx::to_ref::ToRef;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
+use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, PointerCast};
@@ -633,86 +633,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 // Convert the lexpr to a vexpr.
                 ExprKind::Use { source: source.to_ref() }
             } else {
-                // check whether this is casting an enum variant discriminant
-                // to prevent cycles, we refer to the discriminant initializer
-                // which is always an integer and thus doesn't need to know the
-                // enum's layout (or its tag type) to compute it during const eval
-                // Example:
-                // enum Foo {
-                //     A,
-                //     B = A as isize + 4,
-                // }
-                // The correct solution would be to add symbolic computations to miri,
-                // so we wouldn't have to compute and store the actual value
-                let var = if let hir::ExprKind::Path(ref qpath) = source.node {
-                    let res = cx.tables().qpath_res(qpath, source.hir_id);
-                    cx
-                        .tables()
-                        .node_type(source.hir_id)
-                        .ty_adt_def()
-                        .and_then(|adt_def| {
-                        match res {
-                            Res::Def(
-                                DefKind::Ctor(CtorOf::Variant, CtorKind::Const),
-                                variant_ctor_id,
-                            ) => {
-                                let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
-                                let (d, o) = adt_def.discriminant_def_for_variant(idx);
-                                use rustc::ty::util::IntTypeExt;
-                                let ty = adt_def.repr.discr_type();
-                                let ty = ty.to_ty(cx.tcx());
-                                Some((d, o, ty))
-                            }
-                            _ => None,
-                        }
-                    })
-                } else {
-                    None
-                };
-
-                let source = if let Some((did, offset, var_ty)) = var {
-                    let mk_const = |literal| Expr {
-                        temp_lifetime,
-                        ty: var_ty,
-                        span: expr.span,
-                        kind: ExprKind::Literal {
-                            literal,
-                            user_ty: None
-                        },
-                    }.to_ref();
-                    let offset = mk_const(ty::Const::from_bits(
-                        cx.tcx,
-                        offset as u128,
-                        cx.param_env.and(var_ty),
-                    ));
-                    match did {
-                        Some(did) => {
-                            // in case we are offsetting from a computed discriminant
-                            // and not the beginning of discriminants (which is always `0`)
-                            let substs = InternalSubsts::identity_for_item(cx.tcx(), did);
-                            let lhs = mk_const(cx.tcx().mk_const(ty::Const {
-                                val: ConstValue::Unevaluated(did, substs),
-                                ty: var_ty,
-                            }));
-                            let bin = ExprKind::Binary {
-                                op: BinOp::Add,
-                                lhs,
-                                rhs: offset,
-                            };
-                            Expr {
-                                temp_lifetime,
-                                ty: var_ty,
-                                span: expr.span,
-                                kind: bin,
-                            }.to_ref()
-                        },
-                        None => offset,
-                    }
-                } else {
-                    source.to_ref()
-                };
-
-                ExprKind::Cast { source }
+                ExprKind::Cast { source: source.to_ref() }
             };
 
             if let Some(user_ty) = user_ty {
