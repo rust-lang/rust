@@ -148,7 +148,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 Some(ret_place),
                 StackPopCleanup::None { cleanup: true },
             )?;
-            let arg_local = this.frame().mir.args_iter().next().ok_or_else(
+            let arg_local = this.frame().body.args_iter().next().ok_or_else(
                 || InterpError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
             )?;
             let dest = this.eval_place(&mir::Place::Base(mir::PlaceBase::Local(arg_local)))?;
