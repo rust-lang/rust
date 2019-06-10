@@ -4,7 +4,9 @@ use crate::ast::{self, Lit, LitKind};
 use crate::parse::parser::Parser;
 use crate::parse::PResult;
 use crate::parse::token::{self, Token, TokenKind};
-use crate::parse::unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
+use crate::parse::unescape::{unescape_char, unescape_byte};
+use crate::parse::unescape::{unescape_str, unescape_byte_str};
+use crate::parse::unescape::{unescape_raw_str, unescape_raw_byte_str};
 use crate::print::pprust;
 use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
@@ -141,7 +143,17 @@ impl LitKind {
                 // Ditto.
                 let s = symbol.as_str();
                 let symbol = if s.contains('\r') {
-                    Symbol::intern(&raw_str_lit(&s))
+                    let mut buf = String::with_capacity(s.len());
+                    let mut error = Ok(());
+                    unescape_raw_str(&s, &mut |_, unescaped_char| {
+                        match unescaped_char {
+                            Ok(c) => buf.push(c),
+                            Err(_) => error = Err(LitError::LexerError),
+                        }
+                    });
+                    error?;
+                    buf.shrink_to_fit();
+                    Symbol::intern(&buf)
                 } else {
                     symbol
                 };
@@ -161,7 +173,26 @@ impl LitKind {
                 buf.shrink_to_fit();
                 LitKind::ByteStr(Lrc::new(buf))
             }
-            token::ByteStrRaw(_) => LitKind::ByteStr(Lrc::new(symbol.to_string().into_bytes())),
+            token::ByteStrRaw(_) => {
+                let s = symbol.as_str();
+                let bytes = if s.contains('\r') {
+                    let mut buf = Vec::with_capacity(s.len());
+                    let mut error = Ok(());
+                    unescape_raw_byte_str(&s, &mut |_, unescaped_byte| {
+                        match unescaped_byte {
+                            Ok(c) => buf.push(c),
+                            Err(_) => error = Err(LitError::LexerError),
+                        }
+                    });
+                    error?;
+                    buf.shrink_to_fit();
+                    buf
+                } else {
+                    symbol.to_string().into_bytes()
+                };
+
+                LitKind::ByteStr(Lrc::new(bytes))
+            },
             token::Err => LitKind::Err(symbol),
         })
     }
@@ -351,29 +382,6 @@ crate fn expect_no_suffix(diag: &Handler, sp: Span, kind: &str, suffix: Option<S
         err.span_label(sp, format!("invalid suffix `{}`", suf));
         err.emit();
     }
-}
-
-/// Parses a string representing a raw string literal into its final form. The
-/// only operation this does is convert embedded CRLF into a single LF.
-fn raw_str_lit(lit: &str) -> String {
-    debug!("raw_str_lit: {:?}", lit);
-    let mut res = String::with_capacity(lit.len());
-
-    let mut chars = lit.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '\r' {
-            if *chars.peek().unwrap() != '\n' {
-                panic!("lexer accepted bare CR");
-            }
-            chars.next();
-            res.push('\n');
-        } else {
-            res.push(c);
-        }
-    }
-
-    res.shrink_to_fit();
-    res
 }
 
 // Checks if `s` looks like i32 or u1234 etc.

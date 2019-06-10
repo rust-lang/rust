@@ -80,6 +80,11 @@ pub(crate) fn emit_unescape_error(
             };
             handler.span_err(span, msg);
         }
+        EscapeError::BareCarriageReturnInRawString => {
+            assert!(mode.in_double_quotes());
+            let msg = "bare CR not allowed in raw string";
+            handler.span_err(span, msg);
+        }
         EscapeError::InvalidEscape => {
             let (c, span) = last_char();
 
@@ -123,6 +128,11 @@ pub(crate) fn emit_unescape_error(
             let (_c, span) = last_char();
             handler.span_err(span, "byte constant must be ASCII. \
                                     Use a \\xHH escape for a non-ASCII byte")
+        }
+        EscapeError::NonAsciiCharInByteString => {
+            assert!(mode.is_bytes());
+            let (_c, span) = last_char();
+            handler.span_err(span, "raw byte string must be ASCII")
         }
         EscapeError::OutOfRangeHexEscape => {
             handler.span_err(span, "this form of character escape may only be used \

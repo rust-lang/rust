@@ -1,4 +1,4 @@
-//! Utilities for validating  string and char literals and turning them into
+//! Utilities for validating string and char literals and turning them into
 //! values they represent.
 
 use std::str::Chars;
@@ -12,6 +12,7 @@ pub(crate) enum EscapeError {
     LoneSlash,
     InvalidEscape,
     BareCarriageReturn,
+    BareCarriageReturnInRawString,
     EscapeOnlyChar,
 
     TooShortHexEscape,
@@ -29,6 +30,7 @@ pub(crate) enum EscapeError {
 
     UnicodeEscapeInByte,
     NonAsciiCharInByte,
+    NonAsciiCharInByteString,
 }
 
 /// Takes a contents of a char literal (without quotes), and returns an
@@ -62,6 +64,30 @@ where
     F: FnMut(Range<usize>, Result<u8, EscapeError>),
 {
     unescape_str_or_byte_str(literal_text, Mode::ByteStr, &mut |range, char| {
+        callback(range, char.map(byte_from_char))
+    })
+}
+
+/// Takes a contents of a string literal (without quotes) and produces a
+/// sequence of characters or errors.
+/// NOTE: Raw strings do not perform any explicit character escaping, here we
+/// only translate CRLF to LF and produce errors on bare CR.
+pub(crate) fn unescape_raw_str<F>(literal_text: &str, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
+{
+    unescape_raw_str_or_byte_str(literal_text, Mode::Str, callback)
+}
+
+/// Takes a contents of a string literal (without quotes) and produces a
+/// sequence of characters or errors.
+/// NOTE: Raw strings do not perform any explicit character escaping, here we
+/// only translate CRLF to LF and produce errors on bare CR.
+pub(crate) fn unescape_raw_byte_str<F>(literal_text: &str, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<u8, EscapeError>),
+{
+    unescape_raw_str_or_byte_str(literal_text, Mode::ByteStr, &mut |range, char| {
         callback(range, char.map(byte_from_char))
     })
 }
@@ -254,9 +280,40 @@ where
     }
 }
 
+/// Takes a contents of a string literal (without quotes) and produces a
+/// sequence of characters or errors.
+/// NOTE: Raw strings do not perform any explicit character escaping, here we
+/// only translate CRLF to LF and produce errors on bare CR.
+fn unescape_raw_str_or_byte_str<F>(literal_text: &str, mode: Mode, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
+{
+    assert!(mode.in_double_quotes());
+    let initial_len = literal_text.len();
+
+    let mut chars = literal_text.chars();
+    while let Some(curr) = chars.next() {
+        let start = initial_len - chars.as_str().len() - curr.len_utf8();
+
+        let result = match (curr, chars.clone().next()) {
+            ('\r', Some('\n')) => {
+                chars.next();
+                Ok('\n')
+            },
+            ('\r', _) => Err(EscapeError::BareCarriageReturnInRawString),
+            (c, _) if mode.is_bytes() && !c.is_ascii() =>
+                Err(EscapeError::NonAsciiCharInByteString),
+            (c, _) => Ok(c),
+        };
+        let end = initial_len - chars.as_str().len();
+
+        callback(start..end, result);
+    }
+}
+
 fn byte_from_char(c: char) -> u8 {
     let res = c as u32;
-    assert!(res <= u8::max_value() as u32, "guaranteed because of Mode::Byte");
+    assert!(res <= u8::max_value() as u32, "guaranteed because of Mode::Byte(Str)");
     res as u8
 }
 
