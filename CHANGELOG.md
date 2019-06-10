@@ -2,12 +2,32 @@
 
 ## [Unreleased]
 
+## [1.3.0] 2019-06-09
+
+### Added
+
+- Format modules defined inside `cfg_if` macro calls #3600
+-
 ### Changed
 
 - Change option `format_doc_comment` to `format_code_in_doc_comment`.
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 - Stabilise `fn_args_density` configuration option and rename it to `fn_args_layout` #3581
+- Update `rustc-ap-*` crates to 486.0.0
+- Ignore sub-modules when skip-children is used #3607
+- Removed bitrig support #3608
+
+### Fixed
+
+- `wrap_comments` should not imply `format_doc_comments` #3535
+- Incorrect handling of const generics #3555
+- Add the handling for `vec!` with paren inside macro #3576
+- Format trait aliases with where clauses #3586
+- Catch panics from the parser while rewriting macro calls #3589
+- Fix erasing inner attributes in struct #3593
+- Inline the attribute with its item even with the `macro_use` attribute or when `reorder_imports` is disabled #3598
+- Fix the bug add unwanted code to impl #3602
 
 ## [1.2.2] 2019-04-24
 
