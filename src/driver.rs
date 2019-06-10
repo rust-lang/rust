@@ -110,6 +110,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
     }
 }
 
+#[allow(clippy::find_map, clippy::filter_map)]
 fn describe_lints() {
     use lintlist::*;
     use std::collections::HashSet;
@@ -129,11 +130,10 @@ Available lint options:
         LINT_LEVELS
             .iter()
             .find(|level_mapping| level_mapping.0 == lint.group)
-            .map(|(_, level)| level)
-            .map(|level| match level {
-                LintLevel::Allow => "allow",
-                LintLevel::Warn => "warn",
-                LintLevel::Deny => "deny",
+            .map(|(_, level)| match level {
+                Level::Allow => "allow",
+                Level::Warn => "warn",
+                Level::Deny => "deny",
             })
             .unwrap()
     };
@@ -142,7 +142,7 @@ Available lint options:
     // The sort doesn't case-fold but it's doubtful we care.
     lints.sort_by_cached_key(|x: &&Lint| (lint_level(x), x.name));
 
-    let max_name_len = lints
+    let max_lint_name_len = lints
         .iter()
         .map(|lint| lint.name.len())
         .map(|len| len + "clippy::".len())
@@ -150,7 +150,7 @@ Available lint options:
         .unwrap_or(0);
 
     let padded = |x: &str| {
-        let mut s = " ".repeat(max_name_len - x.chars().count());
+        let mut s = " ".repeat(max_lint_name_len - x.chars().count());
         s.push_str(x);
         s
     };
@@ -178,8 +178,8 @@ Available lint options:
 
     print_lints(&lints);
 
-    let max_name_len = std::cmp::max(
-        "warnings".len(),
+    let max_group_name_len = std::cmp::max(
+        "all".len(),
         lint_groups
             .iter()
             .map(|group| group.len())
@@ -188,15 +188,16 @@ Available lint options:
             .unwrap_or(0),
     );
 
-    let padded = |x: &str| {
-        let mut s = " ".repeat(max_name_len - x.chars().count());
+    let padded_group = |x: &str| {
+        let mut s = " ".repeat(max_group_name_len - x.chars().count());
         s.push_str(x);
         s
     };
 
     println!("Lint groups provided by clippy:\n");
-    println!("    {}  sub-lints", padded("name"));
-    println!("    {}  ---------", padded("----"));
+    println!("    {}  sub-lints", padded_group("name"));
+    println!("    {}  ---------", padded_group("----"));
+    println!("    {}  the set of all clippy lints", padded_group("clippy::all"));
 
     let print_lint_groups = || {
         for group in lint_groups {
@@ -208,7 +209,7 @@ Available lint options:
                 .map(|name| name.replace("_", "-"))
                 .collect::<Vec<String>>()
                 .join(", ");
-            println!("    {}  {}", padded(&scoped(&name)), desc);
+            println!("    {}  {}", padded_group(&scoped(&name)), desc);
         }
         println!("\n");
     };

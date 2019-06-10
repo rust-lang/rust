@@ -1,8 +1,8 @@
-//! This file is managed by util/dev update_lints. Do not edit.
+//! This file is managed by `util/dev update_lints`. Do not edit.
 
 pub mod lint;
+pub use lint::Level;
 pub use lint::Lint;
-pub use lint::LintLevel;
 pub use lint::LINT_LEVELS;
 
 pub const ALL_LINTS: [Lint; 304] = [

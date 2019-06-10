@@ -9,19 +9,19 @@ pub struct Lint {
 }
 
 #[derive(PartialOrd, PartialEq, Ord, Eq)]
-pub enum LintLevel {
+pub enum Level {
     Allow,
     Warn,
     Deny,
 }
 
-pub const LINT_LEVELS: [(&str, LintLevel); 8] = [
-    ("correctness", LintLevel::Deny),
-    ("style", LintLevel::Warn),
-    ("complexity", LintLevel::Warn),
-    ("perf", LintLevel::Warn),
-    ("restriction", LintLevel::Allow),
-    ("pedantic", LintLevel::Allow),
-    ("nursery", LintLevel::Allow),
-    ("cargo", LintLevel::Allow),
+pub const LINT_LEVELS: [(&str, Level); 8] = [
+    ("correctness", Level::Deny),
+    ("style", Level::Warn),
+    ("complexity", Level::Warn),
+    ("perf", Level::Warn),
+    ("restriction", Level::Allow),
+    ("pedantic", Level::Allow),
+    ("nursery", Level::Allow),
+    ("cargo", Level::Allow),
 ];
