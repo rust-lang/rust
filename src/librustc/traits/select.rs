@@ -874,6 +874,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Ok(result);
         }
 
+        // Check if this is a match for something already on the
+        // stack. If so, we don't want to insert the result into the
+        // main cache (it is cycle dependent) nor the provisional
+        // cache (which is meant for things that have completed but
+        // for a "backedge" -- this result *is* the backedge).
+        if let Some(cycle_result) = self.check_evaluation_cycle(&stack) {
+            return Ok(cycle_result);
+        }
+
         let (result, dep_node) = self.in_task(|this| this.evaluate_stack(&stack));
         let result = result?;
 
@@ -892,6 +901,74 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         Ok(result)
+    }
+
+    /// If there is any previous entry on the stack that precisely
+    /// matches this obligation, then we can assume that the
+    /// obligation is satisfied for now (still all other conditions
+    /// must be met of course). One obvious case this comes up is
+    /// marker traits like `Send`. Think of a linked list:
+    ///
+    ///    struct List<T> { data: T, next: Option<Box<List<T>>> }
+    ///
+    /// `Box<List<T>>` will be `Send` if `T` is `Send` and
+    /// `Option<Box<List<T>>>` is `Send`, and in turn
+    /// `Option<Box<List<T>>>` is `Send` if `Box<List<T>>` is
+    /// `Send`.
+    ///
+    /// Note that we do this comparison using the `fresh_trait_ref`
+    /// fields. Because these have all been freshened using
+    /// `self.freshener`, we can be sure that (a) this will not
+    /// affect the inferencer state and (b) that if we see two
+    /// fresh regions with the same index, they refer to the same
+    /// unbound type variable.
+    fn check_evaluation_cycle(
+        &mut self,
+        stack: &TraitObligationStack<'_, 'tcx>,
+    ) -> Option<EvaluationResult> {
+        if let Some(cycle_depth) = stack.iter()
+            .skip(1) // skip top-most frame
+            .find(|prev| stack.obligation.param_env == prev.obligation.param_env &&
+                  stack.fresh_trait_ref == prev.fresh_trait_ref)
+            .map(|stack| stack.depth)
+        {
+            debug!(
+                "evaluate_stack({:?}) --> recursive at depth {}",
+                stack.fresh_trait_ref,
+                cycle_depth,
+            );
+
+            // If we have a stack like `A B C D E A`, where the top of
+            // the stack is the final `A`, then this will iterate over
+            // `A, E, D, C, B` -- i.e., all the participants apart
+            // from the cycle head. We mark them as participating in a
+            // cycle. This suppresses caching for those nodes. See
+            // `in_cycle` field for more details.
+            stack.update_reached_depth(cycle_depth);
+
+            // Subtle: when checking for a coinductive cycle, we do
+            // not compare using the "freshened trait refs" (which
+            // have erased regions) but rather the fully explicit
+            // trait refs. This is important because it's only a cycle
+            // if the regions match exactly.
+            let cycle = stack.iter().skip(1).take_while(|s| s.depth >= cycle_depth);
+            let cycle = cycle.map(|stack| ty::Predicate::Trait(stack.obligation.predicate));
+            if self.coinductive_match(cycle) {
+                debug!(
+                    "evaluate_stack({:?}) --> recursive, coinductive",
+                    stack.fresh_trait_ref
+                );
+                Some(EvaluatedToOk)
+            } else {
+                debug!(
+                    "evaluate_stack({:?}) --> recursive, inductive",
+                    stack.fresh_trait_ref
+                );
+                Some(EvaluatedToRecur)
+            }
+        } else {
+            None
+        }
     }
 
     fn evaluate_stack<'o>(
@@ -968,66 +1045,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 stack.fresh_trait_ref
             );
             return Ok(EvaluatedToUnknown);
-        }
-
-        // If there is any previous entry on the stack that precisely
-        // matches this obligation, then we can assume that the
-        // obligation is satisfied for now (still all other conditions
-        // must be met of course). One obvious case this comes up is
-        // marker traits like `Send`. Think of a linked list:
-        //
-        //    struct List<T> { data: T, next: Option<Box<List<T>>> }
-        //
-        // `Box<List<T>>` will be `Send` if `T` is `Send` and
-        // `Option<Box<List<T>>>` is `Send`, and in turn
-        // `Option<Box<List<T>>>` is `Send` if `Box<List<T>>` is
-        // `Send`.
-        //
-        // Note that we do this comparison using the `fresh_trait_ref`
-        // fields. Because these have all been freshened using
-        // `self.freshener`, we can be sure that (a) this will not
-        // affect the inferencer state and (b) that if we see two
-        // fresh regions with the same index, they refer to the same
-        // unbound type variable.
-        if let Some(cycle_depth) = stack.iter()
-            .skip(1) // skip top-most frame
-            .find(|prev| stack.obligation.param_env == prev.obligation.param_env &&
-                  stack.fresh_trait_ref == prev.fresh_trait_ref)
-            .map(|stack| stack.depth)
-        {
-            debug!("evaluate_stack({:?}) --> recursive", stack.fresh_trait_ref);
-
-            // If we have a stack like `A B C D E A`, where the top of
-            // the stack is the final `A`, then this will iterate over
-            // `A, E, D, C, B` -- i.e., all the participants apart
-            // from the cycle head. We mark them as participating in a
-            // cycle. This suppresses caching for those nodes. See
-            // `in_cycle` field for more details.
-            for item in stack.iter().take_while(|s| s.depth > cycle_depth) {
-                debug!("evaluate_stack: marking {:?} as cycle participant", item.fresh_trait_ref);
-                item.update_reached_depth(cycle_depth);
-            }
-
-            // Subtle: when checking for a coinductive cycle, we do
-            // not compare using the "freshened trait refs" (which
-            // have erased regions) but rather the fully explicit
-            // trait refs. This is important because it's only a cycle
-            // if the regions match exactly.
-            let cycle = stack.iter().skip(1).take_while(|s| s.depth >= cycle_depth);
-            let cycle = cycle.map(|stack| ty::Predicate::Trait(stack.obligation.predicate));
-            if self.coinductive_match(cycle) {
-                debug!(
-                    "evaluate_stack({:?}) --> recursive, coinductive",
-                    stack.fresh_trait_ref
-                );
-                return Ok(EvaluatedToOk);
-            } else {
-                debug!(
-                    "evaluate_stack({:?}) --> recursive, inductive",
-                    stack.fresh_trait_ref
-                );
-                return Ok(EvaluatedToRecur);
-            }
         }
 
         match self.candidate_from_obligation(stack) {
@@ -3966,8 +3983,12 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
             reached_depth,
         );
         debug!("update_reached_depth(reached_depth={})", reached_depth);
-        let v = self.reached_depth.get();
-        self.reached_depth.set(v.min(reached_depth));
+        let mut p = self;
+        while reached_depth < p.depth {
+            debug!("update_reached_depth: marking {:?} as cycle participant", p.fresh_trait_ref);
+            p.reached_depth.set(p.reached_depth.get().min(reached_depth));
+            p = p.previous.head.unwrap();
+        }
     }
 }
 
