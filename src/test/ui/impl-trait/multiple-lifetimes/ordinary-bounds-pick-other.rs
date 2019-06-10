@@ -1,6 +1,7 @@
 // edition:2018
-
-#![feature(arbitrary_self_types, async_await, await_macro, pin)]
+// run-pass
+// revisions: migrate mir
+//[mir]compile-flags: -Z borrowck=mir
 
 trait Trait<'a, 'b> {}
 impl<T> Trait<'_, '_> for T {}

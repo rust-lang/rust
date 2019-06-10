@@ -1,4 +1,7 @@
 // edition:2018
+// run-pass
+// revisions: migrate mir
+//[mir]compile-flags: -Z borrowck=mir
 
 #![feature(arbitrary_self_types, async_await, await_macro, pin)]
 

@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(arbitrary_self_types, async_await, await_macro, pin)]
-
 trait Trait<'a, 'b> {}
 impl<T> Trait<'_, '_> for T {}
 

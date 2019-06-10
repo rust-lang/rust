@@ -1,5 +1,5 @@
 warning[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ordinary-bounds-pick-other.rs:17:74
+  --> $DIR/ordinary-bounds-pick-other.rs:19:74
    |
 LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e>
    |                                                                          ^^^^^^^^^^^^^^^^^^

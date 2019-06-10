@@ -1,5 +1,5 @@
 warning[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/inverse-bounds.rs:16:70
+  --> $DIR/inverse-bounds.rs:18:70
    |
 LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Invert<'a>, b: Invert<'b>) -> impl Trait<'d, 'e>
    |                                                                      ^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Invert<'a>, b: Invert<'b>) -> impl T
    = note: for more information, try `rustc --explain E0729`
 
 warning: the feature `pin` has been stable since 1.33.0 and no longer requires an attribute to enable
-  --> $DIR/inverse-bounds.rs:4:60
+  --> $DIR/inverse-bounds.rs:6:60
    |
 LL | #![feature(arbitrary_self_types, async_await, await_macro, pin)]
    |                                                            ^^^
