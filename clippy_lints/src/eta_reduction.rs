@@ -82,6 +82,8 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
         if_chain!(
             if let ExprKind::Call(ref caller, ref args) = ex.node;
 
+            if let ExprKind::Path(_) = caller.node;
+
             // Not the same number of arguments, there is no way the closure is the same as the function return;
             if args.len() == decl.inputs.len();
 

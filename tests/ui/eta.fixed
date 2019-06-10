@@ -20,7 +20,7 @@ use std::path::PathBuf;
 fn main() {
     let a = Some(1u8).map(foo);
     meta(foo);
-    let c = Some(1u8).map({1+2; foo});
+    let c = Some(1u8).map(|a| {1+2; foo}(a));
     let d = Some(1u8).map(|a| foo((|b| foo2(b))(a))); //is adjusted?
     all(&[1, 2, 3], &2, |x, y| below(x, y)); //is adjusted
     unsafe {
@@ -105,7 +105,7 @@ fn test_redundant_closures_containing_method_calls() {
 
     let mut some = Some(|x| x * x);
     let arr = [Ok(1), Err(2)];
-    let _: Vec<_> = arr.iter().map(|x| x.map_err(some.take().unwrap())).collect();
+    let _: Vec<_> = arr.iter().map(|x| x.map_err(|e| some.take().unwrap()(e))).collect();
 }
 
 struct Thunk<T>(Box<dyn FnMut() -> T>);
@@ -176,4 +176,11 @@ fn test_redundant_closure_with_function_pointer() {
 fn test_redundant_closure_with_another_closure() {
     let closure = |a| println!("{}", a);
     let a = Some(1u8).map(closure);
+}
+
+fn make_lazy(f: fn() -> fn(u8) -> u8) -> impl Fn(u8) -> u8 {
+    // Currently f is called when result of make_lazy is called.
+    // If the closure is removed, f will be called when make_lazy itself is
+    // called. This changes semantics, so the closure must stay.
+    Box::new(move |x| f()(x))
 }
