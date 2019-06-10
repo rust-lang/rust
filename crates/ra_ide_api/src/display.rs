@@ -13,6 +13,7 @@ pub use structure::{StructureNode, file_structure};
 pub use function_signature::FunctionSignature;
 
 pub(crate) use short_label::ShortLabel;
+pub(crate) use navigation_target::{docs_from_symbol, description_from_symbol};
 
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
     FunctionSignature::from(node).to_string()
@@ -70,15 +71,5 @@ where
         format!("```rust\n{}\n```\n\n{}", val.as_ref(), doc.as_ref())
     } else {
         format!("```rust\n{}\n```", val.as_ref())
-    }
-}
-
-// FIXME: this should not really use navigation target. Rather, approximately
-// resolved symbol should return a `DefId`.
-pub(crate) fn doc_text_for(nav: NavigationTarget) -> Option<String> {
-    match (nav.description(), nav.docs()) {
-        (Some(desc), docs) => Some(rust_code_markup_with_doc(desc, docs)),
-        (None, Some(docs)) => Some(docs.to_string()),
-        _ => None,
     }
 }

@@ -1,14 +1,15 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    AstNode, ast,
-    algo::{find_covering_element, find_node_at_offset, ancestors_at_offset},
+    AstNode, ast::{self, DocCommentsOwner},
+    algo::{find_covering_element, find_node_at_offset, ancestors_at_offset, visit::{visitor, Visitor}},
 };
 use hir::HirDisplay;
 
 use crate::{
     db::RootDatabase,
     RangeInfo, FilePosition, FileRange,
-    display::{rust_code_markup, doc_text_for},
+    display::{rust_code_markup, rust_code_markup_with_doc, ShortLabel, docs_from_symbol, description_from_symbol},
+    name_ref_kind::{NameRefKind::*, classify_name_ref},
 };
 
 /// Contains the results when hovering over an item
@@ -77,34 +78,177 @@ impl HoverResult {
     }
 }
 
+fn hover_text(docs: Option<String>, desc: Option<String>) -> Option<String> {
+    match (desc, docs) {
+        (Some(desc), docs) => Some(rust_code_markup_with_doc(desc, docs)),
+        (None, Some(docs)) => Some(docs.to_string()),
+        _ => None,
+    }
+}
+
 pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
     let file = db.parse(position.file_id).tree;
     let mut res = HoverResult::new();
 
     let mut range = None;
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
-        use crate::goto_definition::{ReferenceResult::*, reference_definition};
-        let ref_result = reference_definition(db, position.file_id, name_ref);
-        match ref_result {
-            Exact(nav) => res.extend(doc_text_for(nav)),
-            Approximate(navs) => {
-                // We are no longer exact
-                res.exact = false;
+        let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
 
-                for nav in navs {
-                    res.extend(doc_text_for(nav))
+        match classify_name_ref(db, &analyzer, name_ref) {
+            Some(Method(it)) => {
+                let it = it.source(db).1;
+                res.extend(hover_text(it.doc_comment_text(), it.short_label()));
+            }
+            Some(Macro(it)) => {
+                let it = it.source(db).1;
+                res.extend(hover_text(it.doc_comment_text(), None));
+            }
+            Some(FieldAccess(it)) => {
+                let it = it.source(db).1;
+                if let hir::FieldSource::Named(it) = it {
+                    res.extend(hover_text(it.doc_comment_text(), it.short_label()));
                 }
             }
+            Some(AssocItem(it)) => match it {
+                hir::ImplItem::Method(it) => {
+                    let it = it.source(db).1;
+                    res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                }
+                hir::ImplItem::Const(it) => {
+                    let it = it.source(db).1;
+                    res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                }
+                hir::ImplItem::TypeAlias(it) => {
+                    let it = it.source(db).1;
+                    res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                }
+            },
+            Some(Def(it)) => {
+                match it {
+                    hir::ModuleDef::Module(it) => {
+                        let it = it.definition_source(db).1;
+                        if let hir::ModuleSource::Module(it) = it {
+                            res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                        }
+                    }
+                    hir::ModuleDef::Function(it) => {
+                        let it = it.source(db).1;
+                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                    }
+                    hir::ModuleDef::Struct(it) => {
+                        let it = it.source(db).1;
+                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                    }
+                    hir::ModuleDef::Union(it) => {
+                        let it = it.source(db).1;
+                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                    }
+                    hir::ModuleDef::Enum(it) => {
+                        let it = it.source(db).1;
+                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                    }
+                    hir::ModuleDef::EnumVariant(it) => {
+                        let it = it.source(db).1;
+                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                    }
+                    hir::ModuleDef::Const(it) => {
+                        let it = it.source(db).1;
+                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                    }
+                    hir::ModuleDef::Static(it) => {
+                        let it = it.source(db).1;
+                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                    }
+                    hir::ModuleDef::Trait(it) => {
+                        let it = it.source(db).1;
+                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                    }
+                    hir::ModuleDef::TypeAlias(it) => {
+                        let it = it.source(db).1;
+                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                    }
+                    hir::ModuleDef::BuiltinType(_) => {
+                        // FIXME: hover for builtin Type ?
+                    }
+                }
+            }
+            Some(SelfType(ty)) => {
+                if let Some((adt_def, _)) = ty.as_adt() {
+                    match adt_def {
+                        hir::AdtDef::Struct(it) => {
+                            let it = it.source(db).1;
+                            res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                        }
+                        hir::AdtDef::Union(it) => {
+                            let it = it.source(db).1;
+                            res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                        }
+                        hir::AdtDef::Enum(it) => {
+                            let it = it.source(db).1;
+                            res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                        }
+                    }
+                }
+            }
+            Some(Pat(_)) => {
+                res.extend(None);
+            }
+            Some(SelfParam(_)) => {
+                res.extend(None);
+            }
+            Some(GenericParam(_)) => {
+                // FIXME: Hover for generic param
+            }
+            None => {}
         }
+
+        if res.is_empty() {
+            // Fallback index based approach:
+            let symbols = crate::symbol_index::index_resolve(db, name_ref);
+            for sym in symbols {
+                let docs = docs_from_symbol(db, &sym);
+                let desc = description_from_symbol(db, &sym);
+                res.extend(hover_text(docs, desc));
+            }
+        }
+
         if !res.is_empty() {
             range = Some(name_ref.syntax().range())
         }
     } else if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
-        let navs = crate::goto_definition::name_definition(db, position.file_id, name);
+        if let Some(parent) = name.syntax().parent() {
+            let text = visitor()
+                .visit(|node: &ast::StructDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::EnumDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::EnumVariant| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::FnDef| hover_text(node.doc_comment_text(), node.short_label()))
+                .visit(|node: &ast::TypeAliasDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::ConstDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::StaticDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::TraitDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::NamedFieldDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::Module| hover_text(node.doc_comment_text(), node.short_label()))
+                .visit(|node: &ast::MacroCall| hover_text(node.doc_comment_text(), None))
+                .accept(parent);
 
-        if let Some(navs) = navs {
-            for nav in navs {
-                res.extend(doc_text_for(nav))
+            if let Some(text) = text {
+                res.extend(text);
             }
         }
 
