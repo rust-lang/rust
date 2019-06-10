@@ -36,7 +36,7 @@ except ImportError:
 try:
     # completely optional type hinting
     # (Python 2 compatible using comments,
-    #  see: https://mypy.readthedocs.io/en/latest/python2.html)
+    # see: https://mypy.readthedocs.io/en/latest/python2.html)
     # This is very helpful in typing-aware IDE like PyCharm.
     from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 except ImportError:
@@ -95,7 +95,8 @@ EXPANDED_CATEGORIES = {
     "Cc": ["C"], "Cf": ["C"], "Cs": ["C"], "Co": ["C"], "Cn": ["C"],
 }
 
-# this is the surrogate codepoints range (both ends inclusive)
+# This is the (inclusive) range of surrogate codepoints.
+# These are not valid Rust characters.
 # - they are not valid Rust characters
 SURROGATE_CODEPOINTS_RANGE = (0xd800, 0xdfff)
 
@@ -122,7 +123,7 @@ def fetch_files(version=None):
     """
     Fetch all the Unicode files from unicode.org.
 
-    This will use cached files (stored in FETCH_DIR) if they exist,
+    This will use cached files (stored in `FETCH_DIR`) if they exist,
     creating them if they don't.  In any case, the Unicode version
     is always returned.
 
@@ -797,7 +798,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("-v", "--version", default=None, type=str,
                         help="Unicode version to use (if not specified,"
-                             " defaults to latest available final release).")
+                             " defaults to latest release).")
 
     return parser.parse_args()
 
