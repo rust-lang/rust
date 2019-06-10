@@ -80,6 +80,11 @@ pub(crate) fn emit_unescape_error(
             };
             handler.span_err(span, msg);
         }
+        EscapeError::BareCarriageReturnInRawString => {
+            assert!(mode.in_double_quotes());
+            let msg = "bare CR not allowed in raw string";
+            handler.span_err(span, msg);
+        }
         EscapeError::InvalidEscape => {
             let (c, span) = last_char();
 

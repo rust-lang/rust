@@ -12,6 +12,7 @@ pub(crate) enum EscapeError {
     LoneSlash,
     InvalidEscape,
     BareCarriageReturn,
+    BareCarriageReturnInRawString,
     EscapeOnlyChar,
 
     TooShortHexEscape,
@@ -299,7 +300,7 @@ where
                 chars.next();
                 Ok('\n')
             },
-            ('\r', _) => Err(EscapeError::BareCarriageReturn),
+            ('\r', _) => Err(EscapeError::BareCarriageReturnInRawString),
             (c, _) if mode.is_bytes() && !c.is_ascii() =>
                 Err(EscapeError::NonAsciiCharInByteString),
             (c, _) => Ok(c),

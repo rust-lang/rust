@@ -28,7 +28,7 @@ error: bare CR not allowed in string, use \r instead
 LL |     let _s = "foobar";
    |                  ^
 
-error: bare CR not allowed in string, use \r instead
+error: bare CR not allowed in raw string
   --> $DIR/lex-bare-cr-string-literal-doc-comment.rs:24:19
    |
 LL |     let _s = r"barfoo";

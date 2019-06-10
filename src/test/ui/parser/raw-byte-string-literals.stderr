@@ -1,4 +1,4 @@
-error: bare CR not allowed in string, use \r instead
+error: bare CR not allowed in raw string
   --> $DIR/raw-byte-string-literals.rs:4:9
    |
 LL |     br"a";
