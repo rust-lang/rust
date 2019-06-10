@@ -2,8 +2,8 @@
 
 pub mod lint;
 pub use lint::Lint;
-pub use lint::LINT_LEVELS;
 pub use lint::LintLevel;
+pub use lint::LINT_LEVELS;
 
 pub const ALL_LINTS: [Lint; 304] = [
     Lint {

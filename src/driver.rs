@@ -166,7 +166,12 @@ Available lint options:
     let print_lints = |lints: &[&Lint]| {
         for lint in lints {
             let name = lint.name.replace("_", "-");
-            println!("    {}  {:7.7}  {}", padded(&scoped(&name)), lint_level(lint), lint.desc);
+            println!(
+                "    {}  {:7.7}  {}",
+                padded(&scoped(&name)),
+                lint_level(lint),
+                lint.desc
+            );
         }
         println!("\n");
     };
