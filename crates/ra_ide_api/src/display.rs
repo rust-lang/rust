@@ -73,13 +73,3 @@ where
         format!("```rust\n{}\n```", val.as_ref())
     }
 }
-
-// FIXME: this should not really use navigation target. Rather, approximately
-// resolved symbol should return a `DefId`.
-pub(crate) fn doc_text_for(nav: NavigationTarget) -> Option<String> {
-    match (nav.description(), nav.docs()) {
-        (Some(desc), docs) => Some(rust_code_markup_with_doc(desc, docs)),
-        (None, Some(docs)) => Some(docs.to_string()),
-        _ => None,
-    }
-}

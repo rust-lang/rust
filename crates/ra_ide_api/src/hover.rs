@@ -1,14 +1,14 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
     AstNode, ast::{self, DocCommentsOwner},
-    algo::{find_covering_element, find_node_at_offset, ancestors_at_offset},
+    algo::{find_covering_element, find_node_at_offset, ancestors_at_offset, visit::{visitor, Visitor}},
 };
 use hir::HirDisplay;
 
 use crate::{
     db::RootDatabase,
     RangeInfo, FilePosition, FileRange,
-    display::{rust_code_markup, doc_text_for, rust_code_markup_with_doc, ShortLabel, docs_from_symbol, description_from_symbol},
+    display::{rust_code_markup, rust_code_markup_with_doc, ShortLabel, docs_from_symbol, description_from_symbol},
     name_ref_kind::{NameRefKind::*, classify_name_ref},
 };
 
@@ -216,11 +216,39 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             range = Some(name_ref.syntax().range())
         }
     } else if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
-        let navs = crate::goto_definition::name_definition(db, position.file_id, name);
+        if let Some(parent) = name.syntax().parent() {
+            let text = visitor()
+                .visit(|node: &ast::StructDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::EnumDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::EnumVariant| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::FnDef| hover_text(node.doc_comment_text(), node.short_label()))
+                .visit(|node: &ast::TypeAliasDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::ConstDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::StaticDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::TraitDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::NamedFieldDef| {
+                    hover_text(node.doc_comment_text(), node.short_label())
+                })
+                .visit(|node: &ast::Module| hover_text(node.doc_comment_text(), node.short_label()))
+                .visit(|node: &ast::MacroCall| hover_text(node.doc_comment_text(), None))
+                .accept(parent);
 
-        if let Some(navs) = navs {
-            for nav in navs {
-                res.extend(doc_text_for(nav))
+            if let Some(text) = text {
+                res.extend(text);
             }
         }
 
