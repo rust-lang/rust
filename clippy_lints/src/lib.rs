@@ -141,6 +141,7 @@ macro_rules! declare_clippy_lint {
 mod consts;
 #[macro_use]
 mod utils;
+mod redundant_static_lifetime;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 pub mod approx_const;
