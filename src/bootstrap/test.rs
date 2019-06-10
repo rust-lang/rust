@@ -1065,6 +1065,11 @@ impl Step for Compiletest {
             }
         });
 
+        if let Some(ref filter_mode) = builder.config.cmd.filter_mode() {
+            cmd.arg("--filter-mode");
+            cmd.arg(filter_mode);
+        }
+
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
         }

@@ -1932,6 +1932,7 @@ mod __test {
             bless: false,
             compare_mode: None,
             rustfix_coverage: false,
+            filter_mode: None,
         };
 
         let build = Build::new(config);
@@ -1974,6 +1975,7 @@ mod __test {
             bless: false,
             compare_mode: None,
             rustfix_coverage: false,
+            filter_mode: None,
         };
 
         let build = Build::new(config);
