@@ -5,17 +5,17 @@ use crate::dataflow::BitDenotation;
 
 #[derive(Copy, Clone)]
 pub struct MaybeStorageLive<'a, 'tcx: 'a> {
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> MaybeStorageLive<'a, 'tcx> {
-    pub fn new(mir: &'a Body<'tcx>)
+    pub fn new(body: &'a Body<'tcx>)
                -> Self {
-        MaybeStorageLive { mir }
+        MaybeStorageLive { body }
     }
 
-    pub fn mir(&self) -> &Body<'tcx> {
-        self.mir
+    pub fn body(&self) -> &Body<'tcx> {
+        self.body
     }
 }
 
@@ -23,7 +23,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
     type Idx = Local;
     fn name() -> &'static str { "maybe_storage_live" }
     fn bits_per_block(&self) -> usize {
-        self.mir.local_decls.len()
+        self.body.local_decls.len()
     }
 
     fn start_block_effect(&self, _sets: &mut BitSet<Local>) {
@@ -33,7 +33,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
     fn statement_effect(&self,
                         sets: &mut BlockSets<'_, Local>,
                         loc: Location) {
-        let stmt = &self.mir[loc.block].statements[loc.statement_index];
+        let stmt = &self.body[loc.block].statements[loc.statement_index];
 
         match stmt.kind {
             StatementKind::StorageLive(l) => sets.gen(l),

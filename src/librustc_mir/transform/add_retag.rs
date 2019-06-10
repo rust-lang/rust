@@ -77,13 +77,13 @@ impl MirPass for AddRetag {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
-                          mir: &mut Body<'tcx>)
+                          body: &mut Body<'tcx>)
     {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {
             return;
         }
-        let (span, arg_count) = (mir.span, mir.arg_count);
-        let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
+        let (span, arg_count) = (body.span, body.arg_count);
+        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let needs_retag = |place: &Place<'tcx>| {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.

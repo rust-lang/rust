@@ -33,23 +33,23 @@ impl MirPass for CopyPropagation {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource<'tcx>,
-                          mir: &mut Body<'tcx>) {
+                          body: &mut Body<'tcx>) {
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
         if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
             return;
         }
 
-        let mut def_use_analysis = DefUseAnalysis::new(mir);
+        let mut def_use_analysis = DefUseAnalysis::new(body);
         loop {
-            def_use_analysis.analyze(mir);
+            def_use_analysis.analyze(body);
 
-            if eliminate_self_assignments(mir, &def_use_analysis) {
-                def_use_analysis.analyze(mir);
+            if eliminate_self_assignments(body, &def_use_analysis) {
+                def_use_analysis.analyze(body);
             }
 
             let mut changed = false;
-            for dest_local in mir.local_decls.indices() {
+            for dest_local in body.local_decls.indices() {
                 debug!("Considering destination local: {:?}", dest_local);
 
                 let action;
@@ -76,7 +76,7 @@ impl MirPass for CopyPropagation {
                     }
                     // Conservatively gives up if the dest is an argument,
                     // because there may be uses of the original argument value.
-                    if mir.local_kind(dest_local) == LocalKind::Arg {
+                    if body.local_kind(dest_local) == LocalKind::Arg {
                         debug!("  Can't copy-propagate local: dest {:?} (argument)",
                             dest_local);
                         continue;
@@ -84,7 +84,7 @@ impl MirPass for CopyPropagation {
                     let dest_place_def = dest_use_info.defs_not_including_drop().next().unwrap();
                     location = dest_place_def.location;
 
-                    let basic_block = &mir[location.block];
+                    let basic_block = &body[location.block];
                     let statement_index = location.statement_index;
                     let statement = match basic_block.statements.get(statement_index) {
                         Some(statement) => statement,
@@ -103,7 +103,7 @@ impl MirPass for CopyPropagation {
                             let maybe_action = match *operand {
                                 Operand::Copy(ref src_place) |
                                 Operand::Move(ref src_place) => {
-                                    Action::local_copy(&mir, &def_use_analysis, src_place)
+                                    Action::local_copy(&body, &def_use_analysis, src_place)
                                 }
                                 Operand::Constant(ref src_constant) => {
                                     Action::constant(src_constant)
@@ -122,7 +122,7 @@ impl MirPass for CopyPropagation {
                     }
                 }
 
-                changed = action.perform(mir, &def_use_analysis, dest_local, location) || changed;
+                changed = action.perform(body, &def_use_analysis, dest_local, location) || changed;
                 // FIXME(pcwalton): Update the use-def chains to delete the instructions instead of
                 // regenerating the chains.
                 break
@@ -135,17 +135,17 @@ impl MirPass for CopyPropagation {
 }
 
 fn eliminate_self_assignments(
-    mir: &mut Body<'_>,
+    body: &mut Body<'_>,
     def_use_analysis: &DefUseAnalysis,
 ) -> bool {
     let mut changed = false;
 
-    for dest_local in mir.local_decls.indices() {
+    for dest_local in body.local_decls.indices() {
         let dest_use_info = def_use_analysis.local_info(dest_local);
 
         for def in dest_use_info.defs_not_including_drop() {
             let location = def.location;
-            if let Some(stmt) = mir[location.block].statements.get(location.statement_index) {
+            if let Some(stmt) = body[location.block].statements.get(location.statement_index) {
                 match stmt.kind {
                     StatementKind::Assign(
                         Place::Base(PlaceBase::Local(local)),
@@ -163,7 +163,7 @@ fn eliminate_self_assignments(
                 continue;
             }
             debug!("Deleting a self-assignment for {:?}", dest_local);
-            mir.make_statement_nop(location);
+            body.make_statement_nop(location);
             changed = true;
         }
     }
@@ -177,7 +177,7 @@ enum Action<'tcx> {
 }
 
 impl<'tcx> Action<'tcx> {
-    fn local_copy(mir: &Body<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
+    fn local_copy(body: &Body<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
         let src_local = if let Place::Base(PlaceBase::Local(local)) = *src_place {
@@ -214,7 +214,7 @@ impl<'tcx> Action<'tcx> {
         //     USE(SRC);
         let src_def_count = src_use_info.def_count_not_including_drop();
         // allow function arguments to be propagated
-        let is_arg = mir.local_kind(src_local) == LocalKind::Arg;
+        let is_arg = body.local_kind(src_local) == LocalKind::Arg;
         if (is_arg && src_def_count != 0) || (!is_arg && src_def_count != 1) {
             debug!(
                 "  Can't copy-propagate local: {} defs of src{}",
@@ -232,7 +232,7 @@ impl<'tcx> Action<'tcx> {
     }
 
     fn perform(self,
-               mir: &mut Body<'tcx>,
+               body: &mut Body<'tcx>,
                def_use_analysis: &DefUseAnalysis,
                dest_local: Local,
                location: Location)
@@ -249,21 +249,21 @@ impl<'tcx> Action<'tcx> {
                        src_local);
                 for place_use in &def_use_analysis.local_info(dest_local).defs_and_uses {
                     if place_use.context.is_storage_marker() {
-                        mir.make_statement_nop(place_use.location)
+                        body.make_statement_nop(place_use.location)
                     }
                 }
                 for place_use in &def_use_analysis.local_info(src_local).defs_and_uses {
                     if place_use.context.is_storage_marker() {
-                        mir.make_statement_nop(place_use.location)
+                        body.make_statement_nop(place_use.location)
                     }
                 }
 
                 // Replace all uses of the destination local with the source local.
-                def_use_analysis.replace_all_defs_and_uses_with(dest_local, mir, src_local);
+                def_use_analysis.replace_all_defs_and_uses_with(dest_local, body, src_local);
 
                 // Finally, zap the now-useless assignment instruction.
                 debug!("  Deleting assignment");
-                mir.make_statement_nop(location);
+                body.make_statement_nop(location);
 
                 true
             }
@@ -277,7 +277,7 @@ impl<'tcx> Action<'tcx> {
                 let dest_local_info = def_use_analysis.local_info(dest_local);
                 for place_use in &dest_local_info.defs_and_uses {
                     if place_use.context.is_storage_marker() {
-                        mir.make_statement_nop(place_use.location)
+                        body.make_statement_nop(place_use.location)
                     }
                 }
 
@@ -285,7 +285,7 @@ impl<'tcx> Action<'tcx> {
                 let mut visitor = ConstantPropagationVisitor::new(dest_local,
                                                                   src_constant);
                 for dest_place_use in &dest_local_info.defs_and_uses {
-                    visitor.visit_location(mir, dest_place_use.location)
+                    visitor.visit_location(body, dest_place_use.location)
                 }
 
                 // Zap the assignment instruction if we eliminated all the uses. We won't have been
@@ -296,7 +296,7 @@ impl<'tcx> Action<'tcx> {
                     debug!("  {} of {} use(s) replaced; deleting assignment",
                            visitor.uses_replaced,
                            use_count);
-                    mir.make_statement_nop(location);
+                    body.make_statement_nop(location);
                     true
                 } else if visitor.uses_replaced == 0 {
                     debug!("  No uses replaced; not deleting assignment");

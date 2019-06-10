@@ -11,7 +11,7 @@ type McfResult = Result<(), (Span, Cow<'static, str>)>;
 pub fn is_min_const_fn(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
 ) -> McfResult {
     let mut current = def_id;
     loop {
@@ -59,21 +59,21 @@ pub fn is_min_const_fn(
         }
     }
 
-    for local in &mir.local_decls {
+    for local in &body.local_decls {
         check_ty(tcx, local.ty, local.source_info.span, def_id)?;
     }
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
         tcx.fn_sig(def_id).output().skip_binder(),
-        mir.local_decls.iter().next().unwrap().source_info.span,
+        body.local_decls.iter().next().unwrap().source_info.span,
         def_id,
     )?;
 
-    for bb in mir.basic_blocks() {
-        check_terminator(tcx, mir, bb.terminator())?;
+    for bb in body.basic_blocks() {
+        check_terminator(tcx, body, bb.terminator())?;
         for stmt in &bb.statements {
-            check_statement(tcx, mir, stmt)?;
+            check_statement(tcx, body, stmt)?;
         }
     }
     Ok(())
@@ -130,7 +130,7 @@ fn check_ty(
 
 fn check_rvalue(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
     rvalue: &Rvalue<'tcx>,
     span: Span,
 ) -> McfResult {
@@ -143,7 +143,7 @@ fn check_rvalue(
         }
         Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
             use rustc::ty::cast::CastTy;
-            let cast_in = CastTy::from_ty(operand.ty(mir, tcx)).expect("bad input type for cast");
+            let cast_in = CastTy::from_ty(operand.ty(body, tcx)).expect("bad input type for cast");
             let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
             match (cast_in, cast_out) {
                 (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FnPtr, CastTy::Int(_)) => Err((
@@ -173,7 +173,7 @@ fn check_rvalue(
         Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
             check_operand(lhs, span)?;
             check_operand(rhs, span)?;
-            let ty = lhs.ty(mir, tcx);
+            let ty = lhs.ty(body, tcx);
             if ty.is_integral() || ty.is_bool() || ty.is_char() {
                 Ok(())
             } else {
@@ -189,7 +189,7 @@ fn check_rvalue(
             "heap allocations are not allowed in const fn".into(),
         )),
         Rvalue::UnaryOp(_, operand) => {
-            let ty = operand.ty(mir, tcx);
+            let ty = operand.ty(body, tcx);
             if ty.is_integral() || ty.is_bool() {
                 check_operand(operand, span)
             } else {
@@ -210,14 +210,14 @@ fn check_rvalue(
 
 fn check_statement(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
     statement: &Statement<'tcx>,
 ) -> McfResult {
     let span = statement.source_info.span;
     match &statement.kind {
         StatementKind::Assign(place, rval) => {
             check_place(place, span)?;
-            check_rvalue(tcx, mir, rval, span)
+            check_rvalue(tcx, body, rval, span)
         }
 
         StatementKind::FakeRead(_, place) => check_place(place, span),
@@ -280,7 +280,7 @@ fn check_place(
 
 fn check_terminator(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
     terminator: &Terminator<'tcx>,
 ) -> McfResult {
     let span = terminator.source_info.span;
@@ -315,7 +315,7 @@ fn check_terminator(
             destination: _,
             cleanup: _,
         } => {
-            let fn_ty = func.ty(mir, tcx);
+            let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(def_id, _) = fn_ty.sty {
 
                 // some intrinsics are waved through if called inside the

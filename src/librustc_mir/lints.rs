@@ -8,18 +8,18 @@ use rustc::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc::ty::subst::InternalSubsts;
 
 pub fn check(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-             mir: &Body<'tcx>,
+             body: &Body<'tcx>,
              def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get_by_hir_id(hir_id)) {
-        check_fn_for_unconditional_recursion(tcx, fn_like_node.kind(), mir, def_id);
+        check_fn_for_unconditional_recursion(tcx, fn_like_node.kind(), body, def_id);
     }
 }
 
 fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         fn_kind: FnKind<'_>,
-                                        mir: &Body<'tcx>,
+                                        body: &Body<'tcx>,
                                         def_id: DefId) {
     if let FnKind::Closure(_) = fn_kind {
         // closures can't recur, so they don't matter.
@@ -54,7 +54,7 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // to have behaviour like the above, rather than
     // e.g., accidentally recursing after an assert.
 
-    let basic_blocks = mir.basic_blocks();
+    let basic_blocks = body.basic_blocks();
     let mut reachable_without_self_call_queue = vec![mir::START_BLOCK];
     let mut reached_exit_without_self_call = false;
     let mut self_call_locations = vec![];
@@ -84,7 +84,7 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if let Some(ref terminator) = block.terminator {
             match terminator.kind {
                 TerminatorKind::Call { ref func, .. } => {
-                    let func_ty = func.ty(mir, tcx);
+                    let func_ty = func.ty(body, tcx);
 
                     if let ty::FnDef(fn_def_id, substs) = func_ty.sty {
                         let (call_fn_id, call_substs) =

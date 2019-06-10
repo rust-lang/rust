@@ -13,7 +13,7 @@ crate trait PlaceExt<'tcx> {
     fn ignore_borrow(
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
         ) -> bool;
 }
@@ -22,7 +22,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
     fn ignore_borrow(
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
     ) -> bool {
         self.iterate(|place_base, place_projection| {
@@ -40,7 +40,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                         LocalsStateAtExit::AllAreInvalidated => false,
                         LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved } => {
                             let ignore = !has_storage_dead_or_moved.contains(*index) &&
-                                mir.local_decls[*index].mutability == Mutability::Not;
+                                body.local_decls[*index].mutability == Mutability::Not;
                             debug!("ignore_borrow: local {:?} => {:?}", index, ignore);
                             ignore
                         }
@@ -55,7 +55,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
 
             for proj in place_projection {
                 if proj.elem == ProjectionElem::Deref {
-                    let ty = proj.base.ty(mir, tcx).ty;
+                    let ty = proj.base.ty(body, tcx).ty;
                     match ty.sty {
                         // For both derefs of raw pointers and `&T`
                         // references, the original path is `Copy` and

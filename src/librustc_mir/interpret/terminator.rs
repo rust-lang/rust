@@ -281,15 +281,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 }
 
                 // We need MIR for this fn
-                let mir = match M::find_fn(self, instance, args, dest, ret)? {
-                    Some(mir) => mir,
+                let body = match M::find_fn(self, instance, args, dest, ret)? {
+                    Some(body) => body,
                     None => return Ok(()),
                 };
 
                 self.push_stack_frame(
                     instance,
                     span,
-                    mir,
+                    body,
                     dest,
                     StackPopCleanup::Goto(ret),
                 )?;
@@ -307,8 +307,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     );
                     trace!(
                         "spread_arg: {:?}, locals: {:#?}",
-                        mir.spread_arg,
-                        mir.args_iter()
+                        body.spread_arg,
+                        body.args_iter()
                             .map(|local|
                                 (local, self.layout_of_local(self.frame(), local, None).unwrap().ty)
                             )
@@ -352,12 +352,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     // this is a single iterator (that handles `spread_arg`), then
                     // `pass_argument` would be the loop body. It takes care to
                     // not advance `caller_iter` for ZSTs.
-                    let mut locals_iter = mir.args_iter();
+                    let mut locals_iter = body.args_iter();
                     while let Some(local) = locals_iter.next() {
                         let dest = self.eval_place(
                             &mir::Place::Base(mir::PlaceBase::Local(local))
                         )?;
-                        if Some(local) == mir.spread_arg {
+                        if Some(local) == body.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
                                 let dest = self.place_field(dest, i as u64)?;

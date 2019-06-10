@@ -54,7 +54,7 @@ impl BorrowExplanation {
     pub(in crate::borrow_check) fn add_explanation_to_diagnostic<'cx, 'gcx, 'tcx>(
         &self,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         borrow_desc: &str,
         borrow_span: Option<Span>,
@@ -94,7 +94,7 @@ impl BorrowExplanation {
                 dropped_local,
                 should_note_order,
             } => {
-                let local_decl = &mir.local_decls[dropped_local];
+                let local_decl = &body.local_decls[dropped_local];
                 let (dtor_desc, type_desc) = match local_decl.ty.sty {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
@@ -121,7 +121,7 @@ impl BorrowExplanation {
                             TYPE = type_desc,
                             DTOR = dtor_desc
                         );
-                        err.span_label(mir.source_info(drop_loc).span, message);
+                        err.span_label(body.source_info(drop_loc).span, message);
 
                         if should_note_order {
                             err.note(
@@ -147,7 +147,7 @@ impl BorrowExplanation {
                             TYPE = type_desc,
                             DTOR = dtor_desc
                         );
-                        err.span_label(mir.source_info(drop_loc).span, message);
+                        err.span_label(body.source_info(drop_loc).span, message);
 
                         if let Some(info) = &local_decl.is_block_tail {
                             // FIXME: use span_suggestion instead, highlighting the
@@ -233,7 +233,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         let regioncx = &self.nonlexical_regioncx;
-        let mir = self.mir;
+        let body = self.body;
         let tcx = self.infcx.tcx;
 
         let borrow_region_vid = borrow.region;
@@ -248,9 +248,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             region_sub
         );
 
-        match find_use::find(mir, regioncx, tcx, region_sub, location) {
+        match find_use::find(body, regioncx, tcx, region_sub, location) {
             Some(Cause::LiveVar(local, location)) => {
-                let span = mir.source_info(location).span;
+                let span = body.source_info(location).span;
                 let spans = self
                     .move_spans(&Place::Base(PlaceBase::Local(local)), location)
                     .or_else(|| self.borrow_spans(span, location));
@@ -270,10 +270,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             Some(Cause::DropVar(local, location)) => {
                 let mut should_note_order = false;
-                if mir.local_decls[local].name.is_some() {
+                if body.local_decls[local].name.is_some() {
                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
                         if let Place::Base(PlaceBase::Local(borrowed_local)) = place {
-                             if mir.local_decls[*borrowed_local].name.is_some()
+                             if body.local_decls[*borrowed_local].name.is_some()
                                 && local != *borrowed_local
                             {
                                 should_note_order = true;
@@ -293,7 +293,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 if let Some(region) = regioncx.to_error_region_vid(borrow_region_vid) {
                     let (category, from_closure, span, region_name) =
                         self.nonlexical_regioncx.free_region_constraint_info(
-                            self.mir,
+                            self.body,
                         &self.upvars,
                             self.mir_def_id,
                             self.infcx,
@@ -359,7 +359,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 return outmost_back_edge;
             }
 
-            let block = &self.mir.basic_blocks()[location.block];
+            let block = &self.body.basic_blocks()[location.block];
 
             if location.statement_index < block.statements.len() {
                 let successor = location.successor_within_block();
@@ -421,7 +421,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         if loop_head.dominates(from, &self.dominators) {
-            let block = &self.mir.basic_blocks()[from.block];
+            let block = &self.body.basic_blocks()[from.block];
 
             if from.statement_index < block.statements.len() {
                 let successor = from.successor_within_block();
@@ -453,7 +453,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// True if an edge `source -> target` is a backedge -- in other words, if the target
     /// dominates the source.
     fn is_back_edge(&self, source: Location, target: Location) -> bool {
-        target.dominates(source, &self.mir.dominators())
+        target.dominates(source, &self.body.dominators())
     }
 
     /// Determine how the borrow was later used.
@@ -469,7 +469,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 (LaterUseKind::ClosureCapture, var_span)
             }
             UseSpans::OtherUse(span) => {
-                let block = &self.mir.basic_blocks()[location.block];
+                let block = &self.body.basic_blocks()[location.block];
 
                 let kind = if let Some(&Statement {
                     kind: StatementKind::FakeRead(FakeReadCause::ForLet, _),
@@ -491,7 +491,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             Operand::Constant(c) => c.span,
                             Operand::Copy(Place::Base(PlaceBase::Local(l))) |
                             Operand::Move(Place::Base(PlaceBase::Local(l))) => {
-                                let local_decl = &self.mir.local_decls[*l];
+                                let local_decl = &self.body.local_decls[*l];
                                 if local_decl.name.is_none() {
                                     local_decl.source_info.span
                                 } else {
@@ -519,7 +519,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn was_captured_by_trait_object(&self, borrow: &BorrowData<'tcx>) -> bool {
         // Start at the reserve location, find the place that we want to see cast to a trait object.
         let location = borrow.reserve_location;
-        let block = &self.mir[location.block];
+        let block = &self.body[location.block];
         let stmt = block.statements.get(location.statement_index);
         debug!(
             "was_captured_by_trait_object: location={:?} stmt={:?}",
@@ -546,7 +546,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
         while let Some(current_location) = queue.pop() {
             debug!("was_captured_by_trait: target={:?}", target);
-            let block = &self.mir[current_location.block];
+            let block = &self.body[current_location.block];
             // We need to check the current location to find out if it is a terminator.
             let is_terminator = current_location.statement_index == block.statements.len();
             if !is_terminator {

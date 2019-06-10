@@ -32,7 +32,7 @@ use std::rc::Rc;
 /// this respects `#[may_dangle]` annotations).
 pub(super) fn trace(
     typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -41,11 +41,11 @@ pub(super) fn trace(
 ) {
     debug!("trace()");
 
-    let local_use_map = &LocalUseMap::build(&live_locals, elements, mir);
+    let local_use_map = &LocalUseMap::build(&live_locals, elements, body);
 
     let cx = LivenessContext {
         typeck,
-        mir,
+        body,
         flow_inits,
         elements,
         local_use_map,
@@ -72,7 +72,7 @@ where
     elements: &'me RegionValueElements,
 
     /// MIR we are analyzing.
-    mir: &'me Body<'tcx>,
+    body: &'me Body<'tcx>,
 
     /// Mapping to/from the various indices used for initialization tracking.
     move_data: &'me MoveData<'tcx>,
@@ -145,7 +145,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
             self.compute_use_live_points_for(local);
             self.compute_drop_live_points_for(local);
 
-            let local_ty = self.cx.mir.local_decls[local].ty;
+            let local_ty = self.cx.body.local_decls[local].ty;
 
             if !self.use_live_at.is_empty() {
                 self.cx.add_use_live_facts_for(local_ty, &self.use_live_at);
@@ -197,7 +197,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
             if self.use_live_at.insert(p) {
                 self.cx
                     .elements
-                    .push_predecessors(self.cx.mir, p, &mut self.stack)
+                    .push_predecessors(self.cx.body, p, &mut self.stack)
             }
         }
     }
@@ -220,7 +220,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         // Find the drops where `local` is initialized.
         for drop_point in self.cx.local_use_map.drops(local) {
             let location = self.cx.elements.to_location(drop_point);
-            debug_assert_eq!(self.cx.mir.terminator_loc(location.block), location,);
+            debug_assert_eq!(self.cx.body.terminator_loc(location.block), location,);
 
             if self.cx.initialized_at_terminator(location.block, mpi) {
                 if self.drop_live_at.insert(drop_point) {
@@ -270,7 +270,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
         // live point.
         let term_location = self.cx.elements.to_location(term_point);
         debug_assert_eq!(
-            self.cx.mir.terminator_loc(term_location.block),
+            self.cx.body.terminator_loc(term_location.block),
             term_location,
         );
         let block = term_location.block;
@@ -297,7 +297,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
             }
         }
 
-        for &pred_block in self.cx.mir.predecessors_for(block).iter() {
+        for &pred_block in self.cx.body.predecessors_for(block).iter() {
             debug!(
                 "compute_drop_live_points_for_block: pred_block = {:?}",
                 pred_block,
@@ -326,7 +326,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
                 continue;
             }
 
-            let pred_term_loc = self.cx.mir.terminator_loc(pred_block);
+            let pred_term_loc = self.cx.body.terminator_loc(pred_block);
             let pred_term_point = self.cx.elements.point_from_location(pred_term_loc);
 
             // If the terminator of this predecessor either *assigns*
@@ -403,7 +403,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
         // the effects of all statements. This is the only way to get
         // "just ahead" of a terminator.
         self.flow_inits.reset_to_entry_of(block);
-        for statement_index in 0..self.mir[block].statements.len() {
+        for statement_index in 0..self.body[block].statements.len() {
             let location = Location {
                 block,
                 statement_index,
@@ -485,7 +485,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
 
         drop_data.dropck_result.report_overflows(
             self.typeck.infcx.tcx,
-            self.mir.source_info(*drop_locations.first().unwrap()).span,
+            self.body.source_info(*drop_locations.first().unwrap()).span,
             dropped_ty,
         );
 

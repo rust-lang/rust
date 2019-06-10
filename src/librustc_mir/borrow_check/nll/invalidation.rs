@@ -21,7 +21,7 @@ pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     if all_facts.is_none() {
@@ -30,16 +30,16 @@ pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
     }
 
     if let Some(all_facts) = all_facts {
-        let dominators = mir.dominators();
+        let dominators = body.dominators();
         let mut ig = InvalidationGenerator {
             all_facts,
             borrow_set,
             tcx,
             location_table,
-            mir,
+            body,
             dominators,
         };
-        ig.visit_body(mir);
+        ig.visit_body(body);
     }
 }
 
@@ -47,7 +47,7 @@ struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
-    mir: &'cx Body<'tcx>,
+    body: &'cx Body<'tcx>,
     dominators: Dominators<BasicBlock>,
     borrow_set: &'cx BorrowSet<'tcx>,
 }
@@ -400,13 +400,13 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
             rw,
         );
         let tcx = self.tcx;
-        let mir = self.mir;
+        let body = self.body;
         let borrow_set = self.borrow_set.clone();
         let indices = self.borrow_set.borrows.indices();
         each_borrow_involving_path(
             self,
             tcx,
-            mir,
+            body,
             location,
             (sd, place),
             &borrow_set.clone(),

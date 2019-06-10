@@ -516,7 +516,7 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 struct MirNeighborCollector<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a mir::Body<'tcx>,
+    body: &'a mir::Body<'tcx>,
     output: &'a mut Vec<MonoItem<'tcx>>,
     param_substs: SubstsRef<'tcx>,
 }
@@ -538,7 +538,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     ty::ParamEnv::reveal_all(),
                     &target_ty,
                 );
-                let source_ty = operand.ty(self.mir, self.tcx);
+                let source_ty = operand.ty(self.body, self.tcx);
                 let source_ty = self.tcx.subst_and_normalize_erasing_regions(
                     self.param_substs,
                     ty::ParamEnv::reveal_all(),
@@ -560,7 +560,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::Rvalue::Cast(
                 mir::CastKind::Pointer(PointerCast::ReifyFnPointer), ref operand, _
             ) => {
-                let fn_ty = operand.ty(self.mir, self.tcx);
+                let fn_ty = operand.ty(self.body, self.tcx);
                 let fn_ty = self.tcx.subst_and_normalize_erasing_regions(
                     self.param_substs,
                     ty::ParamEnv::reveal_all(),
@@ -571,7 +571,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::Rvalue::Cast(
                 mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_)), ref operand, _
             ) => {
-                let source_ty = operand.ty(self.mir, self.tcx);
+                let source_ty = operand.ty(self.body, self.tcx);
                 let source_ty = self.tcx.subst_and_normalize_erasing_regions(
                     self.param_substs,
                     ty::ParamEnv::reveal_all(),
@@ -621,7 +621,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         let tcx = self.tcx;
         match *kind {
             mir::TerminatorKind::Call { ref func, .. } => {
-                let callee_ty = func.ty(self.mir, tcx);
+                let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = tcx.subst_and_normalize_erasing_regions(
                     self.param_substs,
                     ty::ParamEnv::reveal_all(),
@@ -631,7 +631,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             }
             mir::TerminatorKind::Drop { ref location, .. } |
             mir::TerminatorKind::DropAndReplace { ref location, .. } => {
-                let ty = location.ty(self.mir, self.tcx).ty;
+                let ty = location.ty(self.body, self.tcx).ty;
                 let ty = tcx.subst_and_normalize_erasing_regions(
                     self.param_substs,
                     ty::ParamEnv::reveal_all(),
@@ -1211,16 +1211,16 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 instance: Instance<'tcx>,
                                 output: &mut Vec<MonoItem<'tcx>>)
 {
-    let mir = tcx.instance_mir(instance.def);
+    let body = tcx.instance_mir(instance.def);
 
     MirNeighborCollector {
         tcx,
-        mir: &mir,
+        body: &body,
         output,
         param_substs: instance.substs,
-    }.visit_body(&mir);
+    }.visit_body(&body);
     let param_env = ty::ParamEnv::reveal_all();
-    for i in 0..mir.promoted.len() {
+    for i in 0..body.promoted.len() {
         use rustc_data_structures::indexed_vec::Idx;
         let i = Promoted::new(i);
         let cid = GlobalId {
@@ -1231,7 +1231,7 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Ok(val) => collect_const(tcx, val, instance.substs, output),
             Err(ErrorHandled::Reported) => {},
             Err(ErrorHandled::TooGeneric) => span_bug!(
-                mir.promoted[i].span, "collection encountered polymorphic constant",
+                body.promoted[i].span, "collection encountered polymorphic constant",
             ),
         }
     }

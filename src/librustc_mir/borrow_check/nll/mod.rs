@@ -50,7 +50,7 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    mir: &mut Body<'tcx>,
+    body: &mut Body<'tcx>,
 ) -> UniversalRegions<'tcx> {
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
@@ -58,10 +58,10 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
     let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
 
     // Replace all remaining regions with fresh inference variables.
-    renumber::renumber_mir(infcx, mir);
+    renumber::renumber_mir(infcx, body);
 
     let source = MirSource::item(def_id);
-    mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, mir, |_, _| Ok(()));
+    mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, body, |_, _| Ok(()));
 
     universal_regions
 }
@@ -73,7 +73,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     upvars: &[Upvar],
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'gcx>,
@@ -94,7 +94,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 
     let universal_regions = Rc::new(universal_regions);
 
-    let elements = &Rc::new(RegionValueElements::new(mir));
+    let elements = &Rc::new(RegionValueElements::new(body));
 
     // Run the MIR type-checker.
     let MirTypeckResults {
@@ -103,7 +103,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     } = type_check::type_check(
         infcx,
         param_env,
-        mir,
+        body,
         def_id,
         &universal_regions,
         location_table,
@@ -139,7 +139,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         &mut liveness_constraints,
         &mut all_facts,
         location_table,
-        &mir,
+        &body,
         borrow_set,
     );
 
@@ -148,7 +148,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         universal_regions,
         placeholder_indices,
         universal_region_relations,
-        mir,
+        body,
         outlives_constraints,
         closure_bounds_mapping,
         type_tests,
@@ -161,7 +161,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         infcx.tcx,
         &mut all_facts,
         location_table,
-        &mir,
+        &body,
         borrow_set,
     );
 
@@ -191,21 +191,21 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 
     // Solve the region constraints.
     let closure_region_requirements =
-        regioncx.solve(infcx, &mir, upvars, def_id, errors_buffer);
+        regioncx.solve(infcx, &body, upvars, def_id, errors_buffer);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
     dump_mir_results(
         infcx,
         MirSource::item(def_id),
-        &mir,
+        &body,
         &regioncx,
         &closure_region_requirements,
     );
 
     // We also have a `#[rustc_nll]` annotation that causes us to dump
     // information
-    dump_annotation(infcx, &mir, def_id, &regioncx, &closure_region_requirements, errors_buffer);
+    dump_annotation(infcx, &body, def_id, &regioncx, &closure_region_requirements, errors_buffer);
 
     (regioncx, polonius_output, closure_region_requirements)
 }
@@ -213,7 +213,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     source: MirSource<'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'_>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
 ) {
@@ -227,7 +227,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         "nll",
         &0,
         source,
-        mir,
+        body,
         |pass_where, out| {
             match pass_where {
                 // Before the CFG, dump out the values for each region variable.
@@ -273,7 +273,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
 
 fn dump_annotation<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     mir_def_id: DefId,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
@@ -296,7 +296,7 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
         let mut err = tcx
             .sess
             .diagnostic()
-            .span_note_diag(mir.span, "External requirements");
+            .span_note_diag(body.span, "External requirements");
 
         regioncx.annotate(tcx, &mut err);
 
@@ -317,7 +317,7 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
         let mut err = tcx
             .sess
             .diagnostic()
-            .span_note_diag(mir.span, "No external requirements");
+            .span_note_diag(body.span, "No external requirements");
         regioncx.annotate(tcx, &mut err);
 
         err.buffer(errors_buffer);

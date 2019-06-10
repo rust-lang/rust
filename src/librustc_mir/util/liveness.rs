@@ -57,17 +57,17 @@ pub struct LivenessResult {
 /// Computes which local variables are live within the given function
 /// `mir`, including drops.
 pub fn liveness_of_locals<'tcx>(
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
 ) -> LivenessResult {
-    let num_live_vars = mir.local_decls.len();
+    let num_live_vars = body.local_decls.len();
 
-    let def_use: IndexVec<_, DefsUses> = mir
+    let def_use: IndexVec<_, DefsUses> = body
         .basic_blocks()
         .iter()
         .map(|b| block(b, num_live_vars))
         .collect();
 
-    let mut outs: IndexVec<_, LiveVarSet> = mir
+    let mut outs: IndexVec<_, LiveVarSet> = body
         .basic_blocks()
         .indices()
         .map(|_| LiveVarSet::new_empty(num_live_vars))
@@ -77,9 +77,9 @@ pub fn liveness_of_locals<'tcx>(
 
     // queue of things that need to be re-processed, and a set containing
     // the things currently in the queue
-    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_all(mir.basic_blocks().len());
+    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_all(body.basic_blocks().len());
 
-    let predecessors = mir.predecessors();
+    let predecessors = body.predecessors();
 
     while let Some(bb) = dirty_queue.pop() {
         // bits = use ∪ (bits - def)
@@ -258,7 +258,7 @@ pub fn dump_mir<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pass_name: &str,
     source: MirSource<'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     result: &LivenessResult,
 ) {
     if !dump_enabled(tcx, pass_name, source) {
@@ -268,7 +268,7 @@ pub fn dump_mir<'a, 'tcx>(
         // see notes on #41697 below
         tcx.def_path_str(source.def_id())
     });
-    dump_matched_mir_node(tcx, pass_name, &node_path, source, mir, result);
+    dump_matched_mir_node(tcx, pass_name, &node_path, source, body, result);
 }
 
 fn dump_matched_mir_node<'a, 'tcx>(
@@ -276,7 +276,7 @@ fn dump_matched_mir_node<'a, 'tcx>(
     pass_name: &str,
     node_path: &str,
     source: MirSource<'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     result: &LivenessResult,
 ) {
     let mut file_path = PathBuf::new();
@@ -289,7 +289,7 @@ fn dump_matched_mir_node<'a, 'tcx>(
         writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
         writeln!(file, "")?;
-        write_mir_fn(tcx, source, mir, &mut file, result)?;
+        write_mir_fn(tcx, source, body, &mut file, result)?;
         Ok(())
     });
 }
@@ -297,12 +297,12 @@ fn dump_matched_mir_node<'a, 'tcx>(
 pub fn write_mir_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     src: MirSource<'tcx>,
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     w: &mut dyn Write,
     result: &LivenessResult,
 ) -> io::Result<()> {
-    write_mir_intro(tcx, src, mir, w)?;
-    for block in mir.basic_blocks().indices() {
+    write_mir_intro(tcx, src, body, w)?;
+    for block in body.basic_blocks().indices() {
         let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LiveVarSet>| {
             let live: Vec<String> = result[block]
                 .iter()
@@ -310,9 +310,9 @@ pub fn write_mir_fn<'a, 'tcx>(
                 .collect();
             writeln!(w, "{} {{{}}}", prefix, live.join(", "))
         };
-        write_basic_block(tcx, block, mir, &mut |_, _| Ok(()), w)?;
+        write_basic_block(tcx, block, body, &mut |_, _| Ok(()), w)?;
         print(w, "   ", &result.outs)?;
-        if block.index() + 1 != mir.basic_blocks().len() {
+        if block.index() + 1 != body.basic_blocks().len() {
             writeln!(w, "")?;
         }
     }

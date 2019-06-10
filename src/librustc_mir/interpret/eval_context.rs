@@ -56,7 +56,7 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=(), Extra=()> {
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
     /// The MIR for the function called on this frame.
-    pub mir: &'mir mir::Body<'tcx>,
+    pub body: &'mir mir::Body<'tcx>,
 
     /// The def_id and substs of the current function.
     pub instance: ty::Instance<'tcx>,
@@ -252,8 +252,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     }
 
     #[inline(always)]
-    pub(super) fn mir(&self) -> &'mir mir::Body<'tcx> {
-        self.frame().mir
+    pub(super) fn body(&self) -> &'mir mir::Body<'tcx> {
+        self.frame().body
     }
 
     pub(super) fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
@@ -356,7 +356,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         match frame.locals[local].layout.get() {
             None => {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
-                    let local_ty = frame.mir.local_decls[local].ty;
+                    let local_ty = frame.body.local_decls[local].ty;
                     let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
                     self.layout_of(local_ty)
                 })?;
@@ -475,7 +475,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         &mut self,
         instance: ty::Instance<'tcx>,
         span: source_map::Span,
-        mir: &'mir mir::Body<'tcx>,
+        body: &'mir mir::Body<'tcx>,
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
@@ -487,7 +487,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         // first push a stack frame so we have access to the local substs
         let extra = M::stack_push(self)?;
         self.stack.push(Frame {
-            mir,
+            body,
             block: mir::START_BLOCK,
             return_to_block,
             return_place,
@@ -501,13 +501,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         });
 
         // don't allocate at all for trivial constants
-        if mir.local_decls.len() > 1 {
+        if body.local_decls.len() > 1 {
             // Locals are initially uninitialized.
             let dummy = LocalState {
                 value: LocalValue::Uninitialized,
                 layout: Cell::new(None),
             };
-            let mut locals = IndexVec::from_elem(dummy, &mir.local_decls);
+            let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
             // Return place is handled specially by the `eval_place` functions, and the
             // entry in `locals` should never be used. Make it dead, to be sure.
             locals[mir::RETURN_PLACE].value = LocalValue::Dead;
@@ -518,8 +518,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                 | Some(DefKind::Const)
                 | Some(DefKind::AssocConst) => {},
                 _ => {
-                    trace!("push_stack_frame: {:?}: num_bbs: {}", span, mir.basic_blocks().len());
-                    for block in mir.basic_blocks() {
+                    trace!("push_stack_frame: {:?}: num_bbs: {}", span, body.basic_blocks().len());
+                    for block in body.basic_blocks() {
                         for stmt in block.statements.iter() {
                             use rustc::mir::StatementKind::{StorageDead, StorageLive};
                             match stmt.kind {
@@ -734,7 +734,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo<'tcx>> {
         let mut last_span = None;
         let mut frames = Vec::new();
-        for &Frame { instance, span, mir, block, stmt, .. } in self.stack().iter().rev() {
+        for &Frame { instance, span, body, block, stmt, .. } in self.stack().iter().rev() {
             // make sure we don't emit frames that are duplicates of the previous
             if explicit_span == Some(span) {
                 last_span = Some(span);
@@ -747,13 +747,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
             } else {
                 last_span = Some(span);
             }
-            let block = &mir.basic_blocks()[block];
+            let block = &body.basic_blocks()[block];
             let source_info = if stmt < block.statements.len() {
                 block.statements[stmt].source_info
             } else {
                 block.terminator().source_info
             };
-            let lint_root = match mir.source_scope_local_data {
+            let lint_root = match body.source_scope_local_data {
                 mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
                 mir::ClearCrossCrate::Clear => None,
             };

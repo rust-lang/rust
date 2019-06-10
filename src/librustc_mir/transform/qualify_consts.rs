@@ -113,7 +113,7 @@ struct ConstCx<'a, 'tcx> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     mode: Mode,
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
 
     per_local: PerQualif<BitSet<Local>>,
 }
@@ -166,7 +166,7 @@ trait Qualif {
         let base_qualif = Self::in_place(cx, &proj.base);
         let qualif = base_qualif && Self::mask_for_ty(
             cx,
-            proj.base.ty(cx.mir, cx.tcx)
+            proj.base.ty(cx.body, cx.tcx)
                 .projection_ty(cx.tcx, &proj.elem)
                 .ty,
         );
@@ -245,7 +245,7 @@ trait Qualif {
                 // Special-case reborrows to be more like a copy of the reference.
                 if let Place::Projection(ref proj) = *place {
                     if let ProjectionElem::Deref = proj.elem {
-                        let base_ty = proj.base.ty(cx.mir, cx.tcx).ty;
+                        let base_ty = proj.base.ty(cx.body, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.sty {
                             return Self::in_place(cx, &proj.base);
                         }
@@ -301,7 +301,7 @@ impl Qualif for HasMutInterior {
             // allowed in constants (and the `Checker` will error), and/or it
             // won't be promoted, due to `&mut ...` or interior mutability.
             Rvalue::Ref(_, kind, ref place) => {
-                let ty = place.ty(cx.mir, cx.tcx).ty;
+                let ty = place.ty(cx.body, cx.tcx).ty;
 
                 if let BorrowKind::Mut { .. } = kind {
                     // In theory, any zero-sized value could be borrowed
@@ -329,7 +329,7 @@ impl Qualif for HasMutInterior {
             Rvalue::Aggregate(ref kind, _) => {
                 if let AggregateKind::Adt(def, ..) = **kind {
                     if Some(def.did) == cx.tcx.lang_items().unsafe_cell_type() {
-                        let ty = rvalue.ty(cx.mir, cx.tcx);
+                        let ty = rvalue.ty(cx.body, cx.tcx);
                         assert_eq!(Self::in_any_value_of_ty(cx, ty), Some(true));
                         return true;
                     }
@@ -399,7 +399,7 @@ impl Qualif for IsNotPromotable {
 
             ProjectionElem::Field(..) => {
                 if cx.mode == Mode::Fn {
-                    let base_ty = proj.base.ty(cx.mir, cx.tcx).ty;
+                    let base_ty = proj.base.ty(cx.body, cx.tcx).ty;
                     if let Some(def) = base_ty.ty_adt_def() {
                         if def.is_union() {
                             return true;
@@ -415,7 +415,7 @@ impl Qualif for IsNotPromotable {
     fn in_rvalue(cx: &ConstCx<'_, 'tcx>, rvalue: &Rvalue<'tcx>) -> bool {
         match *rvalue {
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if cx.mode == Mode::Fn => {
-                let operand_ty = operand.ty(cx.mir, cx.tcx);
+                let operand_ty = operand.ty(cx.body, cx.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
@@ -429,7 +429,7 @@ impl Qualif for IsNotPromotable {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) if cx.mode == Mode::Fn => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(cx.mir, cx.tcx).sty {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(cx.body, cx.tcx).sty {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt ||
@@ -454,7 +454,7 @@ impl Qualif for IsNotPromotable {
         args: &[Operand<'tcx>],
         _return_ty: Ty<'tcx>,
     ) -> bool {
-        let fn_ty = callee.ty(cx.mir, cx.tcx);
+        let fn_ty = callee.ty(cx.body, cx.tcx);
         match fn_ty.sty {
             ty::FnDef(def_id, _) => {
                 match cx.tcx.fn_sig(def_id).abi() {
@@ -529,7 +529,7 @@ impl Qualif for IsNotImplicitlyPromotable {
         _return_ty: Ty<'tcx>,
     ) -> bool {
         if cx.mode == Mode::Fn {
-            if let ty::FnDef(def_id, _) = callee.ty(cx.mir, cx.tcx).sty {
+            if let ty::FnDef(def_id, _) = callee.ty(cx.body, cx.tcx).sty {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
                 if !cx.tcx.is_promotable_const_fn(def_id) {
@@ -620,12 +620,12 @@ impl Deref for Checker<'a, 'tcx> {
 impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            def_id: DefId,
-           mir: &'a Body<'tcx>,
+           body: &'a Body<'tcx>,
            mode: Mode)
            -> Self {
         assert!(def_id.is_local());
-        let mut rpo = traversal::reverse_postorder(mir);
-        let temps = promote_consts::collect_temps(mir, &mut rpo);
+        let mut rpo = traversal::reverse_postorder(body);
+        let temps = promote_consts::collect_temps(body, &mut rpo);
         rpo.reset();
 
         let param_env = tcx.param_env(def_id);
@@ -634,12 +634,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             tcx,
             param_env,
             mode,
-            mir,
-            per_local: PerQualif::new(BitSet::new_empty(mir.local_decls.len())),
+            body,
+            per_local: PerQualif::new(BitSet::new_empty(body.local_decls.len())),
         };
 
-        for (local, decl) in mir.local_decls.iter_enumerated() {
-            if let LocalKind::Arg = mir.local_kind(local) {
+        for (local, decl) in body.local_decls.iter_enumerated() {
+            if let LocalKind::Arg = body.local_kind(local) {
                 let qualifs = cx.qualifs_in_any_value_of_ty(decl.ty);
                 for (per_local, qualif) in &mut cx.per_local.as_mut().zip(qualifs).0 {
                     if *qualif {
@@ -650,7 +650,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             if !temps[local].is_promotable() {
                 cx.per_local[IsNotPromotable].insert(local);
             }
-            if let LocalKind::Var = mir.local_kind(local) {
+            if let LocalKind::Var = body.local_kind(local) {
                 // Sanity check to prevent implicit and explicit promotion of
                 // named locals
                 assert!(cx.per_local[IsNotPromotable].contains(local));
@@ -659,7 +659,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         Checker {
             cx,
-            span: mir.span,
+            span: body.span,
             def_id,
             rpo,
             temp_promotion_state: temps,
@@ -747,7 +747,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 }
                 debug!("qualify_consts: promotion candidate: place={:?}", place);
                 if let Place::Base(PlaceBase::Local(local)) = *place {
-                    if self.mir.local_kind(local) == LocalKind::Temp {
+                    if self.body.local_kind(local) == LocalKind::Temp {
                         debug!("qualify_consts: promotion candidate: local={:?}", local);
                         // The borrowed place doesn't have `HasMutInterior`
                         // (from `in_rvalue`), so we can safely ignore
@@ -799,7 +799,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         };
 
-        let kind = self.mir.local_kind(index);
+        let kind = self.body.local_kind(index);
         debug!("store to {:?} {:?}", kind, index);
 
         // Only handle promotable temps in non-const functions.
@@ -837,16 +837,16 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn check_const(&mut self) -> (u8, &'tcx BitSet<Local>) {
         debug!("const-checking {} {:?}", self.mode, self.def_id);
 
-        let mir = self.mir;
+        let body = self.body;
 
-        let mut seen_blocks = BitSet::new_empty(mir.basic_blocks().len());
+        let mut seen_blocks = BitSet::new_empty(body.basic_blocks().len());
         let mut bb = START_BLOCK;
         loop {
             seen_blocks.insert(bb.index());
 
-            self.visit_basic_block_data(bb, &mir[bb]);
+            self.visit_basic_block_data(bb, &body[bb]);
 
-            let target = match mir[bb].terminator().kind {
+            let target = match body[bb].terminator().kind {
                 TerminatorKind::Goto { target } |
                 TerminatorKind::Drop { target, .. } |
                 TerminatorKind::Assert { target, .. } |
@@ -894,7 +894,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         for candidate in &self.promotion_candidates {
             match *candidate {
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                    match self.mir[bb].statements[stmt_idx].kind {
+                    match self.body[bb].statements[stmt_idx].kind {
                         StatementKind::Assign(
                             _,
                             box Rvalue::Ref(_, _, Place::Base(PlaceBase::Local(index)))
@@ -913,7 +913,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // Account for errors in consts by using the
         // conservative type qualification instead.
         if qualifs[IsNotPromotable] {
-            qualifs = self.qualifs_in_any_value_of_ty(mir.return_ty());
+            qualifs = self.qualifs_in_any_value_of_ty(body.return_ty());
         }
 
         (qualifs.encode_to_bits(), self.tcx.arena.alloc(promoted_temps))
@@ -1003,7 +1003,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     // `not_const` errors out in const contexts
                     self.not_const()
                 }
-                let base_ty = proj.base.ty(self.mir, self.tcx).ty;
+                let base_ty = proj.base.ty(self.body, self.tcx).ty;
                 match self.mode {
                     Mode::Fn => {},
                     _ => {
@@ -1027,7 +1027,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             ProjectionElem::Subslice {..} |
             ProjectionElem::Field(..) |
             ProjectionElem::Index(_) => {
-                let base_ty = proj.base.ty(self.mir, self.tcx).ty;
+                let base_ty = proj.base.ty(self.body, self.tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
                     if def.is_union() {
                         match self.mode {
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             let mut reborrow_place = None;
             if let Place::Projection(ref proj) = *place {
                 if let ProjectionElem::Deref = proj.elem {
-                    let base_ty = proj.base.ty(self.mir, self.tcx).ty;
+                    let base_ty = proj.base.ty(self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.sty {
                         reborrow_place = Some(&proj.base);
                     }
@@ -1126,7 +1126,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             Rvalue::Aggregate(..) => {}
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(self.mir, self.tcx);
+                let operand_ty = operand.ty(self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
@@ -1151,7 +1151,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.mir, self.tcx).sty {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).sty {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt ||
@@ -1201,11 +1201,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 self.assign(dest, ValueSource::Call {
                     callee: func,
                     args,
-                    return_ty: dest.ty(self.mir, self.tcx).ty,
+                    return_ty: dest.ty(self.body, self.tcx).ty,
                 }, location);
             }
 
-            let fn_ty = func.ty(self.mir, self.tcx);
+            let fn_ty = func.ty(self.body, self.tcx);
             let mut callee_def_id = None;
             let mut is_shuffle = false;
             match fn_ty.sty {
@@ -1367,7 +1367,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 // conservatively, that drop elaboration will do.
                 let needs_drop = if let Place::Base(PlaceBase::Local(local)) = *place {
                     if NeedsDrop::in_local(self, local) {
-                        Some(self.mir.local_decls[local].source_info.span)
+                        Some(self.body.local_decls[local].source_info.span)
                     } else {
                         None
                     }
@@ -1377,7 +1377,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
                 if let Some(span) = needs_drop {
                     // Double-check the type being dropped, to minimize false positives.
-                    let ty = place.ty(self.mir, self.tcx).ty;
+                    let ty = place.ty(self.body, self.tcx).ty;
                     if ty.needs_drop(self.tcx, self.param_env) {
                         struct_span_err!(self.tcx.sess, span, E0493,
                                          "destructors cannot be evaluated at compile-time")
@@ -1441,14 +1441,14 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
     // performing the steal.
-    let mir = &tcx.mir_const(def_id).borrow();
+    let body = &tcx.mir_const(def_id).borrow();
 
-    if mir.return_ty().references_error() {
-        tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: MIR had errors");
+    if body.return_ty().references_error() {
+        tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
         return (1 << IsNotPromotable::IDX, tcx.arena.alloc(BitSet::new_empty(0)));
     }
 
-    Checker::new(tcx, def_id, mir, Mode::Const).check_const()
+    Checker::new(tcx, def_id, body, Mode::Const).check_const()
 }
 
 pub struct QualifyAndPromoteConstants;
@@ -1457,10 +1457,10 @@ impl MirPass for QualifyAndPromoteConstants {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           src: MirSource<'tcx>,
-                          mir: &mut Body<'tcx>) {
+                          body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
-        if mir.return_ty().references_error() {
-            tcx.sess.delay_span_bug(mir.span, "QualifyAndPromoteConstants: MIR had errors");
+        if body.return_ty().references_error() {
+            tcx.sess.delay_span_bug(body.span, "QualifyAndPromoteConstants: MIR had errors");
             return;
         }
 
@@ -1493,14 +1493,14 @@ impl MirPass for QualifyAndPromoteConstants {
             // This is ugly because Checker holds onto mir,
             // which can't be mutated until its scope ends.
             let (temps, candidates) = {
-                let mut checker = Checker::new(tcx, def_id, mir, mode);
+                let mut checker = Checker::new(tcx, def_id, body, mode);
                 if mode == Mode::ConstFn {
                     if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
                         checker.check_const();
                     } else if tcx.is_min_const_fn(def_id) {
                         // enforce `min_const_fn` for stable const fns
                         use super::qualify_min_const_fn::is_min_const_fn;
-                        if let Err((span, err)) = is_min_const_fn(tcx, def_id, mir) {
+                        if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
                             let mut diag = struct_span_err!(
                                 tcx.sess,
                                 span,
@@ -1533,12 +1533,12 @@ impl MirPass for QualifyAndPromoteConstants {
             };
 
             // Do the actual promotion, now that we know what's viable.
-            promote_consts::promote_candidates(mir, tcx, temps, candidates);
+            promote_consts::promote_candidates(body, tcx, temps, candidates);
         } else {
-            if !mir.control_flow_destroyed.is_empty() {
-                let mut locals = mir.vars_iter();
+            if !body.control_flow_destroyed.is_empty() {
+                let mut locals = body.vars_iter();
                 if let Some(local) = locals.next() {
-                    let span = mir.local_decls[local].source_info.span;
+                    let span = body.local_decls[local].source_info.span;
                     let mut error = tcx.sess.struct_span_err(
                         span,
                         &format!(
@@ -1547,7 +1547,7 @@ impl MirPass for QualifyAndPromoteConstants {
                             mode,
                         ),
                     );
-                    for (span, kind) in mir.control_flow_destroyed.iter() {
+                    for (span, kind) in body.control_flow_destroyed.iter() {
                         error.span_note(
                             *span,
                             &format!("use of {} here does not actually short circuit due to \
@@ -1557,7 +1557,7 @@ impl MirPass for QualifyAndPromoteConstants {
                         );
                     }
                     for local in locals {
-                        let span = mir.local_decls[local].source_info.span;
+                        let span = body.local_decls[local].source_info.span;
                         error.span_note(
                             span,
                             "more locals defined here",
@@ -1570,14 +1570,14 @@ impl MirPass for QualifyAndPromoteConstants {
                 // Already computed by `mir_const_qualif`.
                 const_promoted_temps.unwrap()
             } else {
-                Checker::new(tcx, def_id, mir, mode).check_const().1
+                Checker::new(tcx, def_id, body, mode).check_const().1
             };
 
             // In `const` and `static` everything without `StorageDead`
             // is `'static`, we don't have to create promoted MIR fragments,
             // just remove `Drop` and `StorageDead` on "promoted" locals.
             debug!("run_pass: promoted_temps={:?}", promoted_temps);
-            for block in mir.basic_blocks_mut() {
+            for block in body.basic_blocks_mut() {
                 block.statements.retain(|statement| {
                     match statement.kind {
                         StatementKind::StorageDead(index) => {
@@ -1612,10 +1612,10 @@ impl MirPass for QualifyAndPromoteConstants {
                     return;
                 }
             }
-            let ty = mir.return_ty();
+            let ty = body.return_ty();
             tcx.infer_ctxt().enter(|infcx| {
                 let param_env = ty::ParamEnv::empty();
-                let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
+                let cause = traits::ObligationCause::new(body.span, id, traits::SharedStatic);
                 let mut fulfillment_cx = traits::FulfillmentContext::new();
                 fulfillment_cx.register_bound(&infcx,
                                               param_env,

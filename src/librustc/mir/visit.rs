@@ -71,8 +71,8 @@ macro_rules! make_mir_visitor {
             // Override these, and call `self.super_xxx` to revert back to the
             // default behavior.
 
-            fn visit_body(&mut self, mir: & $($mutability)? Body<'tcx>) {
-                self.super_body(mir);
+            fn visit_body(&mut self, body: & $($mutability)? Body<'tcx>) {
+                self.super_body(body);
             }
 
             fn visit_basic_block_data(&mut self,
@@ -253,41 +253,41 @@ macro_rules! make_mir_visitor {
             // not meant to be overridden.
 
             fn super_body(&mut self,
-                         mir: & $($mutability)? Body<'tcx>) {
-                if let Some(yield_ty) = &$($mutability)? mir.yield_ty {
+                         body: & $($mutability)? Body<'tcx>) {
+                if let Some(yield_ty) = &$($mutability)? body.yield_ty {
                     self.visit_ty(yield_ty, TyContext::YieldTy(SourceInfo {
-                        span: mir.span,
+                        span: body.span,
                         scope: OUTERMOST_SOURCE_SCOPE,
                     }));
                 }
 
                 // for best performance, we want to use an iterator rather
-                // than a for-loop, to avoid calling `mir::Body::invalidate` for
+                // than a for-loop, to avoid calling `body::Body::invalidate` for
                 // each basic block.
                 macro_rules! basic_blocks {
-                    (mut) => (mir.basic_blocks_mut().iter_enumerated_mut());
-                    () => (mir.basic_blocks().iter_enumerated());
+                    (mut) => (body.basic_blocks_mut().iter_enumerated_mut());
+                    () => (body.basic_blocks().iter_enumerated());
                 };
                 for (bb, data) in basic_blocks!($($mutability)?) {
                     self.visit_basic_block_data(bb, data);
                 }
 
-                for scope in &$($mutability)? mir.source_scopes {
+                for scope in &$($mutability)? body.source_scopes {
                     self.visit_source_scope_data(scope);
                 }
 
-                self.visit_ty(&$($mutability)? mir.return_ty(), TyContext::ReturnTy(SourceInfo {
-                    span: mir.span,
+                self.visit_ty(&$($mutability)? body.return_ty(), TyContext::ReturnTy(SourceInfo {
+                    span: body.span,
                     scope: OUTERMOST_SOURCE_SCOPE,
                 }));
 
-                for local in mir.local_decls.indices() {
-                    self.visit_local_decl(local, & $($mutability)? mir.local_decls[local]);
+                for local in body.local_decls.indices() {
+                    self.visit_local_decl(local, & $($mutability)? body.local_decls[local]);
                 }
 
                 macro_rules! type_annotations {
-                    (mut) => (mir.user_type_annotations.iter_enumerated_mut());
-                    () => (mir.user_type_annotations.iter_enumerated());
+                    (mut) => (body.user_type_annotations.iter_enumerated_mut());
+                    () => (body.user_type_annotations.iter_enumerated());
                 };
 
                 for (index, annotation) in type_annotations!($($mutability)?) {
@@ -296,7 +296,7 @@ macro_rules! make_mir_visitor {
                     );
                 }
 
-                self.visit_span(&$($mutability)? mir.span);
+                self.visit_span(&$($mutability)? body.span);
             }
 
             fn super_basic_block_data(&mut self,
@@ -834,8 +834,8 @@ macro_rules! make_mir_visitor {
 
             // Convenience methods
 
-            fn visit_location(&mut self, mir: & $($mutability)? Body<'tcx>, location: Location) {
-                let basic_block = & $($mutability)? mir[location.block];
+            fn visit_location(&mut self, body: & $($mutability)? Body<'tcx>, location: Location) {
+                let basic_block = & $($mutability)? body[location.block];
                 if basic_block.statements.len() == location.statement_index {
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {
                         self.visit_terminator(terminator, location)

@@ -71,7 +71,7 @@ pub enum Candidate {
 struct TempCollector<'tcx> {
     temps: IndexVec<Local, TempState>,
     span: Span,
-    mir: &'tcx Body<'tcx>,
+    body: &'tcx Body<'tcx>,
 }
 
 impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
@@ -81,7 +81,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
                    location: Location) {
         debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries and the return place
-        match self.mir.local_kind(index) {
+        match self.body.local_kind(index) {
             | LocalKind::Temp
             | LocalKind::ReturnPointer
             => {},
@@ -134,12 +134,12 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
     }
 }
 
-pub fn collect_temps(mir: &Body<'_>,
+pub fn collect_temps(body: &Body<'_>,
                      rpo: &mut ReversePostorder<'_, '_>) -> IndexVec<Local, TempState> {
     let mut collector = TempCollector {
-        temps: IndexVec::from_elem(TempState::Undefined, &mir.local_decls),
-        span: mir.span,
-        mir,
+        temps: IndexVec::from_elem(TempState::Undefined, &body.local_decls),
+        span: body.span,
+        body,
     };
     for (bb, data) in rpo {
         collector.visit_basic_block_data(bb, data);
@@ -369,7 +369,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     }
 }
 
-pub fn promote_candidates<'a, 'tcx>(mir: &mut Body<'tcx>,
+pub fn promote_candidates<'a, 'tcx>(body: &mut Body<'tcx>,
                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     mut temps: IndexVec<Local, TempState>,
                                     candidates: Vec<Candidate>) {
@@ -379,7 +379,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Body<'tcx>,
     for candidate in candidates.into_iter().rev() {
         match candidate {
             Candidate::Ref(Location { block, statement_index }) => {
-                match mir[block].statements[statement_index].kind {
+                match body[block].statements[statement_index].kind {
                     StatementKind::Assign(Place::Base(PlaceBase::Local(local)), _) => {
                         if temps[local] == TempState::PromotedOut {
                             // Already promoted.
@@ -395,7 +395,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Body<'tcx>,
 
         // Declare return place local so that `mir::Body::new` doesn't complain.
         let initial_locals = iter::once(
-            LocalDecl::new_return_place(tcx.types.never, mir.span)
+            LocalDecl::new_return_place(tcx.types.never, body.span)
         ).collect();
 
         let promoter = Promoter {
@@ -403,19 +403,19 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Body<'tcx>,
                 IndexVec::new(),
                 // FIXME: maybe try to filter this to avoid blowing up
                 // memory usage?
-                mir.source_scopes.clone(),
-                mir.source_scope_local_data.clone(),
+                body.source_scopes.clone(),
+                body.source_scope_local_data.clone(),
                 IndexVec::new(),
                 None,
                 initial_locals,
                 IndexVec::new(),
                 0,
                 vec![],
-                mir.span,
+                body.span,
                 vec![],
             ),
             tcx,
-            source: mir,
+            source: body,
             temps: &mut temps,
             keep_original: false
         };
@@ -424,7 +424,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Body<'tcx>,
 
     // Eliminate assignments to, and drops of promoted temps.
     let promoted = |index: Local| temps[index] == TempState::PromotedOut;
-    for block in mir.basic_blocks_mut() {
+    for block in body.basic_blocks_mut() {
         block.statements.retain(|statement| {
             match statement.kind {
                 StatementKind::Assign(Place::Base(PlaceBase::Local(index)), _) |

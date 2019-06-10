@@ -34,7 +34,7 @@ impl MirPass for ConstProp {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource<'tcx>,
-                          mir: &mut Body<'tcx>) {
+                          body: &mut Body<'tcx>) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
             return;
@@ -63,16 +63,16 @@ impl MirPass for ConstProp {
         // constants, instead of just checking for const-folding succeeding.
         // That would require an uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
-        let mut optimization_finder = ConstPropagator::new(mir, tcx, source);
-        optimization_finder.visit_body(mir);
+        let mut optimization_finder = ConstPropagator::new(body, tcx, source);
+        optimization_finder.visit_body(body);
 
         // put back the data we stole from `mir`
         std::mem::replace(
-            &mut mir.source_scope_local_data,
+            &mut body.source_scope_local_data,
             optimization_finder.source_scope_local_data
         );
         std::mem::replace(
-            &mut mir.promoted,
+            &mut body.promoted,
             optimization_finder.promoted
         );
 
@@ -120,19 +120,19 @@ impl<'a, 'b, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'a, 'b, 'tcx> {
 
 impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
     fn new(
-        mir: &mut Body<'tcx>,
+        body: &mut Body<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         source: MirSource<'tcx>,
     ) -> ConstPropagator<'a, 'mir, 'tcx> {
         let param_env = tcx.param_env(source.def_id());
         let ecx = mk_eval_cx(tcx, tcx.def_span(source.def_id()), param_env);
-        let can_const_prop = CanConstProp::check(mir);
+        let can_const_prop = CanConstProp::check(body);
         let source_scope_local_data = std::mem::replace(
-            &mut mir.source_scope_local_data,
+            &mut body.source_scope_local_data,
             ClearCrossCrate::Clear
         );
         let promoted = std::mem::replace(
-            &mut mir.promoted,
+            &mut body.promoted,
             IndexVec::new()
         );
 
@@ -142,10 +142,10 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             source,
             param_env,
             can_const_prop,
-            places: IndexVec::from_elem(None, &mir.local_decls),
+            places: IndexVec::from_elem(None, &body.local_decls),
             source_scope_local_data,
             //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
-            local_decls: mir.local_decls.clone(),
+            local_decls: body.local_decls.clone(),
             promoted,
         }
     }
@@ -315,8 +315,8 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     // cannot use `const_eval` here, because that would require having the MIR
                     // for the current function available, but we're producing said MIR right now
                     let res = self.use_ecx(source_info, |this| {
-                        let mir = &this.promoted[*promoted];
-                        eval_promoted(this.tcx, cid, mir, this.param_env)
+                        let body = &this.promoted[*promoted];
+                        eval_promoted(this.tcx, cid, body, this.param_env)
                     })?;
                     trace!("evaluated promoted {:?} to {:?}", promoted, res);
                     res.into()
@@ -613,10 +613,10 @@ struct CanConstProp {
 
 impl CanConstProp {
     /// returns true if `local` can be propagated
-    fn check(mir: &Body<'_>) -> IndexVec<Local, bool> {
+    fn check(body: &Body<'_>) -> IndexVec<Local, bool> {
         let mut cpv = CanConstProp {
-            can_const_prop: IndexVec::from_elem(true, &mir.local_decls),
-            found_assignment: IndexVec::from_elem(false, &mir.local_decls),
+            can_const_prop: IndexVec::from_elem(true, &body.local_decls),
+            found_assignment: IndexVec::from_elem(false, &body.local_decls),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             // cannot use args at all
@@ -624,13 +624,13 @@ impl CanConstProp {
             //        lint for x != y
             // FIXME(oli-obk): lint variables until they are used in a condition
             // FIXME(oli-obk): lint if return value is constant
-            *val = mir.local_kind(local) == LocalKind::Temp;
+            *val = body.local_kind(local) == LocalKind::Temp;
 
             if !*val {
                 trace!("local {:?} can't be propagated because it's not a temporary", local);
             }
         }
-        cpv.visit_body(mir);
+        cpv.visit_body(body);
         cpv.can_const_prop
     }
 }

@@ -66,7 +66,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'
 
     tcx.infer_ctxt().enter(|infcx| {
         let cx = Cx::new(&infcx, id);
-        let mut mir = if cx.tables().tainted_by_errors {
+        let mut body = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
         } else if cx.body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
@@ -165,19 +165,19 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'
         // Convert the `mir::Body` to global types.
         let mut globalizer = GlobalizeMir {
             tcx,
-            span: mir.span
+            span: body.span
         };
-        globalizer.visit_body(&mut mir);
-        let mir = unsafe {
-            mem::transmute::<Body<'_>, Body<'tcx>>(mir)
+        globalizer.visit_body(&mut body);
+        let body = unsafe {
+            mem::transmute::<Body<'_>, Body<'tcx>>(body)
         };
 
         mir_util::dump_mir(tcx, None, "mir_map", &0,
-                           MirSource::item(def_id), &mir, |_, _| Ok(()) );
+                           MirSource::item(def_id), &body, |_, _| Ok(()) );
 
-        lints::check(tcx, &mir, def_id);
+        lints::check(tcx, &body, def_id);
 
-        mir
+        body
     })
 }
 
@@ -700,9 +700,9 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     info!("fn_id {:?} has attrs {:?}", fn_def_id,
           tcx.get_attrs(fn_def_id));
 
-    let mut mir = builder.finish(yield_ty);
-    mir.spread_arg = spread_arg;
-    mir
+    let mut body = builder.finish(yield_ty);
+    body.spread_arg = spread_arg;
+    body
 }
 
 fn construct_const<'a, 'gcx, 'tcx>(

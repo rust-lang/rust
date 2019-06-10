@@ -10,14 +10,14 @@ use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
 crate fn find<'tcx>(
-    mir: &Body<'tcx>,
+    body: &Body<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
     tcx: TyCtxt<'_, '_, 'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 ) -> Option<Cause> {
     let mut uf = UseFinder {
-        mir,
+        body,
         regioncx,
         tcx,
         region_vid,
@@ -28,7 +28,7 @@ crate fn find<'tcx>(
 }
 
 struct UseFinder<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    mir: &'cx Body<'tcx>,
+    body: &'cx Body<'tcx>,
     regioncx: &'cx Rc<RegionInferenceContext<'tcx>>,
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     region_vid: RegionVid,
@@ -50,7 +50,7 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
                 continue;
             }
 
-            let block_data = &self.mir[p.block];
+            let block_data = &self.body[p.block];
 
             match self.def_use(p, block_data.visitable(p.statement_index)) {
                 Some(DefUseResult::Def) => {}
@@ -87,7 +87,7 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
 
     fn def_use(&self, location: Location, thing: &dyn MirVisitable<'tcx>) -> Option<DefUseResult> {
         let mut visitor = DefUseVisitor {
-            mir: self.mir,
+            body: self.body,
             tcx: self.tcx,
             region_vid: self.region_vid,
             def_use_result: None,
@@ -100,7 +100,7 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
 }
 
 struct DefUseVisitor<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    mir: &'cx Body<'tcx>,
+    body: &'cx Body<'tcx>,
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     region_vid: RegionVid,
     def_use_result: Option<DefUseResult>,
@@ -114,7 +114,7 @@ enum DefUseResult {
 
 impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'gcx, 'tcx> {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
-        let local_ty = self.mir.local_decls[local].ty;
+        let local_ty = self.body.local_decls[local].ty;
 
         let mut found_it = false;
         self.tcx.for_each_free_region(&local_ty, |r| {

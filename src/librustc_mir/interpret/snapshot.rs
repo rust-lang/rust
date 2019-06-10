@@ -316,7 +316,7 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
 }
 
 impl_stable_hash_for!(impl<'mir, 'tcx: 'mir> for struct Frame<'mir, 'tcx> {
-    mir,
+    body,
     instance,
     span,
     return_to_block,
@@ -334,7 +334,7 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         let Frame {
-            mir: _,
+            body: _,
             instance,
             span,
             return_to_block,

@@ -12,17 +12,17 @@ use crate::dataflow::BitDenotation;
 /// immovable generators.
 #[derive(Copy, Clone)]
 pub struct HaveBeenBorrowedLocals<'a, 'tcx: 'a> {
-    mir: &'a Body<'tcx>,
+    body: &'a Body<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
-    pub fn new(mir: &'a Body<'tcx>)
+    pub fn new(body: &'a Body<'tcx>)
                -> Self {
-        HaveBeenBorrowedLocals { mir }
+        HaveBeenBorrowedLocals { body }
     }
 
-    pub fn mir(&self) -> &Body<'tcx> {
-        self.mir
+    pub fn body(&self) -> &Body<'tcx> {
+        self.body
     }
 }
 
@@ -30,7 +30,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
     type Idx = Local;
     fn name() -> &'static str { "has_been_borrowed_locals" }
     fn bits_per_block(&self) -> usize {
-        self.mir.local_decls.len()
+        self.body.local_decls.len()
     }
 
     fn start_block_effect(&self, _sets: &mut BitSet<Local>) {
@@ -40,7 +40,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
     fn statement_effect(&self,
                         sets: &mut BlockSets<'_, Local>,
                         loc: Location) {
-        let stmt = &self.mir[loc.block].statements[loc.statement_index];
+        let stmt = &self.body[loc.block].statements[loc.statement_index];
 
         BorrowedLocalsVisitor {
             sets,
@@ -56,7 +56,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
     fn terminator_effect(&self,
                          sets: &mut BlockSets<'_, Local>,
                          loc: Location) {
-        let terminator = self.mir[loc.block].terminator();
+        let terminator = self.body[loc.block].terminator();
         BorrowedLocalsVisitor {
             sets,
         }.visit_terminator(terminator, loc);

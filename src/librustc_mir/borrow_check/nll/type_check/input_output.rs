@@ -20,7 +20,7 @@ use super::{Locations, TypeChecker};
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         universal_regions: &UniversalRegions<'tcx>,
         normalized_inputs_and_output: &[Ty<'tcx>],
     ) {
@@ -43,7 +43,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     // user-provided signature (e.g., the `_` in the code
                     // above) with fresh variables.
                     let (poly_sig, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
-                        mir.span,
+                        body.span,
                         &user_provided_poly_sig,
                     );
 
@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     Some(
                         self.infcx
                             .replace_bound_vars_with_fresh_vars(
-                                mir.span,
+                                body.span,
                                 LateBoundRegionConversionTime::FnCall,
                                 &poly_sig,
                             )
@@ -73,8 +73,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 normalized_input_ty
             );
 
-            let mir_input_ty = mir.local_decls[local].ty;
-            let mir_input_span = mir.local_decls[local].source_info.span;
+            let mir_input_ty = body.local_decls[local].ty;
+            let mir_input_span = body.local_decls[local].source_info.span;
             self.equate_normalized_input_or_output(
                 normalized_input_ty,
                 mir_input_ty,
@@ -89,8 +89,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // In MIR, closures begin an implicit `self`, so
                 // argument N is stored in local N+2.
                 let local = Local::new(argument_index + 2);
-                let mir_input_ty = mir.local_decls[local].ty;
-                let mir_input_span = mir.local_decls[local].source_info.span;
+                let mir_input_ty = body.local_decls[local].ty;
+                let mir_input_span = body.local_decls[local].source_info.span;
 
                 // If the user explicitly annotated the input types, enforce those.
                 let user_provided_input_ty =
@@ -104,19 +104,19 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
 
         assert!(
-            mir.yield_ty.is_some() && universal_regions.yield_ty.is_some()
-                || mir.yield_ty.is_none() && universal_regions.yield_ty.is_none()
+            body.yield_ty.is_some() && universal_regions.yield_ty.is_some()
+                || body.yield_ty.is_none() && universal_regions.yield_ty.is_none()
         );
-        if let Some(mir_yield_ty) = mir.yield_ty {
+        if let Some(mir_yield_ty) = body.yield_ty {
             let ur_yield_ty = universal_regions.yield_ty.unwrap();
-            let yield_span = mir.local_decls[RETURN_PLACE].source_info.span;
+            let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
             self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty, yield_span);
         }
 
         // Return types are a bit more complex. They may contain existential `impl Trait`
         // types.
-        let mir_output_ty = mir.local_decls[RETURN_PLACE].ty;
-        let output_span = mir.local_decls[RETURN_PLACE].source_info.span;
+        let mir_output_ty = body.local_decls[RETURN_PLACE].ty;
+        let output_span = body.local_decls[RETURN_PLACE].source_info.span;
         if let Err(terr) = self.eq_opaque_type_and_type(
             mir_output_ty,
             normalized_output_ty,

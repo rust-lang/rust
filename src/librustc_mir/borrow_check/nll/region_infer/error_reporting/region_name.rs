@@ -152,7 +152,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn give_region_a_name(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         upvars: &[Upvar],
         mir_def_id: DefId,
         fr: RegionVid,
@@ -165,7 +165,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let value = self.give_name_from_error_region(infcx.tcx, mir_def_id, fr, counter)
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_arguments(
-                    infcx, mir, mir_def_id, fr, counter,
+                    infcx, body, mir_def_id, fr, counter,
                 )
             })
             .or_else(|| {
@@ -175,12 +175,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_output(
-                    infcx, mir, mir_def_id, fr, counter,
+                    infcx, body, mir_def_id, fr, counter,
                 )
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_yield_ty(
-                    infcx, mir, mir_def_id, fr, counter,
+                    infcx, body, mir_def_id, fr, counter,
                 )
             });
 
@@ -332,7 +332,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_anonymous_region_appears_in_arguments(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
@@ -344,7 +344,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.universal_regions.unnormalized_input_tys[implicit_inputs + argument_index];
         if let Some(region_name) = self.give_name_if_we_can_match_hir_ty_from_argument(
             infcx,
-            mir,
+            body,
             mir_def_id,
             fr,
             arg_ty,
@@ -354,13 +354,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return Some(region_name);
         }
 
-        self.give_name_if_we_cannot_match_hir_ty(infcx, mir, fr, arg_ty, counter)
+        self.give_name_if_we_cannot_match_hir_ty(infcx, body, fr, arg_ty, counter)
     }
 
     fn give_name_if_we_can_match_hir_ty_from_argument(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         mir_def_id: DefId,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
@@ -376,7 +376,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // must highlight the variable.
             hir::TyKind::Infer => self.give_name_if_we_cannot_match_hir_ty(
                 infcx,
-                mir,
+                body,
                 needle_fr,
                 argument_ty,
                 counter,
@@ -406,7 +406,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_we_cannot_match_hir_ty(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
         counter: &mut usize,
@@ -422,7 +422,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let assigned_region_name = if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
             let argument_index = self.get_argument_index_for_region(infcx.tcx, needle_fr)?;
-            let (_, span) = self.get_argument_name_and_span_for_region(mir, argument_index);
+            let (_, span) = self.get_argument_name_and_span_for_region(body, argument_index);
 
             Some(RegionName {
                 // This counter value will already have been used, so this function will increment
@@ -676,7 +676,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_anonymous_region_appears_in_output(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
@@ -717,7 +717,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 node: hir::ImplItemKind::Method(method_sig, _),
                 ..
             }) => (method_sig.decl.output.span(), ""),
-            _ => (mir.span, ""),
+            _ => (body.span, ""),
         };
 
         Some(RegionName {
@@ -736,7 +736,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_anonymous_region_appears_in_yield_ty(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Body<'tcx>,
+        body: &Body<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
@@ -768,7 +768,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }) => (
                 tcx.sess.source_map().end_point(*span)
             ),
-            _ => mir.span,
+            _ => body.span,
         };
 
         debug!(
