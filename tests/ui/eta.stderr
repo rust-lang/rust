@@ -12,12 +12,6 @@ error: redundant closure found
 LL |     meta(|a| foo(a));
    |          ^^^^^^^^^^ help: remove closure as shown: `foo`
 
-error: redundant closure found
-  --> $DIR/eta.rs:23:27
-   |
-LL |     let c = Some(1u8).map(|a| {1+2; foo}(a));
-   |                           ^^^^^^^^^^^^^^^^^ help: remove closure as shown: `{1+2; foo}`
-
 error: this expression borrows a reference that is immediately dereferenced by the compiler
   --> $DIR/eta.rs:25:21
    |
@@ -71,12 +65,6 @@ LL |     let e: std::vec::Vec<char> = vec!['a', 'b', 'c'].iter().map(|c| c.to_as
    |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove closure as shown: `char::to_ascii_uppercase`
 
 error: redundant closure found
-  --> $DIR/eta.rs:108:50
-   |
-LL |     let _: Vec<_> = arr.iter().map(|x| x.map_err(|e| some.take().unwrap()(e))).collect();
-   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove closure as shown: `some.take().unwrap()`
-
-error: redundant closure found
   --> $DIR/eta.rs:173:27
    |
 LL |     let a = Some(1u8).map(|a| foo_ptr(a));
@@ -88,5 +76,5 @@ error: redundant closure found
 LL |     let a = Some(1u8).map(|a| closure(a));
    |                           ^^^^^^^^^^^^^^ help: remove closure as shown: `closure`
 
-error: aborting due to 14 previous errors
+error: aborting due to 12 previous errors
 
