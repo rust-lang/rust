@@ -69,8 +69,7 @@ fn parse_float<'tcx>(
 ) -> Result<ConstValue<'tcx>, ()> {
     let num = num.as_str();
     use rustc_apfloat::ieee::{Single, Double};
-    use rustc_apfloat::Float;
-    let (data, size) = match fty {
+    let scalar = match fty {
         ast::FloatTy::F32 => {
             num.parse::<f32>().map_err(|_| ())?;
             let mut f = num.parse::<Single>().unwrap_or_else(|e| {
@@ -79,19 +78,19 @@ fn parse_float<'tcx>(
             if neg {
                 f = -f;
             }
-            (f.to_bits(), 4)
+            Scalar::from_f32(f)
         }
         ast::FloatTy::F64 => {
             num.parse::<f64>().map_err(|_| ())?;
             let mut f = num.parse::<Double>().unwrap_or_else(|e| {
-                panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
+                panic!("apfloat::ieee::Double failed to parse `{}`: {:?}", num, e)
             });
             if neg {
                 f = -f;
             }
-            (f.to_bits(), 8)
+            Scalar::from_f64(f)
         }
     };
 
-    Ok(ConstValue::Scalar(Scalar::from_uint(data, Size::from_bytes(size))))
+    Ok(ConstValue::Scalar(scalar))
 }
