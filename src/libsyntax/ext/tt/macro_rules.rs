@@ -1,8 +1,8 @@
 use crate::{ast, attr};
 use crate::edition::Edition;
-use crate::ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
-use crate::ext::base::{NormalTT, TTMacroExpander};
+use crate::ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension, TTMacroExpander};
 use crate::ext::expand::{AstFragment, AstFragmentKind};
+use crate::ext::hygiene::Transparency;
 use crate::ext::tt::macro_parser::{Success, Error, Failure};
 use crate::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use crate::ext::tt::macro_parser::{parse, parse_failure_msg};
@@ -374,65 +374,65 @@ pub fn compile(
         valid,
     });
 
-    if body.legacy {
-        let allow_internal_unstable = attr::find_by_name(&def.attrs, sym::allow_internal_unstable)
-            .map(|attr| attr
-                .meta_item_list()
-                .map(|list| list.iter()
-                    .filter_map(|it| {
-                        let name = it.ident().map(|ident| ident.name);
-                        if name.is_none() {
-                            sess.span_diagnostic.span_err(it.span(),
-                                "allow internal unstable expects feature names")
-                        }
-                        name
-                    })
-                    .collect::<Vec<Symbol>>().into()
-                )
-                .unwrap_or_else(|| {
-                    sess.span_diagnostic.span_warn(
-                        attr.span, "allow_internal_unstable expects list of feature names. In the \
-                        future this will become a hard error. Please use `allow_internal_unstable(\
-                        foo, bar)` to only allow the `foo` and `bar` features",
-                    );
-                    vec![sym::allow_internal_unstable_backcompat_hack].into()
-                })
-            );
-        let allow_internal_unsafe = attr::contains_name(&def.attrs, sym::allow_internal_unsafe);
-        let mut local_inner_macros = false;
-        if let Some(macro_export) = attr::find_by_name(&def.attrs, sym::macro_export) {
-            if let Some(l) = macro_export.meta_item_list() {
-                local_inner_macros = attr::list_contains_name(&l, sym::local_inner_macros);
-            }
-        }
-
-        let unstable_feature = attr::find_stability(&sess,
-                                                    &def.attrs, def.span).and_then(|stability| {
-            if let attr::StabilityLevel::Unstable { issue, .. } = stability.level {
-                Some((stability.feature, issue))
-            } else {
-                None
-            }
-        });
-
-        NormalTT {
-            expander,
-            def_info: Some((def.id, def.span)),
-            allow_internal_unstable,
-            allow_internal_unsafe,
-            local_inner_macros,
-            unstable_feature,
-            edition,
-        }
+    let transparency = if attr::contains_name(&def.attrs, sym::rustc_transparent_macro) {
+        Transparency::Transparent
+    } else if body.legacy {
+        Transparency::SemiTransparent
     } else {
-        let is_transparent = attr::contains_name(&def.attrs, sym::rustc_transparent_macro);
+        Transparency::Opaque
+    };
 
-        SyntaxExtension::DeclMacro {
-            expander,
-            def_info: Some((def.id, def.span)),
-            is_transparent,
-            edition,
+    let allow_internal_unstable = attr::find_by_name(&def.attrs, sym::allow_internal_unstable)
+        .map(|attr| attr
+            .meta_item_list()
+            .map(|list| list.iter()
+                .filter_map(|it| {
+                    let name = it.ident().map(|ident| ident.name);
+                    if name.is_none() {
+                        sess.span_diagnostic.span_err(it.span(),
+                            "allow internal unstable expects feature names")
+                    }
+                    name
+                })
+                .collect::<Vec<Symbol>>().into()
+            )
+            .unwrap_or_else(|| {
+                sess.span_diagnostic.span_warn(
+                    attr.span, "allow_internal_unstable expects list of feature names. In the \
+                    future this will become a hard error. Please use `allow_internal_unstable(\
+                    foo, bar)` to only allow the `foo` and `bar` features",
+                );
+                vec![sym::allow_internal_unstable_backcompat_hack].into()
+            })
+        );
+
+    let allow_internal_unsafe = attr::contains_name(&def.attrs, sym::allow_internal_unsafe);
+
+    let mut local_inner_macros = false;
+    if let Some(macro_export) = attr::find_by_name(&def.attrs, sym::macro_export) {
+        if let Some(l) = macro_export.meta_item_list() {
+            local_inner_macros = attr::list_contains_name(&l, sym::local_inner_macros);
         }
+    }
+
+    let unstable_feature = attr::find_stability(&sess,
+                                                &def.attrs, def.span).and_then(|stability| {
+        if let attr::StabilityLevel::Unstable { issue, .. } = stability.level {
+            Some((stability.feature, issue))
+        } else {
+            None
+        }
+    });
+
+    SyntaxExtension::LegacyBang {
+        expander,
+        def_info: Some((def.id, def.span)),
+        transparency,
+        allow_internal_unstable,
+        allow_internal_unsafe,
+        local_inner_macros,
+        unstable_feature,
+        edition,
     }
 }
 

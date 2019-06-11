@@ -471,7 +471,7 @@ fn build_macro(cx: &DocContext<'_>, did: DefId, name: ast::Name) -> clean::ItemE
         }
         LoadedMacro::ProcMacro(ext) => {
             let helpers = match &*ext {
-                &SyntaxExtension::ProcMacroDerive(_, ref syms, ..) => { syms.clean(cx) }
+                &SyntaxExtension::Derive(_, ref syms, ..) => { syms.clean(cx) }
                 _ => Vec::new(),
             };
 
