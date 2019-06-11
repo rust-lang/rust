@@ -4000,11 +4000,11 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// let mut s = String::from("Grüße, Jürgen ❤");
+    /// let mut s = String::from("GRÜßE, JÜRGEN ❤");
     ///
     /// s.make_ascii_lowercase();
     ///
-    /// assert_eq!("grüße, jürgen ❤", s);
+    /// assert_eq!("grÜße, jÜrgen ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     pub fn make_ascii_lowercase(&mut self) {
