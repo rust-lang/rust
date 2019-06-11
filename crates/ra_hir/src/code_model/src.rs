@@ -16,7 +16,7 @@ pub trait HasSource {
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<Self::Ast>;
 }
 
-/// NB: Module is !HasSource, becase it has two source nodes at the same time:
+/// NB: Module is !HasSource, because it has two source nodes at the same time:
 /// definition and declaration.
 impl Module {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.

@@ -2,7 +2,7 @@ use std::{collections::HashSet, time::Instant, fmt::Write};
 
 use ra_db::SourceDatabase;
 use ra_batch::BatchDatabase;
-use ra_hir::{Crate, ModuleDef, Ty, ImplItem};
+use ra_hir::{Crate, ModuleDef, Ty, ImplItem, HasSource};
 use ra_syntax::AstNode;
 
 use crate::Result;
@@ -64,10 +64,10 @@ pub fn run(verbose: bool, path: &str, only: Option<&str>) -> Result<()> {
         let name = f.name(&db);
         let mut msg = format!("processing: {}", name);
         if verbose {
-            let (file_id, source) = f.source(&db);
-            let original_file = file_id.original_file(&db);
+            let src = f.source(&db);
+            let original_file = src.file_id.original_file(&db);
             let path = db.file_relative_path(original_file);
-            let syntax_range = source.syntax().range();
+            let syntax_range = src.ast.syntax().range();
             write!(msg, " ({:?} {})", path, syntax_range).unwrap();
         }
         bar.set_message(&msg);
