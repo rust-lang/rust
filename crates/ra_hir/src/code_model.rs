@@ -528,6 +528,13 @@ pub struct EnumVariant {
     pub(crate) id: EnumVariantId,
 }
 
+impl HasSource for EnumVariant {
+    type Ast = TreeArc<ast::EnumVariant>;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::EnumVariant>> {
+        self.source_impl(db)
+    }
+}
+
 impl EnumVariant {
     pub fn source(
         &self,
@@ -886,12 +893,16 @@ pub struct Trait {
     pub(crate) id: TraitId,
 }
 
+impl HasSource for Trait {
+    type Ast = TreeArc<ast::TraitDef>;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::TraitDef>> {
+        self.id.source(db).into()
+    }
+}
+
 impl Trait {
-    pub fn source(
-        self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, TreeArc<ast::TraitDef>) {
-        self.id.source(db)
+    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::TraitDef>> {
+        self.id.source(db).into()
     }
 
     pub fn module(self, db: &impl DefDatabase) -> Module {

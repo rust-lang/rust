@@ -124,16 +124,10 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                     hir::ModuleDef::Struct(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::Union(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::Enum(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::EnumVariant(it) => {
-                        let src = it.source(db);
-                        res.extend(hover_text(src.ast.doc_comment_text(), src.ast.short_label()))
-                    }
+                    hir::ModuleDef::EnumVariant(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::Const(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::Static(it) => res.extend(from_def_source(db, it)),
-                    hir::ModuleDef::Trait(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
+                    hir::ModuleDef::Trait(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::TypeAlias(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::BuiltinType(_) => {
                         // FIXME: hover for builtin Type ?

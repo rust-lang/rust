@@ -110,7 +110,7 @@ fn resolve_target_trait_def(
         impl_block.target_trait().map(AstNode::syntax).and_then(ast::PathType::cast)?.path()?;
 
     match analyzer.resolve_path(db, &ast_path) {
-        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).1),
+        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).ast),
         _ => None,
     }
 }

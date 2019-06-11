@@ -214,24 +214,8 @@ impl NavigationTarget {
             hir::ModuleDef::Union(it) => NavigationTarget::from_adt_def(db, it.into()),
             hir::ModuleDef::Const(it) => NavigationTarget::from_def_source(db, it),
             hir::ModuleDef::Static(it) => NavigationTarget::from_def_source(db, it),
-            hir::ModuleDef::EnumVariant(var) => {
-                let src = var.source(db);
-                NavigationTarget::from_named(
-                    src.file_id.original_file(db),
-                    &*src.ast,
-                    src.ast.doc_comment_text(),
-                    src.ast.short_label(),
-                )
-            }
-            hir::ModuleDef::Trait(e) => {
-                let (file_id, node) = e.source(db);
-                NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                    node.doc_comment_text(),
-                    node.short_label(),
-                )
-            }
+            hir::ModuleDef::EnumVariant(it) => NavigationTarget::from_def_source(db, it),
+            hir::ModuleDef::Trait(it) => NavigationTarget::from_def_source(db, it),
             hir::ModuleDef::TypeAlias(it) => NavigationTarget::from_def_source(db, it),
             hir::ModuleDef::BuiltinType(..) => {
                 return None;
