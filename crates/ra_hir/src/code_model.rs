@@ -31,6 +31,11 @@ impl<T> From<(HirFileId, T)> for Source<T> {
     }
 }
 
+pub trait HasSource {
+    type Ast;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<Self::Ast>;
+}
+
 /// hir::Crate describes a single crate. It's the main interface with which
 /// a crate's dependencies interact. Mostly, it should be just a proxy for the
 /// root module.
@@ -364,6 +369,13 @@ pub struct Struct {
     pub(crate) id: StructId,
 }
 
+impl HasSource for Struct {
+    type Ast = TreeArc<ast::StructDef>;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
+        self.id.source(db).into()
+    }
+}
+
 impl Struct {
     pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
         self.id.source(db).into()
@@ -422,6 +434,13 @@ pub struct Union {
     pub(crate) id: StructId,
 }
 
+impl HasSource for Union {
+    type Ast = TreeArc<ast::StructDef>;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
+        self.id.source(db).into()
+    }
+}
+
 impl Union {
     pub fn source(
         self,
@@ -453,6 +472,13 @@ impl Union {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Enum {
     pub(crate) id: EnumId,
+}
+
+impl HasSource for Enum {
+    type Ast = TreeArc<ast::EnumDef>;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::EnumDef>> {
+        self.id.source(db).into()
+    }
 }
 
 impl Enum {

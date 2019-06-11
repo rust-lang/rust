@@ -1,6 +1,6 @@
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    SyntaxNode, AstNode, SmolStr, TextRange, AstPtr,
+    SyntaxNode, AstNode, SmolStr, TextRange, AstPtr, TreeArc,
     SyntaxKind::{self, NAME},
     ast::{self, DocCommentsOwner},
     algo::visit::{visitor, Visitor},
@@ -186,35 +186,25 @@ impl NavigationTarget {
         }
     }
 
+    pub(crate) fn from_def_source<A, D>(db: &RootDatabase, def: D) -> NavigationTarget
+    where
+        D: hir::HasSource<Ast = TreeArc<A>>,
+        A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
+    {
+        let src = def.source(db);
+        NavigationTarget::from_named(
+            src.file_id.original_file(db),
+            &*src.ast,
+            src.ast.doc_comment_text(),
+            src.ast.short_label(),
+        )
+    }
+
     pub(crate) fn from_adt_def(db: &RootDatabase, adt_def: hir::AdtDef) -> NavigationTarget {
         match adt_def {
-            hir::AdtDef::Struct(s) => {
-                let src = s.source(db);
-                NavigationTarget::from_named(
-                    src.file_id.original_file(db),
-                    &*src.ast,
-                    src.ast.doc_comment_text(),
-                    src.ast.short_label(),
-                )
-            }
-            hir::AdtDef::Union(s) => {
-                let (file_id, node) = s.source(db);
-                NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                    node.doc_comment_text(),
-                    node.short_label(),
-                )
-            }
-            hir::AdtDef::Enum(s) => {
-                let src = s.source(db);
-                NavigationTarget::from_named(
-                    src.file_id.original_file(db),
-                    &*src.ast,
-                    src.ast.doc_comment_text(),
-                    src.ast.short_label(),
-                )
-            }
+            hir::AdtDef::Struct(it) => NavigationTarget::from_def_source(db, it),
+            hir::AdtDef::Union(it) => NavigationTarget::from_def_source(db, it),
+            hir::AdtDef::Enum(it) => NavigationTarget::from_def_source(db, it),
         }
     }
 
