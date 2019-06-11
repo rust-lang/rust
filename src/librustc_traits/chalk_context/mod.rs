@@ -575,7 +575,7 @@ impl ExClauseFold<'tcx> for ChalkArenas<'tcx> {
         }
     }
 
-    fn visit_ex_clause_with<'gcx: 'tcx, V: TypeVisitor<'tcx>>(
+    fn visit_ex_clause_with<V: TypeVisitor<'tcx>>(
         ex_clause: &ExClause<Self>,
         visitor: &mut V,
     ) -> bool {
