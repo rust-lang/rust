@@ -48,8 +48,8 @@ impl HasSource for ImplBlock {
     type Ast = TreeArc<ast::ImplBlock>;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ImplBlock>> {
         let source_map = db.impls_in_module_with_source_map(self.module).1;
-        let (file_id, source) = self.module.definition_source(db);
-        (file_id, source_map.get(&source, self.impl_id)).into()
+        let src = self.module.definition_source(db);
+        (src.file_id, source_map.get(&src.ast, self.impl_id)).into()
     }
 }
 
@@ -69,8 +69,8 @@ impl ImplBlock {
     /// Returns the syntax of the impl block
     pub fn source(&self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ImplBlock>> {
         let source_map = db.impls_in_module_with_source_map(self.module).1;
-        let (file_id, source) = self.module.definition_source(db);
-        (file_id, source_map.get(&source, self.impl_id)).into()
+        let src = self.module.definition_source(db);
+        (src.file_id, source_map.get(&src.ast, self.impl_id)).into()
     }
 
     pub fn id(&self) -> ImplId {
@@ -207,8 +207,8 @@ impl ModuleImplBlocks {
             impls_by_def: FxHashMap::default(),
         };
 
-        let (file_id, module_source) = m.module.definition_source(db);
-        let node = match &module_source {
+        let src = m.module.definition_source(db);
+        let node = match &src.ast {
             ModuleSource::SourceFile(node) => node.syntax(),
             ModuleSource::Module(node) => {
                 node.item_list().expect("inline module should have item list").syntax()
@@ -216,7 +216,7 @@ impl ModuleImplBlocks {
         };
 
         for impl_block_ast in node.children().filter_map(ast::ImplBlock::cast) {
-            let impl_block = ImplData::from_ast(db, file_id, m.module, impl_block_ast);
+            let impl_block = ImplData::from_ast(db, src.file_id, m.module, impl_block_ast);
             let id = m.impls.alloc(impl_block);
             for &impl_item in &m.impls[id].items {
                 m.impls_by_def.insert(impl_item, id);

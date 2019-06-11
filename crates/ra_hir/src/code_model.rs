@@ -196,16 +196,13 @@ impl Module {
     }
 
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(
-        self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, ModuleSource) {
+    pub fn definition_source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ModuleSource> {
         let def_map = db.crate_def_map(self.krate);
         let decl_id = def_map[self.module_id].declaration;
         let file_id = def_map[self.module_id].definition;
         let module_source = ModuleSource::new(db, file_id, decl_id);
         let file_id = file_id.map(HirFileId::from).unwrap_or_else(|| decl_id.unwrap().file_id());
-        (file_id, module_source)
+        (file_id, module_source).into()
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
@@ -226,9 +223,9 @@ impl Module {
         db: &impl HirDatabase,
         import: ImportId,
     ) -> Either<TreeArc<ast::UseTree>, TreeArc<ast::ExternCrateItem>> {
-        let (file_id, source) = self.definition_source(db);
-        let (_, source_map) = db.raw_items_with_source_map(file_id);
-        source_map.get(&source, import)
+        let src = self.definition_source(db);
+        let (_, source_map) = db.raw_items_with_source_map(src.file_id);
+        source_map.get(&src.ast, import)
     }
 
     /// Returns the crate this module is part of.

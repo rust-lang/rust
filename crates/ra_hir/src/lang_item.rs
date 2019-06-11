@@ -84,7 +84,7 @@ impl LangItems {
     ) {
         // Look for impl targets
         let (impl_blocks, source_map) = db.impls_in_module_with_source_map(module.clone());
-        let source = module.definition_source(db).1;
+        let source = module.definition_source(db).ast;
         for (impl_id, _) in impl_blocks.impls.iter() {
             let impl_block = source_map.get(&source, impl_id);
             let lang_item_name = impl_block

@@ -129,10 +129,10 @@ impl NavigationTarget {
     }
 
     pub(crate) fn from_module(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
-        let (file_id, source) = module.definition_source(db);
-        let file_id = file_id.as_original_file();
+        let src = module.definition_source(db);
+        let file_id = src.file_id.as_original_file();
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
-        match source {
+        match src.ast {
             ModuleSource::SourceFile(node) => {
                 NavigationTarget::from_syntax(file_id, name, None, node.syntax(), None, None)
             }

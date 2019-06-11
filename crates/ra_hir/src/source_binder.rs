@@ -97,13 +97,13 @@ pub fn struct_from_module(
     module: Module,
     struct_def: &ast::StructDef,
 ) -> Struct {
-    let (file_id, _) = module.definition_source(db);
+    let file_id = module.definition_source(db).file_id;
     let ctx = LocationCtx::new(db, module, file_id);
     Struct { id: ctx.to_def(struct_def) }
 }
 
 pub fn enum_from_module(db: &impl HirDatabase, module: Module, enum_def: &ast::EnumDef) -> Enum {
-    let (file_id, _) = module.definition_source(db);
+    let file_id = module.definition_source(db).file_id;
     let ctx = LocationCtx::new(db, module, file_id);
     Enum { id: ctx.to_def(enum_def) }
 }
@@ -113,7 +113,7 @@ pub fn trait_from_module(
     module: Module,
     trait_def: &ast::TraitDef,
 ) -> Trait {
-    let (file_id, _) = module.definition_source(db);
+    let file_id = module.definition_source(db).file_id;
     let ctx = LocationCtx::new(db, module, file_id);
     Trait { id: ctx.to_def(trait_def) }
 }

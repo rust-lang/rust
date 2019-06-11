@@ -115,8 +115,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             Some(Def(it)) => {
                 match it {
                     hir::ModuleDef::Module(it) => {
-                        let it = it.definition_source(db).1;
-                        if let hir::ModuleSource::Module(it) = it {
+                        if let hir::ModuleSource::Module(it) = it.definition_source(db).ast {
                             res.extend(hover_text(it.doc_comment_text(), it.short_label()))
                         }
                     }
