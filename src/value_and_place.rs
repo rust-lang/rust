@@ -20,40 +20,40 @@ fn codegen_field<'a, 'tcx: 'a>(
 
 /// A read-only value
 #[derive(Debug, Copy, Clone)]
-pub enum CValue<'tcx> {
-    ByRef(Value, TyLayout<'tcx>),
-    ByVal(Value, TyLayout<'tcx>),
-    ByValPair(Value, Value, TyLayout<'tcx>),
+pub struct CValue<'tcx>(CValueInner, TyLayout<'tcx>);
+
+#[derive(Debug, Copy, Clone)]
+enum CValueInner {
+    ByRef(Value),
+    ByVal(Value),
+    ByValPair(Value, Value),
 }
 
 impl<'tcx> CValue<'tcx> {
     pub fn by_ref(value: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
-        CValue::ByRef(value, layout)
+        CValue(CValueInner::ByRef(value), layout)
     }
 
     pub fn by_val(value: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
-        CValue::ByVal(value, layout)
+        CValue(CValueInner::ByVal(value), layout)
     }
 
     pub fn by_val_pair(value: Value, extra: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
-        CValue::ByValPair(value, extra, layout)
+        CValue(CValueInner::ByValPair(value, extra), layout)
     }
 
     pub fn layout(&self) -> TyLayout<'tcx> {
-        match *self {
-            CValue::ByRef(_, layout)
-            | CValue::ByVal(_, layout)
-            | CValue::ByValPair(_, _, layout) => layout,
-        }
+        self.1
     }
 
     pub fn force_stack<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value
     where
         'tcx: 'a,
     {
-        match self {
-            CValue::ByRef(value, _layout) => value,
-            CValue::ByVal(value, layout) => {
+        let layout = self.1;
+        match self.0 {
+            CValueInner::ByRef(value) => value,
+            CValueInner::ByVal(value) => {
                 let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
                     kind: StackSlotKind::ExplicitSlot,
                     size: layout.size.bytes() as u32,
@@ -63,7 +63,7 @@ impl<'tcx> CValue<'tcx> {
                 fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
                 addr
             }
-            CValue::ByValPair(value, extra, layout) => {
+            CValueInner::ByValPair(value, extra) => {
                 let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
                     kind: StackSlotKind::ExplicitSlot,
                     size: layout.size.bytes() as u32,
@@ -84,8 +84,9 @@ impl<'tcx> CValue<'tcx> {
     where
         'tcx: 'a,
     {
-        match self {
-            CValue::ByRef(addr, layout) => {
+        let layout = self.1;
+        match self.0 {
+            CValueInner::ByRef(addr) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref scalar) => scalar.clone(),
                     _ => unreachable!(),
@@ -93,8 +94,8 @@ impl<'tcx> CValue<'tcx> {
                 let clif_ty = scalar_to_clif_type(fx.tcx, scalar);
                 fx.bcx.ins().load(clif_ty, MemFlags::new(), addr, 0)
             }
-            CValue::ByVal(value, _layout) => value,
-            CValue::ByValPair(_, _, _layout) => bug!("Please use load_scalar_pair for ByValPair"),
+            CValueInner::ByVal(value) => value,
+            CValueInner::ByValPair(_, _) => bug!("Please use load_scalar_pair for ByValPair"),
         }
     }
 
@@ -103,8 +104,9 @@ impl<'tcx> CValue<'tcx> {
     where
         'tcx: 'a,
     {
-        match self {
-            CValue::ByRef(addr, layout) => {
+        let layout = self.1;
+        match self.0 {
+            CValueInner::ByRef(addr) => {
                 let (a, b) = match &layout.abi {
                     layout::Abi::ScalarPair(a, b) => (a.clone(), b.clone()),
                     _ => unreachable!(),
@@ -120,8 +122,8 @@ impl<'tcx> CValue<'tcx> {
                 );
                 (val1, val2)
             }
-            CValue::ByVal(_, _layout) => bug!("Please use load_scalar for ByVal"),
-            CValue::ByValPair(val1, val2, _layout) => (val1, val2),
+            CValueInner::ByVal(_) => bug!("Please use load_scalar for ByVal"),
+            CValueInner::ByValPair(val1, val2) => (val1, val2),
         }
     }
 
@@ -133,13 +135,14 @@ impl<'tcx> CValue<'tcx> {
     where
         'tcx: 'a,
     {
-        let (base, layout) = match self {
-            CValue::ByRef(addr, layout) => (addr, layout),
+        let layout = self.1;
+        let base = match self.0 {
+            CValueInner::ByRef(addr) => addr,
             _ => bug!("place_field for {:?}", self),
         };
 
         let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
-        CValue::ByRef(field_ptr, field_layout)
+        CValue::by_ref(field_ptr, field_layout)
     }
 
     pub fn unsize_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
@@ -156,15 +159,11 @@ impl<'tcx> CValue<'tcx> {
     {
         let clif_ty = fx.clif_type(ty).unwrap();
         let layout = fx.layout_of(ty);
-        CValue::ByVal(fx.bcx.ins().iconst(clif_ty, const_val), layout)
+        CValue::by_val(fx.bcx.ins().iconst(clif_ty, const_val), layout)
     }
 
     pub fn unchecked_cast_to(self, layout: TyLayout<'tcx>) -> Self {
-        match self {
-            CValue::ByRef(addr, _) => CValue::ByRef(addr, layout),
-            CValue::ByVal(val, _) => CValue::ByVal(val, layout),
-            CValue::ByValPair(val, extra, _) => CValue::ByValPair(val, extra, layout),
-        }
+        CValue(self.0, layout)
     }
 }
 
@@ -229,16 +228,16 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
     pub fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CValue<'tcx> {
         match self {
-            CPlace::Var(var, layout) => CValue::ByVal(fx.bcx.use_var(mir_var(var)), layout),
+            CPlace::Var(var, layout) => CValue::by_val(fx.bcx.use_var(mir_var(var)), layout),
             CPlace::Addr(addr, extra, layout) => {
                 assert!(extra.is_none(), "unsized values are not yet supported");
-                CValue::ByRef(addr, layout)
+                CValue::by_ref(addr, layout)
             }
-            CPlace::Stack(stack_slot, layout) => CValue::ByRef(
+            CPlace::Stack(stack_slot, layout) => CValue::by_ref(
                 fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0),
                 layout,
             ),
-            CPlace::NoPlace(layout) => CValue::ByRef(
+            CPlace::NoPlace(layout) => CValue::by_ref(
                 fx.bcx
                     .ins()
                     .iconst(fx.pointer_type, fx.pointer_type.bytes() as i64),
@@ -353,24 +352,25 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             CPlace::Addr(_, _, _) => bug!("Can't write value to unsized place {:?}", self),
         };
 
-        match from {
-            CValue::ByVal(val, _src_layout) => {
+        match from.0 {
+            CValueInner::ByVal(val) => {
                 fx.bcx.ins().store(MemFlags::new(), val, addr, 0);
             }
-            CValue::ByValPair(val1, val2, _src_layout) => {
+            CValueInner::ByValPair(val1, val2) => {
                 let val1_offset = dst_layout.fields.offset(0).bytes() as i32;
                 let val2_offset = dst_layout.fields.offset(1).bytes() as i32;
                 fx.bcx.ins().store(MemFlags::new(), val1, addr, val1_offset);
                 fx.bcx.ins().store(MemFlags::new(), val2, addr, val2_offset);
             }
-            CValue::ByRef(from, src_layout) => {
+            CValueInner::ByRef(from_addr) => {
+                let src_layout = from.1;
                 let size = dst_layout.size.bytes();
                 let src_align = src_layout.align.abi.bytes() as u8;
                 let dst_align = dst_layout.align.abi.bytes() as u8;
                 fx.bcx.emit_small_memcpy(
                     fx.module.target_config(),
                     addr,
-                    from,
+                    from_addr,
                     size,
                     dst_align,
                     src_align,
@@ -446,7 +446,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
     pub fn write_place_ref(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
         if !self.layout().is_unsized() {
-            let ptr = CValue::ByVal(self.to_addr(fx), dest.layout());
+            let ptr = CValue::by_val(self.to_addr(fx), dest.layout());
             dest.write_cvalue(fx, ptr);
         } else {
             let (value, extra) = self.to_addr_maybe_unsized(fx);
