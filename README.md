@@ -130,9 +130,9 @@ build.
 
 MSVC builds of Rust additionally require an installation of Visual Studio 2017
 (or later) so `rustc` can use its linker.  The simplest way is to get the
-[Visual Studio Build Tools] and check the “C++ build tools” workload.
+[Visual Studio], check the “C++ build tools” and “Windows 10 SDK” workload.
 
-[Visual Studio Build Tools]: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019
+[Visual Studio]: https://visualstudio.microsoft.com/downloads/
 
 (If you're installing cmake yourself, be careful that “C++ CMake tools for
 Windows” doesn't get included under “Individual components”.)
