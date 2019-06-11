@@ -482,8 +482,8 @@ mod prim_pointer { }
 /// an array. Indeed, this provides most of the API for working with arrays.
 /// Slices have a dynamic size and do not coerce to arrays.
 ///
-/// There is no way to move elements out of an array. See [`mem::replace`][replace]
-/// for an alternative.
+/// You can move elements out of an array with a slice pattern. If you want
+/// one element, see [`mem::replace`][replace].
 ///
 /// # Examples
 ///
@@ -523,6 +523,16 @@ mod prim_pointer { }
 /// ```
 /// # let array: [i32; 3] = [0; 3];
 /// for x in &array { }
+/// ```
+///
+/// You can use a slice pattern to move elements out of an array:
+///
+/// ```
+/// fn move_away(_: String) { /* Do interesting things. */ }
+///
+/// let [john, roa] = ["John".to_string(), "Roa".to_string()];
+/// move_away(john);
+/// move_away(roa);
 /// ```
 ///
 /// [slice]: primitive.slice.html
