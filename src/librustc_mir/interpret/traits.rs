@@ -4,7 +4,7 @@ use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic};
 
 use super::{InterpretCx, InterpError, Machine, MemoryKind};
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
     /// objects.
     ///

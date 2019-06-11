@@ -39,7 +39,7 @@ struct CallSite<'tcx> {
 
 impl MirPass for Inline {
     fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           source: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
@@ -48,12 +48,12 @@ impl MirPass for Inline {
     }
 }
 
-struct Inliner<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct Inliner<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     source: MirSource<'tcx>,
 }
 
-impl<'a, 'tcx> Inliner<'a, 'tcx> {
+impl Inliner<'tcx> {
     fn run_pass(&self, caller_body: &mut Body<'tcx>) {
         // Keep a queue of callsites to try inlining on. We take
         // advantage of the fact that queries detect cycles here to
@@ -631,7 +631,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
     }
 }
 
-fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>) -> Option<u64> {
     tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())

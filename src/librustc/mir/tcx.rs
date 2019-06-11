@@ -33,7 +33,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     /// not carry a `Ty` for `T`.)
     ///
     /// Note that the resulting type has not been normalized.
-    pub fn field_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, f: &Field) -> Ty<'tcx>
+    pub fn field_ty(self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>, f: &Field) -> Ty<'tcx>
     {
         let answer = match self.ty.sty {
             ty::Adt(adt_def, substs) => {
@@ -57,7 +57,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     /// Convenience wrapper around `projection_ty_core` for
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
-    pub fn projection_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub fn projection_ty(self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                          elem: &PlaceElem<'tcx>)
                          -> PlaceTy<'tcx>
     {
@@ -71,7 +71,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     /// (which should be trivial when `T` = `Ty`).
     pub fn projection_ty_core<V, T>(
         self,
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         elem: &ProjectionElem<V, T>,
         mut handle_field: impl FnMut(&Self, &Field, &T) -> Ty<'tcx>)
         -> PlaceTy<'tcx>
@@ -121,7 +121,7 @@ BraceStructTypeFoldableImpl! {
 }
 
 impl<'tcx> Place<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PlaceTy<'tcx>
+    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> PlaceTy<'tcx>
         where D: HasLocalDecls<'tcx>
     {
         match *self {
@@ -141,7 +141,7 @@ pub enum RvalueInitializationState {
 }
 
 impl<'tcx> Rvalue<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
+    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Ty<'tcx>
         where D: HasLocalDecls<'tcx>
     {
         match *self {
@@ -222,7 +222,7 @@ impl<'tcx> Rvalue<'tcx> {
 }
 
 impl<'tcx> Operand<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
+    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Ty<'tcx>
         where D: HasLocalDecls<'tcx>
     {
         match self {
@@ -234,7 +234,7 @@ impl<'tcx> Operand<'tcx> {
 }
 
 impl<'tcx> BinOp {
-      pub fn ty<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
+      pub fn ty<'a, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                           lhs_ty: Ty<'tcx>,
                           rhs_ty: Ty<'tcx>)
                           -> Ty<'tcx> {

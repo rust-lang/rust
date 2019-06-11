@@ -5,6 +5,7 @@
 #![deny(internal)]
 #![deny(unused_lifetimes)]
 
+#![feature(in_band_lifetimes)]
 #![feature(nll)]
 
 #![recursion_limit="256"]

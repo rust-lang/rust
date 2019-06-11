@@ -288,7 +288,7 @@ impl HirNode for hir::Pat {
 
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     pub body_owner: DefId,
     pub upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     pub region_scope_tree: &'a region::ScopeTree,
@@ -400,7 +400,7 @@ impl MutabilityCategory {
 }
 
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn new(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                body_owner: DefId,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,

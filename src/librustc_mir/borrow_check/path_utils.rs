@@ -24,7 +24,7 @@ pub(super) enum Control {
 /// Encapsulates the idea of iterating over every borrow that involves a particular path
 pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     s: &mut S,
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     body: &Body<'tcx>,
     _location: Location,
     access_place: (AccessDepth, &Place<'tcx>),

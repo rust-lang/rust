@@ -10,7 +10,7 @@ use crate::util::patch::MirPatch;
 pub struct RemoveNoopLandingPads;
 
 pub fn remove_noop_landing_pads<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     body: &mut Body<'tcx>)
 {
     if tcx.sess.no_landing_pads() {
@@ -23,7 +23,7 @@ pub fn remove_noop_landing_pads<'a, 'tcx>(
 
 impl MirPass for RemoveNoopLandingPads {
     fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         remove_noop_landing_pads(tcx, body);

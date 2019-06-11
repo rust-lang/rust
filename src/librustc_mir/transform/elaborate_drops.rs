@@ -22,7 +22,7 @@ pub struct ElaborateDrops;
 
 impl MirPass for ElaborateDrops {
     fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           src: MirSource<'tcx>,
                           body: &mut Body<'tcx>)
     {
@@ -78,7 +78,7 @@ impl MirPass for ElaborateDrops {
 /// to not be reachable, because they are `drop` terminators
 /// that can't drop anything.
 fn find_dead_unwinds<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     body: &Body<'tcx>,
     def_id: hir::def_id::DefId,
     env: &MoveDataParamEnv<'tcx, 'tcx>)
@@ -142,7 +142,7 @@ struct InitializationData {
 
 impl InitializationData {
     fn apply_location<'a,'tcx>(&mut self,
-                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                               tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                body: &Body<'tcx>,
                                env: &MoveDataParamEnv<'tcx, 'tcx>,
                                loc: Location)
@@ -190,7 +190,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         self.ctxt.body
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx, 'tcx> {
         self.ctxt.tcx
     }
 
@@ -290,7 +290,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
 }
 
 struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     body: &'a Body<'tcx>,
     env: &'a MoveDataParamEnv<'tcx, 'tcx>,
     flow_inits: DataflowResults<'tcx, MaybeInitializedPlaces<'a, 'tcx, 'tcx>>,

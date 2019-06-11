@@ -39,7 +39,7 @@ fn numeric_intrinsic<'tcx, Tag>(
     Ok(Scalar::from_uint(bits_out, size))
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
     pub fn emulate_intrinsic(
         &mut self,

@@ -327,7 +327,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
 }
 
 pub struct PatternContext<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub tables: &'a ty::TypeckTables<'tcx>,
     pub substs: SubstsRef<'tcx>,
@@ -335,7 +335,7 @@ pub struct PatternContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Pattern<'tcx> {
-    pub fn from_hir(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn from_hir(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                     param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
                     tables: &'a ty::TypeckTables<'tcx>,
                     pat: &'tcx hir::Pat) -> Self {
@@ -351,7 +351,7 @@ impl<'a, 'tcx> Pattern<'tcx> {
 }
 
 impl<'a, 'tcx> PatternContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn new(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
                tables: &'a ty::TypeckTables<'tcx>) -> Self {
         PatternContext {
@@ -1055,7 +1055,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 }
 
 impl UserAnnotatedTyHelpers<'tcx, 'tcx> for PatternContext<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'_, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx, 'tcx> {
         self.tcx
     }
 
@@ -1243,7 +1243,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
 }
 
 pub fn compare_const_vals<'a, 'gcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
     ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,

@@ -11,13 +11,13 @@ use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashSet;
 
-struct ClauseVisitor<'set, 'a, 'tcx: 'a + 'set> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    round: &'set mut FxHashSet<Clause<'tcx>>,
+struct ClauseVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    round: &'a mut FxHashSet<Clause<'tcx>>,
 }
 
-impl ClauseVisitor<'set, 'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, round: &'set mut FxHashSet<Clause<'tcx>>) -> Self {
+impl ClauseVisitor<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, round: &'a mut FxHashSet<Clause<'tcx>>) -> Self {
         ClauseVisitor {
             tcx,
             round,
@@ -128,7 +128,7 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
 }
 
 crate fn program_clauses_for_env<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     environment: Environment<'tcx>,
 ) -> Clauses<'tcx> {
     debug!("program_clauses_for_env(environment={:?})", environment);
@@ -161,7 +161,7 @@ crate fn program_clauses_for_env<'a, 'tcx>(
 }
 
 crate fn environment<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId
 ) -> Environment<'tcx> {
     use super::{Lower, IntoFromEnvGoal};

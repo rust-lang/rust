@@ -69,7 +69,7 @@ pub fn specialized_encode_alloc_id<
     E: Encoder,
 >(
     encoder: &mut E,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     alloc_id: AllocId,
 ) -> Result<(), E::Error> {
     let alloc: GlobalAlloc<'tcx> =
@@ -150,8 +150,7 @@ impl<'s> AllocDecodingSession<'s> {
     pub fn decode_alloc_id<'a, 'tcx, D>(&self,
                                         decoder: &mut D)
                                         -> Result<AllocId, D::Error>
-        where D: TyDecoder<'a, 'tcx>,
-              'tcx: 'a,
+        where D: TyDecoder<'tcx>,
     {
         // Read the index of the allocation
         let idx = decoder.read_u32()? as usize;

@@ -39,7 +39,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                                   def_id: DefId)
                                                   -> bool
 {
@@ -51,7 +51,7 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.rvalue_promotable_map(def_id).contains(&body_id.hir_id.local_id)
 }
 
-fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                    def_id: DefId)
                                    -> &'tcx ItemLocalSet
 {
@@ -81,7 +81,7 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     in_fn: bool,
     in_static: bool,
     mut_rvalue_borrows: HirIdSet,

@@ -13,7 +13,7 @@ pub struct InstCombine;
 
 impl MirPass for InstCombine {
     fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           _: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         // We only run when optimizing MIR (at any level).
@@ -63,14 +63,14 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
 }
 
 /// Finds optimization opportunities on the MIR.
-struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
+struct OptimizationFinder<'b, 'tcx> {
     body: &'b Body<'tcx>,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     optimizations: OptimizationList<'tcx>,
 }
 
-impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
-    fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> OptimizationFinder<'b, 'a, 'tcx> {
+impl OptimizationFinder<'b, 'tcx> {
+    fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> OptimizationFinder<'b, 'tcx> {
         OptimizationFinder {
             body,
             tcx,
@@ -79,7 +79,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
     }
 }
 
-impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
+impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::Ref(_, _, Place::Projection(ref projection)) = *rvalue {
             if let ProjectionElem::Deref = projection.elem {

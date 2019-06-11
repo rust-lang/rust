@@ -39,7 +39,7 @@ impl<'tcx> IsPrefixOf<'tcx> for Place<'tcx> {
 
 pub(super) struct Prefixes<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     body: &'cx Body<'tcx>,
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     kind: PrefixSet,
     next: Option<&'cx Place<'tcx>>,
 }

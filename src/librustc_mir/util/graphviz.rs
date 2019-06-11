@@ -8,7 +8,7 @@ use std::io::{self, Write};
 use super::pretty::dump_mir_def_ids;
 
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
+pub fn write_mir_graphviz<'tcx, W>(tcx: TyCtxt<'tcx, '_, 'tcx>,
                                    single: Option<DefId>,
                                    w: &mut W)
                                    -> io::Result<()>
@@ -32,7 +32,7 @@ pub fn graphviz_safe_def_name(def_id: DefId) -> String {
 }
 
 /// Write a graphviz DOT graph of the MIR.
-pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
+pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'tcx, '_, 'tcx>,
                                       def_id: DefId,
                                       body: &Body<'_>,
                                       w: &mut W) -> io::Result<()>
@@ -133,7 +133,7 @@ fn write_edges<W: Write>(source: BasicBlock, body: &Body<'_>, w: &mut W) -> io::
 /// Write the graphviz DOT label for the overall graph. This is essentially a block of text that
 /// will appear below the graph, showing the type of the `fn` this MIR represents and the types of
 /// all the variables and temporaries.
-fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                                def_id: DefId,
                                                body: &Body<'_>,
                                                w: &mut W)

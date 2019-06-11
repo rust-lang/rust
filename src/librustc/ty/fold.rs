@@ -156,7 +156,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
 /// identity fold, it should invoke `foo.fold_with(self)` to fold each
 /// sub-item.
 pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'gcx, 'tcx>;
 
     fn fold_binder<T>(&mut self, t: &Binder<T>) -> Binder<T>
         where T : TypeFoldable<'tcx>
@@ -198,23 +198,23 @@ pub trait TypeVisitor<'tcx> : Sized {
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
-pub struct BottomUpFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F, G, H>
+pub struct BottomUpFolder<'gcx, 'tcx, F, G, H>
     where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
           G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
           H: FnMut(&'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx>,
 {
-    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     pub ty_op: F,
     pub lt_op: G,
     pub ct_op: H,
 }
 
-impl<'a, 'gcx, 'tcx, F, G, H> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'a, 'gcx, 'tcx, F, G, H>
+impl<'gcx, 'tcx, F, G, H> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'gcx, 'tcx, F, G, H>
     where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
           G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
           H: FnMut(&'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx>,
 {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx, 'gcx, 'tcx> { self.tcx }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let t = ty.super_fold_with(self);
@@ -235,7 +235,7 @@ impl<'a, 'gcx, 'tcx, F, G, H> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'a, 'gcx
 ///////////////////////////////////////////////////////////////////////////
 // Region folder
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     /// Collects the free and escaping regions in `value` into `region_set`. Returns
     /// whether any late-bound regions were skipped
     pub fn collect_regions<T>(self,
@@ -362,7 +362,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 /// visited by `fld_r`.
 
 pub struct RegionFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     skipped_regions: &'a mut bool,
 
     /// Stores the index of a binder *just outside* the stuff we have
@@ -382,7 +382,7 @@ pub struct RegionFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> RegionFolder<'a, 'gcx, 'tcx> {
     #[inline]
     pub fn new(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         skipped_regions: &'a mut bool,
         fold_region_fn: &'a mut dyn FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
     ) -> RegionFolder<'a, 'gcx, 'tcx> {
@@ -396,7 +396,7 @@ impl<'a, 'gcx, 'tcx> RegionFolder<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFolder<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx, 'gcx, 'tcx> { self.tcx }
 
     fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
         self.current_index.shift_in(1);
@@ -427,7 +427,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFolder<'a, 'gcx, 'tcx> {
 
 /// Replaces the escaping bound vars (late bound regions or bound types) in a type.
 struct BoundVarReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
 
     /// As with `RegionFolder`, represents the index of a binder *just outside*
     /// the ones we have visited.
@@ -440,7 +440,7 @@ struct BoundVarReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> BoundVarReplacer<'a, 'gcx, 'tcx> {
     fn new<F, G, H>(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         fld_r: &'a mut F,
         fld_t: &'a mut G,
         fld_c: &'a mut H,
@@ -460,7 +460,7 @@ impl<'a, 'gcx, 'tcx> BoundVarReplacer<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx, 'gcx, 'tcx> { self.tcx }
 
     fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
         self.current_index.shift_in(1);
@@ -542,7 +542,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx>
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     /// Replaces all regions bound by the given `Binder` with the
     /// results returned by the closure; the closure is expected to
     /// return a free region (relative to this binder), and hence the
@@ -722,15 +722,15 @@ enum Direction {
     Out,
 }
 
-struct Shifter<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+struct Shifter<'gcx, 'tcx> {
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     current_index: ty::DebruijnIndex,
     amount: u32,
     direction: Direction,
 }
 
-impl Shifter<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, amount: u32, direction: Direction) -> Self {
+impl Shifter<'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx, 'gcx, 'tcx>, amount: u32, direction: Direction) -> Self {
         Shifter {
             tcx,
             current_index: ty::INNERMOST,
@@ -740,8 +740,8 @@ impl Shifter<'a, 'gcx, 'tcx> {
     }
 }
 
-impl TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
+impl TypeFolder<'gcx, 'tcx> for Shifter<'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx, 'gcx, 'tcx> { self.tcx }
 
     fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
         self.current_index.shift_in(1);
@@ -818,7 +818,7 @@ impl TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
 }
 
 pub fn shift_region<'a, 'gcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     region: ty::Region<'tcx>,
     amount: u32
 ) -> ty::Region<'tcx> {
@@ -833,7 +833,7 @@ pub fn shift_region<'a, 'gcx, 'tcx>(
 }
 
 pub fn shift_vars<'a, 'gcx, 'tcx, T>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     value: &T,
     amount: u32
 ) -> T where T: TypeFoldable<'tcx> {
@@ -844,7 +844,7 @@ pub fn shift_vars<'a, 'gcx, 'tcx, T>(
 }
 
 pub fn shift_out_vars<'a, 'gcx, 'tcx, T>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     value: &T,
     amount: u32
 ) -> T where T: TypeFoldable<'tcx> {

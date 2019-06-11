@@ -552,8 +552,8 @@ impl<'tcx> TypeVisitor<'tcx> for OpaqueTypeOutlivesVisitor<'_, '_, 'tcx>
     }
 }
 
-struct ReverseMapper<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+struct ReverseMapper<'gcx, 'tcx> {
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
 
     /// If errors have already been reported in this fn, we suppress
     /// our own errors because they are sometimes derivative.
@@ -567,9 +567,9 @@ struct ReverseMapper<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     hidden_ty: Option<Ty<'tcx>>,
 }
 
-impl<'cx, 'gcx, 'tcx> ReverseMapper<'cx, 'gcx, 'tcx> {
+impl ReverseMapper<'gcx, 'tcx> {
     fn new(
-        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         tainted_by_errors: bool,
         opaque_type_def_id: DefId,
         map: FxHashMap<Kind<'tcx>, Kind<'gcx>>,
@@ -599,8 +599,8 @@ impl<'cx, 'gcx, 'tcx> ReverseMapper<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
+impl TypeFolder<'gcx, 'tcx> for ReverseMapper<'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
         self.tcx
     }
 

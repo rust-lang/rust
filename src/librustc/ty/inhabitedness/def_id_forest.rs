@@ -32,7 +32,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
     /// Creates a forest consisting of a single tree representing the entire
     /// crate.
     #[inline]
-    pub fn full(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest {
+    pub fn full(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> DefIdForest {
         let crate_id = tcx.hir().local_def_id(CRATE_NODE_ID);
         DefIdForest::from_id(crate_id)
     }
@@ -53,14 +53,14 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
 
     /// Tests whether the forest contains a given DefId.
     pub fn contains(&self,
-                    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                     id: DefId) -> bool
     {
         self.root_ids.iter().any(|root_id| tcx.is_descendant_of(id, *root_id))
     }
 
     /// Calculate the intersection of a collection of forests.
-    pub fn intersection<I>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub fn intersection<I>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                            iter: I) -> DefIdForest
             where I: IntoIterator<Item=DefIdForest>
     {
@@ -97,7 +97,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
     }
 
     /// Calculate the union of a collection of forests.
-    pub fn union<I>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub fn union<I>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                     iter: I) -> DefIdForest
             where I: IntoIterator<Item=DefIdForest>
     {

@@ -519,11 +519,11 @@ enum FfiResult<'tcx> {
     },
 }
 
-fn is_zst<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, did: DefId, ty: Ty<'tcx>) -> bool {
+fn is_zst<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, did: DefId, ty: Ty<'tcx>) -> bool {
     tcx.layout_of(tcx.param_env(did).and(ty)).map(|layout| layout.is_zst()).unwrap_or(false)
 }
 
-fn ty_is_known_nonnull<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+fn ty_is_known_nonnull<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
@@ -555,7 +555,7 @@ fn ty_is_known_nonnull<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> b
 /// to function pointers, references, core::num::NonZero*,
 /// core::ptr::NonNull, and #[repr(transparent)] newtypes.
 /// FIXME: This duplicates code in codegen.
-fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                   ty: Ty<'tcx>,
                                   ty_def: &'tcx ty::AdtDef,
                                   substs: SubstsRef<'tcx>)

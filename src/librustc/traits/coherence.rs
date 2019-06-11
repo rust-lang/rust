@@ -49,7 +49,7 @@ pub fn add_placeholder_note(err: &mut errors::DiagnosticBuilder<'_>) {
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, invokes `no_overlap`.
 pub fn overlapping_impls<'gcx, F1, F2, R>(
-    tcx: TyCtxt<'_, 'gcx, 'gcx>,
+    tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     intercrate_mode: IntercrateMode,
@@ -183,7 +183,7 @@ fn overlap_within_probe(
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }
 
-pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                              trait_ref: ty::TraitRef<'tcx>)
                                              -> Option<Conflict>
 {
@@ -229,7 +229,7 @@ pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     }
 }
 
-pub fn trait_ref_is_local_or_fundamental<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+pub fn trait_ref_is_local_or_fundamental<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                                          trait_ref: ty::TraitRef<'tcx>)
                                                          -> bool {
     trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, sym::fundamental)
@@ -246,7 +246,7 @@ pub enum OrphanCheckErr<'tcx> {
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
-pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                     impl_def_id: DefId)
                                     -> Result<(), OrphanCheckErr<'tcx>>
 {

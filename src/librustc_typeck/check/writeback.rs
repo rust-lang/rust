@@ -123,7 +123,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
         self.fcx.tcx
     }
 
@@ -789,7 +789,7 @@ impl Locatable for hir::HirId {
 // unresolved types and so forth.
 
 struct Resolver<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
     span: &'cx dyn Locatable,
     body: &'gcx hir::Body,
@@ -819,7 +819,7 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
 }
 
 impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
         self.tcx
     }
 

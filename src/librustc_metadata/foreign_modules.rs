@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::middle::cstore::ForeignModule;
 use rustc::ty::TyCtxt;
 
-pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<ForeignModule> {
+pub fn collect<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Vec<ForeignModule> {
     let mut collector = Collector {
         tcx,
         modules: Vec::new(),
@@ -12,12 +12,12 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<ForeignModule> {
     return collector.modules
 }
 
-struct Collector<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct Collector<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     modules: Vec<ForeignModule>,
 }
 
-impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
+impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item) {
         let fm = match it.node {
             hir::ItemKind::ForeignMod(ref fm) => fm,

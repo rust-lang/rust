@@ -109,7 +109,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
 
     fn write_compressed_metadata<'b, 'gcx>(
         &self,
-        tcx: TyCtxt<'b, 'gcx, 'gcx>,
+        tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
         metadata: &EncodedMetadata,
         llvm_module: &mut ModuleLlvm
     ) {
@@ -117,7 +117,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     }
     fn codegen_allocator<'b, 'gcx>(
         &self,
-        tcx: TyCtxt<'b, 'gcx, 'gcx>,
+        tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
         mods: &mut ModuleLlvm,
         kind: AllocatorKind
     ) {
@@ -125,7 +125,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     }
     fn compile_codegen_unit<'a, 'tcx: 'a>(
         &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         cgu_name: InternedString,
     ) {
         base::compile_codegen_unit(tcx, cgu_name);
@@ -286,7 +286,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn codegen_crate<'b, 'tcx>(
         &self,
-        tcx: TyCtxt<'b, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
         rx: mpsc::Receiver<Box<dyn Any + Send>>

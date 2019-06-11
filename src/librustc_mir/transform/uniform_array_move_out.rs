@@ -38,7 +38,7 @@ pub struct UniformArrayMoveOut;
 
 impl MirPass for UniformArrayMoveOut {
     fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         let mut patch = MirPatch::new(body);
@@ -53,7 +53,7 @@ impl MirPass for UniformArrayMoveOut {
 struct UniformArrayMoveOutVisitor<'a, 'tcx: 'a> {
     body: &'a Body<'tcx>,
     patch: &'a mut MirPatch<'tcx>,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
@@ -163,7 +163,7 @@ pub struct RestoreSubsliceArrayMoveOut;
 
 impl MirPass for RestoreSubsliceArrayMoveOut {
     fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         let mut patch = MirPatch::new(body);

@@ -456,7 +456,7 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
 
 
 struct TypedAnnotation<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     tables: Cell<&'a ty::TypeckTables<'tcx>>,
 }
 
@@ -618,7 +618,7 @@ impl UserIdentifiedItem {
 }
 
 fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
-                                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                        code: blocks::Code<'tcx>,
                                        mode: PpFlowGraphMode,
                                        mut out: W)
@@ -866,7 +866,7 @@ pub fn print_after_hir_lowering<'tcx>(
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     ppm: PpMode,
     uii: Option<UserIdentifiedItem>,
     ofile: Option<&Path>

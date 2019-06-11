@@ -122,7 +122,7 @@ impl LocalsStateAtExit {
 
 impl<'tcx> BorrowSet<'tcx> {
     pub fn build(
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'tcx, '_, 'tcx>,
         body: &Body<'tcx>,
         locals_are_invalidated_at_exit: bool,
         move_data: &MoveData<'tcx>
@@ -162,7 +162,7 @@ impl<'tcx> BorrowSet<'tcx> {
 }
 
 struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     body: &'a Body<'tcx>,
     idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,

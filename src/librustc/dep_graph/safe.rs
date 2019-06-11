@@ -33,7 +33,7 @@ impl DepGraphSafe for DefId {
 
 /// The type context itself can be used to access all kinds of tracked
 /// state, but those accesses should always generate read events.
-impl<'a, 'gcx, 'tcx> DepGraphSafe for TyCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> DepGraphSafe for TyCtxt<'tcx, 'gcx, 'tcx> {
 }
 
 /// Tuples make it easy to build up state.

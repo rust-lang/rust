@@ -775,12 +775,12 @@ impl Ord for TraitInfo {
 }
 
 /// Retrieves all traits in this crate and any dependent crates.
-pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<TraitInfo> {
+pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Vec<TraitInfo> {
     tcx.all_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
 }
 
 /// Computes all traits in this crate and any dependent crates.
-fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId> {
+fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Vec<DefId> {
     use hir::itemlikevisit;
 
     let mut traits = vec![];
@@ -855,16 +855,16 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     }
 }
 
-struct UsePlacementFinder<'a, 'tcx: 'a, 'gcx: 'tcx> {
+struct UsePlacementFinder<'tcx, 'gcx> {
     target_module: hir::HirId,
     span: Option<Span>,
     found_use: bool,
-    tcx: TyCtxt<'a, 'gcx, 'tcx>
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx, 'gcx> UsePlacementFinder<'a, 'tcx, 'gcx> {
+impl UsePlacementFinder<'tcx, 'gcx> {
     fn check(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         krate: &'tcx hir::Crate,
         target_module: hir::HirId,
     ) -> (Option<Span>, bool) {
@@ -879,7 +879,7 @@ impl<'a, 'tcx, 'gcx> UsePlacementFinder<'a, 'tcx, 'gcx> {
     }
 }
 
-impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, 'tcx, 'gcx> {
+impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx, 'gcx> {
     fn visit_mod(
         &mut self,
         module: &'tcx hir::Mod,

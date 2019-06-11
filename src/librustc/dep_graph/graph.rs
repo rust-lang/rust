@@ -604,7 +604,7 @@ impl DepGraph {
     /// Try to mark a dep-node which existed in the previous compilation session as green.
     fn try_mark_previous_green<'tcx>(
         &self,
-        tcx: TyCtxt<'_, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         data: &DepGraphData,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode
@@ -791,7 +791,7 @@ impl DepGraph {
     #[inline(never)]
     fn emit_diagnostics<'tcx>(
         &self,
-        tcx: TyCtxt<'_, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         data: &DepGraphData,
         dep_node_index: DepNodeIndex,
         did_allocation: bool,
@@ -842,7 +842,7 @@ impl DepGraph {
     //
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
-    pub fn exec_cache_promotions<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    pub fn exec_cache_promotions<'a, 'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
         let green_nodes: Vec<DepNode> = {
             let data = self.data.as_ref().unwrap();
             data.colors.values.indices().filter_map(|prev_index| {

@@ -46,7 +46,7 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType]) -> SymbolExpor
     }
 }
 
-fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                              cnum: CrateNum)
                                              -> &'tcx DefIdMap<SymbolExportLevel>
 {
@@ -157,7 +157,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.arena.alloc(reachable_non_generics)
 }
 
-fn is_reachable_non_generic_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn is_reachable_non_generic_provider_local<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                                      def_id: DefId)
                                                      -> bool {
     let export_threshold = threshold(tcx);
@@ -169,13 +169,13 @@ fn is_reachable_non_generic_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     }
 }
 
-fn is_reachable_non_generic_provider_extern<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn is_reachable_non_generic_provider_extern<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                                       def_id: DefId)
                                                       -> bool {
     tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
 }
 
-fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                              cnum: CrateNum)
                                              -> Arc<Vec<(ExportedSymbol<'tcx>,
                                                          SymbolExportLevel)>>
@@ -279,7 +279,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn upstream_monomorphizations_provider<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     cnum: CrateNum)
     -> &'tcx DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>>
 {
@@ -329,7 +329,7 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
 }
 
 fn upstream_monomorphizations_for_provider<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId)
     -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>>
 {

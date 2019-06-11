@@ -7,7 +7,7 @@ use super::*;
 
 pub struct AutoTraitFinder<'a, 'tcx> {
     pub cx: &'a core::DocContext<'tcx>,
-    pub f: auto_trait::AutoTraitFinder<'a, 'tcx>,
+    pub f: auto_trait::AutoTraitFinder<'tcx>,
 }
 
 impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
@@ -315,7 +315,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
     fn extract_for_generics<'b, 'c, 'd>(
         &self,
-        tcx: TyCtxt<'b, 'c, 'd>,
+        tcx: TyCtxt<'d, 'c, 'd>,
         pred: ty::Predicate<'d>,
     ) -> FxHashSet<GenericParamDef> {
         pred.walk_tys()
@@ -450,7 +450,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // * We explcitly add a '?Sized' bound if we didn't find any 'Sized' predicates for a type
     fn param_env_to_generics<'b, 'c, 'cx>(
         &self,
-        tcx: TyCtxt<'b, 'c, 'cx>,
+        tcx: TyCtxt<'cx, 'c, 'cx>,
         param_env_def_id: DefId,
         param_env: ty::ParamEnv<'cx>,
         mut existing_predicates: Vec<WherePredicate>,
@@ -791,11 +791,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 // Replaces all ReVars in a type with ty::Region's, using the provided map
 struct RegionReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
         self.tcx
     }
 

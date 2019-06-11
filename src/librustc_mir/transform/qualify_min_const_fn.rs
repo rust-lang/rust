@@ -9,7 +9,7 @@ use syntax_pos::Span;
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
 pub fn is_min_const_fn(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId,
     body: &'a Body<'tcx>,
 ) -> McfResult {
@@ -80,7 +80,7 @@ pub fn is_min_const_fn(
 }
 
 fn check_ty(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     ty: Ty<'tcx>,
     span: Span,
     fn_def_id: DefId,
@@ -129,7 +129,7 @@ fn check_ty(
 }
 
 fn check_rvalue(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     body: &'a Body<'tcx>,
     rvalue: &Rvalue<'tcx>,
     span: Span,
@@ -209,7 +209,7 @@ fn check_rvalue(
 }
 
 fn check_statement(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     body: &'a Body<'tcx>,
     statement: &Statement<'tcx>,
 ) -> McfResult {
@@ -279,7 +279,7 @@ fn check_place(
 }
 
 fn check_terminator(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     body: &'a Body<'tcx>,
     terminator: &Terminator<'tcx>,
 ) -> McfResult {
@@ -375,7 +375,7 @@ fn check_terminator(
 /// for being called from stable `const fn`s (`min_const_fn`).
 ///
 /// Adding more intrinsics requires sign-off from @rust-lang/lang.
-fn is_intrinsic_whitelisted(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> bool {
     match &tcx.item_name(def_id).as_str()[..] {
         | "size_of"
         | "min_align_of"

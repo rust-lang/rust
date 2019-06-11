@@ -212,7 +212,7 @@ pub trait CrateStore {
 
     // utility functions
     fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                 tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }

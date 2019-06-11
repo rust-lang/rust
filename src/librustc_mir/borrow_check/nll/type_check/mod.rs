@@ -391,7 +391,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
         self.cx.infcx.tcx
     }
 
@@ -1313,7 +1313,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -2504,7 +2504,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn prove_closure_bounds(
         &mut self,
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
         location: Location,

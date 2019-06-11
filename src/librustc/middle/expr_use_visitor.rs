@@ -267,7 +267,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
     ///
     /// See also `with_infer`, which is used *during* typeck.
     pub fn new(delegate: &'a mut (dyn Delegate<'tcx>+'a),
-               tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                body_owner: DefId,
                param_env: ty::ParamEnv<'tcx>,
                region_scope_tree: &'a region::ScopeTree,
@@ -333,7 +333,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         self.consume_expr(&body.value);
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
         self.mc.tcx
     }
 

@@ -41,7 +41,7 @@ use rustc_data_structures::fx::FxHashSet;
 pub struct PathSeg(pub DefId, pub usize);
 
 pub trait AstConv<'gcx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'gcx, 'tcx>;
 
     /// Returns the set of bounds in scope for the type parameter with
     /// the given id.
@@ -462,7 +462,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
     ///   creates a suitable inference variable.
     pub fn create_substs_for_generic_args<'a, 'b>(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         def_id: DefId,
         parent_substs: &[Kind<'tcx>],
         has_self: bool,
@@ -2420,7 +2420,7 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
     /// where-clauses). Because some of our bounds listings (e.g.,
     /// regions) don't include the self-type, you must supply the
     /// self-type here (the `param_ty` parameter).
-    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, param_ty: Ty<'tcx>)
+    pub fn predicates(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>, param_ty: Ty<'tcx>)
                       -> Vec<(ty::Predicate<'tcx>, Span)>
     {
         // If it could be sized, and is, add the `Sized` predicate.

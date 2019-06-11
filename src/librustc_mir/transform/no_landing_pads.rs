@@ -10,14 +10,14 @@ pub struct NoLandingPads;
 
 impl MirPass for NoLandingPads {
     fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           _: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         no_landing_pads(tcx, body)
     }
 }
 
-pub fn no_landing_pads<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, body: &mut Body<'tcx>) {
+pub fn no_landing_pads<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, body: &mut Body<'tcx>) {
     if tcx.sess.no_landing_pads() {
         NoLandingPads.visit_body(body);
     }

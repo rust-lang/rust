@@ -1241,7 +1241,7 @@ impl<'tcx> Terminator<'tcx> {
 
 impl<'tcx> TerminatorKind<'tcx> {
     pub fn if_<'a, 'gcx>(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         cond: Operand<'tcx>,
         t: BasicBlock,
         f: BasicBlock,
@@ -2324,7 +2324,7 @@ impl<'tcx> Operand<'tcx> {
     /// with given `DefId` and substs. Since this is used to synthesize
     /// MIR, assumes `user_ty` is None.
     pub fn function_handle<'a>(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
         span: Span,

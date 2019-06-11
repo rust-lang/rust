@@ -156,7 +156,7 @@ impl<'tcx> IntoWellFormedGoal for DomainGoal<'tcx> {
 }
 
 crate fn program_clauses_for<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
     // FIXME(eddyb) this should only be using `def_kind`.
@@ -185,7 +185,7 @@ crate fn program_clauses_for<'a, 'tcx>(
 }
 
 fn program_clauses_for_trait<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
     // `trait Trait<P1..Pn> where WC { .. } // P0 == Self`
@@ -300,7 +300,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     )
 }
 
-fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
+fn program_clauses_for_impl(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
         return List::empty();
     }
@@ -344,7 +344,7 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
 }
 
 pub fn program_clauses_for_type_def<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
     // Rule WellFormed-Type
@@ -421,7 +421,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
 }
 
 pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     item_id: DefId,
 ) -> Clauses<'tcx> {
     // Rule ProjectionEq-Placeholder
@@ -559,7 +559,7 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
 }
 
 pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     item_id: DefId,
 ) -> Clauses<'tcx> {
     // Rule Normalize-From-Impl (see rustc guide)
@@ -620,7 +620,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     tcx.mk_clauses(iter::once(normalize_clause))
 }
 
-pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     if !tcx.features().rustc_attrs {
         return;
     }
@@ -631,11 +631,11 @@ pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         .visit_all_item_likes(&mut visitor.as_deep_visitor());
 }
 
-struct ClauseDumper<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct ClauseDumper<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
+impl ClauseDumper<'tcx> {
     fn process_attrs(&mut self, hir_id: hir::HirId, attrs: &[ast::Attribute]) {
         let def_id = self.tcx.hir().local_def_id_from_hir_id(hir_id);
         for attr in attrs {
@@ -673,7 +673,7 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ClauseDumper<'a, 'tcx> {
+impl Visitor<'tcx> for ClauseDumper<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }

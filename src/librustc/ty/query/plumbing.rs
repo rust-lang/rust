@@ -247,7 +247,7 @@ pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
     Cycle(D::Value),
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     /// Executes a job by changing the ImplicitCtxt to point to the
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
@@ -259,7 +259,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         compute: F)
     -> R
     where
-        F: for<'b, 'lcx> FnOnce(TyCtxt<'b, 'gcx, 'lcx>) -> R
+        F: for<'b, 'lcx> FnOnce(TyCtxt<'lcx, 'gcx, 'lcx>) -> R
     {
         // The TyCtxt stored in TLS has the same global interner lifetime
         // as `self`, so we use `with_related_context` to relate the 'gcx lifetimes
@@ -286,7 +286,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub(super) fn report_cycle(
         self,
         CycleError { usage, cycle: stack }: CycleError<'gcx>
-    ) -> DiagnosticBuilder<'a>
+    ) -> DiagnosticBuilder<'tcx>
     {
         assert!(!stack.is_empty());
 
@@ -996,11 +996,11 @@ macro_rules! define_queries_inner {
         })*
 
         #[derive(Copy, Clone)]
-        pub struct TyCtxtEnsure<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-            pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        pub struct TyCtxtEnsure<'gcx, 'tcx> {
+            pub tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         }
 
-        impl<'a, $tcx, 'lcx> TyCtxtEnsure<'a, $tcx, 'lcx> {
+        impl TyCtxtEnsure<$tcx, 'lcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: $K) {
@@ -1009,24 +1009,24 @@ macro_rules! define_queries_inner {
         }
 
         #[derive(Copy, Clone)]
-        pub struct TyCtxtAt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-            pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        pub struct TyCtxtAt<'gcx, 'tcx> {
+            pub tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
             pub span: Span,
         }
 
-        impl<'a, 'gcx, 'tcx> Deref for TyCtxtAt<'a, 'gcx, 'tcx> {
-            type Target = TyCtxt<'a, 'gcx, 'tcx>;
+        impl Deref for TyCtxtAt<'gcx, 'tcx> {
+            type Target = TyCtxt<'tcx, 'gcx, 'tcx>;
             #[inline(always)]
             fn deref(&self) -> &Self::Target {
                 &self.tcx
             }
         }
 
-        impl<'a, $tcx, 'lcx> TyCtxt<'a, $tcx, 'lcx> {
+        impl TyCtxt<'lcx, $tcx, 'lcx> {
             /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
             /// are executed instead of just returing their results.
             #[inline(always)]
-            pub fn ensure(self) -> TyCtxtEnsure<'a, $tcx, 'lcx> {
+            pub fn ensure(self) -> TyCtxtEnsure<$tcx, 'lcx> {
                 TyCtxtEnsure {
                     tcx: self,
                 }
@@ -1035,7 +1035,7 @@ macro_rules! define_queries_inner {
             /// Returns a transparent wrapper for `TyCtxt` which uses
             /// `span` as the location of queries performed through it.
             #[inline(always)]
-            pub fn at(self, span: Span) -> TyCtxtAt<'a, $tcx, 'lcx> {
+            pub fn at(self, span: Span) -> TyCtxtAt<$tcx, 'lcx> {
                 TyCtxtAt {
                     tcx: self,
                     span
@@ -1049,7 +1049,7 @@ macro_rules! define_queries_inner {
             })*
         }
 
-        impl<'a, $tcx, 'lcx> TyCtxtAt<'a, $tcx, 'lcx> {
+        impl TyCtxtAt<$tcx, 'lcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: $K) -> $V {
@@ -1090,12 +1090,12 @@ macro_rules! define_provider_struct {
     (tcx: $tcx:tt,
      input: ($(([$($modifiers:tt)*] [$name:ident] [$K:ty] [$R:ty]))*)) => {
         pub struct Providers<$tcx> {
-            $(pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $R,)*
+            $(pub $name: fn(TyCtxt<$tcx, $tcx, $tcx>, $K) -> $R,)*
         }
 
         impl<$tcx> Default for Providers<$tcx> {
             fn default() -> Self {
-                $(fn $name<'a, $tcx>(_: TyCtxt<'a, $tcx, $tcx>, key: $K) -> $R {
+                $(fn $name<$tcx>(_: TyCtxt<$tcx, $tcx, $tcx>, key: $K) -> $R {
                     bug!("tcx.{}({:?}) unsupported by its crate",
                          stringify!($name), key);
                 })*
@@ -1149,7 +1149,7 @@ macro_rules! define_provider_struct {
 /// add it to the "We don't have enough information to reconstruct..." group in
 /// the match below.
 pub fn force_from_dep_node<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     dep_node: &DepNode
 ) -> bool {
     use crate::dep_graph::RecoverKey;

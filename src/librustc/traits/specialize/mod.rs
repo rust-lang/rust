@@ -110,7 +110,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 /// that impl, a less specialized impl, or the trait default,
 /// whichever applies.
 pub fn find_associated_item<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     item: &ty::AssocItem,
     substs: SubstsRef<'tcx>,
@@ -149,7 +149,7 @@ pub fn find_associated_item<'a, 'tcx>(
 /// Specialization is determined by the sets of types to which the impls apply;
 /// `impl1` specializes `impl2` if it applies to a subset of the types `impl2` applies
 /// to.
-pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                     (impl1_def_id, impl2_def_id): (DefId, DefId))
     -> bool
 {
@@ -286,7 +286,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 
 // Query provider for `specialization_graph_of`.
 pub(super) fn specialization_graph_provider<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     trait_id: DefId,
 ) -> &'tcx specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();

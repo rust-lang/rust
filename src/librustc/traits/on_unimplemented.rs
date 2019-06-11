@@ -52,7 +52,7 @@ fn parse_error(tcx: TyCtxt<'_, '_, '_>, span: Span,
 }
 
 impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
-    fn parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    fn parse(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                  trait_def_id: DefId,
                  items: &[NestedMetaItem],
                  span: Span,
@@ -133,7 +133,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
     }
 
 
-    pub fn of_item(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub fn of_item(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                    trait_def_id: DefId,
                    impl_def_id: DefId)
                    -> Result<Option<Self>, ErrorReported>
@@ -165,7 +165,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
     }
 
     pub fn evaluate(&self,
-                    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                     trait_ref: ty::TraitRef<'tcx>,
                     options: &[(Symbol, Option<String>)])
                     -> OnUnimplementedNote
@@ -215,7 +215,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
 }
 
 impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
-    fn try_parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    fn try_parse(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                      trait_def_id: DefId,
                      from: LocalInternedString,
                      err_sp: Span)
@@ -228,7 +228,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
 
     fn verify(
         &self,
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         trait_def_id: DefId,
         span: Span,
     ) -> Result<(), ErrorReported> {
@@ -274,7 +274,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
 
     pub fn format(
         &self,
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         options: &FxHashMap<Symbol, String>,
     ) -> String {

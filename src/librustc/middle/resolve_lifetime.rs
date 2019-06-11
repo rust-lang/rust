@@ -218,7 +218,7 @@ impl_stable_hash_for!(struct crate::middle::resolve_lifetime::ResolveLifetimes {
 });
 
 struct LifetimeContext<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
 
@@ -369,7 +369,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 /// directly, but rather use `named_region_map`, `is_late_bound_map`,
 /// etc.
 fn resolve_lifetimes<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     for_krate: CrateNum,
 ) -> &'tcx ResolveLifetimes {
     assert_eq!(for_krate, LOCAL_CRATE);
@@ -398,7 +398,7 @@ fn resolve_lifetimes<'tcx>(
     tcx.arena.alloc(rl)
 }
 
-fn krate<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> NamedRegionMap {
+fn krate<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> NamedRegionMap {
     let krate = tcx.hir().krate();
     let mut map = NamedRegionMap {
         defs: Default::default(),
@@ -1169,7 +1169,7 @@ fn signal_shadowing_problem(
 // if one of the label shadows a lifetime or another label.
 fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
     struct GatherLabels<'a, 'tcx: 'a> {
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         scope: ScopeRef<'a>,
         labels_in_fn: &'a mut Vec<ast::Ident>,
     }

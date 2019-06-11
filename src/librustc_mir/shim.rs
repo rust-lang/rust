@@ -26,7 +26,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.mir_shims = make_shim;
 }
 
-fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn make_shim<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                        instance: ty::InstanceDef<'tcx>)
                        -> &'tcx Body<'tcx>
 {
@@ -166,7 +166,7 @@ fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>, span: Span)
         .collect()
 }
 
-fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                              def_id: DefId,
                              ty: Option<Ty<'tcx>>)
                              -> Body<'tcx>
@@ -258,7 +258,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub struct DropShimElaborator<'a, 'tcx: 'a> {
     pub body: &'a Body<'tcx>,
     pub patch: MirPatch<'tcx>,
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -273,7 +273,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 
     fn patch(&mut self) -> &mut MirPatch<'tcx> { &mut self.patch }
     fn body(&self) -> &'a Body<'tcx> { self.body }
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx, 'tcx> { self.tcx }
     fn param_env(&self) -> ty::ParamEnv<'tcx> { self.param_env }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
@@ -306,7 +306,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 }
 
 /// Builds a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
-fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                               def_id: DefId,
                               self_ty: Ty<'tcx>)
                               -> Body<'tcx>
@@ -340,8 +340,8 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     builder.into_mir()
 }
 
-struct CloneShimBuilder<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct CloneShimBuilder<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
@@ -349,8 +349,8 @@ struct CloneShimBuilder<'a, 'tcx: 'a> {
     sig: ty::FnSig<'tcx>,
 }
 
-impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+impl CloneShimBuilder<'tcx> {
+    fn new(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
            def_id: DefId,
            self_ty: Ty<'tcx>) -> Self {
         // we must subst the self_ty because it's
@@ -691,7 +691,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 ///
 /// If `untuple_args` is a vec of types, the second argument of the
 /// function will be untupled as these types.
-fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                              def_id: DefId,
                              rcvr_adjustment: Adjustment,
                              call_kind: CallKind,
@@ -842,7 +842,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     body
 }
 
-pub fn build_adt_ctor<'gcx>(tcx: TyCtxt<'_, 'gcx, 'gcx>, ctor_id: DefId) -> &'gcx Body<'gcx> {
+pub fn build_adt_ctor<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, ctor_id: DefId) -> &'tcx Body<'tcx> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
     let span = tcx.hir().span_if_local(ctor_id)

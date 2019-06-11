@@ -51,7 +51,7 @@ use std::io::Write;
 use syntax::ast;
 use syntax_pos::Span;
 
-pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.debugging_opts.dump_dep_graph {
             dump_graph(tcx);
@@ -89,13 +89,13 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 type Sources = Vec<(Span, DefId, DepNode)>;
 type Targets = Vec<(Span, ast::Name, hir::HirId, DepNode)>;
 
-struct IfThisChanged<'a, 'tcx:'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct IfThisChanged<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     if_this_changed: Sources,
     then_this_would_need: Targets,
 }
 
-impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
+impl IfThisChanged<'tcx> {
     fn argument(&self, attr: &ast::Attribute) -> Option<ast::Name> {
         let mut value = None;
         for list_item in attr.meta_item_list().unwrap_or_default() {
@@ -158,7 +158,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for IfThisChanged<'a, 'tcx> {
+impl Visitor<'tcx> for IfThisChanged<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
@@ -184,7 +184,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IfThisChanged<'a, 'tcx> {
     }
 }
 
-fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn check_paths<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                          if_this_changed: &Sources,
                          then_this_would_need: &Targets)
 {

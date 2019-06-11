@@ -25,7 +25,7 @@ use syntax_pos::Span;
 use super::lints;
 
 /// Construct the MIR for a given `DefId`.
-pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'tcx> {
+pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> Body<'tcx> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
@@ -184,12 +184,12 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'
 /// A pass to lift all the types and substitutions in a MIR
 /// to the global tcx. Sadly, we don't have a "folder" that
 /// can change `'tcx` so we have to transmute afterwards.
-struct GlobalizeMir<'a, 'gcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'gcx>,
+struct GlobalizeMir<'gcx> {
+    tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
     span: Span
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
+impl<'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'gcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
         if let Some(lifted) = self.tcx.lift(ty) {
             *ty = lifted;
@@ -234,7 +234,7 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                             closure_expr_id: hir::HirId,
                                             body_id: hir::BodyId)
                                             -> Ty<'tcx> {
@@ -551,7 +551,7 @@ macro_rules! unpack {
     };
 }
 
-fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                          fn_def_id: DefId,
                                          abi: Abi)
                                          -> bool {

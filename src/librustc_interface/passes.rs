@@ -879,7 +879,7 @@ pub fn create_global_ctxt(
 /// Runs the resolution, type-checking, region checking and other
 /// miscellaneous analysis passes on the crate.
 fn analysis<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     cnum: CrateNum,
 ) -> Result<()> {
     assert_eq!(cnum, LOCAL_CRATE);
@@ -999,7 +999,7 @@ fn analysis<'tcx>(
 }
 
 fn encode_and_write_metadata<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     outputs: &OutputFilenames,
 ) -> (middle::cstore::EncodedMetadata, bool) {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -1062,7 +1062,7 @@ fn encode_and_write_metadata<'tcx>(
 /// be discarded.
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     rx: mpsc::Receiver<Box<dyn Any + Send>>,
     outputs: &OutputFilenames,
 ) -> Box<dyn Any> {

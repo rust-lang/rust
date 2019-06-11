@@ -124,7 +124,7 @@ impl<Q: Qualif, T> IndexMut<Q> for PerQualif<T> {
 }
 
 struct ConstCx<'a, 'tcx> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     mode: Mode,
     body: &'a Body<'tcx>,
@@ -652,7 +652,7 @@ impl Deref for Checker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn new(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
            def_id: DefId,
            body: &'a Body<'tcx>,
            mode: Mode)
@@ -1472,7 +1472,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                               def_id: DefId)
                               -> (u8, &'tcx BitSet<Local>) {
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
@@ -1493,7 +1493,7 @@ pub struct QualifyAndPromoteConstants;
 
 impl MirPass for QualifyAndPromoteConstants {
     fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           src: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.

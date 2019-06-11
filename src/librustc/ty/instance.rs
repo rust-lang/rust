@@ -44,7 +44,7 @@ pub enum InstanceDef<'tcx> {
 
 impl<'a, 'tcx> Instance<'tcx> {
     pub fn ty(&self,
-              tcx: TyCtxt<'a, 'tcx, 'tcx>)
+              tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
               -> Ty<'tcx>
     {
         let ty = tcx.type_of(self.def.def_id());
@@ -55,7 +55,7 @@ impl<'a, 'tcx> Instance<'tcx> {
         )
     }
 
-    fn fn_sig_noadjust(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> PolyFnSig<'tcx> {
+    fn fn_sig_noadjust(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> PolyFnSig<'tcx> {
         let ty = self.ty(tcx);
         match ty.sty {
             ty::FnDef(..) |
@@ -105,7 +105,7 @@ impl<'a, 'tcx> Instance<'tcx> {
         }
     }
 
-    pub fn fn_sig(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
+    pub fn fn_sig(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
         let mut fn_sig = self.fn_sig_noadjust(tcx);
         if let InstanceDef::VtableShim(..) = self.def {
             // Modify fn(self, ...) to fn(self: *mut Self, ...)
@@ -136,13 +136,13 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn attrs<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
+    pub fn attrs<'a>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 
     pub fn is_inline<'a>(
         &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>
     ) -> bool {
         use crate::hir::map::DefPathData;
         let def_id = match *self {
@@ -158,7 +158,7 @@ impl<'tcx> InstanceDef<'tcx> {
 
     pub fn requires_local<'a>(
         &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>
     ) -> bool {
         if self.is_inline(tcx) {
             return true
@@ -218,7 +218,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         Instance { def: InstanceDef::Item(def_id), substs: substs }
     }
 
-    pub fn mono(tcx: TyCtxt<'a, 'tcx, 'b>, def_id: DefId) -> Instance<'tcx> {
+    pub fn mono(tcx: TyCtxt<'b, 'tcx, 'b>, def_id: DefId) -> Instance<'tcx> {
         Instance::new(def_id, tcx.global_tcx().empty_substs_for_def_id(def_id))
     }
 
@@ -245,7 +245,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
     /// `Some`.
-    pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn resolve(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                    param_env: ty::ParamEnv<'tcx>,
                    def_id: DefId,
                    substs: SubstsRef<'tcx>) -> Option<Instance<'tcx>> {
@@ -297,7 +297,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         result
     }
 
-    pub fn resolve_for_vtable(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn resolve_for_vtable(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                               param_env: ty::ParamEnv<'tcx>,
                               def_id: DefId,
                               substs: SubstsRef<'tcx>) -> Option<Instance<'tcx>> {
@@ -317,7 +317,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_closure(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         def_id: DefId,
         substs: ty::ClosureSubsts<'tcx>,
         requested_kind: ty::ClosureKind)
@@ -332,7 +332,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_drop_in_place(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         ty: Ty<'tcx>)
         -> ty::Instance<'tcx>
     {
@@ -342,7 +342,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     }
 
     pub fn fn_once_adapter_instance(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         closure_did: DefId,
         substs: ty::ClosureSubsts<'tcx>)
         -> Instance<'tcx>
@@ -377,7 +377,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
 }
 
 fn resolve_associated_item<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     trait_item: &ty::AssocItem,
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,

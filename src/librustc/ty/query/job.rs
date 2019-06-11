@@ -77,7 +77,7 @@ impl<'tcx> QueryJob<'tcx> {
     #[cfg(parallel_compiler)]
     pub(super) fn r#await<'lcx>(
         &self,
-        tcx: TyCtxt<'_, 'tcx, 'lcx>,
+        tcx: TyCtxt<'lcx, 'tcx, 'lcx>,
         span: Span,
     ) -> Result<(), CycleError<'tcx>> {
         tls::with_related_context(tcx, move |icx| {
@@ -102,7 +102,7 @@ impl<'tcx> QueryJob<'tcx> {
     #[cfg(not(parallel_compiler))]
     pub(super) fn find_cycle_in_stack<'lcx>(
         &self,
-        tcx: TyCtxt<'_, 'tcx, 'lcx>,
+        tcx: TyCtxt<'lcx, 'tcx, 'lcx>,
         span: Span,
     ) -> CycleError<'tcx> {
         // Get the current executing query (waiter) and find the waitee amongst its parents

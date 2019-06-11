@@ -50,11 +50,11 @@ pub(crate) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
     fn describe(tcx: TyCtxt<'_, '_, '_>, key: Self::Key) -> Cow<'static, str>;
 
     #[inline]
-    fn cache_on_disk(_: TyCtxt<'_, 'tcx, 'tcx>, _: Self::Key) -> bool {
+    fn cache_on_disk(_: TyCtxt<'tcx, 'tcx, 'tcx>, _: Self::Key) -> bool {
         false
     }
 
-    fn try_load_from_disk(_: TyCtxt<'_, 'tcx, 'tcx>,
+    fn try_load_from_disk(_: TyCtxt<'tcx, 'tcx, 'tcx>,
                           _: SerializedDepNodeIndex)
                           -> Option<Self::Value> {
         bug!("QueryDescription::load_from_disk() called for an unsupported query.")
@@ -82,12 +82,12 @@ macro_rules! impl_disk_cacheable_query(
     ($query_name:ident, |$tcx:tt, $key:tt| $cond:expr) => {
         impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {
             #[inline]
-            fn cache_on_disk($tcx: TyCtxt<'_, 'tcx, 'tcx>, $key: Self::Key) -> bool {
+            fn cache_on_disk($tcx: TyCtxt<'tcx, 'tcx, 'tcx>, $key: Self::Key) -> bool {
                 $cond
             }
 
             #[inline]
-            fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+            fn try_load_from_disk<'a>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                       id: SerializedDepNodeIndex)
                                       -> Option<Self::Value> {
                 tcx.queries.on_disk_cache.try_load_query_result(tcx, id)

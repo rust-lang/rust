@@ -48,7 +48,7 @@ pub enum MonoItem<'tcx> {
 }
 
 impl<'tcx> MonoItem<'tcx> {
-    pub fn size_estimate<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> usize {
+    pub fn size_estimate<'a>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> usize {
         match *self {
             MonoItem::Fn(instance) => {
                 // Estimate the size of a function based on how many statements
@@ -72,7 +72,7 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
-    pub fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> SymbolName {
+    pub fn symbol_name(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> SymbolName {
         match *self {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => {
@@ -88,7 +88,7 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn instantiation_mode(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
                           -> InstantiationMode {
         let inline_in_all_cgus =
             tcx.sess.opts.debugging_opts.inline_in_all_cgus.unwrap_or_else(|| {
@@ -133,7 +133,7 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
-    pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Linkage> {
+    pub fn explicit_linkage(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Option<Linkage> {
         let def_id = match *self {
             MonoItem::Fn(ref instance) => instance.def_id(),
             MonoItem::Static(def_id) => def_id,
@@ -169,7 +169,7 @@ impl<'tcx> MonoItem<'tcx> {
     /// Similarly, if a vtable method has such a signature, and therefore can't
     /// be used, we can just not emit it and have a placeholder (a null pointer,
     /// which will never be accessed) in its place.
-    pub fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+    pub fn is_instantiable(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> bool {
         debug!("is_instantiable({:?})", self);
         let (def_id, substs) = match *self {
             MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
@@ -181,7 +181,7 @@ impl<'tcx> MonoItem<'tcx> {
         tcx.substitute_normalize_and_test_predicates((def_id, &substs))
     }
 
-    pub fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, debug: bool) -> String {
+    pub fn to_string(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>, debug: bool) -> String {
         return match *self {
             MonoItem::Fn(instance) => {
                 to_string_internal(tcx, "fn ", instance, debug)
@@ -195,7 +195,7 @@ impl<'tcx> MonoItem<'tcx> {
             }
         };
 
-        fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                         prefix: &str,
                                         instance: Instance<'tcx>,
                                         debug: bool)
@@ -208,7 +208,7 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
-    pub fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
+    pub fn local_span(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Option<Span> {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => {
                 tcx.hir().as_local_hir_id(def.def_id())
@@ -334,7 +334,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 
-    pub fn estimate_size<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    pub fn estimate_size<'a>(&mut self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
         // Estimate the size of a codegen unit as (approximately) the number of MIR
         // statements it corresponds to.
         self.size_estimate = Some(self.items.keys().map(|mi| mi.size_estimate(tcx)).sum());
@@ -370,7 +370,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn items_in_deterministic_order<'a>(&self,
-                                        tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                        tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
                                         -> Vec<(MonoItem<'tcx>,
                                                 (Linkage, Visibility))> {
         // The codegen tests rely on items being process in the same order as
@@ -378,7 +378,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
         pub struct ItemSortKey(Option<HirId>, SymbolName);
 
-        fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                    item: MonoItem<'tcx>) -> ItemSortKey {
             ItemSortKey(match item {
                 MonoItem::Fn(ref instance) => {
@@ -415,7 +415,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         items
     }
 
-    pub fn codegen_dep_node(&self, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> DepNode {
+    pub fn codegen_dep_node(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> DepNode {
         DepNode::new(tcx, DepConstructor::CompileCodegenUnit(self.name().clone()))
     }
 }
@@ -445,14 +445,13 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
     }
 }
 
-pub struct CodegenUnitNameBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+pub struct CodegenUnitNameBuilder<'gcx, 'tcx> {
+    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     cache: FxHashMap<CrateNum, String>,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
-
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+impl CodegenUnitNameBuilder<'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Self {
         CodegenUnitNameBuilder {
             tcx,
             cache: Default::default(),

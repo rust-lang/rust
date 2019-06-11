@@ -34,7 +34,7 @@ pub struct DataflowLabeller<'a, 'tcx: 'a> {
     pub inner: cfg_dot::LabelledCFG<'a, 'tcx>,
     pub variants: Vec<Variant>,
     pub borrowck_ctxt: &'a BorrowckCtxt<'a, 'tcx>,
-    pub analysis_data: &'a borrowck::AnalysisData<'a, 'tcx>,
+    pub analysis_data: &'a borrowck::AnalysisData<'tcx>,
 }
 
 impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
@@ -64,7 +64,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
     fn build_set<O:DataFlowOperator, F>(&self,
                                         e: EntryOrExit,
                                         cfgidx: CFGIndex,
-                                        dfcx: &DataFlowContext<'a, 'tcx, O>,
+                                        dfcx: &DataFlowContext<'tcx, O>,
                                         mut to_lp: F) -> String where
         F: FnMut(usize) -> Rc<LoanPath<'tcx>>,
     {

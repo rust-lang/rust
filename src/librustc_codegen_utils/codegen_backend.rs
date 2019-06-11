@@ -36,7 +36,7 @@ pub trait CodegenBackend {
     fn provide_extern(&self, _providers: &mut Providers<'_>);
     fn codegen_crate<'a, 'tcx>(
         &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
         rx: mpsc::Receiver<Box<dyn Any + Send>>
