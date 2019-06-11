@@ -30,6 +30,13 @@ where
         &'graph self,
         node: Self::Node,
     ) -> <Self as GraphSuccessors<'graph>>::Iter;
+
+    fn depth_first_search(&self, from: Self::Node) -> iterate::DepthFirstSearch<'_, Self>
+    where
+        Self: WithNumNodes,
+    {
+        iterate::DepthFirstSearch::new(self, from)
+    }
 }
 
 pub trait GraphSuccessors<'graph> {
