@@ -38,10 +38,7 @@ use core::mem;
 use core::raw;
 use core::panic::BoxMeUp;
 
-#[macro_use]
-mod macros;
-
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
         mod imp;

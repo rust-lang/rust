@@ -1,10 +1,5 @@
 #![allow(nonstandard_style)]
 
-macro_rules! cfg_if {
-    ( $( if #[cfg( $meta:meta )] { $($it1:item)* } else { $($it2:item)* } )* ) =>
-        ( $( $( #[cfg($meta)] $it1)* $( #[cfg(not($meta))] $it2)* )* )
-}
-
 use libc::{c_int, c_void, uintptr_t};
 
 #[repr(C)]
@@ -82,7 +77,7 @@ extern "C" {
     pub fn _Unwind_GetDataRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
 }
 
-cfg_if! {
+cfg_if::cfg_if! {
 if #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm"))))] {
     // Not ARM EHABI
     #[repr(C)]
@@ -206,7 +201,9 @@ if #[cfg(all(any(target_os = "ios", target_os = "netbsd", not(target_arch = "arm
         pc
     }
 }
+} // cfg_if!
 
+cfg_if::cfg_if! {
 if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
     // Not 32-bit iOS
     extern "C" {

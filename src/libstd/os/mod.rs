@@ -3,7 +3,7 @@
 #![stable(feature = "os", since = "1.0.0")]
 #![allow(missing_docs, nonstandard_style, missing_debug_implementations)]
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(rustdoc)] {
 
         // When documenting libstd we want to show unix/windows/linux modules as

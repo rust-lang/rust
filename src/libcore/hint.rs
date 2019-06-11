@@ -111,31 +111,31 @@ pub fn spin_loop() {
 /// This function is a no-op, and does not even read from `dummy`.
 #[inline]
 #[unstable(feature = "test", issue = "27812")]
+#[allow(unreachable_code)] // this makes #[cfg] a bit easier below.
 pub fn black_box<T>(dummy: T) -> T {
-    cfg_if! {
-        if #[cfg(any(
-            target_arch = "asmjs",
-            all(
-                target_arch = "wasm32",
-                target_os = "emscripten"
-            )
-        ))] {
-            #[inline]
-            unsafe fn black_box_impl<T>(d: T) -> T {
-                // these targets do not support inline assembly
-                let ret = crate::ptr::read_volatile(&d);
-                crate::mem::forget(d);
-                ret
-            }
-        } else {
-            #[inline]
-            unsafe fn black_box_impl<T>(d: T) -> T {
-                // we need to "use" the argument in some way LLVM can't
-                // introspect.
-                asm!("" : : "r"(&d));
-                d
-            }
-        }
+    // We need to "use" the argument in some way LLVM can't introspect, and on
+    // targets that support it we can typically leverage inline assembly to do
+    // this. LLVM's intepretation of inline assembly is that it's, well, a black
+    // box. This isn't the greatest implementation since it probably deoptimizes
+    // more than we want, but it's so far good enough.
+    #[cfg(not(any(
+        target_arch = "asmjs",
+        all(
+            target_arch = "wasm32",
+            target_os = "emscripten"
+        )
+    )))]
+    unsafe {
+        asm!("" : : "r"(&dummy));
+        return dummy;
     }
-    unsafe { black_box_impl(dummy) }
+
+    // Not all platforms support inline assembly so try to do something without
+    // inline assembly which in theory still hinders at least some optimizations
+    // on those targets. This is the "best effort" scenario.
+    unsafe {
+        let ret = crate::ptr::read_volatile(&dummy);
+        crate::mem::forget(dummy);
+        ret
+    }
 }
