@@ -163,10 +163,6 @@ impl NavigationTarget {
         NavigationTarget::from_module(db, module)
     }
 
-    pub(crate) fn from_function(db: &RootDatabase, func: hir::Function) -> NavigationTarget {
-        NavigationTarget::from_def_source(db, func)
-    }
-
     pub(crate) fn from_field(db: &RootDatabase, field: hir::StructField) -> NavigationTarget {
         let src = field.source(db);
         let file_id = src.file_id.original_file(db);
@@ -208,7 +204,7 @@ impl NavigationTarget {
     ) -> Option<NavigationTarget> {
         let nav = match module_def {
             hir::ModuleDef::Module(module) => NavigationTarget::from_module(db, module),
-            hir::ModuleDef::Function(func) => NavigationTarget::from_function(db, func),
+            hir::ModuleDef::Function(func) => NavigationTarget::from_def_source(db, func),
             hir::ModuleDef::Struct(it) => NavigationTarget::from_adt_def(db, it.into()),
             hir::ModuleDef::Enum(it) => NavigationTarget::from_adt_def(db, it.into()),
             hir::ModuleDef::Union(it) => NavigationTarget::from_adt_def(db, it.into()),
@@ -241,7 +237,7 @@ impl NavigationTarget {
 
     pub(crate) fn from_impl_item(db: &RootDatabase, impl_item: hir::ImplItem) -> NavigationTarget {
         match impl_item {
-            ImplItem::Method(it) => NavigationTarget::from_function(db, it),
+            ImplItem::Method(it) => NavigationTarget::from_def_source(db, it),
             ImplItem::Const(it) => NavigationTarget::from_def_source(db, it),
             ImplItem::TypeAlias(it) => NavigationTarget::from_def_source(db, it),
         }

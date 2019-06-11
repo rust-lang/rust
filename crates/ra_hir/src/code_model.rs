@@ -1,4 +1,5 @@
 pub(crate) mod src;
+pub(crate) mod docs;
 
 use std::sync::Arc;
 

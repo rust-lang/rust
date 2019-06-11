@@ -59,10 +59,10 @@ pub(crate) fn reference_definition(
     let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
 
     match classify_name_ref(db, &analyzer, name_ref) {
-        Some(Method(func)) => return Exact(NavigationTarget::from_function(db, func)),
         Some(Macro(mac)) => return Exact(NavigationTarget::from_macro_def(db, mac)),
         Some(FieldAccess(field)) => return Exact(NavigationTarget::from_field(db, field)),
         Some(AssocItem(assoc)) => return Exact(NavigationTarget::from_impl_item(db, assoc)),
+        Some(Method(func)) => return Exact(NavigationTarget::from_def_source(db, func)),
         Some(Def(def)) => match NavigationTarget::from_def(db, def) {
             Some(nav) => return Exact(nav),
             None => return Approximate(vec![]),
@@ -253,12 +253,12 @@ mod tests {
             //- /foo/lib.rs
             #[macro_export]
             macro_rules! foo {
-                () => {             
+                () => {
                     {}
                 };
-            }            
+            }
             ",
-            "foo MACRO_CALL FileId(2) [0; 79) [29; 32)",
+            "foo MACRO_CALL FileId(2) [0; 66) [29; 32)",
         );
     }
 
