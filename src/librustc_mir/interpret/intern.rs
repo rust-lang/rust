@@ -44,9 +44,9 @@ struct InternVisitor<'rt, 'a: 'rt, 'mir: 'rt, 'tcx: 'a+'rt+'mir> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
 enum InternMode {
-    /// Mutable references don't change the `mutability` field to `Immutable`
-    StaticMut,
-    /// Mutable references must in fact be immutable due to their surrounding immutability
+    /// Mutable references must in fact be immutable due to their surrounding immutability in a
+    /// `static`. In a `static mut` we start out as mutable and thus can also contain further `&mtu`
+    /// that will actually be treated as mutable.
     Static,
     /// UnsafeCell is OK in the value of a constant, but not behind references in a constant
     ConstBase,
@@ -171,10 +171,10 @@ for
                 // This is not an inherent limitation, but one that we know to be true, because
                 // const qualification enforces it. We can lift it in the future.
                 match (self.mode, mutability) {
-                    // all is "good and well" in the unsoundness of `static mut`
-                    (InternMode::StaticMut, _) => {},
                     // immutable references are fine everywhere
                     (_, hir::Mutability::MutImmutable) => {},
+                    // all is "good and well" in the unsoundness of `static mut`
+
                     // mutable references are ok in `static`. Either they are treated as immutable
                     // because they are behind an immutable one, or they are behind an `UnsafeCell`
                     // and thus ok.
@@ -251,7 +251,7 @@ pub fn intern_const_alloc_recursive(
         Some(hir::Mutability::MutImmutable) => (Mutability::Immutable, InternMode::Static),
         None => (Mutability::Immutable, InternMode::ConstBase),
         // `static mut` doesn't care about interior mutability, it's mutable anyway
-        Some(hir::Mutability::MutMutable) => (Mutability::Mutable, InternMode::StaticMut),
+        Some(hir::Mutability::MutMutable) => (Mutability::Mutable, InternMode::Static),
     };
 
     // type based interning
