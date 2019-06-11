@@ -109,7 +109,7 @@ pub enum DefUse {
     Drop,
 }
 
-pub fn categorize<'tcx>(context: PlaceContext) -> Option<DefUse> {
+pub fn categorize(context: PlaceContext) -> Option<DefUse> {
     match context {
         ///////////////////////////////////////////////////////////////////////////
         // DEFS

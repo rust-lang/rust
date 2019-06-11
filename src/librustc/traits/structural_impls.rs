@@ -90,13 +90,13 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableClosureData<'tcx, N> {
     }
 }
 
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableBuiltinData<N> {
+impl<N: fmt::Debug> fmt::Debug for traits::VtableBuiltinData<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "VtableBuiltinData(nested={:?})", self.nested)
     }
 }
 
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableAutoImplData<N> {
+impl<N: fmt::Debug> fmt::Debug for traits::VtableAutoImplData<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

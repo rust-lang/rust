@@ -18,6 +18,7 @@
 
 #![deny(rust_2018_idioms)]
 #![deny(internal)]
+#![deny(unused_lifetimes)]
 
 pub extern crate getopts;
 #[cfg(unix)]

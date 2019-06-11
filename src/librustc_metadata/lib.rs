@@ -16,6 +16,7 @@
 
 #![deny(rust_2018_idioms)]
 #![deny(internal)]
+#![deny(unused_lifetimes)]
 
 extern crate libc;
 #[allow(unused_extern_crates)]

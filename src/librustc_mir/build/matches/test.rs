@@ -463,7 +463,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// that it *doesn't* apply. For now, we return false, indicate that the
     /// test does not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
-    pub fn sort_candidate<'pat, 'cand>(
+    pub fn sort_candidate<'pat>(
         &mut self,
         test_place: &Place<'tcx>,
         test: &Test<'tcx>,

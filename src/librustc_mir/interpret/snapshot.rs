@@ -315,7 +315,7 @@ struct FrameSnapshot<'a, 'tcx: 'a> {
     stmt: usize,
 }
 
-impl_stable_hash_for!(impl<'mir, 'tcx: 'mir> for struct Frame<'mir, 'tcx> {
+impl_stable_hash_for!(impl<> for struct Frame<'mir, 'tcx> {
     body,
     instance,
     span,
@@ -422,7 +422,7 @@ impl<'a, 'mir, 'tcx> Hash for InterpSnapshot<'a, 'mir, 'tcx>
     }
 }
 
-impl_stable_hash_for!(impl<'tcx, 'b, 'mir> for struct InterpSnapshot<'b, 'mir, 'tcx> {
+impl_stable_hash_for!(impl<> for struct InterpSnapshot<'_, 'mir, 'tcx> {
     // Not hashing memory: Avoid hashing memory all the time during execution
     memory -> _,
     stack,

@@ -203,7 +203,7 @@ impl AssocItem {
 
     /// Tests whether the associated item admits a non-trivial implementation
     /// for !
-    pub fn relevant_for_never<'tcx>(&self) -> bool {
+    pub fn relevant_for_never(&self) -> bool {
         match self.kind {
             AssocKind::Existential |
             AssocKind::Const |
@@ -1614,8 +1614,9 @@ pub struct Placeholder<T> {
     pub name: T,
 }
 
-impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>> for Placeholder<T>
-    where T: HashStable<StableHashingContext<'a>>
+impl<'a, T> HashStable<StableHashingContext<'a>> for Placeholder<T>
+where
+    T: HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable<W: StableHasherResult>(
         &self,

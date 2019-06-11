@@ -270,7 +270,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // the final synthesized generics: we don't want our generated docs page to contain something
     // like 'T: Copy + Clone', as that's redundant. Therefore, we keep track of a separate
     // 'user_env', which only holds the predicates that will actually be displayed to the user.
-    fn evaluate_predicates<'b, 'gcx, 'c>(
+    fn evaluate_predicates<'b, 'c>(
         &self,
         infcx: &InferCtxt<'b, 'tcx, 'c>,
         trait_did: DefId,

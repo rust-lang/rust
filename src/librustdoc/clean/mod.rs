@@ -1298,7 +1298,7 @@ impl Clean<Constant> for hir::ConstArg {
     }
 }
 
-impl<'tcx> Clean<Lifetime> for ty::GenericParamDef {
+impl Clean<Lifetime> for ty::GenericParamDef {
     fn clean(&self, _cx: &DocContext<'_>) -> Lifetime {
         Lifetime(self.name.to_string())
     }
@@ -2039,7 +2039,7 @@ impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
     }
 }
 
-impl<'a, 'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
+impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext<'_>) -> FnDecl {
         let (did, sig) = *self;
         let mut names = if cx.tcx.hir().as_local_hir_id(did).is_some() {
@@ -2276,7 +2276,7 @@ impl Clean<Item> for hir::ImplItem {
     }
 }
 
-impl<'tcx> Clean<Item> for ty::AssocItem {
+impl Clean<Item> for ty::AssocItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let inner = match self.kind {
             ty::AssocKind::Const => {
@@ -3174,7 +3174,7 @@ impl Clean<Item> for hir::StructField {
     }
 }
 
-impl<'tcx> Clean<Item> for ty::FieldDef {
+impl Clean<Item> for ty::FieldDef {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item {
             name: Some(self.ident.name).clean(cx),
@@ -3342,7 +3342,7 @@ impl Clean<Item> for doctree::Variant {
     }
 }
 
-impl<'tcx> Clean<Item> for ty::VariantDef {
+impl Clean<Item> for ty::VariantDef {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let kind = match self.ctor_kind {
             CtorKind::Const => VariantKind::CLike,

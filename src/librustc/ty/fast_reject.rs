@@ -154,9 +154,9 @@ impl<D: Copy + Debug + Ord + Eq + Hash> SimplifiedTypeGen<D> {
     }
 }
 
-impl<'a, 'gcx, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
-    where D: Copy + Debug + Ord + Eq + Hash +
-             HashStable<StableHashingContext<'a>>,
+impl<'a, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
+where
+    D: Copy + Debug + Ord + Eq + Hash + HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,

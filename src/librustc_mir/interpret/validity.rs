@@ -81,7 +81,7 @@ pub struct RefTracking<T> {
     pub todo: Vec<(T, Vec<PathElem>)>,
 }
 
-impl<'tcx, T: Copy + Eq + Hash> RefTracking<T> {
+impl<T: Copy + Eq + Hash> RefTracking<T> {
     pub fn new(op: T) -> Self {
         let mut ref_tracking = RefTracking {
             seen: FxHashSet::default(),

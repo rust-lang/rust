@@ -1575,11 +1575,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Append `AscribeUserType` statements onto the end of `block`
     /// for each ascription
-    fn ascribe_types<'pat>(
-        &mut self,
-        block: BasicBlock,
-        ascriptions: &[Ascription<'tcx>],
-    ) {
+    fn ascribe_types(&mut self, block: BasicBlock, ascriptions: &[Ascription<'tcx>]) {
         for ascription in ascriptions {
             let source_info = self.source_info(ascription.span);
 

@@ -105,7 +105,7 @@ impl From<AllocId> for Pointer {
     }
 }
 
-impl<'tcx> Pointer<()> {
+impl Pointer<()> {
     #[inline(always)]
     pub fn new(alloc_id: AllocId, offset: Size) -> Self {
         Pointer { alloc_id, offset, tag: () }

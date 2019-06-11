@@ -145,7 +145,7 @@ BraceStructLiftImpl! {
 }
 
 impl_stable_hash_for! {
-    impl<'tcx, T> for struct Normalize<T> {
+    impl<T> for struct Normalize<T> {
         value
     }
 }

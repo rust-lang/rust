@@ -1074,8 +1074,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-impl StaticBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
-fn get_static(&mut self, def_id: DefId) -> &'ll Value {
+impl StaticBuilderMethods for Builder<'a, 'll, 'tcx> {
+    fn get_static(&mut self, def_id: DefId) -> &'ll Value {
         // Forward to the `get_static` method of `CodegenCx`
         self.cx().get_static(def_id)
     }

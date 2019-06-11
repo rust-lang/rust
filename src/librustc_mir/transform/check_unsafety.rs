@@ -32,7 +32,7 @@ pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     inherited_blocks: Vec<(hir::HirId, bool)>,
 }
 
-impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
+impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn new(
         const_context: bool,
         min_const_fn: bool,

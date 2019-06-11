@@ -12,10 +12,11 @@ use syntax::tokenstream;
 use syntax::parse::token;
 use syntax_pos::Span;
 
-pub fn expand_cfg<'cx>(cx: &mut ExtCtxt<'_>,
-                       sp: Span,
-                       tts: &[tokenstream::TokenTree])
-                       -> Box<dyn base::MacResult + 'static> {
+pub fn expand_cfg(
+    cx: &mut ExtCtxt<'_>,
+    sp: Span,
+    tts: &[tokenstream::TokenTree],
+) -> Box<dyn base::MacResult + 'static> {
     let sp = sp.apply_mark(cx.current_expansion.mark);
 
     match parse_cfg(cx, sp, tts) {

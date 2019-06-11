@@ -29,7 +29,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     + AbiBuilderMethods<'tcx>
     + IntrinsicCallMethods<'tcx>
     + AsmBuilderMethods<'tcx>
-    + StaticBuilderMethods<'tcx>
+    + StaticBuilderMethods
     + HasParamEnv<'tcx>
     + HasTargetSpec
 

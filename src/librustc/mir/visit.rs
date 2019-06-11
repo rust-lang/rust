@@ -967,7 +967,7 @@ pub enum PlaceContext {
     NonUse(NonUseContext),
 }
 
-impl<'tcx> PlaceContext {
+impl PlaceContext {
     /// Returns `true` if this place context represents a drop.
     pub fn is_drop(&self) -> bool {
         match *self {

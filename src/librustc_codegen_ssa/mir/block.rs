@@ -223,10 +223,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_return_terminator<'b>(
-        &mut self,
-        mut bx: Bx,
-    ) {
+    fn codegen_return_terminator(&mut self, mut bx: Bx) {
         if self.fn_ty.c_variadic {
             match self.va_list_ref {
                 Some(va_list) => {

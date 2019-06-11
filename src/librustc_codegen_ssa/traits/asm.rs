@@ -12,6 +12,6 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
     ) -> bool;
 }
 
-pub trait AsmMethods<'tcx> {
+pub trait AsmMethods {
     fn codegen_global_asm(&self, ga: &GlobalAsm);
 }

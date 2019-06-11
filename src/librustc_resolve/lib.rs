@@ -12,6 +12,7 @@
 
 #![deny(rust_2018_idioms)]
 #![deny(internal)]
+#![deny(unused_lifetimes)]
 
 pub use rustc::hir::def::{Namespace, PerNS};
 

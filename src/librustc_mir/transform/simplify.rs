@@ -323,7 +323,7 @@ impl MirPass for SimplifyLocals {
 }
 
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
-fn make_local_map<'tcx, V>(
+fn make_local_map<V>(
     vec: &mut IndexVec<Local, V>,
     mask: BitSet<Local>,
 ) -> IndexVec<Local, Option<Local>> {

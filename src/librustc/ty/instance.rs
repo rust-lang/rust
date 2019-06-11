@@ -442,10 +442,10 @@ fn resolve_associated_item<'a, 'tcx>(
     }
 }
 
-fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
-                                        trait_closure_kind: ty::ClosureKind)
-    -> Result<bool, ()>
-{
+fn needs_fn_once_adapter_shim(
+    actual_closure_kind: ty::ClosureKind,
+    trait_closure_kind: ty::ClosureKind,
+) -> Result<bool, ()> {
     match (actual_closure_kind, trait_closure_kind) {
         (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
             (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |

@@ -566,7 +566,7 @@ impl LintPassObject for EarlyLintPassObject {}
 
 impl LintPassObject for LateLintPassObject {}
 
-pub trait LintContext<'tcx>: Sized {
+pub trait LintContext: Sized {
     type PassObject: LintPassObject;
 
     fn sess(&self) -> &Session;
@@ -700,7 +700,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     }
 }
 
-impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
+impl LintContext for LateContext<'_, '_> {
     type PassObject = LateLintPassObject;
 
     /// Gets the overall compiler `Session` object.
@@ -728,7 +728,7 @@ impl<'a, 'tcx> LintContext<'tcx> for LateContext<'a, 'tcx> {
     }
 }
 
-impl<'a> LintContext<'a> for EarlyContext<'a> {
+impl LintContext for EarlyContext<'_> {
     type PassObject = EarlyLintPassObject;
 
     /// Gets the overall compiler `Session` object.
