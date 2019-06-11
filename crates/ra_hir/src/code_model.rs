@@ -346,13 +346,20 @@ pub enum FieldSource {
     Pos(TreeArc<ast::PosFieldDef>),
 }
 
+impl HasSource for StructField {
+    type Ast = FieldSource;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<FieldSource> {
+        self.source_impl(db).into()
+    }
+}
+
 impl StructField {
     pub fn name(&self, db: &impl HirDatabase) -> Name {
         self.parent.variant_data(db).fields().unwrap()[self.id].name.clone()
     }
 
-    pub fn source(&self, db: &(impl DefDatabase + AstDatabase)) -> (HirFileId, FieldSource) {
-        self.source_impl(db)
+    pub fn source(&self, db: &(impl DefDatabase + AstDatabase)) -> Source<FieldSource> {
+        self.source_impl(db).into()
     }
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {

@@ -168,9 +168,9 @@ impl NavigationTarget {
     }
 
     pub(crate) fn from_field(db: &RootDatabase, field: hir::StructField) -> NavigationTarget {
-        let (file_id, field) = field.source(db);
-        let file_id = file_id.original_file(db);
-        match field {
+        let src = field.source(db);
+        let file_id = src.file_id.original_file(db);
+        match src.ast {
             FieldSource::Named(it) => {
                 NavigationTarget::from_named(file_id, &*it, it.doc_comment_text(), it.short_label())
             }

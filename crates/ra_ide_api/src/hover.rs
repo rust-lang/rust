@@ -102,8 +102,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 res.extend(hover_text(src.ast.doc_comment_text(), None));
             }
             Some(FieldAccess(it)) => {
-                let it = it.source(db).1;
-                if let hir::FieldSource::Named(it) = it {
+                let src = it.source(db);
+                if let hir::FieldSource::Named(it) = src.ast {
                     res.extend(hover_text(it.doc_comment_text(), it.short_label()));
                 }
             }
