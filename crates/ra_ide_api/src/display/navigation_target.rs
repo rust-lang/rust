@@ -228,12 +228,12 @@ impl NavigationTarget {
         db: &RootDatabase,
         impl_block: hir::ImplBlock,
     ) -> NavigationTarget {
-        let (file_id, node) = impl_block.source(db);
+        let src = impl_block.source(db);
         NavigationTarget::from_syntax(
-            file_id.as_original_file(),
+            src.file_id.as_original_file(),
             "impl".into(),
             None,
-            node.syntax(),
+            src.ast.syntax(),
             None,
             None,
         )

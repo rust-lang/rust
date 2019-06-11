@@ -8,7 +8,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    Const, TypeAlias, Function, HirFileId, AstDatabase,
+    Const, TypeAlias, Function, HirFileId, AstDatabase, HasSource, Source,
     HirDatabase, DefDatabase, TraitRef,
     type_ref::TypeRef,
     ids::LocationCtx,
@@ -44,6 +44,15 @@ pub struct ImplBlock {
     impl_id: ImplId,
 }
 
+impl HasSource for ImplBlock {
+    type Ast = TreeArc<ast::ImplBlock>;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ImplBlock>> {
+        let source_map = db.impls_in_module_with_source_map(self.module).1;
+        let (file_id, source) = self.module.definition_source(db);
+        (file_id, source_map.get(&source, self.impl_id)).into()
+    }
+}
+
 impl ImplBlock {
     pub(crate) fn containing(
         module_impl_blocks: Arc<ModuleImplBlocks>,
@@ -58,13 +67,10 @@ impl ImplBlock {
     }
 
     /// Returns the syntax of the impl block
-    pub fn source(
-        &self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, TreeArc<ast::ImplBlock>) {
+    pub fn source(&self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ImplBlock>> {
         let source_map = db.impls_in_module_with_source_map(self.module).1;
         let (file_id, source) = self.module.definition_source(db);
-        (file_id, source_map.get(&source, self.impl_id))
+        (file_id, source_map.get(&source, self.impl_id)).into()
     }
 
     pub fn id(&self) -> ImplId {

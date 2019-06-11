@@ -442,11 +442,8 @@ impl HasSource for Union {
 }
 
 impl Union {
-    pub fn source(
-        self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, TreeArc<ast::StructDef>) {
-        self.id.source(db)
+    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
+        self.id.source(db).into()
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {

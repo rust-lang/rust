@@ -70,7 +70,7 @@ impl GenericParams {
         match def {
             GenericDef::Function(it) => generics.fill(&*it.source(db).ast, start),
             GenericDef::Struct(it) => generics.fill(&*it.source(db).ast, start),
-            GenericDef::Union(it) => generics.fill(&*it.source(db).1, start),
+            GenericDef::Union(it) => generics.fill(&*it.source(db).ast, start),
             GenericDef::Enum(it) => generics.fill(&*it.source(db).ast, start),
             GenericDef::Trait(it) => {
                 // traits get the Self type as an implicit first type parameter
@@ -82,7 +82,7 @@ impl GenericParams {
                 generics.fill(&*it.source(db).ast, start + 1);
             }
             GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).ast, start),
-            GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).1, start),
+            GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).ast, start),
         }
 
         Arc::new(generics)
