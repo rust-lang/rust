@@ -1,6 +1,6 @@
 use crate::{Assist, AssistId, AssistCtx, ast_editor::{AstEditor, AstBuilder}};
 
-use hir::db::HirDatabase;
+use hir::{HasSource, db::HirDatabase};
 use ra_syntax::{SmolStr, TreeArc};
 use ra_syntax::ast::{self, AstNode, FnDef, ImplItem, ImplItemKind, NameOwner};
 use ra_db::FilePosition;

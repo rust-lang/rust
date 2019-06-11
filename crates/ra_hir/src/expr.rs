@@ -11,6 +11,7 @@ use ra_syntax::{
 
 use crate::{
     Path, Name, HirDatabase, Resolver,DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind,
+    HasSource,
     name::AsName,
     type_ref::{Mutability, TypeRef},
 };

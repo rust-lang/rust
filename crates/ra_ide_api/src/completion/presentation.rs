@@ -1,7 +1,7 @@
 //! This modules takes care of rendering various defenitions as completion items.
 use join_to_string::join;
 use test_utils::tested_by;
-use hir::{Docs, PerNs, Resolution, HirDisplay};
+use hir::{Docs, PerNs, Resolution, HirDisplay, HasSource};
 use ra_syntax::ast::NameOwner;
 
 use crate::completion::{

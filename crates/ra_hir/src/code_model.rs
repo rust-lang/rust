@@ -355,10 +355,6 @@ impl StructField {
         self.parent.variant_data(db).fields().unwrap()[self.id].name.clone()
     }
 
-    pub fn source(&self, db: &(impl DefDatabase + AstDatabase)) -> Source<FieldSource> {
-        self.source_impl(db).into()
-    }
-
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
         db.type_for_field(*self)
     }
@@ -381,10 +377,6 @@ impl HasSource for Struct {
 }
 
 impl Struct {
-    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
-        self.id.source(db).into()
-    }
-
     pub fn module(self, db: &impl HirDatabase) -> Module {
         self.id.module(db)
     }
@@ -446,10 +438,6 @@ impl HasSource for Union {
 }
 
 impl Union {
-    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
-        self.id.source(db).into()
-    }
-
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
         db.struct_data(Struct { id: self.id }).name.clone()
     }
@@ -483,10 +471,6 @@ impl HasSource for Enum {
 }
 
 impl Enum {
-    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::EnumDef>> {
-        self.id.source(db).into()
-    }
-
     pub fn module(self, db: &impl HirDatabase) -> Module {
         self.id.module(db)
     }
@@ -537,12 +521,6 @@ impl HasSource for EnumVariant {
 }
 
 impl EnumVariant {
-    pub fn source(
-        &self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> Source<TreeArc<ast::EnumVariant>> {
-        self.source_impl(db)
-    }
     pub fn module(&self, db: &impl HirDatabase) -> Module {
         self.parent.module(db)
     }
@@ -692,10 +670,6 @@ impl FnSignature {
 }
 
 impl Function {
-    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::FnDef>> {
-        self.id.source(db).into()
-    }
-
     pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
@@ -778,10 +752,6 @@ impl HasSource for Const {
 }
 
 impl Const {
-    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ConstDef>> {
-        self.id.source(db).into()
-    }
-
     pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
@@ -866,10 +836,6 @@ impl HasSource for Static {
 }
 
 impl Static {
-    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StaticDef>> {
-        self.id.source(db).into()
-    }
-
     pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
@@ -902,10 +868,6 @@ impl HasSource for Trait {
 }
 
 impl Trait {
-    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::TraitDef>> {
-        self.id.source(db).into()
-    }
-
     pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
@@ -952,13 +914,6 @@ impl HasSource for TypeAlias {
 }
 
 impl TypeAlias {
-    pub fn source(
-        self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> Source<TreeArc<ast::TypeAliasDef>> {
-        self.id.source(db).into()
-    }
-
     pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
     }
@@ -1015,11 +970,7 @@ impl HasSource for MacroDef {
     }
 }
 
-impl MacroDef {
-    pub fn source(&self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::MacroCall>> {
-        (self.id.0.file_id(), self.id.0.to_node(db)).into()
-    }
-}
+impl MacroDef {}
 
 pub enum Container {
     Trait(Trait),

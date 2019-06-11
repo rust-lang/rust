@@ -5,7 +5,7 @@ use ra_syntax::ast::{AstNode, StructLit};
 
 use crate::{
     expr::AstPtr,
-    HirDatabase, Function, Name,
+    HirDatabase, Function, Name, HasSource,
     diagnostics::{DiagnosticSink, MissingFields},
     adt::AdtDef,
     Path,

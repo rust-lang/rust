@@ -11,7 +11,7 @@ use ra_syntax::{
 
 use crate::{
     Name, AsName, Struct, Union, Enum, EnumVariant, Crate, AstDatabase,
-    HirDatabase, HirFileId, StructField, FieldSource, Source,
+    HirDatabase, HirFileId, StructField, FieldSource, Source, HasSource,
     type_ref::TypeRef, DefDatabase,
 };
 

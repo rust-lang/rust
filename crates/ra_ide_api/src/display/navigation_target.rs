@@ -5,7 +5,7 @@ use ra_syntax::{
     ast::{self, DocCommentsOwner},
     algo::visit::{visitor, Visitor},
 };
-use hir::{ModuleSource, FieldSource, ImplItem};
+use hir::{ModuleSource, FieldSource, ImplItem, HasSource};
 
 use crate::{FileSymbol, db::RootDatabase};
 use super::short_label::ShortLabel;
@@ -182,7 +182,7 @@ impl NavigationTarget {
 
     pub(crate) fn from_def_source<A, D>(db: &RootDatabase, def: D) -> NavigationTarget
     where
-        D: hir::HasSource<Ast = TreeArc<A>>,
+        D: HasSource<Ast = TreeArc<A>>,
         A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
     {
         let src = def.source(db);

@@ -4,7 +4,7 @@ use ra_syntax::{
     ast::{self, DocCommentsOwner},
     algo::{find_covering_element, find_node_at_offset, ancestors_at_offset, visit::{visitor, Visitor}},
 };
-use hir::HirDisplay;
+use hir::{HirDisplay, HasSource};
 
 use crate::{
     db::RootDatabase,
@@ -226,7 +226,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
     fn from_def_source<A, D>(db: &RootDatabase, def: D) -> Option<String>
     where
-        D: hir::HasSource<Ast = TreeArc<A>>,
+        D: HasSource<Ast = TreeArc<A>>,
         A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
     {
         let src = def.source(db);

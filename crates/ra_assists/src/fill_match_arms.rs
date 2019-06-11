@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use hir::{
-    AdtDef, FieldSource,
+    AdtDef, FieldSource, HasSource,
     db::HirDatabase,
 };
 use ra_syntax::ast::{self, AstNode};

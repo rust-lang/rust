@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ra_syntax::ast;
 
 use crate::{
-    HirDatabase, DefDatabase, AstDatabase,
+    HirDatabase, DefDatabase, AstDatabase, HasSource,
     Module, StructField, Struct, Enum, EnumVariant, Static, Const, Function, Union, Trait, TypeAlias, FieldSource, MacroDef,
 };
 

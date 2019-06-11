@@ -1415,7 +1415,7 @@ mod diagnostics {
     use crate::{
         expr::ExprId,
         diagnostics::{DiagnosticSink, NoSuchField},
-        HirDatabase, Function,
+        HirDatabase, Function, HasSource,
 };
 
     #[derive(Debug, PartialEq, Eq, Clone)]

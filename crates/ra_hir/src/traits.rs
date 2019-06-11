@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use ra_syntax::ast::{self, NameOwner};
 
 use crate::{
-    Function, Const, TypeAlias, Name, DefDatabase, Trait, AstDatabase, Module,
+    Function, Const, TypeAlias, Name, DefDatabase, Trait, AstDatabase, Module, HasSource,
     ids::LocationCtx, name::AsName,
 };
 
