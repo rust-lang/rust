@@ -348,7 +348,7 @@ impl<'a> DiagnosticBuilder<'a> {
 
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
-    pub fn new_with_code(handler: &'a Handler,
+    crate fn new_with_code(handler: &'a Handler,
                          level: Level,
                          code: Option<DiagnosticId>,
                          message: &str)
