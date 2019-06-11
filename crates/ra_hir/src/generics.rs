@@ -68,7 +68,7 @@ impl GenericParams {
         generics.parent_params = parent.map(|p| db.generic_params(p));
         let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
         match def {
-            GenericDef::Function(it) => generics.fill(&*it.source(db).1, start),
+            GenericDef::Function(it) => generics.fill(&*it.source(db).ast, start),
             GenericDef::Struct(it) => generics.fill(&*it.source(db).ast, start),
             GenericDef::Union(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Enum(it) => generics.fill(&*it.source(db).ast, start),

@@ -100,7 +100,7 @@ impl Completions {
     ) {
         let sig = func.signature(ctx.db);
         let name = name.unwrap_or_else(|| sig.name().to_string());
-        let (_, ast_node) = func.source(ctx.db);
+        let ast_node = func.source(ctx.db).ast;
         let detail = function_label(&ast_node);
 
         let mut builder = CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name)

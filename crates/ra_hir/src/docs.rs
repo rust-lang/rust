@@ -81,7 +81,7 @@ pub(crate) fn documentation_query(
         DocDef::EnumVariant(it) => docs_from_ast(&*it.source(db).ast),
         DocDef::Static(it) => docs_from_ast(&*it.source(db).1),
         DocDef::Const(it) => docs_from_ast(&*it.source(db).1),
-        DocDef::Function(it) => docs_from_ast(&*it.source(db).1),
+        DocDef::Function(it) => docs_from_ast(&*it.source(db).ast),
         DocDef::Union(it) => docs_from_ast(&*it.source(db).1),
         DocDef::Trait(it) => docs_from_ast(&*it.source(db).1),
         DocDef::TypeAlias(it) => docs_from_ast(&*it.source(db).1),

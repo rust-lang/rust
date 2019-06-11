@@ -164,13 +164,7 @@ impl NavigationTarget {
     }
 
     pub(crate) fn from_function(db: &RootDatabase, func: hir::Function) -> NavigationTarget {
-        let (file_id, fn_def) = func.source(db);
-        NavigationTarget::from_named(
-            file_id.original_file(db),
-            &*fn_def,
-            fn_def.doc_comment_text(),
-            fn_def.short_label(),
-        )
+        NavigationTarget::from_def_source(db, func)
     }
 
     pub(crate) fn from_field(db: &RootDatabase, field: hir::StructField) -> NavigationTarget {

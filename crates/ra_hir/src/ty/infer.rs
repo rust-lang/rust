@@ -1432,7 +1432,7 @@ mod diagnostics {
         ) {
             match self {
                 InferenceDiagnostic::NoSuchField { expr, field } => {
-                    let (file, _) = owner.source(db);
+                    let file = owner.source(db).file_id;
                     let field = owner.body_source_map(db).field_syntax(*expr, *field);
                     sink.push(NoSuchField { file, field })
                 }

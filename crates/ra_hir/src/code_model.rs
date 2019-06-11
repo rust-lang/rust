@@ -603,6 +603,14 @@ pub struct Function {
     pub(crate) id: FunctionId,
 }
 
+impl HasSource for Function {
+    type Ast = TreeArc<ast::FnDef>;
+
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::FnDef>> {
+        self.id.source(db).into()
+    }
+}
+
 /// The declared signature of a function.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FnSignature {
@@ -619,11 +627,11 @@ impl FnSignature {
         db: &(impl DefDatabase + AstDatabase),
         func: Function,
     ) -> Arc<FnSignature> {
-        let (_, node) = func.source(db);
-        let name = node.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
+        let src = func.source(db);
+        let name = src.ast.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
         let mut params = Vec::new();
         let mut has_self_param = false;
-        if let Some(param_list) = node.param_list() {
+        if let Some(param_list) = src.ast.param_list() {
             if let Some(self_param) = param_list.self_param() {
                 let self_type = if let Some(type_ref) = self_param.ascribed_type() {
                     TypeRef::from_ast(type_ref)
@@ -647,7 +655,7 @@ impl FnSignature {
                 params.push(type_ref);
             }
         }
-        let ret_type = if let Some(type_ref) = node.ret_type().and_then(|rt| rt.type_ref()) {
+        let ret_type = if let Some(type_ref) = src.ast.ret_type().and_then(|rt| rt.type_ref()) {
             TypeRef::from_ast(type_ref)
         } else {
             TypeRef::unit()
@@ -676,8 +684,8 @@ impl FnSignature {
 }
 
 impl Function {
-    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> (HirFileId, TreeArc<ast::FnDef>) {
-        self.id.source(db)
+    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::FnDef>> {
+        self.id.source(db).into()
     }
 
     pub fn module(self, db: &impl DefDatabase) -> Module {

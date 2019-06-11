@@ -96,8 +96,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
         match classify_name_ref(db, &analyzer, name_ref) {
             Some(Method(it)) => {
-                let it = it.source(db).1;
-                res.extend(hover_text(it.doc_comment_text(), it.short_label()));
+                let src = it.source(db);
+                res.extend(hover_text(src.ast.doc_comment_text(), src.ast.short_label()));
             }
             Some(Macro(it)) => {
                 let it = it.source(db).1;
@@ -111,8 +111,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             }
             Some(AssocItem(it)) => match it {
                 hir::ImplItem::Method(it) => {
-                    let it = it.source(db).1;
-                    res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                    let src = it.source(db);
+                    res.extend(hover_text(src.ast.doc_comment_text(), src.ast.short_label()))
                 }
                 hir::ImplItem::Const(it) => {
                     let it = it.source(db).1;
@@ -132,8 +132,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                         }
                     }
                     hir::ModuleDef::Function(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                        let src = it.source(db);
+                        res.extend(hover_text(src.ast.doc_comment_text(), src.ast.short_label()))
                     }
                     hir::ModuleDef::Struct(it) => {
                         let src = it.source(db);
