@@ -28,12 +28,17 @@ fn line_program_add_file(
 ) -> FileId {
     match file {
         FileName::Real(path) => {
-            let dir_name = LineString::new(
-                path.parent().unwrap().to_str().unwrap().as_bytes(),
-                line_program.encoding(),
-                line_strings,
-            );
-            let dir_id = line_program.add_directory(dir_name);
+            let dir_name = path.parent().unwrap().to_str().unwrap().as_bytes();
+            let dir_id = if !dir_name.is_empty() {
+                let dir_name = LineString::new(
+                    dir_name,
+                    line_program.encoding(),
+                    line_strings,
+                );
+                line_program.add_directory(dir_name)
+            } else {
+                line_program.default_directory()
+            };
             let file_name = LineString::new(
                 path.file_name().unwrap().to_str().unwrap().as_bytes(),
                 line_program.encoding(),
