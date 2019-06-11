@@ -65,7 +65,7 @@ pub mod bytestring;
 pub mod process;
 pub mod fs;
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(any(target_os = "cloudabi",
                  target_os = "l4re",
                  target_os = "redox",
