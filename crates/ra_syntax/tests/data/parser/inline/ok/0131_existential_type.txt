@@ -1,0 +1,31 @@
+SOURCE_FILE@[0; 37)
+  TYPE_ALIAS_DEF@[0; 36)
+    EXISTENTIAL_KW@[0; 11) "existential"
+    WHITESPACE@[11; 12) " "
+    TYPE_KW@[12; 16) "type"
+    WHITESPACE@[16; 17) " "
+    NAME@[17; 20)
+      IDENT@[17; 20) "Foo"
+    COLON@[20; 21) ":"
+    WHITESPACE@[21; 22) " "
+    TYPE_BOUND_LIST@[22; 35)
+      TYPE_BOUND@[22; 35)
+        PATH_TYPE@[22; 35)
+          PATH@[22; 35)
+            PATH_SEGMENT@[22; 35)
+              NAME_REF@[22; 24)
+                IDENT@[22; 24) "Fn"
+              PARAM_LIST@[24; 26)
+                L_PAREN@[24; 25) "("
+                R_PAREN@[25; 26) ")"
+              WHITESPACE@[26; 27) " "
+              RET_TYPE@[27; 35)
+                THIN_ARROW@[27; 29) "->"
+                WHITESPACE@[29; 30) " "
+                PATH_TYPE@[30; 35)
+                  PATH@[30; 35)
+                    PATH_SEGMENT@[30; 35)
+                      NAME_REF@[30; 35)
+                        IDENT@[30; 35) "usize"
+    SEMI@[35; 36) ";"
+  WHITESPACE@[36; 37) "\n"
