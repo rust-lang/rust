@@ -247,7 +247,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_bounds(cx, ptr, size, CheckInAllocMsg::MemoryAccessTest)?;
 
-        self.mark_definedness(ptr, size, true)?;
+        self.mark_definedness(ptr, size, true);
         self.clear_relocations(cx, ptr, size)?;
 
         AllocationExtra::memory_written(self, ptr, size)?;
@@ -406,7 +406,10 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     {
         let val = match val {
             ScalarMaybeUndef::Scalar(scalar) => scalar,
-            ScalarMaybeUndef::Undef => return self.mark_definedness(ptr, type_size, false),
+            ScalarMaybeUndef::Undef => {
+                self.mark_definedness(ptr, type_size, false);
+                return Ok(());
+            },
         };
 
         let bytes = match val.to_bits_or_ptr(type_size, cx) {
@@ -550,16 +553,15 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
         new_state: bool,
-    ) -> InterpResult<'tcx> {
+    ) {
         if size.bytes() == 0 {
-            return Ok(());
+            return;
         }
         self.undef_mask.set_range(
             ptr.offset,
             ptr.offset + size,
             new_state,
         );
-        Ok(())
     }
 }
 
