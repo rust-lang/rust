@@ -17,6 +17,8 @@ use crate::ich::StableHashingContext;
 
 // Query configuration and description traits.
 
+// FIXME(eddyb) false positive, the lifetime parameter is used for `Key`/`Value`.
+#[allow(unused_lifetimes)]
 pub trait QueryConfig<'tcx> {
     const NAME: QueryName;
     const CATEGORY: ProfileCategory;

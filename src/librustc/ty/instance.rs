@@ -442,7 +442,7 @@ fn resolve_associated_item<'a, 'tcx>(
     }
 }
 
-fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
+fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
                                         trait_closure_kind: ty::ClosureKind)
     -> Result<bool, ()>
 {

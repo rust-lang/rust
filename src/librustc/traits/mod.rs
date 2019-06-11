@@ -1191,7 +1191,7 @@ where
         folder: &mut F,
     ) -> chalk_engine::ExClause<Self>;
 
-    fn visit_ex_clause_with<'gcx: 'tcx, V: TypeVisitor<'tcx>>(
+    fn visit_ex_clause_with<V: TypeVisitor<'tcx>>(
         ex_clause: &chalk_engine::ExClause<Self>,
         visitor: &mut V,
     ) -> bool;

@@ -154,7 +154,7 @@ impl<D: Copy + Debug + Ord + Eq + Hash> SimplifiedTypeGen<D> {
     }
 }
 
-impl<'a, 'gcx, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
+impl<'a, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
     where D: Copy + Debug + Ord + Eq + Hash +
              HashStable<StableHashingContext<'a>>,
 {

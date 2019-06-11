@@ -785,7 +785,7 @@ macro_rules! options {
         return op;
     }
 
-    impl<'a> dep_tracking::DepTrackingHash for $struct_name {
+    impl dep_tracking::DepTrackingHash for $struct_name {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
             let mut sub_hashes = BTreeMap::new();
             $({

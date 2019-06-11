@@ -886,7 +886,7 @@ impl<T> Binder<T> {
     }
 
     /// Wraps `value` in a binder, binding higher-ranked vars (if any).
-    pub fn bind<'tcx>(value: T) -> Binder<T> {
+    pub fn bind(value: T) -> Binder<T> {
         Binder(value)
     }
 
@@ -988,7 +988,7 @@ pub struct ProjectionTy<'tcx> {
     pub item_def_id: DefId,
 }
 
-impl<'a, 'tcx> ProjectionTy<'tcx> {
+impl<'tcx> ProjectionTy<'tcx> {
     /// Construct a `ProjectionTy` by searching the trait from `trait_ref` for the
     /// associated item named `item_name`.
     pub fn from_ref_and_name(

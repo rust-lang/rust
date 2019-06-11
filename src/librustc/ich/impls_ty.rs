@@ -135,7 +135,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::BoundVar {
     }
 }
 
-impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>> for ty::Binder<T>
+impl<'a, T> HashStable<StableHashingContext<'a>> for ty::Binder<T>
     where T: HashStable<StableHashingContext<'a>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -192,7 +192,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for region::Scope {
     }
 }
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
+impl<'a> HashStable<StableHashingContext<'a>>
 for ty::TyVid
 {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -204,7 +204,7 @@ for ty::TyVid
     }
 }
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
+impl<'a> HashStable<StableHashingContext<'a>>
 for ty::IntVid
 {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -216,7 +216,7 @@ for ty::IntVid
     }
 }
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
+impl<'a> HashStable<StableHashingContext<'a>>
 for ty::FloatVid
 {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -228,7 +228,7 @@ for ty::FloatVid
     }
 }
 
-impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
+impl<'a, T> HashStable<StableHashingContext<'a>>
 for ty::steal::Steal<T>
     where T: HashStable<StableHashingContext<'a>>
 {

@@ -146,7 +146,7 @@ impl<Tag> From<Double> for Scalar<Tag> {
     }
 }
 
-impl<'tcx> Scalar<()> {
+impl Scalar<()> {
     #[inline(always)]
     fn check_data(data: u128, size: u8) {
         debug_assert_eq!(truncate(data, Size::from_bytes(size as u64)), data,

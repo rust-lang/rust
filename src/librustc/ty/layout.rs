@@ -1678,7 +1678,7 @@ impl ty::query::TyCtxtAt<'a, 'tcx, '_> {
     }
 }
 
-impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
+impl<'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
           C::TyLayout: MaybeResult<TyLayout<'tcx>>,
           C: HasParamEnv<'tcx>

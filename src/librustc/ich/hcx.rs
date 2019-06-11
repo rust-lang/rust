@@ -393,7 +393,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for DelimSpan {
     }
 }
 
-pub fn hash_stable_trait_impls<'a, 'gcx, W>(
+pub fn hash_stable_trait_impls<'a, W>(
     hcx: &mut StableHashingContext<'a>,
     hasher: &mut StableHasher<W>,
     blanket_impls: &[DefId],
