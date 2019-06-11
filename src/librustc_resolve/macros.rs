@@ -242,8 +242,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn check_unused_macros(&self) {
         for did in self.unused_macros.iter() {
             let id_span = match *self.macro_map[did] {
-                SyntaxExtension::NormalTT { def_info, .. } |
-                SyntaxExtension::DeclMacro { def_info, .. } => def_info,
+                SyntaxExtension::LegacyBang { def_info, .. } => def_info,
                 _ => None,
             };
             if let Some((id, span)) = id_span {
@@ -587,7 +586,7 @@ impl<'a> Resolver<'a> {
                         match self.resolve_macro_to_res(derive, MacroKind::Derive,
                                                         &parent_scope, true, force) {
                             Ok((_, ext)) => {
-                                if let SyntaxExtension::ProcMacroDerive(_, helpers, _) = &*ext {
+                                if let SyntaxExtension::Derive(_, helpers, _) = &*ext {
                                     if helpers.contains(&ident.name) {
                                         let binding =
                                             (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
