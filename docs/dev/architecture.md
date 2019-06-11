@@ -54,11 +54,11 @@ processes. These are outlined below:
     [syntax_kinds/generated.tera.rs][syntax_kinds source]
 
 [tera]: https://tera.netlify.com/
-[grammar.ron]: ./crates/ra_syntax/src/grammar.ron
-[ast generated]: ./crates/ra_syntax/src/ast/generated.rs
-[ast source]: ./crates/ra_syntax/src/ast/generated.rs.tera
-[syntax_kinds generated]: ./crates/ra_syntax/src/syntax_kinds/generated.rs
-[syntax_kinds source]: ./crates/ra_syntax/src/syntax_kinds/generated.rs.tera
+[grammar.ron]: ../../crates/ra_syntax/src/grammar.ron
+[ast generated]: ../../crates/ra_syntax/src/ast/generated.rs
+[ast source]: ../../crates/ra_syntax/src/ast/generated.rs.tera
+[syntax_kinds generated]: ../../crates/ra_syntax/src/syntax_kinds/generated.rs
+[syntax_kinds source]: ../../crates/ra_syntax/src/syntax_kinds/generated.rs.tera
 
 
 ## Code Walk-Through
