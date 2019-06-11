@@ -88,6 +88,9 @@ pub enum CollectionAllocErr {
     /// Error due to the computed capacity exceeding the collection's maximum
     /// (usually `isize::MAX` bytes).
     CapacityOverflow,
-    /// Error due to the allocator (see the `AllocErr` type's docs).
-    AllocErr,
+    /// Error due to the allocator.
+    AllocErr {
+        /// The layout of the allocation request that failed.
+        layout: alloc::alloc::Layout,
+    },
 }
