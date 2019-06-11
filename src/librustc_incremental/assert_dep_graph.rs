@@ -258,7 +258,7 @@ fn dump_graph(tcx: TyCtxt<'_, '_, '_>) {
 pub struct GraphvizDepGraph<'q>(FxHashSet<&'q DepNode>,
                                 Vec<(&'q DepNode, &'q DepNode)>);
 
-impl<'a, 'tcx, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
+impl<'a, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
     type Node = &'q DepNode;
     type Edge = (&'q DepNode, &'q DepNode);
     fn nodes(&self) -> dot::Nodes<'_, &'q DepNode> {
@@ -276,7 +276,7 @@ impl<'a, 'tcx, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
     }
 }
 
-impl<'a, 'tcx, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
+impl<'a, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
     type Node = &'q DepNode;
     type Edge = (&'q DepNode, &'q DepNode);
     fn graph_id(&self) -> dot::Id<'_> {

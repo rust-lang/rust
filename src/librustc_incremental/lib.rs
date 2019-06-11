@@ -9,6 +9,7 @@
 
 #![deny(rust_2018_idioms)]
 #![deny(internal)]
+#![deny(unused_lifetimes)]
 
 #[macro_use] extern crate rustc;
 #[allow(unused_extern_crates)]
