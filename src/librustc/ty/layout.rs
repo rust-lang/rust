@@ -28,17 +28,16 @@ use rustc_target::abi::call::{
     ArgAttribute, ArgAttributes, ArgType, Conv, FnType, IgnoreMode, PassMode, Reg, RegKind
 };
 
-
-
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, signed: bool) -> Ty<'tcx>;
     fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer;
-    fn repr_discr<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                            ty: Ty<'tcx>,
-                            repr: &ReprOptions,
-                            min: i128,
-                            max: i128)
-                            -> (Integer, bool);
+    fn repr_discr<'tcx>(
+        tcx: TyCtxt<'tcx, 'tcx>,
+        ty: Ty<'tcx>,
+        repr: &ReprOptions,
+        min: i128,
+        max: i128,
+    ) -> (Integer, bool);
 }
 
 impl IntegerExt for Integer {
@@ -77,12 +76,13 @@ impl IntegerExt for Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u128 values above i128::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    fn repr_discr<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                            ty: Ty<'tcx>,
-                            repr: &ReprOptions,
-                            min: i128,
-                            max: i128)
-                            -> (Integer, bool) {
+    fn repr_discr<'tcx>(
+        tcx: TyCtxt<'tcx, 'tcx>,
+        ty: Ty<'tcx>,
+        repr: &ReprOptions,
+        min: i128,
+        max: i128,
+    ) -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u128
@@ -171,10 +171,10 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
     }
 }
 
-fn layout_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                        query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                        -> Result<&'tcx LayoutDetails, LayoutError<'tcx>>
-{
+fn layout_raw<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
     ty::tls::with_related_context(tcx, move |icx| {
         let rec_limit = *tcx.sess.recursion_limit.get();
         let (param_env, ty) = query.into_parts();
@@ -1604,10 +1604,11 @@ pub enum SizeSkeleton<'tcx> {
 }
 
 impl<'tcx> SizeSkeleton<'tcx> {
-    pub fn compute(ty: Ty<'tcx>,
-                   tcx: TyCtxt<'tcx, 'tcx>,
-                   param_env: ty::ParamEnv<'tcx>)
-                   -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
+    pub fn compute(
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
         debug_assert!(!ty.has_infer_types());
 
         // First try computing a static layout.

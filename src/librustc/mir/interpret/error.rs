@@ -75,18 +75,15 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
 }
 
 impl<'gcx, 'tcx> ConstEvalErr<'tcx> {
-    pub fn struct_error(&self,
+    pub fn struct_error(
+        &self,
         tcx: TyCtxtAt<'gcx, 'tcx>,
-        message: &str)
-        -> Result<DiagnosticBuilder<'tcx>, ErrorHandled>
-    {
+        message: &str,
+    ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         self.struct_generic(tcx, message, None)
     }
 
-    pub fn report_as_error(&self,
-        tcx: TyCtxtAt<'gcx, 'tcx>,
-        message: &str
-    ) -> ErrorHandled {
+    pub fn report_as_error(&self, tcx: TyCtxtAt<'gcx, 'tcx>, message: &str) -> ErrorHandled {
         let err = self.struct_error(tcx, message);
         match err {
             Ok(mut err) => {
@@ -97,7 +94,8 @@ impl<'gcx, 'tcx> ConstEvalErr<'tcx> {
         }
     }
 
-    pub fn report_as_lint(&self,
+    pub fn report_as_lint(
+        &self,
         tcx: TyCtxtAt<'gcx, 'tcx>,
         message: &str,
         lint_root: hir::HirId,
@@ -172,10 +170,7 @@ impl<'gcx, 'tcx> ConstEvalErr<'tcx> {
     }
 }
 
-pub fn struct_error<'gcx, 'tcx>(
-    tcx: TyCtxtAt<'gcx, 'tcx>,
-    msg: &str,
-) -> DiagnosticBuilder<'tcx> {
+pub fn struct_error<'gcx, 'tcx>(tcx: TyCtxtAt<'gcx, 'tcx>, msg: &str) -> DiagnosticBuilder<'tcx> {
     struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
 }
 

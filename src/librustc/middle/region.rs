@@ -646,9 +646,11 @@ impl<'tcx> ScopeTree {
 
     /// Assuming that the provided region was defined within this `ScopeTree`,
     /// returns the outermost `Scope` that the region outlives.
-    pub fn early_free_scope<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>,
-                                      br: &ty::EarlyBoundRegion)
-                                      -> Scope {
+    pub fn early_free_scope<'gcx>(
+        &self,
+        tcx: TyCtxt<'gcx, 'tcx>,
+        br: &ty::EarlyBoundRegion,
+    ) -> Scope {
         let param_owner = tcx.parent(br.def_id).unwrap();
 
         let param_owner_id = tcx.hir().as_local_hir_id(param_owner).unwrap();
@@ -677,8 +679,7 @@ impl<'tcx> ScopeTree {
 
     /// Assuming that the provided region was defined within this `ScopeTree`,
     /// returns the outermost `Scope` that the region outlives.
-    pub fn free_scope<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>, fr: &ty::FreeRegion)
-                                 -> Scope {
+    pub fn free_scope<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>, fr: &ty::FreeRegion) -> Scope {
         let param_owner = match fr.bound_region {
             ty::BoundRegion::BrNamed(def_id, _) => {
                 tcx.parent(def_id).unwrap()
@@ -734,9 +735,11 @@ impl<'tcx> ScopeTree {
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`
-fn record_var_lifetime(visitor: &mut RegionResolutionVisitor<'_>,
-                       var_id: hir::ItemLocalId,
-                       _sp: Span) {
+fn record_var_lifetime(
+    visitor: &mut RegionResolutionVisitor<'_>,
+    var_id: hir::ItemLocalId,
+    _sp: Span,
+) {
     match visitor.cx.var_parent {
         None => {
             // this can happen in extern fn declarations like
@@ -977,9 +980,11 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     visitor.cx = prev_cx;
 }
 
-fn resolve_local<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>,
-                           pat: Option<&'tcx hir::Pat>,
-                           init: Option<&'tcx hir::Expr>) {
+fn resolve_local<'tcx>(
+    visitor: &mut RegionResolutionVisitor<'tcx>,
+    pat: Option<&'tcx hir::Pat>,
+    init: Option<&'tcx hir::Expr>,
+) {
     debug!("resolve_local(pat={:?}, init={:?})", pat, init);
 
     let blk_scope = visitor.cx.var_parent.map(|(p, _)| p);
@@ -1130,8 +1135,8 @@ fn resolve_local<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>,
     fn record_rvalue_scope_if_borrow_expr<'tcx>(
         visitor: &mut RegionResolutionVisitor<'tcx>,
         expr: &hir::Expr,
-        blk_id: Option<Scope>)
-    {
+        blk_id: Option<Scope>,
+    ) {
         match expr.node {
             hir::ExprKind::AddrOf(_, ref subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
@@ -1178,9 +1183,11 @@ fn resolve_local<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>,
     ///        | <rvalue>
     ///
     /// Note: ET is intended to match "rvalues or places based on rvalues".
-    fn record_rvalue_scope<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>,
-                                     expr: &hir::Expr,
-                                     blk_scope: Option<Scope>) {
+    fn record_rvalue_scope<'tcx>(
+        visitor: &mut RegionResolutionVisitor<'tcx>,
+        expr: &hir::Expr,
+        blk_scope: Option<Scope>,
+    ) {
         let mut expr = expr;
         loop {
             // Note: give all the expressions matching `ET` with the
@@ -1327,9 +1334,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     }
 }
 
-fn region_scope_tree<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId)
-    -> &'tcx ScopeTree
-{
+fn region_scope_tree<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> &'tcx ScopeTree {
     let closure_base_def_id = tcx.closure_base_def_id(def_id);
     if closure_base_def_id != def_id {
         return tcx.region_scope_tree(closure_base_def_id);

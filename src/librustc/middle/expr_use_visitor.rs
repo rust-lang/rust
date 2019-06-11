@@ -266,15 +266,15 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
     ///   `None` means that rvalues will be given more conservative lifetimes.
     ///
     /// See also `with_infer`, which is used *during* typeck.
-    pub fn new(delegate: &'a mut (dyn Delegate<'tcx>+'a),
-               tcx: TyCtxt<'tcx, 'tcx>,
-               body_owner: DefId,
-               param_env: ty::ParamEnv<'tcx>,
-               region_scope_tree: &'a region::ScopeTree,
-               tables: &'a ty::TypeckTables<'tcx>,
-               rvalue_promotable_map: Option<&'tcx ItemLocalSet>)
-               -> Self
-    {
+    pub fn new(
+        delegate: &'a mut (dyn Delegate<'tcx> + 'a),
+        tcx: TyCtxt<'tcx, 'tcx>,
+        body_owner: DefId,
+        param_env: ty::ParamEnv<'tcx>,
+        region_scope_tree: &'a region::ScopeTree,
+        tables: &'a ty::TypeckTables<'tcx>,
+        rvalue_promotable_map: Option<&'tcx ItemLocalSet>,
+    ) -> Self {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::new(tcx,
                                                   body_owner,

@@ -204,7 +204,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
 
 pub(super) fn gather_moves<'gcx, 'tcx>(
     body: &Body<'tcx>,
-    tcx: TyCtxt<'gcx, 'tcx>
+    tcx: TyCtxt<'gcx, 'tcx>,
 ) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
     let mut builder = MoveDataBuilder::new(body, tcx);
 

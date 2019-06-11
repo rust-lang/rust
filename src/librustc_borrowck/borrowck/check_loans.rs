@@ -179,11 +179,13 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     fn decl_without_init(&mut self, _id: hir::HirId, _span: Span) { }
 }
 
-pub fn check_loans<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                     dfcx_loans: &LoanDataFlow<'tcx>,
-                                     move_data: &move_data::FlowedMoveData<'tcx>,
-                                     all_loans: &[Loan<'tcx>],
-                                     body: &hir::Body) {
+pub fn check_loans<'a, 'tcx>(
+    bccx: &BorrowckCtxt<'a, 'tcx>,
+    dfcx_loans: &LoanDataFlow<'tcx>,
+    move_data: &move_data::FlowedMoveData<'tcx>,
+    all_loans: &[Loan<'tcx>],
+    body: &hir::Body,
+) {
     debug!("check_loans(body id={})", body.value.hir_id);
 
     let def_id = bccx.tcx.hir().body_owner_def_id(body.id());

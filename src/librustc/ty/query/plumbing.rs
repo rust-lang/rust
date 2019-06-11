@@ -256,10 +256,10 @@ impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
         self,
         job: Lrc<QueryJob<'gcx>>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: F)
-    -> R
+        compute: F,
+    ) -> R
     where
-        F: for<'lcx> FnOnce(TyCtxt<'gcx, 'lcx>) -> R
+        F: for<'lcx> FnOnce(TyCtxt<'gcx, 'lcx>) -> R,
     {
         // The TyCtxt stored in TLS has the same global interner lifetime
         // as `self`, so we use `with_related_context` to relate the 'gcx lifetimes
@@ -285,9 +285,8 @@ impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     #[cold]
     pub(super) fn report_cycle(
         self,
-        CycleError { usage, cycle: stack }: CycleError<'gcx>
-    ) -> DiagnosticBuilder<'tcx>
-    {
+        CycleError { usage, cycle: stack }: CycleError<'gcx>,
+    ) -> DiagnosticBuilder<'tcx> {
         assert!(!stack.is_empty());
 
         let fix_span = |span: Span, query: &Query<'gcx>| {
@@ -1148,10 +1147,7 @@ macro_rules! define_provider_struct {
 /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
 /// add it to the "We don't have enough information to reconstruct..." group in
 /// the match below.
-pub fn force_from_dep_node<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    dep_node: &DepNode
-) -> bool {
+pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, dep_node: &DepNode) -> bool {
     use crate::dep_graph::RecoverKey;
 
     // We must avoid ever having to call force_from_dep_node() for a

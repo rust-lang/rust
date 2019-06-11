@@ -1423,10 +1423,7 @@ pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     }
 }
 
-fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    pass: T
-) {
+fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx, 'tcx>, pass: T) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let krate = tcx.hir().krate();
@@ -1461,7 +1458,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 
 fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     tcx: TyCtxt<'tcx, 'tcx>,
-    builtin_lints: T
+    builtin_lints: T,
 ) {
     let mut passes = tcx.sess.lint_store.borrow().late_passes.lock().take().unwrap();
 

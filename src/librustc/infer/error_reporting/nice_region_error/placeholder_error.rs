@@ -338,7 +338,10 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         }
 
         impl<'gcx, 'tcx, T> fmt::Display for Highlighted<'gcx, 'tcx, T>
-            where T: for<'a, 'b, 'c> Print<'gcx, 'tcx,
+        where
+            T: for<'a, 'b, 'c> Print<
+                'gcx,
+                'tcx,
                 FmtPrinter<'a, 'gcx, 'tcx, &'b mut fmt::Formatter<'c>>,
                 Error = fmt::Error,
             >,

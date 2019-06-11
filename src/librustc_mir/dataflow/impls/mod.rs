@@ -70,11 +70,11 @@ pub struct MaybeInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'gcx, 'tcx>,
-               body: &'a Body<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
-               -> Self
-    {
+    pub fn new(
+        tcx: TyCtxt<'gcx, 'tcx>,
+        body: &'a Body<'tcx>,
+        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    ) -> Self {
         MaybeInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
@@ -125,11 +125,11 @@ pub struct MaybeUninitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'gcx, 'tcx>,
-               body: &'a Body<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
-               -> Self
-    {
+    pub fn new(
+        tcx: TyCtxt<'gcx, 'tcx>,
+        body: &'a Body<'tcx>,
+        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    ) -> Self {
         MaybeUninitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
@@ -179,11 +179,11 @@ pub struct DefinitelyInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'gcx, 'tcx>,
-               body: &'a Body<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
-               -> Self
-    {
+    pub fn new(
+        tcx: TyCtxt<'gcx, 'tcx>,
+        body: &'a Body<'tcx>,
+        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    ) -> Self {
         DefinitelyInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
@@ -228,11 +228,11 @@ pub struct EverInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx: 'a> EverInitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'gcx, 'tcx>,
-               body: &'a Body<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
-               -> Self
-    {
+    pub fn new(
+        tcx: TyCtxt<'gcx, 'tcx>,
+        body: &'a Body<'tcx>,
+        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    ) -> Self {
         EverInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }

@@ -594,8 +594,7 @@ pub struct InheritedBuilder<'gcx, 'tcx> {
 }
 
 impl Inherited<'_, 'gcx, 'tcx> {
-    pub fn build(tcx: TyCtxt<'gcx, 'gcx>, def_id: DefId)
-                 -> InheritedBuilder<'gcx, 'tcx> {
+    pub fn build(tcx: TyCtxt<'gcx, 'gcx>, def_id: DefId) -> InheritedBuilder<'gcx, 'tcx> {
         let hir_id_root = if def_id.is_local() {
             let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
             DefId::local(hir_id.owner)
@@ -612,7 +611,8 @@ impl Inherited<'_, 'gcx, 'tcx> {
 
 impl<'gcx, 'tcx> InheritedBuilder<'gcx, 'tcx> {
     fn enter<F, R>(&'tcx mut self, f: F) -> R
-        where F: for<'a> FnOnce(Inherited<'a, 'gcx, 'tcx>) -> R
+    where
+        F: for<'a> FnOnce(Inherited<'a, 'gcx, 'tcx>) -> R,
     {
         let def_id = self.def_id;
         self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id)))
@@ -685,7 +685,9 @@ impl Inherited<'a, 'gcx, 'tcx> {
     }
 }
 
-struct CheckItemTypesVisitor<'tcx> { tcx: TyCtxt<'tcx, 'tcx> }
+struct CheckItemTypesVisitor<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
+}
 
 impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
     fn visit_item(&mut self, i: &'tcx hir::Item) {
@@ -741,9 +743,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn adt_destructor<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                            def_id: DefId)
-                            -> Option<ty::Destructor> {
+fn adt_destructor<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Option<ty::Destructor> {
     tcx.calculate_dtor(def_id, &mut dropck::check_drop_impl)
 }
 
@@ -756,10 +756,10 @@ fn adt_destructor<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
 /// may not succeed. In some cases where this function returns `None`
 /// (notably closures), `typeck_tables(def_id)` would wind up
 /// redirecting to the owning function.
-fn primary_body_of<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                             id: hir::HirId)
-                             -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl>)>
-{
+fn primary_body_of<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    id: hir::HirId,
+) -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl>)> {
     match tcx.hir().get_by_hir_id(id) {
         Node::Item(item) => {
             match item.node {
@@ -797,9 +797,7 @@ fn primary_body_of<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     }
 }
 
-fn has_typeck_tables<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                               def_id: DefId)
-                               -> bool {
+fn has_typeck_tables<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
     let outer_def_id = tcx.closure_base_def_id(def_id);
@@ -811,15 +809,11 @@ fn has_typeck_tables<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     primary_body_of(tcx, id).is_some()
 }
 
-fn used_trait_imports<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                def_id: DefId)
-                                -> &'tcx DefIdSet {
+fn used_trait_imports<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> &'tcx DefIdSet {
     &*tcx.typeck_tables_of(def_id).used_trait_imports
 }
 
-fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                              def_id: DefId)
-                              -> &'tcx ty::TypeckTables<'tcx> {
+fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::TypeckTables<'tcx> {
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
     let outer_def_id = tcx.closure_base_def_id(def_id);
@@ -1287,9 +1281,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     (fcx, gen_ty)
 }
 
-fn check_struct<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                          id: hir::HirId,
-                          span: Span) {
+fn check_struct<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, id: hir::HirId, span: Span) {
     let def_id = tcx.hir().local_def_id_from_hir_id(id);
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
@@ -1303,9 +1295,7 @@ fn check_struct<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     check_packed(tcx, span, def_id);
 }
 
-fn check_union<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                         id: hir::HirId,
-                         span: Span) {
+fn check_union<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, id: hir::HirId, span: Span) {
     let def_id = tcx.hir().local_def_id_from_hir_id(id);
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
@@ -1314,12 +1304,7 @@ fn check_union<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     check_packed(tcx, span, def_id);
 }
 
-fn check_opaque<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    def_id: DefId,
-    substs: SubstsRef<'tcx>,
-    span: Span,
-) {
+fn check_opaque<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, substs: SubstsRef<'tcx>, span: Span) {
     if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
         let mut err = struct_span_err!(
             tcx.sess, span, E0720,
@@ -1472,18 +1457,17 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_, '_>, id: DefId, span: Sp
     }
 }
 
-fn check_on_unimplemented<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                    trait_def_id: DefId,
-                                    item: &hir::Item) {
+fn check_on_unimplemented<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, trait_def_id: DefId, item: &hir::Item) {
     let item_def_id = tcx.hir().local_def_id_from_hir_id(item.hir_id);
     // an error would be reported if this fails.
     let _ = traits::OnUnimplementedDirective::of_item(tcx, trait_def_id, item_def_id);
 }
 
-fn report_forbidden_specialization<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                             impl_item: &hir::ImplItem,
-                                             parent_impl: DefId)
-{
+fn report_forbidden_specialization<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    impl_item: &hir::ImplItem,
+    parent_impl: DefId,
+) {
     let mut err = struct_span_err!(
         tcx.sess, impl_item.span, E0520,
         "`{}` specializes an item from a parent `impl`, but \
@@ -1506,12 +1490,13 @@ fn report_forbidden_specialization<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     err.emit();
 }
 
-fn check_specialization_validity<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                           trait_def: &ty::TraitDef,
-                                           trait_item: &ty::AssocItem,
-                                           impl_id: DefId,
-                                           impl_item: &hir::ImplItem)
-{
+fn check_specialization_validity<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    trait_def: &ty::TraitDef,
+    trait_item: &ty::AssocItem,
+    impl_id: DefId,
+    impl_item: &hir::ImplItem,
+) {
     let ancestors = trait_def.ancestors(tcx, impl_id);
 
     let kind = match impl_item.node {
@@ -1532,11 +1517,13 @@ fn check_specialization_validity<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
 
 }
 
-fn check_impl_items_against_trait<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                            impl_span: Span,
-                                            impl_id: DefId,
-                                            impl_trait_ref: ty::TraitRef<'tcx>,
-                                            impl_item_refs: &[hir::ImplItemRef]) {
+fn check_impl_items_against_trait<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    impl_span: Span,
+    impl_id: DefId,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+    impl_item_refs: &[hir::ImplItemRef],
+) {
     let impl_span = tcx.sess.source_map().def_span(impl_span);
 
     // If the trait reference itself is erroneous (so the compilation is going
@@ -1693,10 +1680,7 @@ fn check_impl_items_against_trait<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
 /// Checks whether a type can be represented in memory. In particular, it
 /// identifies types that contain themselves without indirection through a
 /// pointer, which would mean their size is unbounded.
-fn check_representable<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                 sp: Span,
-                                 item_def_id: DefId)
-                                 -> bool {
+fn check_representable<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, sp: Span, item_def_id: DefId) -> bool {
     let rty = tcx.type_of(item_def_id);
 
     // Check that it is possible to represent this type. This call identifies
@@ -1715,7 +1699,7 @@ fn check_representable<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
         }
         Representability::Representable | Representability::ContainsRecursive => (),
     }
-    return true
+    return true;
 }
 
 pub fn check_simd<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, sp: Span, def_id: DefId) {
@@ -1771,9 +1755,11 @@ fn check_packed<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, sp: Span, def_id: DefId) {
     }
 }
 
-fn check_packed_inner<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                def_id: DefId,
-                                stack: &mut Vec<DefId>) -> bool {
+fn check_packed_inner<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    def_id: DefId,
+    stack: &mut Vec<DefId>,
+) -> bool {
     let t = tcx.type_of(def_id);
     if stack.contains(&def_id) {
         debug!("check_packed_inner: {:?} is recursive", t);
@@ -1881,10 +1867,12 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, sp: Span, def_id: DefId) {
 }
 
 #[allow(trivial_numeric_casts)]
-pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                            sp: Span,
-                            vs: &'tcx [hir::Variant],
-                            id: hir::HirId) {
+pub fn check_enum<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    sp: Span,
+    vs: &'tcx [hir::Variant],
+    id: hir::HirId,
+) {
     let def_id = tcx.hir().local_def_id_from_hir_id(id);
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
@@ -1945,10 +1933,12 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     check_transparent(tcx, sp, def_id);
 }
 
-fn report_unexpected_variant_res<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
-                                                 res: Res,
-                                                 span: Span,
-                                                 qpath: &QPath) {
+fn report_unexpected_variant_res<'gcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'tcx>,
+    res: Res,
+    span: Span,
+    qpath: &QPath,
+) {
     span_err!(tcx.sess, span, E0533,
               "expected unit struct/variant or constant, found {} `{}`",
               res.descr(),
@@ -1956,7 +1946,9 @@ fn report_unexpected_variant_res<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> { self.tcx }
+    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+        self.tcx
+        }
 
     fn get_type_parameter_bounds(&self, _: Span, def_id: DefId)
                                  -> &'tcx ty::GenericPredicates<'tcx>
@@ -5700,9 +5692,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                       generics: &ty::Generics,
-                                       ty: Ty<'tcx>) {
+pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, generics: &ty::Generics, ty: Ty<'tcx>) {
     let own_counts = generics.own_counts();
     debug!(
         "check_bounds_are_used(n_tys={}, n_cts={}, ty={:?})",

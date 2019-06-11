@@ -483,9 +483,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     tcx: TyCtxt<'tcx, 'tcx>,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
-    rx: mpsc::Receiver<Box<dyn Any + Send>>
+    rx: mpsc::Receiver<Box<dyn Any + Send>>,
 ) -> OngoingCodegen<B> {
-
     check_for_rustc_errors_attr(tcx);
 
     // Skip crate items and just output metadata in -Z no-codegen mode.
@@ -776,7 +775,7 @@ impl CrateInfo {
             info.missing_lang_items.insert(cnum, missing);
         }
 
-        return info
+        return info;
     }
 }
 
@@ -850,9 +849,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
     };
 }
 
-fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                 cgu: &CodegenUnit<'tcx>)
-                                 -> CguReuse {
+fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {
     if !tcx.dep_graph.is_fully_enabled() {
         return CguReuse::No
     }

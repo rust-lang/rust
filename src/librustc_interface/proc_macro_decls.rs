@@ -10,10 +10,7 @@ pub fn find<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Option<DefId> {
     tcx.proc_macro_decls_static(LOCAL_CRATE)
 }
 
-fn proc_macro_decls_static<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    cnum: CrateNum,
-) -> Option<DefId> {
+fn proc_macro_decls_static<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, cnum: CrateNum) -> Option<DefId> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let mut finder = Finder { decls: None };

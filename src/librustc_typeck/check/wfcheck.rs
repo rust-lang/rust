@@ -33,9 +33,9 @@ struct CheckWfFcxBuilder<'gcx, 'tcx> {
 }
 
 impl<'gcx, 'tcx> CheckWfFcxBuilder<'gcx, 'tcx> {
-    fn with_fcx<F>(&'tcx mut self, f: F) where
-        F: for<'b> FnOnce(&FnCtxt<'b, 'gcx, 'tcx>,
-                         TyCtxt<'gcx, 'gcx>) -> Vec<Ty<'tcx>>
+    fn with_fcx<F>(&'tcx mut self, f: F)
+    where
+        F: for<'b> FnOnce(&FnCtxt<'b, 'gcx, 'tcx>, TyCtxt<'gcx, 'gcx>) -> Vec<Ty<'tcx>>,
     {
         let id = self.id;
         let span = self.span;
@@ -178,10 +178,12 @@ pub fn check_impl_item<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) {
     check_associated_item(tcx, impl_item.hir_id, impl_item.span, method_sig);
 }
 
-fn check_associated_item<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                   item_id: hir::HirId,
-                                   span: Span,
-                                   sig_if_method: Option<&hir::MethodSig>) {
+fn check_associated_item<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    item_id: hir::HirId,
+    span: Span,
+    sig_if_method: Option<&hir::MethodSig>,
+) {
     debug!("check_associated_item: {:?}", item_id);
 
     let code = ObligationCauseCode::MiscObligation;
@@ -225,13 +227,18 @@ fn check_associated_item<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     })
 }
 
-fn for_item<'gcx: 'tcx, 'tcx>(tcx: TyCtxt<'gcx, 'gcx>, item: &hir::Item)
-                            -> CheckWfFcxBuilder<'gcx, 'tcx> {
+fn for_item<'gcx: 'tcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'gcx>,
+    item: &hir::Item,
+) -> CheckWfFcxBuilder<'gcx, 'tcx> {
     for_id(tcx, item.hir_id, item.span)
 }
 
-fn for_id<'gcx: 'tcx, 'tcx>(tcx: TyCtxt<'gcx, 'gcx>, id: hir::HirId, span: Span)
-                          -> CheckWfFcxBuilder<'gcx, 'tcx> {
+fn for_id<'gcx: 'tcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'gcx>,
+    id: hir::HirId,
+    span: Span,
+) -> CheckWfFcxBuilder<'gcx, 'tcx> {
     let def_id = tcx.hir().local_def_id_from_hir_id(id);
     CheckWfFcxBuilder {
         inherited: Inherited::build(tcx, def_id),
@@ -242,9 +249,13 @@ fn for_id<'gcx: 'tcx, 'tcx>(tcx: TyCtxt<'gcx, 'gcx>, id: hir::HirId, span: Span)
 }
 
 /// In a type definition, we check that to ensure that the types of the fields are well-formed.
-fn check_type_defn<'tcx, F>(tcx: TyCtxt<'tcx, 'tcx>,
-                                item: &hir::Item, all_sized: bool, mut lookup_fields: F)
-    where F: for<'fcx, 'gcx, 'tcx2> FnMut(&FnCtxt<'fcx, 'gcx, 'tcx2>) -> Vec<AdtVariant<'tcx2>>
+fn check_type_defn<'tcx, F>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    item: &hir::Item,
+    all_sized: bool,
+    mut lookup_fields: F,
+) where
+    F: for<'fcx, 'gcx, 'tcx2> FnMut(&FnCtxt<'fcx, 'gcx, 'tcx2>) -> Vec<AdtVariant<'tcx2>>,
 {
     for_item(tcx, item).with_fcx(|fcx, fcx_tcx| {
         let variants = lookup_fields(fcx);
@@ -380,11 +391,12 @@ fn check_item_type<'tcx>(
     });
 }
 
-fn check_impl<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                        item: &hir::Item,
-                        ast_self_ty: &hir::Ty,
-                        ast_trait_ref: &Option<hir::TraitRef>)
-{
+fn check_impl<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    item: &hir::Item,
+    ast_self_ty: &hir::Ty,
+    ast_trait_ref: &Option<hir::TraitRef>,
+) {
     debug!("check_impl: {:?}", item);
 
     for_item(tcx, item).with_fcx(|fcx, tcx| {
@@ -574,13 +586,14 @@ fn check_where_clauses<'gcx, 'fcx, 'tcx>(
     }
 }
 
-fn check_fn_or_method<'fcx, 'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'gcx>,
-                                            fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
-                                            span: Span,
-                                            sig: ty::PolyFnSig<'tcx>,
-                                            def_id: DefId,
-                                            implied_bounds: &mut Vec<Ty<'tcx>>)
-{
+fn check_fn_or_method<'fcx, 'gcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'gcx>,
+    fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
+    span: Span,
+    sig: ty::PolyFnSig<'tcx>,
+    def_id: DefId,
+    implied_bounds: &mut Vec<Ty<'tcx>>,
+) {
     let sig = fcx.normalize_associated_types_in(span, &sig);
     let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
 
@@ -930,10 +943,11 @@ fn receiver_is_valid<'fcx, 'tcx, 'gcx>(
     true
 }
 
-fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                           item: &hir::Item,
-                                           hir_generics: &hir::Generics)
-{
+fn check_variances_for_type_defn<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    item: &hir::Item,
+    hir_generics: &hir::Generics,
+) {
     let item_def_id = tcx.hir().local_def_id_from_hir_id(item.hir_id);
     let ty = tcx.type_of(item_def_id);
     if tcx.has_error_field(ty) {
@@ -971,10 +985,7 @@ fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     }
 }
 
-fn report_bivariance<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                               span: Span,
-                               param_name: ast::Name)
-{
+fn report_bivariance<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, span: Span, param_name: ast::Name) {
     let mut err = error_392(tcx, span, param_name);
 
     let suggested_marker_id = tcx.lang_items().phantom_data();
@@ -1133,8 +1144,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-fn error_392<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, span: Span, param_name: ast::Name)
-                       -> DiagnosticBuilder<'tcx> {
+fn error_392<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    span: Span,
+    param_name: ast::Name,
+) -> DiagnosticBuilder<'tcx> {
     let mut err = struct_span_err!(tcx.sess, span, E0392,
                   "parameter `{}` is never used", param_name);
     err.span_label(span, "unused parameter");

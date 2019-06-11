@@ -27,9 +27,7 @@ use crate::hir::intravisit;
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(tcx: TyCtxt<'tcx, 'tcx>,
-                         item: &hir::Item,
-                         attrs: CodegenFnAttrs) -> bool {
+fn item_might_be_inlined(tcx: TyCtxt<'tcx, 'tcx>, item: &hir::Item, attrs: CodegenFnAttrs) -> bool {
     if attrs.requests_inline() {
         return true
     }
@@ -44,9 +42,11 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx, 'tcx>,
     }
 }
 
-fn method_might_be_inlined<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                     impl_item: &hir::ImplItem,
-                                     impl_src: DefId) -> bool {
+fn method_might_be_inlined<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    impl_item: &hir::ImplItem,
+    impl_src: DefId,
+) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner_def_id());
     let generics = tcx.generics_of(tcx.hir().local_def_id_from_hir_id(impl_item.hir_id));
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {

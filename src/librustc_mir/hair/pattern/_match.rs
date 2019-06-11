@@ -195,7 +195,7 @@ pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx
 }
 
 struct LiteralExpander<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
 impl LiteralExpander<'tcx> {
@@ -368,8 +368,10 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         tcx: TyCtxt<'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         module: DefId,
-        f: F) -> R
-        where F: for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R
+        f: F,
+    ) -> R
+    where
+        F: for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R,
     {
         let pattern_arena = TypedArena::default();
 
@@ -827,9 +829,7 @@ struct IntRange<'tcx> {
 }
 
 impl<'tcx> IntRange<'tcx> {
-    fn from_ctor(tcx: TyCtxt<'tcx, 'tcx>,
-                 ctor: &Constructor<'tcx>)
-                 -> Option<IntRange<'tcx>> {
+    fn from_ctor(tcx: TyCtxt<'tcx, 'tcx>, ctor: &Constructor<'tcx>) -> Option<IntRange<'tcx>> {
         // Floating-point ranges are permitted and we don't want
         // to consider them when constructing integer ranges.
         fn is_integral<'tcx>(ty: Ty<'tcx>) -> bool {
@@ -867,9 +867,7 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    fn from_pat(tcx: TyCtxt<'tcx, 'tcx>,
-                mut pat: &Pattern<'tcx>)
-                -> Option<IntRange<'tcx>> {
+    fn from_pat(tcx: TyCtxt<'tcx, 'tcx>, mut pat: &Pattern<'tcx>) -> Option<IntRange<'tcx>> {
         let range = loop {
             match pat.kind {
                 box PatternKind::Constant { value } => break ConstantValue(value),
@@ -917,10 +915,11 @@ impl<'tcx> IntRange<'tcx> {
 
     /// Returns a collection of ranges that spans the values covered by `ranges`, subtracted
     /// by the values covered by `self`: i.e., `ranges \ self` (in set notation).
-    fn subtract_from(self,
-                     tcx: TyCtxt<'tcx, 'tcx>,
-                     ranges: Vec<Constructor<'tcx>>)
-                     -> Vec<Constructor<'tcx>> {
+    fn subtract_from(
+        self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        ranges: Vec<Constructor<'tcx>>,
+    ) -> Vec<Constructor<'tcx>> {
         let ranges = ranges.into_iter().filter_map(|r| {
             IntRange::from_ctor(tcx, &r).map(|i| i.range)
         });
@@ -1429,7 +1428,7 @@ fn slice_pat_covered_by_const<'tcx>(
     const_val: &'tcx ty::Const<'tcx>,
     prefix: &[Pattern<'tcx>],
     slice: &Option<Pattern<'tcx>>,
-    suffix: &[Pattern<'tcx>]
+    suffix: &[Pattern<'tcx>],
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
         (ConstValue::ByRef(ptr, alloc), ty::Array(t, n)) => {
@@ -1476,10 +1475,7 @@ fn slice_pat_covered_by_const<'tcx>(
 
 // Whether to evaluate a constructor using exhaustive integer matching. This is true if the
 // constructor is a range or constant with an integer type.
-fn should_treat_range_exhaustively(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    ctor: &Constructor<'tcx>,
-) -> bool {
+fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx, 'tcx>, ctor: &Constructor<'tcx>) -> bool {
     let ty = match ctor {
         ConstantValue(value) => value.ty,
         ConstantRange(_, _, ty, _) => ty,

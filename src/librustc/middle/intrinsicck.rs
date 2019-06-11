@@ -25,7 +25,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 struct ItemVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
 struct ExprVisitor<'tcx> {
@@ -36,9 +36,7 @@ struct ExprVisitor<'tcx> {
 
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
-fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                ty: Ty<'tcx>)
-                                -> Ty<'tcx> {
+fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let (def, substs) = match ty.sty {
         ty::Adt(def, substs) => (def, substs),
         _ => return ty

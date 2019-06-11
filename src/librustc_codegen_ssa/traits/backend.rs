@@ -42,13 +42,9 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         &self,
         tcx: TyCtxt<'gcx, 'gcx>,
         mods: &mut Self::Module,
-        kind: AllocatorKind
+        kind: AllocatorKind,
     );
-    fn compile_codegen_unit<'a, 'tcx: 'a>(
-        &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
-        cgu_name: InternedString,
-    );
+    fn compile_codegen_unit<'a, 'tcx: 'a>(&self, tcx: TyCtxt<'tcx, 'tcx>, cgu_name: InternedString);
     // If find_features is true this won't access `sess.crate_types` by assuming
     // that `is_pie_binary` is false. When we discover LLVM target features
     // `sess.crate_types` is uninitialized so we cannot access it.

@@ -62,9 +62,7 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
             }
         }
     }
-    fn instantiation_mode(&self,
-                          tcx: TyCtxt<'tcx, 'tcx>)
-                          -> InstantiationMode {
+    fn instantiation_mode(&self, tcx: TyCtxt<'tcx, 'tcx>) -> InstantiationMode {
         let inline_in_all_cgus =
             tcx.sess.opts.debugging_opts.inline_in_all_cgus.unwrap_or_else(|| {
                 tcx.sess.opts.optimize != OptLevel::No
@@ -170,11 +168,12 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
             }
         };
 
-        fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                        prefix: &str,
-                                        instance: Instance<'tcx>,
-                                        debug: bool)
-                                        -> String {
+        fn to_string_internal<'a, 'tcx>(
+            tcx: TyCtxt<'tcx, 'tcx>,
+            prefix: &str,
+            instance: Instance<'tcx>,
+            debug: bool,
+        ) -> String {
             let mut result = String::with_capacity(32);
             result.push_str(prefix);
             let printer = DefPathBasedNames::new(tcx, false, false);

@@ -108,11 +108,7 @@ impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
 
 impl<'gcx, 'tcx> AdtDef {
     /// Calculate the forest of DefIds from which this adt is visibly uninhabited.
-    fn uninhabited_from(
-        &self,
-        tcx: TyCtxt<'gcx, 'tcx>,
-        substs: SubstsRef<'tcx>) -> DefIdForest
-    {
+    fn uninhabited_from(&self, tcx: TyCtxt<'gcx, 'tcx>, substs: SubstsRef<'tcx>) -> DefIdForest {
         // Non-exhaustive ADTs from other crates are always considered inhabited.
         if self.is_variant_list_non_exhaustive() && !self.did.is_local() {
             DefIdForest::empty()
@@ -130,8 +126,8 @@ impl<'gcx, 'tcx> VariantDef {
         &self,
         tcx: TyCtxt<'gcx, 'tcx>,
         substs: SubstsRef<'tcx>,
-        adt_kind: AdtKind) -> DefIdForest
-    {
+        adt_kind: AdtKind,
+    ) -> DefIdForest {
         let is_enum = match adt_kind {
             // For now, `union`s are never considered uninhabited.
             // The precise semantics of inhabitedness with respect to unions is currently undecided.
@@ -182,8 +178,7 @@ impl<'gcx, 'tcx> FieldDef {
 
 impl<'gcx, 'tcx> TyS<'tcx> {
     /// Calculate the forest of DefIds from which this type is visibly uninhabited.
-    fn uninhabited_from(&self, tcx: TyCtxt<'gcx, 'tcx>) -> DefIdForest
-    {
+    fn uninhabited_from(&self, tcx: TyCtxt<'gcx, 'tcx>) -> DefIdForest {
         match self.sty {
             Adt(def, substs) => def.uninhabited_from(tcx, substs),
 

@@ -90,7 +90,6 @@ where
 }
 
 impl DepGraph {
-
     pub fn new(prev_graph: PreviousDepGraph,
                prev_work_products: FxHashMap<WorkProductId, WorkProduct>) -> DepGraph {
         let prev_graph_node_count = prev_graph.node_count();
@@ -559,7 +558,7 @@ impl DepGraph {
     pub fn try_mark_green_and_read(
         &self,
         tcx: TyCtxt<'_, '_>,
-        dep_node: &DepNode
+        dep_node: &DepNode,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
         self.try_mark_green(tcx, dep_node).map(|(prev_index, dep_node_index)| {
             debug_assert!(self.is_green(&dep_node));
@@ -571,7 +570,7 @@ impl DepGraph {
     pub fn try_mark_green(
         &self,
         tcx: TyCtxt<'_, '_>,
-        dep_node: &DepNode
+        dep_node: &DepNode,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
         debug_assert!(!dep_node.kind.is_eval_always());
 
@@ -607,7 +606,7 @@ impl DepGraph {
         tcx: TyCtxt<'tcx, 'tcx>,
         data: &DepGraphData,
         prev_dep_node_index: SerializedDepNodeIndex,
-        dep_node: &DepNode
+        dep_node: &DepNode,
     ) -> Option<DepNodeIndex> {
         debug!("try_mark_previous_green({:?}) - BEGIN", dep_node);
 

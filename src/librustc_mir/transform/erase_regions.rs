@@ -50,10 +50,7 @@ impl MutVisitor<'tcx> for EraseRegionsVisitor<'tcx> {
 pub struct EraseRegions;
 
 impl MirPass for EraseRegions {
-    fn run_pass<'tcx>(&self,
-                          tcx: TyCtxt<'tcx, 'tcx>,
-                          _: MirSource<'tcx>,
-                          body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         EraseRegionsVisitor::new(tcx).visit_body(body);
     }
 }

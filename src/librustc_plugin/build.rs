@@ -34,10 +34,7 @@ pub fn find_plugin_registrar<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Option<DefId> {
     tcx.plugin_registrar_fn(LOCAL_CRATE)
 }
 
-fn plugin_registrar_fn<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    cnum: CrateNum,
-) -> Option<DefId> {
+fn plugin_registrar_fn<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, cnum: CrateNum) -> Option<DefId> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let mut finder = RegistrarFinder { registrars: Vec::new() };

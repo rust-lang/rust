@@ -18,7 +18,7 @@ pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Vec<String> {
         }
     }
 
-    return collector.args
+    return collector.args;
 }
 
 struct Collector {

@@ -154,12 +154,14 @@ pub fn parse_pretty(sess: &Session,
 
 impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
-    fn call_with_pp_support<'tcx, A, F>(&self,
-                                        sess: &'tcx Session,
-                                        tcx: Option<TyCtxt<'tcx, 'tcx>>,
-                                        f: F)
-                                        -> A
-        where F: FnOnce(&dyn PrinterSupport) -> A
+    fn call_with_pp_support<'tcx, A, F>(
+        &self,
+        sess: &'tcx Session,
+        tcx: Option<TyCtxt<'tcx, 'tcx>>,
+        f: F,
+    ) -> A
+    where
+        F: FnOnce(&dyn PrinterSupport) -> A,
     {
         match *self {
             PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
@@ -186,12 +188,9 @@ impl PpSourceMode {
             _ => panic!("Should use call_with_pp_support_hir"),
         }
     }
-    fn call_with_pp_support_hir<'tcx, A, F>(
-        &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
-        f: F
-    ) -> A
-        where F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate) -> A
+    fn call_with_pp_support_hir<'tcx, A, F>(&self, tcx: TyCtxt<'tcx, 'tcx>, f: F) -> A
+    where
+        F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate) -> A,
     {
         match *self {
             PpmNormal => {
@@ -454,7 +453,6 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     }
 }
 
-
 struct TypedAnnotation<'a, 'tcx: 'a> {
     tcx: TyCtxt<'tcx, 'tcx>,
     tables: Cell<&'a ty::TypeckTables<'tcx>>,
@@ -617,12 +615,13 @@ impl UserIdentifiedItem {
     }
 }
 
-fn print_flowgraph<'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
-                                       tcx: TyCtxt<'tcx, 'tcx>,
-                                       code: blocks::Code<'tcx>,
-                                       mode: PpFlowGraphMode,
-                                       mut out: W)
-                                       -> io::Result<()> {
+fn print_flowgraph<'tcx, W: Write>(
+    variants: Vec<borrowck_dot::Variant>,
+    tcx: TyCtxt<'tcx, 'tcx>,
+    code: blocks::Code<'tcx>,
+    mode: PpFlowGraphMode,
+    mut out: W,
+) -> io::Result<()> {
     let body_id = match code {
         blocks::Code::Expr(expr) => {
             // Find the function this expression is from.
@@ -760,7 +759,8 @@ pub fn print_after_hir_lowering<'tcx>(
     krate: &ast::Crate,
     ppm: PpMode,
     opt_uii: Option<UserIdentifiedItem>,
-    ofile: Option<&Path>) {
+    ofile: Option<&Path>,
+) {
     if ppm.needs_analysis() {
         abort_on_err(print_with_analysis(
             tcx,
@@ -869,7 +869,7 @@ fn print_with_analysis<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx>,
     ppm: PpMode,
     uii: Option<UserIdentifiedItem>,
-    ofile: Option<&Path>
+    ofile: Option<&Path>,
 ) -> Result<(), ErrorReported> {
     let nodeid = if let Some(uii) = uii {
         debug!("pretty printing for {:?}", uii);

@@ -58,12 +58,14 @@ pub enum RelationDir {
 }
 
 impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
-    pub fn super_combine_tys<R>(&self,
-                                relation: &mut R,
-                                a: Ty<'tcx>,
-                                b: Ty<'tcx>)
-                                -> RelateResult<'tcx, Ty<'tcx>>
-        where R: TypeRelation<'gcx, 'tcx>
+    pub fn super_combine_tys<R>(
+        &self,
+        relation: &mut R,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>>
+    where
+        R: TypeRelation<'gcx, 'tcx>,
     {
         let a_is_expected = relation.a_is_expected();
 

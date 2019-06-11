@@ -17,7 +17,7 @@ use std::iter;
 
 crate fn wf_clause_for_raw_ptr<'tcx>(
     tcx: TyCtxt<'_, 'tcx>,
-    mutbl: hir::Mutability
+    mutbl: hir::Mutability,
 ) -> Clauses<'tcx> {
     let ptr_ty = generic_types::raw_ptr(tcx, mutbl);
 
@@ -37,7 +37,7 @@ crate fn wf_clause_for_fn_ptr<'tcx>(
     arity_and_output: usize,
     variadic: bool,
     unsafety: hir::Unsafety,
-    abi: abi::Abi
+    abi: abi::Abi,
 ) -> Clauses<'tcx> {
     let fn_ptr = generic_types::fn_ptr(tcx, arity_and_output, variadic, unsafety, abi);
 
@@ -84,7 +84,7 @@ crate fn wf_clause_for_slice<'tcx>(tcx: TyCtxt<'_, 'tcx>) -> Clauses<'tcx> {
 
 crate fn wf_clause_for_array<'tcx>(
     tcx: TyCtxt<'_, 'tcx>,
-    length: &'tcx ty::Const<'tcx>
+    length: &'tcx ty::Const<'tcx>,
 ) -> Clauses<'tcx> {
     let ty = generic_types::bound(tcx, 0);
     let array_ty = tcx.mk_ty(ty::Array(ty, length));
@@ -114,10 +114,7 @@ crate fn wf_clause_for_array<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-crate fn wf_clause_for_tuple<'tcx>(
-    tcx: TyCtxt<'_, 'tcx>,
-    arity: usize
-) -> Clauses<'tcx> {
+crate fn wf_clause_for_tuple<'tcx>(tcx: TyCtxt<'_, 'tcx>, arity: usize) -> Clauses<'tcx> {
     let type_list = generic_types::type_list(tcx, arity);
     let tuple_ty = tcx.mk_ty(ty::Tuple(type_list));
 
@@ -158,10 +155,7 @@ crate fn wf_clause_for_tuple<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-crate fn wf_clause_for_ref<'tcx>(
-    tcx: TyCtxt<'_, 'tcx>,
-    mutbl: hir::Mutability
-) -> Clauses<'tcx> {
+crate fn wf_clause_for_ref<'tcx>(tcx: TyCtxt<'_, 'tcx>, mutbl: hir::Mutability) -> Clauses<'tcx> {
     let region = tcx.mk_region(
         ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
     );
@@ -185,10 +179,7 @@ crate fn wf_clause_for_ref<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-crate fn wf_clause_for_fn_def<'tcx>(
-    tcx: TyCtxt<'_, 'tcx>,
-    def_id: DefId
-) -> Clauses<'tcx> {
+crate fn wf_clause_for_fn_def<'tcx>(tcx: TyCtxt<'_, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
     let fn_def = generic_types::fn_def(tcx, def_id);
 
     let wf_clause = ProgramClause {

@@ -61,11 +61,14 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
         }
     }
 
-    fn build_set<O:DataFlowOperator, F>(&self,
-                                        e: EntryOrExit,
-                                        cfgidx: CFGIndex,
-                                        dfcx: &DataFlowContext<'tcx, O>,
-                                        mut to_lp: F) -> String where
+    fn build_set<O: DataFlowOperator, F>(
+        &self,
+        e: EntryOrExit,
+        cfgidx: CFGIndex,
+        dfcx: &DataFlowContext<'tcx, O>,
+        mut to_lp: F,
+    ) -> String
+    where
         F: FnMut(usize) -> Rc<LoanPath<'tcx>>,
     {
         let mut saw_some = false;

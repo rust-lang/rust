@@ -74,7 +74,8 @@ trait DefIdVisitor<'tcx> {
 }
 
 struct DefIdVisitorSkeleton<'v, 'tcx, V>
-    where V: DefIdVisitor<'tcx> + ?Sized
+where
+    V: DefIdVisitor<'tcx> + ?Sized,
 {
     def_id_visitor: &'v mut V,
     visited_opaque_tys: FxHashSet<DefId>,
@@ -82,7 +83,8 @@ struct DefIdVisitorSkeleton<'v, 'tcx, V>
 }
 
 impl<'tcx, V> DefIdVisitorSkeleton<'_, 'tcx, V>
-    where V: DefIdVisitor<'tcx> + ?Sized
+where
+    V: DefIdVisitor<'tcx> + ?Sized,
 {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> bool {
         let TraitRef { def_id, substs } = trait_ref;
@@ -125,7 +127,8 @@ impl<'tcx, V> DefIdVisitorSkeleton<'_, 'tcx, V>
 }
 
 impl<'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'tcx, V>
-    where V: DefIdVisitor<'tcx> + ?Sized
+where
+    V: DefIdVisitor<'tcx> + ?Sized,
 {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let tcx = self.def_id_visitor.tcx();
@@ -220,8 +223,10 @@ impl<'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'tcx, V>
     }
 }
 
-fn def_id_visibility<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId)
-                               -> (ty::Visibility, Span, &'static str) {
+fn def_id_visibility<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    def_id: DefId,
+) -> (ty::Visibility, Span, &'static str) {
     match tcx.hir().as_local_hir_id(def_id) {
         Some(hir_id) => {
             let vis = match tcx.hir().get_by_hir_id(hir_id) {
@@ -323,16 +328,20 @@ fn def_id_visibility<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId)
 
 // Set the correct `TypeckTables` for the given `item_id` (or an empty table if
 // there is no `TypeckTables` for the item).
-fn item_tables<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                         hir_id: hir::HirId,
-                         empty_tables: &'a ty::TypeckTables<'tcx>)
-                         -> &'a ty::TypeckTables<'tcx> {
+fn item_tables<'a, 'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    hir_id: hir::HirId,
+    empty_tables: &'a ty::TypeckTables<'tcx>,
+) -> &'a ty::TypeckTables<'tcx> {
     let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
     if tcx.has_typeck_tables(def_id) { tcx.typeck_tables_of(def_id) } else { empty_tables }
 }
 
-fn min<'tcx>(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'tcx, 'tcx>)
-                 -> ty::Visibility {
+fn min<'tcx>(
+    vis1: ty::Visibility,
+    vis2: ty::Visibility,
+    tcx: TyCtxt<'tcx, 'tcx>,
+) -> ty::Visibility {
     if vis1.is_at_least(vis2, tcx) { vis2 } else { vis1 }
 }
 
@@ -343,7 +352,7 @@ fn min<'tcx>(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'tcx, 'tcx>
 /// in crates that have been updated to use pub(restricted).
 ////////////////////////////////////////////////////////////////////////////////
 struct PubRestrictedVisitor<'tcx> {
-    tcx:  TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     has_pub_restricted: bool,
 }
 
@@ -383,8 +392,11 @@ trait VisibilityLike: Sized {
 
     // Returns an over-approximation (`skip_assoc_tys` = true) of visibility due to
     // associated types for which we can't determine visibility precisely.
-    fn of_impl<'a, 'tcx>(hir_id: hir::HirId, tcx: TyCtxt<'tcx, 'tcx>,
-                         access_levels: &'a AccessLevels) -> Self {
+    fn of_impl<'a, 'tcx>(
+        hir_id: hir::HirId,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        access_levels: &'a AccessLevels,
+    ) -> Self {
         let mut find = FindMin { tcx, access_levels, min: Self::MAX };
         let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
         find.visit(tcx.type_of(def_id));
@@ -460,8 +472,11 @@ impl EmbargoVisitor<'tcx> {
         }
     }
 
-    fn reach(&mut self, item_id: hir::HirId, access_level: Option<AccessLevel>)
-             -> ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
+    fn reach(
+        &mut self,
+        item_id: hir::HirId,
+        access_level: Option<AccessLevel>,
+    ) -> ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
         ReachEverythingInTheInterfaceVisitor {
             access_level: cmp::min(access_level, Some(AccessLevel::Reachable)),
             item_def_id: self.tcx.hir().local_def_id_from_hir_id(item_id),
@@ -1647,8 +1662,11 @@ struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
-    fn check(&self, item_id: hir::HirId, required_visibility: ty::Visibility)
-             -> SearchInterfaceForPrivateItemsVisitor<'tcx> {
+    fn check(
+        &self,
+        item_id: hir::HirId,
+        required_visibility: ty::Visibility,
+    ) -> SearchInterfaceForPrivateItemsVisitor<'tcx> {
         let mut has_old_errors = false;
 
         // Slow path taken only if there any errors in the crate.
@@ -1841,10 +1859,7 @@ fn check_mod_privacy<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
     intravisit::walk_mod(&mut visitor, module, hir_id);
 }
 
-fn privacy_access_levels<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    krate: CrateNum,
-) -> &'tcx AccessLevels {
+fn privacy_access_levels<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, krate: CrateNum) -> &'tcx AccessLevels {
     assert_eq!(krate, LOCAL_CRATE);
 
     // Build up a set of all exported items in the AST. This is a set of all

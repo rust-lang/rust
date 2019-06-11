@@ -378,7 +378,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     tcx: TyCtxt<'_, '_>,
     metadata: EncodedMetadata,
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
-    total_cgus: usize
+    total_cgus: usize,
 ) -> OngoingCodegen<B> {
     let sess = tcx.sess;
     let crate_name = tcx.crate_name(LOCAL_CRATE);
@@ -1005,7 +1005,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     jobserver: Client,
     modules_config: Arc<ModuleConfig>,
     metadata_config: Arc<ModuleConfig>,
-    allocator_config: Arc<ModuleConfig>
+    allocator_config: Arc<ModuleConfig>,
 ) -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let coordinator_send = tcx.tx_to_llvm_workers.lock().clone();
     let sess = tcx.sess;
@@ -1861,9 +1861,11 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         }, work_products)
     }
 
-    pub fn submit_pre_codegened_module_to_llvm(&self,
-                                                       tcx: TyCtxt<'_, '_>,
-                                                       module: ModuleCodegen<B::Module>) {
+    pub fn submit_pre_codegened_module_to_llvm(
+        &self,
+        tcx: TyCtxt<'_, '_>,
+        module: ModuleCodegen<B::Module>,
+    ) {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
 
@@ -1913,7 +1915,7 @@ pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
     tcx: TyCtxt<'_, '_>,
     module: ModuleCodegen<B::Module>,
-    cost: u64
+    cost: u64,
 ) {
     let llvm_work_item = WorkItem::Optimize(module);
     drop(tcx.tx_to_llvm_workers.lock().send(Box::new(Message::CodegenDone::<B> {
@@ -1925,7 +1927,7 @@ pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
 pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
     tcx: TyCtxt<'_, '_>,
-    module: CachedModuleCodegen
+    module: CachedModuleCodegen,
 ) {
     let llvm_work_item = WorkItem::CopyPostLtoArtifacts(module);
     drop(tcx.tx_to_llvm_workers.lock().send(Box::new(Message::CodegenDone::<B> {
@@ -1937,7 +1939,7 @@ pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
 pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
     tcx: TyCtxt<'_, '_>,
-    module: CachedModuleCodegen
+    module: CachedModuleCodegen,
 ) {
     let filename = pre_lto_bitcode_filename(&module.name);
     let bc_path = in_incr_comp_dir_sess(tcx.sess, &filename);

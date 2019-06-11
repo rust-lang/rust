@@ -235,8 +235,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
     }
 }
 
-impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>>
-    ValueVisitor<'mir, 'tcx, M> for ValidityVisitor<'rt, 'mir, 'tcx, M>
+impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
+    for ValidityVisitor<'rt, 'mir, 'tcx, M>
 {
     type V = OpTy<'tcx, M::PointerTag>;
 

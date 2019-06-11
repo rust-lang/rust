@@ -87,9 +87,7 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
-    pub fn instantiation_mode(&self,
-                          tcx: TyCtxt<'tcx, 'tcx>)
-                          -> InstantiationMode {
+    pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx, 'tcx>) -> InstantiationMode {
         let inline_in_all_cgus =
             tcx.sess.opts.debugging_opts.inline_in_all_cgus.unwrap_or_else(|| {
                 tcx.sess.opts.optimize != OptLevel::No
@@ -195,11 +193,12 @@ impl<'tcx> MonoItem<'tcx> {
             }
         };
 
-        fn to_string_internal<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                        prefix: &str,
-                                        instance: Instance<'tcx>,
-                                        debug: bool)
-                                        -> String {
+        fn to_string_internal<'tcx>(
+            tcx: TyCtxt<'tcx, 'tcx>,
+            prefix: &str,
+            instance: Instance<'tcx>,
+            debug: bool,
+        ) -> String {
             let mut result = String::with_capacity(32);
             result.push_str(prefix);
             let printer = DefPathBasedNames::new(tcx, false, false);
@@ -369,17 +368,16 @@ impl<'tcx> CodegenUnit<'tcx> {
             })
     }
 
-    pub fn items_in_deterministic_order(&self,
-                                        tcx: TyCtxt<'tcx, 'tcx>)
-                                        -> Vec<(MonoItem<'tcx>,
-                                                (Linkage, Visibility))> {
+    pub fn items_in_deterministic_order(
+        &self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+    ) -> Vec<(MonoItem<'tcx>, (Linkage, Visibility))> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
         pub struct ItemSortKey(Option<HirId>, SymbolName);
 
-        fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                   item: MonoItem<'tcx>) -> ItemSortKey {
+        fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, item: MonoItem<'tcx>) -> ItemSortKey {
             ItemSortKey(match item {
                 MonoItem::Fn(ref instance) => {
                     match instance.def {

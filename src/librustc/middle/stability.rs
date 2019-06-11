@@ -452,7 +452,7 @@ impl<'tcx> Index<'tcx> {
                                AnnotationKind::Required,
                                |v| intravisit::walk_crate(v, krate));
         }
-        return index
+        return index;
     }
 
     pub fn local_stability(&self, id: HirId) -> Option<&'tcx Stability> {
@@ -924,7 +924,7 @@ fn unnecessary_stable_feature_lint<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx>,
     span: Span,
     feature: Symbol,
-    since: Symbol
+    since: Symbol,
 ) {
     tcx.lint_hir(lint::builtin::STABLE_FEATURES,
         hir::CRATE_HIR_ID,

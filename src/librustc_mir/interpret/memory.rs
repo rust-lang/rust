@@ -69,9 +69,7 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub(super) tcx: TyCtxtAt<'tcx, 'tcx>,
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
-    for Memory<'mir, 'tcx, M>
-{
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
@@ -80,12 +78,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
 
 // FIXME: Really we shouldn't clone memory, ever. Snapshot machinery should instead
 // carefully copy only the reachable parts.
-impl<'mir, 'tcx, M>
-    Clone
-for
-    Memory<'mir, 'tcx, M>
+impl<'mir, 'tcx, M> Clone for Memory<'mir, 'tcx, M>
 where
-    M: Machine<'mir, 'tcx, PointerTag=(), AllocExtra=(), MemoryExtra=()>,
+    M: Machine<'mir, 'tcx, PointerTag = (), AllocExtra = (), MemoryExtra = ()>,
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
     fn clone(&self) -> Self {
@@ -641,7 +636,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 /// Interning (for CTFE)
 impl<'mir, 'tcx, M> Memory<'mir, 'tcx, M>
 where
-    M: Machine<'mir, 'tcx, PointerTag=(), AllocExtra=(), MemoryExtra=()>,
+    M: Machine<'mir, 'tcx, PointerTag = (), AllocExtra = (), MemoryExtra = ()>,
     // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {

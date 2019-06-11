@@ -18,7 +18,7 @@ pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Vec<NativeLibrary> {
     };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
     collector.process_command_line();
-    return collector.libs
+    return collector.libs;
 }
 
 pub fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {

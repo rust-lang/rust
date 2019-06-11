@@ -450,8 +450,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialPredicate<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     type Lifted = ty::TraitPredicate<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>)
-                             -> Option<ty::TraitPredicate<'tcx>> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<ty::TraitPredicate<'tcx>> {
         tcx.lift(&self.trait_ref).map(|trait_ref| ty::TraitPredicate {
             trait_ref,
         })
@@ -460,8 +459,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for ty::SubtypePredicate<'a> {
     type Lifted = ty::SubtypePredicate<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>)
-                             -> Option<ty::SubtypePredicate<'tcx>> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<ty::SubtypePredicate<'tcx>> {
         tcx.lift(&(self.a, self.b)).map(|(a, b)| ty::SubtypePredicate {
             a_is_expected: self.a_is_expected,
             a,
@@ -470,7 +468,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::SubtypePredicate<'a> {
     }
 }
 
-impl<'tcx, A: Copy+Lift<'tcx>, B: Copy+Lift<'tcx>> Lift<'tcx> for ty::OutlivesPredicate<A, B> {
+impl<'tcx, A: Copy + Lift<'tcx>, B: Copy + Lift<'tcx>> Lift<'tcx> for ty::OutlivesPredicate<A, B> {
     type Lifted = ty::OutlivesPredicate<A::Lifted, B::Lifted>;
     fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&(self.0, self.1)).map(|(a, b)| ty::OutlivesPredicate(a, b))
@@ -479,8 +477,7 @@ impl<'tcx, A: Copy+Lift<'tcx>, B: Copy+Lift<'tcx>> Lift<'tcx> for ty::OutlivesPr
 
 impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionTy<'a> {
     type Lifted = ty::ProjectionTy<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>)
-                             -> Option<ty::ProjectionTy<'tcx>> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<ty::ProjectionTy<'tcx>> {
         tcx.lift(&self.substs).map(|substs| {
             ty::ProjectionTy {
                 item_def_id: self.item_def_id,
@@ -492,8 +489,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionTy<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionPredicate<'a> {
     type Lifted = ty::ProjectionPredicate<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>)
-                             -> Option<ty::ProjectionPredicate<'tcx>> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<ty::ProjectionPredicate<'tcx>> {
         tcx.lift(&(self.projection_ty, self.ty)).map(|(projection_ty, ty)| {
             ty::ProjectionPredicate {
                 projection_ty,

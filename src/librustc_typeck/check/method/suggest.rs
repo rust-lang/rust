@@ -817,10 +817,12 @@ fn compute_all_traits<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>) -> Vec<DefId> {
     // Cross-crate:
 
     let mut external_mods = FxHashSet::default();
-    fn handle_external_res(tcx: TyCtxt<'_, '_>,
-                           traits: &mut Vec<DefId>,
-                           external_mods: &mut FxHashSet<DefId>,
-                           res: Res) {
+    fn handle_external_res(
+        tcx: TyCtxt<'_, '_>,
+        traits: &mut Vec<DefId>,
+        external_mods: &mut FxHashSet<DefId>,
+        res: Res,
+    ) {
         match res {
             Res::Def(DefKind::Trait, def_id) |
             Res::Def(DefKind::TraitAlias, def_id) => {
@@ -859,7 +861,7 @@ struct UsePlacementFinder<'tcx, 'gcx> {
     target_module: hir::HirId,
     span: Option<Span>,
     found_use: bool,
-    tcx: TyCtxt<'gcx, 'tcx>
+    tcx: TyCtxt<'gcx, 'tcx>,
 }
 
 impl UsePlacementFinder<'tcx, 'gcx> {

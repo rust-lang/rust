@@ -12,9 +12,10 @@ use crate::util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
-fn anonymize_predicate<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
-                                       pred: &ty::Predicate<'tcx>)
-                                       -> ty::Predicate<'tcx> {
+fn anonymize_predicate<'gcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'tcx>,
+    pred: &ty::Predicate<'tcx>,
+) -> ty::Predicate<'tcx> {
     match *pred {
         ty::Predicate::Trait(ref data) =>
             ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data)),
@@ -95,26 +96,23 @@ pub struct Elaborator<'gcx, 'tcx> {
 
 pub fn elaborate_trait_ref<'gcx, 'tcx>(
     tcx: TyCtxt<'gcx, 'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>)
-    -> Elaborator<'gcx, 'tcx>
-{
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> Elaborator<'gcx, 'tcx> {
     elaborate_predicates(tcx, vec![trait_ref.to_predicate()])
 }
 
 pub fn elaborate_trait_refs<'gcx, 'tcx>(
     tcx: TyCtxt<'gcx, 'tcx>,
-    trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>)
-    -> Elaborator<'gcx, 'tcx>
-{
+    trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+) -> Elaborator<'gcx, 'tcx> {
     let predicates = trait_refs.map(|trait_ref| trait_ref.to_predicate()).collect();
     elaborate_predicates(tcx, predicates)
 }
 
 pub fn elaborate_predicates<'gcx, 'tcx>(
     tcx: TyCtxt<'gcx, 'tcx>,
-    mut predicates: Vec<ty::Predicate<'tcx>>)
-    -> Elaborator<'gcx, 'tcx>
-{
+    mut predicates: Vec<ty::Predicate<'tcx>>,
+) -> Elaborator<'gcx, 'tcx> {
     let mut visited = PredicateSet::new(tcx);
     predicates.retain(|pred| visited.insert(pred));
     Elaborator { stack: predicates, visited }
@@ -256,15 +254,17 @@ impl Iterator for Elaborator<'gcx, 'tcx> {
 
 pub type Supertraits<'gcx, 'tcx> = FilterToTraits<Elaborator<'gcx, 'tcx>>;
 
-pub fn supertraits<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
-                                    trait_ref: ty::PolyTraitRef<'tcx>)
-                                    -> Supertraits<'gcx, 'tcx> {
+pub fn supertraits<'gcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> Supertraits<'gcx, 'tcx> {
     elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
 }
 
-pub fn transitive_bounds<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
-                                          bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>)
-                                          -> Supertraits<'gcx, 'tcx> {
+pub fn transitive_bounds<'gcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'tcx>,
+    bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+) -> Supertraits<'gcx, 'tcx> {
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
 }
 
@@ -339,7 +339,7 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
 
 pub fn expand_trait_aliases<'gcx, 'tcx>(
     tcx: TyCtxt<'gcx, 'tcx>,
-    trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>
+    trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>,
 ) -> TraitAliasExpander<'gcx, 'tcx> {
     let items: Vec<_> = trait_refs
         .into_iter()
@@ -420,10 +420,10 @@ pub struct SupertraitDefIds<'gcx, 'tcx> {
     visited: FxHashSet<DefId>,
 }
 
-pub fn supertrait_def_ids<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
-                                           trait_def_id: DefId)
-                                           -> SupertraitDefIds<'gcx, 'tcx>
-{
+pub fn supertrait_def_ids<'gcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'tcx>,
+    trait_def_id: DefId,
+) -> SupertraitDefIds<'gcx, 'tcx> {
     SupertraitDefIds {
         tcx,
         stack: vec![trait_def_id],

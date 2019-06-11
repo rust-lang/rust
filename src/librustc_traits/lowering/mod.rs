@@ -155,10 +155,7 @@ impl<'tcx> IntoWellFormedGoal for DomainGoal<'tcx> {
     }
 }
 
-crate fn program_clauses_for<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    def_id: DefId,
-) -> Clauses<'tcx> {
+crate fn program_clauses_for<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
     // FIXME(eddyb) this should only be using `def_kind`.
     match tcx.def_key(def_id).disambiguated_data.data {
         DefPathData::TypeNs(..) => match tcx.def_kind(def_id) {
@@ -184,10 +181,7 @@ crate fn program_clauses_for<'tcx>(
     }
 }
 
-fn program_clauses_for_trait<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    def_id: DefId,
-) -> Clauses<'tcx> {
+fn program_clauses_for_trait<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
     // `trait Trait<P1..Pn> where WC { .. } // P0 == Self`
 
     // Rule Implemented-From-Env (see rustc guide)
@@ -343,10 +337,7 @@ fn program_clauses_for_impl(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Clauses<'
     tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::bind(clause))))
 }
 
-pub fn program_clauses_for_type_def<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    def_id: DefId,
-) -> Clauses<'tcx> {
+pub fn program_clauses_for_type_def<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
     // Rule WellFormed-Type
     //
     // `struct Ty<P1..Pn> where WC1, ..., WCm`

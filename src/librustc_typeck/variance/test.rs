@@ -8,7 +8,7 @@ pub fn test_variance<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
 }
 
 struct VarianceTest<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
 impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {

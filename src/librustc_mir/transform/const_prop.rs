@@ -31,10 +31,12 @@ use crate::transform::{MirPass, MirSource};
 pub struct ConstProp;
 
 impl MirPass for ConstProp {
-    fn run_pass<'tcx>(&self,
-                          tcx: TyCtxt<'tcx, 'tcx>,
-                          source: MirSource<'tcx>,
-                          body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        source: MirSource<'tcx>,
+        body: &mut Body<'tcx>,
+    ) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
             return;
@@ -599,9 +601,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 }
 
-fn type_size_of<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                          param_env: ty::ParamEnv<'tcx>,
-                          ty: Ty<'tcx>) -> Option<u64> {
+fn type_size_of<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<u64> {
     tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 

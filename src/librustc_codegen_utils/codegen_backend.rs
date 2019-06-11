@@ -6,7 +6,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
-
 #![feature(box_syntax)]
 
 use std::any::Any;
@@ -39,7 +38,7 @@ pub trait CodegenBackend {
         tcx: TyCtxt<'tcx, 'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
-        rx: mpsc::Receiver<Box<dyn Any + Send>>
+        rx: mpsc::Receiver<Box<dyn Any + Send>>,
     ) -> Box<dyn Any>;
 
     /// This is called on the returned `Box<dyn Any>` from `codegen_backend`

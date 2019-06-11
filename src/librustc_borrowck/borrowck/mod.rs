@@ -73,9 +73,7 @@ pub struct AnalysisData<'tcx> {
     pub move_data: move_data::FlowedMoveData<'tcx>,
 }
 
-fn borrowck<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, owner_def_id: DefId)
-    -> &'tcx BorrowCheckResult
-{
+fn borrowck<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, owner_def_id: DefId) -> &'tcx BorrowCheckResult {
     assert!(tcx.use_ast_borrowck() || tcx.migrate_borrowck());
 
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
@@ -141,12 +139,14 @@ fn borrowck<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, owner_def_id: DefId)
     })
 }
 
-fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tcx>,
-                                                 force_analysis: bool,
-                                                 body_id: hir::BodyId,
-                                                 get_cfg: F)
-                                                 -> Option<AnalysisData<'tcx>>
-    where F: FnOnce(&mut BorrowckCtxt<'a, 'tcx>) -> &'c cfg::CFG
+fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(
+    this: &mut BorrowckCtxt<'a, 'tcx>,
+    force_analysis: bool,
+    body_id: hir::BodyId,
+    get_cfg: F,
+) -> Option<AnalysisData<'tcx>>
+where
+    F: FnOnce(&mut BorrowckCtxt<'a, 'tcx>) -> &'c cfg::CFG,
 {
     // Check the body of fn items.
     let (all_loans, move_data) =
@@ -195,9 +195,8 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: TyCtxt<'tcx, 'tcx>,
     body_id: hir::BodyId,
-    cfg: &cfg::CFG)
-    -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'tcx>)
-{
+    cfg: &cfg::CFG,
+) -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'tcx>) {
     let owner_id = tcx.hir().body_owner(body_id);
     let owner_def_id = tcx.hir().local_def_id(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
@@ -237,7 +236,6 @@ pub struct BorrowckCtxt<'a, 'tcx> {
 
     signalled_any_error: Cell<SignalledError>,
 }
-
 
 impl BorrowckCtxt<'_, 'tcx> {
     fn signal_error(&self) {
@@ -390,8 +388,7 @@ pub enum LoanPathElem<'tcx> {
     LpInterior(Option<DefId>, InteriorKind),
 }
 
-fn closure_to_block(closure_id: LocalDefId,
-                    tcx: TyCtxt<'_, '_>) -> HirId {
+fn closure_to_block(closure_id: LocalDefId, tcx: TyCtxt<'_, '_>) -> HirId {
     let closure_id = tcx.hir().local_def_id_to_node_id(closure_id);
     match tcx.hir().get(closure_id) {
         Node::Expr(expr) => match expr.node {

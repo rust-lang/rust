@@ -56,8 +56,7 @@ fn is_mir_available<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
 
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
-fn mir_keys<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, krate: CrateNum)
-                      -> &'tcx DefIdSet {
+fn mir_keys<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, krate: CrateNum) -> &'tcx DefIdSet {
     assert_eq!(krate, LOCAL_CRATE);
 
     let mut set = DefIdSet::default();
@@ -142,10 +141,12 @@ pub trait MirPass {
         default_name::<Self>()
     }
 
-    fn run_pass<'tcx>(&self,
-                          tcx: TyCtxt<'tcx, 'tcx>,
-                          source: MirSource<'tcx>,
-                          body: &mut Body<'tcx>);
+    fn run_pass<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        source: MirSource<'tcx>,
+        body: &mut Body<'tcx>,
+    );
 }
 
 pub fn run_passes(

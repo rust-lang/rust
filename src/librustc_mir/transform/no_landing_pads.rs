@@ -9,10 +9,7 @@ use crate::transform::{MirPass, MirSource};
 pub struct NoLandingPads;
 
 impl MirPass for NoLandingPads {
-    fn run_pass<'tcx>(&self,
-                          tcx: TyCtxt<'tcx, 'tcx>,
-                          _: MirSource<'tcx>,
-                          body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         no_landing_pads(tcx, body)
     }
 }

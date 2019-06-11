@@ -184,10 +184,11 @@ impl Visitor<'tcx> for IfThisChanged<'tcx> {
     }
 }
 
-fn check_paths<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                         if_this_changed: &Sources,
-                         then_this_would_need: &Targets)
-{
+fn check_paths<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    if_this_changed: &Sources,
+    then_this_would_need: &Targets,
+) {
     // Return early here so as not to construct the query, which is not cheap.
     if if_this_changed.is_empty() {
         for &(target_span, _, _, _) in then_this_would_need {

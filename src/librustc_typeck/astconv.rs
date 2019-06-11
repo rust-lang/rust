@@ -2420,9 +2420,11 @@ impl<'gcx, 'tcx> Bounds<'tcx> {
     /// where-clauses). Because some of our bounds listings (e.g.,
     /// regions) don't include the self-type, you must supply the
     /// self-type here (the `param_ty` parameter).
-    pub fn predicates(&self, tcx: TyCtxt<'gcx, 'tcx>, param_ty: Ty<'tcx>)
-                      -> Vec<(ty::Predicate<'tcx>, Span)>
-    {
+    pub fn predicates(
+        &self,
+        tcx: TyCtxt<'gcx, 'tcx>,
+        param_ty: Ty<'tcx>,
+    ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         // If it could be sized, and is, add the `Sized` predicate.
         let sized_predicate = self.implicitly_sized.and_then(|span| {
             tcx.lang_items().sized_trait().map(|sized| {

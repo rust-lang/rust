@@ -38,9 +38,7 @@ pub enum ExportedSymbol<'tcx> {
 }
 
 impl<'tcx> ExportedSymbol<'tcx> {
-    pub fn symbol_name(&self,
-                       tcx: TyCtxt<'tcx, '_>)
-                       -> ty::SymbolName {
+    pub fn symbol_name(&self, tcx: TyCtxt<'tcx, '_>) -> ty::SymbolName {
         match *self {
             ExportedSymbol::NonGeneric(def_id) => {
                 tcx.symbol_name(ty::Instance::mono(tcx, def_id))
@@ -54,10 +52,11 @@ impl<'tcx> ExportedSymbol<'tcx> {
         }
     }
 
-    pub fn compare_stable(&self,
-                          tcx: TyCtxt<'tcx, '_>,
-                          other: &ExportedSymbol<'tcx>)
-                          -> cmp::Ordering {
+    pub fn compare_stable(
+        &self,
+        tcx: TyCtxt<'tcx, '_>,
+        other: &ExportedSymbol<'tcx>,
+    ) -> cmp::Ordering {
         match *self {
             ExportedSymbol::NonGeneric(self_def_id) => match *other {
                 ExportedSymbol::NonGeneric(other_def_id) => {

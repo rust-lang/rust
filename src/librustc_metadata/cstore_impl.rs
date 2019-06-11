@@ -550,10 +550,7 @@ impl CrateStore for cstore::CStore {
         self.do_postorder_cnums_untracked()
     }
 
-    fn encode_metadata<'tcx>(&self,
-                                 tcx: TyCtxt<'tcx, 'tcx>)
-                                 -> EncodedMetadata
-    {
+    fn encode_metadata<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>) -> EncodedMetadata {
         encoder::encode_metadata(tcx)
     }
 

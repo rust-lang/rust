@@ -14,11 +14,7 @@ use crate::ty::{self, TyCtxt};
 impl<'tcx, V> Canonical<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
     /// with the value given in `var_values`.
-    pub fn substitute(
-        &self,
-        tcx: TyCtxt<'_, 'tcx>,
-        var_values: &CanonicalVarValues<'tcx>,
-    ) -> V
+    pub fn substitute(&self, tcx: TyCtxt<'_, 'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
     where
         V: TypeFoldable<'tcx>,
     {

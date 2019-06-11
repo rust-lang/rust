@@ -340,7 +340,7 @@ fn connected_to_root<'tcx>(
 fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
     tcx: TyCtxt<'tcx, '_>,
     queries: &'a [T],
-    f: F
+    f: F,
 ) -> &'a T {
     // Deterministically pick an entry point
     // FIXME: Sort this instead
@@ -366,7 +366,7 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
 fn remove_cycle<'tcx>(
     jobs: &mut Vec<Lrc<QueryJob<'tcx>>>,
     wakelist: &mut Vec<Lrc<QueryWaiter<'tcx>>>,
-    tcx: TyCtxt<'tcx, '_>
+    tcx: TyCtxt<'tcx, '_>,
 ) -> bool {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();

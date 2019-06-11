@@ -3158,7 +3158,7 @@ pub enum ClosureOutlivesSubject<'tcx> {
 
 /*
  * TypeFoldable implementations for MIR types
- */
+*/
 
 CloneTypeFoldableAndLiftImpls! {
     BlockTailInfo,

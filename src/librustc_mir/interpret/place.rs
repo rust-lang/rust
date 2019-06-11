@@ -294,7 +294,7 @@ impl<'mir, 'tcx, Tag, M> InterpretCx<'mir, 'tcx, M>
 where
     // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
     Tag: ::std::fmt::Debug + Copy + Eq + Hash + 'static,
-    M: Machine<'mir, 'tcx, PointerTag=Tag>,
+    M: Machine<'mir, 'tcx, PointerTag = Tag>,
     // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
     M::AllocExtra: AllocationExtra<Tag>,
@@ -396,8 +396,7 @@ where
     pub fn mplace_array_fields(
         &self,
         base: MPlaceTy<'tcx, Tag>,
-    ) ->
-        InterpResult<'tcx, impl Iterator<Item=InterpResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'tcx>
+    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'tcx>
     {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let stride = match base.layout.fields {

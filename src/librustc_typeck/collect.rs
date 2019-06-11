@@ -381,11 +381,7 @@ impl ItemCtxt<'tcx> {
 /// parameter with ID `param_id`. We use this so as to avoid running
 /// `ast_ty_to_ty`, because we want to avoid triggering an all-out
 /// conversion of the type to avoid inducing unnecessary cycles.
-fn is_param<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    ast_ty: &hir::Ty,
-    param_id: hir::HirId,
-) -> bool {
+fn is_param<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ast_ty: &hir::Ty, param_id: hir::HirId) -> bool {
     if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
         match path.res {
             Res::SelfTy(Some(def_id), None) | Res::Def(DefKind::TyParam, def_id) => {
@@ -578,7 +574,7 @@ fn convert_variant<'tcx>(
     discr: ty::VariantDiscr,
     def: &hir::VariantData,
     adt_kind: ty::AdtKind,
-    parent_did: DefId
+    parent_did: DefId,
 ) -> ty::VariantDef {
     let mut seen_fields: FxHashMap<ast::Ident, Span> = Default::default();
     let hir_id = tcx.hir().as_local_hir_id(variant_did.unwrap_or(parent_did)).unwrap();
@@ -779,10 +775,7 @@ fn trait_def<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::TraitDef
     tcx.arena.alloc(def)
 }
 
-fn has_late_bound_regions<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    node: Node<'tcx>,
-) -> Option<Span> {
+fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, node: Node<'tcx>) -> Option<Span> {
     struct LateBoundRegionsDetector<'tcx> {
         tcx: TyCtxt<'tcx, 'tcx>,
         outer_index: ty::DebruijnIndex,
@@ -1479,10 +1472,7 @@ pub fn checked_type_of<'tcx>(
     })
 }
 
-fn find_existential_constraints<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    def_id: DefId,
-) -> Ty<'tcx> {
+fn find_existential_constraints<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
     use rustc::hir::{ImplItem, Item, TraitItem};
 
     debug!("find_existential_constraints({:?})", def_id);
@@ -1776,10 +1766,7 @@ fn fn_sig<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> ty::PolyFnSig<'tcx> {
     }
 }
 
-fn impl_trait_ref<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    def_id: DefId,
-) -> Option<ty::TraitRef<'tcx>> {
+fn impl_trait_ref<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Option<ty::TraitRef<'tcx>> {
     let icx = ItemCtxt::new(tcx, def_id);
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
@@ -2301,10 +2288,7 @@ fn is_foreign_item<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
     }
 }
 
-fn static_mutability<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    def_id: DefId,
-) -> Option<hir::Mutability> {
+fn static_mutability<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Option<hir::Mutability> {
     match tcx.hir().get_if_local(def_id) {
         Some(Node::Item(&hir::Item {
             node: hir::ItemKind::Static(_, mutbl, _), ..

@@ -105,8 +105,11 @@ impl<'tcx> Discr<'tcx> {
 
 pub trait IntTypeExt {
     fn to_ty<'gcx, 'tcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Ty<'tcx>;
-    fn disr_incr<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, val: Option<Discr<'tcx>>)
-                           -> Option<Discr<'tcx>>;
+    fn disr_incr<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        val: Option<Discr<'tcx>>,
+    ) -> Option<Discr<'tcx>>;
     fn initial_discriminant<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>) -> Discr<'tcx>;
 }
 
@@ -178,10 +181,11 @@ pub enum Representability {
 }
 
 impl<'tcx> ty::ParamEnv<'tcx> {
-    pub fn can_type_implement_copy(self,
-                                       tcx: TyCtxt<'tcx, 'tcx>,
-                                       self_type: Ty<'tcx>)
-                                       -> Result<(), CopyImplementationError<'tcx>> {
+    pub fn can_type_implement_copy(
+        self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        self_type: Ty<'tcx>,
+    ) -> Result<(), CopyImplementationError<'tcx>> {
         // FIXME: (@jroesch) float this code up
         tcx.infer_ctxt().enter(|infcx| {
             let (adt, substs) = match self_type.sty {
@@ -695,11 +699,12 @@ impl<'tcx> ty::TyS<'tcx> {
     /// does copies even when the type actually doesn't satisfy the
     /// full requirements for the `Copy` trait (cc #29149) -- this
     /// winds up being reported as an error during NLL borrow check.
-    pub fn is_copy_modulo_regions(&'tcx self,
-                                  tcx: TyCtxt<'tcx, 'tcx>,
-                                  param_env: ty::ParamEnv<'tcx>,
-                                  span: Span)
-                                  -> bool {
+    pub fn is_copy_modulo_regions(
+        &'tcx self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+    ) -> bool {
         tcx.at(span).is_copy_raw(param_env.and(self))
     }
 
@@ -709,10 +714,11 @@ impl<'tcx> ty::TyS<'tcx> {
     /// over-approximation in generic contexts, where one can have
     /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
     /// actually carry lifetime requirements.
-    pub fn is_sized(&'tcx self,
-                    tcx_at: TyCtxtAt<'tcx, 'tcx>,
-                    param_env: ty::ParamEnv<'tcx>)-> bool
-    {
+    pub fn is_sized(
+        &'tcx self,
+        tcx_at: TyCtxtAt<'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
         tcx_at.is_sized_raw(param_env.and(self))
     }
 
@@ -723,11 +729,12 @@ impl<'tcx> ty::TyS<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
-    pub fn is_freeze(&'tcx self,
-                     tcx: TyCtxt<'tcx, 'tcx>,
-                     param_env: ty::ParamEnv<'tcx>,
-                     span: Span)-> bool
-    {
+    pub fn is_freeze(
+        &'tcx self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+    ) -> bool {
         tcx.at(span).is_freeze_raw(param_env.and(self))
     }
 
@@ -738,10 +745,7 @@ impl<'tcx> ty::TyS<'tcx> {
     /// (Note that this implies that if `ty` has a destructor attached,
     /// then `needs_drop` will definitely return `true` for `ty`.)
     #[inline]
-    pub fn needs_drop(&'tcx self,
-                      tcx: TyCtxt<'tcx, 'tcx>,
-                      param_env: ty::ParamEnv<'tcx>)
-                      -> bool {
+    pub fn needs_drop(&'tcx self, tcx: TyCtxt<'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         tcx.needs_drop_raw(param_env.and(self)).0
     }
 
@@ -760,11 +764,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
-    pub fn is_representable(&'tcx self,
-                            tcx: TyCtxt<'tcx, 'tcx>,
-                            sp: Span)
-                            -> Representability
-    {
+    pub fn is_representable(&'tcx self, tcx: TyCtxt<'tcx, 'tcx>, sp: Span) -> Representability {
         // Iterate until something non-representable is found
         fn fold_repr<It: Iterator<Item=Representability>>(iter: It) -> Representability {
             iter.fold(Representability::Representable, |r1, r2| {
@@ -779,12 +779,12 @@ impl<'tcx> ty::TyS<'tcx> {
         }
 
         fn are_inner_types_recursive<'tcx>(
-            tcx: TyCtxt<'tcx, 'tcx>, sp: Span,
+            tcx: TyCtxt<'tcx, 'tcx>,
+            sp: Span,
             seen: &mut Vec<Ty<'tcx>>,
             representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-            ty: Ty<'tcx>)
-            -> Representability
-        {
+            ty: Ty<'tcx>,
+        ) -> Representability {
             match ty.sty {
                 Tuple(ref ts) => {
                     // Find non representable
@@ -843,8 +843,8 @@ impl<'tcx> ty::TyS<'tcx> {
             sp: Span,
             seen: &mut Vec<Ty<'tcx>>,
             representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-            ty: Ty<'tcx>) -> Representability
-        {
+            ty: Ty<'tcx>,
+        ) -> Representability {
             debug!("is_type_structurally_recursive: {:?} {:?}", ty, sp);
             if let Some(representability) = representable_cache.get(ty) {
                 debug!("is_type_structurally_recursive: {:?} {:?} - (cached) {:?}",
@@ -864,8 +864,8 @@ impl<'tcx> ty::TyS<'tcx> {
             sp: Span,
             seen: &mut Vec<Ty<'tcx>>,
             representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-            ty: Ty<'tcx>) -> Representability
-        {
+            ty: Ty<'tcx>,
+        ) -> Representability {
             match ty.sty {
                 Adt(def, _) => {
                     {
@@ -937,10 +937,7 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 }
 
-fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                         query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                         -> bool
-{
+fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
     tcx.infer_ctxt()
@@ -953,10 +950,7 @@ fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
         ))
 }
 
-fn is_sized_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                          query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                          -> bool
-{
+fn is_sized_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
     tcx.infer_ctxt()
@@ -969,10 +963,7 @@ fn is_sized_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
         ))
 }
 
-fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                           query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                           -> bool
-{
+fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
     tcx.infer_ctxt()
@@ -988,10 +979,10 @@ fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
 #[derive(Clone, HashStable)]
 pub struct NeedsDrop(pub bool);
 
-fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                            query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                            -> NeedsDrop
-{
+fn needs_drop_raw<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> NeedsDrop {
     let (param_env, ty) = query.into_parts();
 
     let needs_drop = |ty: Ty<'tcx>| -> bool {

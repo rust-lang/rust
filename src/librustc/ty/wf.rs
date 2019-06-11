@@ -510,9 +510,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 /// `ty::required_region_bounds`, see that for more information.
 pub fn object_region_bounds<'gcx, 'tcx>(
     tcx: TyCtxt<'gcx, 'tcx>,
-    existential_predicates: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>)
-    -> Vec<ty::Region<'tcx>>
-{
+    existential_predicates: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
+) -> Vec<ty::Region<'tcx>> {
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a placeholder type.

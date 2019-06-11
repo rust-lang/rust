@@ -352,12 +352,14 @@ impl IrMaps<'tcx> {
     }
 }
 
-fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'tcx>,
-                          fk: FnKind<'tcx>,
-                          decl: &'tcx hir::FnDecl,
-                          body_id: hir::BodyId,
-                          sp: Span,
-                          id: hir::HirId) {
+fn visit_fn<'a, 'tcx: 'a>(
+    ir: &mut IrMaps<'tcx>,
+    fk: FnKind<'tcx>,
+    decl: &'tcx hir::FnDecl,
+    body_id: hir::BodyId,
+    sp: Span,
+    id: hir::HirId,
+) {
     debug!("visit_fn");
 
     // swap in a new set of IR maps for this function body:

@@ -26,7 +26,7 @@ crate fn fn_ptr(
     arity_and_output: usize,
     c_variadic: bool,
     unsafety: hir::Unsafety,
-    abi: abi::Abi
+    abi: abi::Abi,
 ) -> Ty<'tcx> {
     let inputs_and_output = tcx.mk_type_list(
         (0..arity_and_output).into_iter()

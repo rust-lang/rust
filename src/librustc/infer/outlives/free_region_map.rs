@@ -28,11 +28,12 @@ impl<'tcx> FreeRegionMap<'tcx> {
     /// cases, this is more conservative than necessary, in order to
     /// avoid making arbitrary choices. See
     /// `TransitiveRelation::postdom_upper_bound` for more details.
-    pub fn lub_free_regions<'gcx>(&self,
-                                      tcx: TyCtxt<'gcx, 'tcx>,
-                                      r_a: Region<'tcx>,
-                                      r_b: Region<'tcx>)
-                                      -> Region<'tcx> {
+    pub fn lub_free_regions<'gcx>(
+        &self,
+        tcx: TyCtxt<'gcx, 'tcx>,
+        r_a: Region<'tcx>,
+        r_b: Region<'tcx>,
+    ) -> Region<'tcx> {
         debug!("lub_free_regions(r_a={:?}, r_b={:?})", r_a, r_b);
         assert!(is_free(r_a));
         assert!(is_free(r_b));

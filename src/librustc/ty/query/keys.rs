@@ -136,7 +136,7 @@ impl<'tcx> Key for (&'tcx ty::Const<'tcx>, mir::Field) {
     }
 }
 
-impl<'tcx> Key for ty::PolyTraitRef<'tcx>{
+impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
     fn query_crate(&self) -> CrateNum {
         self.def_id().krate
     }

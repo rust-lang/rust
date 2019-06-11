@@ -111,7 +111,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         tcx: TyCtxt<'gcx, 'gcx>,
         metadata: &EncodedMetadata,
-        llvm_module: &mut ModuleLlvm
+        llvm_module: &mut ModuleLlvm,
     ) {
         base::write_compressed_metadata(tcx, metadata, llvm_module)
     }
@@ -119,7 +119,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         tcx: TyCtxt<'gcx, 'gcx>,
         mods: &mut ModuleLlvm,
-        kind: AllocatorKind
+        kind: AllocatorKind,
     ) {
         unsafe { allocator::codegen(tcx, mods, kind) }
     }
@@ -289,7 +289,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         tcx: TyCtxt<'tcx, 'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
-        rx: mpsc::Receiver<Box<dyn Any + Send>>
+        rx: mpsc::Receiver<Box<dyn Any + Send>>,
     ) -> Box<dyn Any> {
         box rustc_codegen_ssa::base::codegen_crate(
             LlvmCodegenBackend(()), tcx, metadata, need_metadata_module, rx)

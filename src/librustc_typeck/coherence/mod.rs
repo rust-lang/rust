@@ -43,7 +43,7 @@ fn check_impl<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, hir_id: HirId) {
 fn enforce_trait_manually_implementable(
     tcx: TyCtxt<'_, '_>,
     impl_def_id: DefId,
-    trait_def_id: DefId
+    trait_def_id: DefId,
 ) {
     let did = Some(trait_def_id);
     let li = tcx.lang_items();
@@ -99,7 +99,7 @@ fn enforce_trait_manually_implementable(
 fn enforce_empty_impls_for_marker_traits(
     tcx: TyCtxt<'_, '_>,
     impl_def_id: DefId,
-    trait_def_id: DefId
+    trait_def_id: DefId,
 ) {
     if !tcx.trait_def(trait_def_id).is_marker {
         return;

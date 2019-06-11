@@ -28,12 +28,13 @@ pub fn check_trait<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, trait_def_id: DefId) {
 
 struct Checker<'tcx> {
     tcx: TyCtxt<'tcx, 'tcx>,
-    trait_def_id: DefId
+    trait_def_id: DefId,
 }
 
 impl<'tcx> Checker<'tcx> {
     fn check<F>(&self, trait_def_id: Option<DefId>, mut f: F) -> &Self
-        where F: FnMut(TyCtxt<'tcx, 'tcx>, DefId)
+    where
+        F: FnMut(TyCtxt<'tcx, 'tcx>, DefId),
     {
         if Some(self.trait_def_id) == trait_def_id {
             for &impl_id in self.tcx.hir().trait_impls(self.trait_def_id) {
@@ -153,10 +154,7 @@ fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'tcx, 'tcx>, impl_did: Def
     }
 }
 
-fn visit_implementation_of_dispatch_from_dyn<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    impl_did: DefId,
-) {
+fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, impl_did: DefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}",
            impl_did);
     if impl_did.is_local() {
@@ -324,9 +322,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(
     }
 }
 
-pub fn coerce_unsized_info<'gcx>(gcx: TyCtxt<'gcx, 'gcx>,
-                                     impl_did: DefId)
-                                     -> CoerceUnsizedInfo {
+pub fn coerce_unsized_info<'gcx>(gcx: TyCtxt<'gcx, 'gcx>, impl_did: DefId) -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
     let coerce_unsized_trait = gcx.lang_items().coerce_unsized_trait().unwrap();
 

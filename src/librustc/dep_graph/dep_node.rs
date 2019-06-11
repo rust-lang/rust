@@ -480,7 +480,8 @@ trait DepNodeParams<'gcx: 'tcx, 'tcx>: fmt::Debug {
 }
 
 impl<'gcx: 'tcx, 'tcx, T> DepNodeParams<'gcx, 'tcx> for T
-    where T: HashStable<StableHashingContext<'tcx>> + fmt::Debug
+where
+    T: HashStable<StableHashingContext<'tcx>> + fmt::Debug,
 {
     default const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
 

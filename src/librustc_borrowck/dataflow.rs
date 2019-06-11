@@ -51,7 +51,6 @@ pub struct DataFlowContext<'tcx, O> {
     // `id_range`, there is a range of words equal to `words_per_id`.
     // So, to access the bits for any given id, you take a slice of
     // the full vector (see the method `compute_id_range()`).
-
     /// bits generated as we exit the cfg node. Updated by `add_gen()`.
     gens: Vec<usize>,
 
@@ -82,7 +81,7 @@ pub trait DataFlowOperator : BitwiseOperator {
 
 struct PropagationContext<'a, 'tcx, O> {
     dfcx: &'a mut DataFlowContext<'tcx, O>,
-    changed: bool
+    changed: bool,
 }
 
 fn get_cfg_indices<'a>(id: hir::ItemLocalId,
@@ -98,7 +97,7 @@ impl<'tcx, O: DataFlowOperator> DataFlowContext<'tcx, O> {
     }
 }
 
-impl<'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'tcx, O> {
+impl<'tcx, O: DataFlowOperator> pprust::PpAnn for DataFlowContext<'tcx, O> {
     fn nested(&self, state: &mut pprust::State<'_>, nested: pprust::Nested) -> io::Result<()> {
         pprust::PpAnn::nested(self.tcx.hir(), state, nested)
     }
@@ -225,12 +224,14 @@ pub enum KillFrom {
 }
 
 impl<'tcx, O: DataFlowOperator> DataFlowContext<'tcx, O> {
-    pub fn new(tcx: TyCtxt<'tcx, 'tcx>,
-               analysis_name: &'static str,
-               body: Option<&hir::Body>,
-               cfg: &cfg::CFG,
-               oper: O,
-               bits_per_id: usize) -> DataFlowContext<'tcx, O> {
+    pub fn new(
+        tcx: TyCtxt<'tcx, 'tcx>,
+        analysis_name: &'static str,
+        body: Option<&hir::Body>,
+        cfg: &cfg::CFG,
+        oper: O,
+        bits_per_id: usize,
+    ) -> DataFlowContext<'tcx, O> {
         let usize_bits = mem::size_of::<usize>() * 8;
         let words_per_id = (bits_per_id + usize_bits - 1) / usize_bits;
         let num_nodes = cfg.graph.all_nodes().len();

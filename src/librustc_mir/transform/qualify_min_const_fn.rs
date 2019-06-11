@@ -8,11 +8,7 @@ use syntax_pos::Span;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
-pub fn is_min_const_fn(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    def_id: DefId,
-    body: &'a Body<'tcx>,
-) -> McfResult {
+pub fn is_min_const_fn(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body: &'a Body<'tcx>) -> McfResult {
     let mut current = def_id;
     loop {
         let predicates = tcx.predicates_of(current);
@@ -79,12 +75,7 @@ pub fn is_min_const_fn(
     Ok(())
 }
 
-fn check_ty(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    ty: Ty<'tcx>,
-    span: Span,
-    fn_def_id: DefId,
-) -> McfResult {
+fn check_ty(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
     for ty in ty.walk() {
         match ty.sty {
             ty::Ref(_, _, hir::Mutability::MutMutable) => return Err((

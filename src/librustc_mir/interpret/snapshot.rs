@@ -43,8 +43,7 @@ pub(crate) struct InfiniteLoopDetector<'mir, 'tcx> {
     snapshots: FxHashSet<InterpSnapshot<'mir, 'tcx>>,
 }
 
-impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx>
-{
+impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx> {
     pub fn observe_and_analyze(
         &mut self,
         tcx: TyCtxt<'tcx, 'tcx>,
@@ -392,7 +391,7 @@ struct InterpSnapshot<'mir, 'tcx> {
 impl InterpSnapshot<'mir, 'tcx> {
     fn new(
         memory: &Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
-        stack: &[Frame<'mir, 'tcx>]
+        stack: &[Frame<'mir, 'tcx>],
     ) -> Self {
         InterpSnapshot {
             memory: memory.clone(),
@@ -407,7 +406,6 @@ impl InterpSnapshot<'mir, 'tcx> {
         // Start with the stack, iterate and recursively snapshot
         self.stack.iter().map(|frame| frame.snapshot(&self.memory)).collect()
     }
-
 }
 
 impl<'mir, 'tcx> Hash for InterpSnapshot<'mir, 'tcx> {

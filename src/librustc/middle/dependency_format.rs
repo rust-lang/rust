@@ -92,9 +92,7 @@ pub fn calculate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     sess.dependency_formats.set(fmts);
 }
 
-fn calculate_type<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                            ty: config::CrateType) -> DependencyList {
-
+fn calculate_type<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: config::CrateType) -> DependencyList {
     let sess = &tcx.sess;
 
     if !sess.opts.output_types.should_codegen() {
@@ -242,10 +240,12 @@ fn calculate_type<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     ret
 }
 
-fn add_library(tcx: TyCtxt<'_, '_>,
-               cnum: CrateNum,
-               link: LinkagePreference,
-               m: &mut FxHashMap<CrateNum, LinkagePreference>) {
+fn add_library(
+    tcx: TyCtxt<'_, '_>,
+    cnum: CrateNum,
+    link: LinkagePreference,
+    m: &mut FxHashMap<CrateNum, LinkagePreference>,
+) {
     match m.get(&cnum) {
         Some(&link2) => {
             // If the linkages differ, then we'd have two copies of the library

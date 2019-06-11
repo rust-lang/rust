@@ -125,9 +125,8 @@ impl<'tcx> BorrowSet<'tcx> {
         tcx: TyCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         locals_are_invalidated_at_exit: bool,
-        move_data: &MoveData<'tcx>
+        move_data: &MoveData<'tcx>,
     ) -> Self {
-
         let mut visitor = GatherBorrows {
             tcx,
             body,

@@ -314,7 +314,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
 fn add_query_description_impl(
     query: &Query,
     modifiers: QueryModifiers,
-    impls: &mut proc_macro2::TokenStream
+    impls: &mut proc_macro2::TokenStream,
 ) {
     let name = &query.name;
     let arg = &query.arg;

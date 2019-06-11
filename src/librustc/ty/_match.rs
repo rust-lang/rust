@@ -20,7 +20,7 @@ use crate::mir::interpret::ConstValue;
 /// important thing about the result is Ok/Err. Also, matching never
 /// affects any type variables or unification state.
 pub struct Match<'gcx, 'tcx> {
-    tcx: TyCtxt<'gcx, 'tcx>
+    tcx: TyCtxt<'gcx, 'tcx>,
 }
 
 impl Match<'gcx, 'tcx> {

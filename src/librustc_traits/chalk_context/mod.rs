@@ -527,7 +527,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_ex_clause_to_tcx(
         ex_clause: &ChalkExClause<'a>,
-        tcx: TyCtxt<'gcx, 'tcx>
+        tcx: TyCtxt<'gcx, 'tcx>,
     ) -> Option<Self::LiftedExClause> {
         Some(ChalkExClause {
             subst: tcx.lift(&ex_clause.subst)?,
@@ -539,7 +539,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_delayed_literal_to_tcx(
         literal: &DelayedLiteral<ChalkArenas<'a>>,
-        tcx: TyCtxt<'gcx, 'tcx>
+        tcx: TyCtxt<'gcx, 'tcx>,
     ) -> Option<Self::LiftedDelayedLiteral> {
         Some(match literal {
             DelayedLiteral::CannotProve(()) => DelayedLiteral::CannotProve(()),
@@ -674,11 +674,8 @@ crate fn provide(p: &mut Providers<'_>) {
 
 crate fn evaluate_goal<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx>,
-    goal: ChalkCanonicalGoal<'tcx>
-) -> Result<
-    &'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>,
-    traits::query::NoSolution
-> {
+    goal: ChalkCanonicalGoal<'tcx>,
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, traits::query::NoSolution> {
     use crate::lowering::Lower;
     use rustc::traits::WellFormed;
 

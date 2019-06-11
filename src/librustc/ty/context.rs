@@ -1678,10 +1678,7 @@ impl<'gcx> GlobalCtxt<'gcx> {
     /// Call the closure with a local `TyCtxt` using the given arena.
     /// `interners` is a slot passed so we can create a CtxtInterners
     /// with the same lifetime as `arena`.
-    pub fn enter_local<'tcx, F, R>(
-        &'gcx self,
-        f: F
-    ) -> R
+    pub fn enter_local<'tcx, F, R>(&'gcx self, f: F) -> R
     where
         F: FnOnce(TyCtxt<'gcx, 'tcx>) -> R,
         'gcx: 'tcx,
@@ -1732,41 +1729,41 @@ pub trait Lift<'tcx>: fmt::Debug {
 macro_rules! nop_lift {
     ($ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
-            type Lifted = $lifted;
-            fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
-                if tcx.interners.arena.in_arena(*self as *const _) {
-                    return Some(unsafe { mem::transmute(*self) });
+                    type Lifted = $lifted;
+                    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+                        if tcx.interners.arena.in_arena(*self as *const _) {
+                            return Some(unsafe { mem::transmute(*self) });
+                        }
+                        // Also try in the global tcx if we're not that.
+                        if !tcx.is_global() {
+                            self.lift_to_tcx(tcx.global_tcx())
+                        } else {
+                            None
+                        }
+                    }
                 }
-                // Also try in the global tcx if we're not that.
-                if !tcx.is_global() {
-                    self.lift_to_tcx(tcx.global_tcx())
-                } else {
-                    None
-                }
-            }
-        }
     };
 }
 
 macro_rules! nop_list_lift {
     ($ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for &'a List<$ty> {
-            type Lifted = &'tcx List<$lifted>;
-            fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
-                if self.is_empty() {
-                    return Some(List::empty());
+                    type Lifted = &'tcx List<$lifted>;
+                    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+                        if self.is_empty() {
+                            return Some(List::empty());
+                        }
+                        if tcx.interners.arena.in_arena(*self as *const _) {
+                            return Some(unsafe { mem::transmute(*self) });
+                        }
+                        // Also try in the global tcx if we're not that.
+                        if !tcx.is_global() {
+                            self.lift_to_tcx(tcx.global_tcx())
+                        } else {
+                            None
+                        }
+                    }
                 }
-                if tcx.interners.arena.in_arena(*self as *const _) {
-                    return Some(unsafe { mem::transmute(*self) });
-                }
-                // Also try in the global tcx if we're not that.
-                if !tcx.is_global() {
-                    self.lift_to_tcx(tcx.global_tcx())
-                } else {
-                    None
-                }
-            }
-        }
     };
 }
 
@@ -1941,7 +1938,8 @@ pub mod tls {
     /// This happens once per rustc session and TyCtxts only exists
     /// inside the `f` function.
     pub fn enter_global<'gcx, F, R>(gcx: &'gcx GlobalCtxt<'gcx>, f: F) -> R
-        where F: FnOnce(TyCtxt<'gcx, 'gcx>) -> R
+    where
+        F: FnOnce(TyCtxt<'gcx, 'gcx>) -> R,
     {
         // Update GCX_PTR to indicate there's a GlobalCtxt available
         GCX_PTR.with(|lock| {
@@ -1978,7 +1976,8 @@ pub mod tls {
     /// Creates a TyCtxt and ImplicitCtxt based on the GCX_PTR thread local.
     /// This is used in the deadlock handler.
     pub unsafe fn with_global<F, R>(f: F) -> R
-        where F: for<'gcx, 'tcx> FnOnce(TyCtxt<'gcx, 'tcx>) -> R
+    where
+        F: for<'gcx, 'tcx> FnOnce(TyCtxt<'gcx, 'tcx>) -> R,
     {
         let gcx = GCX_PTR.with(|lock| *lock.lock());
         assert!(gcx != 0);
@@ -2031,7 +2030,8 @@ pub mod tls {
     /// the current ImplicitCtxt's tcx field.
     #[inline]
     pub fn with_related_context<'gcx, 'tcx1, F, R>(tcx: TyCtxt<'gcx, 'tcx1>, f: F) -> R
-        where F: for<'b, 'tcx2> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx2>) -> R
+    where
+        F: for<'b, 'tcx2> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx2>) -> R,
     {
         with_context(|context| {
             unsafe {
@@ -2049,7 +2049,8 @@ pub mod tls {
     /// a different local interner from the current ImplicitCtxt's tcx field.
     #[inline]
     pub fn with_fully_related_context<'gcx, 'tcx, F, R>(tcx: TyCtxt<'gcx, 'tcx>, f: F) -> R
-        where F: for<'b> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx>) -> R
+    where
+        F: for<'b> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx>) -> R,
     {
         with_context(|context| {
             unsafe {
@@ -2065,7 +2066,8 @@ pub mod tls {
     /// Panics if there is no ImplicitCtxt available
     #[inline]
     pub fn with<F, R>(f: F) -> R
-        where F: for<'gcx, 'tcx> FnOnce(TyCtxt<'gcx, 'tcx>) -> R
+    where
+        F: for<'gcx, 'tcx> FnOnce(TyCtxt<'gcx, 'tcx>) -> R,
     {
         with_context(|context| f(context.tcx))
     }
@@ -2074,7 +2076,8 @@ pub mod tls {
     /// The closure is passed None if there is no ImplicitCtxt available
     #[inline]
     pub fn with_opt<F, R>(f: F) -> R
-        where F: for<'gcx, 'tcx> FnOnce(Option<TyCtxt<'gcx, 'tcx>>) -> R
+    where
+        F: for<'gcx, 'tcx> FnOnce(Option<TyCtxt<'gcx, 'tcx>>) -> R,
     {
         with_context_opt(|opt_context| f(opt_context.map(|context| context.tcx)))
     }

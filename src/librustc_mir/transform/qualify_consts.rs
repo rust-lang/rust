@@ -652,11 +652,7 @@ impl Deref for Checker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'tcx, 'tcx>,
-           def_id: DefId,
-           body: &'a Body<'tcx>,
-           mode: Mode)
-           -> Self {
+    fn new(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body: &'a Body<'tcx>, mode: Mode) -> Self {
         assert!(def_id.is_local());
         let mut rpo = traversal::reverse_postorder(body);
         let temps = promote_consts::collect_temps(body, &mut rpo);
@@ -1472,9 +1468,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn mir_const_qualif<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                              def_id: DefId)
-                              -> (u8, &'tcx BitSet<Local>) {
+fn mir_const_qualif<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> (u8, &'tcx BitSet<Local>) {
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1492,10 +1486,7 @@ fn mir_const_qualif<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
 pub struct QualifyAndPromoteConstants;
 
 impl MirPass for QualifyAndPromoteConstants {
-    fn run_pass<'tcx>(&self,
-                          tcx: TyCtxt<'tcx, 'tcx>,
-                          src: MirSource<'tcx>,
-                          body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if body.return_ty().references_error() {
             tcx.sess.delay_span_bug(body.span, "QualifyAndPromoteConstants: MIR had errors");

@@ -240,8 +240,10 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
 }
 
 pub fn report_autoderef_recursion_limit_error<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>, span: Span, ty: Ty<'tcx>)
-{
+    tcx: TyCtxt<'gcx, 'tcx>,
+    span: Span,
+    ty: Ty<'tcx>,
+) {
     // We've reached the recursion limit, error gracefully.
     let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
     let msg = format!("reached the recursion limit while auto-dereferencing `{:?}`",

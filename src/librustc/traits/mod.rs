@@ -710,13 +710,13 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
     }
 }
 
-fn do_normalize_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                     region_context: DefId,
-                                     cause: ObligationCause<'tcx>,
-                                     elaborated_env: ty::ParamEnv<'tcx>,
-                                     predicates: Vec<ty::Predicate<'tcx>>)
-                                     -> Result<Vec<ty::Predicate<'tcx>>, ErrorReported>
-{
+fn do_normalize_predicates<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    region_context: DefId,
+    cause: ObligationCause<'tcx>,
+    elaborated_env: ty::ParamEnv<'tcx>,
+    predicates: Vec<ty::Predicate<'tcx>>,
+) -> Result<Vec<ty::Predicate<'tcx>>, ErrorReported> {
     debug!(
         "do_normalize_predicates(predicates={:?}, region_context={:?}, cause={:?})",
         predicates,
@@ -795,12 +795,12 @@ fn do_normalize_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
 
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
-pub fn normalize_param_env_or_error<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                              region_context: DefId,
-                                              unnormalized_env: ty::ParamEnv<'tcx>,
-                                              cause: ObligationCause<'tcx>)
-                                              -> ty::ParamEnv<'tcx>
-{
+pub fn normalize_param_env_or_error<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    region_context: DefId,
+    unnormalized_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+) -> ty::ParamEnv<'tcx> {
     // I'm not wild about reporting errors here; I'd prefer to
     // have the errors get reported at a defined place (e.g.,
     // during typeck). Instead I have all parameter
@@ -936,10 +936,10 @@ pub fn fully_normalize<'a, 'gcx, 'tcx, T>(
 /// environment. If this returns false, then either normalize
 /// encountered an error or one of the predicates did not hold. Used
 /// when creating vtables to check for unsatisfiable methods.
-fn normalize_and_test_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                           predicates: Vec<ty::Predicate<'tcx>>)
-                                           -> bool
-{
+fn normalize_and_test_predicates<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    predicates: Vec<ty::Predicate<'tcx>>,
+) -> bool {
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
@@ -965,10 +965,10 @@ fn normalize_and_test_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     result
 }
 
-fn substitute_normalize_and_test_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                                      key: (DefId, SubstsRef<'tcx>))
-                                                      -> bool
-{
+fn substitute_normalize_and_test_predicates<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    key: (DefId, SubstsRef<'tcx>),
+) -> bool {
     debug!("substitute_normalize_and_test_predicates(key={:?})",
            key);
 
@@ -985,9 +985,8 @@ fn substitute_normalize_and_test_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
 #[inline] // FIXME(#35870): avoid closures being unexported due to `impl Trait`.
 fn vtable_methods<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>)
-    -> &'tcx [Option<(DefId, SubstsRef<'tcx>)>]
-{
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> &'tcx [Option<(DefId, SubstsRef<'tcx>)>] {
     debug!("vtable_methods({:?})", trait_ref);
 
     tcx.arena.alloc_from_iter(

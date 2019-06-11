@@ -335,10 +335,12 @@ pub struct PatternContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Pattern<'tcx> {
-    pub fn from_hir(tcx: TyCtxt<'tcx, 'tcx>,
-                    param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
-                    tables: &'a ty::TypeckTables<'tcx>,
-                    pat: &'tcx hir::Pat) -> Self {
+    pub fn from_hir(
+        tcx: TyCtxt<'tcx, 'tcx>,
+        param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
+        tables: &'a ty::TypeckTables<'tcx>,
+        pat: &'tcx hir::Pat,
+    ) -> Self {
         let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
@@ -351,9 +353,11 @@ impl<'a, 'tcx> Pattern<'tcx> {
 }
 
 impl<'a, 'tcx> PatternContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx, 'tcx>,
-               param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
-               tables: &'a ty::TypeckTables<'tcx>) -> Self {
+    pub fn new(
+        tcx: TyCtxt<'tcx, 'tcx>,
+        param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
+        tables: &'a ty::TypeckTables<'tcx>,
+    ) -> Self {
         PatternContext {
             tcx,
             param_env: param_env_and_substs.param_env,

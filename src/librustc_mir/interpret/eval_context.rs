@@ -43,10 +43,8 @@ pub struct InterpretCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>>,
 
     /// A cache for deduplicating vtables
-    pub(super) vtables: FxHashMap<
-        (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
-        Pointer<M::PointerTag>
-    >,
+    pub(super) vtables:
+        FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Pointer<M::PointerTag>>,
 }
 
 /// A stack frame.
@@ -160,9 +158,7 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
-    for InterpretCx<'mir, 'tcx, M>
-{
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpretCx<'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
@@ -170,7 +166,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
 }
 
 impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpretCx<'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>
+where
+    M: Machine<'mir, 'tcx>,
 {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
@@ -179,16 +176,15 @@ impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpretCx<'mir, 'tcx, M>
 }
 
 impl<'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpretCx<'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>
+where
+    M: Machine<'mir, 'tcx>,
 {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf
-    for InterpretCx<'mir, 'tcx, M>
-{
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpretCx<'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyLayout = InterpResult<'tcx, TyLayout<'tcx>>;
 
@@ -200,11 +196,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
-    pub fn new(
-        tcx: TyCtxtAt<'tcx, 'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        machine: M,
-    ) -> Self {
+    pub fn new(tcx: TyCtxtAt<'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>, machine: M) -> Self {
         InterpretCx {
             machine,
             tcx,

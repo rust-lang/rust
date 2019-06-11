@@ -201,9 +201,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 
     /// Called immediately before a new stack frame got pushed
-    fn stack_push(
-        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
-    ) -> InterpResult<'tcx, Self::FrameExtra>;
+    fn stack_push(ecx: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, Self::FrameExtra>;
 
     /// Called immediately after a stack frame gets popped
     fn stack_pop(

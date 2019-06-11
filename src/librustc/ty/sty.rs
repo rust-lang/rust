@@ -335,9 +335,11 @@ impl<'tcx> ClosureSubsts<'tcx> {
     }
 
     #[inline]
-    pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'_, '_>) ->
-        impl Iterator<Item=Ty<'tcx>> + 'tcx
-    {
+    pub fn upvar_tys(
+        self,
+        def_id: DefId,
+        tcx: TyCtxt<'_, '_>,
+    ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let SplitClosureSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
         upvar_kinds.iter().map(|t| {
             if let UnpackedKind::Type(ty) = t.unpack() {
@@ -422,9 +424,11 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     }
 
     #[inline]
-    pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'_, '_>) ->
-        impl Iterator<Item=Ty<'tcx>> + 'tcx
-    {
+    pub fn upvar_tys(
+        self,
+        def_id: DefId,
+        tcx: TyCtxt<'_, '_>,
+    ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let SplitGeneratorSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
         upvar_kinds.iter().map(|t| {
             if let UnpackedKind::Type(ty) = t.unpack() {
@@ -489,7 +493,10 @@ impl<'gcx, 'tcx> GeneratorSubsts<'tcx> {
     /// out of range.
     #[inline]
     pub fn discriminant_for_variant(
-        &self, def_id: DefId, tcx: TyCtxt<'gcx, 'tcx>, variant_index: VariantIdx
+        &self,
+        def_id: DefId,
+        tcx: TyCtxt<'gcx, 'tcx>,
+        variant_index: VariantIdx,
     ) -> Discr<'tcx> {
         // Generators don't support explicit discriminant values, so they are
         // the same as the variant index.
@@ -501,8 +508,10 @@ impl<'gcx, 'tcx> GeneratorSubsts<'tcx> {
     /// variant indices.
     #[inline]
     pub fn discriminants(
-        &'tcx self, def_id: DefId, tcx: TyCtxt<'gcx, 'tcx>
-    ) -> impl Iterator<Item=(VariantIdx, Discr<'tcx>)> + Captures<'gcx> {
+        &'tcx self,
+        def_id: DefId,
+        tcx: TyCtxt<'gcx, 'tcx>,
+    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'gcx> {
         self.variant_range(def_id, tcx).map(move |index| {
             (index, Discr { val: index.as_usize() as u128, ty: self.discr_ty(tcx) })
         })
@@ -533,9 +542,11 @@ impl<'gcx, 'tcx> GeneratorSubsts<'tcx> {
     /// The locals are grouped by their variant number. Note that some locals may
     /// be repeated in multiple variants.
     #[inline]
-    pub fn state_tys(self, def_id: DefId, tcx: TyCtxt<'gcx, 'tcx>) ->
-        impl Iterator<Item=impl Iterator<Item=Ty<'tcx>> + Captures<'gcx>>
-    {
+    pub fn state_tys(
+        self,
+        def_id: DefId,
+        tcx: TyCtxt<'gcx, 'tcx>,
+    ) -> impl Iterator<Item = impl Iterator<Item = Ty<'tcx>> + Captures<'gcx>> {
         let layout = tcx.generator_layout(def_id);
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
@@ -547,9 +558,11 @@ impl<'gcx, 'tcx> GeneratorSubsts<'tcx> {
     /// This is the types of the fields of a generator which are not stored in a
     /// variant.
     #[inline]
-    pub fn prefix_tys(self, def_id: DefId, tcx: TyCtxt<'gcx, 'tcx>) ->
-        impl Iterator<Item=Ty<'tcx>>
-    {
+    pub fn prefix_tys(
+        self,
+        def_id: DefId,
+        tcx: TyCtxt<'gcx, 'tcx>,
+    ) -> impl Iterator<Item = Ty<'tcx>> {
         self.upvar_tys(def_id, tcx)
     }
 }
@@ -562,9 +575,11 @@ pub enum UpvarSubsts<'tcx> {
 
 impl<'tcx> UpvarSubsts<'tcx> {
     #[inline]
-    pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'_, '_>) ->
-        impl Iterator<Item=Ty<'tcx>> + 'tcx
-    {
+    pub fn upvar_tys(
+        self,
+        def_id: DefId,
+        tcx: TyCtxt<'_, '_>,
+    ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let upvar_kinds = match self {
             UpvarSubsts::Closure(substs) => substs.split(def_id, tcx).upvar_kinds,
             UpvarSubsts::Generator(substs) => substs.split(def_id, tcx).upvar_kinds,
@@ -607,12 +622,10 @@ impl<'gcx, 'tcx> ExistentialPredicate<'tcx> {
             (AutoTrait(_), _) => Ordering::Greater,
         }
     }
-
 }
 
 impl<'gcx, 'tcx> Binder<ExistentialPredicate<'tcx>> {
-    pub fn with_self_ty(&self, tcx: TyCtxt<'gcx, 'tcx>, self_ty: Ty<'tcx>)
-        -> ty::Predicate<'tcx> {
+    pub fn with_self_ty(&self, tcx: TyCtxt<'gcx, 'tcx>, self_ty: Ty<'tcx>) -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
         match *self.skip_binder() {
             ExistentialPredicate::Trait(tr) => Binder(tr).with_self_ty(tcx, self_ty).to_predicate(),
@@ -764,10 +777,11 @@ impl<'tcx> TraitRef<'tcx> {
         self.substs.types()
     }
 
-    pub fn from_method(tcx: TyCtxt<'_, 'tcx>,
-                       trait_id: DefId,
-                       substs: SubstsRef<'tcx>)
-                       -> ty::TraitRef<'tcx> {
+    pub fn from_method(
+        tcx: TyCtxt<'_, 'tcx>,
+        trait_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
 
         ty::TraitRef {
@@ -817,9 +831,10 @@ impl<'gcx, 'tcx> ExistentialTraitRef<'tcx> {
         self.substs.types()
     }
 
-    pub fn erase_self_ty(tcx: TyCtxt<'gcx, 'tcx>,
-                         trait_ref: ty::TraitRef<'tcx>)
-                         -> ty::ExistentialTraitRef<'tcx> {
+    pub fn erase_self_ty(
+        tcx: TyCtxt<'gcx, 'tcx>,
+        trait_ref: ty::TraitRef<'tcx>,
+    ) -> ty::ExistentialTraitRef<'tcx> {
         // Assert there is a Self.
         trait_ref.substs.type_at(0);
 
@@ -833,8 +848,7 @@ impl<'gcx, 'tcx> ExistentialTraitRef<'tcx> {
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self type. A common choice is `mk_err()`
     /// or some placeholder type.
-    pub fn with_self_ty(&self, tcx: TyCtxt<'gcx, 'tcx>, self_ty: Ty<'tcx>)
-        -> ty::TraitRef<'tcx>  {
+    pub fn with_self_ty(&self, tcx: TyCtxt<'gcx, 'tcx>, self_ty: Ty<'tcx>) -> ty::TraitRef<'tcx> {
         // otherwise the escaping vars would be captured by the binder
         // debug_assert!(!self_ty.has_escaping_bound_vars());
 
@@ -856,9 +870,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self type. A common choice is `mk_err()`
     /// or some placeholder type.
-    pub fn with_self_ty(&self, tcx: TyCtxt<'_, 'tcx>,
-                        self_ty: Ty<'tcx>)
-                        -> ty::PolyTraitRef<'tcx>  {
+    pub fn with_self_ty(&self, tcx: TyCtxt<'_, 'tcx>, self_ty: Ty<'tcx>) -> ty::PolyTraitRef<'tcx> {
         self.map_bound(|trait_ref| trait_ref.with_self_ty(tcx, self_ty))
     }
 }
@@ -992,7 +1004,9 @@ impl<'tcx> ProjectionTy<'tcx> {
     /// Construct a `ProjectionTy` by searching the trait from `trait_ref` for the
     /// associated item named `item_name`.
     pub fn from_ref_and_name(
-        tcx: TyCtxt<'_, '_>, trait_ref: ty::TraitRef<'tcx>, item_name: Ident
+        tcx: TyCtxt<'_, '_>,
+        trait_ref: ty::TraitRef<'tcx>,
+        item_name: Ident,
     ) -> ProjectionTy<'tcx> {
         let item_def_id = tcx.associated_items(trait_ref.def_id).find(|item| {
             item.kind == ty::AssocKind::Type &&
@@ -1421,10 +1435,11 @@ impl<'tcx, 'gcx> ExistentialProjection<'tcx> {
         }
     }
 
-    pub fn with_self_ty(&self, tcx: TyCtxt<'gcx, 'tcx>,
-                        self_ty: Ty<'tcx>)
-                        -> ty::ProjectionPredicate<'tcx>
-    {
+    pub fn with_self_ty(
+        &self,
+        tcx: TyCtxt<'gcx, 'tcx>,
+        self_ty: Ty<'tcx>,
+    ) -> ty::ProjectionPredicate<'tcx> {
         // otherwise the escaping regions would be captured by the binders
         debug_assert!(!self_ty.has_escaping_bound_vars());
 
@@ -1439,8 +1454,11 @@ impl<'tcx, 'gcx> ExistentialProjection<'tcx> {
 }
 
 impl<'tcx, 'gcx> PolyExistentialProjection<'tcx> {
-    pub fn with_self_ty(&self, tcx: TyCtxt<'gcx, 'tcx>, self_ty: Ty<'tcx>)
-        -> ty::PolyProjectionPredicate<'tcx> {
+    pub fn with_self_ty(
+        &self,
+        tcx: TyCtxt<'gcx, 'tcx>,
+        self_ty: Ty<'tcx>,
+    ) -> ty::PolyProjectionPredicate<'tcx> {
         self.map_bound(|p| p.with_self_ty(tcx, self_ty))
     }
 
@@ -2099,7 +2117,7 @@ impl<'gcx, 'tcx> TyS<'tcx> {
     pub fn discriminant_for_variant(
         &self,
         tcx: TyCtxt<'gcx, 'tcx>,
-        variant_index: VariantIdx
+        variant_index: VariantIdx,
     ) -> Option<Discr<'tcx>> {
         match self.sty {
             TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
@@ -2239,11 +2257,7 @@ static_assert_size!(Const<'_>, 40);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
-    pub fn from_scalar(
-        tcx: TyCtxt<'_, 'tcx>,
-        val: Scalar,
-        ty: Ty<'tcx>,
-    ) -> &'tcx Self {
+    pub fn from_scalar(tcx: TyCtxt<'_, 'tcx>, val: Scalar, ty: Ty<'tcx>) -> &'tcx Self {
         tcx.mk_const(Self {
             val: ConstValue::Scalar(val),
             ty,
@@ -2279,11 +2293,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn to_bits(
-        &self,
-        tcx: TyCtxt<'_, 'tcx>,
-        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Option<u128> {
+    pub fn to_bits(&self, tcx: TyCtxt<'_, 'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
         if self.ty != ty.value {
             return None;
         }
@@ -2324,11 +2334,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn unwrap_bits(
-        &self,
-        tcx: TyCtxt<'_, '_>,
-        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> u128 {
+    pub fn unwrap_bits(&self, tcx: TyCtxt<'_, '_>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> u128 {
         self.assert_bits(tcx, ty).unwrap_or_else(||
             bug!("expected bits of {}, got {:#?}", ty.value, self))
     }

@@ -26,8 +26,7 @@ use syntax_pos;
 // explored. For example, if it's a live Node::Item that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
-fn should_explore<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                            hir_id: hir::HirId) -> bool {
+fn should_explore<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, hir_id: hir::HirId) -> bool {
     match tcx.hir().find_by_hir_id(hir_id) {
         Some(Node::Item(..)) |
         Some(Node::ImplItem(..)) |
@@ -302,9 +301,11 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 }
 
-fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_, '_>,
-                                    id: hir::HirId,
-                                    attrs: &[ast::Attribute]) -> bool {
+fn has_allow_dead_code_or_lang_attr(
+    tcx: TyCtxt<'_, '_>,
+    id: hir::HirId,
+    attrs: &[ast::Attribute],
+) -> bool {
     if attr::contains_name(attrs, sym::lang) {
         return true;
     }
@@ -451,10 +452,11 @@ fn create_and_seed_worklist<'tcx>(
     (life_seeder.worklist, life_seeder.struct_constructors)
 }
 
-fn find_live<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                       access_levels: &privacy::AccessLevels,
-                       krate: &hir::Crate)
-                       -> FxHashSet<hir::HirId> {
+fn find_live<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    access_levels: &privacy::AccessLevels,
+    krate: &hir::Crate,
+) -> FxHashSet<hir::HirId> {
     let (worklist, struct_constructors) = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,

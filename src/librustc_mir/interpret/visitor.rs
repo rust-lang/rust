@@ -14,8 +14,7 @@ use super::{
 // A thing that we can project into, and that has a layout.
 // This wouldn't have to depend on `Machine` but with the current type inference,
 // that's just more convenient to work with (avoids repeating all the `Machine` bounds).
-pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy
-{
+pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     /// Gets this value's layout.
     fn layout(&self) -> TyLayout<'tcx>;
 
@@ -45,9 +44,7 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy
 
 // Operands and memory-places are both values.
 // Places in general are not due to `place_field` having to do `force_allocation`.
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
-    for OpTy<'tcx, M::PointerTag>
-{
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::PointerTag> {
     #[inline(always)]
     fn layout(&self) -> TyLayout<'tcx> {
         self.layout
@@ -84,9 +81,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
         ecx.operand_field(self, field)
     }
 }
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
-    for MPlaceTy<'tcx, M::PointerTag>
-{
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for MPlaceTy<'tcx, M::PointerTag> {
     #[inline(always)]
     fn layout(&self) -> TyLayout<'tcx> {
         self.layout

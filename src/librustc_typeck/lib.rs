@@ -124,8 +124,7 @@ pub struct TypeAndSubsts<'tcx> {
     ty: Ty<'tcx>,
 }
 
-fn check_type_alias_enum_variants_enabled<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
-                                                          span: Span) {
+fn check_type_alias_enum_variants_enabled<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>, span: Span) {
     if !tcx.features().type_alias_enum_variants {
         let mut err = tcx.sess.struct_span_err(
             span,
@@ -140,10 +139,7 @@ fn check_type_alias_enum_variants_enabled<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
     }
 }
 
-fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_, '_>,
-                               decl: &hir::FnDecl,
-                               abi: Abi,
-                               span: Span) {
+fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_, '_>, decl: &hir::FnDecl, abi: Abi, span: Span) {
     if decl.c_variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
         let mut err = struct_span_err!(tcx.sess, span, E0045,
             "C-variadic function must have C or cdecl calling convention");
@@ -151,11 +147,12 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_, '_>,
     }
 }
 
-fn require_same_types<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                cause: &ObligationCause<'tcx>,
-                                expected: Ty<'tcx>,
-                                actual: Ty<'tcx>)
-                                -> bool {
+fn require_same_types<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    cause: &ObligationCause<'tcx>,
+    expected: Ty<'tcx>,
+    actual: Ty<'tcx>,
+) -> bool {
     tcx.infer_ctxt().enter(|ref infcx| {
         let param_env = ty::ParamEnv::empty();
         let mut fulfill_cx = TraitEngine::new(infcx.tcx);
@@ -318,9 +315,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     impl_wf_check::provide(providers);
 }
 
-pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>)
-                             -> Result<(), ErrorReported>
-{
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Result<(), ErrorReported> {
     tcx.sess.profiler(|p| p.start_activity("type-check crate"));
 
     // this ensures that later parts of type checking can assume that items
@@ -392,8 +387,10 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx>
     astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
 }
 
-pub fn hir_trait_to_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, hir_trait: &hir::TraitRef)
-        -> (ty::PolyTraitRef<'tcx>, Bounds<'tcx>) {
+pub fn hir_trait_to_predicates<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    hir_trait: &hir::TraitRef,
+) -> (ty::PolyTraitRef<'tcx>, Bounds<'tcx>) {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.

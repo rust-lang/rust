@@ -142,12 +142,10 @@ pub struct AllocDecodingSession<'s> {
 }
 
 impl<'s> AllocDecodingSession<'s> {
-
     // Decodes an AllocId in a thread-safe way.
-    pub fn decode_alloc_id<D>(&self,
-                                        decoder: &mut D)
-                                        -> Result<AllocId, D::Error>
-        where D: TyDecoder<'tcx>,
+    pub fn decode_alloc_id<D>(&self, decoder: &mut D) -> Result<AllocId, D::Error>
+    where
+        D: TyDecoder<'tcx>,
     {
         // Read the index of the allocation
         let idx = decoder.read_u32()? as usize;

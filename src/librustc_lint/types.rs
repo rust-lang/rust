@@ -555,11 +555,12 @@ fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
 /// to function pointers, references, core::num::NonZero*,
 /// core::ptr::NonNull, and #[repr(transparent)] newtypes.
 /// FIXME: This duplicates code in codegen.
-fn is_repr_nullable_ptr<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                  ty: Ty<'tcx>,
-                                  ty_def: &'tcx ty::AdtDef,
-                                  substs: SubstsRef<'tcx>)
-                                  -> bool {
+fn is_repr_nullable_ptr<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    ty: Ty<'tcx>,
+    ty_def: &'tcx ty::AdtDef,
+    substs: SubstsRef<'tcx>,
+) -> bool {
     if ty_def.variants.len() != 2 {
         return false;
     }

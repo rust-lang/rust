@@ -217,8 +217,7 @@ impl<'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T: Encodable> SpecializedEncoder<mir::ClearCrossCrate<T>>
-for EncodeContext<'tcx> {
+impl<'tcx, T: Encodable> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self,
                           _: &mir::ClearCrossCrate<T>)
                           -> Result<(), Self::Error> {
@@ -233,7 +232,6 @@ impl<'tcx> TyEncoder for EncodeContext<'tcx> {
 }
 
 impl<'tcx> EncodeContext<'tcx> {
-
     fn emit_node<F: FnOnce(&mut Self, usize) -> R, R>(&mut self, f: F) -> R {
         assert_eq!(self.lazy_state, LazyState::NoNode);
         let pos = self.position();
@@ -1865,9 +1863,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-pub fn encode_metadata<'tcx>(tcx: TyCtxt<'tcx, 'tcx>)
-                                 -> EncodedMetadata
-{
+pub fn encode_metadata<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> EncodedMetadata {
     let mut encoder = opaque::Encoder::new(vec![]);
     encoder.emit_raw_bytes(METADATA_HEADER);
 

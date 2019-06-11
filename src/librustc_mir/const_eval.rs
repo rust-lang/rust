@@ -308,9 +308,7 @@ impl interpret::MayLeak for ! {
     }
 }
 
-impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx>
-    for CompileTimeInterpreter<'mir, 'tcx>
-{
+impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
     type MemoryKinds = !;
     type PointerTag = ();
 
@@ -454,18 +452,13 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn stack_push(
-        _ecx: &mut InterpretCx<'mir, 'tcx, Self>,
-    ) -> InterpResult<'tcx> {
+    fn stack_push(_ecx: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 
     /// Called immediately before a stack frame gets popped.
     #[inline(always)]
-    fn stack_pop(
-        _ecx: &mut InterpretCx<'mir, 'tcx, Self>,
-        _extra: (),
-    ) -> InterpResult<'tcx> {
+    fn stack_pop(_ecx: &mut InterpretCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
         Ok(())
     }
 }
@@ -511,7 +504,7 @@ pub fn const_variant_index<'tcx>(
 
 pub fn error_to_const_error<'mir, 'tcx>(
     ecx: &InterpretCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
-    mut error: InterpErrorInfo<'tcx>
+    mut error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
     let stacktrace = ecx.generate_stacktrace(None);

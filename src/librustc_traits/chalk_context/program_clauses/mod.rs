@@ -21,7 +21,7 @@ use self::builtin::*;
 fn assemble_clauses_from_impls<'tcx>(
     tcx: TyCtxt<'_, 'tcx>,
     trait_def_id: DefId,
-    clauses: &mut Vec<Clause<'tcx>>
+    clauses: &mut Vec<Clause<'tcx>>,
 ) {
     tcx.for_each_impl(trait_def_id, |impl_def_id| {
         clauses.extend(
@@ -35,7 +35,7 @@ fn assemble_clauses_from_impls<'tcx>(
 fn assemble_clauses_from_assoc_ty_values<'tcx>(
     tcx: TyCtxt<'_, 'tcx>,
     trait_def_id: DefId,
-    clauses: &mut Vec<Clause<'tcx>>
+    clauses: &mut Vec<Clause<'tcx>>,
 ) {
     tcx.for_each_impl(trait_def_id, |impl_def_id| {
         for def_id in tcx.associated_item_def_ids(impl_def_id).iter() {

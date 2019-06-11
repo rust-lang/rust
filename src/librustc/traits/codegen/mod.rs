@@ -18,11 +18,10 @@ use crate::ty::fold::TypeFoldable;
 /// that type check should guarantee to us that all nested
 /// obligations *could be* resolved if we wanted to.
 /// Assumes that this is run after the entire crate has been successfully type-checked.
-pub fn codegen_fulfill_obligation<'tcx>(ty: TyCtxt<'tcx, 'tcx>,
-                                          (param_env, trait_ref):
-                                          (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>))
-                                          -> Vtable<'tcx, ()>
-{
+pub fn codegen_fulfill_obligation<'tcx>(
+    ty: TyCtxt<'tcx, 'tcx>,
+    (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
+) -> Vtable<'tcx, ()> {
     // Remove any references to regions; this helps improve caching.
     let trait_ref = ty.erase_regions(&trait_ref);
 

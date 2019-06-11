@@ -368,10 +368,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 /// entire crate. You should not read the result of this query
 /// directly, but rather use `named_region_map`, `is_late_bound_map`,
 /// etc.
-fn resolve_lifetimes<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    for_krate: CrateNum,
-) -> &'tcx ResolveLifetimes {
+fn resolve_lifetimes<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, for_krate: CrateNum) -> &'tcx ResolveLifetimes {
     assert_eq!(for_krate, LOCAL_CRATE);
 
     let named_region_map = krate(tcx);
@@ -1256,9 +1253,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
     }
 }
 
-fn compute_object_lifetime_defaults(
-    tcx: TyCtxt<'_, '_>,
-) -> HirIdMap<Vec<ObjectLifetimeDefault>> {
+fn compute_object_lifetime_defaults(tcx: TyCtxt<'_, '_>) -> HirIdMap<Vec<ObjectLifetimeDefault>> {
     let mut map = HirIdMap::default();
     for item in tcx.hir().krate().items.values() {
         match item.node {

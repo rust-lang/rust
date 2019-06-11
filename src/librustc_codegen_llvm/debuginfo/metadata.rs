@@ -894,10 +894,11 @@ fn pointer_type_metadata(
     }
 }
 
-pub fn compile_unit_metadata(tcx: TyCtxt<'_, '_>,
-                             codegen_unit_name: &str,
-                             debug_context: &CrateDebugContext<'ll, '_>)
-                             -> &'ll DIDescriptor {
+pub fn compile_unit_metadata(
+    tcx: TyCtxt<'_, '_>,
+    codegen_unit_name: &str,
+    debug_context: &CrateDebugContext<'ll, '_>,
+) -> &'ll DIDescriptor {
     let mut name_in_debuginfo = match tcx.sess.local_crate_source_file {
         Some(ref path) => path.clone(),
         None => PathBuf::from(&*tcx.crate_name(LOCAL_CRATE).as_str()),

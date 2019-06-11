@@ -15,7 +15,7 @@ crate trait PlaceExt<'tcx> {
         tcx: TyCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
-        ) -> bool;
+    ) -> bool;
 }
 
 impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {

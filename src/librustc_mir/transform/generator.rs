@@ -311,9 +311,10 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
 }
 
 fn make_generator_state_argument_indirect<'tcx>(
-                tcx: TyCtxt<'tcx, 'tcx>,
-                def_id: DefId,
-                body: &mut Body<'tcx>) {
+    tcx: TyCtxt<'tcx, 'tcx>,
+    def_id: DefId,
+    body: &mut Body<'tcx>,
+) {
     let gen_ty = body.local_decls.raw[1].ty;
 
     let region = ty::ReFree(ty::FreeRegion {
@@ -335,9 +336,7 @@ fn make_generator_state_argument_indirect<'tcx>(
     DerefArgVisitor.visit_body(body);
 }
 
-fn make_generator_state_argument_pinned<'tcx>(
-                tcx: TyCtxt<'tcx, 'tcx>,
-                body: &mut Body<'tcx>) {
+fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, body: &mut Body<'tcx>) {
     let ref_gen_ty = body.local_decls.raw[1].ty;
 
     let pin_did = tcx.lang_items().pin_type().unwrap();
@@ -678,16 +677,18 @@ impl<'body, 'tcx: 'body, 's> StorageConflictVisitor<'body, 'tcx, 's> {
     }
 }
 
-fn compute_layout<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                            source: MirSource<'tcx>,
-                            upvars: &Vec<Ty<'tcx>>,
-                            interior: Ty<'tcx>,
-                            movable: bool,
-                            body: &mut Body<'tcx>)
-    -> (FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
-        GeneratorLayout<'tcx>,
-        FxHashMap<BasicBlock, liveness::LiveVarSet>)
-{
+fn compute_layout<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    source: MirSource<'tcx>,
+    upvars: &Vec<Ty<'tcx>>,
+    interior: Ty<'tcx>,
+    movable: bool,
+    body: &mut Body<'tcx>,
+) -> (
+    FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
+    GeneratorLayout<'tcx>,
+    FxHashMap<BasicBlock, liveness::LiveVarSet>,
+) {
     // Use a liveness analysis to compute locals which are live across a suspension point
     let LivenessInfo {
         live_locals, live_locals_at_suspension_points, storage_conflicts, storage_liveness
@@ -767,10 +768,12 @@ fn compute_layout<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
     (remap, layout, storage_liveness)
 }
 
-fn insert_switch<'tcx>(body: &mut Body<'tcx>,
-                           cases: Vec<(usize, BasicBlock)>,
-                           transform: &TransformVisitor<'tcx>,
-                           default: TerminatorKind<'tcx>) {
+fn insert_switch<'tcx>(
+    body: &mut Body<'tcx>,
+    cases: Vec<(usize, BasicBlock)>,
+    transform: &TransformVisitor<'tcx>,
+    default: TerminatorKind<'tcx>,
+) {
     let default_block = insert_term_block(body, default);
     let (assign, discr) = transform.get_discr(body);
     let switch = TerminatorKind::SwitchInt {
@@ -797,9 +800,7 @@ fn insert_switch<'tcx>(body: &mut Body<'tcx>,
     }
 }
 
-fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                       def_id: DefId,
-                                       body: &mut Body<'tcx>) {
+fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body: &mut Body<'tcx>) {
     use crate::util::elaborate_drops::{elaborate_drop, Unwind};
     use crate::util::patch::MirPatch;
     use crate::shim::DropShimElaborator;
@@ -849,13 +850,14 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
 }
 
 fn create_generator_drop_shim<'tcx>(
-                tcx: TyCtxt<'tcx, 'tcx>,
-                transform: &TransformVisitor<'tcx>,
-                def_id: DefId,
-                source: MirSource<'tcx>,
-                gen_ty: Ty<'tcx>,
-                body: &Body<'tcx>,
-                drop_clean: BasicBlock) -> Body<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
+    transform: &TransformVisitor<'tcx>,
+    def_id: DefId,
+    source: MirSource<'tcx>,
+    gen_ty: Ty<'tcx>,
+    body: &Body<'tcx>,
+    drop_clean: BasicBlock,
+) -> Body<'tcx> {
     let mut body = body.clone();
 
     let source_info = source_info(&body);
@@ -939,9 +941,11 @@ fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) ->
     term_block
 }
 
-fn insert_panic_block<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
-                                body: &mut Body<'tcx>,
-                                message: AssertMessage<'tcx>) -> BasicBlock {
+fn insert_panic_block<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    body: &mut Body<'tcx>,
+    message: AssertMessage<'tcx>,
+) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks().len());
     let term = TerminatorKind::Assert {
         cond: Operand::Constant(box Constant {
@@ -970,11 +974,12 @@ fn insert_panic_block<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
 }
 
 fn create_generator_resume_function<'tcx>(
-        tcx: TyCtxt<'tcx, 'tcx>,
-        transform: TransformVisitor<'tcx>,
-        def_id: DefId,
-        source: MirSource<'tcx>,
-        body: &mut Body<'tcx>) {
+    tcx: TyCtxt<'tcx, 'tcx>,
+    transform: TransformVisitor<'tcx>,
+    def_id: DefId,
+    source: MirSource<'tcx>,
+    body: &mut Body<'tcx>,
+) {
     // Poison the generator when it unwinds
     for block in body.basic_blocks_mut() {
         let source_info = block.terminator().source_info;
@@ -1042,10 +1047,14 @@ fn insert_clean_drop<'tcx>(body: &mut Body<'tcx>) -> BasicBlock {
     drop_clean
 }
 
-fn create_cases<'tcx, F>(body: &mut Body<'tcx>,
-                          transform: &TransformVisitor<'tcx>,
-                          target: F) -> Vec<(usize, BasicBlock)>
-    where F: Fn(&SuspensionPoint) -> Option<BasicBlock> {
+fn create_cases<'tcx, F>(
+    body: &mut Body<'tcx>,
+    transform: &TransformVisitor<'tcx>,
+    target: F,
+) -> Vec<(usize, BasicBlock)>
+where
+    F: Fn(&SuspensionPoint) -> Option<BasicBlock>,
+{
     let source_info = source_info(body);
 
     transform.suspension_points.iter().filter_map(|point| {
@@ -1083,10 +1092,12 @@ fn create_cases<'tcx, F>(body: &mut Body<'tcx>,
 }
 
 impl MirPass for StateTransform {
-    fn run_pass<'tcx>(&self,
-                    tcx: TyCtxt<'tcx, 'tcx>,
-                    source: MirSource<'tcx>,
-                    body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        source: MirSource<'tcx>,
+        body: &mut Body<'tcx>,
+    ) {
         let yield_ty = if let Some(yield_ty) = body.yield_ty {
             yield_ty
         } else {

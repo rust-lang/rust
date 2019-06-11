@@ -9,7 +9,7 @@ pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Vec<ForeignModule> {
         modules: Vec::new(),
     };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
-    return collector.modules
+    return collector.modules;
 }
 
 struct Collector<'tcx> {

@@ -155,7 +155,7 @@ struct Promoter<'a, 'tcx: 'a> {
 
     /// If true, all nested temps are also kept in the
     /// source MIR, not moved to the promoted MIR.
-    keep_original: bool
+    keep_original: bool,
 }
 
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
@@ -369,10 +369,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     }
 }
 
-pub fn promote_candidates<'tcx>(body: &mut Body<'tcx>,
-                                    tcx: TyCtxt<'tcx, 'tcx>,
-                                    mut temps: IndexVec<Local, TempState>,
-                                    candidates: Vec<Candidate>) {
+pub fn promote_candidates<'tcx>(
+    body: &mut Body<'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
+    mut temps: IndexVec<Local, TempState>,
+    candidates: Vec<Candidate>,
+) {
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
 

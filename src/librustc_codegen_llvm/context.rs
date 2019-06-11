@@ -47,8 +47,8 @@ pub struct CodegenCx<'ll, 'tcx: 'll> {
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
-    pub vtables: RefCell<FxHashMap<
-            (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
+    pub vtables:
+        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
     pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'ll Value>>,
 
@@ -207,10 +207,11 @@ pub unsafe fn create_module(
 }
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
-    crate fn new(tcx: TyCtxt<'tcx, 'tcx>,
-                 codegen_unit: Arc<CodegenUnit<'tcx>>,
-                 llvm_module: &'ll crate::ModuleLlvm)
-                 -> Self {
+    crate fn new(
+        tcx: TyCtxt<'tcx, 'tcx>,
+        codegen_unit: Arc<CodegenUnit<'tcx>>,
+        llvm_module: &'ll crate::ModuleLlvm,
+    ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
