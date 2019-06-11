@@ -1,10 +1,12 @@
+pub(crate) mod src;
+
 use std::sync::Arc;
 
 use ra_db::{CrateId, SourceRootId, Edition, FileId};
 use ra_syntax::{ast::{self, NameOwner, TypeAscriptionOwner}, TreeArc};
 
 use crate::{
-    Name, AsName, AstId, Ty, HirFileId, Either, KnownName,
+    Name, AsName, AstId, Ty, Either, KnownName, HasSource,
     HirDatabase, DefDatabase, AstDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
@@ -19,22 +21,6 @@ use crate::{
     traits::{TraitItem, TraitData},
     type_ref::Mutability,
 };
-
-pub struct Source<T> {
-    pub file_id: HirFileId,
-    pub ast: T,
-}
-
-impl<T> From<(HirFileId, T)> for Source<T> {
-    fn from((file_id, ast): (HirFileId, T)) -> Self {
-        Source { file_id, ast }
-    }
-}
-
-pub trait HasSource {
-    type Ast;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<Self::Ast>;
-}
 
 /// hir::Crate describes a single crate. It's the main interface with which
 /// a crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -195,28 +181,6 @@ impl Module {
         })
     }
 
-    /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ModuleSource> {
-        let def_map = db.crate_def_map(self.krate);
-        let decl_id = def_map[self.module_id].declaration;
-        let file_id = def_map[self.module_id].definition;
-        let module_source = ModuleSource::new(db, file_id, decl_id);
-        let file_id = file_id.map(HirFileId::from).unwrap_or_else(|| decl_id.unwrap().file_id());
-        (file_id, module_source).into()
-    }
-
-    /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
-    /// `None` for the crate root.
-    pub fn declaration_source(
-        self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> Option<Source<TreeArc<ast::Module>>> {
-        let def_map = db.crate_def_map(self.krate);
-        let decl = def_map[self.module_id].declaration?;
-        let ast = decl.to_node(db);
-        Some((decl.file_id(), ast).into())
-    }
-
     /// Returns the syntax of the last path segment corresponding to this import
     pub fn import_source(
         self,
@@ -343,13 +307,6 @@ pub enum FieldSource {
     Pos(TreeArc<ast::PosFieldDef>),
 }
 
-impl HasSource for StructField {
-    type Ast = FieldSource;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<FieldSource> {
-        self.source_impl(db).into()
-    }
-}
-
 impl StructField {
     pub fn name(&self, db: &impl HirDatabase) -> Name {
         self.parent.variant_data(db).fields().unwrap()[self.id].name.clone()
@@ -367,13 +324,6 @@ impl StructField {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Struct {
     pub(crate) id: StructId,
-}
-
-impl HasSource for Struct {
-    type Ast = TreeArc<ast::StructDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
-        self.id.source(db).into()
-    }
 }
 
 impl Struct {
@@ -430,13 +380,6 @@ pub struct Union {
     pub(crate) id: StructId,
 }
 
-impl HasSource for Union {
-    type Ast = TreeArc<ast::StructDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StructDef>> {
-        self.id.source(db).into()
-    }
-}
-
 impl Union {
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
         db.struct_data(Struct { id: self.id }).name.clone()
@@ -461,13 +404,6 @@ impl Union {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Enum {
     pub(crate) id: EnumId,
-}
-
-impl HasSource for Enum {
-    type Ast = TreeArc<ast::EnumDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::EnumDef>> {
-        self.id.source(db).into()
-    }
 }
 
 impl Enum {
@@ -511,13 +447,6 @@ impl Enum {
 pub struct EnumVariant {
     pub(crate) parent: Enum,
     pub(crate) id: EnumVariantId,
-}
-
-impl HasSource for EnumVariant {
-    type Ast = TreeArc<ast::EnumVariant>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::EnumVariant>> {
-        self.source_impl(db)
-    }
 }
 
 impl EnumVariant {
@@ -587,14 +516,6 @@ impl DefWithBody {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Function {
     pub(crate) id: FunctionId,
-}
-
-impl HasSource for Function {
-    type Ast = TreeArc<ast::FnDef>;
-
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::FnDef>> {
-        self.id.source(db).into()
-    }
 }
 
 /// The declared signature of a function.
@@ -743,14 +664,6 @@ pub struct Const {
     pub(crate) id: ConstId,
 }
 
-impl HasSource for Const {
-    type Ast = TreeArc<ast::ConstDef>;
-
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ConstDef>> {
-        self.id.source(db).into()
-    }
-}
-
 impl Const {
     pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
@@ -827,14 +740,6 @@ pub struct Static {
     pub(crate) id: StaticId,
 }
 
-impl HasSource for Static {
-    type Ast = TreeArc<ast::StaticDef>;
-
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StaticDef>> {
-        self.id.source(db).into()
-    }
-}
-
 impl Static {
     pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.module(db)
@@ -858,13 +763,6 @@ impl Static {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Trait {
     pub(crate) id: TraitId,
-}
-
-impl HasSource for Trait {
-    type Ast = TreeArc<ast::TraitDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::TraitDef>> {
-        self.id.source(db).into()
-    }
 }
 
 impl Trait {
@@ -904,13 +802,6 @@ impl Trait {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAlias {
     pub(crate) id: TypeAliasId,
-}
-
-impl HasSource for TypeAlias {
-    type Ast = TreeArc<ast::TypeAliasDef>;
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::TypeAliasDef>> {
-        self.id.source(db).into()
-    }
 }
 
 impl TypeAlias {
@@ -960,14 +851,6 @@ impl TypeAlias {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDef {
     pub(crate) id: MacroDefId,
-}
-
-impl HasSource for MacroDef {
-    type Ast = TreeArc<ast::MacroCall>;
-
-    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::MacroCall>> {
-        (self.id.0.file_id(), self.id.0.to_node(db)).into()
-    }
 }
 
 impl MacroDef {}

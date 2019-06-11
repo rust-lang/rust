@@ -81,5 +81,6 @@ pub use self::code_model::{
     StructField, FieldSource,
     Static, Const, ConstSignature,
     Trait, TypeAlias, MacroDef, Container,
-    BuiltinType, Source, HasSource,
+    BuiltinType,
+    src::{Source, HasSource},
 };
