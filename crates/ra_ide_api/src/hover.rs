@@ -142,11 +142,11 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             }
             Some(SelfType(ty)) => {
                 if let Some((adt_def, _)) = ty.as_adt() {
-                    match adt_def {
-                        hir::AdtDef::Struct(it) => res.extend(from_def_source(db, it)),
-                        hir::AdtDef::Union(it) => res.extend(from_def_source(db, it)),
-                        hir::AdtDef::Enum(it) => res.extend(from_def_source(db, it)),
-                    }
+                    res.extend(match adt_def {
+                        hir::AdtDef::Struct(it) => from_def_source(db, it),
+                        hir::AdtDef::Union(it) => from_def_source(db, it),
+                        hir::AdtDef::Enum(it) => from_def_source(db, it),
+                    })
                 }
             }
             Some(Pat(_)) => {
