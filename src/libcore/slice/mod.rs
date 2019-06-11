@@ -1362,6 +1362,23 @@ impl<T> [T] {
     /// let r = s.binary_search(&1);
     /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
+    ///
+    /// Inserts a new element into already sorted array while maintaining sorted
+    /// order. Then asserts that the item was inserted correctly.
+    ///
+    /// ```
+    /// let mut s = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    /// let num = 14;
+    ///
+    /// match s.binary_search(&num) {
+    ///     Ok(_) => {}
+    ///     Err(pos) => {
+    ///         s.insert(pos, num);
+    ///     }
+    /// };
+    ///
+    /// assert_eq!(s[10], num)
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn binary_search(&self, x: &T) -> Result<usize, usize>
         where T: Ord
