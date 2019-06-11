@@ -598,6 +598,7 @@ fn test_with_no_doc_stage0() {
         bless: false,
         compare_mode: None,
         rustfix_coverage: false,
+        pass: None,
     };
 
     let build = Build::new(config);
@@ -640,6 +641,7 @@ fn test_exclude() {
         bless: false,
         compare_mode: None,
         rustfix_coverage: false,
+        pass: None,
     };
 
     let build = Build::new(config);

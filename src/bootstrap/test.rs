@@ -1065,6 +1065,11 @@ impl Step for Compiletest {
             }
         });
 
+        if let Some(ref pass) = builder.config.cmd.pass() {
+            cmd.arg("--pass");
+            cmd.arg(pass);
+        }
+
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
         }

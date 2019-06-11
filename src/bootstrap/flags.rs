@@ -58,6 +58,7 @@ pub enum Subcommand {
         /// Whether to automatically update stderr/stdout files
         bless: bool,
         compare_mode: Option<String>,
+        pass: Option<String>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
@@ -198,6 +199,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
                     "compare-mode",
                     "mode describing what file the actual ui output will be compared to",
                     "COMPARE MODE",
+                );
+                opts.optopt(
+                    "",
+                    "pass",
+                    "force {check,build,run}-pass tests to this mode.",
+                    "check | build | run"
                 );
                 opts.optflag(
                     "",
@@ -401,6 +408,7 @@ Arguments:
                 paths,
                 bless: matches.opt_present("bless"),
                 compare_mode: matches.opt_str("compare-mode"),
+                pass: matches.opt_str("pass"),
                 test_args: matches.opt_strs("test-args"),
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
@@ -521,6 +529,15 @@ impl Subcommand {
             Subcommand::Test {
                 ref compare_mode, ..
             } => compare_mode.as_ref().map(|s| &s[..]),
+            _ => None,
+        }
+    }
+
+    pub fn pass(&self) -> Option<&str> {
+        match *self {
+            Subcommand::Test {
+                ref pass, ..
+            } => pass.as_ref().map(|s| &s[..]),
             _ => None,
         }
     }
