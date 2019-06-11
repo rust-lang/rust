@@ -14,6 +14,7 @@
 #![allow(dead_code)]
 #![deny(rust_2018_idioms)]
 #![deny(internal)]
+#![deny(unused_lifetimes)]
 #![allow(explicit_outlives_requirements)]
 
 #![recursion_limit="256"]

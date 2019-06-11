@@ -223,7 +223,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_return_terminator<'b>(
+    fn codegen_return_terminator(
         &mut self,
         mut bx: Bx,
     ) {

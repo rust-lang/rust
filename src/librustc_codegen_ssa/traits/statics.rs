@@ -8,7 +8,7 @@ pub trait StaticMethods: BackendTypes {
     fn codegen_static(&self, def_id: DefId, is_mutable: bool);
 }
 
-pub trait StaticBuilderMethods<'tcx>: BackendTypes {
+pub trait StaticBuilderMethods: BackendTypes {
     fn get_static(&mut self, def_id: DefId) -> Self::Value;
     fn static_panic_msg(
         &mut self,

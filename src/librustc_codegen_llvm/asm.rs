@@ -112,7 +112,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-impl AsmMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl AsmMethods for CodegenCx<'ll, 'tcx> {
     fn codegen_global_asm(&self, ga: &hir::GlobalAsm) {
         let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
         unsafe {
