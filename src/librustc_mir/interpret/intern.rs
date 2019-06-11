@@ -6,7 +6,7 @@
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{Ty, TyCtxt, ParamEnv, self};
 use rustc::mir::interpret::{
-    EvalResult, ErrorHandled,
+    InterpResult, ErrorHandled,
 };
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -63,7 +63,7 @@ impl<'rt, 'a, 'mir, 'tcx> InternVisitor<'rt, 'a, 'mir, 'tcx> {
         &mut self,
         ptr: Pointer,
         mutability: Mutability,
-    ) -> EvalResult<'tcx, Option<IsStaticOrFn>> {
+    ) -> InterpResult<'tcx, Option<IsStaticOrFn>> {
         trace!(
             "InternVisitor::intern {:?} with {:?}",
             ptr, mutability,
@@ -117,8 +117,8 @@ for
     fn visit_aggregate(
         &mut self,
         mplace: MPlaceTy<'tcx>,
-        fields: impl Iterator<Item=EvalResult<'tcx, Self::V>>,
-    ) -> EvalResult<'tcx> {
+        fields: impl Iterator<Item=InterpResult<'tcx, Self::V>>,
+    ) -> InterpResult<'tcx> {
         if let Some(def) = mplace.layout.ty.ty_adt_def() {
             if Some(def.did) == self.ecx.tcx.lang_items().unsafe_cell_type() {
                 // We are crossing over an `UnsafeCell`, we can mutate again
@@ -138,7 +138,7 @@ for
         self.walk_aggregate(mplace, fields)
     }
 
-    fn visit_primitive(&mut self, mplace: MPlaceTy<'tcx>) -> EvalResult<'tcx> {
+    fn visit_primitive(&mut self, mplace: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         // Handle Reference types, as these are the only relocations supported by const eval.
         // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
         let ty = mplace.layout.ty;
@@ -245,7 +245,7 @@ pub fn intern_const_alloc_recursive(
     // FIXME(oli-obk): can we scrap the param env? I think we can, the final value of a const eval
     // must always be monomorphic, right?
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx> {
+) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
     let (mutability, base_intern_mode) = match tcx.static_mutability(def_id) {
         Some(hir::Mutability::MutImmutable) => (Mutability::Immutable, InternMode::Static),

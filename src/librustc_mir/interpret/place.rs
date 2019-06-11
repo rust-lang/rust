@@ -677,7 +677,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into(), vec![], None, /*const_mode*/ false)?;
+            self.validate_operand(dest.into(), vec![], None)?;
         }
 
         Ok(())

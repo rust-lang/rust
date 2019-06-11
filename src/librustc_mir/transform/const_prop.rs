@@ -567,7 +567,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         });
 
         if let Some(Ok(imm)) = imm {
-            match imm {
+            match *imm {
                 interpret::Immediate::Scalar(ScalarMaybeUndef::Scalar(scalar)) => {
                     *rval = Rvalue::Use(
                         self.operand_from_scalar(scalar, value.layout.ty, source_info.span));
