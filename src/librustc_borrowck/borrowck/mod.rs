@@ -1487,7 +1487,7 @@ impl DataFlowOperator for LoanDataFlowOperator {
     }
 }
 
-impl<'tcx> fmt::Debug for InteriorKind {
+impl fmt::Debug for InteriorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             InteriorField(mc::FieldIndex(_, info)) => write!(f, "{}", info),
