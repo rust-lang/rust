@@ -74,21 +74,18 @@ impl HasSource for EnumVariant {
 }
 impl HasSource for Function {
     type Ast = TreeArc<ast::FnDef>;
-
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::FnDef>> {
         self.id.source(db)
     }
 }
 impl HasSource for Const {
     type Ast = TreeArc<ast::ConstDef>;
-
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ConstDef>> {
         self.id.source(db)
     }
 }
 impl HasSource for Static {
     type Ast = TreeArc<ast::StaticDef>;
-
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StaticDef>> {
         self.id.source(db)
     }
@@ -107,7 +104,6 @@ impl HasSource for TypeAlias {
 }
 impl HasSource for MacroDef {
     type Ast = TreeArc<ast::MacroCall>;
-
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::MacroCall>> {
         Source { file_id: self.id.0.file_id(), ast: self.id.0.to_node(db) }
     }
