@@ -2155,6 +2155,17 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         result_ty
     }
 
+    /// Returns the `DefId` of the constant parameter that the provided expression is a path to.
+    pub fn const_param_def_id(&self, expr: &hir::Expr) -> Option<DefId> {
+        match &expr.node {
+            ExprKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
+                Res::Def(DefKind::ConstParam, did) => Some(did),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn ast_const_to_const(
         &self,
         ast_const: &hir::AnonConst,
@@ -2185,19 +2196,17 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             }
         }
 
-        if let ExprKind::Path(ref qpath) = expr.node {
-            if let hir::QPath::Resolved(_, ref path) = qpath {
-                if let Res::Def(DefKind::ConstParam, def_id) = path.res {
-                    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-                    let item_id = tcx.hir().get_parent_node(node_id);
-                    let item_def_id = tcx.hir().local_def_id(item_id);
-                    let generics = tcx.generics_of(item_def_id);
-                    let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(node_id)];
-                    let name = tcx.hir().name(node_id).as_interned_str();
-                    const_.val = ConstValue::Param(ty::ParamConst::new(index, name));
-                }
-            }
-        };
+        if let Some(def_id) = self.const_param_def_id(expr) {
+            // Find the name and index of the const parameter by indexing the generics of the
+            // parent item and construct a `ParamConst`.
+            let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
+            let item_id = tcx.hir().get_parent_node(node_id);
+            let item_def_id = tcx.hir().local_def_id(item_id);
+            let generics = tcx.generics_of(item_def_id);
+            let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(node_id)];
+            let name = tcx.hir().name(node_id).as_interned_str();
+            const_.val = ConstValue::Param(ty::ParamConst::new(index, name));
+        }
 
         tcx.mk_const(const_)
     }
