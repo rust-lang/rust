@@ -563,12 +563,6 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             )
                         } else if from_clif_ty.is_int() && to_clif_ty.is_float() {
                             // int-like -> float
-                            // FIXME missing encoding for fcvt_from_sint.f32.i8
-                            let from = if from_clif_ty == types::I8 || from_clif_ty == types::I16 {
-                                fx.bcx.ins().uextend(types::I32, from)
-                            } else {
-                                from
-                            };
                             if signed {
                                 fx.bcx.ins().fcvt_from_sint(to_clif_ty, from)
                             } else {
