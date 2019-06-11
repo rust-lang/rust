@@ -963,7 +963,7 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
 
     let out_place = CPlace::new_stack_slot(fx, out_ty);
     let out_layout = out_place.layout();
-    out_place.write_cvalue(fx, CValue::ByValPair(res, has_overflow, out_layout));
+    out_place.write_cvalue(fx, CValue::by_val_pair(res, has_overflow, out_layout));
 
     out_place.to_cvalue(fx)
 }

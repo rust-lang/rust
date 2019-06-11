@@ -65,7 +65,7 @@ macro_rules! atomic_binop_return_old {
         let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
         let new = $fx.bcx.ins().$op(old, $src);
         $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
-        $ret.write_cvalue($fx, CValue::ByVal(old, $fx.layout_of($T)));
+        $ret.write_cvalue($fx, CValue::by_val(old, $fx.layout_of($T)));
     };
 }
 
@@ -82,7 +82,7 @@ macro_rules! atomic_minmax {
         // Write new
         $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
 
-        let ret_val = CValue::ByVal(old, $ret.layout());
+        let ret_val = CValue::by_val(old, $ret.layout());
         $ret.write_cvalue($fx, ret_val);
     };
 }
@@ -165,7 +165,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     .ins()
                     .iconst(fx.pointer_type, layout.size.bytes() as i64)
             };
-            ret.write_cvalue(fx, CValue::ByVal(size, usize_layout));
+            ret.write_cvalue(fx, CValue::by_val(size, usize_layout));
         };
         min_align_of, <T> () {
             let min_align = fx.layout_of(T).align.abi.bytes();
@@ -184,7 +184,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     .ins()
                     .iconst(fx.pointer_type, layout.align.abi.bytes() as i64)
             };
-            ret.write_cvalue(fx, CValue::ByVal(align, usize_layout));
+            ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         };
         type_id, <T> () {
             let type_id = fx.tcx.type_id_hash(T);
@@ -312,12 +312,12 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         rotate_left, <T>(v x, v y) {
             let layout = fx.layout_of(T);
             let res = fx.bcx.ins().rotl(x, y);
-            ret.write_cvalue(fx, CValue::ByVal(res, layout));
+            ret.write_cvalue(fx, CValue::by_val(res, layout));
         };
         rotate_right, <T>(v x, v y) {
             let layout = fx.layout_of(T);
             let res = fx.bcx.ins().rotr(x, y);
-            ret.write_cvalue(fx, CValue::ByVal(res, layout));
+            ret.write_cvalue(fx, CValue::by_val(res, layout));
         };
 
         // The only difference between offset and arith_offset is regarding UB. Because Cranelift
@@ -328,7 +328,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
             let base_val = base.load_scalar(fx);
             let res = fx.bcx.ins().iadd(base_val, ptr_diff);
-            ret.write_cvalue(fx, CValue::ByVal(res, args[0].layout()));
+            ret.write_cvalue(fx, CValue::by_val(res, args[0].layout()));
         };
 
         transmute, <src_ty, dst_ty> (c from) {
@@ -386,19 +386,19 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             ret.write_cvalue(fx, uninit_val);
         };
         ctlz | ctlz_nonzero, <T> (v arg) {
-            let res = CValue::ByVal(fx.bcx.ins().clz(arg), fx.layout_of(T));
+            let res = CValue::by_val(fx.bcx.ins().clz(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         cttz | cttz_nonzero, <T> (v arg) {
-            let res = CValue::ByVal(fx.bcx.ins().ctz(arg), fx.layout_of(T));
+            let res = CValue::by_val(fx.bcx.ins().ctz(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         ctpop, <T> (v arg) {
-            let res = CValue::ByVal(fx.bcx.ins().popcnt(arg), fx.layout_of(T));
+            let res = CValue::by_val(fx.bcx.ins().popcnt(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         bitreverse, <T> (v arg) {
-            let res = CValue::ByVal(fx.bcx.ins().bitrev(arg), fx.layout_of(T));
+            let res = CValue::by_val(fx.bcx.ins().bitrev(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         needs_drop, <T> () {
@@ -433,7 +433,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             // Read old
             let clif_ty = fx.clif_type(T).unwrap();
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
-            ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(T)));
+            ret.write_cvalue(fx, CValue::by_val(old, fx.layout_of(T)));
 
             // Write new
             let dest = CPlace::Addr(ptr, None, src.layout());
