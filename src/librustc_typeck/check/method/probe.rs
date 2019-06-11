@@ -395,7 +395,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.method_autoderef_steps = method_autoderef_steps;
 }
 
-fn method_autoderef_steps<'a, 'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
+fn method_autoderef_steps<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
                                           goal: CanonicalTyGoal<'tcx>)
                                           -> MethodAutoderefStepsResult<'gcx>
 {

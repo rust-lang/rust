@@ -1249,7 +1249,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                            found: ty::PolyTraitRef<'tcx>)
         -> DiagnosticBuilder<'tcx>
     {
-        fn build_fn_sig_string<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+        fn build_fn_sig_string<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                                trait_ref: &ty::TraitRef<'tcx>) -> String {
             let inputs = trait_ref.substs.type_at(1);
             let sig = if let ty::Tuple(inputs) = inputs.sty {
@@ -1294,7 +1294,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     pub fn recursive_type_with_infinite_size_error(self,
                                                    type_def_id: DefId)
                                                    -> DiagnosticBuilder<'tcx>

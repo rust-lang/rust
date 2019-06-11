@@ -146,7 +146,7 @@ fn dropck_outlives<'tcx>(
 
 /// Returns a set of constraints that needs to be satisfied in
 /// order for `ty` to be valid for destruction.
-fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
+fn dtorck_constraint_for_ty<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     span: Span,
     for_ty: Ty<'tcx>,
@@ -279,7 +279,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
 }
 
 /// Calculates the dtorck constraint for a type.
-crate fn adt_dtorck_constraint<'a, 'tcx>(
+crate fn adt_dtorck_constraint<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Result<DtorckConstraint<'tcx>, NoSolution> {

@@ -17,7 +17,7 @@ use rustc::mir::TerminatorKind;
 use rustc::mir::{Operand, BorrowKind};
 use rustc_data_structures::graph::dominators::Dominators;
 
-pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
+pub(super) fn generate_invalidates<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,

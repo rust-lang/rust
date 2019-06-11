@@ -25,7 +25,7 @@ use syntax_pos::Span;
 use super::lints;
 
 /// Construct the MIR for a given `DefId`.
-pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> Body<'tcx> {
+pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> Body<'tcx> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
@@ -234,7 +234,7 @@ impl<'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'gcx> {
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+fn liberated_closure_env_ty<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                             closure_expr_id: hir::HirId,
                                             body_id: hir::BodyId)
                                             -> Ty<'tcx> {
@@ -551,7 +551,7 @@ macro_rules! unpack {
     };
 }
 
-fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+fn should_abort_on_panic<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                          fn_def_id: DefId,
                                          abi: Abi)
                                          -> bool {

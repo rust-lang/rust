@@ -313,7 +313,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         lifetime_predicates
     }
 
-    fn extract_for_generics<'b, 'c, 'd>(
+    fn extract_for_generics<'c, 'd>(
         &self,
         tcx: TyCtxt<'d, 'c, 'd>,
         pred: ty::Predicate<'d>,
@@ -448,7 +448,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // * Fn bounds are handled specially - instead of leaving it as 'T: Fn(), <T as Fn::Output> =
     // K', we use the dedicated syntax 'T: Fn() -> K'
     // * We explcitly add a '?Sized' bound if we didn't find any 'Sized' predicates for a type
-    fn param_env_to_generics<'b, 'c, 'cx>(
+    fn param_env_to_generics<'c, 'cx>(
         &self,
         tcx: TyCtxt<'cx, 'c, 'cx>,
         param_env_def_id: DefId,

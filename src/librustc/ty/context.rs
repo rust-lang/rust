@@ -1666,7 +1666,7 @@ impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
     pub fn encode_metadata(self)
         -> EncodedMetadata
     {
@@ -1725,7 +1725,7 @@ impl<'gcx> GlobalCtxt<'gcx> {
 /// e.g., `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx>: fmt::Debug {
     type Lifted: fmt::Debug + 'tcx;
-    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<Self::Lifted>;
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<Self::Lifted>;
 }
 
 
@@ -1733,7 +1733,7 @@ macro_rules! nop_lift {
     ($ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
             type Lifted = $lifted;
-            fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+            fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
                 if tcx.interners.arena.in_arena(*self as *const _) {
                     return Some(unsafe { mem::transmute(*self) });
                 }
@@ -1752,7 +1752,7 @@ macro_rules! nop_list_lift {
     ($ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for &'a List<$ty> {
             type Lifted = &'tcx List<$lifted>;
-            fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+            fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
                 if self.is_empty() {
                     return Some(List::empty());
                 }
@@ -1978,7 +1978,7 @@ pub mod tls {
     /// Creates a TyCtxt and ImplicitCtxt based on the GCX_PTR thread local.
     /// This is used in the deadlock handler.
     pub unsafe fn with_global<F, R>(f: F) -> R
-        where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'tcx, 'gcx, 'tcx>) -> R
+        where F: for<'gcx, 'tcx> FnOnce(TyCtxt<'tcx, 'gcx, 'tcx>) -> R
     {
         let gcx = GCX_PTR.with(|lock| *lock.lock());
         assert!(gcx != 0);
@@ -2065,7 +2065,7 @@ pub mod tls {
     /// Panics if there is no ImplicitCtxt available
     #[inline]
     pub fn with<F, R>(f: F) -> R
-        where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'tcx, 'gcx, 'tcx>) -> R
+        where F: for<'gcx, 'tcx> FnOnce(TyCtxt<'tcx, 'gcx, 'tcx>) -> R
     {
         with_context(|context| f(context.tcx))
     }
@@ -2074,7 +2074,7 @@ pub mod tls {
     /// The closure is passed None if there is no ImplicitCtxt available
     #[inline]
     pub fn with_opt<F, R>(f: F) -> R
-        where F: for<'a, 'gcx, 'tcx> FnOnce(Option<TyCtxt<'tcx, 'gcx, 'tcx>>) -> R
+        where F: for<'gcx, 'tcx> FnOnce(Option<TyCtxt<'tcx, 'gcx, 'tcx>>) -> R
     {
         with_context_opt(|opt_context| f(opt_context.map(|context| context.tcx)))
     }
@@ -2151,7 +2151,7 @@ macro_rules! sty_debug_print {
     }}
 }
 
-impl<'a, 'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
     pub fn print_debug_stats(self) {
         sty_debug_print!(
             self,
@@ -2400,7 +2400,7 @@ intern_method! {
     ) -> List<CanonicalVarInfo>
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     /// Given a `fn` type, returns an equivalent `unsafe fn` type;
     /// that is, a `fn` type that is equivalent in every way for being
     /// unsafe.

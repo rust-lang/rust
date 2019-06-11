@@ -617,7 +617,7 @@ impl UserIdentifiedItem {
     }
 }
 
-fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
+fn print_flowgraph<'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
                                        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                        code: blocks::Code<'tcx>,
                                        mode: PpFlowGraphMode,

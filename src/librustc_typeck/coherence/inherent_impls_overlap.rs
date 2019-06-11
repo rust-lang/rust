@@ -5,7 +5,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::traits::{self, IntercrateMode};
 use rustc::ty::TyCtxt;
 
-pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn crate_inherent_impls_overlap_check<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                                     crate_num: CrateNum) {
     assert_eq!(crate_num, LOCAL_CRATE);
     let krate = tcx.hir().krate();

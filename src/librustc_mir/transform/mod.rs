@@ -50,13 +50,13 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn is_mir_available<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> bool {
+fn is_mir_available<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> bool {
     tcx.mir_keys(def_id.krate).contains(&def_id)
 }
 
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
-fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, krate: CrateNum)
+fn mir_keys<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, krate: CrateNum)
                       -> &'tcx DefIdSet {
     assert_eq!(krate, LOCAL_CRATE);
 
@@ -95,7 +95,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, krate: CrateNum)
     tcx.arena.alloc(set)
 }
 
-fn mir_built<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
+fn mir_built<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
     let mir = build::mir_build(tcx, def_id);
     tcx.alloc_steal_mir(mir)
 }
@@ -142,7 +142,7 @@ pub trait MirPass {
         default_name::<Self>()
     }
 
-    fn run_pass<'a, 'tcx>(&self,
+    fn run_pass<'tcx>(&self,
                           tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           source: MirSource<'tcx>,
                           body: &mut Body<'tcx>);
@@ -196,7 +196,7 @@ pub fn run_passes(
     }
 }
 
-fn mir_const<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
+fn mir_const<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
 
@@ -227,7 +227,7 @@ fn mir_validated(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Bo
     tcx.alloc_steal_mir(body)
 }
 
-fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Body<'tcx> {
+fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Body<'tcx> {
     if tcx.is_constructor(def_id) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const

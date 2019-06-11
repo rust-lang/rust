@@ -42,7 +42,7 @@ pub enum InstanceDef<'tcx> {
     CloneShim(DefId, Ty<'tcx>),
 }
 
-impl<'a, 'tcx> Instance<'tcx> {
+impl<'tcx> Instance<'tcx> {
     pub fn ty(&self,
               tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
               -> Ty<'tcx>
@@ -136,11 +136,11 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn attrs<'a>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
+    pub fn attrs(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 
-    pub fn is_inline<'a>(
+    pub fn is_inline(
         &self,
         tcx: TyCtxt<'tcx, 'tcx, 'tcx>
     ) -> bool {
@@ -156,7 +156,7 @@ impl<'tcx> InstanceDef<'tcx> {
         }
     }
 
-    pub fn requires_local<'a>(
+    pub fn requires_local(
         &self,
         tcx: TyCtxt<'tcx, 'tcx, 'tcx>
     ) -> bool {
@@ -209,7 +209,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> Instance<'tcx> {
+impl<'b, 'tcx> Instance<'tcx> {
     pub fn new(def_id: DefId, substs: SubstsRef<'tcx>)
                -> Instance<'tcx> {
         assert!(!substs.has_escaping_bound_vars(),
@@ -376,7 +376,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     }
 }
 
-fn resolve_associated_item<'a, 'tcx>(
+fn resolve_associated_item<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     trait_item: &ty::AssocItem,
     param_env: ty::ParamEnv<'tcx>,

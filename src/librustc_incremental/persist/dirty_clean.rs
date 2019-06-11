@@ -206,7 +206,7 @@ impl Assertion {
     }
 }
 
-pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn check_dirty_clean_annotations<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     // can't add `#[rustc_dirty]` etc without opting in to this feature
     if !tcx.features().rustc_attrs {
         return;

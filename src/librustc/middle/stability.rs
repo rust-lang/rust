@@ -389,7 +389,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Index<'tcx> {
+impl<'tcx> Index<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Index<'tcx> {
         let is_staged_api =
             tcx.sess.opts.debugging_opts.force_unstable_if_unmarked ||
@@ -521,7 +521,7 @@ pub enum EvalResult {
     Unmarked,
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     // See issue #38412.
     fn skip_stability_check_due_to_privacy(self, mut def_id: DefId) -> bool {
         // Check if `def_id` is a trait method.
@@ -827,7 +827,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     pub fn lookup_deprecation(self, id: DefId) -> Option<Deprecation> {
         self.lookup_deprecation_entry(id).map(|depr| depr.attr)
     }
@@ -836,7 +836,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
 /// Given the list of enabled features that were not language features (i.e., that
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
-pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn check_unused_or_stable_features<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     if tcx.stability().staged_api[&LOCAL_CRATE] {
@@ -920,7 +920,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) 
     // don't lint about unused features. We should reenable this one day!
 }
 
-fn unnecessary_stable_feature_lint<'a, 'tcx>(
+fn unnecessary_stable_feature_lint<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     span: Span,
     feature: Symbol,

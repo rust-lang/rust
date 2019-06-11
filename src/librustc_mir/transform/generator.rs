@@ -310,7 +310,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
     }
 }
 
-fn make_generator_state_argument_indirect<'a, 'tcx>(
+fn make_generator_state_argument_indirect<'tcx>(
                 tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                 def_id: DefId,
                 body: &mut Body<'tcx>) {
@@ -335,7 +335,7 @@ fn make_generator_state_argument_indirect<'a, 'tcx>(
     DerefArgVisitor.visit_body(body);
 }
 
-fn make_generator_state_argument_pinned<'a, 'tcx>(
+fn make_generator_state_argument_pinned<'tcx>(
                 tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                 body: &mut Body<'tcx>) {
     let ref_gen_ty = body.local_decls.raw[1].ty;
@@ -678,7 +678,7 @@ impl<'body, 'tcx: 'body, 's> StorageConflictVisitor<'body, 'tcx, 's> {
     }
 }
 
-fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn compute_layout<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                             source: MirSource<'tcx>,
                             upvars: &Vec<Ty<'tcx>>,
                             interior: Ty<'tcx>,
@@ -767,7 +767,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     (remap, layout, storage_liveness)
 }
 
-fn insert_switch<'a, 'tcx>(body: &mut Body<'tcx>,
+fn insert_switch<'tcx>(body: &mut Body<'tcx>,
                            cases: Vec<(usize, BasicBlock)>,
                            transform: &TransformVisitor<'tcx>,
                            default: TerminatorKind<'tcx>) {
@@ -797,7 +797,7 @@ fn insert_switch<'a, 'tcx>(body: &mut Body<'tcx>,
     }
 }
 
-fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                        def_id: DefId,
                                        body: &mut Body<'tcx>) {
     use crate::util::elaborate_drops::{elaborate_drop, Unwind};
@@ -848,7 +848,7 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     elaborator.patch.apply(body);
 }
 
-fn create_generator_drop_shim<'a, 'tcx>(
+fn create_generator_drop_shim<'tcx>(
                 tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                 transform: &TransformVisitor<'tcx>,
                 def_id: DefId,
@@ -939,7 +939,7 @@ fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) ->
     term_block
 }
 
-fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn insert_panic_block<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                 body: &mut Body<'tcx>,
                                 message: AssertMessage<'tcx>) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks().len());
@@ -969,7 +969,7 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     assert_block
 }
 
-fn create_generator_resume_function<'a, 'tcx>(
+fn create_generator_resume_function<'tcx>(
         tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         transform: TransformVisitor<'tcx>,
         def_id: DefId,
@@ -1042,7 +1042,7 @@ fn insert_clean_drop<'tcx>(body: &mut Body<'tcx>) -> BasicBlock {
     drop_clean
 }
 
-fn create_cases<'a, 'tcx, F>(body: &mut Body<'tcx>,
+fn create_cases<'tcx, F>(body: &mut Body<'tcx>,
                           transform: &TransformVisitor<'tcx>,
                           target: F) -> Vec<(usize, BasicBlock)>
     where F: Fn(&SuspensionPoint) -> Option<BasicBlock> {
@@ -1083,7 +1083,7 @@ fn create_cases<'a, 'tcx, F>(body: &mut Body<'tcx>,
 }
 
 impl MirPass for StateTransform {
-    fn run_pass<'a, 'tcx>(&self,
+    fn run_pass<'tcx>(&self,
                     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                     source: MirSource<'tcx>,
                     body: &mut Body<'tcx>) {

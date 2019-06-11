@@ -18,7 +18,7 @@ use crate::ty::fold::TypeFoldable;
 /// that type check should guarantee to us that all nested
 /// obligations *could be* resolved if we wanted to.
 /// Assumes that this is run after the entire crate has been successfully type-checked.
-pub fn codegen_fulfill_obligation<'a, 'tcx>(ty: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn codegen_fulfill_obligation<'tcx>(ty: TyCtxt<'tcx, 'tcx, 'tcx>,
                                           (param_env, trait_ref):
                                           (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>))
                                           -> Vtable<'tcx, ()>
@@ -74,7 +74,7 @@ pub fn codegen_fulfill_obligation<'a, 'tcx>(ty: TyCtxt<'tcx, 'tcx, 'tcx>,
     })
 }
 
-impl<'a, 'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
     /// Monomorphizes a type from the AST by first applying the
     /// in-scope substitutions and then normalizing any associated
     /// types.

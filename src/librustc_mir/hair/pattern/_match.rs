@@ -1630,7 +1630,7 @@ fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
     }
 }
 
-fn constructor_covered_by_range<'a, 'tcx>(
+fn constructor_covered_by_range<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     ctor: &Constructor<'tcx>,
     pat: &Pattern<'tcx>,

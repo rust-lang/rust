@@ -298,7 +298,7 @@ fn place_components_conflict<'gcx, 'tcx>(
 // Given that the bases of `elem1` and `elem2` are always either equal
 // or disjoint (and have the same type!), return the overlap situation
 // between `elem1` and `elem2`.
-fn place_base_conflict<'a, 'gcx: 'tcx, 'tcx>(
+fn place_base_conflict<'gcx: 'tcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     elem1: &PlaceBase<'tcx>,
     elem2: &PlaceBase<'tcx>,
@@ -365,7 +365,7 @@ fn place_base_conflict<'a, 'gcx: 'tcx, 'tcx>(
 // Given that the bases of `elem1` and `elem2` are always either equal
 // or disjoint (and have the same type!), return the overlap situation
 // between `elem1` and `elem2`.
-fn place_projection_conflict<'a, 'gcx: 'tcx, 'tcx>(
+fn place_projection_conflict<'gcx: 'tcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     body: &Body<'tcx>,
     pi1: &Projection<'tcx>,

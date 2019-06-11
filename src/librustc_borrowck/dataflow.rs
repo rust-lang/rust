@@ -91,14 +91,14 @@ fn get_cfg_indices<'a>(id: hir::ItemLocalId,
     index.get(&id).map_or(&[], |v| &v[..])
 }
 
-impl<'a, 'tcx, O: DataFlowOperator> DataFlowContext<'tcx, O> {
+impl<'tcx, O: DataFlowOperator> DataFlowContext<'tcx, O> {
     fn has_bitset_for_local_id(&self, n: hir::ItemLocalId) -> bool {
         assert!(n != hir::DUMMY_ITEM_LOCAL_ID);
         self.local_id_to_index.contains_key(&n)
     }
 }
 
-impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'tcx, O> {
+impl<'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'tcx, O> {
     fn nested(&self, state: &mut pprust::State<'_>, nested: pprust::Nested) -> io::Result<()> {
         pprust::PpAnn::nested(self.tcx.hir(), state, nested)
     }
@@ -224,7 +224,7 @@ pub enum KillFrom {
     Execution,
 }
 
-impl<'a, 'tcx, O: DataFlowOperator> DataFlowContext<'tcx, O> {
+impl<'tcx, O: DataFlowOperator> DataFlowContext<'tcx, O> {
     pub fn new(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                analysis_name: &'static str,
                body: Option<&hir::Body>,
@@ -500,7 +500,7 @@ impl<'a, 'tcx, O: DataFlowOperator> DataFlowContext<'tcx, O> {
 }
 
 // N.B. `Clone + 'static` only needed for pretty printing.
-impl<'a, 'tcx, O: DataFlowOperator + Clone + 'static> DataFlowContext<'tcx, O> {
+impl<'tcx, O: DataFlowOperator + Clone + 'static> DataFlowContext<'tcx, O> {
     pub fn propagate(&mut self, cfg: &cfg::CFG, body: &hir::Body) {
         //! Performs the data flow analysis.
 

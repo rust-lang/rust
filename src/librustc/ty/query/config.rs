@@ -87,7 +87,7 @@ macro_rules! impl_disk_cacheable_query(
             }
 
             #[inline]
-            fn try_load_from_disk<'a>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+            fn try_load_from_disk(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                       id: SerializedDepNodeIndex)
                                       -> Option<Self::Value> {
                 tcx.queries.on_disk_cache.try_load_query_result(tcx, id)

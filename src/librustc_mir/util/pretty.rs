@@ -62,7 +62,7 @@ pub enum PassWhere {
 ///   or `typeck` appears in the name.
 /// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
 ///   or `typeck` and `bar` both appear in the name.
-pub fn dump_mir<'a, 'gcx, 'tcx, F>(
+pub fn dump_mir<'gcx, 'tcx, F>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
@@ -93,7 +93,7 @@ pub fn dump_mir<'a, 'gcx, 'tcx, F>(
     );
 }
 
-pub fn dump_enabled<'a, 'gcx, 'tcx>(
+pub fn dump_enabled<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     pass_name: &str,
     source: MirSource<'tcx>,
@@ -117,7 +117,7 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
 // `def_path_str()` would otherwise trigger `type_of`, and this can
 // run while we are already attempting to evaluate `type_of`.
 
-fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
+fn dump_matched_mir_node<'gcx, 'tcx, F>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
@@ -240,7 +240,7 @@ pub(crate) fn create_dump_file(
 }
 
 /// Write out a human-readable textual representation for the given MIR.
-pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
+pub fn write_mir_pretty<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     single: Option<DefId>,
     w: &mut dyn Write,
@@ -279,7 +279,7 @@ pub fn write_mir_pretty<'a, 'gcx, 'tcx>(
     Ok(())
 }
 
-pub fn write_mir_fn<'a, 'gcx, 'tcx, F>(
+pub fn write_mir_fn<'gcx, 'tcx, F>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     src: MirSource<'tcx>,
     body: &Body<'tcx>,
@@ -303,7 +303,7 @@ where
 }
 
 /// Write out a human-readable textual representation for the given basic block.
-pub fn write_basic_block<'cx, 'gcx, 'tcx, F>(
+pub fn write_basic_block<'gcx, 'tcx, F>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     block: BasicBlock,
     body: &Body<'tcx>,
@@ -370,7 +370,7 @@ where
 /// After we print the main statement, we sometimes dump extra
 /// information. There's often a lot of little things "nuzzled up" in
 /// a statement.
-fn write_extra<'cx, 'gcx, 'tcx, F>(
+fn write_extra<'gcx, 'tcx, F>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     write: &mut dyn Write,
     mut visit_op: F,
@@ -538,7 +538,7 @@ fn write_scope_tree(
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-pub fn write_mir_intro<'a, 'gcx, 'tcx>(
+pub fn write_mir_intro<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     src: MirSource<'tcx>,
     body: &Body<'_>,

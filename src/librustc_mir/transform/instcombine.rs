@@ -12,7 +12,7 @@ use crate::transform::{MirPass, MirSource};
 pub struct InstCombine;
 
 impl MirPass for InstCombine {
-    fn run_pass<'a, 'tcx>(&self,
+    fn run_pass<'tcx>(&self,
                           tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           _: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {

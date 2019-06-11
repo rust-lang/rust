@@ -14,7 +14,7 @@ use rustc::ty::TyCtxt;
 use syntax::ast::Attribute;
 use syntax::symbol::sym;
 
-pub fn test_layout<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn test_layout<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     if tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
         tcx.hir()

@@ -46,7 +46,7 @@ pub struct TraitImpls {
     non_blanket_impls: FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
 }
 
-impl<'a, 'gcx, 'tcx> TraitDef {
+impl<'gcx, 'tcx> TraitDef {
     pub fn new(def_id: DefId,
                unsafety: hir::Unsafety,
                paren_sugar: bool,
@@ -71,7 +71,7 @@ impl<'a, 'gcx, 'tcx> TraitDef {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     pub fn for_each_impl<F: FnMut(DefId)>(self, def_id: DefId, mut f: F) {
         let impls = self.trait_impls_of(def_id);
 
@@ -148,7 +148,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
 }
 
 // Query provider for `trait_impls_of`.
-pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub(super) fn trait_impls_of_provider<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                                 trait_id: DefId)
                                                 -> &'tcx TraitImpls {
     let mut impls = TraitImpls::default();

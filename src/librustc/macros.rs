@@ -264,7 +264,7 @@ macro_rules! BraceStructLiftImpl {
         {
             type Lifted = $lifted;
 
-            fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<$lifted> {
+            fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<$lifted> {
                 $(let $field = tcx.lift(&self.$field)?;)*
                 Some(Self::Lifted { $($field),* })
             }
@@ -283,7 +283,7 @@ macro_rules! EnumLiftImpl {
         {
             type Lifted = $lifted;
 
-            fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<$lifted> {
+            fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<$lifted> {
                 EnumLiftImpl!(@Variants(self, tcx) input($($variants)*) output())
             }
         }

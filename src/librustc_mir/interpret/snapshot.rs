@@ -45,7 +45,7 @@ pub(crate) struct InfiniteLoopDetector<'mir, 'tcx> {
 
 impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx>
 {
-    pub fn observe_and_analyze<'b>(
+    pub fn observe_and_analyze(
         &mut self,
         tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
         span: Span,

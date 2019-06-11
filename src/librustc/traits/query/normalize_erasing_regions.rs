@@ -10,7 +10,7 @@
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 
-impl<'cx, 'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
     /// Erase the regions in `value` and then fully normalize all the
     /// types found within. The result will also have regions erased.
     ///

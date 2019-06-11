@@ -26,7 +26,7 @@ use std::slice;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
-pub(crate) fn check_match<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) {
+pub(crate) fn check_match<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) {
     let body_id = if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
         tcx.hir().body_owned_by(id)
     } else {

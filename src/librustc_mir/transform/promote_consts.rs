@@ -369,7 +369,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     }
 }
 
-pub fn promote_candidates<'a, 'tcx>(body: &mut Body<'tcx>,
+pub fn promote_candidates<'tcx>(body: &mut Body<'tcx>,
                                     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                     mut temps: IndexVec<Local, TempState>,
                                     candidates: Vec<Candidate>) {

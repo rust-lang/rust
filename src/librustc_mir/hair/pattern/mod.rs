@@ -1242,7 +1242,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
     }
 }
 
-pub fn compare_const_vals<'a, 'gcx, 'tcx>(
+pub fn compare_const_vals<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,

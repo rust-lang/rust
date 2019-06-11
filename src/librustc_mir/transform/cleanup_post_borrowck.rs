@@ -27,7 +27,7 @@ pub struct CleanupNonCodegenStatements;
 pub struct DeleteNonCodegenStatements;
 
 impl MirPass for CleanupNonCodegenStatements {
-    fn run_pass<'a, 'tcx>(&self,
+    fn run_pass<'tcx>(&self,
                           _tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           _source: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {

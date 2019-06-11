@@ -68,7 +68,7 @@ pub(super) fn mangle(
     printer.path.finish(hash)
 }
 
-fn get_symbol_hash<'a, 'tcx>(
+fn get_symbol_hash<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 
     // instance this name will be for

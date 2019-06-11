@@ -21,7 +21,7 @@ use syntax_pos::Span;
 pub struct ElaborateDrops;
 
 impl MirPass for ElaborateDrops {
-    fn run_pass<'a, 'tcx>(&self,
+    fn run_pass<'tcx>(&self,
                           tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           src: MirSource<'tcx>,
                           body: &mut Body<'tcx>)
@@ -77,7 +77,7 @@ impl MirPass for ElaborateDrops {
 /// Returns the set of basic blocks whose unwind edges are known
 /// to not be reachable, because they are `drop` terminators
 /// that can't drop anything.
-fn find_dead_unwinds<'a, 'tcx>(
+fn find_dead_unwinds< 'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     body: &Body<'tcx>,
     def_id: hir::def_id::DefId,
@@ -141,7 +141,7 @@ struct InitializationData {
 }
 
 impl InitializationData {
-    fn apply_location<'a,'tcx>(&mut self,
+    fn apply_location<'tcx>(&mut self,
                                tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                body: &Body<'tcx>,
                                env: &MoveDataParamEnv<'tcx, 'tcx>,

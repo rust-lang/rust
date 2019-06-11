@@ -81,7 +81,7 @@ enum Inserted {
     ShouldRecurseOn(DefId),
 }
 
-impl<'a, 'gcx, 'tcx> Children {
+impl<'gcx, 'tcx> Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self,
                       tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
@@ -282,7 +282,7 @@ impl<I, J> Iterator for PotentialSiblings<I, J>
     }
 }
 
-impl<'a, 'gcx, 'tcx> Graph {
+impl<'gcx, 'tcx> Graph {
     pub fn new() -> Graph {
         Graph {
             parent: Default::default(),
@@ -414,7 +414,7 @@ pub enum Node {
     Trait(DefId),
 }
 
-impl<'a, 'gcx, 'tcx> Node {
+impl<'gcx, 'tcx> Node {
     pub fn is_from_trait(&self) -> bool {
         match *self {
             Node::Trait(..) => true,

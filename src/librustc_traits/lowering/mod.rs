@@ -155,7 +155,7 @@ impl<'tcx> IntoWellFormedGoal for DomainGoal<'tcx> {
     }
 }
 
-crate fn program_clauses_for<'a, 'tcx>(
+crate fn program_clauses_for<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
@@ -184,7 +184,7 @@ crate fn program_clauses_for<'a, 'tcx>(
     }
 }
 
-fn program_clauses_for_trait<'a, 'tcx>(
+fn program_clauses_for_trait<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
@@ -343,7 +343,7 @@ fn program_clauses_for_impl(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> Cla
     tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::bind(clause))))
 }
 
-pub fn program_clauses_for_type_def<'a, 'tcx>(
+pub fn program_clauses_for_type_def<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
@@ -420,7 +420,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     tcx.mk_clauses(iter::once(well_formed_clause).chain(from_env_clauses))
 }
 
-pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
+pub fn program_clauses_for_associated_type_def<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     item_id: DefId,
 ) -> Clauses<'tcx> {
@@ -558,7 +558,7 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     tcx.mk_clauses(clauses)
 }
 
-pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
+pub fn program_clauses_for_associated_type_value<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     item_id: DefId,
 ) -> Clauses<'tcx> {
@@ -620,7 +620,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     tcx.mk_clauses(iter::once(normalize_clause))
 }
 
-pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn dump_program_clauses<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     if !tcx.features().rustc_attrs {
         return;
     }

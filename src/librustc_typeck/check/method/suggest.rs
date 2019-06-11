@@ -775,12 +775,12 @@ impl Ord for TraitInfo {
 }
 
 /// Retrieves all traits in this crate and any dependent crates.
-pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Vec<TraitInfo> {
+pub fn all_traits<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Vec<TraitInfo> {
     tcx.all_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
 }
 
 /// Computes all traits in this crate and any dependent crates.
-fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Vec<DefId> {
+fn compute_all_traits<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Vec<DefId> {
     use hir::itemlikevisit;
 
     let mut traits = vec![];

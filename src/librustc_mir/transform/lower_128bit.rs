@@ -10,7 +10,7 @@ use crate::transform::{MirPass, MirSource};
 pub struct Lower128Bit;
 
 impl MirPass for Lower128Bit {
-    fn run_pass<'a, 'tcx>(&self,
+    fn run_pass<'tcx>(&self,
                           tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
@@ -25,7 +25,7 @@ impl MirPass for Lower128Bit {
 }
 
 impl Lower128Bit {
-    fn lower_128bit_ops<'a, 'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>, body: &mut Body<'tcx>) {
+    fn lower_128bit_ops<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>, body: &mut Body<'tcx>) {
         let mut new_blocks = Vec::new();
         let cur_len = body.basic_blocks().len();
 
@@ -120,7 +120,7 @@ impl Lower128Bit {
     }
 }
 
-fn check_lang_item_type<'a, 'tcx, D>(
+fn check_lang_item_type<'tcx, D>(
     lang_item: LangItem,
     place: &Place<'tcx>,
     lhs: &Operand<'tcx>,
@@ -172,7 +172,7 @@ enum RhsKind {
 }
 
 impl RhsKind {
-    fn ty<'a, 'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
+    fn ty<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
         match *self {
             RhsKind::Unchanged => None,
             RhsKind::ForceU128 => Some(tcx.types.u128),

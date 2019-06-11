@@ -138,7 +138,7 @@ impl<'tcx> Kind<'tcx> {
 impl<'a, 'tcx> Lift<'tcx> for Kind<'a> {
     type Lifted = Kind<'tcx>;
 
-    fn lift_to_tcx<'cx, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => tcx.lift(&lt).map(|lt| lt.into()),
             UnpackedKind::Type(ty) => tcx.lift(&ty).map(|ty| ty.into()),
@@ -414,19 +414,19 @@ impl<'tcx> serialize::UseSpecializedDecodable for SubstsRef<'tcx> {}
 // there is more information available (for better errors).
 
 pub trait Subst<'tcx>: Sized {
-    fn subst<'a, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    fn subst<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                        substs: &[Kind<'tcx>]) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
 
-    fn subst_spanned<'a, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    fn subst_spanned<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                substs: &[Kind<'tcx>],
                                span: Option<Span>)
                                -> Self;
 }
 
 impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
-    fn subst_spanned<'a, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    fn subst_spanned<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                substs: &[Kind<'tcx>],
                                span: Option<Span>)
                                -> T

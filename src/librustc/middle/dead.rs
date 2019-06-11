@@ -26,7 +26,7 @@ use syntax_pos;
 // explored. For example, if it's a live Node::Item that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
-fn should_explore<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn should_explore<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                             hir_id: hir::HirId) -> bool {
     match tcx.hir().find_by_hir_id(hir_id) {
         Some(Node::Item(..)) |
@@ -423,7 +423,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     }
 }
 
-fn create_and_seed_worklist<'a, 'tcx>(
+fn create_and_seed_worklist<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     access_levels: &privacy::AccessLevels,
     krate: &hir::Crate,
@@ -451,7 +451,7 @@ fn create_and_seed_worklist<'a, 'tcx>(
     (life_seeder.worklist, life_seeder.struct_constructors)
 }
 
-fn find_live<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn find_live<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                        access_levels: &privacy::AccessLevels,
                        krate: &hir::Crate)
                        -> FxHashSet<hir::HirId> {
@@ -660,7 +660,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     }
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
     let krate = tcx.hir().krate();
     let live_symbols = find_live(tcx, access_levels, krate);

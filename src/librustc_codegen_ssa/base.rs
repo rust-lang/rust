@@ -703,7 +703,7 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
     }
 }
 
-fn assert_and_save_dep_graph<'ll, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+fn assert_and_save_dep_graph<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     time(tcx.sess,
          "assert dep graph",
          || ::rustc_incremental::assert_dep_graph(tcx));
@@ -850,7 +850,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
     };
 }
 
-fn determine_cgu_reuse<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                  cgu: &CodegenUnit<'tcx>)
                                  -> CguReuse {
     if !tcx.dep_graph.is_fully_enabled() {

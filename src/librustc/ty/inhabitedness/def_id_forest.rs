@@ -21,7 +21,7 @@ pub struct DefIdForest {
     root_ids: SmallVec<[DefId; 1]>,
 }
 
-impl<'a, 'gcx, 'tcx> DefIdForest {
+impl<'gcx, 'tcx> DefIdForest {
     /// Creates an empty forest.
     pub fn empty() -> DefIdForest {
         DefIdForest {

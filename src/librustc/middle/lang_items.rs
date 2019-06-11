@@ -217,7 +217,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
 }
 
 /// Traverse and collect all the lang items in all crates.
-pub fn collect<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> LanguageItems {
+pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> LanguageItems {
     // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx);
 
@@ -402,7 +402,7 @@ language_item_table! {
     Rc,                          "rc",                 rc,                      Target::Struct;
 }
 
-impl<'a, 'tcx, 'gcx> TyCtxt<'gcx, 'tcx, 'gcx> {
+impl<'tcx, 'gcx> TyCtxt<'gcx, 'tcx, 'gcx> {
     /// Returns the `DefId` for a given `LangItem`.
     /// If not found, fatally abort compilation.
     pub fn require_lang_item(&self, lang_item: LangItem) -> DefId {

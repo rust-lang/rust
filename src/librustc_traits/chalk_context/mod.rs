@@ -672,7 +672,7 @@ crate fn provide(p: &mut Providers<'_>) {
     };
 }
 
-crate fn evaluate_goal<'a, 'tcx>(
+crate fn evaluate_goal<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     goal: ChalkCanonicalGoal<'tcx>
 ) -> Result<

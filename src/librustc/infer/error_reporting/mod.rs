@@ -67,7 +67,7 @@ mod need_type_info;
 
 pub mod nice_region_error;
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     pub fn note_and_explain_region(
         self,
         region_scope_tree: &region::ScopeTree,

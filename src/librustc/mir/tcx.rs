@@ -21,7 +21,7 @@ pub struct PlaceTy<'tcx> {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(PlaceTy<'_>, 16);
 
-impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
+impl<'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
         PlaceTy { ty, variant_index: None }
     }
@@ -121,7 +121,7 @@ BraceStructTypeFoldableImpl! {
 }
 
 impl<'tcx> Place<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> PlaceTy<'tcx>
+    pub fn ty<'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> PlaceTy<'tcx>
         where D: HasLocalDecls<'tcx>
     {
         match *self {
@@ -141,7 +141,7 @@ pub enum RvalueInitializationState {
 }
 
 impl<'tcx> Rvalue<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Ty<'tcx>
+    pub fn ty<'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Ty<'tcx>
         where D: HasLocalDecls<'tcx>
     {
         match *self {
@@ -222,7 +222,7 @@ impl<'tcx> Rvalue<'tcx> {
 }
 
 impl<'tcx> Operand<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Ty<'tcx>
+    pub fn ty<'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Ty<'tcx>
         where D: HasLocalDecls<'tcx>
     {
         match self {
@@ -234,7 +234,7 @@ impl<'tcx> Operand<'tcx> {
 }
 
 impl<'tcx> BinOp {
-      pub fn ty<'a, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+      pub fn ty<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                           lhs_ty: Ty<'tcx>,
                           rhs_ty: Ty<'tcx>)
                           -> Ty<'tcx> {

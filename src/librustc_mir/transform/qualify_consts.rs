@@ -1472,7 +1472,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn mir_const_qualif<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                               def_id: DefId)
                               -> (u8, &'tcx BitSet<Local>) {
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
@@ -1492,7 +1492,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 pub struct QualifyAndPromoteConstants;
 
 impl MirPass for QualifyAndPromoteConstants {
-    fn run_pass<'a, 'tcx>(&self,
+    fn run_pass<'tcx>(&self,
                           tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           src: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {

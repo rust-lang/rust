@@ -235,7 +235,7 @@ impl<'gcx, 'tcx, F, G, H> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'gcx, 'tcx, 
 ///////////////////////////////////////////////////////////////////////////
 // Region folder
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     /// Collects the free and escaping regions in `value` into `region_set`. Returns
     /// whether any late-bound regions were skipped
     pub fn collect_regions<T>(self,
@@ -542,7 +542,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx>
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     /// Replaces all regions bound by the given `Binder` with the
     /// results returned by the closure; the closure is expected to
     /// return a free region (relative to this binder), and hence the
@@ -817,7 +817,7 @@ impl TypeFolder<'gcx, 'tcx> for Shifter<'gcx, 'tcx> {
     }
 }
 
-pub fn shift_region<'a, 'gcx, 'tcx>(
+pub fn shift_region<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     region: ty::Region<'tcx>,
     amount: u32
@@ -832,7 +832,7 @@ pub fn shift_region<'a, 'gcx, 'tcx>(
     }
 }
 
-pub fn shift_vars<'a, 'gcx, 'tcx, T>(
+pub fn shift_vars<'gcx, 'tcx, T>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     value: &T,
     amount: u32
@@ -843,7 +843,7 @@ pub fn shift_vars<'a, 'gcx, 'tcx, T>(
     value.fold_with(&mut Shifter::new(tcx, amount, Direction::In))
 }
 
-pub fn shift_out_vars<'a, 'gcx, 'tcx, T>(
+pub fn shift_out_vars<'gcx, 'tcx, T>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     value: &T,
     amount: u32

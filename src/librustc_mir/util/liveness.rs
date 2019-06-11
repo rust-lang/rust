@@ -254,7 +254,7 @@ fn block<'tcx>(
     visitor.defs_uses
 }
 
-pub fn dump_mir<'a, 'tcx>(
+pub fn dump_mir<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     pass_name: &str,
     source: MirSource<'tcx>,
@@ -271,7 +271,7 @@ pub fn dump_mir<'a, 'tcx>(
     dump_matched_mir_node(tcx, pass_name, &node_path, source, body, result);
 }
 
-fn dump_matched_mir_node<'a, 'tcx>(
+fn dump_matched_mir_node<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     pass_name: &str,
     node_path: &str,
@@ -294,7 +294,7 @@ fn dump_matched_mir_node<'a, 'tcx>(
     });
 }
 
-pub fn write_mir_fn<'a, 'tcx>(
+pub fn write_mir_fn<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     src: MirSource<'tcx>,
     body: &Body<'tcx>,

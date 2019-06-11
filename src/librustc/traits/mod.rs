@@ -140,7 +140,7 @@ pub struct ObligationCause<'tcx> {
 }
 
 impl<'tcx> ObligationCause<'tcx> {
-    pub fn span<'a, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Span {
+    pub fn span<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Span {
         match self.code {
             ObligationCauseCode::CompareImplMethodObligation { .. } |
             ObligationCauseCode::MainFunctionType |
@@ -363,7 +363,7 @@ impl<'tcx> DomainGoal<'tcx> {
 }
 
 impl<'tcx> GoalKind<'tcx> {
-    pub fn from_poly_domain_goal<'a, 'gcx>(
+    pub fn from_poly_domain_goal<'gcx>(
         domain_goal: PolyDomainGoal<'tcx>,
         tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     ) -> GoalKind<'tcx> {
@@ -710,7 +710,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
     }
 }
 
-fn do_normalize_predicates<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn do_normalize_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                      region_context: DefId,
                                      cause: ObligationCause<'tcx>,
                                      elaborated_env: ty::ParamEnv<'tcx>,
@@ -795,7 +795,7 @@ fn do_normalize_predicates<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
-pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn normalize_param_env_or_error<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                               region_context: DefId,
                                               unnormalized_env: ty::ParamEnv<'tcx>,
                                               cause: ObligationCause<'tcx>)
@@ -936,7 +936,7 @@ pub fn fully_normalize<'a, 'gcx, 'tcx, T>(
 /// environment. If this returns false, then either normalize
 /// encountered an error or one of the predicates did not hold. Used
 /// when creating vtables to check for unsatisfiable methods.
-fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn normalize_and_test_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                            predicates: Vec<ty::Predicate<'tcx>>)
                                            -> bool
 {
@@ -965,7 +965,7 @@ fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     result
 }
 
-fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn substitute_normalize_and_test_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                                       key: (DefId, SubstsRef<'tcx>))
                                                       -> bool
 {
@@ -983,7 +983,7 @@ fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 't
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
 #[inline] // FIXME(#35870): avoid closures being unexported due to `impl Trait`.
-fn vtable_methods<'a, 'tcx>(
+fn vtable_methods<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
     -> &'tcx [Option<(DefId, SubstsRef<'tcx>)>]
@@ -1205,17 +1205,17 @@ where
     type LiftedDelayedLiteral: Debug + 'tcx;
     type LiftedLiteral: Debug + 'tcx;
 
-    fn lift_ex_clause_to_tcx<'a, 'gcx>(
+    fn lift_ex_clause_to_tcx<'gcx>(
         ex_clause: &chalk_engine::ExClause<Self>,
         tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     ) -> Option<Self::LiftedExClause>;
 
-    fn lift_delayed_literal_to_tcx<'a, 'gcx>(
+    fn lift_delayed_literal_to_tcx<'gcx>(
         ex_clause: &chalk_engine::DelayedLiteral<Self>,
         tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     ) -> Option<Self::LiftedDelayedLiteral>;
 
-    fn lift_literal_to_tcx<'a, 'gcx>(
+    fn lift_literal_to_tcx<'gcx>(
         ex_clause: &chalk_engine::Literal<Self>,
         tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     ) -> Option<Self::LiftedLiteral>;

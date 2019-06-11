@@ -766,7 +766,7 @@ pub fn maybe_lint_level_root(tcx: TyCtxt<'_, '_, '_>, id: hir::HirId) -> bool {
     attrs.iter().any(|attr| Level::from_symbol(attr.name_or_empty()).is_some())
 }
 
-fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, cnum: CrateNum)
+fn lint_levels<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, cnum: CrateNum)
     -> &'tcx LintLevelMap
 {
     assert_eq!(cnum, LOCAL_CRATE);

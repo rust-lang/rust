@@ -125,7 +125,7 @@ fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_, '_>) -> Inter
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
-pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn partition<'tcx, I>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                               mono_items: I,
                               strategy: PartitioningStrategy,
                               inlining_map: &InliningMap<'tcx>)
@@ -201,7 +201,7 @@ struct PostInliningPartitioning<'tcx> {
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
-fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn place_root_mono_items<'tcx, I>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                              mono_items: I)
                                              -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = MonoItem<'tcx>>
@@ -585,7 +585,7 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
     }
 }
 
-fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn internalize_symbols<'tcx>(_tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                  partitioning: &mut PostInliningPartitioning<'tcx>,
                                  inlining_map: &InliningMap<'tcx>) {
     if partitioning.codegen_units.len() == 1 {
@@ -650,7 +650,7 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     }
 }
 
-fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn characteristic_def_id_of_mono_item<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                                 mono_item: MonoItem<'tcx>)
                                                 -> Option<DefId> {
     match mono_item {
@@ -830,7 +830,7 @@ fn assert_symbols_are_distinct<'a, 'tcx: 'a, I>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, m
     }
 }
 
-fn collect_and_partition_mono_items<'a, 'tcx>(
+fn collect_and_partition_mono_items<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     cnum: CrateNum,
 ) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>)

@@ -522,7 +522,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
+fn suggest_ampmut_self<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     local_decl: &mir::LocalDecl<'tcx>,
 ) -> (Span, String) {
@@ -555,7 +555,7 @@ fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
 //
 // This implementation attempts to emulate AST-borrowck prioritization
 // by trying (3.), then (2.) and finally falling back on (1.).
-fn suggest_ampmut<'cx, 'gcx, 'tcx>(
+fn suggest_ampmut<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     body: &Body<'tcx>,
     local: Local,

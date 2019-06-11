@@ -36,7 +36,7 @@ struct ExprVisitor<'tcx> {
 
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
-fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                 ty: Ty<'tcx>)
                                 -> Ty<'tcx> {
     let (def, substs) = match ty.sty {

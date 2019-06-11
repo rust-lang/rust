@@ -26,7 +26,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.mir_shims = make_shim;
 }
 
-fn make_shim<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn make_shim<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                        instance: ty::InstanceDef<'tcx>)
                        -> &'tcx Body<'tcx>
 {
@@ -166,7 +166,7 @@ fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>, span: Span)
         .collect()
 }
 
-fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                              def_id: DefId,
                              ty: Option<Ty<'tcx>>)
                              -> Body<'tcx>
@@ -306,7 +306,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 }
 
 /// Builds a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
-fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                               def_id: DefId,
                               self_ty: Ty<'tcx>)
                               -> Body<'tcx>
@@ -691,7 +691,7 @@ impl CloneShimBuilder<'tcx> {
 ///
 /// If `untuple_args` is a vec of types, the second argument of the
 /// function will be untupled as these types.
-fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn build_call_shim<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                              def_id: DefId,
                              rcvr_adjustment: Adjustment,
                              call_kind: CallKind,

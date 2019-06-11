@@ -51,7 +51,7 @@ use std::io::Write;
 use syntax::ast;
 use syntax_pos::Span;
 
-pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn assert_dep_graph<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.debugging_opts.dump_dep_graph {
             dump_graph(tcx);
@@ -184,7 +184,7 @@ impl Visitor<'tcx> for IfThisChanged<'tcx> {
     }
 }
 
-fn check_paths<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn check_paths<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                          if_this_changed: &Sources,
                          then_this_would_need: &Targets)
 {

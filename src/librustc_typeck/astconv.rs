@@ -461,7 +461,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     ///   instantiate a `Kind`.
     /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
     ///   creates a suitable inference variable.
-    pub fn create_substs_for_generic_args<'a, 'b>(
+    pub fn create_substs_for_generic_args<'b>(
         tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
         def_id: DefId,
         parent_substs: &[Kind<'tcx>],
@@ -2415,7 +2415,7 @@ pub struct Bounds<'tcx> {
     pub implicitly_sized: Option<Span>,
 }
 
-impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
+impl<'gcx, 'tcx> Bounds<'tcx> {
     /// Converts a bounds list into a flat set of predicates (like
     /// where-clauses). Because some of our bounds listings (e.g.,
     /// regions) don't include the self-type, you must supply the

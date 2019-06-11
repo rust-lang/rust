@@ -212,7 +212,7 @@ impl Write for AbsolutePathPrinter<'_> {
 
 /// Produces an absolute path representation of the given type. See also the documentation on
 /// `std::any::type_name`
-pub fn type_name<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
+pub fn type_name<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
     let alloc = alloc_type_name(tcx, ty);
     tcx.mk_const(ty::Const {
         val: ConstValue::Slice {
@@ -225,7 +225,7 @@ pub fn type_name<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-pub(super) fn alloc_type_name<'a, 'tcx>(
+pub(super) fn alloc_type_name<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     ty: Ty<'tcx>
 ) -> &'tcx Allocation {

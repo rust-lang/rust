@@ -9,7 +9,7 @@ crate enum LitToConstError {
     Reported,
 }
 
-crate fn lit_to_const<'a, 'gcx, 'tcx>(
+crate fn lit_to_const<'gcx, 'tcx>(
     lit: &'tcx ast::LitKind,
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     ty: Ty<'tcx>,

@@ -48,7 +48,7 @@ pub enum MonoItem<'tcx> {
 }
 
 impl<'tcx> MonoItem<'tcx> {
-    pub fn size_estimate<'a>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> usize {
+    pub fn size_estimate(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> usize {
         match *self {
             MonoItem::Fn(instance) => {
                 // Estimate the size of a function based on how many statements
@@ -195,7 +195,7 @@ impl<'tcx> MonoItem<'tcx> {
             }
         };
 
-        fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+        fn to_string_internal<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                         prefix: &str,
                                         instance: Instance<'tcx>,
                                         debug: bool)
@@ -334,7 +334,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 
-    pub fn estimate_size<'a>(&mut self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+    pub fn estimate_size(&mut self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
         // Estimate the size of a codegen unit as (approximately) the number of MIR
         // statements it corresponds to.
         self.size_estimate = Some(self.items.keys().map(|mi| mi.size_estimate(tcx)).sum());
@@ -369,7 +369,7 @@ impl<'tcx> CodegenUnit<'tcx> {
             })
     }
 
-    pub fn items_in_deterministic_order<'a>(&self,
+    pub fn items_in_deterministic_order(&self,
                                         tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
                                         -> Vec<(MonoItem<'tcx>,
                                                 (Linkage, Visibility))> {
@@ -378,7 +378,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
         pub struct ItemSortKey(Option<HirId>, SymbolName);
 
-        fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+        fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                    item: MonoItem<'tcx>) -> ItemSortKey {
             ItemSortKey(match item {
                 MonoItem::Fn(ref instance) => {

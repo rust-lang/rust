@@ -5,7 +5,7 @@ use rustc::ty::TyCtxt;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, Unsafety};
 
-pub fn check<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn check<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     let mut unsafety = UnsafetyChecker { tcx };
     tcx.hir().krate().visit_all_item_likes(&mut unsafety);
 }

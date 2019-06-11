@@ -53,7 +53,7 @@ pub struct LoanDataFlowOperator;
 
 pub type LoanDataFlow<'tcx> = DataFlowContext<'tcx, LoanDataFlowOperator>;
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     tcx.par_body_owners(|body_owner_def_id| {
         tcx.ensure().borrowck(body_owner_def_id);
     });
@@ -73,7 +73,7 @@ pub struct AnalysisData<'tcx> {
     pub move_data: move_data::FlowedMoveData<'tcx>,
 }
 
-fn borrowck<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, owner_def_id: DefId)
+fn borrowck<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, owner_def_id: DefId)
     -> &'tcx BorrowCheckResult
 {
     assert!(tcx.use_ast_borrowck() || tcx.migrate_borrowck());

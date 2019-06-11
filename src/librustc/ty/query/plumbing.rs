@@ -259,7 +259,7 @@ impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
         compute: F)
     -> R
     where
-        F: for<'b, 'lcx> FnOnce(TyCtxt<'lcx, 'gcx, 'lcx>) -> R
+        F: for<'lcx> FnOnce(TyCtxt<'lcx, 'gcx, 'lcx>) -> R
     {
         // The TyCtxt stored in TLS has the same global interner lifetime
         // as `self`, so we use `with_related_context` to relate the 'gcx lifetimes

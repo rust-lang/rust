@@ -12,7 +12,7 @@ use crate::util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
-fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+fn anonymize_predicate<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                        pred: &ty::Predicate<'tcx>)
                                        -> ty::Predicate<'tcx> {
     match *pred {
@@ -93,7 +93,7 @@ pub struct Elaborator<'gcx, 'tcx> {
     visited: PredicateSet<'gcx, 'tcx>,
 }
 
-pub fn elaborate_trait_ref<'cx, 'gcx, 'tcx>(
+pub fn elaborate_trait_ref<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
     -> Elaborator<'gcx, 'tcx>
@@ -101,7 +101,7 @@ pub fn elaborate_trait_ref<'cx, 'gcx, 'tcx>(
     elaborate_predicates(tcx, vec![trait_ref.to_predicate()])
 }
 
-pub fn elaborate_trait_refs<'cx, 'gcx, 'tcx>(
+pub fn elaborate_trait_refs<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>)
     -> Elaborator<'gcx, 'tcx>
@@ -110,7 +110,7 @@ pub fn elaborate_trait_refs<'cx, 'gcx, 'tcx>(
     elaborate_predicates(tcx, predicates)
 }
 
-pub fn elaborate_predicates<'cx, 'gcx, 'tcx>(
+pub fn elaborate_predicates<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     mut predicates: Vec<ty::Predicate<'tcx>>)
     -> Elaborator<'gcx, 'tcx>
@@ -256,13 +256,13 @@ impl Iterator for Elaborator<'gcx, 'tcx> {
 
 pub type Supertraits<'gcx, 'tcx> = FilterToTraits<Elaborator<'gcx, 'tcx>>;
 
-pub fn supertraits<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+pub fn supertraits<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                     trait_ref: ty::PolyTraitRef<'tcx>)
                                     -> Supertraits<'gcx, 'tcx> {
     elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
 }
 
-pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+pub fn transitive_bounds<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                           bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>)
                                           -> Supertraits<'gcx, 'tcx> {
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
@@ -337,7 +337,7 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
     }
 }
 
-pub fn expand_trait_aliases<'cx, 'gcx, 'tcx>(
+pub fn expand_trait_aliases<'gcx, 'tcx>(
     tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>
 ) -> TraitAliasExpander<'gcx, 'tcx> {
@@ -348,7 +348,7 @@ pub fn expand_trait_aliases<'cx, 'gcx, 'tcx>(
     TraitAliasExpander { tcx, stack: items }
 }
 
-impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'gcx, 'tcx> {
+impl<'gcx, 'tcx> TraitAliasExpander<'gcx, 'tcx> {
     /// If `item` is a trait alias and its predicate has not yet been visited, then expands `item`
     /// to the definition, pushes the resulting expansion onto `self.stack`, and returns `false`.
     /// Otherwise, immediately returns `true` if `item` is a regular trait, or `false` if it is a
@@ -393,7 +393,7 @@ impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> Iterator for TraitAliasExpander<'gcx, 'tcx> {
+impl<'gcx, 'tcx> Iterator for TraitAliasExpander<'gcx, 'tcx> {
     type Item = TraitAliasExpansionInfo<'tcx>;
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -420,7 +420,7 @@ pub struct SupertraitDefIds<'gcx, 'tcx> {
     visited: FxHashSet<DefId>,
 }
 
-pub fn supertrait_def_ids<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+pub fn supertrait_def_ids<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                            trait_def_id: DefId)
                                            -> SupertraitDefIds<'gcx, 'tcx>
 {
@@ -552,7 +552,7 @@ pub fn predicate_for_trait_ref<'tcx>(
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
     pub fn predicate_for_trait_def(self,
                                    param_env: ty::ParamEnv<'tcx>,
                                    cause: ObligationCause<'tcx>,

@@ -1624,7 +1624,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ShallowResolver<'a, 'gcx, 'tcx> 
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeTrace<'tcx> {
+impl<'gcx, 'tcx> TypeTrace<'tcx> {
     pub fn span(&self) -> Span {
         self.cause.span
     }

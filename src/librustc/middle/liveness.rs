@@ -166,7 +166,7 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_, '_>) -> Strin
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'tcx> {
+impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
@@ -411,7 +411,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'tcx>,
     lsets.warn_about_unused_args(body, entry_ln);
 }
 
-fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'tcx>, pat: &P<hir::Pat>) {
+fn add_from_pat<'tcx>(ir: &mut IrMaps<'tcx>, pat: &P<hir::Pat>) {
     // For struct patterns, take note of which fields used shorthand
     // (`x` rather than `x: x`).
     let mut shorthand_field_ids = HirIdSet::default();
@@ -457,19 +457,19 @@ fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'tcx>, pat: &P<hir::Pat>) {
     });
 }
 
-fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'tcx>, local: &'tcx hir::Local) {
+fn visit_local<'tcx>(ir: &mut IrMaps<'tcx>, local: &'tcx hir::Local) {
     add_from_pat(ir, &local.pat);
     intravisit::walk_local(ir, local);
 }
 
-fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'tcx>, arm: &'tcx hir::Arm) {
+fn visit_arm<'tcx>(ir: &mut IrMaps<'tcx>, arm: &'tcx hir::Arm) {
     for pat in &arm.pats {
         add_from_pat(ir, pat);
     }
     intravisit::walk_arm(ir, arm);
 }
 
-fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr) {
+fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {

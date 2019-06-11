@@ -127,7 +127,7 @@ impl ClauseVisitor<'a, 'tcx> {
     }
 }
 
-crate fn program_clauses_for_env<'a, 'tcx>(
+crate fn program_clauses_for_env<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     environment: Environment<'tcx>,
 ) -> Clauses<'tcx> {
@@ -160,7 +160,7 @@ crate fn program_clauses_for_env<'a, 'tcx>(
     );
 }
 
-crate fn environment<'a, 'tcx>(
+crate fn environment<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     def_id: DefId
 ) -> Environment<'tcx> {

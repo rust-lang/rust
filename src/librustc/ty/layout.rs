@@ -31,9 +31,9 @@ use rustc_target::abi::call::{
 
 
 pub trait IntegerExt {
-    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx>;
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx>;
     fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer;
-    fn repr_discr<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    fn repr_discr<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                             ty: Ty<'tcx>,
                             repr: &ReprOptions,
                             min: i128,
@@ -42,7 +42,7 @@ pub trait IntegerExt {
 }
 
 impl IntegerExt for Integer {
-    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx> {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
             (I8, false) => tcx.types.u8,
             (I16, false) => tcx.types.u16,
@@ -77,7 +77,7 @@ impl IntegerExt for Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u128 values above i128::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    fn repr_discr<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    fn repr_discr<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                             ty: Ty<'tcx>,
                             repr: &ReprOptions,
                             min: i128,
@@ -126,11 +126,11 @@ impl IntegerExt for Integer {
 }
 
 pub trait PrimitiveExt {
-    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Ty<'tcx>;
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Ty<'tcx>;
 }
 
 impl PrimitiveExt for Primitive {
-    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Ty<'tcx> {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
             Float(FloatTy::F32) => tcx.types.f32,
@@ -171,7 +171,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
     }
 }
 
-fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn layout_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                         query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                         -> Result<&'tcx LayoutDetails, LayoutError<'tcx>>
 {
@@ -226,7 +226,7 @@ enum StructKind {
     Prefixed(Size, Align),
 }
 
-impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'tcx, 'tcx, 'tcx>> {
+impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx, 'tcx, 'tcx>> {
     fn scalar_pair(&self, a: Scalar, b: Scalar) -> LayoutDetails {
         let dl = self.data_layout();
         let b_align = b.value.align(dl);
@@ -1221,7 +1221,7 @@ enum SavedLocalEligibility {
 // Also included in the layout are the upvars and the discriminant.
 // These are included as fields on the "outer" layout; they are not part
 // of any variant.
-impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'tcx, 'tcx, 'tcx>> {
+impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx, 'tcx, 'tcx>> {
     /// Compute the eligibility and assignment of each local.
     fn generator_saved_local_eligibility(&self, info: &GeneratorLayout<'tcx>)
     -> (BitSet<GeneratorSavedLocal>, IndexVec<GeneratorSavedLocal, SavedLocalEligibility>) {
@@ -1603,7 +1603,7 @@ pub enum SizeSkeleton<'tcx> {
     }
 }
 
-impl<'a, 'tcx> SizeSkeleton<'tcx> {
+impl<'tcx> SizeSkeleton<'tcx> {
     pub fn compute(ty: Ty<'tcx>,
                    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                    param_env: ty::ParamEnv<'tcx>)
@@ -1734,13 +1734,13 @@ pub trait HasParamEnv<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 }
 
-impl<'a, 'gcx, 'tcx> HasDataLayout for TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> HasDataLayout for TyCtxt<'tcx, 'gcx, 'tcx> {
     fn data_layout(&self) -> &TargetDataLayout {
         &self.data_layout
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasTyCtxt<'gcx> for TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> HasTyCtxt<'gcx> for TyCtxt<'tcx, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'gcx, 'gcx> {
         self.global_tcx()
     }
@@ -1796,7 +1796,7 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
 
 pub type TyLayout<'tcx> = ::rustc_target::abi::TyLayout<'tcx, Ty<'tcx>>;
 
-impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx, 'tcx, 'tcx>> {
+impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx, 'tcx, 'tcx>> {
     type Ty = Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
@@ -2187,7 +2187,7 @@ struct Niche {
 }
 
 impl Niche {
-    fn reserve<'a, 'tcx>(
+    fn reserve<'tcx>(
         &self,
         cx: &LayoutCx<'tcx, TyCtxt<'tcx, 'tcx, 'tcx>>,
         count: u128,
@@ -2205,7 +2205,7 @@ impl Niche {
     }
 }
 
-impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'tcx, 'tcx, 'tcx>> {
+impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx, 'tcx, 'tcx>> {
     /// Find the offset of a niche leaf field, starting from
     /// the given type and recursing through aggregates.
     // FIXME(eddyb) traverse already optimized enums.

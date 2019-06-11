@@ -156,7 +156,7 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn serialize<'a, 'tcx, E>(&self,
+    pub fn serialize<'tcx, E>(&self,
                                   tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                   encoder: &mut E)
                                   -> Result<(), E::Error>
@@ -326,7 +326,7 @@ impl<'sess> OnDiskCache<'sess> {
     }
 
     /// Loads a diagnostic emitted during the previous compilation session.
-    pub fn load_diagnostics<'a, 'tcx>(&self,
+    pub fn load_diagnostics<'tcx>(&self,
                                       tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                       dep_node_index: SerializedDepNodeIndex)
                                       -> Vec<Diagnostic> {

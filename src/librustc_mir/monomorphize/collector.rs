@@ -281,7 +281,7 @@ impl<'tcx> InliningMap<'tcx> {
     }
 }
 
-pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn collect_crate_mono_items<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                           mode: MonoItemCollectionMode)
                                           -> (FxHashSet<MonoItem<'tcx>>,
                                                      InliningMap<'tcx>) {
@@ -315,7 +315,7 @@ pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
-fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn collect_roots<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                            mode: MonoItemCollectionMode)
                            -> Vec<MonoItem<'tcx>> {
     debug!("Collecting roots");
@@ -413,7 +413,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     debug!("END collect_items_rec({})", starting_point.to_string(tcx, true));
 }
 
-fn record_accesses<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn record_accesses<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                              caller: MonoItem<'tcx>,
                              callees: &[MonoItem<'tcx>],
                              inlining_map: MTRef<'_, MTLock<InliningMap<'tcx>>>) {
@@ -429,7 +429,7 @@ fn record_accesses<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     inlining_map.lock_mut().record_accesses(caller, accesses);
 }
 
-fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn check_recursion_limit<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                    instance: Instance<'tcx>,
                                    recursion_depths: &mut DefIdMap<usize>)
                                    -> (DefId, usize) {
@@ -463,7 +463,7 @@ fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     (def_id, recursion_depth)
 }
 
-fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                      instance: Instance<'tcx>)
 {
     let type_length = instance.substs.types().flat_map(|ty| ty.walk()).count();
@@ -679,7 +679,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     }
 }
 
-fn visit_drop_use<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn visit_drop_use<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                             ty: Ty<'tcx>,
                             is_direct_call: bool,
                             output: &mut Vec<MonoItem<'tcx>>)
@@ -688,7 +688,7 @@ fn visit_drop_use<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     visit_instance_use(tcx, instance, is_direct_call, output);
 }
 
-fn visit_fn_use<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn visit_fn_use<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                           ty: Ty<'tcx>,
                           is_direct_call: bool,
                           output: &mut Vec<MonoItem<'tcx>>)
@@ -702,7 +702,7 @@ fn visit_fn_use<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     }
 }
 
-fn visit_instance_use<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn visit_instance_use<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                 instance: ty::Instance<'tcx>,
                                 is_direct_call: bool,
                                 output: &mut Vec<MonoItem<'tcx>>)
@@ -741,7 +741,7 @@ fn visit_instance_use<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 // Returns true if we should codegen an instance in the local crate.
 // Returns false if we can just link to the upstream crate and therefore don't
 // need a mono item.
-fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, instance: &Instance<'tcx>)
+fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, instance: &Instance<'tcx>)
                                          -> bool {
     let def_id = match instance.def {
         ty::InstanceDef::Item(def_id) => def_id,
@@ -776,7 +776,7 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, instance
     }
     return true;
 
-    fn is_available_upstream_generic<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    fn is_available_upstream_generic<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                                def_id: DefId,
                                                substs: SubstsRef<'tcx>)
                                                -> bool {
@@ -841,7 +841,7 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, instance
 ///
 /// Finally, there is also the case of custom unsizing coercions, e.g., for
 /// smart pointers such as `Rc` and `Arc`.
-fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn find_vtable_types_for_unsizing<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                             source_ty: Ty<'tcx>,
                                             target_ty: Ty<'tcx>)
                                             -> (Ty<'tcx>, Ty<'tcx>) {
@@ -914,7 +914,7 @@ fn create_fn_mono_item<'tcx>(instance: Instance<'tcx>) -> MonoItem<'tcx> {
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
 /// the given trait/impl pair.
-fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn create_mono_items_for_vtable_methods<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                                   trait_ty: Ty<'tcx>,
                                                   impl_ty: Ty<'tcx>,
                                                   output: &mut Vec<MonoItem<'tcx>>) {
@@ -1107,12 +1107,12 @@ impl RootCollector<'_, 'v> {
     }
 }
 
-fn item_requires_monomorphization<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> bool {
+fn item_requires_monomorphization<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> bool {
     let generics = tcx.generics_of(def_id);
     generics.requires_monomorphization(tcx)
 }
 
-fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn create_mono_items_for_default_impls<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                                  item: &'tcx hir::Item,
                                                  output: &mut Vec<MonoItem<'tcx>>) {
     match item.node {
@@ -1176,7 +1176,7 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 }
 
 /// Scan the miri alloc in order to find function calls, closures, and drop-glue
-fn collect_miri<'a, 'tcx>(
+fn collect_miri<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     alloc_id: AllocId,
     output: &mut Vec<MonoItem<'tcx>>,
@@ -1207,7 +1207,7 @@ fn collect_miri<'a, 'tcx>(
 }
 
 /// Scan the MIR in order to find function calls, closures, and drop-glue
-fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn collect_neighbours<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                                 instance: Instance<'tcx>,
                                 output: &mut Vec<MonoItem<'tcx>>)
 {
@@ -1237,7 +1237,7 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     }
 }
 
-fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn def_id_to_string<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
                               def_id: DefId)
                               -> String {
     let mut output = String::new();
@@ -1246,7 +1246,7 @@ fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     output
 }
 
-fn collect_const<'a, 'tcx>(
+fn collect_const<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     constant: &'tcx ty::Const<'tcx>,
     param_substs: SubstsRef<'tcx>,

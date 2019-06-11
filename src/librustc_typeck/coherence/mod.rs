@@ -18,7 +18,7 @@ mod inherent_impls_overlap;
 mod orphan;
 mod unsafety;
 
-fn check_impl<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, hir_id: HirId) {
+fn check_impl<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, hir_id: HirId) {
     let impl_def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
 
     // If there are no traits, then this implementation must have a
@@ -132,7 +132,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) {
+fn coherent_trait<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) {
     let impls = tcx.hir().trait_impls(def_id);
     for &impl_id in impls {
         check_impl(tcx, impl_id);
@@ -143,7 +143,7 @@ fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) {
     builtin::check_trait(tcx, def_id);
 }
 
-pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn check_coherence<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
     for &trait_def_id in tcx.hir().krate().trait_impls.keys() {
         tcx.ensure().coherent_trait(trait_def_id);
     }
@@ -159,7 +159,7 @@ pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
 /// Overlap: no two impls for the same trait are implemented for the
 /// same type. Likewise, no two inherent impls for a given type
 /// constructor provide a method with the same name.
-fn check_impl_overlap<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, hir_id: HirId) {
+fn check_impl_overlap<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, hir_id: HirId) {
     let impl_def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
     let trait_def_id = trait_ref.def_id;

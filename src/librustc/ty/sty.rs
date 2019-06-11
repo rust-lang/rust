@@ -590,7 +590,7 @@ pub enum ExistentialPredicate<'tcx> {
     AutoTrait(DefId),
 }
 
-impl<'a, 'gcx, 'tcx> ExistentialPredicate<'tcx> {
+impl<'gcx, 'tcx> ExistentialPredicate<'tcx> {
     /// Compares via an ordering that will not change if modules are reordered or other changes are
     /// made to the tree. In particular, this ordering is preserved across incremental compilations.
     pub fn stable_cmp(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>, other: &Self) -> Ordering {
@@ -610,7 +610,7 @@ impl<'a, 'gcx, 'tcx> ExistentialPredicate<'tcx> {
 
 }
 
-impl<'a, 'gcx, 'tcx> Binder<ExistentialPredicate<'tcx>> {
+impl<'gcx, 'tcx> Binder<ExistentialPredicate<'tcx>> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
         -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
@@ -744,7 +744,7 @@ impl<'tcx> TraitRef<'tcx> {
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
     /// are the parameters defined on trait.
-    pub fn identity<'a, 'gcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>, def_id: DefId) -> TraitRef<'tcx> {
+    pub fn identity<'gcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>, def_id: DefId) -> TraitRef<'tcx> {
         TraitRef {
             def_id,
             substs: InternalSubsts::identity_for_item(tcx, def_id),
@@ -808,7 +808,7 @@ pub struct ExistentialTraitRef<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
+impl<'gcx, 'tcx> ExistentialTraitRef<'tcx> {
     pub fn input_types<'b>(&'b self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'b {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
@@ -1112,7 +1112,7 @@ pub struct ParamTy {
     pub name: InternedString,
 }
 
-impl<'a, 'gcx, 'tcx> ParamTy {
+impl<'gcx, 'tcx> ParamTy {
     pub fn new(index: u32, name: InternedString) -> ParamTy {
         ParamTy { index, name: name }
     }
@@ -1144,7 +1144,7 @@ pub struct ParamConst {
     pub name: InternedString,
 }
 
-impl<'a, 'gcx, 'tcx> ParamConst {
+impl<'gcx, 'tcx> ParamConst {
     pub fn new(index: u32, name: InternedString) -> ParamConst {
         ParamConst { index, name }
     }
@@ -1408,7 +1408,7 @@ pub struct ExistentialProjection<'tcx> {
 
 pub type PolyExistentialProjection<'tcx> = Binder<ExistentialProjection<'tcx>>;
 
-impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
+impl<'tcx, 'gcx> ExistentialProjection<'tcx> {
     /// Extracts the underlying existential trait reference from this projection.
     /// For example, if this is a projection of `exists T. <T as Iterator>::Item == X`,
     /// then this function would return a `exists T. T: Iterator` existential trait
@@ -1438,7 +1438,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
+impl<'tcx, 'gcx> PolyExistentialProjection<'tcx> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
         -> ty::PolyProjectionPredicate<'tcx> {
         self.map_bound(|p| p.with_self_ty(tcx, self_ty))
@@ -1664,7 +1664,7 @@ impl RegionKind {
 }
 
 /// Type utilities
-impl<'a, 'gcx, 'tcx> TyS<'tcx> {
+impl<'gcx, 'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_unit(&self) -> bool {
         match self.sty {

@@ -211,7 +211,7 @@ pub trait CrateStore {
     fn crates_untracked(&self) -> Vec<CrateNum>;
 
     // utility functions
-    fn encode_metadata<'a, 'tcx>(&self,
+    fn encode_metadata<'tcx>(&self,
                                  tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];

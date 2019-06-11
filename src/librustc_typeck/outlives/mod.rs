@@ -20,7 +20,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn inferred_outlives_of<'a, 'tcx>(
+fn inferred_outlives_of<'tcx>(
     tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     item_def_id: DefId,
 ) -> &'tcx [ty::Predicate<'tcx>] {

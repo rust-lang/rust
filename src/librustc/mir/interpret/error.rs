@@ -74,7 +74,7 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
+impl<'gcx, 'tcx> ConstEvalErr<'tcx> {
     pub fn struct_error(&self,
         tcx: TyCtxtAt<'gcx, 'tcx>,
         message: &str)
@@ -172,7 +172,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
     }
 }
 
-pub fn struct_error<'a, 'gcx, 'tcx>(
+pub fn struct_error<'gcx, 'tcx>(
     tcx: TyCtxtAt<'gcx, 'tcx>,
     msg: &str,
 ) -> DiagnosticBuilder<'tcx> {

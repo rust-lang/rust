@@ -183,7 +183,7 @@ fn overlap_within_probe(
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }
 
-pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+pub fn trait_ref_is_knowable<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                              trait_ref: ty::TraitRef<'tcx>)
                                              -> Option<Conflict>
 {
@@ -229,7 +229,7 @@ pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     }
 }
 
-pub fn trait_ref_is_local_or_fundamental<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+pub fn trait_ref_is_local_or_fundamental<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                                          trait_ref: ty::TraitRef<'tcx>)
                                                          -> bool {
     trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, sym::fundamental)
@@ -246,7 +246,7 @@ pub enum OrphanCheckErr<'tcx> {
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
-pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+pub fn orphan_check<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
                                     impl_def_id: DefId)
                                     -> Result<(), OrphanCheckErr<'tcx>>
 {

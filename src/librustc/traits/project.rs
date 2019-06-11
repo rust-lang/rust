@@ -836,7 +836,7 @@ struct Progress<'tcx> {
 }
 
 impl<'tcx> Progress<'tcx> {
-    fn error<'a,'gcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Self {
+    fn error<'gcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Self {
         Progress {
             ty: tcx.types.err,
             obligations: vec![],

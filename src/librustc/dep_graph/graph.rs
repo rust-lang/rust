@@ -842,7 +842,7 @@ impl DepGraph {
     //
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
-    pub fn exec_cache_promotions<'a, 'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+    pub fn exec_cache_promotions<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
         let green_nodes: Vec<DepNode> = {
             let data = self.data.as_ref().unwrap();
             data.colors.values.indices().filter_map(|prev_index| {

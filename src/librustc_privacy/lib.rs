@@ -220,7 +220,7 @@ impl<'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'tcx, V>
     }
 }
 
-fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId)
+fn def_id_visibility<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId)
                                -> (ty::Visibility, Span, &'static str) {
     match tcx.hir().as_local_hir_id(def_id) {
         Some(hir_id) => {
@@ -331,7 +331,7 @@ fn item_tables<'a, 'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     if tcx.has_typeck_tables(def_id) { tcx.typeck_tables_of(def_id) } else { empty_tables }
 }
 
-fn min<'a, 'tcx>(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
+fn min<'tcx>(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
                  -> ty::Visibility {
     if vis1.is_at_least(vis2, tcx) { vis2 } else { vis1 }
 }

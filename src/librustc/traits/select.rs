@@ -300,7 +300,7 @@ enum SelectionCandidate<'tcx> {
 
 impl<'a, 'tcx> ty::Lift<'tcx> for SelectionCandidate<'a> {
     type Lifted = SelectionCandidate<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         Some(match *self {
             BuiltinCandidate { has_nested } => BuiltinCandidate { has_nested },
             ImplCandidate(def_id) => ImplCandidate(def_id),
