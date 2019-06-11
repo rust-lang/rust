@@ -148,9 +148,9 @@ fn rename_mod(
     let mut file_system_edits = Vec::new();
     if let Some(module) = source_binder::module_from_declaration(db, position.file_id, &ast_module)
     {
-        let (file_id, module_source) = module.definition_source(db);
-        let file_id = file_id.as_original_file();
-        match module_source {
+        let src = module.definition_source(db);
+        let file_id = src.file_id.as_original_file();
+        match src.ast {
             ModuleSource::SourceFile(..) => {
                 let mod_path: RelativePathBuf = db.file_relative_path(file_id);
                 // mod is defined in path/to/dir/mod.rs

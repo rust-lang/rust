@@ -1,9 +1,10 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    AstNode, ast::{self, DocCommentsOwner},
+    AstNode, TreeArc,
+    ast::{self, DocCommentsOwner},
     algo::{find_covering_element, find_node_at_offset, ancestors_at_offset, visit::{visitor, Visitor}},
 };
-use hir::HirDisplay;
+use hir::{HirDisplay, HasSource};
 
 use crate::{
     db::RootDatabase,
@@ -95,78 +96,38 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
 
         match classify_name_ref(db, &analyzer, name_ref) {
-            Some(Method(it)) => {
-                let it = it.source(db).1;
-                res.extend(hover_text(it.doc_comment_text(), it.short_label()));
-            }
+            Some(Method(it)) => res.extend(from_def_source(db, it)),
             Some(Macro(it)) => {
-                let it = it.source(db).1;
-                res.extend(hover_text(it.doc_comment_text(), None));
+                let src = it.source(db);
+                res.extend(hover_text(src.ast.doc_comment_text(), None));
             }
             Some(FieldAccess(it)) => {
-                let it = it.source(db).1;
-                if let hir::FieldSource::Named(it) = it {
+                let src = it.source(db);
+                if let hir::FieldSource::Named(it) = src.ast {
                     res.extend(hover_text(it.doc_comment_text(), it.short_label()));
                 }
             }
-            Some(AssocItem(it)) => match it {
-                hir::ImplItem::Method(it) => {
-                    let it = it.source(db).1;
-                    res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                }
-                hir::ImplItem::Const(it) => {
-                    let it = it.source(db).1;
-                    res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                }
-                hir::ImplItem::TypeAlias(it) => {
-                    let it = it.source(db).1;
-                    res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                }
-            },
+            Some(AssocItem(it)) => res.extend(match it {
+                hir::ImplItem::Method(it) => from_def_source(db, it),
+                hir::ImplItem::Const(it) => from_def_source(db, it),
+                hir::ImplItem::TypeAlias(it) => from_def_source(db, it),
+            }),
             Some(Def(it)) => {
                 match it {
                     hir::ModuleDef::Module(it) => {
-                        let it = it.definition_source(db).1;
-                        if let hir::ModuleSource::Module(it) = it {
+                        if let hir::ModuleSource::Module(it) = it.definition_source(db).ast {
                             res.extend(hover_text(it.doc_comment_text(), it.short_label()))
                         }
                     }
-                    hir::ModuleDef::Function(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
-                    hir::ModuleDef::Struct(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
-                    hir::ModuleDef::Union(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
-                    hir::ModuleDef::Enum(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
-                    hir::ModuleDef::EnumVariant(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
-                    hir::ModuleDef::Const(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
-                    hir::ModuleDef::Static(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
-                    hir::ModuleDef::Trait(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
-                    hir::ModuleDef::TypeAlias(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
+                    hir::ModuleDef::Function(it) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::Struct(it) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::Union(it) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::Enum(it) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::EnumVariant(it) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::Const(it) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::Static(it) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::Trait(it) => res.extend(from_def_source(db, it)),
+                    hir::ModuleDef::TypeAlias(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::BuiltinType(_) => {
                         // FIXME: hover for builtin Type ?
                     }
@@ -174,20 +135,11 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             }
             Some(SelfType(ty)) => {
                 if let Some((adt_def, _)) = ty.as_adt() {
-                    match adt_def {
-                        hir::AdtDef::Struct(it) => {
-                            let it = it.source(db).1;
-                            res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                        }
-                        hir::AdtDef::Union(it) => {
-                            let it = it.source(db).1;
-                            res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                        }
-                        hir::AdtDef::Enum(it) => {
-                            let it = it.source(db).1;
-                            res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                        }
-                    }
+                    res.extend(match adt_def {
+                        hir::AdtDef::Struct(it) => from_def_source(db, it),
+                        hir::AdtDef::Union(it) => from_def_source(db, it),
+                        hir::AdtDef::Enum(it) => from_def_source(db, it),
+                    })
                 }
             }
             Some(Pat(_)) => {
@@ -270,7 +222,16 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         return None;
     }
     let res = RangeInfo::new(range, res);
-    Some(res)
+    return Some(res);
+
+    fn from_def_source<A, D>(db: &RootDatabase, def: D) -> Option<String>
+    where
+        D: HasSource<Ast = TreeArc<A>>,
+        A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
+    {
+        let src = def.source(db);
+        hover_text(src.ast.doc_comment_text(), src.ast.short_label())
+    }
 }
 
 pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {

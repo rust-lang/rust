@@ -128,8 +128,8 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(crate::lang_item::LangItems::lang_item_query)]
     fn lang_item(&self, start_crate: Crate, item: SmolStr) -> Option<LangItemTarget>;
 
-    #[salsa::invoke(crate::docs::documentation_query)]
-    fn documentation(&self, def: crate::docs::DocDef) -> Option<crate::docs::Documentation>;
+    #[salsa::invoke(crate::code_model::docs::documentation_query)]
+    fn documentation(&self, def: crate::DocDef) -> Option<crate::Documentation>;
 }
 
 #[salsa::query_group(HirDatabaseStorage)]

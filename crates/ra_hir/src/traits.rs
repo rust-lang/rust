@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use ra_syntax::ast::{self, NameOwner};
 
 use crate::{
-    Function, Const, TypeAlias, Name, DefDatabase, Trait, AstDatabase, Module,
+    Function, Const, TypeAlias, Name, DefDatabase, Trait, AstDatabase, Module, HasSource,
     ids::LocationCtx, name::AsName,
 };
 
@@ -22,12 +22,12 @@ impl TraitData {
         db: &(impl DefDatabase + AstDatabase),
         tr: Trait,
     ) -> Arc<TraitData> {
-        let (file_id, node) = tr.source(db);
-        let name = node.name().map(|n| n.as_name());
+        let src = tr.source(db);
+        let name = src.ast.name().map(|n| n.as_name());
         let module = tr.module(db);
-        let ctx = LocationCtx::new(db, module, file_id);
-        let auto = node.is_auto();
-        let items = if let Some(item_list) = node.item_list() {
+        let ctx = LocationCtx::new(db, module, src.file_id);
+        let auto = src.ast.is_auto();
+        let items = if let Some(item_list) = src.ast.item_list() {
             item_list
                 .impl_items()
                 .map(|item_node| match item_node.kind() {

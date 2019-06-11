@@ -38,7 +38,6 @@ mod impl_block;
 mod expr;
 mod lang_item;
 mod generics;
-mod docs;
 mod resolve;
 pub mod diagnostics;
 
@@ -64,7 +63,6 @@ pub use self::{
     nameres::{PerNs, Namespace, ImportId},
     ty::{Ty, ApplicationTy, TypeCtor, TraitRef, Substs, display::HirDisplay, CallableDef},
     impl_block::{ImplBlock, ImplItem},
-    docs::{Docs, Documentation},
     adt::AdtDef,
     expr::ExprScopes,
     resolve::Resolution,
@@ -82,4 +80,6 @@ pub use self::code_model::{
     Static, Const, ConstSignature,
     Trait, TypeAlias, MacroDef, Container,
     BuiltinType,
+    src::{Source, HasSource},
+    docs::{Docs, Documentation, DocDef},
 };

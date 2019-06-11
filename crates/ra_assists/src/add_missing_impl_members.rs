@@ -1,6 +1,6 @@
 use crate::{Assist, AssistId, AssistCtx, ast_editor::{AstEditor, AstBuilder}};
 
-use hir::db::HirDatabase;
+use hir::{HasSource, db::HirDatabase};
 use ra_syntax::{SmolStr, TreeArc};
 use ra_syntax::ast::{self, AstNode, FnDef, ImplItem, ImplItemKind, NameOwner};
 use ra_db::FilePosition;
@@ -110,7 +110,7 @@ fn resolve_target_trait_def(
         impl_block.target_trait().map(AstNode::syntax).and_then(ast::PathType::cast)?.path()?;
 
     match analyzer.resolve_path(db, &ast_path) {
-        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).1),
+        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).ast),
         _ => None,
     }
 }

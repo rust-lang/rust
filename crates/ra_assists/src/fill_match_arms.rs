@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use hir::{
-    AdtDef, FieldSource,
+    AdtDef, FieldSource, HasSource,
     db::HirDatabase,
 };
 use ra_syntax::ast::{self, AstNode};
@@ -44,8 +44,8 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
                 .into_iter()
                 .map(|field| {
                     let name = field.name(db).to_string();
-                    let (_, source) = field.source(db);
-                    match source {
+                    let src = field.source(db);
+                    match src.ast {
                         FieldSource::Named(_) => name,
                         FieldSource::Pos(_) => "_".to_string(),
                     }

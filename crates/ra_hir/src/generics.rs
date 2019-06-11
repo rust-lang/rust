@@ -8,8 +8,10 @@ use std::sync::Arc;
 use ra_syntax::ast::{self, NameOwner, TypeParamsOwner, TypeBoundsOwner, DefaultTypeParamOwner};
 
 use crate::{
+    HasSource,
+    Name, AsName, Function, Struct, Union, Enum, Trait, TypeAlias, ImplBlock, Container, AdtDef,
     db::{HirDatabase, DefDatabase, AstDatabase},
-    Name, AsName, Function, Struct, Union, Enum, Trait, TypeAlias, ImplBlock, Container, path::Path, type_ref::TypeRef, AdtDef
+    path::Path, type_ref::TypeRef,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -68,10 +70,10 @@ impl GenericParams {
         generics.parent_params = parent.map(|p| db.generic_params(p));
         let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
         match def {
-            GenericDef::Function(it) => generics.fill(&*it.source(db).1, start),
-            GenericDef::Struct(it) => generics.fill(&*it.source(db).1, start),
-            GenericDef::Union(it) => generics.fill(&*it.source(db).1, start),
-            GenericDef::Enum(it) => generics.fill(&*it.source(db).1, start),
+            GenericDef::Function(it) => generics.fill(&*it.source(db).ast, start),
+            GenericDef::Struct(it) => generics.fill(&*it.source(db).ast, start),
+            GenericDef::Union(it) => generics.fill(&*it.source(db).ast, start),
+            GenericDef::Enum(it) => generics.fill(&*it.source(db).ast, start),
             GenericDef::Trait(it) => {
                 // traits get the Self type as an implicit first type parameter
                 generics.params.push(GenericParam {
@@ -79,10 +81,10 @@ impl GenericParams {
                     name: Name::self_type(),
                     default: None,
                 });
-                generics.fill(&*it.source(db).1, start + 1);
+                generics.fill(&*it.source(db).ast, start + 1);
             }
-            GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).1, start),
-            GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).1, start),
+            GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).ast, start),
+            GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).ast, start),
         }
 
         Arc::new(generics)

@@ -9,7 +9,7 @@ use ra_prof::profile;
 use mbe::MacroRules;
 
 use crate::{
-    Module, DefDatabase, AstId, FileAstId, AstDatabase,
+    Module, DefDatabase, AstId, FileAstId, AstDatabase, Source,
 };
 
 /// hir makes heavy use of ids: integer (u32) handlers to various things. You
@@ -265,10 +265,10 @@ pub(crate) trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
         let loc = ItemLoc { module: ctx.module, ast_id: ast_id.with_file_id(ctx.file_id) };
         Self::intern(ctx.db, loc)
     }
-    fn source(self, db: &(impl AstDatabase + DefDatabase)) -> (HirFileId, TreeArc<N>) {
+    fn source(self, db: &(impl AstDatabase + DefDatabase)) -> Source<TreeArc<N>> {
         let loc = self.lookup_intern(db);
         let ast = loc.ast_id.to_node(db);
-        (loc.ast_id.file_id(), ast)
+        Source { file_id: loc.ast_id.file_id(), ast }
     }
     fn module(self, db: &impl DefDatabase) -> Module {
         let loc = self.lookup_intern(db);

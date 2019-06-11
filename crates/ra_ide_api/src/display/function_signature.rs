@@ -1,10 +1,11 @@
-use super::{where_predicates, generic_parameters};
-use crate::db;
 use std::fmt::{self, Display};
+
 use join_to_string::join;
 use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 use std::convert::From;
-use hir::{Docs, Documentation};
+use hir::{Docs, Documentation, HasSource};
+
+use crate::{db, display::{where_predicates, generic_parameters}};
 
 /// Contains information about a function signature
 #[derive(Debug)]
@@ -33,7 +34,7 @@ impl FunctionSignature {
 
     pub(crate) fn from_hir(db: &db::RootDatabase, function: hir::Function) -> Self {
         let doc = function.docs(db);
-        let (_, ast_node) = function.source(db);
+        let ast_node = function.source(db).ast;
         FunctionSignature::from(&*ast_node).with_doc_opt(doc)
     }
 }

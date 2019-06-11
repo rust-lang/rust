@@ -1,7 +1,7 @@
 //! This modules takes care of rendering various defenitions as completion items.
 use join_to_string::join;
 use test_utils::tested_by;
-use hir::{Docs, PerNs, Resolution, HirDisplay};
+use hir::{Docs, PerNs, Resolution, HirDisplay, HasSource};
 use ra_syntax::ast::NameOwner;
 
 use crate::completion::{
@@ -100,7 +100,7 @@ impl Completions {
     ) {
         let sig = func.signature(ctx.db);
         let name = name.unwrap_or_else(|| sig.name().to_string());
-        let (_, ast_node) = func.source(ctx.db);
+        let ast_node = func.source(ctx.db).ast;
         let detail = function_label(&ast_node);
 
         let mut builder = CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name)
@@ -126,12 +126,11 @@ impl Completions {
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
-        let (_file_id, ast_node) = constant.source(ctx.db);
+        let ast_node = constant.source(ctx.db).ast;
         let name = match ast_node.name() {
             Some(name) => name,
             _ => return,
         };
-        let (_, ast_node) = constant.source(ctx.db);
         let detail = const_label(&ast_node);
 
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
@@ -142,13 +141,12 @@ impl Completions {
     }
 
     pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
-        let (_file_id, type_def) = type_alias.source(ctx.db);
+        let type_def = type_alias.source(ctx.db).ast;
         let name = match type_def.name() {
             Some(name) => name,
             _ => return,
         };
-        let (_, ast_node) = type_alias.source(ctx.db);
-        let detail = type_label(&ast_node);
+        let detail = type_label(&type_def);
 
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
             .kind(CompletionItemKind::TypeAlias)
