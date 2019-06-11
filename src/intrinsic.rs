@@ -1,3 +1,4 @@
+use rustc_apfloat::Float;
 use rustc::mir;
 use rustc::mir::interpret::{InterpResult, PointerArithmetic};
 use rustc::ty::layout::{self, LayoutOf, Size};
@@ -186,7 +187,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
 
             "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
             "log10f32" | "log2f32" | "floorf32" | "ceilf32" | "truncf32" => {
-                let f = this.read_scalar(args[0])?.to_f32()?;
+                // FIXME: Using host floats.
+                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
                 let f = match intrinsic_name.get() {
                     "sinf32" => f.sin(),
                     "fabsf32" => f.abs(),
@@ -202,12 +204,13 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     "truncf32" => f.trunc(),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_f32(f), dest)?;
+                this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
             }
 
             "sinf64" | "fabsf64" | "cosf64" | "sqrtf64" | "expf64" | "exp2f64" | "logf64" |
             "log10f64" | "log2f64" | "floorf64" | "ceilf64" | "truncf64" => {
-                let f = this.read_scalar(args[0])?.to_f64()?;
+                // FIXME: Using host floats.
+                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
                 let f = match intrinsic_name.get() {
                     "sinf64" => f.sin(),
                     "fabsf64" => f.abs(),
@@ -223,7 +226,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     "truncf64" => f.trunc(),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_f64(f), dest)?;
+                this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
             }
 
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
@@ -238,6 +241,28 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     _ => bug!(),
                 };
                 this.binop_ignore_overflow(op, a, b, dest)?;
+            }
+
+            "minnumf32" | "maxnumf32" => {
+                let a = this.read_scalar(args[0])?.to_f32()?;
+                let b = this.read_scalar(args[1])?.to_f32()?;
+                let res = if intrinsic_name.get().starts_with("min") {
+                    a.min(b)
+                } else {
+                    a.max(b)
+                };
+                this.write_scalar(Scalar::from_f32(res), dest)?;
+            }
+
+            "minnumf64" | "maxnumf64" => {
+                let a = this.read_scalar(args[0])?.to_f64()?;
+                let b = this.read_scalar(args[1])?.to_f64()?;
+                let res = if intrinsic_name.get().starts_with("min") {
+                    a.min(b)
+                } else {
+                    a.max(b)
+                };
+                this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
             "exact_div" => {
@@ -320,19 +345,21 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             }
 
             "powf32" => {
-                let f = this.read_scalar(args[0])?.to_f32()?;
-                let f2 = this.read_scalar(args[1])?.to_f32()?;
+                // FIXME: Using host floats.
+                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
+                let f2 = f32::from_bits(this.read_scalar(args[1])?.to_u32()?);
                 this.write_scalar(
-                    Scalar::from_f32(f.powf(f2)),
+                    Scalar::from_u32(f.powf(f2).to_bits()),
                     dest,
                 )?;
             }
 
             "powf64" => {
-                let f = this.read_scalar(args[0])?.to_f64()?;
-                let f2 = this.read_scalar(args[1])?.to_f64()?;
+                // FIXME: Using host floats.
+                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+                let f2 = f64::from_bits(this.read_scalar(args[1])?.to_u64()?);
                 this.write_scalar(
-                    Scalar::from_f64(f.powf(f2)),
+                    Scalar::from_u64(f.powf(f2).to_bits()),
                     dest,
                 )?;
             }
@@ -341,8 +368,9 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 let a = this.read_scalar(args[0])?.to_f32()?;
                 let b = this.read_scalar(args[1])?.to_f32()?;
                 let c = this.read_scalar(args[2])?.to_f32()?;
+                let res = a.mul_add(b, c).value;
                 this.write_scalar(
-                    Scalar::from_f32(a * b + c),
+                    Scalar::from_f32(res),
                     dest,
                 )?;
             }
@@ -351,26 +379,29 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 let a = this.read_scalar(args[0])?.to_f64()?;
                 let b = this.read_scalar(args[1])?.to_f64()?;
                 let c = this.read_scalar(args[2])?.to_f64()?;
+                let res = a.mul_add(b, c).value;
                 this.write_scalar(
-                    Scalar::from_f64(a * b + c),
+                    Scalar::from_f64(res),
                     dest,
                 )?;
             }
 
             "powif32" => {
-                let f = this.read_scalar(args[0])?.to_f32()?;
+                // FIXME: Using host floats.
+                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
                 let i = this.read_scalar(args[1])?.to_i32()?;
                 this.write_scalar(
-                    Scalar::from_f32(f.powi(i)),
+                    Scalar::from_u32(f.powi(i).to_bits()),
                     dest,
                 )?;
             }
 
             "powif64" => {
-                let f = this.read_scalar(args[0])?.to_f64()?;
+                // FIXME: Using host floats.
+                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
                 let i = this.read_scalar(args[1])?.to_i32()?;
                 this.write_scalar(
-                    Scalar::from_f64(f.powi(i)),
+                    Scalar::from_u64(f.powi(i).to_bits()),
                     dest,
                 )?;
             }

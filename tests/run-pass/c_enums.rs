@@ -11,11 +11,13 @@ enum Signed {
 }
 
 fn foo() -> [u8; 3] {
-    [Foo::Bar as u8, Foo::Baz as u8, Foo::Quux as u8]
+    let baz = Foo::Baz; // let-expansion changes the MIR significantly
+    [Foo::Bar as u8, baz as u8, Foo::Quux as u8]
 }
 
 fn signed() -> [i8; 3] {
-    [Signed::Bar as i8, Signed::Baz as i8, Signed::Quux as i8]
+    let baz = Signed::Baz; // let-expansion changes the MIR significantly
+    [Signed::Bar as i8, baz as i8, Signed::Quux as i8]
 }
 
 fn unsafe_match() -> bool {

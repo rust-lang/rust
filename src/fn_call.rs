@@ -758,7 +758,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 this.machine.last_error = err;
             }
             "GetLastError" => {
-                this.write_scalar(Scalar::from_uint(this.machine.last_error, Size::from_bits(32)), dest)?;
+                this.write_scalar(Scalar::from_u32(this.machine.last_error), dest)?;
             }
 
             "AddVectoredExceptionHandler" => {
@@ -854,7 +854,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 };
                 // If there was no error, write back how much was written.
                 if let Some(n) = written {
-                    this.write_scalar(Scalar::from_uint(n, Size::from_bits(32)), written_place.into())?;
+                    this.write_scalar(Scalar::from_u32(n), written_place.into())?;
                 }
                 // Return whether this was a success.
                 this.write_scalar(
