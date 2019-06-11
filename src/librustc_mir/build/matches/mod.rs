@@ -1575,7 +1575,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Append `AscribeUserType` statements onto the end of `block`
     /// for each ascription
-    fn ascribe_types<'pat>(
+    fn ascribe_types(
         &mut self,
         block: BasicBlock,
         ascriptions: &[Ascription<'tcx>],

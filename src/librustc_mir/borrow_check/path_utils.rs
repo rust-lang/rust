@@ -10,7 +10,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 /// Returns `true` if the borrow represented by `kind` is
 /// allowed to be split into separate Reservation and
 /// Activation phases.
-pub(super) fn allow_two_phase_borrow<'a, 'tcx, 'gcx: 'tcx>(kind: BorrowKind) -> bool {
+pub(super) fn allow_two_phase_borrow(kind: BorrowKind) -> bool {
     kind.allows_two_phase_borrow()
 }
 

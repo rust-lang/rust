@@ -258,7 +258,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
     }
 }
 
-impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
+impl<'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
     /// Simulates mutation of a place.
     fn mutate_place(
         &mut self,
