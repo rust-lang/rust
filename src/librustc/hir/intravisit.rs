@@ -967,8 +967,7 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
     match statement.node {
         StmtKind::Local(ref local) => visitor.visit_local(local),
         StmtKind::Item(item) => visitor.visit_nested_item(item),
-        StmtKind::Expr(ref expression) |
-        StmtKind::Semi(ref expression) => {
+        StmtKind::Expr(ref expression) => {
             visitor.visit_expr(expression)
         }
     }

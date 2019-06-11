@@ -106,8 +106,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             hir::StmtKind::Item(_) => {
                 pred
             }
-            hir::StmtKind::Expr(ref expr) |
-            hir::StmtKind::Semi(ref expr) => {
+            hir::StmtKind::Expr(ref expr) => {
                 self.expr(&expr, pred)
             }
         };

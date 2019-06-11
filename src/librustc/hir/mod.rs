@@ -1205,11 +1205,8 @@ pub enum StmtKind {
     /// An item binding.
     Item(ItemId),
 
-    /// An expression without a trailing semi-colon (must have unit type).
+    /// An expression statement.
     Expr(P<Expr>),
-
-    /// An expression with a trailing semi-colon (may have any type).
-    Semi(P<Expr>),
 }
 
 impl StmtKind {
@@ -1217,8 +1214,7 @@ impl StmtKind {
         match *self {
             StmtKind::Local(ref l) => &l.attrs,
             StmtKind::Item(_) => &[],
-            StmtKind::Expr(ref e) |
-            StmtKind::Semi(ref e) => &e.attrs,
+            StmtKind::Expr(ref e) => &e.attrs,
         }
     }
 }

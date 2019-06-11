@@ -46,17 +46,19 @@ LL |     if x == E::V { field } {}
    |             |
    |             help: surround the struct literal with parenthesis: `(E::V { field })`
 
-error[E0308]: mismatched types
-  --> $DIR/struct-literal-variant-in-if.rs:10:20
+error[E0317]: if may be missing an else clause
+  --> $DIR/struct-literal-variant-in-if.rs:10:5
    |
-LL | fn test_E(x: E) {
-   |                 - help: try adding a return type: `-> bool`
-LL |     let field = true;
 LL |     if x == E::V { field } {}
-   |                    ^^^^^ expected (), found bool
+   |     ^^^^^^^^^^^^^^^-----^^
+   |     |              |
+   |     |              found here
+   |     expected (), found bool
    |
    = note: expected type `()`
               found type `bool`
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
 
 error[E0308]: mismatched types
   --> $DIR/struct-literal-variant-in-if.rs:21:20
@@ -69,5 +71,5 @@ LL |     let y: usize = ();
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0308, E0423.
+Some errors have detailed explanations: E0308, E0317, E0423.
 For more information about an error, try `rustc --explain E0308`.

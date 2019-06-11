@@ -9,7 +9,7 @@ fn test_E(x: E) {
     let field = true;
     if x == E::V { field } {}
     //~^ ERROR expected value, found struct variant `E::V`
-    //~| ERROR mismatched types
+    //~| ERROR if may be missing an else clause
     if x == E::I { field1: true, field2: 42 } {}
     //~^ ERROR struct literals are not allowed here
     if x == E::V { field: false } {}

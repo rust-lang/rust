@@ -804,8 +804,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                     );
                     visitor.cx.var_parent = visitor.cx.parent;
                 }
-                hir::StmtKind::Expr(..) |
-                hir::StmtKind::Semi(..) => {}
+                hir::StmtKind::Expr(..) => {}
             }
             visitor.visit_stmt(statement)
         }

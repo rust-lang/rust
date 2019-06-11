@@ -603,8 +603,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // only the fn body we were given.
             }
 
-            hir::StmtKind::Expr(ref expr) |
-            hir::StmtKind::Semi(ref expr) => {
+            hir::StmtKind::Expr(ref expr) => {
                 self.consume_expr(&expr);
             }
         }

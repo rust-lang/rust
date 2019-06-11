@@ -227,8 +227,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             }
             // Item statements are allowed
             hir::StmtKind::Item(..) => Promotable,
-            hir::StmtKind::Expr(ref box_expr) |
-            hir::StmtKind::Semi(ref box_expr) => {
+            hir::StmtKind::Expr(ref box_expr) => {
                 let _ = self.check_expr(box_expr);
                 NotPromotable
             }

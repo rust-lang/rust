@@ -15,10 +15,10 @@ pub mod raw {
             callback(path.as_ref();
             //~^ ERROR expected one of
             fs::create_dir_all(path.as_ref()).map(|()| true)
-            //~^ ERROR mismatched types
         } else {
             //~^ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
             Ok(false);
+            //~^ ERROR if and else have incompatible types
         }
 
         panic!();

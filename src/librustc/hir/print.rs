@@ -992,6 +992,7 @@ impl<'a> State<'a> {
         match st.node {
             hir::StmtKind::Local(ref loc) => {
                 self.print_local(loc.init.deref(), |this| this.print_local_decl(&loc))?;
+                self.s.word(";")?;
             }
             hir::StmtKind::Item(item) => {
                 self.ann.nested(self, Nested::Item(item))?
@@ -999,15 +1000,8 @@ impl<'a> State<'a> {
             hir::StmtKind::Expr(ref expr) => {
                 self.space_if_not_bol()?;
                 self.print_expr(&expr)?;
-            }
-            hir::StmtKind::Semi(ref expr) => {
-                self.space_if_not_bol()?;
-                self.print_expr(&expr)?;
                 self.s.word(";")?;
             }
-        }
-        if stmt_ends_with_semi(&st.node) {
-            self.s.word(";")?;
         }
         self.maybe_print_trailing_comment(st.span, None)
     }
@@ -2322,36 +2316,6 @@ impl<'a> State<'a> {
             hir::IsAuto::Yes => self.word_nbsp("auto"),
             hir::IsAuto::No => Ok(()),
         }
-    }
-}
-
-// Dup'ed from parse::classify, but adapted for the HIR.
-/// Does this expression require a semicolon to be treated
-/// as a statement? The negation of this: 'can this expression
-/// be used as a statement without a semicolon' -- is used
-/// as an early-bail-out in the parser so that, for instance,
-///     if true {...} else {...}
-///      |x| 5
-/// isn't parsed as (if true {...} else {...} | x) | 5
-fn expr_requires_semi_to_be_stmt(e: &hir::Expr) -> bool {
-    match e.node {
-        hir::ExprKind::Match(..) |
-        hir::ExprKind::Block(..) |
-        hir::ExprKind::While(..) |
-        hir::ExprKind::Loop(..) => false,
-        _ => true,
-    }
-}
-
-/// this statement requires a semicolon after it.
-/// note that in one case (stmt_semi), we've already
-/// seen the semicolon, and thus don't need another.
-fn stmt_ends_with_semi(stmt: &hir::StmtKind) -> bool {
-    match *stmt {
-        hir::StmtKind::Local(_) => true,
-        hir::StmtKind::Item(_) => false,
-        hir::StmtKind::Expr(ref e) => expr_requires_semi_to_be_stmt(&e),
-        hir::StmtKind::Semi(..) => false,
     }
 }
 

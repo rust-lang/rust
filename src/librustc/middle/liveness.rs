@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.define_bindings_in_pat(&local.pat, succ)
             }
             hir::StmtKind::Item(..) => succ,
-            hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
+            hir::StmtKind::Expr(ref expr) => {
                 self.propagate_through_expr(&expr, succ)
             }
         }

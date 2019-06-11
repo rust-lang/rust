@@ -4851,7 +4851,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.node {
             hir::StmtKind::Item(..) => return,
-            hir::StmtKind::Local(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
+            hir::StmtKind::Local(..) | hir::StmtKind::Expr(..) => {}
         }
 
         self.warn_if_unreachable(stmt.hir_id, stmt.span, "statement");
@@ -4869,10 +4869,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Ignore for now.
             hir::StmtKind::Item(_) => {}
             hir::StmtKind::Expr(ref expr) => {
-                // Check with expected type of `()`.
-                self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit());
-            }
-            hir::StmtKind::Semi(ref expr) => {
                 self.check_expr(&expr);
             }
         }
@@ -5289,7 +5285,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // taking the `;` off is enough to fix the error.
         let last_stmt = blk.stmts.last()?;
         let last_expr = match last_stmt.node {
-            hir::StmtKind::Semi(ref e) => e,
+            hir::StmtKind::Expr(ref e) => e,
             _ => return None,
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
