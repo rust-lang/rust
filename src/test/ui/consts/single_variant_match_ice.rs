@@ -15,7 +15,7 @@ impl Foo {
         use self::Foo::*;
 
         match *self {
-            Prob => 0x1, //~ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
+            Prob => 0x1, //~ ERROR loops and conditional expressions are not stable in const fn
         }
     }
 }
