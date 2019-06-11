@@ -12,7 +12,7 @@ use syntax::tokenstream;
 use syntax::parse::token;
 use syntax_pos::Span;
 
-pub fn expand_cfg<'cx>(cx: &mut ExtCtxt<'_>,
+pub fn expand_cfg(cx: &mut ExtCtxt<'_>,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
                        -> Box<dyn base::MacResult + 'static> {
