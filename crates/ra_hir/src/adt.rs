@@ -11,7 +11,7 @@ use ra_syntax::{
 
 use crate::{
     Name, AsName, Struct, Union, Enum, EnumVariant, Crate, AstDatabase,
-    HirDatabase, HirFileId, StructField, FieldSource, Source, HasSource,
+    HirDatabase, StructField, FieldSource, Source, HasSource,
     type_ref::TypeRef, DefDatabase,
 };
 
@@ -201,10 +201,7 @@ impl VariantDef {
 }
 
 impl StructField {
-    pub(crate) fn source_impl(
-        &self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, FieldSource) {
+    pub(crate) fn source_impl(&self, db: &(impl DefDatabase + AstDatabase)) -> Source<FieldSource> {
         let var_data = self.parent.variant_data(db);
         let fields = var_data.fields().unwrap();
         let ss;
@@ -229,12 +226,12 @@ impl StructField {
             }
             ast::StructKind::Unit => Vec::new(),
         };
-        let field = field_sources
+        let ast = field_sources
             .into_iter()
             .zip(fields.iter())
             .find(|(_syntax, (id, _))| *id == self.id)
             .unwrap()
             .0;
-        (file_id, field)
+        Source { file_id, ast }
     }
 }

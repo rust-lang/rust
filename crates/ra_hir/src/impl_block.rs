@@ -49,7 +49,7 @@ impl HasSource for ImplBlock {
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ImplBlock>> {
         let source_map = db.impls_in_module_with_source_map(self.module).1;
         let src = self.module.definition_source(db);
-        (src.file_id, source_map.get(&src.ast, self.impl_id)).into()
+        Source { file_id: src.file_id, ast: source_map.get(&src.ast, self.impl_id) }
     }
 }
 
@@ -64,13 +64,6 @@ impl ImplBlock {
 
     pub(crate) fn from_id(module: Module, impl_id: ImplId) -> ImplBlock {
         ImplBlock { module, impl_id }
-    }
-
-    /// Returns the syntax of the impl block
-    pub fn source(&self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ImplBlock>> {
-        let source_map = db.impls_in_module_with_source_map(self.module).1;
-        let src = self.module.definition_source(db);
-        (src.file_id, source_map.get(&src.ast, self.impl_id)).into()
     }
 
     pub fn id(&self) -> ImplId {
