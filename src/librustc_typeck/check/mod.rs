@@ -1794,25 +1794,39 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, def_id: DefId) {
     if !adt.repr.transparent() {
         return;
     }
+    let sp = tcx.sess.source_map().def_span(sp);
 
     if adt.is_enum() {
         if !tcx.features().transparent_enums {
-            emit_feature_err(&tcx.sess.parse_sess,
-                             sym::transparent_enums,
-                             sp,
-                             GateIssue::Language,
-                             "transparent enums are unstable");
+            emit_feature_err(
+                &tcx.sess.parse_sess,
+                sym::transparent_enums,
+                sp,
+                GateIssue::Language,
+                "transparent enums are unstable",
+            );
         }
         if adt.variants.len() != 1 {
             let variant_spans: Vec<_> = adt.variants.iter().map(|variant| {
                 tcx.hir().span_if_local(variant.def_id).unwrap()
             }).collect();
-            let mut err = struct_span_err!(tcx.sess, sp, E0731,
-                            "transparent enum needs exactly one variant, but has {}",
-                            adt.variants.len());
-            if !variant_spans.is_empty() {
-                err.span_note(variant_spans, &format!("the following variants exist on `{}`",
-                                                      tcx.def_path_str(def_id)));
+            let msg = format!(
+                "needs exactly one variant, but has {}",
+                adt.variants.len(),
+            );
+            let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
+            err.span_label(sp, &msg);
+            match &variant_spans[..] {
+                &[] => {},
+                &[ref start.., ref end] => {
+                    for variant_span in start {
+                        err.span_label(*variant_span, "");
+                    }
+                    err.span_label(*end, &format!(
+                        "too many variants in `{}`",
+                        tcx.def_path_str(def_id),
+                    ));
+                },
             }
             err.emit();
             if adt.variants.is_empty() {
@@ -1847,23 +1861,31 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, def_id: DefId) {
     if non_zst_count != 1 {
         let field_spans: Vec<_> = non_zst_fields.map(|(span, _zst, _align1)| span).collect();
 
-        let mut err = struct_span_err!(tcx.sess, sp, E0690,
-                         "{}transparent {} needs exactly one non-zero-sized field, but has {}",
-                         if adt.is_enum() { "the variant of a " } else { "" },
-                         adt.descr(),
-                         non_zst_count);
-        if !field_spans.is_empty() {
-            err.span_note(field_spans,
-                          &format!("the following non-zero-sized fields exist on `{}`:",
-                                   tcx.def_path_str(def_id)));
+        let msg = format!("needs exactly one non-zero-sized field, but has {}", non_zst_count);
+        let mut err = struct_span_err!(
+            tcx.sess,
+            sp,
+            E0690,
+            "{}transparent {} {}",
+            if adt.is_enum() { "the variant of a " } else { "" },
+            adt.descr(),
+            msg,
+        );
+        err.span_label(sp, &msg);
+        for sp in &field_spans {
+            err.span_label(*sp, "this field is non-zero-sized");
         }
         err.emit();
     }
     for (span, zst, align1) in field_infos {
         if zst && !align1 {
-            span_err!(tcx.sess, span, E0691,
-                      "zero-sized field in transparent {} has alignment larger than 1",
-                      adt.descr());
+            struct_span_err!(
+                tcx.sess,
+                span,
+                E0691,
+                "zero-sized field in transparent {} has alignment larger than 1",
+                adt.descr(),
+            ).span_label(span, "has alignment larger than 1").emit();
         }
     }
 }
