@@ -583,7 +583,7 @@ pub enum Primitive {
     Pointer
 }
 
-impl<'a, 'tcx> Primitive {
+impl Primitive {
     pub fn size<C: HasDataLayout>(self, cx: &C) -> Size {
         let dl = cx.data_layout();
 
