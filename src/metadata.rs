@@ -93,7 +93,12 @@ pub fn write_metadata<'a, 'gcx>(
     artifact.declare(".rustc", faerie::Decl::section(faerie::SectionKind::Data)).unwrap();
     artifact.define_with_symbols(".rustc", compressed, {
         let mut map = std::collections::BTreeMap::new();
-        map.insert(rustc::middle::exported_symbols::metadata_symbol_name(tcx), 0);
+        // FIXME implement faerie elf backend section custom symbols
+        // For MachO this is necessary to prevent the linker from throwing away the .rustc section,
+        // but for ELF it isn't.
+        if tcx.sess.target.target.options.is_like_osx {
+            map.insert(rustc::middle::exported_symbols::metadata_symbol_name(tcx), 0);
+        }
         map
     }).unwrap();
 

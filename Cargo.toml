@@ -41,8 +41,8 @@ object = "0.12.0"
 cranelift-simplejit = { git = "https://github.com/CraneStation/cranelift.git" }
 
 [patch.crates-io]
-faerie = { path = "../faerie" }
-object = { path = "../object" }
+faerie = { git = "https://github.com/m4b/faerie.git" }
+object = { git = "https://github.com/gimli-rs/object.git" }
 
 [profile.dev.overrides."*"]
 opt-level = 3
