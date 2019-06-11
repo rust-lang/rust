@@ -327,7 +327,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     //        }
     let sp = ignored_span(cx, DUMMY_SP);
     let ecx = &cx.ext_cx;
-    let test_id = ecx.ident_of("test").gensym();
+    let test_id = Ident::with_empty_ctxt(sym::test);
 
     // test::test_main_static(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or(
@@ -350,7 +350,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let test_extern_stmt = ecx.stmt_item(sp, ecx.item(sp,
         test_id,
         vec![],
-        ast::ItemKind::ExternCrate(Some(sym::test))
+        ast::ItemKind::ExternCrate(None)
     ));
 
     // pub fn main() { ... }

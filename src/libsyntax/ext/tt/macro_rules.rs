@@ -249,8 +249,9 @@ pub fn compile(
     def: &ast::Item,
     edition: Edition
 ) -> SyntaxExtension {
-    let lhs_nm = ast::Ident::from_str("lhs").gensym();
-    let rhs_nm = ast::Ident::from_str("rhs").gensym();
+    let lhs_nm = ast::Ident::new(sym::lhs, def.span);
+    let rhs_nm = ast::Ident::new(sym::rhs, def.span);
+    let tt_spec = ast::Ident::new(sym::tt, def.span);
 
     // Parse the macro_rules! invocation
     let body = match def.node {
@@ -266,9 +267,9 @@ pub fn compile(
     let argument_gram = vec![
         quoted::TokenTree::Sequence(DelimSpan::dummy(), Lrc::new(quoted::SequenceRepetition {
             tts: vec![
-                quoted::TokenTree::MetaVarDecl(def.span, lhs_nm, ast::Ident::from_str("tt")),
+                quoted::TokenTree::MetaVarDecl(def.span, lhs_nm, tt_spec),
                 quoted::TokenTree::token(token::FatArrow, def.span),
-                quoted::TokenTree::MetaVarDecl(def.span, rhs_nm, ast::Ident::from_str("tt")),
+                quoted::TokenTree::MetaVarDecl(def.span, rhs_nm, tt_spec),
             ],
             separator: Some(Token::new(
                 if body.legacy { token::Semi } else { token::Comma }, def.span
@@ -1115,10 +1116,9 @@ fn has_legal_fragment_specifier(sess: &ParseSess,
                                 tok: &quoted::TokenTree) -> Result<(), String> {
     debug!("has_legal_fragment_specifier({:?})", tok);
     if let quoted::TokenTree::MetaVarDecl(_, _, ref frag_spec) = *tok {
-        let frag_name = frag_spec.as_str();
         let frag_span = tok.span();
-        if !is_legal_fragment_specifier(sess, features, attrs, &frag_name, frag_span) {
-            return Err(frag_name.to_string());
+        if !is_legal_fragment_specifier(sess, features, attrs, frag_spec.name, frag_span) {
+            return Err(frag_spec.to_string());
         }
     }
     Ok(())
@@ -1127,7 +1127,7 @@ fn has_legal_fragment_specifier(sess: &ParseSess,
 fn is_legal_fragment_specifier(_sess: &ParseSess,
                                _features: &Features,
                                _attrs: &[ast::Attribute],
-                               frag_name: &str,
+                               frag_name: Symbol,
                                _frag_span: Span) -> bool {
     /*
      * If new fragment specifiers are invented in nightly, `_sess`,
@@ -1136,9 +1136,9 @@ fn is_legal_fragment_specifier(_sess: &ParseSess,
      * this function.
      */
     match frag_name {
-        "item" | "block" | "stmt" | "expr" | "pat" | "lifetime" |
-        "path" | "ty" | "ident" | "meta" | "tt" | "vis" | "literal" |
-        "" => true,
+        sym::item | sym::block | sym::stmt | sym::expr | sym::pat |
+        sym::lifetime | sym::path | sym::ty | sym::ident | sym::meta | sym::tt |
+        sym::vis | sym::literal | kw::Invalid => true,
         _ => false,
     }
 }
