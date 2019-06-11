@@ -44,6 +44,7 @@ mod pretty_clif;
 mod trap;
 mod unimpl;
 mod unsize;
+mod value_and_place;
 mod vtable;
 
 mod prelude {
@@ -93,6 +94,7 @@ mod prelude {
     pub use crate::debuginfo::{DebugContext, FunctionDebugContext};
     pub use crate::trap::*;
     pub use crate::unimpl::{unimpl, with_unimpl_span};
+    pub use crate::value_and_place::{CValue, CPlace};
     pub use crate::{Caches, CodegenCx};
 
     pub struct PrintOnPanic<F: Fn() -> String>(pub F);
