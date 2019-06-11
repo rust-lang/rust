@@ -1764,7 +1764,7 @@ impl DocFolder for Cache {
     }
 }
 
-impl<'a> Cache {
+impl Cache {
     fn generics(&mut self, generics: &clean::Generics) {
         for param in &generics.params {
             match param.kind {
