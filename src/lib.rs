@@ -1,6 +1,7 @@
 #![feature(rustc_private, never_type, decl_macro)]
 #![allow(intra_doc_link_resolution_failure)]
 
+extern crate flate2;
 extern crate rustc;
 extern crate rustc_allocator;
 extern crate rustc_codegen_ssa;

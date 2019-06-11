@@ -98,7 +98,7 @@ fn run_jit<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, log: &mut Option<File>) ->
 fn run_aot<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     metadata: EncodedMetadata,
-    _need_metadata_module: bool,
+    need_metadata_module: bool,
     log: &mut Option<File>,
 ) -> Box<CodegenResults> {
     let new_module = |name: String| {
@@ -166,6 +166,37 @@ fn run_aot<'a, 'tcx: 'a>(
     rustc_incremental::save_dep_graph(tcx);
     rustc_incremental::finalize_session_directory(tcx.sess, tcx.crate_hash(LOCAL_CRATE));
 
+    let metadata_module = if need_metadata_module {
+        use rustc::mir::mono::CodegenUnitNameBuilder;
+
+        let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
+        let metadata_cgu_name = cgu_name_builder
+            .build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata"))
+            .as_str()
+            .to_string();
+
+        let mut metadata_artifact =
+            faerie::Artifact::new(crate::build_isa(tcx.sess).triple().clone(), metadata_cgu_name.clone());
+        crate::metadata::write_metadata(tcx, &mut metadata_artifact);
+
+        let tmp_file = tcx
+            .output_filenames(LOCAL_CRATE)
+            .temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+
+        let obj = metadata_artifact.emit().unwrap();
+        std::fs::write(&tmp_file, obj).unwrap();
+
+        Some(CompiledModule {
+            name: metadata_cgu_name,
+            kind: ModuleKind::Metadata,
+            object: Some(tmp_file),
+            bytecode: None,
+            bytecode_compressed: None,
+        })
+    } else {
+        None
+    };
+
     Box::new(CodegenResults {
         crate_name: tcx.crate_name(LOCAL_CRATE),
         modules: vec![emit_module(
@@ -184,13 +215,7 @@ fn run_aot<'a, 'tcx: 'a>(
         } else {
             None
         },
-        metadata_module: Some(CompiledModule {
-            name: "dummy_metadata".to_string(),
-            kind: ModuleKind::Metadata,
-            object: None,
-            bytecode: None,
-            bytecode_compressed: None,
-        }),
+        metadata_module,
         crate_hash: tcx.crate_hash(LOCAL_CRATE),
         metadata,
         windows_subsystem: None, // Windows is not yet supported

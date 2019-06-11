@@ -191,7 +191,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         let _: Result<()> = sections.for_each_mut(|id, section| {
             if !section.writer.slice().is_empty() {
                 artifact
-                    .declare_with(id.name(), Decl::debug_section(), section.writer.take())
+                    .declare_with(id.name(), Decl::section(SectionKind::Debug), section.writer.take())
                     .unwrap();
             }
             Ok(())

@@ -25,6 +25,7 @@ libc = "0.2.53"
 tempfile = "3.0.7"
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 indexmap = "1.0.2"
+object = "0.12.0"
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/CraneStation/cranelift.git"]
@@ -38,6 +39,10 @@ indexmap = "1.0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cranelift-simplejit = { git = "https://github.com/CraneStation/cranelift.git" }
+
+[patch.crates-io]
+faerie = { git = "https://github.com/m4b/faerie.git" }
+object = { git = "https://github.com/gimli-rs/object.git" }
 
 [profile.dev.overrides."*"]
 opt-level = 3
