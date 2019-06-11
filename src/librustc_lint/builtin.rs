@@ -96,7 +96,7 @@ declare_lint! {
 declare_lint_pass!(BoxPointers => [BOX_POINTERS]);
 
 impl BoxPointers {
-    fn check_heap_type<'a, 'tcx>(&self, cx: &LateContext<'_, '_>, span: Span, ty: Ty<'_>) {
+    fn check_heap_type(&self, cx: &LateContext<'_, '_>, span: Span, ty: Ty<'_>) {
         for leaf_ty in ty.walk() {
             if leaf_ty.is_box() {
                 let m = format!("type uses owned (Box type) pointers: {}", ty);

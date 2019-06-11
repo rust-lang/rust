@@ -202,7 +202,7 @@ fn report_bin_hex_error(
 //  - `uX` => `uY`
 //
 // No suggestion for: `isize`, `usize`.
-fn get_type_suggestion<'a>(
+fn get_type_suggestion(
     t: Ty<'_>,
     val: u128,
     negative: bool,
