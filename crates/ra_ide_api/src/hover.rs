@@ -144,12 +144,12 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                         res.extend(hover_text(it.doc_comment_text(), it.short_label()))
                     }
                     hir::ModuleDef::Enum(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                        let src = it.source(db);
+                        res.extend(hover_text(src.ast.doc_comment_text(), src.ast.short_label()))
                     }
                     hir::ModuleDef::EnumVariant(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                        let src = it.source(db);
+                        res.extend(hover_text(src.ast.doc_comment_text(), src.ast.short_label()))
                     }
                     hir::ModuleDef::Const(it) => {
                         let it = it.source(db).1;
@@ -187,8 +187,11 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                             res.extend(hover_text(it.doc_comment_text(), it.short_label()))
                         }
                         hir::AdtDef::Enum(it) => {
-                            let it = it.source(db).1;
-                            res.extend(hover_text(it.doc_comment_text(), it.short_label()))
+                            let src = it.source(db);
+                            res.extend(hover_text(
+                                src.ast.doc_comment_text(),
+                                src.ast.short_label(),
+                            ))
                         }
                     }
                 }

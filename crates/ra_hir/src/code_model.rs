@@ -456,11 +456,8 @@ pub struct Enum {
 }
 
 impl Enum {
-    pub fn source(
-        self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, TreeArc<ast::EnumDef>) {
-        self.id.source(db)
+    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::EnumDef>> {
+        self.id.source(db).into()
     }
 
     pub fn module(self, db: &impl HirDatabase) -> Module {
@@ -509,7 +506,7 @@ impl EnumVariant {
     pub fn source(
         &self,
         db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, TreeArc<ast::EnumVariant>) {
+    ) -> Source<TreeArc<ast::EnumVariant>> {
         self.source_impl(db)
     }
     pub fn module(&self, db: &impl HirDatabase) -> Module {
