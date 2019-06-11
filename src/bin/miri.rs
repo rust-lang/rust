@@ -100,11 +100,9 @@ fn init_late_loggers() {
     }
 }
 
-fn find_sysroot() -> String {
-    if let Ok(sysroot) = std::env::var("MIRI_SYSROOT") {
-        return sysroot;
-    }
-
+/// Returns the "default sysroot" that Miri will use if no `--sysroot` flag is set.
+/// Should be a compile-time constant.
+fn compile_time_sysroot() -> String {
     // Taken from PR <https://github.com/Manishearth/rust-clippy/pull/911>.
     let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
@@ -167,12 +165,16 @@ fn main() {
         }
     }
 
-    // Determine sysroot and let rustc know about it.
-    let sysroot_flag = String::from("--sysroot");
+    // Determine sysroot.
+    let sysroot_flag = "--sysroot".to_string();
     if !rustc_args.contains(&sysroot_flag) {
+        // We need to *always* set a --sysroot, as the "default" rustc uses is
+        // somewhere in the directory miri was built in.
+        // If no --sysroot is given, fall back to env vars that are read at *compile-time*.
         rustc_args.push(sysroot_flag);
-        rustc_args.push(find_sysroot());
+        rustc_args.push(compile_time_sysroot());
     }
+
     // Finally, add the default flags all the way in the beginning, but after the binary name.
     rustc_args.splice(1..1, miri::miri_default_args().iter().map(ToString::to_string));
 

@@ -25,7 +25,15 @@ fn rustc_lib_path() -> PathBuf {
     option_env!("RUSTC_LIB_PATH").unwrap().into()
 }
 
-fn mk_config(mode: &str) -> compiletest::common::ConfigWithTemp {
+fn run_tests(mode: &str, path: &str, target: &str, mut flags: Vec<String>) {
+    // Some flags we always want.
+    flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
+    flags.push("--edition 2018".to_owned());
+    if let Ok(sysroot) = std::env::var("MIRI_SYSROOT") {
+        flags.push(format!("--sysroot {}", sysroot));
+    }
+
+    // The rest of the configuration.
     let mut config = compiletest::Config::default().tempdir();
     config.mode = mode.parse().expect("Invalid mode");
     config.rustc_path = miri_path();
@@ -35,7 +43,10 @@ fn mk_config(mode: &str) -> compiletest::common::ConfigWithTemp {
     }
     config.filter = env::args().nth(1);
     config.host = get_host();
-    config
+    config.src_base = PathBuf::from(path);
+    config.target = target.to_owned();
+    config.target_rustcflags = Some(flags.join(" "));
+    compiletest::run_tests(&config);
 }
 
 fn compile_fail(path: &str, target: &str, opt: bool) {
@@ -48,8 +59,6 @@ fn compile_fail(path: &str, target: &str, opt: bool) {
     ).green().bold());
 
     let mut flags = Vec::new();
-    flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
-    flags.push("--edition 2018".to_owned());
     if opt {
         // Optimizing too aggressivley makes UB detection harder, but test at least
         // the default value.
@@ -57,11 +66,7 @@ fn compile_fail(path: &str, target: &str, opt: bool) {
         flags.push("-Zmir-opt-level=1".to_owned());
     }
 
-    let mut config = mk_config("compile-fail");
-    config.src_base = PathBuf::from(path);
-    config.target = target.to_owned();
-    config.target_rustcflags = Some(flags.join(" "));
-    compiletest::run_tests(&config);
+    run_tests("compile-fail", path, target, flags);
 }
 
 fn miri_pass(path: &str, target: &str, opt: bool) {
@@ -74,17 +79,11 @@ fn miri_pass(path: &str, target: &str, opt: bool) {
     ).green().bold());
 
     let mut flags = Vec::new();
-    flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
-    flags.push("--edition 2018".to_owned());
     if opt {
         flags.push("-Zmir-opt-level=3".to_owned());
     }
 
-    let mut config = mk_config("ui");
-    config.src_base = PathBuf::from(path);
-    config.target = target.to_owned();
-    config.target_rustcflags = Some(flags.join(" "));
-    compiletest::run_tests(&config);
+    run_tests("ui", path, target, flags);
 }
 
 fn get_host() -> String {
