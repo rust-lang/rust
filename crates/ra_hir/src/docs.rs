@@ -85,7 +85,7 @@ pub(crate) fn documentation_query(
         DocDef::Union(it) => docs_from_ast(&*it.source(db).ast),
         DocDef::Trait(it) => docs_from_ast(&*it.source(db).ast),
         DocDef::TypeAlias(it) => docs_from_ast(&*it.source(db).ast),
-        DocDef::MacroDef(it) => docs_from_ast(&*it.source(db).1),
+        DocDef::MacroDef(it) => docs_from_ast(&*it.source(db).ast),
     }
 }
 

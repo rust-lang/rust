@@ -98,8 +98,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         match classify_name_ref(db, &analyzer, name_ref) {
             Some(Method(it)) => res.extend(from_def_source(db, it)),
             Some(Macro(it)) => {
-                let it = it.source(db).1;
-                res.extend(hover_text(it.doc_comment_text(), None));
+                let src = it.source(db);
+                res.extend(hover_text(src.ast.doc_comment_text(), None));
             }
             Some(FieldAccess(it)) => {
                 let it = it.source(db).1;

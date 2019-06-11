@@ -1003,12 +1003,17 @@ pub struct MacroDef {
     pub(crate) id: MacroDefId,
 }
 
+impl HasSource for MacroDef {
+    type Ast = TreeArc<ast::MacroCall>;
+
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::MacroCall>> {
+        (self.id.0.file_id(), self.id.0.to_node(db)).into()
+    }
+}
+
 impl MacroDef {
-    pub fn source(
-        &self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, TreeArc<ast::MacroCall>) {
-        (self.id.0.file_id(), self.id.0.to_node(db))
+    pub fn source(&self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::MacroCall>> {
+        (self.id.0.file_id(), self.id.0.to_node(db)).into()
     }
 }
 
