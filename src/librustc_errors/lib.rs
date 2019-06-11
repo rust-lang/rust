@@ -1,5 +1,10 @@
+//! Diagnostics creation and emission for `rustc`.
+//!
+//! This module contains the code for creating and emitting diagnostics.
+
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(crate_visibility_modifier)]
 #![allow(unused_attributes)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
