@@ -94,6 +94,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
         let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
 
+        let mut no_fallback = false;
+
         match classify_name_ref(db, &analyzer, name_ref) {
             Some(Method(it)) => {
                 let it = it.source(db).1;
@@ -190,11 +192,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                     }
                 }
             }
-            Some(Pat(_)) => {
-                res.extend(None);
-            }
-            Some(SelfParam(_)) => {
-                res.extend(None);
+            Some(Pat(_)) | Some(SelfParam(_)) => {
+                // Hover for these shows type names
+                no_fallback = true;
             }
             Some(GenericParam(_)) => {
                 // FIXME: Hover for generic param
@@ -202,7 +202,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             None => {}
         }
 
-        if res.is_empty() {
+        if res.is_empty() && !no_fallback {
             // Fallback index based approach:
             let symbols = crate::symbol_index::index_resolve(db, name_ref);
             for sym in symbols {
@@ -712,6 +712,23 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("enum Thing"));
+        assert_eq!(hover.info.is_exact(), true);
+    }
+
+    #[test]
+    fn test_hover_shadowing_pat() {
+        let (analysis, position) = single_file_with_position(
+            "
+            fn x() {}
+
+            fn y() {
+                let x = 0i32;
+                x<|>;
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
         assert_eq!(hover.info.is_exact(), true);
     }
 }
