@@ -13,7 +13,6 @@ use rustc_interface::interface;
 use rustc_driver::abort_on_err;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
-use rustc_target::spec::TargetTriple;
 
 use syntax::source_map;
 use syntax::attr;
@@ -313,7 +312,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         lint_cap: Some(lint_cap.unwrap_or_else(|| lint::Forbid)),
         cg: codegen_options,
         externs,
-        target_triple: target.unwrap_or(host_triple),
+        target_triple: target,
         // Ensure that rustdoc works even if rustc is feature-staged
         unstable_features: UnstableFeatures::Allow,
         actually_rustdoc: true,

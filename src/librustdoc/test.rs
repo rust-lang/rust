@@ -60,7 +60,6 @@ pub fn run(options: Options) -> i32 {
         edition: options.edition,
         ..config::Options::default()
     };
-    options.target.as_ref().map(|t| { sessopts.target_triple = t.clone() });
     let config = interface::Config {
         opts: sessopts,
         crate_cfg: config::parse_cfgspecs(options.cfgs.clone()),
@@ -184,7 +183,7 @@ fn run_test(
     as_test_harness: bool,
     runtool: Option<String>,
     runtool_args: Vec<String>,
-    target: Option<TargetTriple>,
+    target: TargetTriple,
     compile_fail: bool,
     mut error_codes: Vec<String>,
     opts: &TestOptions,
@@ -680,7 +679,7 @@ impl Tester for Collector {
         let runtool = self.runtool.clone();
         let runtool_args = self.runtool_args.clone();
         let target = self.target.clone();
-        let target_str = target.as_ref().map(|t| t.to_string());
+        let target_str = target.to_string();
 
         debug!("creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
@@ -690,8 +689,7 @@ impl Tester for Collector {
                     Ignore::All => true,
                     Ignore::None => false,
                     Ignore::Some(ref ignores) => {
-                        target_str.map_or(false,
-                                          |s| ignores.iter().any(|t| s.contains(t)))
+                        ignores.iter().any(|s| target_str.contains(s))
                     },
                 },
                 // compiler failures are test failures
