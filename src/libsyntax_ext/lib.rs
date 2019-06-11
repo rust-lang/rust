@@ -42,7 +42,9 @@ pub mod proc_macro_impl;
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
-use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension, MultiModifier};
+
+use syntax::ext::base::{MacroExpanderFn, NamedSyntaxExtension, SyntaxExtension};
+use syntax::ext::hygiene::Transparency;
 use syntax::edition::Edition;
 use syntax::symbol::{sym, Symbol};
 
@@ -57,9 +59,10 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
     macro_rules! register {
         ($( $name:ident: $f:expr, )*) => { $(
             register(Symbol::intern(stringify!($name)),
-                     NormalTT {
+                     SyntaxExtension::LegacyBang {
                         expander: Box::new($f as MacroExpanderFn),
                         def_info: None,
+                        transparency: Transparency::SemiTransparent,
                         allow_internal_unstable: None,
                         allow_internal_unsafe: false,
                         local_inner_macros: false,
@@ -94,15 +97,16 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         assert: assert::expand_assert,
     }
 
-    register(sym::test_case, MultiModifier(Box::new(test_case::expand)));
-    register(sym::test, MultiModifier(Box::new(test::expand_test)));
-    register(sym::bench, MultiModifier(Box::new(test::expand_bench)));
+    register(sym::test_case, SyntaxExtension::LegacyAttr(Box::new(test_case::expand)));
+    register(sym::test, SyntaxExtension::LegacyAttr(Box::new(test::expand_test)));
+    register(sym::bench, SyntaxExtension::LegacyAttr(Box::new(test::expand_bench)));
 
     // format_args uses `unstable` things internally.
     register(Symbol::intern("format_args"),
-             NormalTT {
+             SyntaxExtension::LegacyBang {
                 expander: Box::new(format::expand_format_args),
                 def_info: None,
+                transparency: Transparency::SemiTransparent,
                 allow_internal_unstable: Some(vec![sym::fmt_internals].into()),
                 allow_internal_unsafe: false,
                 local_inner_macros: false,
@@ -110,9 +114,10 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                 edition,
             });
     register(sym::format_args_nl,
-             NormalTT {
+             SyntaxExtension::LegacyBang {
                  expander: Box::new(format::expand_format_args_nl),
                  def_info: None,
+                 transparency: Transparency::SemiTransparent,
                  allow_internal_unstable: Some(vec![sym::fmt_internals].into()),
                  allow_internal_unsafe: false,
                  local_inner_macros: false,

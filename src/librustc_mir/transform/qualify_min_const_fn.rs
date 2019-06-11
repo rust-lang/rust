@@ -299,7 +299,7 @@ fn check_terminator(
 
         TerminatorKind::FalseEdges { .. } | TerminatorKind::SwitchInt { .. } => Err((
             span,
-            "`if`, `match`, `&&` and `||` are not stable in const fn".into(),
+            "loops and conditional expressions are not stable in const fn".into(),
         )),
         | TerminatorKind::Abort | TerminatorKind::Unreachable => {
             Err((span, "const fn with unreachable code is not stable".into()))

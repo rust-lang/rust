@@ -2504,6 +2504,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
+    /// Returns the `DefId` of the constant parameter that the provided expression is a path to.
+    pub fn const_param_def_id(&self, hir_c: &hir::AnonConst) -> Option<DefId> {
+        AstConv::const_param_def_id(self, &self.tcx.hir().body(hir_c.body).value)
+    }
+
     pub fn to_const(&self, ast_c: &hir::AnonConst, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
         AstConv::ast_const_to_const(self, ast_c, ty)
     }
@@ -4479,19 +4484,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             ExprKind::Repeat(ref element, ref count) => {
                 let count_def_id = tcx.hir().local_def_id_from_hir_id(count.hir_id);
-                let param_env = ty::ParamEnv::empty();
-                let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), count_def_id);
-                let instance = ty::Instance::resolve(
-                    tcx.global_tcx(),
-                    param_env,
-                    count_def_id,
-                    substs,
-                ).unwrap();
-                let global_id = GlobalId {
-                    instance,
-                    promoted: None
+                let count = if self.const_param_def_id(count).is_some() {
+                    Ok(self.to_const(count, self.tcx.type_of(count_def_id)))
+                } else {
+                    let param_env = ty::ParamEnv::empty();
+                    let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), count_def_id);
+                    let instance = ty::Instance::resolve(
+                        tcx.global_tcx(),
+                        param_env,
+                        count_def_id,
+                        substs,
+                    ).unwrap();
+                    let global_id = GlobalId {
+                        instance,
+                        promoted: None
+                    };
+
+                    tcx.const_eval(param_env.and(global_id))
                 };
-                let count = tcx.const_eval(param_env.and(global_id));
 
                 let uty = match expected {
                     ExpectHasType(uty) => {
