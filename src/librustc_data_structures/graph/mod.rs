@@ -5,6 +5,7 @@ pub mod implementation;
 pub mod iterate;
 mod reference;
 pub mod scc;
+pub mod vec_graph;
 
 #[cfg(test)]
 mod test;
@@ -15,6 +16,10 @@ pub trait DirectedGraph {
 
 pub trait WithNumNodes: DirectedGraph {
     fn num_nodes(&self) -> usize;
+}
+
+pub trait WithNumEdges: DirectedGraph {
+    fn num_edges(&self) -> usize;
 }
 
 pub trait WithSuccessors: DirectedGraph

@@ -4,7 +4,8 @@
 //! O(n) time.
 
 use crate::fx::FxHashSet;
-use crate::graph::{DirectedGraph, WithNumNodes, WithSuccessors, GraphSuccessors};
+use crate::graph::{DirectedGraph, WithNumNodes, WithNumEdges, WithSuccessors, GraphSuccessors};
+use crate::graph::vec_graph::VecGraph;
 use crate::indexed_vec::{Idx, IndexVec};
 use std::ops::Range;
 
@@ -58,6 +59,18 @@ impl<N: Idx, S: Idx> Sccs<N, S> {
     pub fn successors(&self, scc: S) -> &[S] {
         self.scc_data.successors(scc)
     }
+
+    /// Construct the reverse graph of the SCC graph.
+    pub fn reverse(&self) -> VecGraph<S> {
+        VecGraph::new(
+            self.num_sccs(),
+            self.all_sccs()
+                .flat_map(|source| self.successors(source).iter().map(move |&target| {
+                    (target, source)
+                }))
+                .collect(),
+        )
+    }
 }
 
 impl<N: Idx, S: Idx> DirectedGraph for Sccs<N, S> {
@@ -67,6 +80,12 @@ impl<N: Idx, S: Idx> DirectedGraph for Sccs<N, S> {
 impl<N: Idx, S: Idx> WithNumNodes for Sccs<N, S> {
     fn num_nodes(&self) -> usize {
         self.num_sccs()
+    }
+}
+
+impl<N: Idx, S: Idx> WithNumEdges for Sccs<N, S> {
+    fn num_edges(&self) -> usize {
+        self.scc_data.all_successors.len()
     }
 }
 
