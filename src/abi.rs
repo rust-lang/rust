@@ -330,7 +330,7 @@ fn local_place<'a, 'tcx: 'a>(
         }
 
         // Take stack_addr in advance to avoid many duplicate instructions
-        CPlace::Addr(place.to_addr(fx), None, layout)
+        CPlace::for_addr(place.to_addr(fx), layout)
     };
 
     let prev_place = fx.local_map.insert(local, place);
@@ -471,7 +471,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
         PassMode::ByRef => {
             fx.local_map.insert(
                 RETURN_PLACE,
-                CPlace::Addr(ret_param.unwrap(), None, ret_layout),
+                CPlace::for_addr(ret_param.unwrap(), ret_layout),
             );
         }
     }

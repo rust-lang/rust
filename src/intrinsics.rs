@@ -144,7 +144,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         discriminant_value, (c val) {
             let pointee_layout = fx.layout_of(val.layout().ty.builtin_deref(true).unwrap().ty);
-            let place = CPlace::Addr(val.load_scalar(fx), None, pointee_layout);
+            let place = CPlace::for_addr(val.load_scalar(fx), pointee_layout);
             let discr = crate::base::trans_get_discriminant(fx, place, ret.layout());
             ret.write_cvalue(fx, discr);
         };
@@ -426,7 +426,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             ret.write_cvalue(fx, val);
         };
         _ if intrinsic.starts_with("atomic_store"), (v ptr, c val) {
-            let dest = CPlace::Addr(ptr, None, val.layout());
+            let dest = CPlace::for_addr(ptr, val.layout());
             dest.write_cvalue(fx, val);
         };
         _ if intrinsic.starts_with("atomic_xchg"), <T> (v ptr, c src) {
@@ -436,7 +436,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             ret.write_cvalue(fx, CValue::by_val(old, fx.layout_of(T)));
 
             // Write new
-            let dest = CPlace::Addr(ptr, None, src.layout());
+            let dest = CPlace::for_addr(ptr, src.layout());
             dest.write_cvalue(fx, src);
         };
         _ if intrinsic.starts_with("atomic_cxchg"), <T> (v ptr, v test_old, v new) { // both atomic_cxchg_* and atomic_cxchgweak_*

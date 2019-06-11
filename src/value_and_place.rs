@@ -219,6 +219,14 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         CPlace::Var(local, layout)
     }
 
+    pub fn for_addr(addr: Value, layout: TyLayout<'tcx>) -> CPlace<'tcx> {
+        CPlace::Addr(addr, None, layout)
+    }
+
+    pub fn for_addr_with_extra(addr: Value, extra: Value, layout: TyLayout<'tcx>) -> CPlace<'tcx> {
+        CPlace::Addr(addr, Some(extra), layout)
+    }
+
     pub fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CValue<'tcx> {
         match self {
             CPlace::Var(var, layout) => CValue::ByVal(fx.bcx.use_var(mir_var(var)), layout),

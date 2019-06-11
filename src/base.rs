@@ -538,7 +538,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
 
                         // FIXME avoid forcing to stack
                         let place =
-                            CPlace::Addr(operand.force_stack(fx), None, operand.layout());
+                            CPlace::for_addr(operand.force_stack(fx), operand.layout());
                         let discr = trans_get_discriminant(fx, place, fx.layout_of(to_ty));
                         lval.write_cvalue(fx, discr);
                     } else {
@@ -1162,9 +1162,8 @@ pub fn trans_place<'a, 'tcx: 'a>(
                             let elem_layout = fx.layout_of(elem_ty);
                             let ptr = base.to_addr(fx);
                             let len = crate::constant::force_eval_const(fx, len).unwrap_usize(fx.tcx);
-                            CPlace::Addr(
+                            CPlace::for_addr(
                                 fx.bcx.ins().iadd_imm(ptr, elem_layout.size.bytes() as i64 * from as i64),
-                                None,
                                 fx.layout_of(fx.tcx.mk_array(elem_ty, len - from as u64 - to as u64)),
                             )
                         }
@@ -1172,9 +1171,9 @@ pub fn trans_place<'a, 'tcx: 'a>(
                             let elem_layout = fx.layout_of(elem_ty);
                             let (ptr, len) = base.to_addr_maybe_unsized(fx);
                             let len = len.unwrap();
-                            CPlace::Addr(
+                            CPlace::for_addr_with_extra(
                                 fx.bcx.ins().iadd_imm(ptr, elem_layout.size.bytes() as i64 * from as i64),
-                                Some(fx.bcx.ins().iadd_imm(len, -(from as i64 + to as i64))),
+                                fx.bcx.ins().iadd_imm(len, -(from as i64 + to as i64)),
                                 base.layout(),
                             )
                         }

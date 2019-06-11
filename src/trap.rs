@@ -49,5 +49,5 @@ pub fn trap_unreachable_ret_place<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl crane
     let true_ = fx.bcx.ins().iconst(types::I32, 1);
     fx.bcx.ins().trapnz(true_, TrapCode::User(!0));
     let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
-    CPlace::Addr(zero, None, dest_layout)
+    CPlace::for_addr(zero, dest_layout)
 }
