@@ -540,6 +540,8 @@ fn validate_and_turn_into_const<'tcx>(
             )?;
         }
         // Now that we validated, turn this into a proper constant.
+        // Statics/promoteds are always `ByRef`, for the rest `op_to_const` decides
+        // whether they become immediates.
         let def_id = cid.instance.def.def_id();
         if tcx.is_static(def_id) || cid.promoted.is_some() {
             let ptr = mplace.ptr.to_ptr()?;
