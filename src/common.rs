@@ -109,6 +109,18 @@ pub enum CValue<'tcx> {
 }
 
 impl<'tcx> CValue<'tcx> {
+    pub fn by_ref(value: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
+        CValue::ByRef(value, layout)
+    }
+
+    pub fn by_val(value: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
+        CValue::ByVal(value, layout)
+    }
+
+    pub fn by_val_pair(value: Value, extra: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
+        CValue::ByValPair(value, extra, layout)
+    }
+
     pub fn layout(&self) -> TyLayout<'tcx> {
         match *self {
             CValue::ByRef(_, layout)
@@ -257,6 +269,10 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
+    pub fn no_place(layout: TyLayout<'tcx>) -> CPlace<'tcx> {
+        CPlace::NoPlace(layout)
+    }
+
     pub fn new_stack_slot(
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         ty: Ty<'tcx>,
@@ -273,6 +289,16 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             offset: None,
         });
         CPlace::Stack(stack_slot, layout)
+    }
+
+    pub fn new_var(
+        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        local: Local,
+        layout: TyLayout<'tcx>,
+    ) -> CPlace<'tcx> {
+        fx.bcx
+            .declare_var(mir_var(local), fx.clif_type(layout.ty).unwrap());
+        CPlace::Var(local, layout)
     }
 
     pub fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CValue<'tcx> {

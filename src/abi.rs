@@ -223,9 +223,9 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             Some(self.clif_type(return_ty).unwrap())
         };
         if let Some(val) = self.lib_call(name, input_tys, return_ty, &args) {
-            CValue::ByVal(val, return_layout)
+            CValue::by_val(val, return_layout)
         } else {
-            CValue::ByRef(
+            CValue::by_ref(
                 self.bcx
                     .ins()
                     .iconst(self.pointer_type, self.pointer_type.bytes() as i64),
@@ -291,9 +291,7 @@ fn local_place<'a, 'tcx: 'a>(
     is_ssa: bool,
 ) -> CPlace<'tcx> {
     let place = if is_ssa {
-        fx.bcx
-            .declare_var(mir_var(local), fx.clif_type(layout.ty).unwrap());
-        CPlace::Var(local, layout)
+        CPlace::new_var(fx, local, layout)
     } else {
         let place = CPlace::new_stack_slot(fx, layout.ty);
 
@@ -372,8 +370,8 @@ fn cvalue_for_param<'a, 'tcx: 'a>(
 
     match pass_mode {
         PassMode::NoPass => unreachable!(),
-        PassMode::ByVal(_) => Some(CValue::ByVal(ebb_param, layout)),
-        PassMode::ByRef => Some(CValue::ByRef(ebb_param, layout)),
+        PassMode::ByVal(_) => Some(CValue::by_val(ebb_param, layout)),
+        PassMode::ByRef => Some(CValue::by_ref(ebb_param, layout)),
     }
 }
 
@@ -460,7 +458,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     match output_pass_mode {
         PassMode::NoPass => {
             fx.local_map
-                .insert(RETURN_PLACE, CPlace::NoPlace(ret_layout));
+                .insert(RETURN_PLACE, CPlace::no_place(ret_layout));
         }
         PassMode::ByVal(_) => {
             let is_ssa = !ssa_analyzed
@@ -693,7 +691,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         PassMode::ByVal(_) => {
             if let Some(ret_place) = ret_place {
                 let ret_val = fx.bcx.inst_results(call_inst)[0];
-                ret_place.write_cvalue(fx, CValue::ByVal(ret_val, ret_layout));
+                ret_place.write_cvalue(fx, CValue::by_val(ret_val, ret_layout));
             }
         }
         PassMode::ByRef => {}

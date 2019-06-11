@@ -335,7 +335,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             assert_eq!(from.layout().ty, src_ty);
             let addr = from.force_stack(fx);
             let dst_layout = fx.layout_of(dst_ty);
-            ret.write_cvalue(fx, CValue::ByRef(addr, dst_layout))
+            ret.write_cvalue(fx, CValue::by_ref(addr, dst_layout))
         };
         init, () {
             if ret.layout().abi == Abi::Uninhabited {
@@ -422,7 +422,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         _ if intrinsic.starts_with("atomic_load"), (c ptr) {
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            let val = CValue::ByRef(ptr.load_scalar(fx), inner_layout);
+            let val = CValue::by_ref(ptr.load_scalar(fx), inner_layout);
             ret.write_cvalue(fx, val);
         };
         _ if intrinsic.starts_with("atomic_store"), (v ptr, c val) {
@@ -451,7 +451,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             // Write new
             fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
 
-            let ret_val = CValue::ByValPair(old, fx.bcx.ins().bint(types::I8, is_eq), ret.layout());
+            let ret_val = CValue::by_val_pair(old, fx.bcx.ins().bint(types::I8, is_eq), ret.layout());
             ret.write_cvalue(fx, ret_val);
         };
 

@@ -483,7 +483,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             _ => unimplemented!("un op Neg for {:?}", layout.ty),
                         },
                     };
-                    lval.write_cvalue(fx, CValue::ByVal(res, layout));
+                    lval.write_cvalue(fx, CValue::by_val(res, layout));
                 }
                 Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), operand, ty) => {
                     let layout = fx.layout_of(ty);
@@ -497,7 +497,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                                     .unwrap(),
                             );
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
-                            lval.write_cvalue(fx, CValue::ByVal(func_addr, layout));
+                            lval.write_cvalue(fx, CValue::by_val(func_addr, layout));
                         }
                         _ => bug!("Trying to ReifyFnPointer on non FnDef {:?}", ty),
                     }
@@ -526,7 +526,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         } else {
                             // fat-ptr -> thin-ptr
                             let (ptr, _extra) = operand.load_scalar_pair(fx);
-                            lval.write_cvalue(fx, CValue::ByVal(ptr, dest_layout))
+                            lval.write_cvalue(fx, CValue::by_val(ptr, dest_layout))
                         }
                     } else if let ty::Adt(adt_def, _substs) = from_ty.sty {
                         // enum -> discriminant value
@@ -596,7 +596,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         } else {
                             unimpl!("rval misc {:?} {:?}", from_ty, to_ty)
                         };
-                        lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
+                        lval.write_cvalue(fx, CValue::by_val(res, dest_layout));
                     }
                 }
                 Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), operand, _ty) => {
@@ -611,7 +611,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             );
                             let func_ref = fx.get_function_ref(instance);
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
-                            lval.write_cvalue(fx, CValue::ByVal(func_addr, lval.layout()));
+                            lval.write_cvalue(fx, CValue::by_val(func_addr, lval.layout()));
                         }
                         _ => {
                             bug!("{} cannot be cast to a fn ptr", operand.layout().ty)
@@ -639,7 +639,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let place = trans_place(fx, place);
                     let usize_layout = fx.layout_of(fx.tcx.types.usize);
                     let len = codegen_array_len(fx, place);
-                    lval.write_cvalue(fx, CValue::ByVal(len, usize_layout));
+                    lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
                 }
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
                     use rustc::middle::lang_items::ExchangeMallocFnLangItem;
@@ -666,7 +666,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let func_ref = fx.get_function_ref(instance);
                     let call = fx.bcx.ins().call(func_ref, &[llsize, llalign]);
                     let ptr = fx.bcx.inst_results(call)[0];
-                    lval.write_cvalue(fx, CValue::ByVal(ptr, box_layout));
+                    lval.write_cvalue(fx, CValue::by_val(ptr, box_layout));
                 }
                 Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                     assert!(lval
@@ -754,7 +754,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                 _ => false,
             };
             let val = clif_intcast(fx, lldiscr, fx.clif_type(dest_layout.ty).unwrap(), signed);
-            return CValue::ByVal(val, dest_layout);
+            return CValue::by_val(val, dest_layout);
         }
         layout::DiscriminantKind::Niche {
             dataful_variant,
@@ -777,7 +777,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                     .ins()
                     .iconst(dest_clif_ty, dataful_variant.as_u32() as i64);
                 let val = fx.bcx.ins().select(b, if_true, if_false);
-                return CValue::ByVal(val, dest_layout);
+                return CValue::by_val(val, dest_layout);
             } else {
                 // Rebase from niche values to discriminant values.
                 let delta = niche_start.wrapping_sub(niche_variants.start().as_u32() as u128);
@@ -795,7 +795,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                     .ins()
                     .iconst(dest_clif_ty, dataful_variant.as_u32() as i64);
                 let val = fx.bcx.ins().select(b, if_true, if_false);
-                return CValue::ByVal(val, dest_layout);
+                return CValue::by_val(val, dest_layout);
             }
         }
     }
@@ -810,20 +810,20 @@ macro_rules! binop_match {
         let ret_layout = $fx.layout_of($ret_ty);
 
         let b = $fx.bcx.ins().icmp(IntCC::$cc, $lhs, $rhs);
-        CValue::ByVal($fx.bcx.ins().bint(types::I8, b), ret_layout)
+        CValue::by_val($fx.bcx.ins().bint(types::I8, b), ret_layout)
     }};
     (@single $fx:expr, $bug_fmt:expr, $var:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, fcmp($cc:ident)) => {{
         assert_eq!($fx.tcx.types.bool, $ret_ty);
         let ret_layout = $fx.layout_of($ret_ty);
         let b = $fx.bcx.ins().fcmp(FloatCC::$cc, $lhs, $rhs);
-        CValue::ByVal($fx.bcx.ins().bint(types::I8, b), ret_layout)
+        CValue::by_val($fx.bcx.ins().bint(types::I8, b), ret_layout)
     }};
     (@single $fx:expr, $bug_fmt:expr, $var:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, custom(|| $body:expr)) => {{
         $body
     }};
     (@single $fx:expr, $bug_fmt:expr, $var:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, $name:ident) => {{
         let ret_layout = $fx.layout_of($ret_ty);
-        CValue::ByVal($fx.bcx.ins().$name($lhs, $rhs), ret_layout)
+        CValue::by_val($fx.bcx.ins().$name($lhs, $rhs), ret_layout)
     }};
     (
         $fx:expr, $bin_op:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, $bug_fmt:expr;
@@ -1064,7 +1064,7 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
             let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
             let base_val = base.load_scalar(fx);
             let res = fx.bcx.ins().iadd(base_val, ptr_diff);
-            return CValue::ByVal(res, base.layout());
+            return CValue::by_val(res, base.layout());
         }
 
         binop_match! {
@@ -1111,7 +1111,7 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
 
         assert_eq!(fx.tcx.types.bool, ret_ty);
         let ret_layout = fx.layout_of(ret_ty);
-        CValue::ByVal(fx.bcx.ins().bint(types::I8, res), ret_layout)
+        CValue::by_val(fx.bcx.ins().bint(types::I8, res), ret_layout)
     }
 }
 

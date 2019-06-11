@@ -101,7 +101,7 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a>(
             let base = src.load_scalar(fx);
             unsize_thin_ptr(fx, base, src_ty, dst_ty)
         };
-        dst.write_cvalue(fx, CValue::ByValPair(base, info, dst.layout()));
+        dst.write_cvalue(fx, CValue::by_val_pair(base, info, dst.layout()));
     };
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::Ref(..), &ty::Ref(..))

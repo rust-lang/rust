@@ -125,7 +125,7 @@ fn trans_const_value<'a, 'tcx: 'a>(
             let bits = const_.val.try_to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, rustc::mir::interpret::sign_extend(bits, layout.size) as i128 as i64)
         }
-        ty::FnDef(_def_id, _substs) => CValue::ByRef(
+        ty::FnDef(_def_id, _substs) => CValue::by_ref(
             fx.bcx
                 .ins()
                 .iconst(fx.pointer_type, fx.pointer_type.bytes() as i64),
