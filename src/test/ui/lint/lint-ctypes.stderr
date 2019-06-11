@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
-   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 note: type defined here
   --> $DIR/lint-ctypes.rs:24:1
    |
@@ -22,7 +22,7 @@ error: `extern` block uses type `Foo` which is not FFI-safe: this struct has uns
 LL |     pub fn ptr_type2(size: *const Foo);
    |                            ^^^^^^^^^^
    |
-   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 note: type defined here
   --> $DIR/lint-ctypes.rs:24:1
    |
@@ -51,7 +51,7 @@ error: `extern` block uses type `std::boxed::Box<u32>` which is not FFI-safe: th
 LL |     pub fn box_type(p: Box<u32>);
    |                        ^^^^^^^^
    |
-   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 
 error: `extern` block uses type `char` which is not FFI-safe: the `char` type has no C equivalent
   --> $DIR/lint-ctypes.rs:51:25
@@ -142,7 +142,7 @@ error: `extern` block uses type `std::boxed::Box<u32>` which is not FFI-safe: th
 LL |     pub fn fn_contained(p: RustBadRet);
    |                            ^^^^^^^^^^
    |
-   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 
 error: `extern` block uses type `i128` which is not FFI-safe: 128-bit integers don't currently have a known stable ABI
   --> $DIR/lint-ctypes.rs:64:32
@@ -164,7 +164,7 @@ error: `extern` block uses type `std::boxed::Box<u32>` which is not FFI-safe: th
 LL |     pub fn transparent_fn(p: TransparentBadFn);
    |                              ^^^^^^^^^^^^^^^^
    |
-   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 
 error: aborting due to 20 previous errors
 

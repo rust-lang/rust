@@ -561,6 +561,12 @@ declare_features! (
     // FIXME Create issue
     (active, const_constructor, "1.37.0", Some(61456), None),
 
+    // #[repr(transparent)] on enums.
+    (active, transparent_enums, "1.37.0", Some(60405), None),
+
+    // #[repr(transparent)] on unions.
+    (active, transparent_unions, "1.37.0", Some(60405), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

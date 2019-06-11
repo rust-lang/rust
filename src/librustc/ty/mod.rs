@@ -2303,7 +2303,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     /// Returns an iterator over all fields contained
     /// by this ADT.
     #[inline]
-    pub fn all_fields<'s>(&'s self) -> impl Iterator<Item = &'s FieldDef> {
+    pub fn all_fields<'s>(&'s self) -> impl Iterator<Item = &'s FieldDef> + Clone {
         self.variants.iter().flat_map(|v| v.fields.iter())
     }
 

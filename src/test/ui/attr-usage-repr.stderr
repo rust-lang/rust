@@ -1,10 +1,10 @@
-error[E0517]: attribute should be applied to struct, enum or union
+error[E0517]: attribute should be applied to struct, enum, or union
   --> $DIR/attr-usage-repr.rs:3:8
    |
 LL | #[repr(C)]
    |        ^
 LL | fn f() {}
-   | --------- not a struct, enum or union
+   | --------- not a struct, enum, or union
 
 error[E0517]: attribute should be applied to enum
   --> $DIR/attr-usage-repr.rs:15:8

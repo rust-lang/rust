@@ -4484,7 +4484,7 @@ let _ = (2.0 as f32).neg();
 
 E0690: r##"
 A struct with the representation hint `repr(transparent)` had zero or more than
-on fields that were not guaranteed to be zero-sized.
+one fields that were not guaranteed to be zero-sized.
 
 Erroneous code example:
 
@@ -4519,8 +4519,8 @@ struct LengthWithUnit<U> {
 "##,
 
 E0691: r##"
-A struct with the `repr(transparent)` representation hint contains a zero-sized
-field that requires non-trivial alignment.
+A struct, enum, or union with the `repr(transparent)` representation hint
+contains a zero-sized field that requires non-trivial alignment.
 
 Erroneous code example:
 
@@ -4535,11 +4535,11 @@ struct Wrapper(f32, ForceAlign32); // error: zero-sized field in transparent
                                    //        struct has alignment larger than 1
 ```
 
-A transparent struct is supposed to be represented exactly like the piece of
-data it contains. Zero-sized fields with different alignment requirements
-potentially conflict with this property. In the example above, `Wrapper` would
-have to be aligned to 32 bytes even though `f32` has a smaller alignment
-requirement.
+A transparent struct, enum, or union is supposed to be represented exactly like
+the piece of data it contains. Zero-sized fields with different alignment
+requirements potentially conflict with this property. In the example above,
+`Wrapper` would have to be aligned to 32 bytes even though `f32` has a smaller
+alignment requirement.
 
 Consider removing the over-aligned zero-sized field:
 
@@ -4568,7 +4568,6 @@ element type `T`. Also note that the error is conservatively reported even when
 the alignment of the zero-sized type is less than or equal to the data field's
 alignment.
 "##,
-
 
 E0699: r##"
 A method was called on a raw pointer whose inner type wasn't completely known.
@@ -4678,6 +4677,26 @@ match r {
     }
 }
 ```
+"##,
+
+E0731: r##"
+An enum with the representation hint `repr(transparent)` had zero or more than
+one variants.
+
+Erroneous code example:
+
+```compile_fail,E0731
+#[repr(transparent)]
+enum Status { // error: transparent enum needs exactly one variant, but has 2
+    Errno(u32),
+    Ok,
+}
+```
+
+Because transparent enums are represented exactly like one of their variants at
+run time, said variant must be uniquely determined. If there is no variant, or
+if there are multiple variants, it is not clear how the enum should be
+represented.
 "##,
 
 }

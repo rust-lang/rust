@@ -32,7 +32,7 @@ error[E0517]: attribute should not be applied to a statement
 LL |     #[repr(nothing)]
    |     ^^^^^^^^^^^^^^^^
 LL |     let _x = 0;
-   |     ----------- not a struct, enum or union
+   |     ----------- not a struct, enum, or union
 
 error[E0517]: attribute should not be applied to an expression
   --> $DIR/issue-43988.rs:18:5
@@ -42,7 +42,7 @@ LL |       #[repr(something_not_real)]
 LL | /     loop {
 LL | |         ()
 LL | |     };
-   | |_____- not defining a struct, enum or union
+   | |_____- not defining a struct, enum, or union
 
 error[E0517]: attribute should not be applied to a statement
   --> $DIR/issue-43988.rs:24:5
@@ -50,7 +50,7 @@ error[E0517]: attribute should not be applied to a statement
 LL |     #[repr]
    |     ^^^^^^^
 LL |     let _y = "123";
-   |     --------------- not a struct, enum or union
+   |     --------------- not a struct, enum, or union
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43988.rs:31:5
@@ -64,7 +64,7 @@ error[E0517]: attribute should not be applied to an expression
   --> $DIR/issue-43988.rs:35:14
    |
 LL |     let _z = #[repr] 1;
-   |              ^^^^^^^ - not defining a struct, enum or union
+   |              ^^^^^^^ - not defining a struct, enum, or union
 
 error: aborting due to 9 previous errors
 

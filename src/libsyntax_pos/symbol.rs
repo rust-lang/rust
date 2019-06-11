@@ -623,6 +623,8 @@ symbols! {
         trait_alias,
         transmute,
         transparent,
+        transparent_enums,
+        transparent_unions,
         trivial_bounds,
         Try,
         try_blocks,

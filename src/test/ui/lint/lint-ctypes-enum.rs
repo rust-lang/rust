@@ -1,3 +1,4 @@
+#![feature(transparent_enums, transparent_unions)]
 #![deny(improper_ctypes)]
 #![allow(dead_code)]
 
@@ -18,7 +19,17 @@ enum U8 { A, B, C }
 enum Isize { A, B, C }
 
 #[repr(transparent)]
-struct Transparent<T>(T, std::marker::PhantomData<Z>);
+struct TransparentStruct<T>(T, std::marker::PhantomData<Z>);
+
+#[repr(transparent)]
+enum TransparentEnum<T> {
+   Variant(T, std::marker::PhantomData<Z>),
+}
+
+#[repr(transparent)]
+union TransparentUnion<T: Copy> {
+   field: T,
+}
 
 struct Rust<T>(T);
 
@@ -47,7 +58,10 @@ extern {
    fn nonzero_i128(x: Option<num::NonZeroI128>);
    //~^ ERROR 128-bit integers don't currently have a known stable ABI
    fn nonzero_isize(x: Option<num::NonZeroIsize>);
-   fn repr_transparent(x: Option<Transparent<num::NonZeroU8>>);
+   fn transparent_struct(x: Option<TransparentStruct<num::NonZeroU8>>);
+   fn transparent_enum(x: Option<TransparentEnum<num::NonZeroU8>>);
+   fn transparent_union(x: Option<TransparentUnion<num::NonZeroU8>>);
+   //~^ ERROR enum has no representation hint
    fn repr_rust(x: Option<Rust<num::NonZeroU8>>); //~ ERROR enum has no representation hint
    fn no_result(x: Result<(), num::NonZeroI32>); //~ ERROR enum has no representation hint
 }

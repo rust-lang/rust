@@ -4,11 +4,11 @@ error[E0518]: attribute should be applied to function or closure
 LL |     #[inline] struct Foo;
    |     ^^^^^^^^^ ----------- not a function or closure
 
-error[E0517]: attribute should be applied to struct, enum or union
+error[E0517]: attribute should be applied to struct, enum, or union
   --> $DIR/issue-31769.rs:3:12
    |
 LL |     #[repr(C)] fn foo() {}
-   |            ^   ----------- not a struct, enum or union
+   |            ^   ----------- not a struct, enum, or union
 
 error: aborting due to 2 previous errors
 
