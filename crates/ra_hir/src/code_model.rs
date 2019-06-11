@@ -761,12 +761,17 @@ pub struct Const {
     pub(crate) id: ConstId,
 }
 
+impl HasSource for Const {
+    type Ast = TreeArc<ast::ConstDef>;
+
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ConstDef>> {
+        self.id.source(db).into()
+    }
+}
+
 impl Const {
-    pub fn source(
-        self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, TreeArc<ast::ConstDef>) {
-        self.id.source(db)
+    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::ConstDef>> {
+        self.id.source(db).into()
     }
 
     pub fn module(self, db: &impl DefDatabase) -> Module {
@@ -819,7 +824,7 @@ impl ConstSignature {
         db: &(impl DefDatabase + AstDatabase),
         konst: Const,
     ) -> Arc<ConstSignature> {
-        let (_, node) = konst.source(db);
+        let node = konst.source(db).ast;
         const_signature_for(&*node)
     }
 
@@ -827,7 +832,7 @@ impl ConstSignature {
         db: &(impl DefDatabase + AstDatabase),
         konst: Static,
     ) -> Arc<ConstSignature> {
-        let (_, node) = konst.source(db);
+        let node = konst.source(db).ast;
         const_signature_for(&*node)
     }
 }
@@ -844,12 +849,17 @@ pub struct Static {
     pub(crate) id: StaticId,
 }
 
+impl HasSource for Static {
+    type Ast = TreeArc<ast::StaticDef>;
+
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StaticDef>> {
+        self.id.source(db).into()
+    }
+}
+
 impl Static {
-    pub fn source(
-        self,
-        db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, TreeArc<ast::StaticDef>) {
-        self.id.source(db)
+    pub fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::StaticDef>> {
+        self.id.source(db).into()
     }
 
     pub fn module(self, db: &impl DefDatabase) -> Module {

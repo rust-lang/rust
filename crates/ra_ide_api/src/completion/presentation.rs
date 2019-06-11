@@ -126,12 +126,11 @@ impl Completions {
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
-        let (_file_id, ast_node) = constant.source(ctx.db);
+        let ast_node = constant.source(ctx.db).ast;
         let name = match ast_node.name() {
             Some(name) => name,
             _ => return,
         };
-        let (_, ast_node) = constant.source(ctx.db);
         let detail = const_label(&ast_node);
 
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())

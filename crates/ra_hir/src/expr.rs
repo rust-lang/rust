@@ -1018,9 +1018,9 @@ pub(crate) fn body_with_source_map_query(
 
     match def {
         DefWithBody::Const(ref c) => {
-            let (file_id, src) = c.source(db);
-            collector = ExprCollector::new(def, file_id, def.resolver(db), db);
-            collector.collect_const_body(&src)
+            let src = c.source(db);
+            collector = ExprCollector::new(def, src.file_id, def.resolver(db), db);
+            collector.collect_const_body(&src.ast)
         }
         DefWithBody::Function(ref f) => {
             let src = f.source(db);
@@ -1028,9 +1028,9 @@ pub(crate) fn body_with_source_map_query(
             collector.collect_fn_body(&src.ast)
         }
         DefWithBody::Static(ref s) => {
-            let (file_id, src) = s.source(db);
-            collector = ExprCollector::new(def, file_id, def.resolver(db), db);
-            collector.collect_static_body(&src)
+            let src = s.source(db);
+            collector = ExprCollector::new(def, src.file_id, def.resolver(db), db);
+            collector.collect_static_body(&src.ast)
         }
     }
 

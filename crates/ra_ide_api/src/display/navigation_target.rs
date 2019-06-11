@@ -212,24 +212,8 @@ impl NavigationTarget {
             hir::ModuleDef::Struct(it) => NavigationTarget::from_adt_def(db, it.into()),
             hir::ModuleDef::Enum(it) => NavigationTarget::from_adt_def(db, it.into()),
             hir::ModuleDef::Union(it) => NavigationTarget::from_adt_def(db, it.into()),
-            hir::ModuleDef::Const(s) => {
-                let (file_id, node) = s.source(db);
-                NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                    node.doc_comment_text(),
-                    node.short_label(),
-                )
-            }
-            hir::ModuleDef::Static(s) => {
-                let (file_id, node) = s.source(db);
-                NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                    node.doc_comment_text(),
-                    node.short_label(),
-                )
-            }
+            hir::ModuleDef::Const(it) => NavigationTarget::from_def_source(db, it),
+            hir::ModuleDef::Static(it) => NavigationTarget::from_def_source(db, it),
             hir::ModuleDef::EnumVariant(var) => {
                 let src = var.source(db);
                 NavigationTarget::from_named(
@@ -281,16 +265,8 @@ impl NavigationTarget {
 
     pub(crate) fn from_impl_item(db: &RootDatabase, impl_item: hir::ImplItem) -> NavigationTarget {
         match impl_item {
-            ImplItem::Method(f) => NavigationTarget::from_function(db, f),
-            ImplItem::Const(c) => {
-                let (file_id, node) = c.source(db);
-                NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                    node.doc_comment_text(),
-                    node.short_label(),
-                )
-            }
+            ImplItem::Method(it) => NavigationTarget::from_function(db, it),
+            ImplItem::Const(it) => NavigationTarget::from_def_source(db, it),
             ImplItem::TypeAlias(a) => {
                 let (file_id, node) = a.source(db);
                 NavigationTarget::from_named(
