@@ -1016,7 +1016,7 @@ impl<'a> DumpHandler<'a> {
         }
     }
 
-    fn output_file(&self, ctx: &SaveContext<'_, '_>) -> File {
+    fn output_file(&self, ctx: &SaveContext<'_, '_>) -> (File, PathBuf) {
         let sess = &ctx.tcx.sess;
         let file_name = match ctx.config.output_file {
             Some(ref s) => PathBuf::from(s),
@@ -1054,7 +1054,7 @@ impl<'a> DumpHandler<'a> {
             |e| sess.fatal(&format!("Could not open {}: {}", file_name.display(), e)),
         );
 
-        output_file
+        (output_file, file_name)
     }
 }
 
@@ -1066,13 +1066,23 @@ impl<'a> SaveHandler for DumpHandler<'a> {
         cratename: &str,
         input: &'l Input,
     ) {
-        let output = &mut self.output_file(&save_ctxt);
-        let mut dumper = JsonDumper::new(output, save_ctxt.config.clone());
-        let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+        let sess = &save_ctxt.tcx.sess;
+        let file_name = {
+            let (mut output, file_name) = self.output_file(&save_ctxt);
+            let mut dumper = JsonDumper::new(&mut output, save_ctxt.config.clone());
+            let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
-        visitor.dump_crate_info(cratename, krate);
-        visitor.dump_compilation_options(input, cratename);
-        visit::walk_crate(&mut visitor, krate);
+            visitor.dump_crate_info(cratename, krate);
+            visitor.dump_compilation_options(input, cratename);
+            visit::walk_crate(&mut visitor, krate);
+
+            file_name
+        };
+
+        if sess.opts.debugging_opts.emit_artifact_notifications {
+            sess.parse_sess.span_diagnostic
+                .emit_artifact_notification(&file_name, "save-analysis");
+        }
     }
 }
 
