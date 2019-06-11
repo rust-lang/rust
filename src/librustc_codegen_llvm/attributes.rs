@@ -367,7 +367,7 @@ pub fn provide_extern(providers: &mut Providers<'_>) {
     };
 }
 
-fn wasm_import_module(tcx: TyCtxt<'_, '_, '_>, id: DefId) -> Option<CString> {
+fn wasm_import_module(tcx: TyCtxt<'_, '_>, id: DefId) -> Option<CString> {
     tcx.wasm_import_module_map(id.krate)
         .get(&id)
         .map(|s| CString::new(&s[..]).unwrap())

@@ -121,7 +121,7 @@ pub struct MoveDataParamEnv<'gcx, 'tcx> {
     pub(crate) param_env: ty::ParamEnv<'gcx>,
 }
 
-pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(tcx: TyCtxt<'gcx, 'tcx>,
                                                  body: &'a Body<'tcx>,
                                                  def_id: DefId,
                                                  attributes: &[ast::Attribute],
@@ -139,7 +139,7 @@ pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
 impl<'a, 'gcx: 'tcx, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitDenotation<'tcx>
 {
     pub(crate) fn run<P>(self,
-                         tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+                         tcx: TyCtxt<'gcx, 'tcx>,
                          def_id: DefId,
                          attributes: &[ast::Attribute],
                          p: P) -> DataflowResults<'tcx, BD>

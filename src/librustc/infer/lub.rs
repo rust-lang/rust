@@ -24,7 +24,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> Lub<'combine, 'infcx, 'gcx, 'tcx> {
 impl TypeRelation<'gcx, 'tcx> for Lub<'combine, 'infcx, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Lub" }
 
-    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.a_is_expected }
 

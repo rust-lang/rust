@@ -17,7 +17,7 @@ use syntax::ast;
 use syntax_pos::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
-pub fn crate_inherent_impls<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn crate_inherent_impls<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                       crate_num: CrateNum)
                                       -> &'tcx CrateInherentImpls {
     assert_eq!(crate_num, LOCAL_CRATE);
@@ -32,7 +32,7 @@ pub fn crate_inherent_impls<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
-pub fn inherent_impls<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn inherent_impls<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                 ty_def_id: DefId)
                                 -> &'tcx [DefId] {
     assert!(ty_def_id.is_local());
@@ -69,7 +69,7 @@ pub fn inherent_impls<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 }
 
 struct InherentCollect<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     impls_map: CrateInherentImpls,
 }
 

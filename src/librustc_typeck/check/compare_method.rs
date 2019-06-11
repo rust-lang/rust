@@ -23,7 +23,7 @@ use super::{Inherited, FnCtxt, potentially_plural_count};
 /// - `trait_m`: the method in the trait
 /// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
 
-pub fn compare_impl_method<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn compare_impl_method<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                      impl_m: &ty::AssocItem,
                                      impl_m_span: Span,
                                      trait_m: &ty::AssocItem,
@@ -73,7 +73,7 @@ pub fn compare_impl_method<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     }
 }
 
-fn compare_predicate_entailment<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn compare_predicate_entailment<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                           impl_m: &ty::AssocItem,
                                           impl_m_span: Span,
                                           trait_m: &ty::AssocItem,
@@ -355,7 +355,7 @@ fn compare_predicate_entailment<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     })
 }
 
-fn check_region_bounds_on_impl_method<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn check_region_bounds_on_impl_method<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                                 span: Span,
                                                 impl_m: &ty::AssocItem,
                                                 trait_m: &ty::AssocItem,
@@ -495,7 +495,7 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
     }
 }
 
-fn compare_self_type<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn compare_self_type<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                impl_m: &ty::AssocItem,
                                impl_m_span: Span,
                                trait_m: &ty::AssocItem,
@@ -581,7 +581,7 @@ fn compare_self_type<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 }
 
 fn compare_number_of_generics<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     impl_: &ty::AssocItem,
     _impl_span: Span,
     trait_: &ty::AssocItem,
@@ -695,7 +695,7 @@ fn compare_number_of_generics<'tcx>(
     }
 }
 
-fn compare_number_of_method_arguments<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn compare_number_of_method_arguments<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                                 impl_m: &ty::AssocItem,
                                                 impl_m_span: Span,
                                                 trait_m: &ty::AssocItem,
@@ -779,7 +779,7 @@ fn compare_number_of_method_arguments<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     Ok(())
 }
 
-fn compare_synthetic_generics<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn compare_synthetic_generics<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                         impl_m: &ty::AssocItem,
                                         trait_m: &ty::AssocItem)
                                         -> Result<(), ErrorReported> {
@@ -951,7 +951,7 @@ fn compare_synthetic_generics<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     }
 }
 
-pub fn compare_const_impl<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn compare_const_impl<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                     impl_c: &ty::AssocItem,
                                     impl_c_span: Span,
                                     trait_c: &ty::AssocItem,

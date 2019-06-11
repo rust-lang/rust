@@ -498,7 +498,7 @@ impl<D> TypeRelation<'gcx, 'tcx> for TypeRelating<'me, 'gcx, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -827,7 +827,7 @@ impl<D> TypeRelation<'gcx, 'tcx> for TypeGeneralizer<'me, 'gcx, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 

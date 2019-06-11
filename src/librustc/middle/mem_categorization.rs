@@ -288,7 +288,7 @@ impl HirNode for hir::Pat {
 
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    pub tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    pub tcx: TyCtxt<'gcx, 'tcx>,
     pub body_owner: DefId,
     pub upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     pub region_scope_tree: &'a region::ScopeTree,
@@ -339,7 +339,7 @@ impl MutabilityCategory {
         ret
     }
 
-    fn from_local(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>,
+    fn from_local(tcx: TyCtxt<'_, '_>, tables: &ty::TypeckTables<'_>,
                   id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.hir().get(id) {
             Node::Binding(p) => match p.node {
@@ -400,7 +400,7 @@ impl MutabilityCategory {
 }
 
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    pub fn new(tcx: TyCtxt<'tcx, 'tcx>,
                body_owner: DefId,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
@@ -1514,7 +1514,7 @@ impl<'tcx> cmt_<'tcx> {
         }
     }
 
-    pub fn descriptive_string(&self, tcx: TyCtxt<'_, '_, '_>) -> Cow<'static, str> {
+    pub fn descriptive_string(&self, tcx: TyCtxt<'_, '_>) -> Cow<'static, str> {
         match self.cat {
             Categorization::StaticItem => {
                 "static item".into()

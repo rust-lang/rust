@@ -64,14 +64,14 @@ impl<'gcx, 'tcx> TraitDef {
         }
     }
 
-    pub fn ancestors(&self, tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    pub fn ancestors(&self, tcx: TyCtxt<'gcx, 'tcx>,
                      of_impl: DefId)
                      -> specialization_graph::Ancestors<'gcx> {
         specialization_graph::ancestors(tcx, self.def_id, of_impl)
     }
 }
 
-impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     pub fn for_each_impl<F: FnMut(DefId)>(self, def_id: DefId, mut f: F) {
         let impls = self.trait_impls_of(def_id);
 
@@ -148,7 +148,7 @@ impl<'gcx, 'tcx> TyCtxt<'tcx, 'gcx, 'tcx> {
 }
 
 // Query provider for `trait_impls_of`.
-pub(super) fn trait_impls_of_provider<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub(super) fn trait_impls_of_provider<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                                 trait_id: DefId)
                                                 -> &'tcx TraitImpls {
     let mut impls = TraitImpls::default();

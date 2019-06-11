@@ -148,7 +148,7 @@ pub fn collect_temps(body: &Body<'_>,
 }
 
 struct Promoter<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     source: &'a mut Body<'tcx>,
     promoted: Body<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
@@ -370,7 +370,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 }
 
 pub fn promote_candidates<'tcx>(body: &mut Body<'tcx>,
-                                    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+                                    tcx: TyCtxt<'tcx, 'tcx>,
                                     mut temps: IndexVec<Local, TempState>,
                                     candidates: Vec<Candidate>) {
     // Visit candidates in reverse, in case they're nested.

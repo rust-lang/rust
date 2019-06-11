@@ -31,22 +31,22 @@ impl<'tcx, T> Backend<'tcx> for T where
 }
 
 pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Send {
-    fn new_metadata(&self, sess: TyCtxt<'_, '_, '_>, mod_name: &str) -> Self::Module;
+    fn new_metadata(&self, sess: TyCtxt<'_, '_>, mod_name: &str) -> Self::Module;
     fn write_compressed_metadata<'gcx>(
         &self,
-        tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
+        tcx: TyCtxt<'gcx, 'gcx>,
         metadata: &EncodedMetadata,
         llvm_module: &mut Self::Module,
     );
     fn codegen_allocator<'gcx>(
         &self,
-        tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
+        tcx: TyCtxt<'gcx, 'gcx>,
         mods: &mut Self::Module,
         kind: AllocatorKind
     );
     fn compile_codegen_unit<'a, 'tcx: 'a>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         cgu_name: InternedString,
     );
     // If find_features is true this won't access `sess.crate_types` by assuming

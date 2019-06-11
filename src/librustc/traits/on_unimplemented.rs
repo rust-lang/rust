@@ -35,7 +35,7 @@ impl OnUnimplementedNote {
     }
 }
 
-fn parse_error(tcx: TyCtxt<'_, '_, '_>, span: Span,
+fn parse_error(tcx: TyCtxt<'_, '_>, span: Span,
                message: &str,
                label: &str,
                note: Option<&str>)
@@ -52,7 +52,7 @@ fn parse_error(tcx: TyCtxt<'_, '_, '_>, span: Span,
 }
 
 impl<'gcx, 'tcx> OnUnimplementedDirective {
-    fn parse(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    fn parse(tcx: TyCtxt<'gcx, 'tcx>,
                  trait_def_id: DefId,
                  items: &[NestedMetaItem],
                  span: Span,
@@ -133,7 +133,7 @@ impl<'gcx, 'tcx> OnUnimplementedDirective {
     }
 
 
-    pub fn of_item(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    pub fn of_item(tcx: TyCtxt<'gcx, 'tcx>,
                    trait_def_id: DefId,
                    impl_def_id: DefId)
                    -> Result<Option<Self>, ErrorReported>
@@ -165,7 +165,7 @@ impl<'gcx, 'tcx> OnUnimplementedDirective {
     }
 
     pub fn evaluate(&self,
-                    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+                    tcx: TyCtxt<'gcx, 'tcx>,
                     trait_ref: ty::TraitRef<'tcx>,
                     options: &[(Symbol, Option<String>)])
                     -> OnUnimplementedNote
@@ -215,7 +215,7 @@ impl<'gcx, 'tcx> OnUnimplementedDirective {
 }
 
 impl<'gcx, 'tcx> OnUnimplementedFormatString {
-    fn try_parse(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    fn try_parse(tcx: TyCtxt<'gcx, 'tcx>,
                      trait_def_id: DefId,
                      from: LocalInternedString,
                      err_sp: Span)
@@ -228,7 +228,7 @@ impl<'gcx, 'tcx> OnUnimplementedFormatString {
 
     fn verify(
         &self,
-        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         trait_def_id: DefId,
         span: Span,
     ) -> Result<(), ErrorReported> {
@@ -274,7 +274,7 @@ impl<'gcx, 'tcx> OnUnimplementedFormatString {
 
     pub fn format(
         &self,
-        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
         options: &FxHashMap<Symbol, String>,
     ) -> String {

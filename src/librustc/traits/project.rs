@@ -323,7 +323,7 @@ impl<'a, 'b, 'gcx, 'tcx> AssocTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
 }
 
 impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssocTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
-    fn tcx<'c>(&'c self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
+    fn tcx<'c>(&'c self) -> TyCtxt<'gcx, 'tcx> {
         self.selcx.tcx()
     }
 
@@ -836,7 +836,7 @@ struct Progress<'tcx> {
 }
 
 impl<'tcx> Progress<'tcx> {
-    fn error<'gcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Self {
+    fn error<'gcx>(tcx: TyCtxt<'gcx, 'tcx>) -> Self {
         Progress {
             ty: tcx.types.err,
             obligations: vec![],

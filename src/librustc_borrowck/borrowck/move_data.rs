@@ -223,7 +223,7 @@ impl MoveData<'tcx> {
 
     /// Returns the existing move path index for `lp`, if any, and otherwise adds a new index for
     /// `lp` and any of its base paths that do not yet have an index.
-    pub fn move_path(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    pub fn move_path(&self, tcx: TyCtxt<'tcx, 'tcx>,
                      lp: Rc<LoanPath<'tcx>>) -> MovePathIndex {
         if let Some(&index) = self.path_map.borrow().get(&lp) {
             return index;
@@ -311,7 +311,7 @@ impl MoveData<'tcx> {
     }
 
     /// Adds a new move entry for a move of `lp` that occurs at location `id` with kind `kind`.
-    pub fn add_move(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    pub fn add_move(&self, tcx: TyCtxt<'tcx, 'tcx>,
                     orig_lp: Rc<LoanPath<'tcx>>,
                     id: hir::ItemLocalId,
                     kind: MoveKind) {
@@ -340,7 +340,7 @@ impl MoveData<'tcx> {
         self.add_move_helper(tcx, orig_lp, id, kind);
     }
 
-    fn add_move_helper(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    fn add_move_helper(&self, tcx: TyCtxt<'tcx, 'tcx>,
                        lp: Rc<LoanPath<'tcx>>,
                        id: hir::ItemLocalId,
                        kind: MoveKind) {
@@ -365,7 +365,7 @@ impl MoveData<'tcx> {
 
     /// Adds a new record for an assignment to `lp` that occurs at location `id` with the given
     /// `span`.
-    pub fn add_assignment(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    pub fn add_assignment(&self, tcx: TyCtxt<'tcx, 'tcx>,
                           lp: Rc<LoanPath<'tcx>>,
                           assign_id: hir::ItemLocalId,
                           span: Span) {
@@ -395,7 +395,7 @@ impl MoveData<'tcx> {
         self.add_assignment_helper(tcx, lp, assign_id, span);
     }
 
-    fn add_assignment_helper(&self, tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    fn add_assignment_helper(&self, tcx: TyCtxt<'tcx, 'tcx>,
                              lp: Rc<LoanPath<'tcx>>,
                              assign_id: hir::ItemLocalId,
                              span: Span) {

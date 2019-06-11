@@ -30,7 +30,7 @@ use syntax_pos::Span;
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
 pub fn check_drop_impl<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     drop_impl_did: DefId,
 ) -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
@@ -65,7 +65,7 @@ pub fn check_drop_impl<'tcx>(
 }
 
 fn ensure_drop_params_and_item_params_correspond<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     drop_impl_did: DefId,
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId,
@@ -141,7 +141,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 /// Confirms that every predicate imposed by dtor_predicates is
 /// implied by assuming the predicates attached to self_type_did.
 fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,

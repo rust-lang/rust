@@ -52,7 +52,7 @@ crate struct ChalkArenas<'gcx> {
 #[derive(Copy, Clone)]
 crate struct ChalkContext<'gcx> {
     _arenas: ChalkArenas<'gcx>,
-    tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
+    tcx: TyCtxt<'gcx, 'gcx>,
 }
 
 #[derive(Copy, Clone)]
@@ -527,7 +527,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_ex_clause_to_tcx(
         ex_clause: &ChalkExClause<'a>,
-        tcx: TyCtxt<'tcx, 'gcx, 'tcx>
+        tcx: TyCtxt<'gcx, 'tcx>
     ) -> Option<Self::LiftedExClause> {
         Some(ChalkExClause {
             subst: tcx.lift(&ex_clause.subst)?,
@@ -539,7 +539,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_delayed_literal_to_tcx(
         literal: &DelayedLiteral<ChalkArenas<'a>>,
-        tcx: TyCtxt<'tcx, 'gcx, 'tcx>
+        tcx: TyCtxt<'gcx, 'tcx>
     ) -> Option<Self::LiftedDelayedLiteral> {
         Some(match literal {
             DelayedLiteral::CannotProve(()) => DelayedLiteral::CannotProve(()),
@@ -553,7 +553,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_literal_to_tcx(
         literal: &Literal<ChalkArenas<'a>>,
-        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
     ) -> Option<Self::LiftedLiteral> {
         Some(match literal {
             Literal::Negative(goal) => Literal::Negative(tcx.lift(goal)?),
@@ -673,7 +673,7 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 crate fn evaluate_goal<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     goal: ChalkCanonicalGoal<'tcx>
 ) -> Result<
     &'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>,

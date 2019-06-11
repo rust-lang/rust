@@ -47,7 +47,7 @@ impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx>
 {
     pub fn observe_and_analyze(
         &mut self,
-        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         span: Span,
         memory: &Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>],

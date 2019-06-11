@@ -10,7 +10,7 @@
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 
-impl<'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx, 'tcx> {
     /// Erase the regions in `value` and then fully normalize all the
     /// types found within. The result will also have regions erased.
     ///
@@ -63,12 +63,12 @@ impl<'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
 }
 
 struct NormalizeAfterErasingRegionsFolder<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
 impl TypeFolder<'tcx, 'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'tcx, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 

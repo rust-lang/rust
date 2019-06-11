@@ -86,7 +86,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 }
 
-pub fn identify_constrained_generic_params<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn identify_constrained_generic_params<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                               predicates: &ty::GenericPredicates<'tcx>,
                                               impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                               input_parameters: &mut FxHashSet<Parameter>)
@@ -136,7 +136,7 @@ pub fn identify_constrained_generic_params<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 /// which is determined by 1, which requires `U`, that is determined
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
-pub fn setup_constraining_predicates<'tcx>(tcx: TyCtxt<'_, '_, '_>,
+pub fn setup_constraining_predicates<'tcx>(tcx: TyCtxt<'_, '_>,
                                            predicates: &mut [(ty::Predicate<'tcx>, Span)],
                                            impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                            input_parameters: &mut FxHashSet<Parameter>)

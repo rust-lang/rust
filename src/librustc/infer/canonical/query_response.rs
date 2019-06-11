@@ -647,7 +647,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 /// Given the region obligations and constraints scraped from the infcx,
 /// creates query region constraints.
 pub fn make_query_outlives<'tcx>(
-    tcx: TyCtxt<'tcx, '_, 'tcx>,
+    tcx: TyCtxt<'_, 'tcx>,
     outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
 ) -> Vec<QueryRegionConstraint<'tcx>> {

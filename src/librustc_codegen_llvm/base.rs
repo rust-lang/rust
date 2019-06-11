@@ -42,7 +42,7 @@ use rustc::hir::CodegenFnAttrs;
 use crate::value::Value;
 
 pub fn write_compressed_metadata<'a, 'gcx>(
-    tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
+    tcx: TyCtxt<'gcx, 'gcx>,
     metadata: &EncodedMetadata,
     llvm_module: &mut ModuleLlvm
 ) {
@@ -103,7 +103,7 @@ pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
     }
 }
 
-pub fn compile_codegen_unit(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, cgu_name: InternedString) {
+pub fn compile_codegen_unit(tcx: TyCtxt<'tcx, 'tcx>, cgu_name: InternedString) {
     let start_time = Instant::now();
 
     let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
@@ -124,7 +124,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, cgu_name: InternedStr
     submit_codegened_module_to_llvm(&LlvmCodegenBackend(()), tcx, module, cost);
 
     fn module_codegen<'ll, 'tcx>(
-        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         cgu_name: InternedString,
     ) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);

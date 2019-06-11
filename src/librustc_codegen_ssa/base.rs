@@ -480,7 +480,7 @@ pub const CODEGEN_WORKER_ID: usize = ::std::usize::MAX;
 
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
     rx: mpsc::Receiver<Box<dyn Any + Send>>
@@ -703,7 +703,7 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
     }
 }
 
-fn assert_and_save_dep_graph<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+fn assert_and_save_dep_graph<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     time(tcx.sess,
          "assert dep graph",
          || ::rustc_incremental::assert_dep_graph(tcx));
@@ -714,7 +714,7 @@ fn assert_and_save_dep_graph<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
 }
 
 impl CrateInfo {
-    pub fn new(tcx: TyCtxt<'_, '_, '_>) -> CrateInfo {
+    pub fn new(tcx: TyCtxt<'_, '_>) -> CrateInfo {
         let mut info = CrateInfo {
             panic_runtime: None,
             compiler_builtins: None,
@@ -780,7 +780,7 @@ impl CrateInfo {
     }
 }
 
-fn is_codegened_item(tcx: TyCtxt<'_, '_, '_>, id: DefId) -> bool {
+fn is_codegened_item(tcx: TyCtxt<'_, '_>, id: DefId) -> bool {
     let (all_mono_items, _) =
         tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     all_mono_items.contains(&id)
@@ -850,7 +850,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
     };
 }
 
-fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                  cgu: &CodegenUnit<'tcx>)
                                  -> CguReuse {
     if !tcx.dep_graph.is_fully_enabled() {

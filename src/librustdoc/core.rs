@@ -44,7 +44,7 @@ pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
 pub struct DocContext<'tcx> {
 
-    pub tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx, 'tcx>,
     pub resolver: Rc<Option<RefCell<interface::BoxedResolver>>>,
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,

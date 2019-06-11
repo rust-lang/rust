@@ -83,7 +83,7 @@ pub enum MethodViolationCode {
     UndispatchableReceiver,
 }
 
-impl<'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx, 'tcx> {
 
     /// Returns the object safety violations that affect
     /// astconv -- currently, `Self` in supertraits. This is needed
@@ -703,7 +703,7 @@ impl<'tcx> TyCtxt<'tcx, 'tcx, 'tcx> {
     }
 }
 
-pub(super) fn is_object_safe_provider<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub(super) fn is_object_safe_provider<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                                 trait_def_id: DefId) -> bool {
     tcx.object_safety_violations(trait_def_id).is_empty()
 }

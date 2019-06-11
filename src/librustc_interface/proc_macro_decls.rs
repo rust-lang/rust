@@ -6,12 +6,12 @@ use rustc::ty::query::Providers;
 use syntax::attr;
 use syntax::symbol::sym;
 
-pub fn find<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Option<DefId> {
+pub fn find<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Option<DefId> {
     tcx.proc_macro_decls_static(LOCAL_CRATE)
 }
 
 fn proc_macro_decls_static<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     cnum: CrateNum,
 ) -> Option<DefId> {
     assert_eq!(cnum, LOCAL_CRATE);

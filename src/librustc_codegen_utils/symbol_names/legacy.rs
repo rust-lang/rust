@@ -14,7 +14,7 @@ use std::fmt::{self, Write};
 use std::mem::{self, discriminant};
 
 pub(super) fn mangle(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     instance: Instance<'tcx>,
     instantiating_crate: Option<CrateNum>,
 ) -> String {
@@ -69,7 +69,7 @@ pub(super) fn mangle(
 }
 
 fn get_symbol_hash<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
 
     // instance this name will be for
     instance: Instance<'tcx>,
@@ -180,7 +180,7 @@ impl SymbolPath {
 }
 
 struct SymbolPrinter<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     path: SymbolPath,
 
     // When `true`, `finalize_pending_component` isn't used.
@@ -203,7 +203,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'tcx> {
     type DynExistential = Self;
     type Const = Self;
 
-    fn tcx(&'a self) -> TyCtxt<'tcx, 'tcx, 'tcx> {
+    fn tcx(&'a self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 

@@ -12,12 +12,12 @@ use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashSet;
 
 struct ClauseVisitor<'a, 'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     round: &'a mut FxHashSet<Clause<'tcx>>,
 }
 
 impl ClauseVisitor<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, round: &'a mut FxHashSet<Clause<'tcx>>) -> Self {
+    fn new(tcx: TyCtxt<'tcx, 'tcx>, round: &'a mut FxHashSet<Clause<'tcx>>) -> Self {
         ClauseVisitor {
             tcx,
             round,
@@ -128,7 +128,7 @@ impl ClauseVisitor<'a, 'tcx> {
 }
 
 crate fn program_clauses_for_env<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     environment: Environment<'tcx>,
 ) -> Clauses<'tcx> {
     debug!("program_clauses_for_env(environment={:?})", environment);
@@ -161,7 +161,7 @@ crate fn program_clauses_for_env<'tcx>(
 }
 
 crate fn environment<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     def_id: DefId
 ) -> Environment<'tcx> {
     use super::{Lower, IntoFromEnvGoal};

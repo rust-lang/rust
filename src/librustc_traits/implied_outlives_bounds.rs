@@ -23,7 +23,7 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 fn implied_outlives_bounds<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     goal: CanonicalTyGoal<'tcx>,
 ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,

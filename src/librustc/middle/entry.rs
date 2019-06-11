@@ -47,7 +47,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 }
 
-fn entry_fn(tcx: TyCtxt<'_, '_, '_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
+fn entry_fn(tcx: TyCtxt<'_, '_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let any_exe = tcx.sess.crate_types.borrow().iter().any(|ty| {
@@ -141,7 +141,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
 }
 
 fn configure_main(
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_, '_>,
     visitor: &EntryContext<'_, '_>,
 ) -> Option<(DefId, EntryFnType)> {
     if let Some((hir_id, _)) = visitor.start_fn {
@@ -179,7 +179,7 @@ fn configure_main(
     }
 }
 
-pub fn find_entry_point(tcx: TyCtxt<'_, '_, '_>) -> Option<(DefId, EntryFnType)> {
+pub fn find_entry_point(tcx: TyCtxt<'_, '_>) -> Option<(DefId, EntryFnType)> {
     tcx.entry_fn(LOCAL_CRATE)
 }
 

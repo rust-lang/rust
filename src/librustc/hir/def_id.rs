@@ -177,7 +177,7 @@ impl DefId {
         LocalDefId::from_def_id(self)
     }
 
-    pub fn describe_as_module(&self, tcx: TyCtxt<'_, '_, '_>) -> String {
+    pub fn describe_as_module(&self, tcx: TyCtxt<'_, '_>) -> String {
         if self.is_local() && self.index == CRATE_DEF_INDEX {
             format!("top-level module")
         } else {

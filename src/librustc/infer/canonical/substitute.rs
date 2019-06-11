@@ -16,7 +16,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
     /// with the value given in `var_values`.
     pub fn substitute(
         &self,
-        tcx: TyCtxt<'tcx, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         var_values: &CanonicalVarValues<'tcx>,
     ) -> V
     where
@@ -33,7 +33,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
     /// V, replacing each of the canonical variables.
     pub fn substitute_projected<T>(
         &self,
-        tcx: TyCtxt<'tcx, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         var_values: &CanonicalVarValues<'tcx>,
         projection_fn: impl FnOnce(&V) -> &T,
     ) -> T
@@ -50,7 +50,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
 /// must be values for the set of canonical variables that appear in
 /// `value`.
 pub(super) fn substitute_value<'a, 'tcx, T>(
-    tcx: TyCtxt<'tcx, '_, 'tcx>,
+    tcx: TyCtxt<'_, 'tcx>,
     var_values: &CanonicalVarValues<'tcx>,
     value: &'a T,
 ) -> T

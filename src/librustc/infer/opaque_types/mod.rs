@@ -553,7 +553,7 @@ impl<'tcx> TypeVisitor<'tcx> for OpaqueTypeOutlivesVisitor<'_, '_, 'tcx>
 }
 
 struct ReverseMapper<'gcx, 'tcx> {
-    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
 
     /// If errors have already been reported in this fn, we suppress
     /// our own errors because they are sometimes derivative.
@@ -569,7 +569,7 @@ struct ReverseMapper<'gcx, 'tcx> {
 
 impl ReverseMapper<'gcx, 'tcx> {
     fn new(
-        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         tainted_by_errors: bool,
         opaque_type_def_id: DefId,
         map: FxHashMap<Kind<'tcx>, Kind<'gcx>>,
@@ -600,7 +600,7 @@ impl ReverseMapper<'gcx, 'tcx> {
 }
 
 impl TypeFolder<'gcx, 'tcx> for ReverseMapper<'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.tcx
     }
 
@@ -944,7 +944,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 /// and `opaque_hir_id` is the `HirId` of the definition of the existential type `Baz`.
 /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
 pub fn may_define_existential_type(
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_, '_>,
     def_id: DefId,
     opaque_hir_id: hir::HirId,
 ) -> bool {

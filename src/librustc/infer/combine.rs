@@ -207,7 +207,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
 }
 
 impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -414,7 +414,7 @@ struct Generalization<'tcx> {
 }
 
 impl TypeRelation<'gcx, 'tcx> for Generalizer<'_, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 

@@ -14,13 +14,13 @@ use super::IllegalMoveOriginKind::*;
 
 struct MoveDataBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
     body: &'a Body<'tcx>,
-    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     data: MoveData<'tcx>,
     errors: Vec<(Place<'tcx>, MoveError<'tcx>)>,
 }
 
 impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
-    fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> Self {
+    fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'gcx, 'tcx>) -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
         let mut init_path_map = IndexVec::new();
@@ -204,7 +204,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
 
 pub(super) fn gather_moves<'gcx, 'tcx>(
     body: &Body<'tcx>,
-    tcx: TyCtxt<'tcx, 'gcx, 'tcx>
+    tcx: TyCtxt<'gcx, 'tcx>
 ) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
     let mut builder = MoveDataBuilder::new(body, tcx);
 

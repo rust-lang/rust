@@ -51,7 +51,7 @@ use std::io::Write;
 use syntax::ast;
 use syntax_pos::Span;
 
-pub fn assert_dep_graph<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn assert_dep_graph<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.debugging_opts.dump_dep_graph {
             dump_graph(tcx);
@@ -90,7 +90,7 @@ type Sources = Vec<(Span, DefId, DepNode)>;
 type Targets = Vec<(Span, ast::Name, hir::HirId, DepNode)>;
 
 struct IfThisChanged<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     if_this_changed: Sources,
     then_this_would_need: Targets,
 }
@@ -184,7 +184,7 @@ impl Visitor<'tcx> for IfThisChanged<'tcx> {
     }
 }
 
-fn check_paths<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn check_paths<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                          if_this_changed: &Sources,
                          then_this_would_need: &Targets)
 {
@@ -217,7 +217,7 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     }
 }
 
-fn dump_graph(tcx: TyCtxt<'_, '_, '_>) {
+fn dump_graph(tcx: TyCtxt<'_, '_>) {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
     let query = tcx.dep_graph.query();
 

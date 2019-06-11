@@ -49,7 +49,7 @@ pub fn add_placeholder_note(err: &mut errors::DiagnosticBuilder<'_>) {
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, invokes `no_overlap`.
 pub fn overlapping_impls<'gcx, F1, F2, R>(
-    tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
+    tcx: TyCtxt<'gcx, 'gcx>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     intercrate_mode: IntercrateMode,
@@ -183,7 +183,7 @@ fn overlap_within_probe(
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }
 
-pub fn trait_ref_is_knowable<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+pub fn trait_ref_is_knowable<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
                                              trait_ref: ty::TraitRef<'tcx>)
                                              -> Option<Conflict>
 {
@@ -229,7 +229,7 @@ pub fn trait_ref_is_knowable<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
     }
 }
 
-pub fn trait_ref_is_local_or_fundamental<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+pub fn trait_ref_is_local_or_fundamental<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
                                                          trait_ref: ty::TraitRef<'tcx>)
                                                          -> bool {
     trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, sym::fundamental)
@@ -246,7 +246,7 @@ pub enum OrphanCheckErr<'tcx> {
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
-pub fn orphan_check<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+pub fn orphan_check<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
                                     impl_def_id: DefId)
                                     -> Result<(), OrphanCheckErr<'tcx>>
 {
@@ -353,7 +353,7 @@ pub fn orphan_check<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
 ///
 /// Note that this function is never called for types that have both type
 /// parameters and inference variables.
-fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_, '_>,
+fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_>,
                                 trait_ref: ty::TraitRef<'tcx>,
                                 in_crate: InCrate)
                                 -> Result<(), OrphanCheckErr<'tcx>>
@@ -430,7 +430,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_, '_>,
     }
 }
 
-fn uncovered_tys<'tcx>(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'tcx>, in_crate: InCrate)
+fn uncovered_tys<'tcx>(tcx: TyCtxt<'_, '_>, ty: Ty<'tcx>, in_crate: InCrate)
                        -> Vec<Ty<'tcx>> {
     if ty_is_local_constructor(ty, in_crate) {
         vec![]
@@ -450,7 +450,7 @@ fn is_possibly_remote_type(ty: Ty<'_>, _in_crate: InCrate) -> bool {
     }
 }
 
-fn ty_is_local(tcx: TyCtxt<'_, '_, '_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
+fn ty_is_local(tcx: TyCtxt<'_, '_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
     ty_is_local_constructor(ty, in_crate) ||
         fundamental_ty(ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
 }

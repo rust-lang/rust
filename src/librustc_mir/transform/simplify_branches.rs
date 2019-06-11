@@ -20,7 +20,7 @@ impl MirPass for SimplifyBranches {
     }
 
     fn run_pass<'tcx>(&self,
-                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         for block in body.basic_blocks_mut() {

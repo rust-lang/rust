@@ -19,7 +19,7 @@ impl MirPass for Marker {
     }
 
     fn run_pass<'tcx>(&self,
-                          _tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+                          _tcx: TyCtxt<'tcx, 'tcx>,
                           _source: MirSource<'tcx>,
                           _body: &mut Body<'tcx>)
     {
@@ -38,7 +38,7 @@ impl fmt::Display for Disambiguator {
 }
 
 
-pub fn on_mir_pass<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn on_mir_pass<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                              pass_num: &dyn fmt::Display,
                              pass_name: &str,
                              source: MirSource<'tcx>,
@@ -56,7 +56,7 @@ pub fn on_mir_pass<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
 }
 
 pub fn emit_mir<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     outputs: &OutputFilenames)
     -> io::Result<()>
 {

@@ -13,7 +13,7 @@ pub struct InstCombine;
 
 impl MirPass for InstCombine {
     fn run_pass<'tcx>(&self,
-                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx>,
                           _: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         // We only run when optimizing MIR (at any level).
@@ -65,12 +65,12 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
 /// Finds optimization opportunities on the MIR.
 struct OptimizationFinder<'b, 'tcx> {
     body: &'b Body<'tcx>,
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     optimizations: OptimizationList<'tcx>,
 }
 
 impl OptimizationFinder<'b, 'tcx> {
-    fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> OptimizationFinder<'b, 'tcx> {
+    fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx, 'tcx>) -> OptimizationFinder<'b, 'tcx> {
         OptimizationFinder {
             body,
             tcx,

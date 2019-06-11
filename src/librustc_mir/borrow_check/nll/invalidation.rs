@@ -18,7 +18,7 @@ use rustc::mir::{Operand, BorrowKind};
 use rustc_data_structures::graph::dominators::Dominators;
 
 pub(super) fn generate_invalidates<'gcx, 'tcx>(
-    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: &Body<'tcx>,
@@ -44,7 +44,7 @@ pub(super) fn generate_invalidates<'gcx, 'tcx>(
 }
 
 struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
-    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
     body: &'cx Body<'tcx>,

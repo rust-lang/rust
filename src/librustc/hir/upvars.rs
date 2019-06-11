@@ -55,7 +55,7 @@ impl Visitor<'tcx> for LocalCollector {
 }
 
 struct CaptureCollector<'a, 'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     locals: &'a FxHashSet<HirId>,
     upvars: FxIndexMap<HirId, hir::Upvar>,
 }

@@ -91,7 +91,7 @@ impl SuppressRegionErrors {
     /// Indicates that the MIR borrowck will repeat these region
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
-    pub fn when_nll_is_enabled(tcx: TyCtxt<'_, '_, '_>) -> Self {
+    pub fn when_nll_is_enabled(tcx: TyCtxt<'_, '_>) -> Self {
         match tcx.borrowck_mode() {
             // If we're on Migrate mode, report AST region errors
             BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
@@ -103,7 +103,7 @@ impl SuppressRegionErrors {
 }
 
 pub struct InferCtxt<'a, 'gcx, 'tcx> {
-    pub tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    pub tcx: TyCtxt<'gcx, 'tcx>,
 
     /// During type-checking/inference of a body, `in_progress_tables`
     /// contains a reference to the tables being built up, which are
@@ -466,11 +466,11 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 /// Necessary because we can't write the following bound:
 /// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>)`.
 pub struct InferCtxtBuilder<'gcx, 'tcx> {
-    global_tcx: TyCtxt<'gcx, 'gcx, 'gcx>,
+    global_tcx: TyCtxt<'gcx, 'gcx>,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
 }
 
-impl TyCtxt<'gcx, 'gcx, 'gcx> {
+impl TyCtxt<'gcx, 'gcx> {
     pub fn infer_ctxt<'tcx>(self) -> InferCtxtBuilder<'gcx, 'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
@@ -1600,7 +1600,7 @@ impl<'a, 'gcx, 'tcx> ShallowResolver<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ShallowResolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -1641,7 +1641,7 @@ impl<'gcx, 'tcx> TypeTrace<'tcx> {
         }
     }
 
-    pub fn dummy(tcx: TyCtxt<'tcx, 'gcx, 'tcx>) -> TypeTrace<'tcx> {
+    pub fn dummy(tcx: TyCtxt<'gcx, 'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: ObligationCause::dummy(),
             values: Types(ExpectedFound {

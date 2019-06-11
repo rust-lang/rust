@@ -218,7 +218,7 @@ impl_stable_hash_for!(struct crate::middle::resolve_lifetime::ResolveLifetimes {
 });
 
 struct LifetimeContext<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
 
@@ -369,7 +369,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 /// directly, but rather use `named_region_map`, `is_late_bound_map`,
 /// etc.
 fn resolve_lifetimes<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     for_krate: CrateNum,
 ) -> &'tcx ResolveLifetimes {
     assert_eq!(for_krate, LOCAL_CRATE);
@@ -398,7 +398,7 @@ fn resolve_lifetimes<'tcx>(
     tcx.arena.alloc(rl)
 }
 
-fn krate<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> NamedRegionMap {
+fn krate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> NamedRegionMap {
     let krate = tcx.hir().krate();
     let mut map = NamedRegionMap {
         defs: Default::default(),
@@ -1101,7 +1101,7 @@ impl ShadowKind {
     }
 }
 
-fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_, '_, '_>, params: &P<[hir::GenericParam]>) {
+fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_, '_>, params: &P<[hir::GenericParam]>) {
     let lifetime_params: Vec<_> = params
         .iter()
         .filter_map(|param| match param.kind {
@@ -1129,7 +1129,7 @@ fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_, '_, '_>, params: &P<[hi
 }
 
 fn signal_shadowing_problem(
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_, '_>,
     name: ast::Name,
     orig: Original,
     shadower: Shadower,
@@ -1169,7 +1169,7 @@ fn signal_shadowing_problem(
 // if one of the label shadows a lifetime or another label.
 fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
     struct GatherLabels<'a, 'tcx: 'a> {
-        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         scope: ScopeRef<'a>,
         labels_in_fn: &'a mut Vec<ast::Ident>,
     }
@@ -1218,7 +1218,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
     }
 
     fn check_if_label_shadows_lifetime(
-        tcx: TyCtxt<'_, '_, '_>,
+        tcx: TyCtxt<'_, '_>,
         mut scope: ScopeRef<'_>,
         label: ast::Ident,
     ) {
@@ -1257,7 +1257,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
 }
 
 fn compute_object_lifetime_defaults(
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_, '_>,
 ) -> HirIdMap<Vec<ObjectLifetimeDefault>> {
     let mut map = HirIdMap::default();
     for item in tcx.hir().krate().items.values() {
@@ -1315,7 +1315,7 @@ fn compute_object_lifetime_defaults(
 /// of the form `T:'a` so as to determine the `ObjectLifetimeDefault`
 /// for each type parameter.
 fn object_lifetime_defaults_for_item(
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_, '_>,
     generics: &hir::Generics,
 ) -> Vec<ObjectLifetimeDefault> {
     fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::GenericBound]) {

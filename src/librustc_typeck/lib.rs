@@ -124,7 +124,7 @@ pub struct TypeAndSubsts<'tcx> {
     ty: Ty<'tcx>,
 }
 
-fn check_type_alias_enum_variants_enabled<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+fn check_type_alias_enum_variants_enabled<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>,
                                                           span: Span) {
     if !tcx.features().type_alias_enum_variants {
         let mut err = tcx.sess.struct_span_err(
@@ -140,7 +140,7 @@ fn check_type_alias_enum_variants_enabled<'gcx, 'tcx>(tcx: TyCtxt<'tcx, 'gcx, 't
     }
 }
 
-fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_, '_, '_>,
+fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_, '_>,
                                decl: &hir::FnDecl,
                                abi: Abi,
                                span: Span) {
@@ -151,7 +151,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_, '_, '_>,
     }
 }
 
-fn require_same_types<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn require_same_types<'tcx>(tcx: TyCtxt<'tcx, 'tcx>,
                                 cause: &ObligationCause<'tcx>,
                                 expected: Ty<'tcx>,
                                 actual: Ty<'tcx>)
@@ -179,7 +179,7 @@ fn require_same_types<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     })
 }
 
-fn check_main_fn_ty<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, main_def_id: DefId) {
+fn check_main_fn_ty<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, main_def_id: DefId) {
     let main_id = tcx.hir().as_local_hir_id(main_def_id).unwrap();
     let main_span = tcx.def_span(main_def_id);
     let main_t = tcx.type_of(main_def_id);
@@ -244,7 +244,7 @@ fn check_main_fn_ty<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, main_def_id: DefId) {
     }
 }
 
-fn check_start_fn_ty<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, start_def_id: DefId) {
+fn check_start_fn_ty<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, start_def_id: DefId) {
     let start_id = tcx.hir().as_local_hir_id(start_def_id).unwrap();
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id);
@@ -301,7 +301,7 @@ fn check_start_fn_ty<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, start_def_id: DefId) {
     }
 }
 
-fn check_for_entry_fn<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+fn check_for_entry_fn<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
         Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
@@ -318,7 +318,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     impl_wf_check::provide(providers);
 }
 
-pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>)
                              -> Result<(), ErrorReported>
 {
     tcx.sess.profiler(|p| p.start_activity("type-check crate"));
@@ -381,7 +381,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get
 /// the type from a HIR node.
-pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
+pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
@@ -392,7 +392,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> Ty
     astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
 }
 
-pub fn hir_trait_to_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, hir_trait: &hir::TraitRef)
+pub fn hir_trait_to_predicates<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, hir_trait: &hir::TraitRef)
         -> (ty::PolyTraitRef<'tcx>, Bounds<'tcx>) {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in

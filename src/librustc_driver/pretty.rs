@@ -156,7 +156,7 @@ impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
     fn call_with_pp_support<'tcx, A, F>(&self,
                                         sess: &'tcx Session,
-                                        tcx: Option<TyCtxt<'tcx, 'tcx, 'tcx>>,
+                                        tcx: Option<TyCtxt<'tcx, 'tcx>>,
                                         f: F)
                                         -> A
         where F: FnOnce(&dyn PrinterSupport) -> A
@@ -188,7 +188,7 @@ impl PpSourceMode {
     }
     fn call_with_pp_support_hir<'tcx, A, F>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         f: F
     ) -> A
         where F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate) -> A
@@ -270,7 +270,7 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
 
 struct NoAnn<'hir> {
     sess: &'hir Session,
-    tcx: Option<TyCtxt<'hir, 'hir, 'hir>>,
+    tcx: Option<TyCtxt<'hir, 'hir>>,
 }
 
 impl<'hir> PrinterSupport for NoAnn<'hir> {
@@ -311,7 +311,7 @@ impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
 
 struct IdentifiedAnnotation<'hir> {
     sess: &'hir Session,
-    tcx: Option<TyCtxt<'hir, 'hir, 'hir>>,
+    tcx: Option<TyCtxt<'hir, 'hir>>,
 }
 
 impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
@@ -456,7 +456,7 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
 
 
 struct TypedAnnotation<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     tables: Cell<&'a ty::TypeckTables<'tcx>>,
 }
 
@@ -618,7 +618,7 @@ impl UserIdentifiedItem {
 }
 
 fn print_flowgraph<'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
-                                       tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+                                       tcx: TyCtxt<'tcx, 'tcx>,
                                        code: blocks::Code<'tcx>,
                                        mode: PpFlowGraphMode,
                                        mut out: W)
@@ -755,7 +755,7 @@ pub fn print_after_parsing(sess: &Session,
 }
 
 pub fn print_after_hir_lowering<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     input: &Input,
     krate: &ast::Crate,
     ppm: PpMode,
@@ -866,7 +866,7 @@ pub fn print_after_hir_lowering<'tcx>(
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     ppm: PpMode,
     uii: Option<UserIdentifiedItem>,
     ofile: Option<&Path>

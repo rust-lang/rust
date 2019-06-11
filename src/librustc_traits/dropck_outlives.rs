@@ -18,7 +18,7 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 fn dropck_outlives<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     canonical_goal: CanonicalTyGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>, NoSolution> {
     debug!("dropck_outlives(goal={:#?})", canonical_goal);
@@ -147,7 +147,7 @@ fn dropck_outlives<'tcx>(
 /// Returns a set of constraints that needs to be satisfied in
 /// order for `ty` to be valid for destruction.
 fn dtorck_constraint_for_ty<'gcx, 'tcx>(
-    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     span: Span,
     for_ty: Ty<'tcx>,
     depth: usize,
@@ -280,7 +280,7 @@ fn dtorck_constraint_for_ty<'gcx, 'tcx>(
 
 /// Calculates the dtorck constraint for a type.
 crate fn adt_dtorck_constraint<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     def_id: DefId,
 ) -> Result<DtorckConstraint<'tcx>, NoSolution> {
     let def = tcx.adt_def(def_id);

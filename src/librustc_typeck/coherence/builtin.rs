@@ -17,7 +17,7 @@ use rustc::hir::def_id::DefId;
 use hir::Node;
 use rustc::hir::{self, ItemKind};
 
-pub fn check_trait<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, trait_def_id: DefId) {
+pub fn check_trait<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, trait_def_id: DefId) {
     Checker { tcx, trait_def_id }
         .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)
         .check(tcx.lang_items().copy_trait(), visit_implementation_of_copy)
@@ -27,13 +27,13 @@ pub fn check_trait<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, trait_def_id: DefId) {
 }
 
 struct Checker<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     trait_def_id: DefId
 }
 
 impl<'tcx> Checker<'tcx> {
     fn check<F>(&self, trait_def_id: Option<DefId>, mut f: F) -> &Self
-        where F: FnMut(TyCtxt<'tcx, 'tcx, 'tcx>, DefId)
+        where F: FnMut(TyCtxt<'tcx, 'tcx>, DefId)
     {
         if Some(self.trait_def_id) == trait_def_id {
             for &impl_id in self.tcx.hir().trait_impls(self.trait_def_id) {
@@ -45,7 +45,7 @@ impl<'tcx> Checker<'tcx> {
     }
 }
 
-fn visit_implementation_of_drop<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, impl_did: DefId) {
+fn visit_implementation_of_drop<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, impl_did: DefId) {
     if let ty::Adt(..) = tcx.type_of(impl_did).sty {
         /* do nothing */
     } else {
@@ -73,7 +73,7 @@ fn visit_implementation_of_drop<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, impl_did: D
     }
 }
 
-fn visit_implementation_of_copy<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, impl_did: DefId) {
+fn visit_implementation_of_copy<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, impl_did: DefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
     let impl_hir_id = if let Some(n) = tcx.hir().as_local_hir_id(impl_did) {
@@ -140,7 +140,7 @@ fn visit_implementation_of_copy<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, impl_did: D
     }
 }
 
-fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, impl_did: DefId) {
+fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'tcx, 'tcx>, impl_did: DefId) {
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}",
            impl_did);
 
@@ -154,7 +154,7 @@ fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, impl_di
 }
 
 fn visit_implementation_of_dispatch_from_dyn<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     impl_did: DefId,
 ) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}",
@@ -324,7 +324,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(
     }
 }
 
-pub fn coerce_unsized_info<'gcx>(gcx: TyCtxt<'gcx, 'gcx, 'gcx>,
+pub fn coerce_unsized_info<'gcx>(gcx: TyCtxt<'gcx, 'gcx>,
                                      impl_did: DefId)
                                      -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);

@@ -156,7 +156,7 @@ impl<'tcx> IntoWellFormedGoal for DomainGoal<'tcx> {
 }
 
 crate fn program_clauses_for<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
     // FIXME(eddyb) this should only be using `def_kind`.
@@ -185,7 +185,7 @@ crate fn program_clauses_for<'tcx>(
 }
 
 fn program_clauses_for_trait<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
     // `trait Trait<P1..Pn> where WC { .. } // P0 == Self`
@@ -300,7 +300,7 @@ fn program_clauses_for_trait<'tcx>(
     )
 }
 
-fn program_clauses_for_impl(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
+fn program_clauses_for_impl(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
         return List::empty();
     }
@@ -344,7 +344,7 @@ fn program_clauses_for_impl(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, def_id: DefId) -> Cla
 }
 
 pub fn program_clauses_for_type_def<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
     // Rule WellFormed-Type
@@ -421,7 +421,7 @@ pub fn program_clauses_for_type_def<'tcx>(
 }
 
 pub fn program_clauses_for_associated_type_def<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     item_id: DefId,
 ) -> Clauses<'tcx> {
     // Rule ProjectionEq-Placeholder
@@ -559,7 +559,7 @@ pub fn program_clauses_for_associated_type_def<'tcx>(
 }
 
 pub fn program_clauses_for_associated_type_value<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     item_id: DefId,
 ) -> Clauses<'tcx> {
     // Rule Normalize-From-Impl (see rustc guide)
@@ -620,7 +620,7 @@ pub fn program_clauses_for_associated_type_value<'tcx>(
     tcx.mk_clauses(iter::once(normalize_clause))
 }
 
-pub fn dump_program_clauses<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn dump_program_clauses<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     if !tcx.features().rustc_attrs {
         return;
     }
@@ -632,7 +632,7 @@ pub fn dump_program_clauses<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
 }
 
 struct ClauseDumper<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
 impl ClauseDumper<'tcx> {

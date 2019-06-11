@@ -306,7 +306,7 @@ impl<'tcx> MoveError<'tcx> {
 }
 
 impl<'gcx, 'tcx> MoveData<'tcx> {
-    pub fn gather_moves(body: &Body<'tcx>, tcx: TyCtxt<'tcx, 'gcx, 'tcx>)
+    pub fn gather_moves(body: &Body<'tcx>, tcx: TyCtxt<'gcx, 'tcx>)
                         -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
         builder::gather_moves(body, tcx)
     }

@@ -212,7 +212,7 @@ pub trait CrateStore {
 
     // utility functions
     fn encode_metadata<'tcx>(&self,
-                                 tcx: TyCtxt<'tcx, 'tcx, 'tcx>)
+                                 tcx: TyCtxt<'tcx, 'tcx>)
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
@@ -228,7 +228,7 @@ pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 // In order to get this left-to-right dependency ordering, we perform a
 // topological sort of all crates putting the leaves at the right-most
 // positions.
-pub fn used_crates(tcx: TyCtxt<'_, '_, '_>, prefer: LinkagePreference)
+pub fn used_crates(tcx: TyCtxt<'_, '_>, prefer: LinkagePreference)
     -> Vec<(CrateNum, LibSource)>
 {
     let mut libs = tcx.crates()

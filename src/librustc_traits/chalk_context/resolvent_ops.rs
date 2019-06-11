@@ -170,7 +170,7 @@ impl AnswerSubstitutor<'cx, 'gcx, 'tcx> {
 }
 
 impl TypeRelation<'gcx, 'tcx> for AnswerSubstitutor<'cx, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 

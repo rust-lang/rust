@@ -23,7 +23,7 @@ pub enum Cause {
 }
 
 pub trait TypeRelation<'gcx: 'tcx, 'tcx> : Sized {
-    fn tcx(&self) -> TyCtxt<'tcx, 'gcx, 'tcx>;
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx>;
 
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;

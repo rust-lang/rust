@@ -322,7 +322,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         // HACK(eddyb) maybe move this in a more central location.
         #[derive(Copy, Clone)]
         struct Highlighted<'gcx, 'tcx, T> {
-            tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+            tcx: TyCtxt<'gcx, 'tcx>,
             highlight: RegionHighlightMode,
             value: T,
         }

@@ -58,7 +58,7 @@ impl MirPass for SimplifyCfg {
     }
 
     fn run_pass<'tcx>(&self,
-                          _tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+                          _tcx: TyCtxt<'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body);
@@ -297,7 +297,7 @@ pub struct SimplifyLocals;
 
 impl MirPass for SimplifyLocals {
     fn run_pass<'tcx>(&self,
-                          tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'tcx, 'tcx>,
                           _: MirSource<'tcx>,
                           body: &mut Body<'tcx>) {
         let mut marker = DeclMarker { locals: BitSet::new_empty(body.local_decls.len()) };

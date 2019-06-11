@@ -48,11 +48,11 @@ pub struct AutoTraitInfo<'cx> {
 }
 
 pub struct AutoTraitFinder<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
 impl<'tcx> AutoTraitFinder<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx, 'tcx>) -> Self {
         AutoTraitFinder { tcx }
     }
 
@@ -834,11 +834,11 @@ impl AutoTraitFinder<'tcx> {
 // Replaces all ReVars in a type with ty::Region's, using the provided map
 pub struct RegionReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
-    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
         self.tcx
     }
 

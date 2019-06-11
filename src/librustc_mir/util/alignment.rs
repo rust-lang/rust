@@ -4,7 +4,7 @@ use rustc::mir::*;
 /// Returns `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
 /// struct).
-pub fn is_disaligned<'tcx, L>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn is_disaligned<'tcx, L>(tcx: TyCtxt<'tcx, 'tcx>,
                                   local_decls: &L,
                                   param_env: ty::ParamEnv<'tcx>,
                                   place: &Place<'tcx>)
@@ -32,7 +32,7 @@ pub fn is_disaligned<'tcx, L>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     }
 }
 
-fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx, 'tcx>,
                                  local_decls: &L,
                                  place: &Place<'tcx>)
                                  -> bool

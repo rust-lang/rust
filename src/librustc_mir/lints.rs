@@ -7,7 +7,7 @@ use rustc::mir::{self, Body, TerminatorKind};
 use rustc::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc::ty::subst::InternalSubsts;
 
-pub fn check(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+pub fn check(tcx: TyCtxt<'tcx, 'tcx>,
              body: &Body<'tcx>,
              def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
@@ -17,7 +17,7 @@ pub fn check(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
     }
 }
 
-fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'tcx, 'tcx>,
                                         fn_kind: FnKind<'_>,
                                         body: &Body<'tcx>,
                                         def_id: DefId) {

@@ -66,7 +66,7 @@ impl ty::layout::HasDataLayout for Builder<'_, '_, '_> {
 }
 
 impl ty::layout::HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'tcx, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx, 'tcx> {
         self.cx.tcx
     }
 }

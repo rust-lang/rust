@@ -206,7 +206,7 @@ impl Assertion {
     }
 }
 
-pub fn check_dirty_clean_annotations<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn check_dirty_clean_annotations<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     // can't add `#[rustc_dirty]` etc without opting in to this feature
     if !tcx.features().rustc_attrs {
         return;
@@ -235,7 +235,7 @@ pub fn check_dirty_clean_annotations<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
 }
 
 pub struct DirtyCleanVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     checked_attrs: FxHashSet<ast::AttrId>,
 }
 
@@ -537,7 +537,7 @@ impl ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
 ///
 /// Also make sure that the `label` and `except` fields do not
 /// both exist.
-fn check_config(tcx: TyCtxt<'_, '_, '_>, attr: &Attribute) -> bool {
+fn check_config(tcx: TyCtxt<'_, '_>, attr: &Attribute) -> bool {
     debug!("check_config(attr={:?})", attr);
     let config = &tcx.sess.parse_sess.config;
     debug!("check_config: config={:?}", config);
@@ -572,7 +572,7 @@ fn check_config(tcx: TyCtxt<'_, '_, '_>, attr: &Attribute) -> bool {
     }
 }
 
-fn expect_associated_value(tcx: TyCtxt<'_, '_, '_>, item: &NestedMetaItem) -> ast::Name {
+fn expect_associated_value(tcx: TyCtxt<'_, '_>, item: &NestedMetaItem) -> ast::Name {
     if let Some(value) = item.value_str() {
         value
     } else {
@@ -590,7 +590,7 @@ fn expect_associated_value(tcx: TyCtxt<'_, '_, '_>, item: &NestedMetaItem) -> as
 // the HIR. It is used to verfiy that we really ran checks for all annotated
 // nodes.
 pub struct FindAllAttrs<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     attr_names: Vec<Symbol>,
     found_attrs: Vec<&'tcx Attribute>,
 }

@@ -894,7 +894,7 @@ fn pointer_type_metadata(
     }
 }
 
-pub fn compile_unit_metadata(tcx: TyCtxt<'_, '_, '_>,
+pub fn compile_unit_metadata(tcx: TyCtxt<'_, '_>,
                              codegen_unit_name: &str,
                              debug_context: &CrateDebugContext<'ll, '_>)
                              -> &'ll DIDescriptor {

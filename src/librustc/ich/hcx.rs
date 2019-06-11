@@ -205,7 +205,7 @@ for &'b mut T {
     }
 }
 
-impl StableHashingContextProvider<'lcx> for TyCtxt<'lcx, 'gcx, 'lcx> {
+impl StableHashingContextProvider<'lcx> for TyCtxt<'gcx, 'lcx> {
     fn get_stable_hashing_context(&self) -> StableHashingContext<'lcx> {
         (*self).create_stable_hashing_context()
     }

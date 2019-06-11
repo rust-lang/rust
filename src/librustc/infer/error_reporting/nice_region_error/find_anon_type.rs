@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 // where that lifetime appears. This allows us to highlight the
 // specific part of the type in the error message.
 struct FindNestedTypeVisitor<'gcx, 'tcx> {
-    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     // The bound_region corresponding to the Refree(freeregion)
     // associated with the anonymous region we are looking for.
     bound_region: ty::BoundRegion,
@@ -209,7 +209,7 @@ impl Visitor<'gcx> for FindNestedTypeVisitor<'gcx, 'tcx> {
 // where that lifetime appears. This allows us to highlight the
 // specific part of the type in the error message.
 struct TyPathVisitor<'gcx, 'tcx> {
-    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     found_it: bool,
     bound_region: ty::BoundRegion,
     current_index: ty::DebruijnIndex,

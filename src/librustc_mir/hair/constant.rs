@@ -11,7 +11,7 @@ crate enum LitToConstError {
 
 crate fn lit_to_const<'gcx, 'tcx>(
     lit: &'tcx ast::LitKind,
-    tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     ty: Ty<'tcx>,
     neg: bool,
 ) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {

@@ -11,7 +11,7 @@ use syntax::symbol::{Symbol, sym};
 const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
 const DEF_PATH: Symbol = sym::rustc_def_path;
 
-pub fn report_symbol_names<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn report_symbol_names<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     // if the `rustc_attrs` feature is not enabled, then the
     // attributes we are interested in cannot be present anyway, so
     // skip the walk.
@@ -26,7 +26,7 @@ pub fn report_symbol_names<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
 }
 
 struct SymbolNamesTest<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
 impl SymbolNamesTest<'tcx> {

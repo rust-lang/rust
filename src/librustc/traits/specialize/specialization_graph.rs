@@ -84,7 +84,7 @@ enum Inserted {
 impl<'gcx, 'tcx> Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self,
-                      tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+                      tcx: TyCtxt<'gcx, 'tcx>,
                       impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         if let Some(sty) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
@@ -100,7 +100,7 @@ impl<'gcx, 'tcx> Children {
     /// an impl with a parent. The impl must be present in the list of
     /// children already.
     fn remove_existing(&mut self,
-                      tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+                      tcx: TyCtxt<'gcx, 'tcx>,
                       impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let vec: &mut Vec<DefId>;
@@ -119,7 +119,7 @@ impl<'gcx, 'tcx> Children {
     /// Attempt to insert an impl into this set of children, while comparing for
     /// specialization relationships.
     fn insert(&mut self,
-              tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+              tcx: TyCtxt<'gcx, 'tcx>,
               impl_def_id: DefId,
               simplified_self: Option<SimplifiedType>)
               -> Result<Inserted, OverlapError>
@@ -294,7 +294,7 @@ impl<'gcx, 'tcx> Graph {
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.
     pub fn insert(&mut self,
-                  tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+                  tcx: TyCtxt<'gcx, 'tcx>,
                   impl_def_id: DefId)
                   -> Result<Option<FutureCompatOverlapError>, OverlapError> {
         assert!(impl_def_id.is_local());
@@ -387,7 +387,7 @@ impl<'gcx, 'tcx> Graph {
 
     /// Insert cached metadata mapping from a child impl back to its parent.
     pub fn record_impl_from_cstore(&mut self,
-                                   tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+                                   tcx: TyCtxt<'gcx, 'tcx>,
                                    parent: DefId,
                                    child: DefId) {
         if self.parent.insert(child, parent).is_some() {
@@ -425,7 +425,7 @@ impl<'gcx, 'tcx> Node {
     /// Iterate over the items defined directly by the given (impl or trait) node.
     pub fn items(
         &self,
-        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
     ) -> ty::AssocItemsIterator<'gcx, 'tcx> {
         tcx.associated_items(self.def_id())
     }
@@ -482,7 +482,7 @@ impl<'gcx, 'tcx> Ancestors<'gcx> {
     #[inline]
     pub fn defs(
         self,
-        tcx: TyCtxt<'tcx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         trait_item_name: Ident,
         trait_item_kind: ty::AssocKind,
         trait_def_id: DefId,
@@ -508,7 +508,7 @@ impl<'gcx, 'tcx> Ancestors<'gcx> {
 
 /// Walk up the specialization ancestors of a given impl, starting with that
 /// impl itself.
-pub fn ancestors(tcx: TyCtxt<'_, 'tcx, '_>,
+pub fn ancestors(tcx: TyCtxt<'tcx, '_>,
                  trait_def_id: DefId,
                  start_from_impl: DefId)
                  -> Ancestors<'tcx> {

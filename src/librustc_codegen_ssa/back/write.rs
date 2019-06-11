@@ -375,7 +375,7 @@ fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
 
 pub fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_, '_>,
     metadata: EncodedMetadata,
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
     total_cgus: usize
@@ -996,7 +996,7 @@ enum MainThreadWorkerState {
 
 fn start_executing_work<B: ExtraBackendMethods>(
     backend: B,
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_, '_>,
     crate_info: &CrateInfo,
     shared_emitter: SharedEmitter,
     codegen_worker_send: Sender<Message<B>>,
@@ -1862,7 +1862,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     }
 
     pub fn submit_pre_codegened_module_to_llvm(&self,
-                                                       tcx: TyCtxt<'_, '_, '_>,
+                                                       tcx: TyCtxt<'_, '_>,
                                                        module: ModuleCodegen<B::Module>) {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
@@ -1872,7 +1872,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         submit_codegened_module_to_llvm(&self.backend, tcx, module, cost);
     }
 
-    pub fn codegen_finished(&self, tcx: TyCtxt<'_, '_, '_>) {
+    pub fn codegen_finished(&self, tcx: TyCtxt<'_, '_>) {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
         drop(self.coordinator_send.send(Box::new(Message::CodegenComplete::<B>)));
@@ -1911,7 +1911,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
 pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_, '_>,
     module: ModuleCodegen<B::Module>,
     cost: u64
 ) {
@@ -1924,7 +1924,7 @@ pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
 
 pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_, '_>,
     module: CachedModuleCodegen
 ) {
     let llvm_work_item = WorkItem::CopyPostLtoArtifacts(module);
@@ -1936,7 +1936,7 @@ pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
 
 pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
     _backend: &B,
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_, '_>,
     module: CachedModuleCodegen
 ) {
     let filename = pre_lto_bitcode_filename(&module.name);
@@ -1961,7 +1961,7 @@ pub fn pre_lto_bitcode_filename(module_name: &str) -> String {
     format!("{}.{}", module_name, PRE_LTO_BC_EXT)
 }
 
-fn msvc_imps_needed(tcx: TyCtxt<'_, '_, '_>) -> bool {
+fn msvc_imps_needed(tcx: TyCtxt<'_, '_>) -> bool {
     // This should never be true (because it's not supported). If it is true,
     // something is wrong with commandline arg validation.
     assert!(!(tcx.sess.opts.cg.linker_plugin_lto.enabled() &&

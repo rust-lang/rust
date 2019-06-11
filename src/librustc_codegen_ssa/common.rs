@@ -122,7 +122,7 @@ mod temp_stable_hash_impls {
     }
 }
 
-pub fn langcall(tcx: TyCtxt<'_, '_, '_>,
+pub fn langcall(tcx: TyCtxt<'_, '_>,
                 span: Option<Span>,
                 msg: &str,
                 li: LangItem)

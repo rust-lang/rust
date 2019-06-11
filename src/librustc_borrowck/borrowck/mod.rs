@@ -53,7 +53,7 @@ pub struct LoanDataFlowOperator;
 
 pub type LoanDataFlow<'tcx> = DataFlowContext<'tcx, LoanDataFlowOperator>;
 
-pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>) {
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     tcx.par_body_owners(|body_owner_def_id| {
         tcx.ensure().borrowck(body_owner_def_id);
     });
@@ -73,7 +73,7 @@ pub struct AnalysisData<'tcx> {
     pub move_data: move_data::FlowedMoveData<'tcx>,
 }
 
-fn borrowck<'tcx>(tcx: TyCtxt<'tcx, 'tcx, 'tcx>, owner_def_id: DefId)
+fn borrowck<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, owner_def_id: DefId)
     -> &'tcx BorrowCheckResult
 {
     assert!(tcx.use_ast_borrowck() || tcx.migrate_borrowck());
@@ -193,7 +193,7 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
 /// Accessor for introspective clients inspecting `AnalysisData` and
 /// the `BorrowckCtxt` itself , e.g., the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     body_id: hir::BodyId,
     cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'tcx>)
@@ -221,7 +221,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 // Type definitions
 
 pub struct BorrowckCtxt<'a, 'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
 
     // tables for the current thing we are checking; set to
     // Some in `borrowck_fn` and cleared later
@@ -391,7 +391,7 @@ pub enum LoanPathElem<'tcx> {
 }
 
 fn closure_to_block(closure_id: LocalDefId,
-                    tcx: TyCtxt<'_, '_, '_>) -> HirId {
+                    tcx: TyCtxt<'_, '_>) -> HirId {
     let closure_id = tcx.hir().local_def_id_to_node_id(closure_id);
     match tcx.hir().get(closure_id) {
         Node::Expr(expr) => match expr.node {
