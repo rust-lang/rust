@@ -74,8 +74,9 @@ steps:
 # images, etc.
 - bash: |
     set -e
+    source src/ci/shared.sh
     sudo apt-get install -y python3-setuptools
-    pip3 install awscli --upgrade --user
+    retry pip3 install awscli --upgrade --user
     echo "##vso[task.prependpath]$HOME/.local/bin"
   displayName: Install awscli (Linux)
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
