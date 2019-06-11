@@ -1495,13 +1495,13 @@ pub trait Iterator {
         let mut left: B = Default::default();
         let mut right: B = Default::default();
 
-        for x in self {
+        self.for_each(|x| {
             if f(&x) {
                 left.extend(Some(x))
             } else {
                 right.extend(Some(x))
             }
-        }
+        });
 
         (left, right)
     }
