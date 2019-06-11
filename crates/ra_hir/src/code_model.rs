@@ -932,12 +932,19 @@ pub struct TypeAlias {
     pub(crate) id: TypeAliasId,
 }
 
+impl HasSource for TypeAlias {
+    type Ast = TreeArc<ast::TypeAliasDef>;
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<TreeArc<ast::TypeAliasDef>> {
+        self.id.source(db).into()
+    }
+}
+
 impl TypeAlias {
     pub fn source(
         self,
         db: &(impl DefDatabase + AstDatabase),
-    ) -> (HirFileId, TreeArc<ast::TypeAliasDef>) {
-        self.id.source(db)
+    ) -> Source<TreeArc<ast::TypeAliasDef>> {
+        self.id.source(db).into()
     }
 
     pub fn module(self, db: &impl DefDatabase) -> Module {

@@ -81,7 +81,7 @@ impl GenericParams {
                 });
                 generics.fill(&*it.source(db).1, start + 1);
             }
-            GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).1, start),
+            GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).ast, start),
             GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).1, start),
         }
 

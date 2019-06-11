@@ -8,6 +8,6 @@ pub(crate) fn type_alias_ref_query(
     db: &(impl DefDatabase + AstDatabase),
     typ: TypeAlias,
 ) -> Arc<TypeRef> {
-    let (_, node) = typ.source(db);
+    let node = typ.source(db).ast;
     Arc::new(TypeRef::from_ast_opt(node.type_ref()))
 }

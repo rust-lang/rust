@@ -141,13 +141,12 @@ impl Completions {
     }
 
     pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
-        let (_file_id, type_def) = type_alias.source(ctx.db);
+        let type_def = type_alias.source(ctx.db).ast;
         let name = match type_def.name() {
             Some(name) => name,
             _ => return,
         };
-        let (_, ast_node) = type_alias.source(ctx.db);
-        let detail = type_label(&ast_node);
+        let detail = type_label(&type_def);
 
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
             .kind(CompletionItemKind::TypeAlias)

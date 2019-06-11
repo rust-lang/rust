@@ -232,15 +232,7 @@ impl NavigationTarget {
                     node.short_label(),
                 )
             }
-            hir::ModuleDef::TypeAlias(e) => {
-                let (file_id, node) = e.source(db);
-                NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                    node.doc_comment_text(),
-                    node.short_label(),
-                )
-            }
+            hir::ModuleDef::TypeAlias(it) => NavigationTarget::from_def_source(db, it),
             hir::ModuleDef::BuiltinType(..) => {
                 return None;
             }
@@ -267,15 +259,7 @@ impl NavigationTarget {
         match impl_item {
             ImplItem::Method(it) => NavigationTarget::from_function(db, it),
             ImplItem::Const(it) => NavigationTarget::from_def_source(db, it),
-            ImplItem::TypeAlias(a) => {
-                let (file_id, node) = a.source(db);
-                NavigationTarget::from_named(
-                    file_id.original_file(db),
-                    &*node,
-                    node.doc_comment_text(),
-                    node.short_label(),
-                )
-            }
+            ImplItem::TypeAlias(it) => NavigationTarget::from_def_source(db, it),
         }
     }
 

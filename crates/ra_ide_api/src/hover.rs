@@ -107,14 +107,11 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                     res.extend(hover_text(it.doc_comment_text(), it.short_label()));
                 }
             }
-            Some(AssocItem(it)) => match it {
-                hir::ImplItem::Method(it) => res.extend(from_def_source(db, it)),
-                hir::ImplItem::Const(it) => res.extend(from_def_source(db, it)),
-                hir::ImplItem::TypeAlias(it) => {
-                    let it = it.source(db).1;
-                    res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                }
-            },
+            Some(AssocItem(it)) => res.extend(match it {
+                hir::ImplItem::Method(it) => from_def_source(db, it),
+                hir::ImplItem::Const(it) => from_def_source(db, it),
+                hir::ImplItem::TypeAlias(it) => from_def_source(db, it),
+            }),
             Some(Def(it)) => {
                 match it {
                     hir::ModuleDef::Module(it) => {
@@ -137,10 +134,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                         let it = it.source(db).1;
                         res.extend(hover_text(it.doc_comment_text(), it.short_label()))
                     }
-                    hir::ModuleDef::TypeAlias(it) => {
-                        let it = it.source(db).1;
-                        res.extend(hover_text(it.doc_comment_text(), it.short_label()))
-                    }
+                    hir::ModuleDef::TypeAlias(it) => res.extend(from_def_source(db, it)),
                     hir::ModuleDef::BuiltinType(_) => {
                         // FIXME: hover for builtin Type ?
                     }
