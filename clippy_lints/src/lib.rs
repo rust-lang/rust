@@ -197,6 +197,7 @@ pub mod infinite_iter;
 pub mod inherent_impl;
 pub mod inline_fn_without_body;
 pub mod int_plus_one;
+pub mod integer_division;
 pub mod invalid_ref;
 pub mod items_after_statements;
 pub mod large_enum_variant;
@@ -580,6 +581,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box transmuting_null::TransmutingNull);
     reg.register_late_lint_pass(box path_buf_push_overwrite::PathBufPushOverwrite);
     reg.register_late_lint_pass(box checked_conversions::CheckedConversions);
+    reg.register_late_lint_pass(box integer_division::IntegerDivision);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -624,6 +626,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         functions::TOO_MANY_LINES,
         if_not_else::IF_NOT_ELSE,
         infinite_iter::MAYBE_INFINITE_ITER,
+        integer_division::INTEGER_DIVISION,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         literal_representation::LARGE_DIGIT_GROUPS,
         loops::EXPLICIT_INTO_ITER_LOOP,
