@@ -1615,7 +1615,8 @@ pub struct Placeholder<T> {
 }
 
 impl<'a, T> HashStable<StableHashingContext<'a>> for Placeholder<T>
-    where T: HashStable<StableHashingContext<'a>>
+where
+    T: HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable<W: StableHasherResult>(
         &self,

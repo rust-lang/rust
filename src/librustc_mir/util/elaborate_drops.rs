@@ -119,7 +119,8 @@ pub fn elaborate_drop<'b, 'tcx, D>(
 }
 
 impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
-    where D: DropElaborator<'b, 'tcx>
+where
+    D: DropElaborator<'b, 'tcx>,
 {
     fn place_ty(&self, place: &Place<'tcx>) -> Ty<'tcx> {
         place.ty(self.elaborator.body(), self.tcx()).ty
@@ -285,12 +286,12 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///
     /// NOTE: this does not clear the master drop flag, so you need
     /// to point succ/unwind on a `drop_ladder_bottom`.
-    fn drop_ladder(&mut self,
-                       fields: Vec<(Place<'tcx>, Option<D::Path>)>,
-                       succ: BasicBlock,
-                       unwind: Unwind)
-                       -> (BasicBlock, Unwind)
-    {
+    fn drop_ladder(
+        &mut self,
+        fields: Vec<(Place<'tcx>, Option<D::Path>)>,
+        succ: BasicBlock,
+        unwind: Unwind,
+    ) -> (BasicBlock, Unwind) {
         debug!("drop_ladder({:?}, {:?})", self, fields);
 
         let mut fields = fields;
@@ -314,9 +315,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         (*normal_ladder.last().unwrap(), *unwind_ladder.last().unwrap())
     }
 
-    fn open_drop_for_tuple(&mut self, tys: &[Ty<'tcx>])
-                               -> BasicBlock
-    {
+    fn open_drop_for_tuple(&mut self, tys: &[Ty<'tcx>]) -> BasicBlock {
         debug!("open_drop_for_tuple({:?}, {:?})", self, tys);
 
         let fields = tys.iter().enumerate().map(|(i, &ty)| {
@@ -328,9 +327,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.drop_ladder(fields, succ, unwind).0
     }
 
-    fn open_drop_for_box(&mut self, adt: &'tcx ty::AdtDef, substs: SubstsRef<'tcx>)
-                             -> BasicBlock
-    {
+    fn open_drop_for_box(&mut self, adt: &'tcx ty::AdtDef, substs: SubstsRef<'tcx>) -> BasicBlock {
         debug!("open_drop_for_box({:?}, {:?}, {:?})", self, adt, substs);
 
         let interior = self.place.clone().deref();
@@ -346,8 +343,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.drop_subpath(&interior, interior_path, succ, unwind_succ)
     }
 
-    fn open_drop_for_adt(&mut self, adt: &'tcx ty::AdtDef, substs: SubstsRef<'tcx>)
-                             -> BasicBlock {
+    fn open_drop_for_adt(&mut self, adt: &'tcx ty::AdtDef, substs: SubstsRef<'tcx>) -> BasicBlock {
         debug!("open_drop_for_adt({:?}, {:?}, {:?})", self, adt, substs);
         if adt.variants.len() == 0 {
             return self.elaborator.patch().new_block(BasicBlockData {
@@ -505,9 +501,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.drop_flag_test_block(switch_block, succ, unwind)
     }
 
-    fn destructor_call_block(&mut self, (succ, unwind): (BasicBlock, Unwind))
-                                 -> BasicBlock
-    {
+    fn destructor_call_block(&mut self, (succ, unwind): (BasicBlock, Unwind)) -> BasicBlock {
         debug!("destructor_call_block({:?}, {:?})", self, succ);
         let tcx = self.tcx();
         let drop_trait = tcx.lang_items().drop_trait().unwrap();
@@ -837,11 +831,12 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     /// if FLAG(self.path)
     ///     if let Some(mode) = mode: FLAG(self.path)[mode] = false
     ///     drop(self.place)
-    fn complete_drop(&mut self,
-                         drop_mode: Option<DropFlagMode>,
-                         succ: BasicBlock,
-                         unwind: Unwind) -> BasicBlock
-    {
+    fn complete_drop(
+        &mut self,
+        drop_mode: Option<DropFlagMode>,
+        succ: BasicBlock,
+        unwind: Unwind,
+    ) -> BasicBlock {
         debug!("complete_drop({:?},{:?})", self, drop_mode);
 
         let drop_block = self.drop_block(succ, unwind);
@@ -892,7 +887,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         adt: &'tcx ty::AdtDef,
         substs: SubstsRef<'tcx>,
         target: BasicBlock,
-        unwind: Unwind
+        unwind: Unwind,
     ) -> BasicBlock {
         let tcx = self.tcx();
         let unit_temp = Place::Base(PlaceBase::Local(self.new_temp(tcx.mk_unit())));
@@ -947,11 +942,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         }
     }
 
-    fn new_block(&mut self,
-                     unwind: Unwind,
-                     k: TerminatorKind<'tcx>)
-                     -> BasicBlock
-    {
+    fn new_block(&mut self, unwind: Unwind, k: TerminatorKind<'tcx>) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData {
             statements: vec![],
             terminator: Some(Terminator {

@@ -590,7 +590,8 @@ struct HirItemLike<T> {
 }
 
 impl<'hir, T> HashStable<StableHashingContext<'hir>> for HirItemLike<T>
-    where T: HashStable<StableHashingContext<'hir>>
+where
+    T: HashStable<StableHashingContext<'hir>>,
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'hir>,

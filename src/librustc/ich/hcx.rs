@@ -397,8 +397,9 @@ pub fn hash_stable_trait_impls<'a, W>(
     hcx: &mut StableHashingContext<'a>,
     hasher: &mut StableHasher<W>,
     blanket_impls: &[DefId],
-    non_blanket_impls: &FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>)
-    where W: StableHasherResult
+    non_blanket_impls: &FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
+) where
+    W: StableHasherResult,
 {
     {
         let mut blanket_impls: SmallVec<[_; 8]> = blanket_impls
