@@ -13,6 +13,7 @@
 
 #![deny(rust_2018_idioms)]
 #![deny(internal)]
+#![deny(unused_lifetimes)]
 
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]

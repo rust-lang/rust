@@ -8,6 +8,7 @@
 
 #![deny(rust_2018_idioms)]
 #![deny(internal)]
+#![deny(unused_lifetimes)]
 
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
