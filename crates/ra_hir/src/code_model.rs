@@ -210,11 +210,11 @@ impl Module {
     pub fn declaration_source(
         self,
         db: &(impl DefDatabase + AstDatabase),
-    ) -> Option<(HirFileId, TreeArc<ast::Module>)> {
+    ) -> Option<Source<TreeArc<ast::Module>>> {
         let def_map = db.crate_def_map(self.krate);
         let decl = def_map[self.module_id].declaration?;
         let ast = decl.to_node(db);
-        Some((decl.file_id(), ast))
+        Some((decl.file_id(), ast).into())
     }
 
     /// Returns the syntax of the last path segment corresponding to this import

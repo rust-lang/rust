@@ -71,7 +71,7 @@ pub(crate) fn documentation_query(
     def: DocDef,
 ) -> Option<Documentation> {
     match def {
-        DocDef::Module(it) => docs_from_ast(&*it.declaration_source(db)?.1),
+        DocDef::Module(it) => docs_from_ast(&*it.declaration_source(db)?.ast),
         DocDef::StructField(it) => match it.source(db).ast {
             FieldSource::Named(named) => docs_from_ast(&*named),
             FieldSource::Pos(..) => return None,

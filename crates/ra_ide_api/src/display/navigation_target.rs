@@ -149,15 +149,15 @@ impl NavigationTarget {
 
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
-        if let Some((file_id, source)) = module.declaration_source(db) {
-            let file_id = file_id.as_original_file();
+        if let Some(src) = module.declaration_source(db) {
+            let file_id = src.file_id.as_original_file();
             return NavigationTarget::from_syntax(
                 file_id,
                 name,
                 None,
-                source.syntax(),
-                source.doc_comment_text(),
-                source.short_label(),
+                src.ast.syntax(),
+                src.ast.doc_comment_text(),
+                src.ast.short_label(),
             );
         }
         NavigationTarget::from_module(db, module)
