@@ -874,4 +874,21 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
         Ok(())
     }
+
+    pub fn force_ptr(
+        &self,
+        scalar: Scalar<M::PointerTag>,
+    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
+        match scalar {
+            Scalar::Ptr(ptr) => Ok(ptr),
+            _ => M::int_to_ptr(scalar.to_usize(self)?, &self.extra)
+        }
+    }
+
+    pub fn force_bits(&self, scalar: Scalar<M::PointerTag>) -> InterpResult<'tcx, u128> {
+        match scalar.to_bits_or_ptr(self.pointer_size(), self) {
+            Ok(bits) => Ok(bits),
+            Err(ptr) => Ok(M::ptr_to_int(ptr, &self.extra)? as u128)
+        }
+    }
 }
