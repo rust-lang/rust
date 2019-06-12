@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::collections::{VecDeque, vec_deque::Drain};
-use std::collections::CollectionAllocErr::*;
+use std::collections::TryReserveError::*;
 use std::mem::size_of;
 use std::{usize, isize};
 

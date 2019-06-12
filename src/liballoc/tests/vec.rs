@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::mem::size_of;
 use std::{usize, isize};
 use std::vec::{Drain, IntoIter};
-use std::collections::CollectionAllocErr::*;
+use std::collections::TryReserveError::*;
 
 struct DropCounter<'a> {
     count: &'a mut u32,

@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::collections::CollectionAllocErr::*;
+use std::collections::TryReserveError::*;
 use std::mem::size_of;
 use std::{usize, isize};
 
