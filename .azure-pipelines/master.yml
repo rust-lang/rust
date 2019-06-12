@@ -6,6 +6,9 @@ pr: none
 trigger:
   - master
 
+variables:
+- group: prod-credentials
+
 pool:
   vmImage: ubuntu-16.04
 
@@ -16,9 +19,7 @@ steps:
 - script: |
     export MESSAGE_FILE=$(mktemp -t msg.XXXXXX)
     . src/ci/docker/x86_64-gnu-tools/repo.sh
-    # FIXME(pietro): committing is disabled until we switch to Azure Pipelines
-    # as the source of truth, or until we setup a separate test repo.
-    #commit_toolstate_change "$MESSAGE_FILE" "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN"
+    commit_toolstate_change "$MESSAGE_FILE" "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN"
   displayName: Publish toolstate
   env:
-    TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN_SECRET)
+    TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)

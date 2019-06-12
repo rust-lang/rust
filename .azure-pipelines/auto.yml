@@ -140,7 +140,6 @@ jobs:
         IMAGE: x86_64-gnu-aux
       x86_64-gnu-tools:
         IMAGE: x86_64-gnu-tools
-      # FIXME if: branch = auto OR (type = pull_request AND commit_message =~ /(?i:^update.*\b(rls|rustfmt|clippy|miri|cargo)\b)/)
       x86_64-gnu-debug:
         IMAGE: x86_64-gnu-debug
       x86_64-gnu-nopt:

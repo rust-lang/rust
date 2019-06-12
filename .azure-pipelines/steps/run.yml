@@ -124,6 +124,7 @@ steps:
     CI: true
     SRC: .
     AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+    TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)
   displayName: Run build
 
 # If we're a deploy builder, use the `aws` command to publish everything to our
