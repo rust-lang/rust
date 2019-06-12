@@ -58,8 +58,10 @@ pub fn run(options: Options) -> i32 {
             ..config::basic_debugging_options()
         },
         edition: options.edition,
+        target_triple: options.target.clone(),
         ..config::Options::default()
     };
+
     let config = interface::Config {
         opts: sessopts,
         crate_cfg: config::parse_cfgspecs(options.cfgs.clone()),

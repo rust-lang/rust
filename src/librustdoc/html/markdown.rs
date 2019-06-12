@@ -665,7 +665,7 @@ impl LangString {
                 }
                 "no_run" => { data.no_run = true; seen_rust_tags = !seen_other_tags; }
                 "ignore" => { data.ignore = Ignore::All; seen_rust_tags = !seen_other_tags; }
-                x if enable_per_target_ignores && x.starts_with("ignore-") => {
+                x if x.starts_with("ignore-") => if enable_per_target_ignores {
                     ignores.push(x.trim_start_matches("ignore-").to_owned());
                     seen_rust_tags = !seen_other_tags;
                 }
@@ -696,15 +696,9 @@ impl LangString {
                 _ => { seen_other_tags = true }
             }
         }
-
-        match data.ignore {
-            Ignore::All => {},
-            Ignore::None => {
-                if !ignores.is_empty() {
-                    data.ignore = Ignore::Some(ignores);
-                }
-            },
-            _ => unreachable!(),
+        // ignore-foo overrides ignore
+        if !ignores.is_empty() {
+            data.ignore = Ignore::Some(ignores);
         }
 
         data.rust &= !seen_other_tags || seen_rust_tags;

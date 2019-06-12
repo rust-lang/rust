@@ -471,3 +471,53 @@ Some methodology notes about what rustdoc counts in this metric:
 
 Public items that are not documented can be seen with the built-in `missing_docs` lint. Private
 items that are not documented can be seen with Clippy's `missing_docs_in_private_items` lint.
+
+### `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --enable-per-target-ignores
+```
+
+This flag allows you to tag doctests with compiltest style `ignore-foo` filters that prevent
+rustdoc from running that test if the target triple string contains foo. For example:
+
+```rust
+///```ignore-foo,ignore-bar
+///assert!(2 == 2);
+///```
+struct Foo;
+```
+
+This will not be run when the build target is `super-awesome-foo` or `less-bar-awesome`.
+If the flag is not enabled, then rustdoc will consume the filter, but do nothing with it, and
+the above example will be run for all targets.
+If you want to preserve backwards compatibility for older versions of rustdoc, you can use
+
+```rust
+///```ignore,ignore-foo
+///assert!(2 == 2);
+///```
+struct Foo;
+```
+
+In older versions, this will be ignored on all targets, but on newer versions `ignore-gnu` will
+override `ignore`.
+
+### `--runtool`, `--runtool-arg`: program to run tests with; args to pass to it
+
+Using thses options looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --runtool runner --runtool-arg --do-thing --runtool-arg --do-other-thing
+```
+
+These options can be used to run the doctest under a program, and also pass arguments to
+that program. For example, if you want to run your doctests under valgrind you might run
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --runtool valgrind
+```
+
+Another use case would be to run a test inside an emulator, or through a Virtual Machine.
