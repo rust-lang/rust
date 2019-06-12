@@ -26,24 +26,24 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
         self.body.local_decls.len()
     }
 
-    fn start_block_effect(&self, _sets: &mut BitSet<Local>) {
+    fn start_block_effect(&self, _on_entry: &mut BitSet<Local>) {
         // Nothing is live on function entry
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<'_, Local>,
+                        trans: &mut GenKillSet<Local>,
                         loc: Location) {
         let stmt = &self.body[loc.block].statements[loc.statement_index];
 
         match stmt.kind {
-            StatementKind::StorageLive(l) => sets.gen(l),
-            StatementKind::StorageDead(l) => sets.kill(l),
+            StatementKind::StorageLive(l) => trans.gen(l),
+            StatementKind::StorageDead(l) => trans.kill(l),
             _ => (),
         }
     }
 
     fn terminator_effect(&self,
-                         _sets: &mut BlockSets<'_, Local>,
+                         _trans: &mut GenKillSet<Local>,
                          _loc: Location) {
         // Terminators have no effect
     }

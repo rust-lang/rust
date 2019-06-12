@@ -12,7 +12,7 @@ use super::MoveDataParamEnv;
 use crate::util::elaborate_drops::DropFlagState;
 
 use super::move_paths::{HasMoveData, MoveData, MovePathIndex, InitIndex, InitKind};
-use super::{BitDenotation, BlockSets, InitialFlow};
+use super::{BitDenotation, InitialFlow, GenKillSet};
 
 use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
@@ -226,34 +226,37 @@ impl<'a, 'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
-    fn update_bits(sets: &mut BlockSets<'_, MovePathIndex>, path: MovePathIndex,
+    fn update_bits(trans: &mut GenKillSet<MovePathIndex>,
+                   path: MovePathIndex,
                    state: DropFlagState)
     {
         match state {
-            DropFlagState::Absent => sets.kill(path),
-            DropFlagState::Present => sets.gen(path),
+            DropFlagState::Absent => trans.kill(path),
+            DropFlagState::Present => trans.gen(path),
         }
     }
 }
 
 impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
-    fn update_bits(sets: &mut BlockSets<'_, MovePathIndex>, path: MovePathIndex,
+    fn update_bits(trans: &mut GenKillSet<MovePathIndex>,
+                   path: MovePathIndex,
                    state: DropFlagState)
     {
         match state {
-            DropFlagState::Absent => sets.gen(path),
-            DropFlagState::Present => sets.kill(path),
+            DropFlagState::Absent => trans.gen(path),
+            DropFlagState::Present => trans.kill(path),
         }
     }
 }
 
 impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
-    fn update_bits(sets: &mut BlockSets<'_, MovePathIndex>, path: MovePathIndex,
+    fn update_bits(trans: &mut GenKillSet<MovePathIndex>,
+                   path: MovePathIndex,
                    state: DropFlagState)
     {
         match state {
-            DropFlagState::Absent => sets.kill(path),
-            DropFlagState::Present => sets.gen(path),
+            DropFlagState::Absent => trans.kill(path),
+            DropFlagState::Present => trans.gen(path),
         }
     }
 }
@@ -275,24 +278,24 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<'_, MovePathIndex>,
+                        trans: &mut GenKillSet<Self::Idx>,
                         location: Location)
     {
         drop_flag_effects_for_location(
             self.tcx, self.body, self.mdpe,
             location,
-            |path, s| Self::update_bits(sets, path, s)
+            |path, s| Self::update_bits(trans, path, s)
         )
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<'_, MovePathIndex>,
+                         trans: &mut GenKillSet<Self::Idx>,
                          location: Location)
     {
         drop_flag_effects_for_location(
             self.tcx, self.body, self.mdpe,
             location,
-            |path, s| Self::update_bits(sets, path, s)
+            |path, s| Self::update_bits(trans, path, s)
         )
     }
 
@@ -333,24 +336,24 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'tcx> {
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<'_, MovePathIndex>,
+                        trans: &mut GenKillSet<Self::Idx>,
                         location: Location)
     {
         drop_flag_effects_for_location(
             self.tcx, self.body, self.mdpe,
             location,
-            |path, s| Self::update_bits(sets, path, s)
+            |path, s| Self::update_bits(trans, path, s)
         )
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<'_, MovePathIndex>,
+                         trans: &mut GenKillSet<Self::Idx>,
                          location: Location)
     {
         drop_flag_effects_for_location(
             self.tcx, self.body, self.mdpe,
             location,
-            |path, s| Self::update_bits(sets, path, s)
+            |path, s| Self::update_bits(trans, path, s)
         )
     }
 
@@ -389,24 +392,24 @@ impl<'a, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<'_, MovePathIndex>,
+                        trans: &mut GenKillSet<Self::Idx>,
                         location: Location)
     {
         drop_flag_effects_for_location(
             self.tcx, self.body, self.mdpe,
             location,
-            |path, s| Self::update_bits(sets, path, s)
+            |path, s| Self::update_bits(trans, path, s)
         )
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<'_, MovePathIndex>,
+                         trans: &mut GenKillSet<Self::Idx>,
                          location: Location)
     {
         drop_flag_effects_for_location(
             self.tcx, self.body, self.mdpe,
             location,
-            |path, s| Self::update_bits(sets, path, s)
+            |path, s| Self::update_bits(trans, path, s)
         )
     }
 
@@ -439,7 +442,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'tcx> {
     }
 
     fn statement_effect(&self,
-                        sets: &mut BlockSets<'_, InitIndex>,
+                        trans: &mut GenKillSet<Self::Idx>,
                         location: Location) {
         let (_, body, move_data) = (self.tcx, self.body, self.move_data());
         let stmt = &body[location.block].statements[location.statement_index];
@@ -449,7 +452,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'tcx> {
 
         debug!("statement {:?} at loc {:?} initializes move_indexes {:?}",
                stmt, location, &init_loc_map[location]);
-        sets.gen_all(&init_loc_map[location]);
+        trans.gen_all(&init_loc_map[location]);
 
         match stmt.kind {
             mir::StatementKind::StorageDead(local) => {
@@ -458,14 +461,14 @@ impl<'a, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'tcx> {
                 let move_path_index = rev_lookup.find_local(local);
                 debug!("stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
                         stmt, location, &init_path_map[move_path_index]);
-                sets.kill_all(&init_path_map[move_path_index]);
+                trans.kill_all(&init_path_map[move_path_index]);
             }
             _ => {}
         }
     }
 
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<'_, InitIndex>,
+                         trans: &mut GenKillSet<Self::Idx>,
                          location: Location)
     {
         let (body, move_data) = (self.body, self.move_data());
@@ -473,7 +476,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'tcx> {
         let init_loc_map = &move_data.init_loc_map;
         debug!("terminator {:?} at loc {:?} initializes move_indexes {:?}",
                term, location, &init_loc_map[location]);
-        sets.gen_all(
+        trans.gen_all(
             init_loc_map[location].iter().filter(|init_index| {
                 move_data.inits[**init_index].kind != InitKind::NonPanicPathOnly
             })
