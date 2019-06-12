@@ -6,7 +6,7 @@ use crate::hair::*;
 use rustc::middle::region;
 use rustc::mir::*;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an operand suitable for use until the end of the current
     /// scope expression.
     ///

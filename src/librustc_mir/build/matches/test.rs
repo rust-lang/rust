@@ -19,7 +19,7 @@ use rustc::hir::{RangeEnd, Mutability};
 use syntax_pos::Span;
 use std::cmp::Ordering;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a simplifiable pattern.

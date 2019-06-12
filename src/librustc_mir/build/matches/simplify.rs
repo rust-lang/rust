@@ -23,7 +23,7 @@ use rustc::mir::interpret::truncate;
 
 use std::mem;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn simplify_candidate<'pat>(&mut self,
                                     candidate: &mut Candidate<'pat, 'tcx>) {
         // repeatedly simplify match pairs until fixed point is reached

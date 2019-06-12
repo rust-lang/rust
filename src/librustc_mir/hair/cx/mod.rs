@@ -21,18 +21,18 @@ use rustc::hir;
 use crate::hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
-pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'gcx, 'tcx>,
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub struct Cx<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'tcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
 
     pub root_lint_level: hir::HirId,
-    pub param_env: ty::ParamEnv<'gcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
 
     /// Identity `InternalSubsts` for use with const-evaluation.
-    pub identity_substs: &'gcx InternalSubsts<'gcx>,
+    pub identity_substs: &'tcx InternalSubsts<'tcx>,
 
-    pub region_scope_tree: &'gcx region::ScopeTree,
-    pub tables: &'a ty::TypeckTables<'gcx>,
+    pub region_scope_tree: &'tcx region::ScopeTree,
+    pub tables: &'a ty::TypeckTables<'tcx>,
 
     /// This is `Constness::Const` if we are compiling a `static`,
     /// `const`, or the body of a `const fn`.
@@ -51,9 +51,9 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     control_flow_destroyed: Vec<(Span, String)>,
 }
 
-impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               src_id: hir::HirId) -> Cx<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Cx<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
+               src_id: hir::HirId) -> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;
         let src_def_id = tcx.hir().local_def_id_from_hir_id(src_id);
         let tables = tcx.typeck_tables_of(src_def_id);
@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Cx<'a, 'tcx> {
     /// Normalizes `ast` into the appropriate "mirror" type.
     pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
         ast.make_mirror(self)
@@ -200,11 +200,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         ty.needs_drop(self.tcx.global_tcx(), param_env)
     }
 
-    pub fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 
-    pub fn tables(&self) -> &'a ty::TypeckTables<'gcx> {
+    pub fn tables(&self) -> &'a ty::TypeckTables<'tcx> {
         self.tables
     }
 
@@ -217,8 +217,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 }
 
-impl UserAnnotatedTyHelpers<'gcx, 'tcx> for Cx<'_, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+impl UserAnnotatedTyHelpers<'tcx> for Cx<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx()
     }
 

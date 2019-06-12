@@ -8,7 +8,7 @@ use rustc::ty::{self, Ty};
 use rustc::mir::*;
 use syntax_pos::{Span, DUMMY_SP};
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Adds a new temporary value of type `ty` storing the result of
     /// evaluating `expr`.
     ///

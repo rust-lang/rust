@@ -465,7 +465,7 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 /// Helper type of a temporary returned by `tcx.infer_ctxt()`.
 /// Necessary because we can't write the following bound:
 /// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>)`.
-pub struct InferCtxtBuilder<'gcx, 'tcx> {
+pub struct InferCtxtBuilder<'gcx: 'tcx, 'tcx> {
     global_tcx: TyCtxt<'gcx, 'gcx>,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
 }
@@ -510,7 +510,7 @@ impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
         })
     }
 
-    pub fn enter<R>(&'tcx mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'gcx, 'tcx>) -> R) -> R {
+    pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'gcx, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
             ref fresh_tables,
