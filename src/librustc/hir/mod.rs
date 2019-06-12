@@ -383,17 +383,13 @@ impl PathSegment {
         }
     }
 
-    // FIXME: hack required because you can't create a static
-    // `GenericArgs`, so you can't just return a `&GenericArgs`.
-    pub fn with_generic_args<F, R>(&self, f: F) -> R
-        where F: FnOnce(&GenericArgs) -> R
-    {
-        let dummy = GenericArgs::none();
-        f(if let Some(ref args) = self.args {
-            &args
+    pub fn generic_args(&self) -> &GenericArgs {
+        if let Some(ref args) = self.args {
+            args
         } else {
-            &dummy
-        })
+            const DUMMY: &GenericArgs = &GenericArgs::none();
+            DUMMY
+        }
     }
 }
 
@@ -449,7 +445,7 @@ pub struct GenericArgs {
 }
 
 impl GenericArgs {
-    pub fn none() -> Self {
+    pub const fn none() -> Self {
         Self {
             args: HirVec::new(),
             bindings: HirVec::new(),

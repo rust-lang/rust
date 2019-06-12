@@ -191,15 +191,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_segment: &hir::PathSegment)
         -> SubstsRef<'tcx>
     {
-        let (substs, assoc_bindings, _) = item_segment.with_generic_args(|generic_args| {
-            self.create_substs_for_ast_path(
-                span,
-                def_id,
-                generic_args,
-                item_segment.infer_args,
-                None,
-            )
-        });
+        let (substs, assoc_bindings, _) = self.create_substs_for_ast_path(
+            span,
+            def_id,
+            item_segment.generic_args(),
+            item_segment.infer_args,
+            None,
+        );
 
         assoc_bindings.first().map(|b| Self::prohibit_assoc_ty_binding(self.tcx(), b.span));
 
@@ -874,8 +872,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let trait_def = self.tcx().trait_def(trait_def_id);
 
         if !self.tcx().features().unboxed_closures &&
-            trait_segment.with_generic_args(|generic_args| generic_args.parenthesized)
-            != trait_def.paren_sugar {
+            trait_segment.generic_args().parenthesized != trait_def.paren_sugar
+        {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let msg = if trait_def.paren_sugar {
                 "the precise format of `Fn`-family traits' type parameters is subject to change. \
@@ -887,13 +885,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                              span, GateIssue::Language, msg);
         }
 
-        trait_segment.with_generic_args(|generic_args| {
-            self.create_substs_for_ast_path(span,
-                                            trait_def_id,
-                                            generic_args,
-                                            trait_segment.infer_args,
-                                            Some(self_ty))
-        })
+        self.create_substs_for_ast_path(span,
+                                        trait_def_id,
+                                        trait_segment.generic_args(),
+                                        trait_segment.infer_args,
+                                        Some(self_ty))
     }
 
     fn trait_defines_associated_type_named(&self,
@@ -1765,47 +1761,45 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             &self, segments: T) -> bool {
         let mut has_err = false;
         for segment in segments {
-            segment.with_generic_args(|generic_args| {
-                let (mut err_for_lt, mut err_for_ty, mut err_for_ct) = (false, false, false);
-                for arg in &generic_args.args {
-                    let (span, kind) = match arg {
-                        hir::GenericArg::Lifetime(lt) => {
-                            if err_for_lt { continue }
-                            err_for_lt = true;
-                            has_err = true;
-                            (lt.span, "lifetime")
-                        }
-                        hir::GenericArg::Type(ty) => {
-                            if err_for_ty { continue }
-                            err_for_ty = true;
-                            has_err = true;
-                            (ty.span, "type")
-                        }
-                        hir::GenericArg::Const(ct) => {
-                            if err_for_ct { continue }
-                            err_for_ct = true;
-                            (ct.span, "const")
-                        }
-                    };
-                    let mut err = struct_span_err!(
-                        self.tcx().sess,
-                        span,
-                        E0109,
-                        "{} arguments are not allowed for this type",
-                        kind,
-                    );
-                    err.span_label(span, format!("{} argument not allowed", kind));
-                    err.emit();
-                    if err_for_lt && err_for_ty && err_for_ct {
-                        break;
+            let (mut err_for_lt, mut err_for_ty, mut err_for_ct) = (false, false, false);
+            for arg in &segment.generic_args().args {
+                let (span, kind) = match arg {
+                    hir::GenericArg::Lifetime(lt) => {
+                        if err_for_lt { continue }
+                        err_for_lt = true;
+                        has_err = true;
+                        (lt.span, "lifetime")
                     }
-                }
-                for binding in &generic_args.bindings {
-                    has_err = true;
-                    Self::prohibit_assoc_ty_binding(self.tcx(), binding.span);
+                    hir::GenericArg::Type(ty) => {
+                        if err_for_ty { continue }
+                        err_for_ty = true;
+                        has_err = true;
+                        (ty.span, "type")
+                    }
+                    hir::GenericArg::Const(ct) => {
+                        if err_for_ct { continue }
+                        err_for_ct = true;
+                        (ct.span, "const")
+                    }
+                };
+                let mut err = struct_span_err!(
+                    self.tcx().sess,
+                    span,
+                    E0109,
+                    "{} arguments are not allowed for this type",
+                    kind,
+                );
+                err.span_label(span, format!("{} argument not allowed", kind));
+                err.emit();
+                if err_for_lt && err_for_ty && err_for_ct {
                     break;
                 }
-            })
+            }
+            for binding in &segment.generic_args().bindings {
+                has_err = true;
+                Self::prohibit_assoc_ty_binding(self.tcx(), binding.span);
+                break;
+            }
         }
         has_err
     }

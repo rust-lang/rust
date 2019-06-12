@@ -1194,12 +1194,11 @@ impl<'a> State<'a> {
         self.s.word(".")?;
         self.print_ident(segment.ident)?;
 
-        segment.with_generic_args(|generic_args| {
-            if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
-                return self.print_generic_args(&generic_args, segment.infer_args, true);
-            }
-            Ok(())
-        })?;
+        let generic_args = segment.generic_args();
+        if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
+            self.print_generic_args(generic_args, segment.infer_args, true)?;
+        }
+
         self.print_call_post(base_args)
     }
 
@@ -1559,11 +1558,9 @@ impl<'a> State<'a> {
                 self.s.word("::")?
             }
             if segment.ident.name != kw::PathRoot {
-               self.print_ident(segment.ident)?;
-               segment.with_generic_args(|generic_args| {
-                   self.print_generic_args(generic_args, segment.infer_args,
-                                           colons_before_params)
-               })?;
+                self.print_ident(segment.ident)?;
+                self.print_generic_args(segment.generic_args(), segment.infer_args,
+                                        colons_before_params)?;
             }
         }
 
@@ -1572,10 +1569,8 @@ impl<'a> State<'a> {
 
     pub fn print_path_segment(&mut self, segment: &hir::PathSegment) -> io::Result<()> {
         if segment.ident.name != kw::PathRoot {
-           self.print_ident(segment.ident)?;
-           segment.with_generic_args(|generic_args| {
-               self.print_generic_args(generic_args, segment.infer_args, false)
-           })?;
+            self.print_ident(segment.ident)?;
+            self.print_generic_args(segment.generic_args(), segment.infer_args, false)?;
         }
         Ok(())
     }
@@ -1600,11 +1595,9 @@ impl<'a> State<'a> {
                     }
                     if segment.ident.name != kw::PathRoot {
                         self.print_ident(segment.ident)?;
-                        segment.with_generic_args(|generic_args| {
-                            self.print_generic_args(generic_args,
-                                                    segment.infer_args,
-                                                    colons_before_params)
-                        })?;
+                        self.print_generic_args(segment.generic_args(),
+                                                segment.infer_args,
+                                                colons_before_params)?;
                     }
                 }
 
@@ -1612,11 +1605,9 @@ impl<'a> State<'a> {
                 self.s.word("::")?;
                 let item_segment = path.segments.last().unwrap();
                 self.print_ident(item_segment.ident)?;
-                item_segment.with_generic_args(|generic_args| {
-                    self.print_generic_args(generic_args,
-                                            item_segment.infer_args,
-                                            colons_before_params)
-                })
+                self.print_generic_args(item_segment.generic_args(),
+                                        item_segment.infer_args,
+                                        colons_before_params)
             }
             hir::QPath::TypeRelative(ref qself, ref item_segment) => {
                 self.s.word("<")?;
@@ -1624,11 +1615,9 @@ impl<'a> State<'a> {
                 self.s.word(">")?;
                 self.s.word("::")?;
                 self.print_ident(item_segment.ident)?;
-                item_segment.with_generic_args(|generic_args| {
-                    self.print_generic_args(generic_args,
-                                            item_segment.infer_args,
-                                            colons_before_params)
-                })
+                self.print_generic_args(item_segment.generic_args(),
+                                        item_segment.infer_args,
+                                        colons_before_params)
             }
         }
     }

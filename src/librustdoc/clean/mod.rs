@@ -2809,7 +2809,8 @@ impl Clean<Type> for hir::Ty {
                     let mut ty_substs = FxHashMap::default();
                     let mut lt_substs = FxHashMap::default();
                     let mut ct_substs = FxHashMap::default();
-                    provided_params.with_generic_args(|generic_args| {
+                    let generic_args = provided_params.generic_args();
+                    {
                         let mut indices: GenericParamCount = Default::default();
                         for param in generics.params.iter() {
                             match param.kind {
@@ -2884,7 +2885,7 @@ impl Clean<Type> for hir::Ty {
                                 }
                             }
                         }
-                    });
+                    }
                     return cx.enter_alias(ty_substs, lt_substs, ct_substs, || ty.clean(cx));
                 }
                 resolve_type(cx, path.clean(cx), self.hir_id)
@@ -3537,7 +3538,7 @@ impl Clean<PathSegment> for hir::PathSegment {
     fn clean(&self, cx: &DocContext<'_>) -> PathSegment {
         PathSegment {
             name: self.ident.name.clean(cx),
-            args: self.with_generic_args(|generic_args| generic_args.clean(cx))
+            args: self.generic_args().clean(cx),
         }
     }
 }
