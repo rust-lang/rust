@@ -1994,8 +1994,29 @@ impl<'a> Parser<'a> {
 
         let ex: ExprKind;
 
+        macro_rules! parse_lit {
+            () => {
+                match self.parse_lit() {
+                    Ok(literal) => {
+                        hi = self.prev_span;
+                        ex = ExprKind::Lit(literal);
+                    }
+                    Err(mut err) => {
+                        self.cancel(&mut err);
+                        return Err(self.expected_expression_found());
+                    }
+                }
+            }
+        }
+
         // Note: when adding new syntax here, don't forget to adjust TokenKind::can_begin_expr().
         match self.token.kind {
+            // This match arm is a special-case of the `_` match arm below and
+            // could be removed without changing functionality, but it's faster
+            // to have it here, especially for programs with large constants.
+            token::Literal(_) => {
+                parse_lit!()
+            }
             token::OpenDelim(token::Paren) => {
                 self.bump();
 
@@ -2241,16 +2262,7 @@ impl<'a> Parser<'a> {
                         self.bump();
                         return Ok(self.mk_expr(self.token.span, ExprKind::Err, ThinVec::new()));
                     }
-                    match self.parse_literal_maybe_minus() {
-                        Ok(expr) => {
-                            hi = expr.span;
-                            ex = expr.node.clone();
-                        }
-                        Err(mut err) => {
-                            self.cancel(&mut err);
-                            return Err(self.expected_expression_found());
-                        }
-                    }
+                    parse_lit!()
                 }
             }
         }
