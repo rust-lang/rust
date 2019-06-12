@@ -1,4 +1,4 @@
-use rand::{FromEntropy, Rng, rngs::SmallRng};
+use rand::{SeedableRng, Rng, rngs::SmallRng};
 
 // Having more than 1 test does seem to make a difference
 // (i.e., this calls ptr::swap which having just one test does not).
