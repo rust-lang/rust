@@ -2545,7 +2545,10 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 fn map_collection_alloc_err(err: hashbrown::CollectionAllocErr) -> TryReserveError {
     match err {
         hashbrown::CollectionAllocErr::CapacityOverflow => TryReserveError::CapacityOverflow,
-        hashbrown::CollectionAllocErr::AllocErr { .. } => TryReserveError::AllocErr,
+        hashbrown::CollectionAllocErr::AllocErr { layout } => TryReserveError::AllocError {
+            layout,
+            non_exhaustive: (),
+        },
     }
 }
 
@@ -3405,7 +3408,7 @@ mod test_map {
             panic!("usize::MAX should trigger an overflow!");
         }
 
-        if let Err(AllocErr) = empty_bytes.try_reserve(MAX_USIZE / 8) {
+        if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_USIZE / 8) {
         } else {
             panic!("usize::MAX / 8 should trigger an OOM!")
         }
