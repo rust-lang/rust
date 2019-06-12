@@ -1,0 +1,13 @@
+error[E0277]: the trait bound `Foo<std::string::String>: std::marker::Copy` is not satisfied
+  --> $DIR/trait-error.rs:8:5
+   |
+LL |     [Foo(String::new()); 4];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `Foo<std::string::String>`
+   |
+   = help: the following implementations were found:
+             <Foo<T> as std::marker::Copy>
+   = note: the `Copy` trait is required because the repeated element will be copied
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

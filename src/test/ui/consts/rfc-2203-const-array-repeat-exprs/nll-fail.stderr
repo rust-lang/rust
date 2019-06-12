@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `std::option::Option<Bar>: std::marker::Copy` is not satisfied
-  --> $DIR/migrate-borrowck.rs:88:37
+  --> $DIR/nll-fail.rs:14:37
    |
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
    |                                     ^^^^^^ the trait `std::marker::Copy` is not implemented for `std::option::Option<Bar>`
@@ -9,7 +9,7 @@ LL |         let arr: [Option<Bar>; 2] = [x; 2];
    = note: the `Copy` trait is required because the repeated element will be copied
 
 error[E0277]: the trait bound `std::option::Option<Bar>: std::marker::Copy` is not satisfied
-  --> $DIR/migrate-borrowck.rs:104:37
+  --> $DIR/nll-fail.rs:20:37
    |
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
    |                                     ^^^^^^ the trait `std::marker::Copy` is not implemented for `std::option::Option<Bar>`
