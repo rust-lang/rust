@@ -1495,7 +1495,7 @@ declare_clippy_lint! {
     /// checked.
     ///
     /// **Why is this bad?** An expression like `min <= x` may misleadingly imply
-    /// that is is possible for `x` to be less than the minimum. Expressions like
+    /// that it is possible for `x` to be less than the minimum. Expressions like
     /// `max < x` are probably mistakes.
     ///
     /// **Known problems:** For `usize` the size of the current compile target will
