@@ -87,7 +87,7 @@ pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
             Integer::I16 => types::I16,
             Integer::I32 => types::I32,
             Integer::I64 => types::I64,
-            Integer::I128 => unimpl!("u/i128"),
+            Integer::I128 => types::I128,
         },
         Primitive::Float(flt) => match flt {
             FloatTy::F32 => types::F32,

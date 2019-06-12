@@ -28,7 +28,7 @@ pub fn clif_type_from_ty<'tcx>(
             UintTy::U16 => types::I16,
             UintTy::U32 => types::I32,
             UintTy::U64 => types::I64,
-            UintTy::U128 => unimpl!("u128"),
+            UintTy::U128 => types::I128,
             UintTy::Usize => pointer_ty(tcx),
         },
         ty::Int(size) => match size {
@@ -36,7 +36,7 @@ pub fn clif_type_from_ty<'tcx>(
             IntTy::I16 => types::I16,
             IntTy::I32 => types::I32,
             IntTy::I64 => types::I64,
-            IntTy::I128 => unimpl!("i128"),
+            IntTy::I128 => types::I128,
             IntTy::Isize => pointer_ty(tcx),
         },
         ty::Char => types::I32,

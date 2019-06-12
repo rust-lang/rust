@@ -34,6 +34,16 @@ enum CValueInner {
     ByValPair(Value, Value),
 }
 
+fn store_scalar<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>, value: Value, addr: Value, offset: i32) {
+    if fx.bcx.func.dfg.value_type(value) == types::I128 {
+        let (a, b) = fx.bcx.ins().isplit(value);
+        fx.bcx.ins().store(MemFlags::new(), a, addr, offset);
+        fx.bcx.ins().store(MemFlags::new(), b, addr, offset + 8);
+    } else {
+        fx.bcx.ins().store(MemFlags::new(), value, addr, offset);
+    }
+}
+
 impl<'tcx> CValue<'tcx> {
     pub fn by_ref(value: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
         CValue(CValueInner::ByRef(value), layout)
@@ -147,7 +157,15 @@ impl<'tcx> CValue<'tcx> {
     {
         let clif_ty = fx.clif_type(ty).unwrap();
         let layout = fx.layout_of(ty);
-        CValue::by_val(fx.bcx.ins().iconst(clif_ty, const_val), layout)
+        let val = if clif_ty == types::I128 {
+            // FIXME don't assume little-endian arch
+            let lsb = fx.bcx.ins().iconst(types::I64, const_val);
+            let msb = fx.bcx.ins().iconst(types::I64, 0);
+            fx.bcx.ins().iconcat(lsb, msb)
+        } else {
+            fx.bcx.ins().iconst(clif_ty, const_val)
+        };
+        CValue::by_val(val, layout)
     }
 
     pub fn unchecked_cast_to(self, layout: TyLayout<'tcx>) -> Self {
@@ -343,15 +361,15 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
         match from.0 {
             CValueInner::ByVal(val) => {
-                fx.bcx.ins().store(MemFlags::new(), val, addr, 0);
+                store_scalar(fx, val, addr, 0);
             }
             CValueInner::ByValPair(value, extra) => {
                 match dst_layout.abi {
                     Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
                         let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
-                        fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
-                        fx.bcx.ins().store(
-                            MemFlags::new(),
+                        store_scalar(fx, value, addr, 0);
+                        store_scalar(
+                            fx,
                             extra,
                             addr,
                             b_offset,

@@ -144,6 +144,14 @@ impl Add for usize {
     }
 }
 
+impl Add for u128 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
 #[lang = "sub"]
 pub trait Sub<RHS = Self> {
     type Output;
