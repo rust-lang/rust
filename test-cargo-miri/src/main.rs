@@ -19,7 +19,9 @@ mod test {
     fn rng() {
         let mut rng = rand::rngs::StdRng::seed_from_u64(0xcafebeef);
         let x: u32 = rng.gen();
-        let y: u32 = rng.gen();
-        assert_ne!(x, y);
+        let y: usize = rng.gen();
+        let z: u128 = rng.gen();
+        assert_ne!(x as usize, y);
+        assert_ne!(y as u128, z);
     }
 }

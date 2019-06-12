@@ -7,17 +7,19 @@ fn simple() {
     assert_eq!(4, 4);
 }
 
-// Having more than 1 test does seem to make a difference
-// (i.e., this calls ptr::swap which having just one test does not).
 #[test]
 fn entropy_rng() {
     // Use this opportunity to test querying the RNG (needs an external crate, hence tested here and not in the compiletest suite)
     let mut rng = SmallRng::from_entropy();
     let _val = rng.gen::<i32>();
+    let _val = rng.gen::<isize>();
+    let _val = rng.gen::<i128>();
 
     // Also try per-thread RNG.
     let mut rng = rand::thread_rng();
     let _val = rng.gen::<i32>();
+    let _val = rng.gen::<isize>();
+    let _val = rng.gen::<i128>();
 }
 
 // A test that won't work on miri
