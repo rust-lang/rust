@@ -1,5 +1,5 @@
-// skip-codegen
-// compile-pass
+// check-pass
+
 #![feature(unboxed_closures, fn_traits)]
 struct Foo;
 

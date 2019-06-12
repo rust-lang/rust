@@ -526,14 +526,41 @@ impl TestProps {
                 self.check_test_line_numbers_match = config.parse_check_test_line_numbers_match(ln);
             }
 
-            if config.parse_name_directive(ln, "check-pass") ||
-               config.parse_name_directive(ln, "skip-codegen") {
-                self.pass_mode = Some(PassMode::Check);
-            } else if config.parse_name_directive(ln, "build-pass") ||
-                      config.parse_name_directive(ln, "compile-pass") {
-                self.pass_mode = Some(PassMode::Build);
+            let check_no_run = |s| {
+                if config.mode != Mode::Ui && config.mode != Mode::Incremental {
+                    panic!("`{}` header is only supported in UI and incremental tests", s);
+                }
+                if config.mode == Mode::Incremental &&
+                   !cfg.map_or(false, |r| r.starts_with("cfail")) &&
+                   !self.revisions.iter().all(|r| r.starts_with("cfail")) {
+                    panic!("`{}` header is only supported in `cfail` incremental tests", s);
+                }
+            };
+            let pass_mode = if config.parse_name_directive(ln, "check-pass") {
+                check_no_run("check-pass");
+                Some(PassMode::Check)
+            } else if config.parse_name_directive(ln, "skip-codegen") {
+                check_no_run("skip-codegen");
+                Some(PassMode::Check)
+            } else if config.parse_name_directive(ln, "build-pass") {
+                check_no_run("build-pass");
+                Some(PassMode::Build)
+            } else if config.parse_name_directive(ln, "compile-pass") {
+                check_no_run("compile-pass");
+                Some(PassMode::Build)
             } else if config.parse_name_directive(ln, "run-pass") {
-                self.pass_mode = Some(PassMode::Run);
+                if config.mode != Mode::Ui && config.mode != Mode::RunPass /* compatibility */ {
+                    panic!("`run-pass` header is only supported in UI tests")
+                }
+                Some(PassMode::Run)
+            } else {
+                None
+            };
+            match (self.pass_mode, pass_mode) {
+                (None, Some(_)) => self.pass_mode = pass_mode,
+                (Some(_), Some(pm)) if pm == PassMode::Check => self.pass_mode = pass_mode,
+                (Some(_), Some(_)) => panic!("multiple `*-pass` headers in a single test"),
+                (_, None) => {}
             }
 
             if !self.disable_ui_testing_normalization {

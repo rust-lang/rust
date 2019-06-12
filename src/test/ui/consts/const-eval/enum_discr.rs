@@ -1,4 +1,3 @@
-// compile-pass
 // run-pass
 
 enum Foo {
