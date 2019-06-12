@@ -1883,7 +1883,7 @@ This pattern should be rewritten. There are a few possible ways to do this:
     # }
     ```
 
-The same applies to transmutes to `*mut fn()`, which were observedin practice.
+The same applies to transmutes to `*mut fn()`, which were observed in practice.
 Note though that use of this type is generally incorrect.
 The intention is typically to describe a function pointer, but just `fn()`
 alone suffices for that. `*mut fn()` is a pointer to a fn pointer.
