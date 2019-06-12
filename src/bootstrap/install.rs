@@ -251,7 +251,10 @@ install!((self, builder, _config),
     };
     Analysis, "analysis", Self::should_build(_config), only_hosts: false, {
         builder.ensure(dist::Analysis {
-            compiler: self.compiler,
+            // Find the actual compiler (handling the full bootstrap option) which
+            // produced the save-analysis data because that data isn't copied
+            // through the sysroot uplifting.
+            compiler: builder.compiler_for(builder.top_stage, builder.config.build, self.target),
             target: self.target
         });
         install_analysis(builder, self.compiler.stage, self.target);
