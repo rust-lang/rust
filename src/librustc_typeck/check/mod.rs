@@ -1789,6 +1789,52 @@ fn check_packed_inner<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, stack: &mut Vec<De
     false
 }
 
+/// Emit an error when encountering more or less than one variant in a transparent enum.
+fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, did: DefId) {
+    let variant_spans: Vec<_> = adt.variants.iter().map(|variant| {
+        tcx.hir().span_if_local(variant.def_id).unwrap()
+    }).collect();
+    let msg = format!(
+        "needs exactly one variant, but has {}",
+        adt.variants.len(),
+    );
+    let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
+    err.span_label(sp, &msg);
+    if let &[ref start.., ref end] = &variant_spans[..] {
+        for variant_span in start {
+            err.span_label(*variant_span, "");
+        }
+        err.span_label(*end, &format!("too many variants in `{}`", tcx.def_path_str(did)));
+    }
+    err.emit();
+}
+
+/// Emit an error when encountering more or less than one non-zero-sized field in a transparent
+/// enum.
+fn bad_non_zero_sized_fields<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adt: &'tcx ty::AdtDef,
+    field_count: usize,
+    field_spans: impl Iterator<Item = Span>,
+    sp: Span,
+) {
+    let msg = format!("needs exactly one non-zero-sized field, but has {}", field_count);
+    let mut err = struct_span_err!(
+        tcx.sess,
+        sp,
+        E0690,
+        "{}transparent {} {}",
+        if adt.is_enum() { "the variant of a " } else { "" },
+        adt.descr(),
+        msg,
+    );
+    err.span_label(sp, &msg);
+    for sp in field_spans {
+        err.span_label(sp, "this field is non-zero-sized");
+    }
+    err.emit();
+}
+
 fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, def_id: DefId) {
     let adt = tcx.adt_def(def_id);
     if !adt.repr.transparent() {
@@ -1807,28 +1853,7 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, def_id: DefId) {
             );
         }
         if adt.variants.len() != 1 {
-            let variant_spans: Vec<_> = adt.variants.iter().map(|variant| {
-                tcx.hir().span_if_local(variant.def_id).unwrap()
-            }).collect();
-            let msg = format!(
-                "needs exactly one variant, but has {}",
-                adt.variants.len(),
-            );
-            let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
-            err.span_label(sp, &msg);
-            match &variant_spans[..] {
-                &[] => {},
-                &[ref start.., ref end] => {
-                    for variant_span in start {
-                        err.span_label(*variant_span, "");
-                    }
-                    err.span_label(*end, &format!(
-                        "too many variants in `{}`",
-                        tcx.def_path_str(def_id),
-                    ));
-                },
-            }
-            err.emit();
+            bad_variant_count(tcx, adt, sp, def_id);
             if adt.variants.is_empty() {
                 // Don't bother checking the fields. No variants (and thus no fields) exist.
                 return;
@@ -1856,26 +1881,14 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, def_id: DefId) {
         (span, zst, align1)
     });
 
-    let non_zst_fields = field_infos.clone().filter(|(_span, zst, _align1)| !*zst);
+    let non_zst_fields = field_infos.clone().filter_map(|(span, zst, _align1)| if !zst {
+        Some(span)
+    } else {
+        None
+    });
     let non_zst_count = non_zst_fields.clone().count();
     if non_zst_count != 1 {
-        let field_spans: Vec<_> = non_zst_fields.map(|(span, _zst, _align1)| span).collect();
-
-        let msg = format!("needs exactly one non-zero-sized field, but has {}", non_zst_count);
-        let mut err = struct_span_err!(
-            tcx.sess,
-            sp,
-            E0690,
-            "{}transparent {} {}",
-            if adt.is_enum() { "the variant of a " } else { "" },
-            adt.descr(),
-            msg,
-        );
-        err.span_label(sp, &msg);
-        for sp in &field_spans {
-            err.span_label(*sp, "this field is non-zero-sized");
-        }
-        err.emit();
+        bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, sp);
     }
     for (span, zst, align1) in field_infos {
         if zst && !align1 {
