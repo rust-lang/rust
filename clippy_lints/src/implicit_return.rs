@@ -18,13 +18,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// fn foo(x: usize) {
+    /// fn foo(x: usize) -> usize {
     ///     x
     /// }
     /// ```
     /// add return
     /// ```rust
-    /// fn foo(x: usize) {
+    /// fn foo(x: usize) -> usize {
     ///     return x;
     /// }
     /// ```
