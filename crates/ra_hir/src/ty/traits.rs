@@ -83,7 +83,6 @@ pub(crate) fn implements_query(
     krate: Crate,
     trait_ref: Canonical<TraitRef>,
 ) -> Option<Solution> {
-    db.check_canceled();
     let _p = profile("implements_query");
     let goal: chalk_ir::Goal = trait_ref.value.to_chalk(db).cast();
     debug!("goal: {:?}", goal);

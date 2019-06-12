@@ -234,7 +234,6 @@ impl CrateDefMap {
         db: &(impl DefDatabase + AstDatabase),
         krate: Crate,
     ) -> Arc<CrateDefMap> {
-        db.check_canceled();
         let _p = profile("crate_def_map_query");
         let def_map = {
             let edition = krate.edition(db);

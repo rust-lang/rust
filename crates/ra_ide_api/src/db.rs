@@ -33,8 +33,12 @@ impl salsa::Database for RootDatabase {
         Canceled::throw()
     }
     fn salsa_event(&self, event: impl Fn() -> salsa::Event<RootDatabase>) {
-        if let salsa::EventKind::DidValidateMemoizedValue { .. } = event().kind {
-            self.check_canceled();
+        match event().kind {
+            salsa::EventKind::DidValidateMemoizedValue { .. }
+            | salsa::EventKind::WillExecute { .. } => {
+                self.check_canceled();
+            }
+            _ => (),
         }
     }
 }
