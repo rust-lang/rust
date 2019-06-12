@@ -83,7 +83,7 @@ impl Fallibility {
     #[inline]
     fn alloc_err(self, layout: Layout) -> CollectionAllocErr {
         match self {
-            Fallibility::Fallible => CollectionAllocErr::AllocErr,
+            Fallibility::Fallible => CollectionAllocErr::AllocErr { layout },
             Fallibility::Infallible => handle_alloc_error(layout),
         }
     }
