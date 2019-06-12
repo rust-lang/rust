@@ -636,7 +636,7 @@ impl<T: Idx> GrowableBitSet<T> {
 ///
 /// All operations that involve a row and/or column index will panic if the
 /// index exceeds the relevant bound.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct BitMatrix<R: Idx, C: Idx> {
     num_rows: usize,
     num_columns: usize,
@@ -656,6 +656,23 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
             words: vec![0; num_rows * words_per_row],
             marker: PhantomData,
         }
+    }
+
+    /// Creates a new matrix, with `row` used as the value for every row.
+    pub fn from_row_n(row: &BitSet<C>, num_rows: usize) -> BitMatrix<R, C> {
+        let num_columns = row.domain_size();
+        let words_per_row = num_words(num_columns);
+        assert_eq!(words_per_row, row.words().len());
+        BitMatrix {
+            num_rows,
+            num_columns,
+            words: iter::repeat(row.words()).take(num_rows).flatten().cloned().collect(),
+            marker: PhantomData,
+        }
+    }
+
+    pub fn rows(&self) -> impl Iterator<Item = R> {
+        (0..self.num_rows).map(R::new)
     }
 
     /// The range of bits for a given row.
@@ -737,6 +754,49 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         changed
     }
 
+    /// Adds the bits from `with` to the bits from row `write`, and
+    /// returns `true` if anything changed.
+    pub fn union_row_with(&mut self, with: &BitSet<C>, write: R) -> bool {
+        assert!(write.index() < self.num_rows);
+        assert_eq!(with.domain_size(), self.num_columns);
+        let (write_start, write_end) = self.range(write);
+        let mut changed = false;
+        for (read_index, write_index) in (0..with.words().len()).zip(write_start..write_end) {
+            let word = self.words[write_index];
+            let new_word = word | with.words()[read_index];
+            self.words[write_index] = new_word;
+            changed |= word != new_word;
+        }
+        changed
+    }
+
+    /// Sets every cell in `row` to true.
+    pub fn insert_all_into_row(&mut self, row: R) {
+        assert!(row.index() < self.num_rows);
+        let (start, end) = self.range(row);
+        let words = &mut self.words[..];
+        for index in start..end {
+            words[index] = !0;
+        }
+        self.clear_excess_bits(row);
+    }
+
+    /// Clear excess bits in the final word of the row.
+    fn clear_excess_bits(&mut self, row: R) {
+        let num_bits_in_final_word = self.num_columns % WORD_BITS;
+        if num_bits_in_final_word > 0 {
+            let mask = (1 << num_bits_in_final_word) - 1;
+            let (_, end) = self.range(row);
+            let final_word_idx = end - 1;
+            self.words[final_word_idx] &= mask;
+        }
+    }
+
+    /// Gets a slice of the underlying words.
+    pub fn words(&self) -> &[Word] {
+        &self.words
+    }
+
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
     pub fn iter<'a>(&'a self, row: R) -> BitIter<'a, C> {
@@ -747,6 +807,12 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
             iter: self.words[start..end].iter().enumerate(),
             marker: PhantomData,
         }
+    }
+
+    /// Returns the number of elements in `row`.
+    pub fn count(&self, row: R) -> usize {
+        let (start, end) = self.range(row);
+        self.words[start..end].iter().map(|e| e.count_ones() as usize).sum()
     }
 }
 
@@ -1057,6 +1123,7 @@ fn matrix_iter() {
     matrix.insert(2, 99);
     matrix.insert(4, 0);
     matrix.union_rows(3, 5);
+    matrix.insert_all_into_row(6);
 
     let expected = [99];
     let mut iter = expected.iter();
@@ -1068,6 +1135,7 @@ fn matrix_iter() {
 
     let expected = [22, 75];
     let mut iter = expected.iter();
+    assert_eq!(matrix.count(3), expected.len());
     for i in matrix.iter(3) {
         let j = *iter.next().unwrap();
         assert_eq!(i, j);
@@ -1076,6 +1144,7 @@ fn matrix_iter() {
 
     let expected = [0];
     let mut iter = expected.iter();
+    assert_eq!(matrix.count(4), expected.len());
     for i in matrix.iter(4) {
         let j = *iter.next().unwrap();
         assert_eq!(i, j);
@@ -1084,11 +1153,24 @@ fn matrix_iter() {
 
     let expected = [22, 75];
     let mut iter = expected.iter();
+    assert_eq!(matrix.count(5), expected.len());
     for i in matrix.iter(5) {
         let j = *iter.next().unwrap();
         assert_eq!(i, j);
     }
     assert!(iter.next().is_none());
+
+    assert_eq!(matrix.count(6), 100);
+    let mut count = 0;
+    for (idx, i) in matrix.iter(6).enumerate() {
+        assert_eq!(idx, i);
+        count += 1;
+    }
+    assert_eq!(count, 100);
+
+    if let Some(i) = matrix.iter(7).next() {
+        panic!("expected no elements in row, but contains element {:?}", i);
+    }
 }
 
 #[test]
