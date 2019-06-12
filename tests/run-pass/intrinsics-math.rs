@@ -66,4 +66,7 @@ pub fn main() {
 
     assert_approx_eq!(0.1f32.trunc(), 0.0f32);
     assert_approx_eq!((-0.1f64).trunc(), 0.0f64);
+
+    assert_approx_eq!(27f64.cbrt(), 3.0f64);
+    assert_approx_eq!(3f64.hypot(4f64), 5.0f64);
 }

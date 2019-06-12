@@ -560,6 +560,20 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 let n = this.memory().get(ptr.alloc_id)?.read_c_str(tcx, ptr)?.len();
                 this.write_scalar(Scalar::from_uint(n as u64, dest.layout.size), dest)?;
             }
+            "cbrt" => {
+                // FIXME: Using host floats.
+                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+                let n = f.cbrt();
+                this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
+            }
+            // underscore case for windows
+            "_hypot" | "hypot" => {
+                // FIXME: Using host floats.
+                let f1 = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+                let f2 = f64::from_bits(this.read_scalar(args[1])?.to_u64()?);
+                let n = f1.hypot(f2);
+                this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
+            }
 
             // Some things needed for `sys::thread` initialization to go through.
             "signal" | "sigaction" | "sigaltstack" => {
