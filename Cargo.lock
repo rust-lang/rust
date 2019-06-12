@@ -1138,19 +1138,12 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "compiler_builtins 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-alloc 1.0.0",
  "rustc-std-workspace-core 1.0.0",
-]
-
-[[package]]
-name = "hashbrown"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
  "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3534,7 +3527,7 @@ dependencies = [
  "core 0.0.0",
  "dlmalloc 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "fortanix-sgx-abi 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "hashbrown 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hashbrown 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.60 (registry+https://github.com/rust-lang/crates.io-index)",
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",
@@ -4450,7 +4443,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum globset 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ef4feaabe24a0a658fd9cf4a9acf6ed284f045c77df0f49020ba3245cfb7b454"
 "checksum h2 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)" = "a539b63339fbbb00e081e84b6e11bd1d9634a82d91da2984a18ac74a8823f392"
 "checksum handlebars 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "df044dd42cdb7e32f28557b661406fc0f2494be75199779998810dbc35030e0d"
-"checksum hashbrown 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9529213c67695ca2d146e6f263b7b72df8fa973368beadf767e8ed80c03f2f36"
 "checksum hashbrown 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e1de41fb8dba9714efd92241565cdff73f78508c95697dd56787d3cba27e2353"
 "checksum heck 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ea04fa3ead4e05e51a7c806fc07271fdbde4e246a6c6d1efd52e72230b771b82"
 "checksum hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "805026a5d0141ffc30abb3be3173848ad46a1b1664fe632428479619a3644d77"
