@@ -7,7 +7,7 @@ use crate::util::nodemap::FxHashMap;
 
 use syntax::ast::{MetaItem, NestedMetaItem};
 use syntax::attr;
-use syntax::symbol::sym;
+use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
 use syntax_pos::symbol::LocalInternedString;
 
@@ -52,7 +52,7 @@ fn parse_error(tcx: TyCtxt<'_, '_, '_>, span: Span,
 }
 
 impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
-    pub fn parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    fn parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                  trait_def_id: DefId,
                  items: &[NestedMetaItem],
                  span: Span,
@@ -167,7 +167,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
     pub fn evaluate(&self,
                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     trait_ref: ty::TraitRef<'tcx>,
-                    options: &[(String, Option<String>)])
+                    options: &[(Symbol, Option<String>)])
                     -> OnUnimplementedNote
     {
         let mut message = None;
@@ -180,7 +180,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
                 if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
                     c.ident().map_or(false, |ident| {
                         options.contains(&(
-                            ident.to_string(),
+                            ident.name,
                             c.value_str().map(|s| s.as_str().to_string())
                         ))
                     })
@@ -203,8 +203,8 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
             }
         }
 
-        let options: FxHashMap<String, String> = options.into_iter()
-            .filter_map(|(k, v)| v.as_ref().map(|v| (k.to_owned(), v.to_owned())))
+        let options: FxHashMap<Symbol, String> = options.into_iter()
+            .filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned())))
             .collect();
         OnUnimplementedNote {
             label: label.map(|l| l.format(tcx, trait_ref, &options)),
@@ -215,7 +215,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
 }
 
 impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
-    pub fn try_parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    fn try_parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      trait_def_id: DefId,
                      from: LocalInternedString,
                      err_sp: Span)
@@ -241,16 +241,16 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                 Piece::String(_) => (), // Normal string, no need to check it
                 Piece::NextArgument(a) => match a.position {
                     // `{Self}` is allowed
-                    Position::ArgumentNamed(s) if s == "Self" => (),
+                    Position::ArgumentNamed(s) if s == kw::SelfUpper => (),
                     // `{ThisTraitsName}` is allowed
-                    Position::ArgumentNamed(s) if s == name.as_str() => (),
+                    Position::ArgumentNamed(s) if s == name => (),
                     // `{from_method}` is allowed
-                    Position::ArgumentNamed(s) if s == "from_method" => (),
+                    Position::ArgumentNamed(s) if s == sym::from_method => (),
                     // `{from_desugaring}` is allowed
-                    Position::ArgumentNamed(s) if s == "from_desugaring" => (),
+                    Position::ArgumentNamed(s) if s == sym::from_desugaring => (),
                     // So is `{A}` if A is a type parameter
                     Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
-                        param.name.as_str() == s
+                        param.name.as_symbol() == s
                     }) {
                         Some(_) => (),
                         None => {
@@ -276,7 +276,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         &self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
-        options: &FxHashMap<String, String>,
+        options: &FxHashMap<Symbol, String>,
     ) -> String {
         let name = tcx.item_name(trait_ref.def_id);
         let trait_str = tcx.def_path_str(trait_ref.def_id);
@@ -289,9 +289,9 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                 },
                 GenericParamDefKind::Lifetime => return None
             };
-            let name = param.name.to_string();
+            let name = param.name.as_symbol();
             Some((name, value))
-        }).collect::<FxHashMap<String, String>>();
+        }).collect::<FxHashMap<Symbol, String>>();
         let empty_string = String::new();
 
         let parser = Parser::new(&self.0, None, vec![], false);
@@ -299,15 +299,15 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
             match p {
                 Piece::String(s) => s,
                 Piece::NextArgument(a) => match a.position {
-                    Position::ArgumentNamed(s) => match generic_map.get(s) {
+                    Position::ArgumentNamed(s) => match generic_map.get(&s) {
                         Some(val) => val,
-                        None if s == name.as_str() => {
+                        None if s == name => {
                             &trait_str
                         }
                         None => {
-                            if let Some(val) = options.get(s) {
+                            if let Some(val) = options.get(&s) {
                                 val
-                            } else if s == "from_desugaring" || s == "from_method" {
+                            } else if s == sym::from_desugaring || s == sym::from_method {
                                 // don't break messages using these two arguments incorrectly
                                 &empty_string
                             } else {

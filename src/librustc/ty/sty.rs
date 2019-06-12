@@ -1665,6 +1665,7 @@ impl RegionKind {
 
 /// Type utilities
 impl<'a, 'gcx, 'tcx> TyS<'tcx> {
+    #[inline]
     pub fn is_unit(&self) -> bool {
         match self.sty {
             Tuple(ref tys) => tys.is_empty(),
@@ -1672,6 +1673,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_never(&self) -> bool {
         match self.sty {
             Never => true,
@@ -1726,6 +1728,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_primitive(&self) -> bool {
         match self.sty {
             Bool | Char | Int(_) | Uint(_) | Float(_) => true,
@@ -1741,6 +1744,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_ty_infer(&self) -> bool {
         match self.sty {
             Infer(_) => true,
@@ -1748,6 +1752,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_phantom_data(&self) -> bool {
         if let Adt(def, _) = self.sty {
             def.is_phantom_data()
@@ -1756,8 +1761,10 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_bool(&self) -> bool { self.sty == Bool }
 
+    #[inline]
     pub fn is_param(&self, index: u32) -> bool {
         match self.sty {
             ty::Param(ref data) => data.index == index,
@@ -1765,6 +1772,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_self(&self) -> bool {
         match self.sty {
             Param(ref p) => p.is_self(),
@@ -1772,6 +1780,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_slice(&self) -> bool {
         match self.sty {
             RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => match ty.sty {
@@ -1814,6 +1823,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_region_ptr(&self) -> bool {
         match self.sty {
             Ref(..) => true,
@@ -1821,6 +1831,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_mutable_pointer(&self) -> bool {
         match self.sty {
             RawPtr(TypeAndMut { mutbl: hir::Mutability::MutMutable, .. }) |
@@ -1829,6 +1840,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_unsafe_ptr(&self) -> bool {
         match self.sty {
             RawPtr(_) => return true,
@@ -1837,6 +1849,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 
     /// Returns `true` if this type is an `Arc<T>`.
+    #[inline]
     pub fn is_arc(&self) -> bool {
         match self.sty {
             Adt(def, _) => def.is_arc(),
@@ -1845,6 +1858,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 
     /// Returns `true` if this type is an `Rc<T>`.
+    #[inline]
     pub fn is_rc(&self) -> bool {
         match self.sty {
             Adt(def, _) => def.is_rc(),
@@ -1852,6 +1866,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_box(&self) -> bool {
         match self.sty {
             Adt(def, _) => def.is_box(),
@@ -1870,6 +1885,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// A scalar type is one that denotes an atomic datum, with no sub-components.
     /// (A RawPtr is scalar because it represents a non-managed pointer, so its
     /// contents are abstract to rustc.)
+    #[inline]
     pub fn is_scalar(&self) -> bool {
         match self.sty {
             Bool | Char | Int(_) | Float(_) | Uint(_) |
@@ -1880,6 +1896,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 
     /// Returns `true` if this type is a floating point type.
+    #[inline]
     pub fn is_floating_point(&self) -> bool {
         match self.sty {
             Float(_) |
@@ -1888,6 +1905,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_trait(&self) -> bool {
         match self.sty {
             Dynamic(..) => true,
@@ -1895,6 +1913,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_enum(&self) -> bool {
         match self.sty {
             Adt(adt_def, _) => {
@@ -1904,6 +1923,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_closure(&self) -> bool {
         match self.sty {
             Closure(..) => true,
@@ -1911,6 +1931,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_generator(&self) -> bool {
         match self.sty {
             Generator(..) => true,
@@ -1926,6 +1947,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_fresh_ty(&self) -> bool {
         match self.sty {
             Infer(FreshTy(_)) => true,
@@ -1933,6 +1955,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_fresh(&self) -> bool {
         match self.sty {
             Infer(FreshTy(_)) => true,
@@ -1942,6 +1965,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_char(&self) -> bool {
         match self.sty {
             Char => true,
@@ -1950,17 +1974,11 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_fp(&self) -> bool {
-        match self.sty {
-            Infer(FloatVar(_)) | Float(_) => true,
-            _ => false
-        }
-    }
-
     pub fn is_numeric(&self) -> bool {
-        self.is_integral() || self.is_fp()
+        self.is_integral() || self.is_floating_point()
     }
 
+    #[inline]
     pub fn is_signed(&self) -> bool {
         match self.sty {
             Int(_) => true,
@@ -1968,6 +1986,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_pointer_sized(&self) -> bool {
         match self.sty {
             Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => true,
@@ -1975,6 +1994,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_machine(&self) -> bool {
         match self.sty {
             Int(..) | Uint(..) | Float(..) => true,
@@ -1982,6 +2002,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn has_concrete_skeleton(&self) -> bool {
         match self.sty {
             Param(_) | Infer(_) | Error => false,
@@ -2028,6 +2049,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_fn(&self) -> bool {
         match self.sty {
             FnDef(..) | FnPtr(_) => true,
@@ -2043,6 +2065,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_impl_trait(&self) -> bool {
         match self.sty {
             Opaque(..) => true,

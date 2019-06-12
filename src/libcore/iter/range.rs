@@ -281,6 +281,19 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
             None
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<A> {
+        if let Some(minus_n) = self.end.sub_usize(n) {
+            if minus_n > self.start {
+                self.end = minus_n.sub_one();
+                return Some(self.end.clone())
+            }
+        }
+
+        self.end = self.start.clone();
+        None
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -436,6 +449,34 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         } else {
             self.end.clone()
         })
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<A> {
+        self.compute_is_empty();
+        if self.is_empty.unwrap_or_default() {
+            return None;
+        }
+
+        if let Some(minus_n) = self.end.sub_usize(n) {
+            use crate::cmp::Ordering::*;
+
+            match minus_n.partial_cmp(&self.start) {
+                Some(Greater) => {
+                    self.is_empty = Some(false);
+                    self.end = minus_n.sub_one();
+                    return Some(minus_n);
+                }
+                Some(Equal) => {
+                    self.is_empty = Some(true);
+                    return Some(minus_n);
+                }
+                _ => {}
+            }
+        }
+
+        self.is_empty = Some(true);
+        None
     }
 
     #[inline]

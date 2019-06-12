@@ -416,7 +416,7 @@ fn configure_cmake(builder: &Builder<'_>,
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
     let mut cflags = builder.cflags(target, GitRepo::Llvm).join(" ");
-    if let Some(ref s) = builder.config.llvm_cxxflags {
+    if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push_str(&format!(" {}", s));
     }
     cfg.define("CMAKE_C_FLAGS", cflags);

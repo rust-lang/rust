@@ -6,7 +6,7 @@ use rustc::lint as lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::mem;
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::{DUMMY_SP, InnerSpan, Span};
 use std::ops::Range;
 
 use crate::clean::{self, GetDefId, Item};
@@ -440,10 +440,10 @@ crate fn source_span_for_markdown_range(
         }
     }
 
-    let sp = span_of_attrs(attrs).from_inner_byte_pos(
+    let sp = span_of_attrs(attrs).from_inner(InnerSpan::new(
         md_range.start + start_bytes,
         md_range.end + start_bytes + end_bytes,
-    );
+    ));
 
     Some(sp)
 }

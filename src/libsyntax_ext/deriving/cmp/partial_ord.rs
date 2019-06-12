@@ -143,8 +143,8 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
                 // }
 
                 let new = {
-                    let other_f = match (other_fs.len(), other_fs.get(0)) {
-                        (1, Some(o_f)) => o_f,
+                    let other_f = match other_fs {
+                        [o_f] => o_f,
                                 _ => {
                                     cx.span_bug(span,
                                         "not exactly 2 arguments in `derive(PartialOrd)`")
@@ -193,8 +193,8 @@ fn cs_op(less: bool,
     };
 
     let par_cmp = |cx: &mut ExtCtxt<'_>, span, self_f: P<Expr>, other_fs: &[P<Expr>], default| {
-        let other_f = match (other_fs.len(), other_fs.get(0)) {
-            (1, Some(o_f)) => o_f,
+        let other_f = match other_fs {
+            [o_f] => o_f,
             _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
         };
 

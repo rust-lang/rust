@@ -424,48 +424,38 @@ mod tests {
                 string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).trees().collect();
             let tts: &[TokenTree] = &tts[..];
 
-            match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
-                (
-                    4,
-                    Some(&TokenTree::Token(Token {
-                        kind: token::Ident(name_macro_rules, false), ..
-                    })),
-                    Some(&TokenTree::Token(Token { kind: token::Not, .. })),
-                    Some(&TokenTree::Token(Token { kind: token::Ident(name_zip, false), .. })),
-                    Some(&TokenTree::Delimited(_, macro_delim, ref macro_tts)),
-                )
-                if name_macro_rules == sym::macro_rules && name_zip.as_str() == "zip" => {
+            match tts {
+                [
+                    TokenTree::Token(Token { kind: token::Ident(name_macro_rules, false), .. }),
+                    TokenTree::Token(Token { kind: token::Not, .. }),
+                    TokenTree::Token(Token { kind: token::Ident(name_zip, false), .. }),
+                    TokenTree::Delimited(_, macro_delim,  macro_tts)
+                ]
+                if name_macro_rules == &sym::macro_rules && name_zip.as_str() == "zip" => {
                     let tts = &macro_tts.trees().collect::<Vec<_>>();
-                    match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
-                        (
-                            3,
-                            Some(&TokenTree::Delimited(_, first_delim, ref first_tts)),
-                            Some(&TokenTree::Token(Token { kind: token::FatArrow, .. })),
-                            Some(&TokenTree::Delimited(_, second_delim, ref second_tts)),
-                        )
-                        if macro_delim == token::Paren => {
+                    match &tts[..] {
+                        [
+                            TokenTree::Delimited(_, first_delim, first_tts),
+                            TokenTree::Token(Token { kind: token::FatArrow, .. }),
+                            TokenTree::Delimited(_, second_delim, second_tts),
+                        ]
+                        if macro_delim == &token::Paren => {
                             let tts = &first_tts.trees().collect::<Vec<_>>();
-                            match (tts.len(), tts.get(0), tts.get(1)) {
-                                (
-                                    2,
-                                    Some(&TokenTree::Token(Token { kind: token::Dollar, .. })),
-                                    Some(&TokenTree::Token(Token {
-                                        kind: token::Ident(name, false), ..
-                                    })),
-                                )
-                                if first_delim == token::Paren && name.as_str() == "a" => {},
+                            match &tts[..] {
+                                [
+                                    TokenTree::Token(Token { kind: token::Dollar, .. }),
+                                    TokenTree::Token(Token { kind: token::Ident(name, false), .. }),
+                                ]
+                                if first_delim == &token::Paren && name.as_str() == "a" => {},
                                 _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
                             }
                             let tts = &second_tts.trees().collect::<Vec<_>>();
-                            match (tts.len(), tts.get(0), tts.get(1)) {
-                                (
-                                    2,
-                                    Some(&TokenTree::Token(Token { kind: token::Dollar, .. })),
-                                    Some(&TokenTree::Token(Token {
-                                        kind: token::Ident(name, false), ..
-                                    })),
-                                )
-                                if second_delim == token::Paren && name.as_str() == "a" => {},
+                            match &tts[..] {
+                                [
+                                    TokenTree::Token(Token { kind: token::Dollar, .. }),
+                                    TokenTree::Token(Token { kind: token::Ident(name, false), .. }),
+                                ]
+                                if second_delim == &token::Paren && name.as_str() == "a" => {},
                                 _ => panic!("value 4: {:?} {:?}", second_delim, second_tts),
                             }
                         },
