@@ -1,4 +1,4 @@
-// revisions:rpass1 rpass2
+// revisions:cfail1 cfail2
 // compile-flags: --crate-type cdylib
 // skip-codegen
 
