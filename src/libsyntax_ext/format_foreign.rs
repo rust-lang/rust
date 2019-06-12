@@ -1,5 +1,6 @@
 pub mod printf {
     use super::strcursor::StrCursor as Cur;
+    use syntax_pos::InnerSpan;
 
     /// Represents a single `printf`-style substitution.
     #[derive(Clone, PartialEq, Debug)]
@@ -18,7 +19,7 @@ pub mod printf {
             }
         }
 
-        pub fn position(&self) -> Option<(usize, usize)> {
+        pub fn position(&self) -> Option<InnerSpan> {
             match *self {
                 Substitution::Format(ref fmt) => Some(fmt.position),
                 _ => None,
@@ -28,7 +29,7 @@ pub mod printf {
         pub fn set_position(&mut self, start: usize, end: usize) {
             match self {
                 Substitution::Format(ref mut fmt) => {
-                    fmt.position = (start, end);
+                    fmt.position = InnerSpan::new(start, end);
                 }
                 _ => {}
             }
@@ -65,7 +66,7 @@ pub mod printf {
         /// Type of parameter being converted.
         pub type_: &'a str,
         /// Byte offset for the start and end of this formatting directive.
-        pub position: (usize, usize),
+        pub position: InnerSpan,
     }
 
     impl Format<'_> {
@@ -263,10 +264,10 @@ pub mod printf {
     }
 
     /// Returns an iterator over all substitutions in a given string.
-    pub fn iter_subs(s: &str) -> Substitutions<'_> {
+    pub fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
         Substitutions {
             s,
-            pos: 0,
+            pos: start_pos,
         }
     }
 
@@ -282,9 +283,9 @@ pub mod printf {
             let (mut sub, tail) = parse_next_substitution(self.s)?;
             self.s = tail;
             match sub {
-                Substitution::Format(_) => if let Some((start, end)) = sub.position() {
-                    sub.set_position(start + self.pos, end + self.pos);
-                    self.pos += end;
+                Substitution::Format(_) => if let Some(inner_span) = sub.position() {
+                    sub.set_position(inner_span.start + self.pos, inner_span.end + self.pos);
+                    self.pos += inner_span.end;
                 }
                 Substitution::Escape => self.pos += 2,
             }
@@ -373,7 +374,7 @@ pub mod printf {
                     precision: None,
                     length: None,
                     type_: at.slice_between(next).unwrap(),
-                    position: (start.at, next.at),
+                    position: InnerSpan::new(start.at, next.at),
                 }),
                 next.slice_after()
             ));
@@ -560,7 +561,7 @@ pub mod printf {
         drop(next);
 
         end = at;
-        let position = (start.at, end.at);
+        let position = InnerSpan::new(start.at, end.at);
 
         let f = Format {
             span: start.slice_between(end).unwrap(),
@@ -650,7 +651,7 @@ pub mod printf {
                                 precision: $prec,
                                 length: $len,
                                 type_: $type_,
-                                position: $pos,
+                                position: syntax_pos::InnerSpan::new($pos.0, $pos.1),
                             }),
                             "!"
                         ))
@@ -711,7 +712,7 @@ pub mod printf {
         #[test]
         fn test_iter() {
             let s = "The %d'th word %% is: `%.*s` %!\n";
-            let subs: Vec<_> = iter_subs(s).map(|sub| sub.translate()).collect();
+            let subs: Vec<_> = iter_subs(s, 0).map(|sub| sub.translate()).collect();
             assert_eq!(
                 subs.iter().map(|ms| ms.as_ref().map(|s| &s[..])).collect::<Vec<_>>(),
                 vec![Some("{}"), None, Some("{:.*}"), None]
@@ -761,6 +762,7 @@ pub mod printf {
 
 pub mod shell {
     use super::strcursor::StrCursor as Cur;
+    use syntax_pos::InnerSpan;
 
     #[derive(Clone, PartialEq, Debug)]
     pub enum Substitution<'a> {
@@ -778,11 +780,11 @@ pub mod shell {
             }
         }
 
-        pub fn position(&self) -> Option<(usize, usize)> {
+        pub fn position(&self) -> Option<InnerSpan> {
             match self {
                 Substitution::Ordinal(_, pos) |
                 Substitution::Name(_, pos) |
-                Substitution::Escape(pos) => Some(*pos),
+                Substitution::Escape(pos) => Some(InnerSpan::new(pos.0, pos.1)),
             }
         }
 
@@ -804,10 +806,10 @@ pub mod shell {
     }
 
     /// Returns an iterator over all substitutions in a given string.
-    pub fn iter_subs(s: &str) -> Substitutions<'_> {
+    pub fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
         Substitutions {
             s,
-            pos: 0,
+            pos: start_pos,
         }
     }
 
@@ -823,7 +825,7 @@ pub mod shell {
             match parse_next_substitution(self.s) {
                 Some((mut sub, tail)) => {
                     self.s = tail;
-                    if let Some((start, end)) = sub.position() {
+                    if let Some(InnerSpan { start, end }) = sub.position() {
                         sub.set_position(start + self.pos, end + self.pos);
                         self.pos += end;
                     }
@@ -940,7 +942,7 @@ pub mod shell {
         fn test_iter() {
             use super::iter_subs;
             let s = "The $0'th word $$ is: `$WORD` $!\n";
-            let subs: Vec<_> = iter_subs(s).map(|sub| sub.translate()).collect();
+            let subs: Vec<_> = iter_subs(s, 0).map(|sub| sub.translate()).collect();
             assert_eq!(
                 subs.iter().map(|ms| ms.as_ref().map(|s| &s[..])).collect::<Vec<_>>(),
                 vec![Some("{0}"), None, Some("{WORD}")]
