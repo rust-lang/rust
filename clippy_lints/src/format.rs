@@ -92,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessFormat {
     }
 }
 
-fn span_useless_format<'a, 'tcx: 'a, T: LintContext<'tcx>>(cx: &'a T, span: Span, help: &str, mut sugg: String) {
+fn span_useless_format<T: LintContext>(cx: &T, span: Span, help: &str, mut sugg: String) {
     let to_replace = span.source_callsite();
 
     // The callsite span contains the statement semicolon for some reason.
