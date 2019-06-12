@@ -22,6 +22,7 @@
 #![feature(static_nobundle)]
 #![feature(trusted_len)]
 #![deny(rust_2018_idioms)]
+#![deny(internal)]
 #![deny(unused_lifetimes)]
 #![allow(explicit_outlives_requirements)]
 

@@ -1417,7 +1417,7 @@ fn generic_simd_intrinsic(
     // FIXME: use:
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
-    fn llvm_vector_str(elem_ty: ty::Ty<'_>, vec_len: usize, no_pointers: usize) -> String {
+    fn llvm_vector_str(elem_ty: Ty<'_>, vec_len: usize, no_pointers: usize) -> String {
         let p0s: String = "p0".repeat(no_pointers);
         match elem_ty.sty {
             ty::Int(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
@@ -1427,7 +1427,7 @@ fn generic_simd_intrinsic(
         }
     }
 
-    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: ty::Ty<'_>, vec_len: usize,
+    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: usize,
                       mut no_pointers: usize) -> &'ll Type {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
         let mut elem_ty = match elem_ty.sty {
@@ -1473,7 +1473,7 @@ fn generic_simd_intrinsic(
                  in_ty, ret_ty);
 
         // This counts how many pointers
-        fn ptr_count(t: ty::Ty<'_>) -> usize {
+        fn ptr_count(t: Ty<'_>) -> usize {
             match t.sty {
                 ty::RawPtr(p) => 1 + ptr_count(p.ty),
                 _ => 0,
@@ -1481,7 +1481,7 @@ fn generic_simd_intrinsic(
         }
 
         // Non-ptr type
-        fn non_ptr(t: ty::Ty<'_>) -> ty::Ty<'_> {
+        fn non_ptr(t: Ty<'_>) -> Ty<'_> {
             match t.sty {
                 ty::RawPtr(p) => non_ptr(p.ty),
                 _ => t,
@@ -1572,7 +1572,7 @@ fn generic_simd_intrinsic(
                  arg_tys[2].simd_size(tcx));
 
         // This counts how many pointers
-        fn ptr_count(t: ty::Ty<'_>) -> usize {
+        fn ptr_count(t: Ty<'_>) -> usize {
             match t.sty {
                 ty::RawPtr(p) => 1 + ptr_count(p.ty),
                 _ => 0,
@@ -1580,7 +1580,7 @@ fn generic_simd_intrinsic(
         }
 
         // Non-ptr type
-        fn non_ptr(t: ty::Ty<'_>) -> ty::Ty<'_> {
+        fn non_ptr(t: Ty<'_>) -> Ty<'_> {
             match t.sty {
                 ty::RawPtr(p) => non_ptr(p.ty),
                 _ => t,

@@ -2257,11 +2257,7 @@ pub fn create_global_var_metadata(
 /// given type.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_vtable_metadata(
-    cx: &CodegenCx<'ll, 'tcx>,
-    ty: ty::Ty<'tcx>,
-    vtable: &'ll Value,
-) {
+pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &'ll Value) {
     if cx.dbg_cx.is_none() {
         return;
     }
