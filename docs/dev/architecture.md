@@ -50,15 +50,15 @@ processes. These are outlined below:
   the grammar described in [grammar.ron]:
   - [ast/generated.rs][ast generated] in `ra_syntax` based on
     [ast/generated.tera.rs][ast source]
-  - [syntax_kinds/generated.rs][syntax_kinds generated] in `ra_syntax` based on
-    [syntax_kinds/generated.tera.rs][syntax_kinds source]
+  - [syntax_kind/generated.rs][syntax_kind generated] in `ra_syntax` based on
+    [syntax_kind/generated.tera.rs][syntax_kind source]
 
 [tera]: https://tera.netlify.com/
 [grammar.ron]: ../../crates/ra_syntax/src/grammar.ron
 [ast generated]: ../../crates/ra_syntax/src/ast/generated.rs
 [ast source]: ../../crates/ra_syntax/src/ast/generated.rs.tera
-[syntax_kinds generated]: ../../crates/ra_syntax/src/syntax_kinds/generated.rs
-[syntax_kinds source]: ../../crates/ra_syntax/src/syntax_kinds/generated.rs.tera
+[syntax_kind generated]: ../../crates/ra_parser/src/syntax_kind/generated.rs
+[syntax_kind source]: ../../crates/ra_parser/src/syntax_kind/generated.rs.tera
 
 
 ## Code Walk-Through
