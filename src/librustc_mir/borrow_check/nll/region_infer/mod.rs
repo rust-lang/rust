@@ -550,7 +550,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Now take pick constraints into account
         let pick_constraints = self.pick_constraints.clone();
         for p_c_i in pick_constraints.indices(scc_a) {
-            self.apply_pick_constraint(scc_a, pick_constraints.option_regions(p_c_i));
+            self.apply_pick_constraint(
+                scc_a,
+                pick_constraints[p_c_i].opaque_type_def_id,
+                pick_constraints.option_regions(p_c_i),
+            );
         }
 
         debug!(
@@ -574,6 +578,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn apply_pick_constraint(
         &mut self,
         scc: ConstraintSccIndex,
+        opaque_type_def_id: DefId,
         option_regions: &[ty::RegionVid],
     ) -> bool {
         debug!("apply_pick_constraint(scc={:?}, option_regions={:#?})", scc, option_regions,);
@@ -581,8 +586,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         if let Some(uh_oh) =
             option_regions.iter().find(|&&r| !self.universal_regions.is_universal_region(r))
         {
-            debug!("apply_pick_constraint: option region `{:?}` is not a universal region", uh_oh);
-            return false;
+            // FIXME(#61773): This case can only occur with
+            // `impl_trait_in_bindings`, I believe, and we are just
+            // opting not to handle it for now. See #61773 for
+            // details.
+            bug!(
+                "pick constraint for `{:?}` has an option region `{:?}` \
+                 that is not a universal region",
+                opaque_type_def_id,
+                uh_oh,
+            );
         }
 
         // Create a mutable vector of the options. We'll try to winnow
