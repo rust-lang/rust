@@ -268,16 +268,16 @@ pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
 pub type TargetResult = Result<Target, String>;
 
 macro_rules! supported_targets {
-    ( $(($triple:expr, $module:ident),)+ ) => (
-        $(mod $module;)*
+    ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
+        $(mod $module;)+
 
         /// List of supported targets
-        const TARGETS: &[&str] = &[$($triple),*];
+        const TARGETS: &[&str] = &[$($($triple),+),+];
 
         fn load_specific(target: &str) -> Result<Target, LoadTargetError> {
             match target {
                 $(
-                    $triple => {
+                    $($triple)|+ => {
                         let mut t = $module::target()
                             .map_err(LoadTargetError::Other)?;
                         t.options.is_builtin = true;
@@ -307,7 +307,7 @@ macro_rules! supported_targets {
         mod test_json_encode_decode {
             use serialize::json::ToJson;
             use super::Target;
-            $(use super::$module;)*
+            $(use super::$module;)+
 
             $(
                 #[test]
@@ -322,9 +322,9 @@ macro_rules! supported_targets {
                         assert_eq!(original, parsed);
                     });
                 }
-            )*
+            )+
         }
-    )
+    };
 }
 
 supported_targets! {
@@ -426,7 +426,9 @@ supported_targets! {
     ("armv7r-none-eabi", armv7r_none_eabi),
     ("armv7r-none-eabihf", armv7r_none_eabihf),
 
-    ("x86_64-sun-solaris", x86_64_sun_solaris),
+    // `x86_64-pc-solaris` is an alias for `x86_64_sun_solaris` for backwards compatibility reasons.
+    // (See <https://github.com/rust-lang/rust/issues/40531>.)
+    ("x86_64-sun-solaris", "x86_64-pc-solaris", x86_64_sun_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
