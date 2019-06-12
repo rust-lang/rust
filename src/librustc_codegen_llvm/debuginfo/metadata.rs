@@ -222,8 +222,7 @@ impl TypeMap<'ll, 'tcx> {
     // Get the unique type id string for an enum variant part.
     // Variant parts are not types and shouldn't really have their own id,
     // but it makes set_members_of_composite_type() simpler.
-    fn get_unique_type_id_str_of_enum_variant_part<'a>(&mut self,
-                                                       enum_type_id: UniqueTypeId) -> &str {
+    fn get_unique_type_id_str_of_enum_variant_part(&mut self, enum_type_id: UniqueTypeId) -> &str {
         let variant_part_type_id = format!("{}_variant_part",
                                            self.get_unique_type_id_as_string(enum_type_id));
         let interner_key = self.unique_id_interner.intern(&variant_part_type_id);

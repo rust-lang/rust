@@ -175,7 +175,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
 
 pub trait LayoutLlvmExt<'tcx> {
     fn is_llvm_immediate(&self) -> bool;
-    fn is_llvm_scalar_pair<'a>(&self) -> bool;
+    fn is_llvm_scalar_pair(&self) -> bool;
     fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
@@ -198,7 +198,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         }
     }
 
-    fn is_llvm_scalar_pair<'a>(&self) -> bool {
+    fn is_llvm_scalar_pair(&self) -> bool {
         match self.abi {
             layout::Abi::ScalarPair(..) => true,
             layout::Abi::Uninhabited |

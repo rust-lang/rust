@@ -22,6 +22,7 @@
 #![feature(static_nobundle)]
 #![feature(trusted_len)]
 #![deny(rust_2018_idioms)]
+#![deny(unused_lifetimes)]
 #![allow(explicit_outlives_requirements)]
 
 use back::write::{create_target_machine, create_informational_target_machine};
@@ -107,7 +108,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         ModuleLlvm::new_metadata(tcx, mod_name)
     }
 
-    fn write_compressed_metadata<'b, 'gcx>(
+    fn write_compressed_metadata<'gcx>(
         &self,
         tcx: TyCtxt<'gcx, 'gcx>,
         metadata: &EncodedMetadata,
@@ -115,7 +116,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) {
         base::write_compressed_metadata(tcx, metadata, llvm_module)
     }
-    fn codegen_allocator<'b, 'gcx>(
+    fn codegen_allocator<'gcx>(
         &self,
         tcx: TyCtxt<'gcx, 'gcx>,
         mods: &mut ModuleLlvm,
@@ -284,7 +285,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         attributes::provide_extern(providers);
     }
 
-    fn codegen_crate<'b, 'tcx>(
+    fn codegen_crate<'tcx>(
         &self,
         tcx: TyCtxt<'tcx, 'tcx>,
         metadata: EncodedMetadata,

@@ -41,7 +41,7 @@ use rustc::hir::CodegenFnAttrs;
 
 use crate::value::Value;
 
-pub fn write_compressed_metadata<'a, 'gcx>(
+pub fn write_compressed_metadata<'gcx>(
     tcx: TyCtxt<'gcx, 'gcx>,
     metadata: &EncodedMetadata,
     llvm_module: &mut ModuleLlvm,
@@ -123,7 +123,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'tcx, 'tcx>, cgu_name: InternedString) {
 
     submit_codegened_module_to_llvm(&LlvmCodegenBackend(()), tcx, module, cost);
 
-    fn module_codegen<'ll, 'tcx>(
+    fn module_codegen<'tcx>(
         tcx: TyCtxt<'tcx, 'tcx>,
         cgu_name: InternedString,
     ) -> ModuleCodegen<ModuleLlvm> {
