@@ -81,7 +81,7 @@
 
 (with-eval-after-load 'company-lsp
   ;; company-lsp provides a snippet handler for rust by default that adds () after function calls, which RA does better
-  (setq company-lsp--snippet-functions (assq-delete-all "rust" company-lsp--snippet-functions)))
+  (setq company-lsp--snippet-functions (cl-delete "rust" company-lsp--snippet-functions :key #'car :test #'equal)))
 
 ;; join lines
 
