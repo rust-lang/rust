@@ -8,4 +8,4 @@ edition = "2018"
 byteorder = "1.0"
 
 [dev-dependencies]
-rand = "0.6.5"
+rand = { version = "0.7.0-pre.0", features = ["small_rng"] }
