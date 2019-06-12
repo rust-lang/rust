@@ -232,6 +232,11 @@
                     ],
                     "default": "off",
                     "description": "Trace output of cargo-watch"
+                },
+                "rust-analyzer.lruCapacity": {
+                    "type": "number",
+                    "default": null,
+                    "description": "Number of syntax trees rust-analyzer keeps in memory"
                 }
             }
         },

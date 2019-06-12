@@ -19,6 +19,7 @@ export class Config {
     public enableEnhancedTyping = true;
     public raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
     public showWorkspaceLoadedNotification = true;
+    public lruCapacity: null | number = null;
     public cargoWatchOptions: CargoWatchOptions = {
         enableOnStartup: 'ask',
         trace: 'off',
@@ -108,6 +109,9 @@ export class Config {
                 'cargo-watch.check-arguments',
                 ''
             );
+        }
+        if (config.has('lruCapacity')) {
+            this.lruCapacity = config.get('lruCapacity') as number;
         }
     }
 }

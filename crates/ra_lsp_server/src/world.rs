@@ -46,7 +46,11 @@ pub struct WorldSnapshot {
 }
 
 impl WorldState {
-    pub fn new(folder_roots: Vec<PathBuf>, workspaces: Vec<ProjectWorkspace>) -> WorldState {
+    pub fn new(
+        folder_roots: Vec<PathBuf>,
+        workspaces: Vec<ProjectWorkspace>,
+        lru_capacity: Option<usize>,
+    ) -> WorldState {
         let mut change = AnalysisChange::new();
 
         let mut roots = Vec::new();
@@ -74,7 +78,7 @@ impl WorldState {
         }
         change.set_crate_graph(crate_graph);
 
-        let mut analysis_host = AnalysisHost::default();
+        let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
         WorldState {
             roots_to_scan,

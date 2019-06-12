@@ -242,12 +242,21 @@ pub struct CallInfo {
 }
 
 /// `AnalysisHost` stores the current state of the world.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct AnalysisHost {
     db: db::RootDatabase,
 }
 
+impl Default for AnalysisHost {
+    fn default() -> AnalysisHost {
+        AnalysisHost::new(None)
+    }
+}
+
 impl AnalysisHost {
+    pub fn new(lru_capcity: Option<usize>) -> AnalysisHost {
+        AnalysisHost { db: db::RootDatabase::new(lru_capcity) }
+    }
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {

@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use rustc_hash::FxHashMap;
 
 use ra_db::{
-    CrateGraph, FileId, SourceRoot, SourceRootId, SourceDatabase, salsa,
+    CrateGraph, FileId, SourceRoot, SourceRootId, SourceDatabase, salsa::{self, Database},
 };
 use ra_hir::db;
 use ra_project_model::ProjectWorkspace;
@@ -43,6 +43,12 @@ fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
 impl BatchDatabase {
     pub fn load(crate_graph: CrateGraph, vfs: &mut Vfs) -> BatchDatabase {
         let mut db = BatchDatabase { runtime: salsa::Runtime::default() };
+        let lru_cap = std::env::var("RA_LRU_CAP")
+            .ok()
+            .and_then(|it| it.parse::<usize>().ok())
+            .unwrap_or(ra_db::DEFAULT_LRU_CAP);
+        db.query_mut(ra_db::ParseQuery).set_lru_capacity(lru_cap);
+        db.query_mut(ra_hir::db::ParseMacroQuery).set_lru_capacity(lru_cap);
         db.set_crate_graph(Arc::new(crate_graph));
 
         // wait until Vfs has loaded all roots
