@@ -114,7 +114,7 @@ pub fn in_macro(span: Span) -> bool {
 // sources that the user has no control over.
 // For some reason these attributes don't have any expansion info on them, so
 // we have to check it this way until there is a better way.
-pub fn is_present_in_source<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
+pub fn is_present_in_source<T: LintContext>(cx: &T, span: Span) -> bool {
     if let Some(snippet) = snippet_opt(cx, span) {
         if snippet.is_empty() {
             return false;
@@ -455,7 +455,7 @@ pub fn contains_name(name: Name, expr: &Expr) -> bool {
 /// ```rust,ignore
 /// snippet(cx, expr.span, "..")
 /// ```
-pub fn snippet<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
+pub fn snippet<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     snippet_opt(cx, span).map_or_else(|| Cow::Borrowed(default), From::from)
 }
 
@@ -465,7 +465,7 @@ pub fn snippet<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str)
 /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
 /// - If the default value is used and the applicability level is `MachineApplicable`, change it to
 /// `HasPlaceholders`
-pub fn snippet_with_applicability<'a, 'b, T: LintContext<'b>>(
+pub fn snippet_with_applicability<'a, T: LintContext>(
     cx: &T,
     span: Span,
     default: &'a str,
@@ -487,12 +487,12 @@ pub fn snippet_with_applicability<'a, 'b, T: LintContext<'b>>(
 
 /// Same as `snippet`, but should only be used when it's clear that the input span is
 /// not a macro argument.
-pub fn snippet_with_macro_callsite<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
+pub fn snippet_with_macro_callsite<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     snippet(cx, span.source_callsite(), default)
 }
 
 /// Converts a span to a code snippet. Returns `None` if not available.
-pub fn snippet_opt<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
+pub fn snippet_opt<T: LintContext>(cx: &T, span: Span) -> Option<String> {
     cx.sess().source_map().span_to_snippet(span).ok()
 }
 
@@ -506,14 +506,14 @@ pub fn snippet_opt<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String>
 /// ```rust,ignore
 /// snippet_block(cx, expr.span, "..")
 /// ```
-pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
+pub fn snippet_block<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     let snip = snippet(cx, span, default);
     trim_multiline(snip, true)
 }
 
 /// Same as `snippet_block`, but adapts the applicability level by the rules of
 /// `snippet_with_applicabiliy`.
-pub fn snippet_block_with_applicability<'a, 'b, T: LintContext<'b>>(
+pub fn snippet_block_with_applicability<'a, T: LintContext>(
     cx: &T,
     span: Span,
     default: &'a str,
@@ -524,7 +524,7 @@ pub fn snippet_block_with_applicability<'a, 'b, T: LintContext<'b>>(
 }
 
 /// Returns a new Span that covers the full last line of the given Span
-pub fn last_line_of_span<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Span {
+pub fn last_line_of_span<T: LintContext>(cx: &T, span: Span) -> Span {
     let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
     let line_no = source_map_and_line.line;
     let line_start = &source_map_and_line.sf.lines[line_no];
@@ -533,12 +533,7 @@ pub fn last_line_of_span<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Span {
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
 /// Also takes an `Option<String>` which can be put inside the braces.
-pub fn expr_block<'a, 'b, T: LintContext<'b>>(
-    cx: &T,
-    expr: &Expr,
-    option: Option<String>,
-    default: &'a str,
-) -> Cow<'a, str> {
+pub fn expr_block<'a, T: LintContext>(cx: &T, expr: &Expr, option: Option<String>, default: &'a str) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
     let string = option.unwrap_or_default();
     if in_macro_or_desugar(expr.span) {

@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use syntax::ast::*;
 use syntax::parse::{parser, token};
 use syntax::tokenstream::TokenStream;
-use syntax_pos::{symbol::Symbol, BytePos, Span};
+use syntax_pos::{BytePos, Span};
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `println!("")` to
@@ -418,7 +418,7 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (O
                             match arg.position {
                                 ArgumentImplicitlyIs(_) | ArgumentIs(_) => {},
                                 ArgumentNamed(name) => {
-                                    if *p == Symbol::intern(name) {
+                                    if *p == name {
                                         seen = true;
                                         all_simple &= arg.format == SIMPLE;
                                     }

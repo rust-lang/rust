@@ -48,7 +48,7 @@ impl<'a> DiagnosticWrapper<'a> {
 /// 17 |     std::mem::forget(seven);
 ///    |     ^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
-pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: &str) {
+pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: &str) {
     DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg)).docs_link(lint);
 }
 
@@ -70,13 +70,7 @@ pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: impl I
 ///    |
 ///    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
 /// ```
-pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
-    cx: &'a T,
-    lint: &'static Lint,
-    span: Span,
-    msg: &str,
-    help: &str,
-) {
+pub fn span_help_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     db.0.help(help);
     db.docs_link(lint);
@@ -103,7 +97,7 @@ pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
 /// 10 |     forget(&SomeStruct);
 ///    |            ^^^^^^^^^^^
 /// ```
-pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
+pub fn span_note_and_lint<'a, T: LintContext>(
     cx: &'a T,
     lint: &'static Lint,
     span: Span,
@@ -120,13 +114,8 @@ pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     db.docs_link(lint);
 }
 
-pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
-    cx: &'a T,
-    lint: &'static Lint,
-    sp: Span,
-    msg: &str,
-    f: F,
-) where
+pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str, f: F)
+where
     F: for<'b> FnOnce(&mut DiagnosticBuilder<'b>),
 {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
@@ -166,7 +155,7 @@ pub fn span_lint_hir_and_then(
 ///     |
 ///     = note: `-D fold-any` implied by `-D warnings`
 /// ```
-pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
+pub fn span_lint_and_sugg<'a, T: LintContext>(
     cx: &'a T,
     lint: &'static Lint,
     sp: Span,

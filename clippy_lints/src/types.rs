@@ -1120,7 +1120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
             if let ExprKind::Lit(ref lit) = ex.node {
                 use syntax::ast::{LitIntType, LitKind};
                 if let LitKind::Int(n, _) = lit.node {
-                    if cast_to.is_fp() {
+                    if cast_to.is_floating_point() {
                         let from_nbits = 128 - n.leading_zeros();
                         let to_nbits = fp_ty_mantissa_nbits(cast_to);
                         if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits {
