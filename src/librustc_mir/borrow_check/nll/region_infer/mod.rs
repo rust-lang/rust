@@ -23,7 +23,9 @@ use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use crate::rustc_data_structures::graph::WithSuccessors;
 use rustc_data_structures::graph::scc::Sccs;
+use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use syntax_pos::Span;
@@ -60,9 +62,14 @@ pub struct RegionInferenceContext<'tcx> {
     /// the SCC (see `constraint_sccs`) and for error reporting.
     constraint_graph: Rc<NormalConstraintGraph>,
 
-    /// The SCC computed from `constraints` and the constraint graph. Used to
+    /// The SCC computed from `constraints` and the constraint
+    /// graph. We have an edge from SCC A to SCC B if `A: B`. Used to
     /// compute the values of each region.
     constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
+
+    /// Reverse of the SCC constraint graph -- i.e., an edge `A -> B`
+    /// exists if `B: A`. Computed lazilly.
+    rev_constraint_graph: Option<Rc<VecGraph<ConstraintSccIndex>>>,
 
     /// The "pick R0 from [R1..Rn]" constraints, indexed by SCC.
     pick_constraints: Rc<PickConstraintSet<'tcx, ConstraintSccIndex>>,
@@ -234,6 +241,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraints,
             constraint_graph,
             constraint_sccs,
+            rev_constraint_graph: None,
             pick_constraints,
             closure_bounds_mapping,
             scc_universes,
@@ -602,21 +610,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .universal_regions_outlived_by(scc)
                 .all(|lb| self.universal_region_relations.outlives(o_r, lb))
         });
+        debug!("apply_pick_constraint: after lb, option_regions={:?}", option_regions);
 
         // Now find all the *upper bounds* -- that is, each UB is a free
         // region that must outlive pick region R0 (`UB: R0`). Therefore,
-        // we need only keep an option O if `UB: O`.
-        //
-        // TODO -- need to implement the reverse graph construction for this
-        //
-        // let mut upper_bounds = ...;
-        // option_regions.retain(|&o_r| {
-        //     upper_bounds
-        //         .all(|ub| self.universal_region_relations.outlives(
-        //             ub,
-        //             o_r,
-        //         })
-        // });
+        // we need only keep an option O if `UB: O` for all UB.
+        if option_regions.len() > 1 {
+            let universal_region_relations = self.universal_region_relations.clone();
+            for ub in self.upper_bounds(scc) {
+                debug!("apply_pick_constraint: ub={:?}", ub);
+                option_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
+            }
+            debug!("apply_pick_constraint: after ub, option_regions={:?}", option_regions);
+        }
 
         // If we ruled everything out, we're done.
         if option_regions.is_empty() {
@@ -656,8 +662,46 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        debug!("apply_pick_constraint: best_choice={:?}", best_option);
-        self.scc_values.add_element(scc, best_option)
+        let best_option_scc = self.constraint_sccs.scc(best_option);
+        debug!(
+            "apply_pick_constraint: best_choice={:?} best_option_scc={:?}",
+            best_option,
+            best_option_scc,
+        );
+        self.scc_values.add_region(scc, best_option_scc)
+    }
+
+    /// Compute and return the reverse SCC-based constraint graph (lazilly).
+    fn upper_bounds(
+        &mut self,
+        scc0: ConstraintSccIndex,
+    ) -> Vec<RegionVid> {
+        // I wanted to return an `impl Iterator` here, but it's
+        // annoying because the `rev_constraint_graph` is in a local
+        // variable. We'd need a "once-cell" or some such thing to let
+        // us borrow it for the right amount of time.
+        let rev_constraint_graph = self.rev_constraint_graph();
+        let scc_values = &self.scc_values;
+        let mut duplicates = FxHashSet::default();
+        rev_constraint_graph
+            .depth_first_search(scc0)
+            .skip(1)
+            .flat_map(|scc1| scc_values.universal_regions_outlived_by(scc1))
+            .filter(|&r| duplicates.insert(r))
+            .collect()
+    }
+
+    /// Compute and return the reverse SCC-based constraint graph (lazilly).
+    fn rev_constraint_graph(
+        &mut self,
+    ) -> Rc<VecGraph<ConstraintSccIndex>> {
+        if let Some(g) = &self.rev_constraint_graph {
+            return g.clone();
+        }
+
+        let rev_graph = Rc::new(self.constraint_sccs.reverse());
+        self.rev_constraint_graph = Some(rev_graph.clone());
+        rev_graph
     }
 
     /// Returns `true` if all the elements in the value of `scc_b` are nameable
@@ -1145,8 +1189,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn eval_outlives(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
         debug!("eval_outlives({:?}: {:?})", sup_region, sub_region);
 
-        debug!("eval_outlives: sup_region's value = {:?}", self.region_value_str(sup_region),);
-        debug!("eval_outlives: sub_region's value = {:?}", self.region_value_str(sub_region),);
+        debug!(
+            "eval_outlives: sup_region's value = {:?} universal={:?}",
+            self.region_value_str(sup_region),
+            self.universal_regions.is_universal_region(sup_region),
+        );
+        debug!(
+            "eval_outlives: sub_region's value = {:?} universal={:?}",
+            self.region_value_str(sub_region),
+            self.universal_regions.is_universal_region(sub_region),
+        );
 
         let sub_region_scc = self.constraint_sccs.scc(sub_region);
         let sup_region_scc = self.constraint_sccs.scc(sup_region);
