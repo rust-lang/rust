@@ -9,7 +9,7 @@ use std::process::{Command, Stdio};
 use std::str::Chars;
 use std::thread;
 
-use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle, ReportTactic};
+use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle, ReportTactic, Verbosity};
 use crate::formatting::{ReportedErrors, SourceFile};
 use crate::is_nightly_channel;
 use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChunk, OutputWriter};
@@ -344,9 +344,9 @@ fn stdin_formatting_smoke_test() {
     }
 
     #[cfg(not(windows))]
-    assert_eq!(buf, "fn main() {}\n".as_bytes());
+    assert_eq!(buf, "stdin:\n\nfn main() {}\n".as_bytes());
     #[cfg(windows)]
-    assert_eq!(buf, "fn main() {}\r\n".as_bytes());
+    assert_eq!(buf, "stdin:\n\nfn main() {}\r\n".as_bytes());
 }
 
 #[test]
@@ -838,6 +838,7 @@ impl ConfigCodeBlock {
 
     fn get_block_config(&self) -> Config {
         let mut config = Config::default();
+        config.set().verbose(Verbosity::Quiet);
         if self.config_name.is_some() && self.config_value.is_some() {
             config.override_value(
                 self.config_name.as_ref().unwrap(),

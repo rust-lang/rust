@@ -23,6 +23,7 @@ use ignore;
 use syntax::{ast, parse::DirectoryOwnership};
 
 use crate::comment::LineClasses;
+use crate::emitter::Emitter;
 use crate::formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
 use crate::issues::Issue;
 use crate::shape::Indent;
@@ -45,10 +46,10 @@ mod release_channel;
 
 mod attr;
 mod chains;
-pub(crate) mod checkstyle;
 mod closures;
 mod comment;
 pub(crate) mod config;
+mod emitter;
 mod expr;
 mod format_report_formatter;
 pub(crate) mod formatting;
@@ -403,17 +404,21 @@ pub struct Session<'b, T: Write> {
     pub out: Option<&'b mut T>,
     pub(crate) errors: ReportedErrors,
     source_file: SourceFile,
+    emitter: Box<dyn Emitter + 'b>,
 }
 
 impl<'b, T: Write + 'b> Session<'b, T> {
-    pub fn new(config: Config, out: Option<&'b mut T>) -> Session<'b, T> {
-        if config.emit_mode() == EmitMode::Checkstyle {
-            println!("{}", checkstyle::header());
+    pub fn new(config: Config, mut out: Option<&'b mut T>) -> Session<'b, T> {
+        let emitter = create_emitter(&config);
+
+        if let Some(ref mut out) = out {
+            let _ = emitter.emit_header(out);
         }
 
         Session {
             config,
             out,
+            emitter,
             errors: ReportedErrors::default(),
             source_file: SourceFile::new(),
         }
@@ -469,10 +474,25 @@ impl<'b, T: Write + 'b> Session<'b, T> {
     }
 }
 
+pub(crate) fn create_emitter<'a>(config: &Config) -> Box<dyn Emitter + 'a> {
+    match config.emit_mode() {
+        EmitMode::Files if config.make_backup() => {
+            Box::new(emitter::FilesWithBackupEmitter::default())
+        }
+        EmitMode::Files => Box::new(emitter::FilesEmitter::default()),
+        EmitMode::Stdout | EmitMode::Coverage => {
+            Box::new(emitter::StdoutEmitter::new(config.verbose()))
+        }
+        EmitMode::ModifiedLines => Box::new(emitter::ModifiedLinesEmitter::default()),
+        EmitMode::Checkstyle => Box::new(emitter::CheckstyleEmitter::default()),
+        EmitMode::Diff => Box::new(emitter::DiffEmitter::new(config.clone())),
+    }
+}
+
 impl<'b, T: Write + 'b> Drop for Session<'b, T> {
     fn drop(&mut self) {
-        if self.config.emit_mode() == EmitMode::Checkstyle {
-            println!("{}", checkstyle::footer());
+        if let Some(ref mut out) = self.out {
+            let _ = self.emitter.emit_footer(out);
         }
     }
 }

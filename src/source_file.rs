@@ -4,10 +4,13 @@ use std::path::Path;
 
 use syntax::source_map::SourceMap;
 
-use crate::checkstyle::output_checkstyle_file;
-use crate::config::{Config, EmitMode, FileName, Verbosity};
-use crate::rustfmt_diff::{make_diff, print_diff, ModifiedLines};
+use crate::config::FileName;
+use crate::emitter::{self, Emitter};
 
+#[cfg(test)]
+use crate::config::Config;
+#[cfg(test)]
+use crate::create_emitter;
 #[cfg(test)]
 use crate::formatting::FileRecord;
 
@@ -25,15 +28,13 @@ pub(crate) fn write_all_files<T>(
 where
     T: Write,
 {
-    if config.emit_mode() == EmitMode::Checkstyle {
-        write!(out, "{}", crate::checkstyle::header())?;
-    }
+    let emitter = create_emitter(config);
+
+    emitter.emit_header(out)?;
     for &(ref filename, ref text) in source_file {
-        write_file(None, filename, text, out, config)?;
+        write_file(None, filename, text, out, &*emitter)?;
     }
-    if config.emit_mode() == EmitMode::Checkstyle {
-        write!(out, "{}", crate::checkstyle::footer())?;
-    }
+    emitter.emit_footer(out)?;
 
     Ok(())
 }
@@ -43,8 +44,8 @@ pub(crate) fn write_file<T>(
     filename: &FileName,
     formatted_text: &str,
     out: &mut T,
-    config: &Config,
-) -> Result<bool, io::Error>
+    emitter: &dyn Emitter,
+) -> Result<emitter::EmitterResult, io::Error>
 where
     T: Write,
 {
@@ -75,59 +76,11 @@ where
         None => fs::read_to_string(ensure_real_path(filename))?,
     };
 
-    match config.emit_mode() {
-        EmitMode::Files if config.make_backup() => {
-            let filename = ensure_real_path(filename);
-            if original_text != formatted_text {
-                // Do a little dance to make writing safer - write to a temp file
-                // rename the original to a .bk, then rename the temp file to the
-                // original.
-                let tmp_name = filename.with_extension("tmp");
-                let bk_name = filename.with_extension("bk");
+    let formatted_file = emitter::FormattedFile {
+        filename,
+        original_text: &original_text,
+        formatted_text,
+    };
 
-                fs::write(&tmp_name, formatted_text)?;
-                fs::rename(filename, bk_name)?;
-                fs::rename(tmp_name, filename)?;
-            }
-        }
-        EmitMode::Files => {
-            // Write text directly over original file if there is a diff.
-            let filename = ensure_real_path(filename);
-
-            if original_text != formatted_text {
-                fs::write(filename, formatted_text)?;
-            }
-        }
-        EmitMode::Stdout | EmitMode::Coverage => {
-            if config.verbose() != Verbosity::Quiet {
-                println!("{}:\n", filename);
-            }
-            write!(out, "{}", formatted_text)?;
-        }
-        EmitMode::ModifiedLines => {
-            let mismatch = make_diff(&original_text, formatted_text, 0);
-            let has_diff = !mismatch.is_empty();
-            write!(out, "{}", ModifiedLines::from(mismatch))?;
-            return Ok(has_diff);
-        }
-        EmitMode::Checkstyle => {
-            let filename = ensure_real_path(filename);
-
-            let diff = make_diff(&original_text, formatted_text, 3);
-            output_checkstyle_file(out, filename, diff)?;
-        }
-        EmitMode::Diff => {
-            let mismatch = make_diff(&original_text, formatted_text, 3);
-            let has_diff = !mismatch.is_empty();
-            print_diff(
-                mismatch,
-                |line_num| format!("Diff in {} at line {}:", filename, line_num),
-                config,
-            );
-            return Ok(has_diff);
-        }
-    }
-
-    // when we are not in diff mode, don't indicate differing files
-    Ok(false)
+    emitter.emit_formatted_file(out, formatted_file)
 }
