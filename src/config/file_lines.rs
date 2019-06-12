@@ -1,5 +1,6 @@
 //! This module contains types and functions to support formatting specific line ranges.
 
+use itertools::Itertools;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -92,6 +93,12 @@ impl<'a> From<&'a LineRange> for Range {
     }
 }
 
+impl fmt::Display for Range {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}..{}", self.lo, self.hi)
+    }
+}
+
 impl Range {
     pub fn new(lo: usize, hi: usize) -> Range {
         Range { lo, hi }
@@ -148,6 +155,21 @@ impl Range {
 /// lines in all files.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct FileLines(Option<HashMap<FileName, Vec<Range>>>);
+
+impl fmt::Display for FileLines {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            None => write!(f, "None")?,
+            Some(map) => {
+                for (file_name, ranges) in map.iter() {
+                    write!(f, "{}: ", file_name)?;
+                    write!(f, "{}\n", ranges.iter().format(", "))?;
+                }
+            }
+        };
+        Ok(())
+    }
+}
 
 /// Normalizes the ranges so that the invariants for `FileLines` hold: ranges are non-overlapping,
 /// and ordered by their start point.

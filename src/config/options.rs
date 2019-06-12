@@ -3,6 +3,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use atty;
+use itertools::Itertools;
 use rustfmt_config_proc_macro::config_type;
 use serde::de::{SeqAccess, Visitor};
 use serde::ser::SerializeSeq;
@@ -193,6 +194,12 @@ pub struct WidthHeuristics {
     pub single_line_if_else_max_width: usize,
 }
 
+impl fmt::Display for WidthHeuristics {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 impl WidthHeuristics {
     // Using this WidthHeuristics means we ignore heuristics.
     pub fn null() -> WidthHeuristics {
@@ -262,6 +269,21 @@ pub struct IgnoreList {
     path_set: HashSet<PathBuf>,
     /// A path to rustfmt.toml.
     rustfmt_toml_path: PathBuf,
+}
+
+impl fmt::Display for IgnoreList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "[{}]",
+            self.path_set
+                .iter()
+                .format_with(", ", |path, f| f(&format_args!(
+                    "{}",
+                    path.to_string_lossy()
+                )))
+        )
+    }
 }
 
 impl Serialize for IgnoreList {

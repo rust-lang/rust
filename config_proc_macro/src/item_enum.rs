@@ -23,6 +23,7 @@ pub fn define_config_type_on_enum(em: &syn::ItemEnum) -> syn::Result<TokenStream
 
     let impl_doc_hint = impl_doc_hint(&em.ident, &em.variants);
     let impl_from_str = impl_from_str(&em.ident, &em.variants);
+    let impl_display = impl_display(&em.ident, &em.variants);
     let impl_serde = impl_serde(&em.ident, &em.variants);
     let impl_deserialize = impl_deserialize(&em.ident, &em.variants);
 
@@ -31,6 +32,7 @@ pub fn define_config_type_on_enum(em: &syn::ItemEnum) -> syn::Result<TokenStream
         mod #mod_name {
             #[derive(Debug, Copy, Clone, Eq, PartialEq)]
             pub #enum_token #ident #generics { #variants }
+            #impl_display
             #impl_doc_hint
             #impl_from_str
             #impl_serde
@@ -63,6 +65,29 @@ fn impl_doc_hint(ident: &syn::Ident, variants: &Variants) -> TokenStream {
         impl ConfigType for #ident {
             fn doc_hint() -> String {
                 #doc_hint.to_owned()
+            }
+        }
+    }
+}
+
+fn impl_display(ident: &syn::Ident, variants: &Variants) -> TokenStream {
+    let vs = variants
+        .iter()
+        .filter(|v| is_unit(v))
+        .map(|v| (config_value_of_variant(v), &v.ident));
+    let match_patterns = fold_quote(vs, |(s, v)| {
+        quote! {
+            #ident::#v => write!(f, "{}", #s),
+        }
+    });
+    quote! {
+        use std::fmt;
+        impl fmt::Display for #ident {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                match self {
+                    #match_patterns
+                    _ => unimplemented!(),
+                }
             }
         }
     }
