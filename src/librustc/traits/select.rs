@@ -4126,7 +4126,7 @@ struct ProvisionalEvaluationCache<'tcx> {
 
 /// A cache value for the provisional cache: contains the depth-first
 /// number (DFN) and result.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct ProvisionalEvaluation {
     from_dfn: usize,
     result: EvaluationResult,
@@ -4145,6 +4145,11 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     /// it an access to the stack slots at depth
     /// `self.current_reached_depth()` and above.
     fn get_provisional(&self, fresh_trait_ref: ty::PolyTraitRef<'tcx>) -> Option<EvaluationResult> {
+        debug!(
+            "get_provisional(fresh_trait_ref={:?}) = {:#?}",
+            fresh_trait_ref,
+            self.map.borrow().get(&fresh_trait_ref),
+        );
         Some(self.map.borrow().get(&fresh_trait_ref)?.result)
     }
 
@@ -4166,8 +4171,17 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
         fresh_trait_ref: ty::PolyTraitRef<'tcx>,
         result: EvaluationResult,
     ) {
+        debug!(
+            "insert_provisional(from_dfn={}, reached_depth={}, fresh_trait_ref={:?}, result={:?})",
+            from_dfn,
+            reached_depth,
+            fresh_trait_ref,
+            result,
+        );
         let r_d = self.reached_depth.get();
         self.reached_depth.set(r_d.min(reached_depth));
+
+        debug!("insert_provisional: reached_depth={:?}", self.reached_depth.get());
 
         self.map.borrow_mut().insert(fresh_trait_ref, ProvisionalEvaluation { from_dfn, result });
     }
@@ -4181,7 +4195,18 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     /// these provisional entries must either depend on it or some
     /// ancestor of it.
     fn on_failure(&self, dfn: usize) {
-        self.map.borrow_mut().retain(|_key, eval| eval.from_dfn >= dfn)
+        debug!(
+            "on_failure(dfn={:?})",
+            dfn,
+        );
+        self.map.borrow_mut().retain(|key, eval| {
+            if !eval.from_dfn >= dfn {
+                debug!("on_failure: removing {:?}", key);
+                false
+            } else {
+                true
+            }
+        });
     }
 
     /// Invoked when the node at depth `depth` completed without
@@ -4194,11 +4219,24 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
         depth: usize,
         mut op: impl FnMut(ty::PolyTraitRef<'tcx>, EvaluationResult),
     ) {
+        debug!(
+            "on_completion(depth={}, reached_depth={})",
+            depth,
+            self.reached_depth.get(),
+        );
+
         if self.reached_depth.get() < depth {
+            debug!("on_completion: did not yet reach depth to complete");
             return;
         }
 
         for (fresh_trait_ref, eval) in self.map.borrow_mut().drain() {
+            debug!(
+                "on_completion: fresh_trait_ref={:?} eval={:?}",
+                fresh_trait_ref,
+                eval,
+            );
+
             op(fresh_trait_ref, eval.result);
         }
 
