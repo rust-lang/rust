@@ -1,5 +1,8 @@
 // compile-flags: -Z print-type-sizes
 // compile-pass
+// ignore-pass
+// ^-- needed because `--pass check` does not emit the output needed.
+//     FIXME: consider using an attribute instead of side-effects.
 
 // This file illustrates how generics are handled: types have to be
 // monomorphized, in the MIR of the original function in which they

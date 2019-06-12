@@ -1,5 +1,8 @@
 // compile-flags: -Z print-type-sizes
 // compile-pass
+// ignore-pass
+// ^-- needed because `--pass check` does not emit the output needed.
+//     FIXME: consider using an attribute instead of side-effects.
 
 // This file illustrates how niche-filling enums are handled,
 // modelled after cases like `Option<&u32>`, `Option<bool>` and such.
