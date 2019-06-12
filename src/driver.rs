@@ -179,7 +179,7 @@ Available lint options:
     print_lints(&lints);
 
     let max_group_name_len = std::cmp::max(
-        "all".len(),
+        "clippy::all".len(),
         lint_groups
             .iter()
             .map(|group| group.len())
