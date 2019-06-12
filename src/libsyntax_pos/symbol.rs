@@ -449,6 +449,7 @@ symbols! {
         panic_runtime,
         parent_trait,
         partial_cmp,
+        param_attrs,
         PartialOrd,
         passes,
         pat,

@@ -1188,7 +1188,8 @@ impl<'a> Parser<'a> {
                 // definition...
 
                 // We don't allow argument names to be left off in edition 2018.
-                p.parse_arg_general(p.token.span.rust_2018(), true, false)
+                let is_name_required = p.token.span.rust_2018();
+                p.parse_arg_general(true, false, |_| is_name_required)
             })?;
             generics.where_clause = self.parse_where_clause()?;
 
@@ -1487,26 +1488,31 @@ impl<'a> Parser<'a> {
     /// Skips unexpected attributes and doc comments in this position and emits an appropriate
     /// error.
     /// This version of parse arg doesn't necessarily require identifier names.
-    fn parse_arg_general(
+    fn parse_arg_general<F>(
         &mut self,
-        require_name: bool,
         is_trait_item: bool,
         allow_c_variadic: bool,
-    ) -> PResult<'a, Arg> {
-        if let Ok(Some(arg)) = self.parse_self_arg() {
+        is_name_required: F,
+    ) -> PResult<'a, Arg>
+    where
+        F: Fn(&token::Token) -> bool
+    {
+        let attrs = self.parse_arg_attributes()?;
+        if let Ok(Some(mut arg)) = self.parse_self_arg() {
+            arg.attrs = attrs.into();
             return self.recover_bad_self_arg(arg, is_trait_item);
         }
 
-        let (pat, ty) = if require_name || self.is_named_argument() {
-            debug!("parse_arg_general parse_pat (require_name:{})", require_name);
-            self.eat_incorrect_doc_comment("method arguments");
-            let pat = self.parse_pat(Some("argument name"))?;
+        let is_name_required = is_name_required(&self.token);
+        let (pat, ty) = if is_name_required || self.is_named_argument() {
+            debug!("parse_arg_general parse_pat (is_name_required:{})", is_name_required);
 
+            let pat = self.parse_pat(Some("argument name"))?;
             if let Err(mut err) = self.expect(&token::Colon) {
                 if let Some(ident) = self.argument_without_type(
                     &mut err,
                     pat,
-                    require_name,
+                    is_name_required,
                     is_trait_item,
                 ) {
                     err.emit();
@@ -1516,12 +1522,12 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            self.eat_incorrect_doc_comment("a method argument's type");
+            self.eat_incorrect_doc_comment_for_arg_type();
             (pat, self.parse_ty_common(true, true, allow_c_variadic)?)
         } else {
             debug!("parse_arg_general ident_to_pat");
             let parser_snapshot_before_ty = self.clone();
-            self.eat_incorrect_doc_comment("a method argument's type");
+            self.eat_incorrect_doc_comment_for_arg_type();
             let mut ty = self.parse_ty_common(true, true, allow_c_variadic);
             if ty.is_ok() && self.token != token::Comma &&
                self.token != token::CloseDelim(token::Paren) {
@@ -1554,11 +1560,12 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok(Arg { ty, pat, id: ast::DUMMY_NODE_ID })
+        Ok(Arg { attrs: attrs.into(), id: ast::DUMMY_NODE_ID, pat, ty })
     }
 
     /// Parses an argument in a lambda header (e.g., `|arg, arg|`).
     fn parse_fn_block_arg(&mut self) -> PResult<'a, Arg> {
+        let attrs = self.parse_arg_attributes()?;
         let pat = self.parse_pat(Some("argument name"))?;
         let t = if self.eat(&token::Colon) {
             self.parse_ty()?
@@ -1570,6 +1577,7 @@ impl<'a> Parser<'a> {
             })
         };
         Ok(Arg {
+            attrs: attrs.into(),
             ty: t,
             pat,
             id: ast::DUMMY_NODE_ID
@@ -5413,15 +5421,19 @@ impl<'a> Parser<'a> {
                 &token::CloseDelim(token::Paren),
                 SeqSep::trailing_allowed(token::Comma),
                 |p| {
-                    // If the argument is a C-variadic argument we should not
-                    // enforce named arguments.
-                    let enforce_named_args = if p.token == token::DotDotDot {
-                        false
-                    } else {
-                        named_args
-                    };
-                    match p.parse_arg_general(enforce_named_args, false,
-                                              allow_c_variadic) {
+                    let do_not_enforce_named_arguments_for_c_variadic =
+                        |token: &token::Token| -> bool {
+                            if token == &token::DotDotDot {
+                                false
+                            } else {
+                                named_args
+                            }
+                        };
+                    match p.parse_arg_general(
+                        false,
+                        allow_c_variadic,
+                        do_not_enforce_named_arguments_for_c_variadic
+                    ) {
                         Ok(arg) => {
                             if let TyKind::CVarArgs = arg.ty.node {
                                 c_variadic = true;
@@ -5466,7 +5478,6 @@ impl<'a> Parser<'a> {
 
     /// Parses the argument list and result type of a function declaration.
     fn parse_fn_decl(&mut self, allow_c_variadic: bool) -> PResult<'a, P<FnDecl>> {
-
         let (args, c_variadic) = self.parse_fn_args(true, allow_c_variadic)?;
         let ret_ty = self.parse_ret_ty(true)?;
 
@@ -5478,6 +5489,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns the parsed optional self argument and whether a self shortcut was used.
+    ///
+    /// See `parse_self_arg_with_attrs` to collect attributes.
     fn parse_self_arg(&mut self) -> PResult<'a, Option<Arg>> {
         let expect_ident = |this: &mut Self| match this.token.kind {
             // Preserve hygienic context.
@@ -5583,7 +5596,18 @@ impl<'a> Parser<'a> {
         };
 
         let eself = source_map::respan(eself_lo.to(eself_hi), eself);
-        Ok(Some(Arg::from_self(eself, eself_ident)))
+        Ok(Some(Arg::from_self(ThinVec::default(), eself, eself_ident)))
+    }
+
+    /// Returns the parsed optional self argument with attributes and whether a self
+    /// shortcut was used.
+    fn parse_self_arg_with_attrs(&mut self) -> PResult<'a, Option<Arg>> {
+        let attrs = self.parse_arg_attributes()?;
+        let arg_opt = self.parse_self_arg()?;
+        Ok(arg_opt.map(|mut arg| {
+            arg.attrs = attrs.into();
+            arg
+        }))
     }
 
     /// Parses the parameter list and result type of a function that may have a `self` parameter.
@@ -5593,7 +5617,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::OpenDelim(token::Paren))?;
 
         // Parse optional self argument.
-        let self_arg = self.parse_self_arg()?;
+        let self_arg = self.parse_self_arg_with_attrs()?;
 
         // Parse the rest of the function parameter list.
         let sep = SeqSep::trailing_allowed(token::Comma);
@@ -5867,7 +5891,7 @@ impl<'a> Parser<'a> {
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
             let decl = self.parse_fn_decl_with_self(|p| {
-                p.parse_arg_general(true, true, false)
+                p.parse_arg_general(true, false, |_| true)
             })?;
             generics.where_clause = self.parse_where_clause()?;
             *at_end = true;
@@ -7443,7 +7467,7 @@ impl<'a> Parser<'a> {
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
                 self.bump();  // `(`
-                let kw_name = if let Ok(Some(_)) = self.parse_self_arg() {
+                let kw_name = if let Ok(Some(_)) = self.parse_self_arg_with_attrs() {
                     "method"
                 } else {
                     "function"
@@ -7494,7 +7518,7 @@ impl<'a> Parser<'a> {
                 self.eat_to_tokens(&[&token::Gt]);
                 self.bump();  // `>`
                 let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
-                    if let Ok(Some(_)) = self.parse_self_arg() {
+                    if let Ok(Some(_)) = self.parse_self_arg_with_attrs() {
                         ("fn", "method", false)
                     } else {
                         ("fn", "function", false)

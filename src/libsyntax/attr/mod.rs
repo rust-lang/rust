@@ -723,7 +723,7 @@ macro_rules! derive_has_attrs {
 
 derive_has_attrs! {
     Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::ImplItem, ast::TraitItem, ast::Arm,
-    ast::Field, ast::FieldPat, ast::Variant_
+    ast::Field, ast::FieldPat, ast::Variant_, ast::Arg
 }
 
 pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -> ast::Crate {

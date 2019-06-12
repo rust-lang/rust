@@ -1578,6 +1578,11 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             *id = self.cx.resolver.next_node_id()
         }
     }
+
+    fn visit_fn_decl(&mut self, mut fn_decl: &mut P<ast::FnDecl>) {
+        self.cfg.configure_fn_decl(&mut fn_decl);
+        noop_visit_fn_decl(fn_decl, self);
+    }
 }
 
 pub struct ExpansionConfig<'feat> {

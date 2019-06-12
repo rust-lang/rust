@@ -298,6 +298,10 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
+    pub fn configure_fn_decl(&mut self, fn_decl: &mut ast::FnDecl) {
+        fn_decl.inputs.flat_map_in_place(|arg| self.configure(arg));
+    }
+
     /// Denies `#[cfg]` on generic parameters until we decide what to do with it.
     /// See issue #51279.
     pub fn disallow_cfg_on_generic_param(&mut self, param: &ast::GenericParam) {
@@ -363,6 +367,11 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
     fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
         self.configure_pat(pat);
         noop_visit_pat(pat, self)
+    }
+
+    fn visit_fn_decl(&mut self, mut fn_decl: &mut P<ast::FnDecl>) {
+        self.configure_fn_decl(&mut fn_decl);
+        noop_visit_fn_decl(fn_decl, self);
     }
 }
 

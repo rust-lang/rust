@@ -1,0 +1,339 @@
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:5:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:9:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:11:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:13:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:15:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:21:5
+   |
+LL |     /// Foo
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:25:5
+   |
+LL |     /// Bar
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:27:5
+   |
+LL |     #[must_use]
+   |     ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:29:5
+   |
+LL |     /// Baz
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:31:5
+   |
+LL |     #[no_mangle] b: i32,
+   |     ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:36:5
+   |
+LL |     /// Foo
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:40:5
+   |
+LL |     /// Bar
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:42:5
+   |
+LL |     #[must_use]
+   |     ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:44:5
+   |
+LL |     /// Baz
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:46:5
+   |
+LL |     #[no_mangle] b: i32,
+   |     ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:53:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:56:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:60:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:62:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:64:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:66:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:74:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:77:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:81:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:83:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:85:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:87:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:93:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:96:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:100:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:102:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:104:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:106:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:112:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:115:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:119:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:121:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:123:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:125:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:132:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:136:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:138:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:140:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:142:9
+   |
+LL |         #[no_mangle] b: i32
+   |         ^^^^^^^^^^^^
+
+error[E0658]: The attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/param-attrs-builtin-attrs.rs:7:9
+   |
+LL |         #[test] a: i32,
+   |         ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/param-attrs-builtin-attrs.rs:23:5
+   |
+LL |     #[test] a: u32,
+   |     ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/param-attrs-builtin-attrs.rs:38:5
+   |
+LL |     #[test] a: u32,
+   |     ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/param-attrs-builtin-attrs.rs:58:9
+   |
+LL |         #[test] a: i32,
+   |         ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/param-attrs-builtin-attrs.rs:79:9
+   |
+LL |         #[test] a: i32,
+   |         ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/param-attrs-builtin-attrs.rs:98:9
+   |
+LL |         #[test] a: i32,
+   |         ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/param-attrs-builtin-attrs.rs:117:9
+   |
+LL |         #[test] a: i32,
+   |         ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/param-attrs-builtin-attrs.rs:134:9
+   |
+LL |         #[test] a: u32,
+   |         ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error: aborting due to 52 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

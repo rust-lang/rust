@@ -1490,6 +1490,7 @@ mod tests {
             buffered_lints: Lock::new(vec![]),
             edition: Edition::from_session(),
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
+            param_attr_spans: Lock::new(Vec::new()),
         }
     }
 

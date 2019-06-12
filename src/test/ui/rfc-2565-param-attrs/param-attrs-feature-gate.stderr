@@ -1,0 +1,27 @@
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-feature-gate.rs:4:5
+   |
+LL |     /// Foo
+   |     ^^^^^^^ doc comments are not allowed here
+
+error[E0658]: attributes on function parameters are unstable
+  --> $DIR/param-attrs-feature-gate.rs:4:5
+   |
+LL |     /// Foo
+   |     ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/60406
+   = help: add #![feature(param_attrs)] to the crate attributes to enable
+
+error[E0658]: attributes on function parameters are unstable
+  --> $DIR/param-attrs-feature-gate.rs:9:5
+   |
+LL |     #[allow(C)] a: u8
+   |     ^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/60406
+   = help: add #![feature(param_attrs)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

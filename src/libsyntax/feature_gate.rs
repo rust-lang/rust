@@ -557,6 +557,9 @@ declare_features! (
     // Allows the user of associated type bounds.
     (active, associated_type_bounds, "1.34.0", Some(52662), None),
 
+    // Attributes on formal function params
+    (active, param_attrs, "1.36.0", Some(60406), None),
+
     // Allows calling constructor functions in `const fn`
     // FIXME Create issue
     (active, const_constructor, "1.37.0", Some(61456), None),
@@ -2511,6 +2514,18 @@ pub fn check_crate(krate: &ast::Crate,
         parse_sess: sess,
         plugin_attributes,
     };
+
+    sess
+        .param_attr_spans
+        .borrow()
+        .iter()
+        .for_each(|span| gate_feature!(
+            &ctx,
+            param_attrs,
+            *span,
+            "attributes on function parameters are unstable"
+        ));
+
     let visitor = &mut PostExpansionVisitor {
         context: &ctx,
         builtin_attributes: &*BUILTIN_ATTRIBUTE_MAP,

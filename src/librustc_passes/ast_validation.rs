@@ -14,6 +14,7 @@ use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
 use syntax::attr;
+use syntax::feature_gate::is_builtin_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
 use syntax::ptr::P;
@@ -365,6 +366,29 @@ impl<'a> AstValidator<'a> {
             _ => None,
         }
     }
+
+    fn check_fn_decl(&self, fn_decl: &FnDecl) {
+        fn_decl
+            .inputs
+            .iter()
+            .flat_map(|i| i.attrs.as_ref())
+            .filter(|attr| {
+                let arr = [sym::allow, sym::cfg, sym::cfg_attr, sym::deny, sym::forbid, sym::warn];
+                !arr.contains(&attr.name_or_empty()) && is_builtin_attr(attr)
+            })
+            .for_each(|attr| if attr.is_sugared_doc {
+                let mut err = self.err_handler().struct_span_err(
+                    attr.span,
+                    "documentation comments cannot be applied to function parameters"
+                );
+                err.span_label(attr.span, "doc comments are not allowed here");
+                err.emit();
+            }
+            else {
+                self.err_handler().span_err(attr.span, "allow, cfg, cfg_attr, deny, \
+                forbid, and warn are the only allowed built-in attributes in function parameters")
+            });
+    }
 }
 
 enum GenericPosition {
@@ -470,6 +494,9 @@ fn validate_generics_order<'a>(
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr.node {
+            ExprKind::Closure(_, _, _, ref fn_decl, _, _) => {
+                self.check_fn_decl(fn_decl);
+            }
             ExprKind::IfLet(_, ref expr, _, _) | ExprKind::WhileLet(_, ref expr, _, _) =>
                 self.while_if_let_ambiguity(&expr),
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
@@ -484,6 +511,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.node {
             TyKind::BareFn(ref bfty) => {
+                self.check_fn_decl(&bfty.decl);
                 self.check_decl_no_pat(&bfty.decl, |span, _| {
                     struct_span_err!(self.session, span, E0561,
                                      "patterns aren't allowed in function pointer types").emit();
@@ -601,10 +629,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .note("only trait implementations may be annotated with default").emit();
                 }
             }
-            ItemKind::Fn(_, ref header, ref generics, _) => {
+            ItemKind::Fn(ref decl, ref header, ref generics, _) => {
+                self.visit_fn_header(header);
+                self.check_fn_decl(decl);
                 // We currently do not permit const generics in `const fn`, as
                 // this is tantamount to allowing compile-time dependent typing.
-                self.visit_fn_header(header);
                 if header.constness.node == Constness::Const {
                     // Look for const generics and error if we find any.
                     for param in &generics.params {
@@ -657,6 +686,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.no_questions_in_bounds(bounds, "supertraits", true);
                 for trait_item in trait_items {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
+                        self.check_fn_decl(&sig.decl);
                         self.check_trait_fn_not_async(trait_item.span, sig.header.asyncness.node);
                         self.check_trait_fn_not_const(sig.header.constness);
                         if block.is_none() {
@@ -711,6 +741,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match fi.node {
             ForeignItemKind::Fn(ref decl, _) => {
+                self.check_fn_decl(decl);
                 self.check_decl_no_pat(decl, |span, _| {
                     struct_span_err!(self.session, span, E0130,
                                      "patterns aren't allowed in foreign function declarations")
@@ -863,6 +894,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             struct_span_err!(self.session, header.asyncness.span, E0670,
                              "`async fn` is not permitted in the 2015 edition").emit();
         }
+    }
+
+    fn visit_impl_item(&mut self, ii: &'a ImplItem) {
+        match ii.node {
+            ImplItemKind::Method(ref sig, _) => {
+                self.check_fn_decl(&sig.decl);
+            }
+            _ => {}
+        }
+        visit::walk_impl_item(self, ii);
     }
 }
 

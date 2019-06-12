@@ -550,8 +550,9 @@ pub fn walk_fn_ret_ty<'a, V: Visitor<'a>>(visitor: &mut V, ret_ty: &'a FunctionR
 
 pub fn walk_fn_decl<'a, V: Visitor<'a>>(visitor: &mut V, function_declaration: &'a FnDecl) {
     for argument in &function_declaration.inputs {
+        walk_list!(visitor, visit_attribute, argument.attrs.iter());
         visitor.visit_pat(&argument.pat);
-        visitor.visit_ty(&argument.ty)
+        visitor.visit_ty(&argument.ty);
     }
     visitor.visit_fn_ret_ty(&function_declaration.output)
 }
