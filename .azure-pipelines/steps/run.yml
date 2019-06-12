@@ -155,6 +155,6 @@ steps:
 - bash: aws s3 cp --acl public-read cpu-usage.csv s3://$DEPLOY_BUCKET/rustc-builds/$BUILD_SOURCEVERSION/cpu-$SYSTEM_JOBNAME.csv
   env:
     AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
-  condition: contains(variables, 'AWS_SECRET_ACCESS_KEY')
+  condition: variables['AWS_SECRET_ACCESS_KEY']
   continueOnError: true
   displayName: Upload CPU usage statistics
