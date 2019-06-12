@@ -984,8 +984,17 @@ impl<T: ?Sized> *const T {
     /// operation because the returned value could be pointing to invalid
     /// memory.
     ///
+    /// When calling this method, you have to ensure that if the pointer is
+    /// non-NULL, then it is properly aligned, dereferencable (for the whole
+    /// size of `T`) and points to an initialized instance of `T`. This applies
+    /// even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    ///
     /// Additionally, the lifetime `'a` returned is arbitrarily chosen and does
-    /// not necessarily reflect the actual lifetime of the data.
+    /// not necessarily reflect the actual lifetime of the data. It is up to the
+    /// caller to ensure that for the duration of this lifetime, the memory this
+    /// pointer points to does not get written to outside of `UnsafeCell<U>`.
     ///
     /// # Examples
     ///
@@ -1610,8 +1619,17 @@ impl<T: ?Sized> *mut T {
     /// operation because the returned value could be pointing to invalid
     /// memory.
     ///
+    /// When calling this method, you have to ensure that if the pointer is
+    /// non-NULL, then it is properly aligned, dereferencable (for the whole
+    /// size of `T`) and points to an initialized instance of `T`. This applies
+    /// even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    ///
     /// Additionally, the lifetime `'a` returned is arbitrarily chosen and does
-    /// not necessarily reflect the actual lifetime of the data.
+    /// not necessarily reflect the actual lifetime of the data. It is up to the
+    /// caller to ensure that for the duration of this lifetime, the memory this
+    /// pointer points to does not get written to outside of `UnsafeCell<U>`.
     ///
     /// # Examples
     ///
@@ -1755,9 +1773,23 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// As with `as_ref`, this is unsafe because it cannot verify the validity
+    /// As with [`as_ref`], this is unsafe because it cannot verify the validity
     /// of the returned pointer, nor can it ensure that the lifetime `'a`
     /// returned is indeed a valid lifetime for the contained data.
+    ///
+    /// When calling this method, you have to ensure that if the pointer is
+    /// non-NULL, then it is properly aligned, dereferencable (for the whole
+    /// size of `T`) and points to an initialized instance of `T`. This applies
+    /// even if the result of this method is unused!
+    /// (The part about being initialized is not yet fully decided, but until
+    /// it is the only safe approach is to ensure that they are indeed initialized.)
+    ///
+    /// Additionally, the lifetime `'a` returned is arbitrarily chosen and does
+    /// not necessarily reflect the actual lifetime of the data. It is up to the
+    /// caller to ensure that for the duration of this lifetime, the memory this
+    /// pointer points to does not get accessed through any other pointer.
+    ///
+    /// [`as_ref`]: #method.as_ref
     ///
     /// # Examples
     ///
