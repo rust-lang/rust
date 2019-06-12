@@ -107,6 +107,10 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         p.bump_remap(T![default]);
         has_mods = true;
     }
+    if p.at(IDENT) && p.at_contextual_kw("existential") && p.nth(1) == T![type] {
+        p.bump_remap(T![existential]);
+        has_mods = true;
+    }
 
     // items
     match p.current() {
@@ -165,12 +169,17 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
             traits::impl_block(p);
             m.complete(p, IMPL_BLOCK);
         }
+        // test existential_type
+        // existential type Foo: Fn() -> usize;
+        T![type] => {
+            type_def(p, m);
+        }
         _ => {
             if !has_visibility && !has_mods {
                 return Err(m);
             } else {
                 if has_mods {
-                    p.error("expected fn, trait or impl");
+                    p.error("expected existential, fn, trait or impl");
                 } else {
                     p.error("expected an item");
                 }
@@ -187,7 +196,9 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         // test extern_crate
         // extern crate foo;
         T![extern] if la == T![crate] => extern_crate_item(p, m),
-        T![type] => type_def(p, m),
+        T![type] => {
+            type_def(p, m);
+        }
         T![mod] => mod_item(p, m),
         T![struct] => {
             // test struct_items
@@ -308,7 +319,6 @@ fn type_def(p: &mut Parser, m: Marker) {
     // test type_item_where_clause
     // type Foo where Foo: Copy = ();
     type_params::opt_where_clause(p);
-
     if p.eat(T![=]) {
         types::type_(p);
     }

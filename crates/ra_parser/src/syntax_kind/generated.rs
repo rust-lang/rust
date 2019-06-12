@@ -106,6 +106,7 @@ pub enum SyntaxKind {
     TRY_KW,
     AUTO_KW,
     DEFAULT_KW,
+    EXISTENTIAL_KW,
     UNION_KW,
     INT_NUMBER,
     FLOAT_NUMBER,
@@ -336,6 +337,7 @@ macro_rules! T {
     (try) => { $crate::SyntaxKind::TRY_KW };
     (auto) => { $crate::SyntaxKind::AUTO_KW };
     (default) => { $crate::SyntaxKind::DEFAULT_KW };
+    (existential) => { $crate::SyntaxKind::EXISTENTIAL_KW };
     (union) => { $crate::SyntaxKind::UNION_KW };
 }
 
@@ -394,6 +396,7 @@ impl SyntaxKind {
             | TRY_KW
             | AUTO_KW
             | DEFAULT_KW
+            | EXISTENTIAL_KW
             | UNION_KW
                 => true,
             _ => false
@@ -566,6 +569,7 @@ impl SyntaxKind {
             TRY_KW => &SyntaxInfo { name: "TRY_KW" },
             AUTO_KW => &SyntaxInfo { name: "AUTO_KW" },
             DEFAULT_KW => &SyntaxInfo { name: "DEFAULT_KW" },
+            EXISTENTIAL_KW => &SyntaxInfo { name: "EXISTENTIAL_KW" },
             UNION_KW => &SyntaxInfo { name: "UNION_KW" },
             INT_NUMBER => &SyntaxInfo { name: "INT_NUMBER" },
             FLOAT_NUMBER => &SyntaxInfo { name: "FLOAT_NUMBER" },
