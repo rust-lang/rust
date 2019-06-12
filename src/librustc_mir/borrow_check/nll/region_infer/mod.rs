@@ -1493,19 +1493,25 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             debug!("check_pick_constraint(p_c_i={:?})", p_c_i);
             let p_c = &pick_constraints[p_c_i];
             let pick_region_vid = p_c.pick_region_vid;
-            debug!("check_pick_constraint: pick_region_vid={:?} with value {}", pick_region_vid, self.region_value_str(pick_region_vid));
+            debug!(
+                "check_pick_constraint: pick_region_vid={:?} with value {}",
+                pick_region_vid,
+                self.region_value_str(pick_region_vid),
+            );
             let option_regions = pick_constraints.option_regions(p_c_i);
             debug!("check_pick_constraint: option_regions={:?}", option_regions);
 
             // did the pick-region wind up equal to any of the option regions?
-            if let Some(o) = option_regions.iter().find(|&&o_r| self.eval_equal(o_r, p_c.pick_region_vid)) {
+            if let Some(o) = option_regions.iter().find(|&&o_r| {
+                self.eval_equal(o_r, p_c.pick_region_vid)
+            }) {
                 debug!("check_pick_constraint: evaluated as equal to {:?}", o);
                 continue;
             }
 
             // if not, report an error
             let region_scope_tree = &infcx.tcx.region_scope_tree(mir_def_id);
-            let pick_region = infcx.tcx.mk_region(ty::ReVar(pick_region_vid)); // XXX
+            let pick_region = infcx.tcx.mk_region(ty::ReVar(pick_region_vid));
             opaque_types::unexpected_hidden_region_diagnostic(
                 infcx.tcx,
                 Some(region_scope_tree),

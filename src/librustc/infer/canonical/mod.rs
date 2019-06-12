@@ -307,7 +307,8 @@ impl<'tcx, V> Canonical<'tcx, V> {
     }
 }
 
-pub type QueryOutlivesConstraint<'tcx> = ty::Binder<ty::OutlivesPredicate<Kind<'tcx>, Region<'tcx>>>;
+pub type QueryOutlivesConstraint<'tcx> =
+    ty::Binder<ty::OutlivesPredicate<Kind<'tcx>, Region<'tcx>>>;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Creates a substitution S for the canonical value with fresh

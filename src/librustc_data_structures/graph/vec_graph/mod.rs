@@ -110,4 +110,3 @@ impl<N: Idx> WithSuccessors for VecGraph<N> {
         self.successors(node).iter().cloned()
     }
 }
-

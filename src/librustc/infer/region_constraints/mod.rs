@@ -973,6 +973,9 @@ impl<'tcx> RegionConstraintData<'tcx> {
             verifys,
             givens,
         } = self;
-        constraints.is_empty() && pick_constraints.is_empty() && verifys.is_empty() && givens.is_empty()
+        constraints.is_empty() &&
+            pick_constraints.is_empty() &&
+            verifys.is_empty() &&
+            givens.is_empty()
     }
 }
