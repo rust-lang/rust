@@ -1,5 +1,3 @@
-#![allow(dead_code)] // TODO
-
 use crate::rustc::ty::{self, Ty};
 use rustc::hir::def_id::DefId;
 use rustc::infer::region_constraints::PickConstraint;

@@ -1486,7 +1486,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         mir_def_id: DefId,
-        errors_buffer: &mut Vec<Diagnostic>, // TODO
+        errors_buffer: &mut Vec<Diagnostic>,
     ) {
         let pick_constraints = self.pick_constraints.clone();
         for p_c_i in pick_constraints.all_indices() {
