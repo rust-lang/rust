@@ -131,6 +131,11 @@ where
         curr_state.subtract(&self.stmt_kill);
         f(curr_state.iter());
     }
+
+    /// Returns a bitset of the elements present in the current state.
+    pub fn as_dense(&self) -> &BitSet<BD::Idx> {
+        &self.curr_state
+    }
 }
 
 impl<'tcx, BD> FlowsAtLocation for FlowAtLocation<'tcx, BD>
