@@ -3,8 +3,6 @@
 // revisions: migrate mir
 //[mir]compile-flags: -Z borrowck=mir
 
-#![feature(arbitrary_self_types, async_await, await_macro, pin)]
-
 trait Trait<'a, 'b> {}
 impl<T> Trait<'_, '_> for T {}
 
