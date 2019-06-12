@@ -33,7 +33,7 @@ declare_lint_pass!(RedundantStaticLifetime => [REDUNDANT_STATIC_LIFETIME]);
 
 impl RedundantStaticLifetime {
     // Recursively visit types
-    pub fn visit_type(&mut self, ty: &Ty, cx: &EarlyContext<'_>, reason: &str) {
+    fn visit_type(&mut self, ty: &Ty, cx: &EarlyContext<'_>, reason: &str) {
         match ty.node {
             // Be careful of nested structures (arrays and tuples)
             TyKind::Array(ref ty, _) => {
