@@ -1126,10 +1126,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none());
                 match op {
                     UnaryOp::Deref => {
-                        if let Some(derefed_ty) = inner_ty.builtin_deref() {
-                            derefed_ty
+                        let canonicalized = self.canonicalizer().canonicalize_ty(inner_ty);
+                        if let Some(derefed_ty) =
+                            autoderef::deref(self.db, &self.resolver, &canonicalized.value)
+                        {
+                            canonicalized.decanonicalize_ty(derefed_ty.value)
                         } else {
-                            // FIXME Deref::deref
                             Ty::Unknown
                         }
                     }
