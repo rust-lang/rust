@@ -51,11 +51,11 @@ impl<'hir> Entry<'hir> {
         }
     }
 
-    fn fn_decl(&self) -> Option<&FnDecl> {
+    fn fn_decl(&self) -> Option<&'hir FnDecl> {
         match self.node {
             Node::Item(ref item) => {
                 match item.node {
-                    ItemKind::Fn(ref fn_decl, _, _, _) => Some(&fn_decl),
+                    ItemKind::Fn(ref fn_decl, _, _, _) => Some(fn_decl),
                     _ => None,
                 }
             }
@@ -76,7 +76,7 @@ impl<'hir> Entry<'hir> {
 
             Node::Expr(ref expr) => {
                 match expr.node {
-                    ExprKind::Closure(_, ref fn_decl, ..) => Some(&fn_decl),
+                    ExprKind::Closure(_, ref fn_decl, ..) => Some(fn_decl),
                     _ => None,
                 }
             }
@@ -412,9 +412,9 @@ impl<'hir> Map<'hir> {
         self.forest.krate.body(id)
     }
 
-    pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<FnDecl> {
+    pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl> {
         if let Some(entry) = self.find_entry(hir_id) {
-            entry.fn_decl().cloned()
+            entry.fn_decl()
         } else {
             bug!("no entry for hir_id `{}`", hir_id)
         }

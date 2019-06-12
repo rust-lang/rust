@@ -625,10 +625,10 @@ impl<'a> State<'a> {
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
                     } else {
-                        real_bounds.push(b.clone());
+                        real_bounds.push(b);
                     }
                 }
-                self.print_bounds(":", &real_bounds[..])?;
+                self.print_bounds(":", real_bounds)?;
                 self.s.word(";")?;
                 self.end()?; // end the outer ibox
             }
@@ -698,10 +698,10 @@ impl<'a> State<'a> {
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
                     } else {
-                        real_bounds.push(b.clone());
+                        real_bounds.push(b);
                     }
                 }
-                self.print_bounds(":", &real_bounds[..])?;
+                self.print_bounds(":", real_bounds)?;
                 self.print_where_clause(&generics.where_clause)?;
                 self.s.word(" ")?;
                 self.bopen()?;
@@ -724,11 +724,11 @@ impl<'a> State<'a> {
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
                     } else {
-                        real_bounds.push(b.clone());
+                        real_bounds.push(b);
                     }
                 }
                 self.nbsp()?;
-                self.print_bounds("=", &real_bounds[..])?;
+                self.print_bounds("=", real_bounds)?;
                 self.print_where_clause(&generics.where_clause)?;
                 self.s.word(";")?;
             }
@@ -1998,31 +1998,34 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_bounds(&mut self, prefix: &'static str, bounds: &[hir::GenericBound])
-                        -> io::Result<()> {
-        if !bounds.is_empty() {
-            self.s.word(prefix)?;
-            let mut first = true;
-            for bound in bounds {
-                if !(first && prefix.is_empty()) {
-                    self.nbsp()?;
-                }
-                if first {
-                    first = false;
-                } else {
-                    self.word_space("+")?;
-                }
+    pub fn print_bounds<'b>(
+        &mut self,
+        prefix: &'static str,
+        bounds: impl IntoIterator<Item = &'b hir::GenericBound>,
+    ) -> io::Result<()> {
+        let mut first = true;
+        for bound in bounds {
+            if first {
+                self.s.word(prefix)?;
+            }
+            if !(first && prefix.is_empty()) {
+                self.nbsp()?;
+            }
+            if first {
+                first = false;
+            } else {
+                self.word_space("+")?;
+            }
 
-                match bound {
-                    GenericBound::Trait(tref, modifier) => {
-                        if modifier == &TraitBoundModifier::Maybe {
-                            self.s.word("?")?;
-                        }
-                        self.print_poly_trait_ref(tref)?;
+            match bound {
+                GenericBound::Trait(tref, modifier) => {
+                    if modifier == &TraitBoundModifier::Maybe {
+                        self.s.word("?")?;
                     }
-                    GenericBound::Outlives(lt) => {
-                        self.print_lifetime(lt)?;
-                    }
+                    self.print_poly_trait_ref(tref)?;
+                }
+                GenericBound::Outlives(lt) => {
+                    self.print_lifetime(lt)?;
                 }
             }
         }

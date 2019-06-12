@@ -97,15 +97,15 @@ pub enum SizedByDefault {
     No,
 }
 
-struct ConvertedBinding<'tcx> {
+struct ConvertedBinding<'a, 'tcx> {
     item_name: ast::Ident,
-    kind: ConvertedBindingKind<'tcx>,
+    kind: ConvertedBindingKind<'a, 'tcx>,
     span: Span,
 }
 
-enum ConvertedBindingKind<'tcx> {
+enum ConvertedBindingKind<'a, 'tcx> {
     Equality(Ty<'tcx>),
-    Constraint(P<[hir::GenericBound]>),
+    Constraint(&'a [hir::GenericBound]),
 }
 
 #[derive(PartialEq)]
@@ -596,7 +596,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         generic_args: &'a hir::GenericArgs,
         infer_args: bool,
         self_ty: Option<Ty<'tcx>>)
-        -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>)
+        -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>)
     {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
@@ -738,7 +738,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     hir::TypeBindingKind::Equality { ref ty } =>
                         ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty)),
                     hir::TypeBindingKind::Constraint { ref bounds } =>
-                        ConvertedBindingKind::Constraint(bounds.clone()),
+                        ConvertedBindingKind::Constraint(bounds),
                 };
                 ConvertedBinding {
                     item_name: binding.ident,
@@ -859,13 +859,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ty::TraitRef::new(trait_def_id, substs)
     }
 
-    fn create_substs_for_ast_trait_ref(
+    fn create_substs_for_ast_trait_ref<'a>(
         &self,
         span: Span,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        trait_segment: &hir::PathSegment,
-    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>) {
+        trait_segment: &'a hir::PathSegment,
+    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>) {
         debug!("create_substs_for_ast_trait_ref(trait_segment={:?})",
                trait_segment);
 
@@ -912,7 +912,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for ab in ast_bounds {
             if let &hir::GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = ab {
                 if unbound.is_none() {
-                    unbound = Some(ptr.trait_ref.clone());
+                    unbound = Some(&ptr.trait_ref);
                 } else {
                     span_err!(
                         tcx.sess,
@@ -927,7 +927,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let kind_id = tcx.lang_items().require(SizedTraitLangItem);
         match unbound {
-            Some(ref tpb) => {
+            Some(tpb) => {
                 // FIXME(#8559) currently requires the unbound to be built-in.
                 if let Ok(kind_id) = kind_id {
                     if tpb.path.res != Res::Def(DefKind::Trait, kind_id) {
@@ -1048,7 +1048,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        binding: &ConvertedBinding<'tcx>,
+        binding: &ConvertedBinding<'_, 'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
         dup_bindings: &mut FxHashMap<DefId, Span>,
@@ -1165,7 +1165,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 }), binding.span));
             }
-            ConvertedBindingKind::Constraint(ref ast_bounds) => {
+            ConvertedBindingKind::Constraint(ast_bounds) => {
                 // "Desugar" a constraint like `T: Iterator<Item: Debug>` to
                 //
                 // `<T as Iterator>::Item: Debug`
