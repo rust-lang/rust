@@ -99,6 +99,36 @@ impl fmt::Display for Mode {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Debug, Hash)]
+pub enum PassMode {
+    Check,
+    Build,
+    Run,
+}
+
+impl FromStr for PassMode {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "check" => Ok(PassMode::Check),
+            "build" => Ok(PassMode::Build),
+            "run" => Ok(PassMode::Run),
+            _ => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for PassMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match *self {
+            PassMode::Check => "check",
+            PassMode::Build => "build",
+            PassMode::Run => "run",
+        };
+        fmt::Display::fmt(s, f)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum CompareMode {
     Nll,
@@ -183,6 +213,9 @@ pub struct Config {
 
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
+
+    /// Force the pass mode of a check/build/run-pass test to this mode.
+    pub force_pass_mode: Option<PassMode>,
 
     /// Write out a parseable log of tests that were run
     pub logfile: Option<PathBuf>,

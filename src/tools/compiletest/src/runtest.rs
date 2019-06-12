@@ -1,6 +1,6 @@
 // ignore-tidy-filelength
 
-use crate::common::CompareMode;
+use crate::common::{CompareMode, PassMode};
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, Rustdoc};
@@ -10,7 +10,7 @@ use crate::common::{Config, TestPaths};
 use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
 use diff;
 use crate::errors::{self, Error, ErrorKind};
-use crate::header::{TestProps, PassMode};
+use crate::header::TestProps;
 use crate::json;
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
@@ -211,6 +211,7 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
         props: &props,
         testpaths,
         revision: revision,
+        is_aux: false,
     };
     create_dir_all(&cx.output_base_dir()).unwrap();
 
@@ -229,6 +230,7 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
                 props: &revision_props,
                 testpaths,
                 revision: Some(revision),
+                is_aux: false,
             };
             rev_cx.run_revision();
         }
@@ -260,6 +262,10 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         env::var_os("PYTHONPATH").hash(&mut hash);
     }
 
+    if let Ui | RunPass = config.mode {
+        config.force_pass_mode.hash(&mut hash);
+    }
+
     format!("{:x}", hash.finish())
 }
 
@@ -268,6 +274,7 @@ struct TestCx<'test> {
     props: &'test TestProps,
     testpaths: &'test TestPaths,
     revision: Option<&'test str>,
+    is_aux: bool,
 }
 
 struct DebuggerCommands {
@@ -309,10 +316,18 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn effective_pass_mode(&self) -> Option<PassMode> {
+        if !self.props.ignore_pass {
+            if let (mode @ Some(_), Some(_)) = (self.config.force_pass_mode, self.props.pass_mode) {
+                return mode;
+            }
+        }
+        self.props.pass_mode
+    }
+
     fn should_run_successfully(&self) -> bool {
         match self.config.mode {
-            RunPass => true,
-            Ui => self.props.pass_mode == Some(PassMode::Run),
+            RunPass | Ui => self.effective_pass_mode() == Some(PassMode::Run),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
@@ -1563,6 +1578,7 @@ impl<'test> TestCx<'test> {
                     props: &aux_props,
                     testpaths: &aux_testpaths,
                     revision: self.revision,
+                    is_aux: true,
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
@@ -1732,6 +1748,7 @@ impl<'test> TestCx<'test> {
                 props: &aux_props,
                 testpaths: &aux_testpaths,
                 revision: self.revision,
+                is_aux: true,
             };
             // Create the directory for the stdout/stderr files.
             create_dir_all(aux_cx.output_base_dir()).unwrap();
@@ -1871,7 +1888,11 @@ impl<'test> TestCx<'test> {
         result
     }
 
-    fn make_compile_args(&self, input_file: &Path, output_file: TargetLocation) -> Command {
+    fn make_compile_args(
+        &self,
+        input_file: &Path,
+        output_file: TargetLocation,
+    ) -> Command {
         let is_rustdoc = self.config.src_base.ends_with("rustdoc-ui") ||
                          self.config.src_base.ends_with("rustdoc-js");
         let mut rustc = if !is_rustdoc {
@@ -1968,14 +1989,8 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        if self.props.pass_mode == Some(PassMode::Check) {
-            assert!(
-                !self
-                    .props
-                    .compile_flags
-                    .iter()
-                    .any(|s| s.starts_with("--emit"))
-            );
+        let pass_mode = if self.is_aux { self.props.pass_mode } else { self.effective_pass_mode() };
+        if let Some(PassMode::Check) = pass_mode {
             rustc.args(&["--emit", "metadata"]);
         }
 
@@ -2713,6 +2728,7 @@ impl<'test> TestCx<'test> {
             props: &revision_props,
             testpaths: self.testpaths,
             revision: self.revision,
+            is_aux: false,
         };
 
         if self.config.verbose {
