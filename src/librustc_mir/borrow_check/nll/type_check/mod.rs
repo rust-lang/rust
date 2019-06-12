@@ -2514,7 +2514,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Some(closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
             let closure_constraints = QueryRegionConstraints {
                 outlives: closure_region_requirements.apply_requirements(tcx, def_id, substs),
-                pick_constraints: vec![], // TODO
+
+                // Presently, closures never propagate pick
+                // constraints to their parents -- they are enforced
+                // locally.  This is largely a non-issue as pick
+                // constraints only come from `-> impl Trait` and
+                // friends which don't appear (thus far...) in
+                // closures.
+                pick_constraints: vec![],
             };
 
             let bounds_mapping = closure_constraints
