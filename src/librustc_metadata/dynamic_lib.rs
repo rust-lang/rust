@@ -161,8 +161,8 @@ mod dl {
     pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
         F: FnOnce() -> T,
     {
-        use std::sync::{Mutex, Once, ONCE_INIT};
-        static INIT: Once = ONCE_INIT;
+        use std::sync::{Mutex, Once};
+        static INIT: Once = Once::new();
         static mut LOCK: *mut Mutex<()> = 0 as *mut _;
         unsafe {
             INIT.call_once(|| {
