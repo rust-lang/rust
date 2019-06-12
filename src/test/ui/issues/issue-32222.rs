@@ -1,6 +1,4 @@
-// compile-pass
-// skip-codegen
-#![allow(warnings)]
+// check-pass
 
 mod foo {
     pub fn bar() {}
@@ -20,6 +18,5 @@ mod a {
 mod b {
     pub use a::bar;
 }
-
 
 fn main() {}

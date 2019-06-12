@@ -1,6 +1,6 @@
 // revisions:cfail1 cfail2
+// check-pass
 // compile-flags: --crate-type cdylib
-// skip-codegen
 
 #![deny(unused_attributes)]
 

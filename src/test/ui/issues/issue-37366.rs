@@ -1,6 +1,6 @@
+// check-pass
 // ignore-emscripten
-// compile-pass
-// skip-codegen
+
 #![feature(asm)]
 
 macro_rules! interrupt_handler {
@@ -12,6 +12,4 @@ macro_rules! interrupt_handler {
 }
 interrupt_handler!{}
 
-
-fn main() {
-}
+fn main() {}

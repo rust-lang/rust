@@ -5,8 +5,7 @@
 //
 // (For non-crate-level cases, see issue-43106-gating-of-builtin-attrs.rs)
 
-// compile-pass
-// skip-codegen
+// check-pass
 
 #![deprecated]
 

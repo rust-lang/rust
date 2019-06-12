@@ -1,5 +1,5 @@
-// compile-pass
-// skip-codegen
+// check-pass
+
 #![deny(unreachable_patterns)]
 #![feature(exhaustive_patterns)]
 #![feature(never_type)]

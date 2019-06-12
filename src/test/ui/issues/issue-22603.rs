@@ -1,6 +1,7 @@
 // check-pass
 
 #![feature(unboxed_closures, fn_traits)]
+
 struct Foo;
 
 impl<A> FnOnce<(A,)> for Foo {

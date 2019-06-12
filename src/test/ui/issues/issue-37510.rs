@@ -1,8 +1,6 @@
-// compile-pass
-// skip-codegen
+// check-pass
 
 fn foo(_: &mut i32) -> bool { true }
-
 
 fn main() {
     let opt = Some(92);
