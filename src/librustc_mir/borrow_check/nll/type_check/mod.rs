@@ -35,7 +35,7 @@ use rustc::mir::*;
 use rustc::traits::query::type_op;
 use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{ObligationCause, PredicateObligations};
+use rustc::traits::{self, ObligationCause, PredicateObligations};
 use rustc::ty::adjustment::{PointerCast};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, SubstsRef, UnpackedKind, UserSubsts};
@@ -1968,25 +1968,25 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // a required check to make sure that repeated elements implement `Copy`.
                     let span = body.source_info(location).span;
                     let ty = operand.ty(body, tcx);
-                    let is_copy = self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span);
-                    if !is_copy {
-                        let copy_path = self.tcx().def_path_str(
-                            self.tcx().lang_items().copy_trait().unwrap());
-                        self.tcx().sess
-                            .struct_span_err(
-                                span,
-                                &format!("repeated expression does not implement `{}`", copy_path),
-                            )
-                            .span_label(span, &format!(
-                                "the trait `{}` is not implemented for `{}`",
-                                copy_path, ty,
-                            ))
-                            .note(&format!(
-                                "the `{}` trait is required because the repeated element will be \
-                                 copied",
-                                 copy_path,
-                            ))
-                            .emit();
+                    if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
+                        self.infcx.report_selection_error(
+                            &traits::Obligation::new(
+                                ObligationCause::new(
+                                    span,
+                                    self.tcx().hir().def_index_to_hir_id(self.mir_def_id.index),
+                                    traits::ObligationCauseCode::RepeatVec,
+                                ),
+                                self.param_env,
+                                ty::Predicate::Trait(ty::Binder::bind(ty::TraitPredicate {
+                                    trait_ref: ty::TraitRef::new(
+                                        self.tcx().lang_items().copy_trait().unwrap(),
+                                        tcx.mk_substs_trait(ty, &[]),
+                                    ),
+                                })),
+                            ),
+                            &traits::SelectionError::Unimplemented,
+                            false,
+                        );
                     }
                 }
             },

@@ -1564,6 +1564,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.note(&format!("required for the cast to the object type `{}`",
                                   self.ty_to_string(object_ty)));
             }
+            ObligationCauseCode::RepeatVec => {
+                err.note("the `Copy` trait is required because the \
+                          repeated element will be copied");
+            }
             ObligationCauseCode::VariableType(_) => {
                 err.note("all local variables must have a statically known size");
                 if !self.tcx.features().unsized_locals {
