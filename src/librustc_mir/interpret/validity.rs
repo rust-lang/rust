@@ -559,7 +559,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // This is the size in bytes of the whole array.
                 let size = ty_size * len;
 
-                let ptr = mplace.ptr.to_ptr()?;
+                let ptr = self.ecx.force_ptr(mplace.ptr)?;
 
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.

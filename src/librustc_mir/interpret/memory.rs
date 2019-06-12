@@ -627,7 +627,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         if size.bytes() == 0 {
             Ok(&[])
         } else {
-            let ptr = ptr.to_ptr()?;
+            let ptr = self.force_ptr(ptr)?;
             self.get(ptr.alloc_id)?.get_bytes(self, ptr, size)
         }
     }
@@ -714,8 +714,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // non-NULLness which already happened.
             return Ok(());
         }
-        let src = src.to_ptr()?;
-        let dest = dest.to_ptr()?;
+        let src = self.force_ptr(src)?;
+        let dest = self.force_ptr(dest)?;
 
         // first copy the relocations to a temporary buffer, because
         // `get_bytes_mut` will clear the relocations, which is correct,
