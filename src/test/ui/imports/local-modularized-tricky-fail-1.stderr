@@ -22,7 +22,7 @@ LL | use inner1::*;
    = help: consider adding an explicit import of `exported` to disambiguate
 
 error[E0659]: `include` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/local-modularized-tricky-fail-1.rs:47:1
+  --> $DIR/local-modularized-tricky-fail-1.rs:46:1
    |
 LL | include!();
    | ^^^^^^^ ambiguous name
@@ -59,26 +59,6 @@ LL |       define_panic!();
    |       ---------------- in this macro invocation
    = help: use `crate::panic` to refer to this macro unambiguously
 
-error[E0659]: `panic` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
-  --> $DIR/local-modularized-tricky-fail-1.rs:35:5
-   |
-LL |     panic!();
-   |     ^^^^^^^^^ ambiguous name
-   |
-   = note: `panic` could refer to a macro from prelude
-note: `panic` could also refer to the macro defined here
-  --> $DIR/local-modularized-tricky-fail-1.rs:11:5
-   |
-LL | /     macro_rules! panic {
-LL | |         () => ()
-LL | |     }
-   | |_____^
-...
-LL |       define_panic!();
-   |       ---------------- in this macro invocation
-   = help: use `crate::panic` to refer to this macro unambiguously
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0659`.
