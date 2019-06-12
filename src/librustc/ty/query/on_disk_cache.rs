@@ -224,9 +224,9 @@ impl<'sess> OnDiskCache<'sess> {
 
                 // const eval is special, it only encodes successfully evaluated constants
                 use crate::ty::query::QueryAccessors;
-                let cache = const_eval::query_cache(tcx).borrow();
-                assert!(cache.active.is_empty());
-                for (key, entry) in cache.results.iter() {
+                let shards = const_eval::query_cache(tcx).lock_shards();
+                assert!(shards.iter().all(|shard| shard.active.is_empty()));
+                for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {
                     use crate::ty::query::config::QueryDescription;
                     if const_eval::cache_on_disk(tcx, key.clone()) {
                         if let Ok(ref value) = entry.value {
@@ -1089,9 +1089,9 @@ where
         unsafe { ::std::intrinsics::type_name::<Q>() });
 
     time_ext(tcx.sess.time_extended(), Some(tcx.sess), desc, || {
-        let map = Q::query_cache(tcx).borrow();
-        assert!(map.active.is_empty());
-        for (key, entry) in map.results.iter() {
+        let shards = Q::query_cache(tcx).lock_shards();
+        assert!(shards.iter().all(|shard| shard.active.is_empty()));
+        for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {
             if Q::cache_on_disk(tcx, key.clone()) {
                 let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 

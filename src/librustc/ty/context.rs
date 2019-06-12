@@ -48,7 +48,6 @@ use crate::util::common::ErrorReported;
 use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use errors::DiagnosticBuilder;
-use rustc_data_structures::interner::HashInterner;
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
@@ -56,6 +55,7 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
 use arena::SyncDroplessArena;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
+use rustc_data_structures::sharded::ShardedHashMap;
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -93,7 +93,7 @@ impl AllArenas {
     }
 }
 
-type InternedSet<'tcx, T> = Lock<FxHashMap<Interned<'tcx, T>, ()>>;
+type InternedSet<'tcx, T> = ShardedHashMap<Interned<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc are allocated from
@@ -147,7 +147,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         // determine that all contents are in the global tcx.
         // See comments on Lift for why we can't use that.
         if flags.flags.intersects(ty::TypeFlags::KEEP_IN_LOCAL_TCX) {
-            local.type_.borrow_mut().intern(st, |st| {
+            local.type_.intern(st, |st| {
                 let ty_struct = TyS {
                     sty: st,
                     flags: flags.flags,
@@ -171,7 +171,7 @@ impl<'tcx> CtxtInterners<'tcx> {
                 Interned(local.arena.alloc(ty_struct))
             }).0
         } else {
-            global.type_.borrow_mut().intern(st, |st| {
+            global.type_.intern(st, |st| {
                 let ty_struct = TyS {
                     sty: st,
                     flags: flags.flags,
@@ -966,7 +966,7 @@ impl<'tcx> CommonTypes<'tcx> {
 impl<'tcx> CommonLifetimes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonLifetimes<'tcx> {
         let mk = |r| {
-            interners.region.borrow_mut().intern(r, |r| {
+            interners.region.intern(r, |r| {
                 Interned(interners.arena.alloc(r))
             }).0
         };
@@ -982,7 +982,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
 impl<'tcx> CommonConsts<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>, types: &CommonTypes<'tcx>) -> CommonConsts<'tcx> {
         let mk_const = |c| {
-            interners.const_.borrow_mut().intern(c, |c| {
+            interners.const_.intern(c, |c| {
                 Interned(interners.arena.alloc(c))
             }).0
         };
@@ -1098,14 +1098,14 @@ pub struct GlobalCtxt<'tcx> {
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
-    stability_interner: Lock<FxHashMap<&'tcx attr::Stability, ()>>,
+    stability_interner: ShardedHashMap<&'tcx attr::Stability, ()>,
 
     /// Stores the value of constants (and deduplicates the actual memory)
-    allocation_interner: Lock<FxHashMap<&'tcx Allocation, ()>>,
+    allocation_interner: ShardedHashMap<&'tcx Allocation, ()>,
 
     pub alloc_map: Lock<interpret::AllocMap<'tcx>>,
 
-    layout_interner: Lock<FxHashMap<&'tcx LayoutDetails, ()>>,
+    layout_interner: ShardedHashMap<&'tcx LayoutDetails, ()>,
 
     /// A general purpose channel to throw data out the back towards LLVM worker
     /// threads.
@@ -1150,7 +1150,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn intern_const_alloc(self, alloc: Allocation) -> &'tcx Allocation {
-        self.allocation_interner.borrow_mut().intern(alloc, |alloc| {
+        self.allocation_interner.intern(alloc, |alloc| {
             self.arena.alloc(alloc)
         })
     }
@@ -1164,13 +1164,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'tcx attr::Stability {
-        self.stability_interner.borrow_mut().intern(stab, |stab| {
+        self.stability_interner.intern(stab, |stab| {
             self.arena.alloc(stab)
         })
     }
 
     pub fn intern_layout(self, layout: LayoutDetails) -> &'tcx LayoutDetails {
-        self.layout_interner.borrow_mut().intern(layout, |layout| {
+        self.layout_interner.intern(layout, |layout| {
             self.arena.alloc(layout)
         })
     }
@@ -2112,7 +2112,9 @@ macro_rules! sty_debug_print {
                 };
                 $(let mut $variant = total;)*
 
-                for &Interned(t) in tcx.interners.type_.borrow().keys() {
+                let shards = tcx.interners.type_.lock_shards();
+                let types = shards.iter().flat_map(|shard| shard.keys());
+                for &Interned(t) in types {
                     let variant = match t.sty {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
@@ -2163,11 +2165,11 @@ impl<'tcx> TyCtxt<'tcx> {
             Generator, GeneratorWitness, Dynamic, Closure, Tuple, Bound,
             Param, Infer, UnnormalizedProjection, Projection, Opaque, Foreign);
 
-        println!("InternalSubsts interner: #{}", self.interners.substs.borrow().len());
-        println!("Region interner: #{}", self.interners.region.borrow().len());
-        println!("Stability interner: #{}", self.stability_interner.borrow().len());
-        println!("Allocation interner: #{}", self.allocation_interner.borrow().len());
-        println!("Layout interner: #{}", self.layout_interner.borrow().len());
+        println!("InternalSubsts interner: #{}", self.interners.substs.len());
+        println!("Region interner: #{}", self.interners.region.len());
+        println!("Stability interner: #{}", self.stability_interner.len());
+        println!("Allocation interner: #{}", self.allocation_interner.len());
+        println!("Layout interner: #{}", self.layout_interner.len());
     }
 }
 
@@ -2300,7 +2302,7 @@ macro_rules! intern_method {
                 // determine that all contents are in the global tcx.
                 // See comments on Lift for why we can't use that.
                 if ($keep_in_local_tcx)(&v) {
-                    self.interners.$name.borrow_mut().intern_ref(key, || {
+                    self.interners.$name.intern_ref(key, || {
                         // Make sure we don't end up with inference
                         // types/regions in the global tcx.
                         if self.is_global() {
@@ -2312,7 +2314,7 @@ macro_rules! intern_method {
                         Interned($alloc_method(&self.interners.arena, v))
                     }).0
                 } else {
-                    self.global_interners.$name.borrow_mut().intern_ref(key, || {
+                    self.global_interners.$name.intern_ref(key, || {
                         Interned($alloc_method(&self.global_interners.arena, v))
                     }).0
                 }
