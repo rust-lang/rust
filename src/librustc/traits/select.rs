@@ -4084,7 +4084,6 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
 /// provisional results added from the subtree that encountered the
 /// error.  When we pop the node at `reached_depth` from the stack, we
 /// can commit all the things that remain in the provisional cache.
-#[derive(Default)]
 struct ProvisionalEvaluationCache<'tcx> {
     /// next "depth first number" to issue -- just a counter
     dfn: Cell<usize>,
@@ -4132,6 +4131,16 @@ struct ProvisionalEvaluation {
     result: EvaluationResult,
 }
 
+impl<'tcx> Default for ProvisionalEvaluationCache<'tcx> {
+    fn default() -> Self {
+        Self {
+            dfn: Cell::new(0),
+            reached_depth: Cell::new(std::usize::MAX),
+            map: Default::default(),
+        }
+    }
+}
+
 impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     /// Get the next DFN in sequence (basically a counter).
     fn next_dfn(&self) -> usize {
@@ -4146,9 +4155,10 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     /// `self.current_reached_depth()` and above.
     fn get_provisional(&self, fresh_trait_ref: ty::PolyTraitRef<'tcx>) -> Option<EvaluationResult> {
         debug!(
-            "get_provisional(fresh_trait_ref={:?}) = {:#?}",
+            "get_provisional(fresh_trait_ref={:?}) = {:#?} with reached-depth {}",
             fresh_trait_ref,
             self.map.borrow().get(&fresh_trait_ref),
+            self.reached_depth.get(),
         );
         Some(self.map.borrow().get(&fresh_trait_ref)?.result)
     }
@@ -4240,7 +4250,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
             op(fresh_trait_ref, eval.result);
         }
 
-        self.reached_depth.set(depth);
+        self.reached_depth.set(std::usize::MAX);
     }
 }
 
