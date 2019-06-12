@@ -23,12 +23,14 @@ use super::{Inherited, FnCtxt, potentially_plural_count};
 /// - `trait_m`: the method in the trait
 /// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
 
-pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     impl_m: &ty::AssocItem,
-                                     impl_m_span: Span,
-                                     trait_m: &ty::AssocItem,
-                                     impl_trait_ref: ty::TraitRef<'tcx>,
-                                     trait_item_span: Option<Span>) {
+pub fn compare_impl_method<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    impl_m: &ty::AssocItem,
+    impl_m_span: Span,
+    trait_m: &ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+    trait_item_span: Option<Span>,
+) {
     debug!("compare_impl_method(impl_trait_ref={:?})",
            impl_trait_ref);
 
@@ -73,12 +75,13 @@ pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                          impl_m: &ty::AssocItem,
-                                          impl_m_span: Span,
-                                          trait_m: &ty::AssocItem,
-                                          impl_trait_ref: ty::TraitRef<'tcx>)
-                                          -> Result<(), ErrorReported> {
+fn compare_predicate_entailment<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    impl_m: &ty::AssocItem,
+    impl_m_span: Span,
+    trait_m: &ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+) -> Result<(), ErrorReported> {
     let trait_to_impl_substs = impl_trait_ref.substs;
 
     // This node-id should be used for the `body_id` field on each
@@ -355,14 +358,15 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                span: Span,
-                                                impl_m: &ty::AssocItem,
-                                                trait_m: &ty::AssocItem,
-                                                trait_generics: &ty::Generics,
-                                                impl_generics: &ty::Generics,
-                                                trait_to_skol_substs: SubstsRef<'tcx>)
-                                                -> Result<(), ErrorReported> {
+fn check_region_bounds_on_impl_method<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    span: Span,
+    impl_m: &ty::AssocItem,
+    trait_m: &ty::AssocItem,
+    trait_generics: &ty::Generics,
+    impl_generics: &ty::Generics,
+    trait_to_skol_substs: SubstsRef<'tcx>,
+) -> Result<(), ErrorReported> {
     let trait_params = trait_generics.own_counts().lifetimes;
     let impl_params = impl_generics.own_counts().lifetimes;
 
@@ -495,13 +499,13 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
     }
 }
 
-fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               impl_m: &ty::AssocItem,
-                               impl_m_span: Span,
-                               trait_m: &ty::AssocItem,
-                               impl_trait_ref: ty::TraitRef<'tcx>)
-                               -> Result<(), ErrorReported>
-{
+fn compare_self_type<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    impl_m: &ty::AssocItem,
+    impl_m_span: Span,
+    trait_m: &ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+) -> Result<(), ErrorReported> {
     // Try to give more informative error messages about self typing
     // mismatches.  Note that any mismatch will also be detected
     // below, where we construct a canonical function type that
@@ -580,8 +584,8 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     Ok(())
 }
 
-fn compare_number_of_generics<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn compare_number_of_generics<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     impl_: &ty::AssocItem,
     _impl_span: Span,
     trait_: &ty::AssocItem,
@@ -695,12 +699,13 @@ fn compare_number_of_generics<'a, 'tcx>(
     }
 }
 
-fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                impl_m: &ty::AssocItem,
-                                                impl_m_span: Span,
-                                                trait_m: &ty::AssocItem,
-                                                trait_item_span: Option<Span>)
-                                                -> Result<(), ErrorReported> {
+fn compare_number_of_method_arguments<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    impl_m: &ty::AssocItem,
+    impl_m_span: Span,
+    trait_m: &ty::AssocItem,
+    trait_item_span: Option<Span>,
+) -> Result<(), ErrorReported> {
     let impl_m_fty = tcx.fn_sig(impl_m.def_id);
     let trait_m_fty = tcx.fn_sig(trait_m.def_id);
     let trait_number_args = trait_m_fty.inputs().skip_binder().len();
@@ -779,10 +784,11 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     Ok(())
 }
 
-fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        impl_m: &ty::AssocItem,
-                                        trait_m: &ty::AssocItem)
-                                        -> Result<(), ErrorReported> {
+fn compare_synthetic_generics<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    impl_m: &ty::AssocItem,
+    trait_m: &ty::AssocItem,
+) -> Result<(), ErrorReported> {
     // FIXME(chrisvittal) Clean up this function, list of FIXME items:
     //     1. Better messages for the span labels
     //     2. Explanation as to what is going on
@@ -951,11 +957,13 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    impl_c: &ty::AssocItem,
-                                    impl_c_span: Span,
-                                    trait_c: &ty::AssocItem,
-                                    impl_trait_ref: ty::TraitRef<'tcx>) {
+pub fn compare_const_impl<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    impl_c: &ty::AssocItem,
+    impl_c_span: Span,
+    trait_c: &ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+) {
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     tcx.infer_ctxt().enter(|infcx| {

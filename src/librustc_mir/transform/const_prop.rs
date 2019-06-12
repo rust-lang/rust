@@ -31,10 +31,12 @@ use crate::transform::{MirPass, MirSource};
 pub struct ConstProp;
 
 impl MirPass for ConstProp {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource<'tcx>,
-                          body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        source: MirSource<'tcx>,
+        body: &mut Body<'tcx>,
+    ) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
             return;
@@ -83,9 +85,9 @@ impl MirPass for ConstProp {
 type Const<'tcx> = OpTy<'tcx>;
 
 /// Finds optimization opportunities on the MIR.
-struct ConstPropagator<'a, 'mir, 'tcx:'a+'mir> {
-    ecx: InterpretCx<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct ConstPropagator<'mir, 'tcx> {
+    ecx: InterpretCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     source: MirSource<'tcx>,
     places: IndexVec<Local, Option<Const<'tcx>>>,
     can_const_prop: IndexVec<Local, bool>,
@@ -95,7 +97,7 @@ struct ConstPropagator<'a, 'mir, 'tcx:'a+'mir> {
     promoted: IndexVec<Promoted, Body<'tcx>>,
 }
 
-impl<'a, 'b, 'tcx> LayoutOf for ConstPropagator<'a, 'b, 'tcx> {
+impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
@@ -104,26 +106,26 @@ impl<'a, 'b, 'tcx> LayoutOf for ConstPropagator<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> HasDataLayout for ConstPropagator<'a, 'b, 'tcx> {
+impl<'mir, 'tcx> HasDataLayout for ConstPropagator<'mir, 'tcx> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'b, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'a, 'b, 'tcx> {
+impl<'mir, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
     #[inline]
-    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
+impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(
         body: &mut Body<'tcx>,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         source: MirSource<'tcx>,
-    ) -> ConstPropagator<'a, 'mir, 'tcx> {
+    ) -> ConstPropagator<'mir, 'tcx> {
         let param_env = tcx.param_env(source.def_id());
         let ecx = mk_eval_cx(tcx, tcx.def_span(source.def_id()), param_env);
         let can_const_prop = CanConstProp::check(body);
@@ -599,9 +601,11 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
     }
 }
 
-fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          param_env: ty::ParamEnv<'tcx>,
-                          ty: Ty<'tcx>) -> Option<u64> {
+fn type_size_of<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<u64> {
     tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 
@@ -668,7 +672,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
     }
 }
 
-impl<'b, 'a, 'tcx> MutVisitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
+impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     fn visit_constant(
         &mut self,
         constant: &mut Constant<'tcx>,

@@ -15,7 +15,7 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 fn normalize_projection_ty<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     goal: CanonicalProjectionGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
     debug!("normalize_provider(goal={:#?})", goal);

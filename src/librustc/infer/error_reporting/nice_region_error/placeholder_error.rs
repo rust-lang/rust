@@ -321,14 +321,14 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
     ) {
         // HACK(eddyb) maybe move this in a more central location.
         #[derive(Copy, Clone)]
-        struct Highlighted<'a, 'gcx, 'tcx, T> {
-            tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        struct Highlighted<'gcx, 'tcx, T> {
+            tcx: TyCtxt<'gcx, 'tcx>,
             highlight: RegionHighlightMode,
             value: T,
         }
 
-        impl<'a, 'gcx, 'tcx, T> Highlighted<'a, 'gcx, 'tcx, T> {
-            fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'a, 'gcx, 'tcx, U> {
+        impl<'gcx, 'tcx, T> Highlighted<'gcx, 'tcx, T> {
+            fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'gcx, 'tcx, U> {
                 Highlighted {
                     tcx: self.tcx,
                     highlight: self.highlight,
@@ -337,8 +337,11 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             }
         }
 
-        impl<'a, 'gcx, 'tcx, T> fmt::Display for Highlighted<'a, 'gcx, 'tcx, T>
-            where T: for<'b, 'c> Print<'gcx, 'tcx,
+        impl<'gcx, 'tcx, T> fmt::Display for Highlighted<'gcx, 'tcx, T>
+        where
+            T: for<'a, 'b, 'c> Print<
+                'gcx,
+                'tcx,
                 FmtPrinter<'a, 'gcx, 'tcx, &'b mut fmt::Formatter<'c>>,
                 Error = fmt::Error,
             >,

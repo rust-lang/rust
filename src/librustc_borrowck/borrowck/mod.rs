@@ -51,9 +51,9 @@ pub mod move_data;
 #[derive(Clone, Copy)]
 pub struct LoanDataFlowOperator;
 
-pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
+pub type LoanDataFlow<'tcx> = DataFlowContext<'tcx, LoanDataFlowOperator>;
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     tcx.par_body_owners(|body_owner_def_id| {
         tcx.ensure().borrowck(body_owner_def_id);
     });
@@ -67,15 +67,13 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 /// Collection of conclusions determined via borrow checker analyses.
-pub struct AnalysisData<'a, 'tcx: 'a> {
+pub struct AnalysisData<'tcx> {
     pub all_loans: Vec<Loan<'tcx>>,
-    pub loans: DataFlowContext<'a, 'tcx, LoanDataFlowOperator>,
-    pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
+    pub loans: DataFlowContext<'tcx, LoanDataFlowOperator>,
+    pub move_data: move_data::FlowedMoveData<'tcx>,
 }
 
-fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
-    -> &'tcx BorrowCheckResult
-{
+fn borrowck<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, owner_def_id: DefId) -> &'tcx BorrowCheckResult {
     assert!(tcx.use_ast_borrowck() || tcx.migrate_borrowck());
 
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
@@ -141,12 +139,14 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
     })
 }
 
-fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tcx>,
-                                                 force_analysis: bool,
-                                                 body_id: hir::BodyId,
-                                                 get_cfg: F)
-                                                 -> Option<AnalysisData<'a, 'tcx>>
-    where F: FnOnce(&mut BorrowckCtxt<'a, 'tcx>) -> &'c cfg::CFG
+fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(
+    this: &mut BorrowckCtxt<'a, 'tcx>,
+    force_analysis: bool,
+    body_id: hir::BodyId,
+    get_cfg: F,
+) -> Option<AnalysisData<'tcx>>
+where
+    F: FnOnce(&mut BorrowckCtxt<'a, 'tcx>) -> &'c cfg::CFG,
 {
     // Check the body of fn items.
     let (all_loans, move_data) =
@@ -193,11 +193,10 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
 /// Accessor for introspective clients inspecting `AnalysisData` and
 /// the `BorrowckCtxt` itself , e.g., the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     body_id: hir::BodyId,
-    cfg: &cfg::CFG)
-    -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
-{
+    cfg: &cfg::CFG,
+) -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'tcx>) {
     let owner_id = tcx.hir().body_owner(body_id);
     let owner_def_id = tcx.hir().local_def_id(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
@@ -220,8 +219,8 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 // ----------------------------------------------------------------------
 // Type definitions
 
-pub struct BorrowckCtxt<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct BorrowckCtxt<'a, 'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
 
     // tables for the current thing we are checking; set to
     // Some in `borrowck_fn` and cleared later
@@ -238,14 +237,13 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     signalled_any_error: Cell<SignalledError>,
 }
 
-
-impl<'a, 'tcx: 'a> BorrowckCtxt<'a, 'tcx> {
+impl BorrowckCtxt<'_, 'tcx> {
     fn signal_error(&self) {
         self.signalled_any_error.set(SignalledError::SawSomeError);
     }
 }
 
-impl<'a, 'b, 'tcx: 'b> BorrowckErrors<'a> for &'a BorrowckCtxt<'b, 'tcx> {
+impl BorrowckErrors<'a> for &'a BorrowckCtxt<'_, 'tcx> {
     fn struct_span_err_with_code<S: Into<MultiSpan>>(self,
                                                      sp: S,
                                                      msg: &str,
@@ -390,8 +388,7 @@ pub enum LoanPathElem<'tcx> {
     LpInterior(Option<DefId>, InteriorKind),
 }
 
-fn closure_to_block(closure_id: LocalDefId,
-                    tcx: TyCtxt<'_, '_, '_>) -> HirId {
+fn closure_to_block(closure_id: LocalDefId, tcx: TyCtxt<'_, '_>) -> HirId {
     let closure_id = tcx.hir().local_def_id_to_node_id(closure_id);
     match tcx.hir().get(closure_id) {
         Node::Expr(expr) => match expr.node {
@@ -406,8 +403,8 @@ fn closure_to_block(closure_id: LocalDefId,
     }
 }
 
-impl<'a, 'tcx> LoanPath<'tcx> {
-    pub fn kill_scope(&self, bccx: &BorrowckCtxt<'a, 'tcx>) -> region::Scope {
+impl LoanPath<'tcx> {
+    pub fn kill_scope(&self, bccx: &BorrowckCtxt<'_, 'tcx>) -> region::Scope {
         match self.kind {
             LpVar(hir_id) => {
                 bccx.region_scope_tree.var_scope(hir_id.local_id)
@@ -577,7 +574,7 @@ pub enum MovedValueUseKind {
 ///////////////////////////////////////////////////////////////////////////
 // Misc
 
-impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
+impl BorrowckCtxt<'_, 'tcx> {
     pub fn is_subregion_of(&self,
                            r_sub: ty::Region<'tcx>,
                            r_sup: ty::Region<'tcx>)

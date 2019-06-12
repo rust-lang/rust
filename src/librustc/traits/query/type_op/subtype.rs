@@ -20,7 +20,7 @@ impl<'tcx> Subtype<'tcx> {
 impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Subtype<'tcx> {
     type QueryResponse = ();
 
-    fn try_fast_path(_tcx: TyCtxt<'_, 'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<()> {
+    fn try_fast_path(_tcx: TyCtxt<'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<()> {
         if key.value.sub == key.value.sup {
             Some(())
         } else {
@@ -29,7 +29,7 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Subtype<'tcx> {
     }
 
     fn perform_query(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, ()>> {
         tcx.type_op_subtype(canonicalized)

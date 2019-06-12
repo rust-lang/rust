@@ -50,9 +50,9 @@ crate struct ChalkArenas<'gcx> {
 }
 
 #[derive(Copy, Clone)]
-crate struct ChalkContext<'cx, 'gcx: 'cx> {
+crate struct ChalkContext<'gcx> {
     _arenas: ChalkArenas<'gcx>,
-    tcx: TyCtxt<'cx, 'gcx, 'gcx>,
+    tcx: TyCtxt<'gcx, 'gcx>,
 }
 
 #[derive(Copy, Clone)]
@@ -126,7 +126,7 @@ impl context::Context for ChalkArenas<'tcx> {
     }
 }
 
-impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
+impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'gcx> {
     fn make_solution(
         &self,
         root_goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
@@ -176,7 +176,7 @@ impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
     }
 }
 
-impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
+impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'gcx> {
     /// Returns `true` if this is a coinductive goal: basically proving that an auto trait
     /// is implemented or proving that a trait reference is well-formed.
     fn is_coinductive(
@@ -508,7 +508,7 @@ type ChalkHhGoal<'tcx> = HhGoal<ChalkArenas<'tcx>>;
 
 type ChalkExClause<'tcx> = ExClause<ChalkArenas<'tcx>>;
 
-impl Debug for ChalkContext<'cx, 'gcx> {
+impl Debug for ChalkContext<'gcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ChalkContext")
     }
@@ -527,7 +527,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_ex_clause_to_tcx(
         ex_clause: &ChalkExClause<'a>,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>
+        tcx: TyCtxt<'gcx, 'tcx>,
     ) -> Option<Self::LiftedExClause> {
         Some(ChalkExClause {
             subst: tcx.lift(&ex_clause.subst)?,
@@ -539,7 +539,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_delayed_literal_to_tcx(
         literal: &DelayedLiteral<ChalkArenas<'a>>,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>
+        tcx: TyCtxt<'gcx, 'tcx>,
     ) -> Option<Self::LiftedDelayedLiteral> {
         Some(match literal {
             DelayedLiteral::CannotProve(()) => DelayedLiteral::CannotProve(()),
@@ -553,7 +553,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_literal_to_tcx(
         literal: &Literal<ChalkArenas<'a>>,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
     ) -> Option<Self::LiftedLiteral> {
         Some(match literal {
             Literal::Negative(goal) => Literal::Negative(tcx.lift(goal)?),
@@ -672,13 +672,10 @@ crate fn provide(p: &mut Providers<'_>) {
     };
 }
 
-crate fn evaluate_goal<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    goal: ChalkCanonicalGoal<'tcx>
-) -> Result<
-    &'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>,
-    traits::query::NoSolution
-> {
+crate fn evaluate_goal<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    goal: ChalkCanonicalGoal<'tcx>,
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, traits::query::NoSolution> {
     use crate::lowering::Lower;
     use rustc::traits::WellFormed;
 

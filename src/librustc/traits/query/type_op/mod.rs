@@ -53,7 +53,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
     /// actually hits the tcx cache lookup etc. Return `Some(r)` with
     /// a final result or `None` to do the full path.
     fn try_fast_path(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse>;
 
@@ -64,7 +64,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
     /// bad, because it would create subregion relationships that are
     /// not captured in the return value.
     fn perform_query(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self::QueryResponse>>;
 

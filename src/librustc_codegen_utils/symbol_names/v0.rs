@@ -13,7 +13,7 @@ use std::fmt::Write;
 use std::ops::Range;
 
 pub(super) fn mangle(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     instance: Instance<'tcx>,
     instantiating_crate: Option<CrateNum>,
 ) -> String {
@@ -75,14 +75,14 @@ struct BinderLevel {
     lifetime_depths: Range<u32>,
 }
 
-struct SymbolMangler<'a, 'tcx> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct SymbolMangler<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     compress: Option<Box<CompressionCaches<'tcx>>>,
     binders: Vec<BinderLevel>,
     out: String,
 }
 
-impl SymbolMangler<'_, 'tcx> {
+impl SymbolMangler<'tcx> {
     fn push(&mut self, s: &str) {
         self.out.push_str(s);
     }
@@ -214,7 +214,7 @@ impl SymbolMangler<'_, 'tcx> {
     }
 }
 
-impl Printer<'tcx, 'tcx> for SymbolMangler<'_, 'tcx> {
+impl Printer<'tcx, 'tcx> for SymbolMangler<'tcx> {
     type Error = !;
 
     type Path = Self;
@@ -223,7 +223,7 @@ impl Printer<'tcx, 'tcx> for SymbolMangler<'_, 'tcx> {
     type DynExistential = Self;
     type Const = Self;
 
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 

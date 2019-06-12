@@ -66,7 +66,7 @@ impl ty::layout::HasDataLayout for Builder<'_, '_, '_> {
 }
 
 impl ty::layout::HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.cx.tcx
     }
 }
@@ -1228,9 +1228,7 @@ impl Builder<'a, 'll, 'tcx> {
         ret.expect("LLVM does not have support for catchret")
     }
 
-    fn check_store<'b>(&mut self,
-                       val: &'ll Value,
-                       ptr: &'ll Value) -> &'ll Value {
+    fn check_store(&mut self, val: &'ll Value, ptr: &'ll Value) -> &'ll Value {
         let dest_ptr_ty = self.cx.val_ty(ptr);
         let stored_ty = self.cx.val_ty(val);
         let stored_ptr_ty = self.cx.type_ptr_to(stored_ty);

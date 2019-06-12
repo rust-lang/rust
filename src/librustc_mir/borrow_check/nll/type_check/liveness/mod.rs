@@ -75,7 +75,7 @@ pub(super) fn generate<'gcx, 'tcx>(
 // some region `R` in its type where `R` is not known to outlive a free
 // region (i.e., where `R` may be valid for just a subset of the fn body).
 fn compute_live_locals(
-    tcx: TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, 'tcx>,
     free_regions: &FxHashSet<RegionVid>,
     body: &Body<'tcx>,
 ) -> Vec<Local> {

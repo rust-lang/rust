@@ -24,7 +24,7 @@ impl<'a, 'gcx, 'tcx> OpportunisticVarResolver<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticVarResolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -61,7 +61,7 @@ impl<'a, 'gcx, 'tcx> OpportunisticTypeAndRegionResolver<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -177,7 +177,7 @@ struct FullTypeResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 

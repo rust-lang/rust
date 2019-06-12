@@ -60,7 +60,7 @@ impl CodegenBackend for TheBackend {
 
     fn codegen_crate<'a, 'tcx>(
         &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         _metadata: EncodedMetadata,
         _need_metadata_module: bool,
         _rx: mpsc::Receiver<Box<Any + Send>>

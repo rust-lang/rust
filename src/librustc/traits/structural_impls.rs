@@ -446,7 +446,7 @@ impl<'tcx> fmt::Display for traits::Clause<'tcx> {
 
 impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
     type Lifted = traits::SelectionError<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         match *self {
             super::Unimplemented => Some(super::Unimplemented),
             super::OutputTypeParameterMismatch(a, b, ref err) => {
@@ -464,7 +464,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
     type Lifted = traits::ObligationCauseCode<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         match *self {
             super::ReturnNoExpression => Some(super::ReturnNoExpression),
             super::MiscObligation => Some(super::MiscObligation),
@@ -546,7 +546,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for traits::DerivedObligationCause<'a> {
     type Lifted = traits::DerivedObligationCause<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.parent_trait_ref).and_then(|trait_ref|
             tcx.lift(&*self.parent_code)
                .map(|code| traits::DerivedObligationCause {
@@ -559,7 +559,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::DerivedObligationCause<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCause<'a> {
     type Lifted = traits::ObligationCause<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.code).map(|code| traits::ObligationCause {
             span: self.span,
             body_id: self.body_id,
@@ -571,7 +571,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCause<'a> {
 // For codegen only.
 impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
     type Lifted = traits::Vtable<'tcx, ()>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         match self.clone() {
             traits::VtableImpl(traits::VtableImplData {
                 impl_def_id,
@@ -691,7 +691,7 @@ EnumLiftImpl! {
 
 impl<'a, 'tcx> Lift<'tcx> for traits::Environment<'a> {
     type Lifted = traits::Environment<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.clauses).map(|clauses| {
             traits::Environment {
                 clauses,
@@ -702,7 +702,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Environment<'a> {
 
 impl<'a, 'tcx, G: Lift<'tcx>> Lift<'tcx> for traits::InEnvironment<'a, G> {
     type Lifted = traits::InEnvironment<'tcx, G::Lifted>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.environment).and_then(|environment| {
             tcx.lift(&self.goal).map(|goal| {
                 traits::InEnvironment {
@@ -721,7 +721,7 @@ where
 {
     type Lifted = C::LiftedExClause;
 
-    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         <C as traits::ChalkContextLift>::lift_ex_clause_to_tcx(self, tcx)
     }
 }
@@ -733,7 +733,7 @@ where
 {
     type Lifted = C::LiftedDelayedLiteral;
 
-    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         <C as traits::ChalkContextLift>::lift_delayed_literal_to_tcx(self, tcx)
     }
 }
@@ -745,7 +745,7 @@ where
 {
     type Lifted = C::LiftedLiteral;
 
-    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
         <C as traits::ChalkContextLift>::lift_literal_to_tcx(self, tcx)
     }
 }

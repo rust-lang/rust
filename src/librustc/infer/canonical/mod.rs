@@ -478,7 +478,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
     /// `self.var_values == [Type(u32), Lifetime('a), Type(u64)]`
     /// we'll return a substitution `subst` with:
     /// `subst.var_values == [Type(^0), Lifetime(^1), Type(^2)]`.
-    pub fn make_identity<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+    pub fn make_identity(&self, tcx: TyCtxt<'tcx, 'tcx>) -> Self {
         use crate::ty::subst::UnpackedKind;
 
         CanonicalVarValues {

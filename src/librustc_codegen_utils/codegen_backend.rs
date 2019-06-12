@@ -6,7 +6,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
-
 #![feature(box_syntax)]
 
 use std::any::Any;
@@ -34,12 +33,12 @@ pub trait CodegenBackend {
     fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync>;
     fn provide(&self, _providers: &mut Providers<'_>);
     fn provide_extern(&self, _providers: &mut Providers<'_>);
-    fn codegen_crate<'a, 'tcx>(
+    fn codegen_crate<'tcx>(
         &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
-        rx: mpsc::Receiver<Box<dyn Any + Send>>
+        rx: mpsc::Receiver<Box<dyn Any + Send>>,
     ) -> Box<dyn Any>;
 
     /// This is called on the returned `Box<dyn Any>` from `codegen_backend`

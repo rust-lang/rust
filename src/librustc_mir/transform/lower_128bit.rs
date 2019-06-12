@@ -10,10 +10,12 @@ use crate::transform::{MirPass, MirSource};
 pub struct Lower128Bit;
 
 impl MirPass for Lower128Bit {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource<'tcx>,
-                          body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        _src: MirSource<'tcx>,
+        body: &mut Body<'tcx>,
+    ) {
         let debugging_override = tcx.sess.opts.debugging_opts.lower_128bit_ops;
         let target_default = tcx.sess.host.options.i128_lowering;
         if !debugging_override.unwrap_or(target_default) {
@@ -21,11 +23,11 @@ impl MirPass for Lower128Bit {
         }
 
         self.lower_128bit_ops(tcx, body);
-    }
+}
 }
 
 impl Lower128Bit {
-    fn lower_128bit_ops<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, body: &mut Body<'tcx>) {
+    fn lower_128bit_ops<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, body: &mut Body<'tcx>) {
         let mut new_blocks = Vec::new();
         let cur_len = body.basic_blocks().len();
 
@@ -120,15 +122,16 @@ impl Lower128Bit {
     }
 }
 
-fn check_lang_item_type<'a, 'tcx, D>(
+fn check_lang_item_type<'tcx, D>(
     lang_item: LangItem,
     place: &Place<'tcx>,
     lhs: &Operand<'tcx>,
     rhs: &Operand<'tcx>,
     local_decls: &D,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>)
--> DefId
-    where D: HasLocalDecls<'tcx>
+    tcx: TyCtxt<'tcx, 'tcx>,
+) -> DefId
+where
+    D: HasLocalDecls<'tcx>,
 {
     let did = tcx.require_lang_item(lang_item);
     let poly_sig = tcx.fn_sig(did);
@@ -142,9 +145,13 @@ fn check_lang_item_type<'a, 'tcx, D>(
     did
 }
 
-fn lower_to<'a, 'tcx, D>(statement: &Statement<'tcx>, local_decls: &D, tcx: TyCtxt<'a, 'tcx, 'tcx>)
-    -> Option<(LangItem, RhsKind)>
-    where D: HasLocalDecls<'tcx>
+fn lower_to<'tcx, D>(
+    statement: &Statement<'tcx>,
+    local_decls: &D,
+    tcx: TyCtxt<'tcx, 'tcx>,
+) -> Option<(LangItem, RhsKind)>
+where
+    D: HasLocalDecls<'tcx>,
 {
     match statement.kind {
         StatementKind::Assign(_, box Rvalue::BinaryOp(bin_op, ref lhs, _)) => {
@@ -172,7 +179,7 @@ enum RhsKind {
 }
 
 impl RhsKind {
-    fn ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
+    fn ty<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>) -> Option<Ty<'tcx>> {
         match *self {
             RhsKind::Unchanged => None,
             RhsKind::ForceU128 => Some(tcx.types.u128),

@@ -21,7 +21,7 @@ pub struct DefIdForest {
     root_ids: SmallVec<[DefId; 1]>,
 }
 
-impl<'a, 'gcx, 'tcx> DefIdForest {
+impl<'gcx, 'tcx> DefIdForest {
     /// Creates an empty forest.
     pub fn empty() -> DefIdForest {
         DefIdForest {
@@ -32,7 +32,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
     /// Creates a forest consisting of a single tree representing the entire
     /// crate.
     #[inline]
-    pub fn full(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest {
+    pub fn full(tcx: TyCtxt<'gcx, 'tcx>) -> DefIdForest {
         let crate_id = tcx.hir().local_def_id(CRATE_NODE_ID);
         DefIdForest::from_id(crate_id)
     }
@@ -52,17 +52,14 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
     }
 
     /// Tests whether the forest contains a given DefId.
-    pub fn contains(&self,
-                    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                    id: DefId) -> bool
-    {
+    pub fn contains(&self, tcx: TyCtxt<'gcx, 'tcx>, id: DefId) -> bool {
         self.root_ids.iter().any(|root_id| tcx.is_descendant_of(id, *root_id))
     }
 
     /// Calculate the intersection of a collection of forests.
-    pub fn intersection<I>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                           iter: I) -> DefIdForest
-            where I: IntoIterator<Item=DefIdForest>
+    pub fn intersection<I>(tcx: TyCtxt<'gcx, 'tcx>, iter: I) -> DefIdForest
+    where
+        I: IntoIterator<Item = DefIdForest>,
     {
         let mut iter = iter.into_iter();
         let mut ret = if let Some(first) = iter.next() {
@@ -97,9 +94,9 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
     }
 
     /// Calculate the union of a collection of forests.
-    pub fn union<I>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                    iter: I) -> DefIdForest
-            where I: IntoIterator<Item=DefIdForest>
+    pub fn union<I>(tcx: TyCtxt<'gcx, 'tcx>, iter: I) -> DefIdForest
+    where
+        I: IntoIterator<Item = DefIdForest>,
     {
         let mut ret = DefIdForest::empty();
         let mut next_ret = SmallVec::new();

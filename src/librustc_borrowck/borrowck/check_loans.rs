@@ -80,8 +80,8 @@ fn owned_ptr_base_path_rc<'tcx>(loan_path: &Rc<LoanPath<'tcx>>) -> Rc<LoanPath<'
 
 struct CheckLoanCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
-    dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
-    move_data: &'a move_data::FlowedMoveData<'a, 'tcx>,
+    dfcx_loans: &'a LoanDataFlow<'tcx>,
+    move_data: &'a move_data::FlowedMoveData<'tcx>,
     all_loans: &'a [Loan<'tcx>],
     movable_generator: bool,
 }
@@ -179,11 +179,13 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     fn decl_without_init(&mut self, _id: hir::HirId, _span: Span) { }
 }
 
-pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                     dfcx_loans: &LoanDataFlow<'b, 'tcx>,
-                                     move_data: &move_data::FlowedMoveData<'c, 'tcx>,
-                                     all_loans: &[Loan<'tcx>],
-                                     body: &hir::Body) {
+pub fn check_loans<'a, 'tcx>(
+    bccx: &BorrowckCtxt<'a, 'tcx>,
+    dfcx_loans: &LoanDataFlow<'tcx>,
+    move_data: &move_data::FlowedMoveData<'tcx>,
+    all_loans: &[Loan<'tcx>],
+    body: &hir::Body,
+) {
     debug!("check_loans(body id={})", body.value.hir_id);
 
     let def_id = bccx.tcx.hir().body_owner_def_id(body.id());
@@ -229,7 +231,7 @@ fn compatible_borrow_kinds(borrow_kind1: ty::BorrowKind,
 }
 
 impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.bccx.tcx }
+    pub fn tcx(&self) -> TyCtxt<'tcx, 'tcx> { self.bccx.tcx }
 
     pub fn each_issued_loan<F>(&self, node: hir::ItemLocalId, mut op: F) -> bool where
         F: FnMut(&Loan<'tcx>) -> bool,

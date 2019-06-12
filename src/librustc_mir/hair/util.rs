@@ -2,7 +2,7 @@ use rustc::hir;
 use rustc::ty::{self, CanonicalUserType, TyCtxt, UserType};
 
 crate trait UserAnnotatedTyHelpers<'gcx: 'tcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx>;
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx>;
 
     fn tables(&self) -> &ty::TypeckTables<'tcx>;
 

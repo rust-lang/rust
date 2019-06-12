@@ -11,14 +11,14 @@ use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::{Symbol, sym};
 use syntax::{span_err, struct_span_err};
 
-pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<NativeLibrary> {
+pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
         tcx,
         libs: Vec::new(),
     };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
     collector.process_command_line();
-    return collector.libs
+    return collector.libs;
 }
 
 pub fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
@@ -28,12 +28,12 @@ pub fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     }
 }
 
-struct Collector<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct Collector<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     libs: Vec<NativeLibrary>,
 }
 
-impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
+impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item) {
         let fm = match it.node {
             hir::ItemKind::ForeignMod(ref fm) => fm,
@@ -130,7 +130,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
     fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem) {}
 }
 
-impl<'a, 'tcx> Collector<'a, 'tcx> {
+impl Collector<'tcx> {
     fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLibrary) {
         if lib.name.as_ref().map(|s| s.as_str().is_empty()).unwrap_or(false) {
             match span {

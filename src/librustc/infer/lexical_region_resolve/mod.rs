@@ -103,7 +103,7 @@ struct LexicalResolver<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 }
 
 impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.region_rels.tcx
     }
 
@@ -136,7 +136,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
     /// Initially, the value for all variables is set to `'empty`, the
     /// empty region. The `expansion` phase will grow this larger.
-    fn construct_var_data(&self, tcx: TyCtxt<'_, '_, 'tcx>) -> LexicalRegionResolutions<'tcx> {
+    fn construct_var_data(&self, tcx: TyCtxt<'_, 'tcx>) -> LexicalRegionResolutions<'tcx> {
         LexicalRegionResolutions {
             error_region: tcx.lifetimes.re_static,
             values: IndexVec::from_elem_n(VarValue::Value(tcx.lifetimes.re_empty), self.num_vars())
@@ -785,7 +785,7 @@ impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
 }
 
 impl<'tcx> LexicalRegionResolutions<'tcx> {
-    fn normalize<T>(&self, tcx: TyCtxt<'_, '_, 'tcx>, value: T) -> T
+    fn normalize<T>(&self, tcx: TyCtxt<'_, 'tcx>, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {

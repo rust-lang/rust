@@ -169,8 +169,8 @@ impl AnswerSubstitutor<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl TypeRelation<'cx, 'gcx, 'tcx> for AnswerSubstitutor<'cx, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
+impl TypeRelation<'gcx, 'tcx> for AnswerSubstitutor<'cx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 

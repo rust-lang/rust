@@ -26,8 +26,7 @@ use syntax_pos;
 // explored. For example, if it's a live Node::Item that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
-fn should_explore<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            hir_id: hir::HirId) -> bool {
+fn should_explore<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, hir_id: hir::HirId) -> bool {
     match tcx.hir().find_by_hir_id(hir_id) {
         Some(Node::Item(..)) |
         Some(Node::ImplItem(..)) |
@@ -41,7 +40,7 @@ fn should_explore<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     worklist: Vec<hir::HirId>,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     live_symbols: FxHashSet<hir::HirId>,
     repr_has_repr_c: bool,
@@ -302,9 +301,11 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 }
 
-fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_, '_, '_>,
-                                    id: hir::HirId,
-                                    attrs: &[ast::Attribute]) -> bool {
+fn has_allow_dead_code_or_lang_attr(
+    tcx: TyCtxt<'_, '_>,
+    id: hir::HirId,
+    attrs: &[ast::Attribute],
+) -> bool {
     if attr::contains_name(attrs, sym::lang) {
         return true;
     }
@@ -353,7 +354,7 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_, '_, '_>,
 struct LifeSeeder<'k, 'tcx: 'k> {
     worklist: Vec<hir::HirId>,
     krate: &'k hir::Crate,
-    tcx: TyCtxt<'k, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     // see `MarkSymbolVisitor::struct_constructors`
     struct_constructors: FxHashMap<hir::HirId, hir::HirId>,
 }
@@ -423,8 +424,8 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     }
 }
 
-fn create_and_seed_worklist<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn create_and_seed_worklist<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     access_levels: &privacy::AccessLevels,
     krate: &hir::Crate,
 ) -> (Vec<hir::HirId>, FxHashMap<hir::HirId, hir::HirId>) {
@@ -451,10 +452,11 @@ fn create_and_seed_worklist<'a, 'tcx>(
     (life_seeder.worklist, life_seeder.struct_constructors)
 }
 
-fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       access_levels: &privacy::AccessLevels,
-                       krate: &hir::Crate)
-                       -> FxHashSet<hir::HirId> {
+fn find_live<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    access_levels: &privacy::AccessLevels,
+    krate: &hir::Crate,
+) -> FxHashSet<hir::HirId> {
     let (worklist, struct_constructors) = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
@@ -471,12 +473,12 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     symbol_visitor.live_symbols
 }
 
-struct DeadVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct DeadVisitor<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     live_symbols: FxHashSet<hir::HirId>,
 }
 
-impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
+impl DeadVisitor<'tcx> {
     fn should_warn_about_item(&mut self, item: &hir::Item) -> bool {
         let should_warn = match item.node {
             hir::ItemKind::Static(..)
@@ -554,7 +556,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
+impl Visitor<'tcx> for DeadVisitor<'tcx> {
     /// Walk nested items in place so that we don't report dead-code
     /// on inner functions when the outer function is already getting
     /// an error. We could do this also by checking the parents, but
@@ -660,7 +662,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
     let krate = tcx.hir().krate();
     let live_symbols = find_live(tcx, access_levels, krate);

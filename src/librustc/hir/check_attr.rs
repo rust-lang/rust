@@ -87,11 +87,11 @@ impl Target {
     }
 }
 
-struct CheckAttrVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct CheckAttrVisitor<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
+impl CheckAttrVisitor<'tcx> {
     /// Checks any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         if target == Target::Fn || target == Target::Const {
@@ -310,7 +310,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
+impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
@@ -347,7 +347,7 @@ fn is_c_like_enum(item: &hir::Item) -> bool {
     }
 }
 
-fn check_mod_attrs<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_attrs<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut CheckAttrVisitor { tcx }.as_deep_visitor()

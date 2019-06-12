@@ -183,8 +183,8 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
-    pub fn sort_string(&self, tcx: TyCtxt<'a, 'gcx, 'lcx>) -> Cow<'static, str> {
+impl<'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
+    pub fn sort_string(&self, tcx: TyCtxt<'gcx, 'lcx>) -> Cow<'static, str> {
         match self.sty {
             ty::Bool | ty::Char | ty::Int(_) |
             ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => self.to_string().into(),
@@ -249,7 +249,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     pub fn note_and_explain_type_err(self,
                                      db: &mut DiagnosticBuilder<'_>,
                                      err: &TypeError<'tcx>,

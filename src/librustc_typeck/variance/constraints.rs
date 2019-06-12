@@ -124,7 +124,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         self.build_constraints_for_item(def_id);
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.terms_cx.tcx
     }
 

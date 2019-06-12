@@ -35,7 +35,7 @@ const MODULE: Symbol = sym::module;
 const CFG: Symbol = sym::cfg;
 const KIND: Symbol = sym::kind;
 
-pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn assert_module_sources<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.incremental.is_none() {
             return;
@@ -59,12 +59,12 @@ pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     })
 }
 
-struct AssertModuleSource<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct AssertModuleSource<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     available_cgus: BTreeSet<String>,
 }
 
-impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
+impl AssertModuleSource<'tcx> {
     fn check_attr(&self, attr: &ast::Attribute) {
         let (expected_reuse, comp_kind) = if attr.check_name(ATTR_PARTITION_REUSED) {
             (CguReuse::PreLto, ComparisonKind::AtLeast)

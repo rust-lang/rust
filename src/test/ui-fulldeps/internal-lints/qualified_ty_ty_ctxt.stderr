@@ -10,11 +10,11 @@ note: lint level defined here
 LL | #![deny(usage_of_qualified_ty)]
    |         ^^^^^^^^^^^^^^^^^^^^^
 
-error: usage of qualified `ty::TyCtxt<'_, '_, '_>`
+error: usage of qualified `ty::TyCtxt<'_, '_>`
   --> $DIR/qualified_ty_ty_ctxt.rs:27:16
    |
-LL |     ty_ctxt_q: ty::TyCtxt<'_, '_, '_>,
-   |                ^^^^^^^^^^^^^^^^^^^^^^ help: try using it unqualified: `TyCtxt<'_, '_, '_>`
+LL |     ty_ctxt_q: ty::TyCtxt<'_, '_>,
+   |                ^^^^^^^^^^^^^^^^^^ help: try using it unqualified: `TyCtxt<'_, '_>`
 
 error: aborting due to 2 previous errors
 

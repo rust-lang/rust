@@ -8,11 +8,13 @@ use std::io::{self, Write};
 use super::pretty::dump_mir_def_ids;
 
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
-                                   single: Option<DefId>,
-                                   w: &mut W)
-                                   -> io::Result<()>
-    where W: Write
+pub fn write_mir_graphviz<'tcx, W>(
+    tcx: TyCtxt<'_, 'tcx>,
+    single: Option<DefId>,
+    w: &mut W,
+) -> io::Result<()>
+where
+    W: Write,
 {
     for def_id in dump_mir_def_ids(tcx, single) {
         let body = &tcx.optimized_mir(def_id);
@@ -32,11 +34,14 @@ pub fn graphviz_safe_def_name(def_id: DefId) -> String {
 }
 
 /// Write a graphviz DOT graph of the MIR.
-pub fn write_mir_fn_graphviz<'tcx, W>(tcx: TyCtxt<'_, '_, 'tcx>,
-                                      def_id: DefId,
-                                      body: &Body<'_>,
-                                      w: &mut W) -> io::Result<()>
-    where W: Write
+pub fn write_mir_fn_graphviz<'tcx, W>(
+    tcx: TyCtxt<'_, 'tcx>,
+    def_id: DefId,
+    body: &Body<'_>,
+    w: &mut W,
+) -> io::Result<()>
+where
+    W: Write,
 {
     writeln!(w, "digraph Mir_{} {{", graphviz_safe_def_name(def_id))?;
 
@@ -133,11 +138,12 @@ fn write_edges<W: Write>(source: BasicBlock, body: &Body<'_>, w: &mut W) -> io::
 /// Write the graphviz DOT label for the overall graph. This is essentially a block of text that
 /// will appear below the graph, showing the type of the `fn` this MIR represents and the types of
 /// all the variables and temporaries.
-fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                               def_id: DefId,
-                                               body: &Body<'_>,
-                                               w: &mut W)
-                                               -> io::Result<()> {
+fn write_graph_label<'gcx, 'tcx, W: Write>(
+    tcx: TyCtxt<'gcx, 'tcx>,
+    def_id: DefId,
+    body: &Body<'_>,
+    w: &mut W,
+) -> io::Result<()> {
     write!(w, "    label=<fn {}(", dot::escape_html(&tcx.def_path_str(def_id)))?;
 
     // fn argument types.

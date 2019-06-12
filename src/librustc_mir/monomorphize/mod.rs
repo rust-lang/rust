@@ -5,10 +5,11 @@ use rustc::ty::{self, Ty, TyCtxt};
 pub mod collector;
 pub mod partitioning;
 
-pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                           source_ty: Ty<'tcx>,
-                                           target_ty: Ty<'tcx>)
-                                           -> CustomCoerceUnsized {
+pub fn custom_coerce_unsize_info<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    source_ty: Ty<'tcx>,
+    target_ty: Ty<'tcx>,
+) -> CustomCoerceUnsized {
     let def_id = tcx.lang_items().coerce_unsized_trait().unwrap();
 
     let trait_ref = ty::Binder::bind(ty::TraitRef {

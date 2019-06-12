@@ -42,11 +42,8 @@ pub enum InstanceDef<'tcx> {
     CloneShim(DefId, Ty<'tcx>),
 }
 
-impl<'a, 'tcx> Instance<'tcx> {
-    pub fn ty(&self,
-              tcx: TyCtxt<'a, 'tcx, 'tcx>)
-              -> Ty<'tcx>
-    {
+impl<'tcx> Instance<'tcx> {
+    pub fn ty(&self, tcx: TyCtxt<'tcx, 'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
         tcx.subst_and_normalize_erasing_regions(
             self.substs,
@@ -55,7 +52,7 @@ impl<'a, 'tcx> Instance<'tcx> {
         )
     }
 
-    fn fn_sig_noadjust(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> PolyFnSig<'tcx> {
+    fn fn_sig_noadjust(&self, tcx: TyCtxt<'tcx, 'tcx>) -> PolyFnSig<'tcx> {
         let ty = self.ty(tcx);
         match ty.sty {
             ty::FnDef(..) |
@@ -105,7 +102,7 @@ impl<'a, 'tcx> Instance<'tcx> {
         }
     }
 
-    pub fn fn_sig(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
+    pub fn fn_sig(&self, tcx: TyCtxt<'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
         let mut fn_sig = self.fn_sig_noadjust(tcx);
         if let InstanceDef::VtableShim(..) = self.def {
             // Modify fn(self, ...) to fn(self: *mut Self, ...)
@@ -136,14 +133,11 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn attrs<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
+    pub fn attrs(&self, tcx: TyCtxt<'tcx, 'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 
-    pub fn is_inline<'a>(
-        &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>
-    ) -> bool {
+    pub fn is_inline(&self, tcx: TyCtxt<'tcx, 'tcx>) -> bool {
         use crate::hir::map::DefPathData;
         let def_id = match *self {
             ty::InstanceDef::Item(def_id) => def_id,
@@ -156,10 +150,7 @@ impl<'tcx> InstanceDef<'tcx> {
         }
     }
 
-    pub fn requires_local<'a>(
-        &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>
-    ) -> bool {
+    pub fn requires_local(&self, tcx: TyCtxt<'tcx, 'tcx>) -> bool {
         if self.is_inline(tcx) {
             return true
         }
@@ -209,7 +200,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> Instance<'tcx> {
+impl<'b, 'tcx> Instance<'tcx> {
     pub fn new(def_id: DefId, substs: SubstsRef<'tcx>)
                -> Instance<'tcx> {
         assert!(!substs.has_escaping_bound_vars(),
@@ -218,7 +209,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         Instance { def: InstanceDef::Item(def_id), substs: substs }
     }
 
-    pub fn mono(tcx: TyCtxt<'a, 'tcx, 'b>, def_id: DefId) -> Instance<'tcx> {
+    pub fn mono(tcx: TyCtxt<'tcx, 'b>, def_id: DefId) -> Instance<'tcx> {
         Instance::new(def_id, tcx.global_tcx().empty_substs_for_def_id(def_id))
     }
 
@@ -245,10 +236,12 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
     /// `Some`.
-    pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                   param_env: ty::ParamEnv<'tcx>,
-                   def_id: DefId,
-                   substs: SubstsRef<'tcx>) -> Option<Instance<'tcx>> {
+    pub fn resolve(
+        tcx: TyCtxt<'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
             debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
@@ -297,10 +290,12 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         result
     }
 
-    pub fn resolve_for_vtable(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              param_env: ty::ParamEnv<'tcx>,
-                              def_id: DefId,
-                              substs: SubstsRef<'tcx>) -> Option<Instance<'tcx>> {
+    pub fn resolve_for_vtable(
+        tcx: TyCtxt<'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let fn_sig = tcx.fn_sig(def_id);
         let is_vtable_shim =
@@ -317,12 +312,11 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_closure(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         def_id: DefId,
         substs: ty::ClosureSubsts<'tcx>,
-        requested_kind: ty::ClosureKind)
-        -> Instance<'tcx>
-    {
+        requested_kind: ty::ClosureKind,
+    ) -> Instance<'tcx> {
         let actual_kind = substs.closure_kind(def_id, tcx);
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
@@ -331,22 +325,17 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         }
     }
 
-    pub fn resolve_drop_in_place(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        ty: Ty<'tcx>)
-        -> ty::Instance<'tcx>
-    {
+    pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(DropInPlaceFnLangItem);
         let substs = tcx.intern_substs(&[ty.into()]);
         Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap()
     }
 
     pub fn fn_once_adapter_instance(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         closure_did: DefId,
-        substs: ty::ClosureSubsts<'tcx>)
-        -> Instance<'tcx>
-    {
+        substs: ty::ClosureSubsts<'tcx>,
+    ) -> Instance<'tcx> {
         debug!("fn_once_adapter_shim({:?}, {:?})",
                closure_did,
                substs);
@@ -376,8 +365,8 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     }
 }
 
-fn resolve_associated_item<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn resolve_associated_item<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     trait_item: &ty::AssocItem,
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,

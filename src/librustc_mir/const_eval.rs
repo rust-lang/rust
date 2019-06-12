@@ -43,17 +43,17 @@ const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 /// that inform us about the generic bounds of the constant. E.g., using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
-pub(crate) fn mk_eval_cx<'a, 'mir, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn mk_eval_cx<'mir, 'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
-) -> CompileTimeEvalContext<'a, 'mir, 'tcx> {
+) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
     InterpretCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new())
 }
 
-pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn eval_promoted<'mir, 'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     cid: GlobalId<'tcx>,
     body: &'mir mir::Body<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -64,7 +64,7 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
 }
 
 fn mplace_to_const<'tcx>(
-    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
+    ecx: &CompileTimeEvalContext<'_, 'tcx>,
     mplace: MPlaceTy<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
     let MemPlace { ptr, align, meta } = *mplace;
@@ -84,7 +84,7 @@ fn mplace_to_const<'tcx>(
 }
 
 fn op_to_const<'tcx>(
-    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
+    ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: OpTy<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
     // We do not normalize just any data.  Only non-union scalars and slices.
@@ -137,7 +137,7 @@ fn op_to_const<'tcx>(
 
 // Returns a pointer to where the result lives
 fn eval_body_using_ecx<'mir, 'tcx>(
-    ecx: &mut CompileTimeEvalContext<'_, 'mir, 'tcx>,
+    ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     cid: GlobalId<'tcx>,
     body: &'mir mir::Body<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -216,7 +216,7 @@ impl Error for ConstEvalError {
 }
 
 // Extra machine state for CTFE, and the Machine instance
-pub struct CompileTimeInterpreter<'a, 'mir, 'tcx: 'a+'mir> {
+pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// When this value is negative, it indicates the number of interpreter
     /// steps *until* the loop detector is enabled. When it is positive, it is
     /// the number of steps after the detector has been enabled modulo the loop
@@ -224,10 +224,10 @@ pub struct CompileTimeInterpreter<'a, 'mir, 'tcx: 'a+'mir> {
     pub(super) steps_since_detector_enabled: isize,
 
     /// Extra state to detect loops.
-    pub(super) loop_detector: snapshot::InfiniteLoopDetector<'a, 'mir, 'tcx>,
+    pub(super) loop_detector: snapshot::InfiniteLoopDetector<'mir, 'tcx>,
 }
 
-impl<'a, 'mir, 'tcx> CompileTimeInterpreter<'a, 'mir, 'tcx> {
+impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
     fn new() -> Self {
         CompileTimeInterpreter {
             loop_detector: Default::default(),
@@ -297,8 +297,8 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     }
 }
 
-type CompileTimeEvalContext<'a, 'mir, 'tcx> =
-    InterpretCx<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>;
+type CompileTimeEvalContext<'mir, 'tcx> =
+    InterpretCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
 
 impl interpret::MayLeak for ! {
     #[inline(always)]
@@ -308,9 +308,7 @@ impl interpret::MayLeak for ! {
     }
 }
 
-impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
-    for CompileTimeInterpreter<'a, 'mir, 'tcx>
-{
+impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
     type MemoryKinds = !;
     type PointerTag = ();
 
@@ -323,12 +321,12 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     const STATIC_KIND: Option<!> = None; // no copying of statics allowed
 
     #[inline(always)]
-    fn enforce_validity(_ecx: &InterpretCx<'a, 'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(_ecx: &InterpretCx<'mir, 'tcx, Self>) -> bool {
         false // for now, we don't enforce validity
     }
 
     fn find_fn(
-        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: Option<PlaceTy<'tcx>>,
@@ -368,7 +366,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     fn call_intrinsic(
-        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
@@ -384,7 +382,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     fn ptr_op(
-        _ecx: &InterpretCx<'a, 'mir, 'tcx, Self>,
+        _ecx: &InterpretCx<'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
@@ -396,7 +394,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 
     fn find_foreign_static(
         _def_id: DefId,
-        _tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        _tcx: TyCtxtAt<'tcx, 'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
         err!(ReadForeignStatic)
     }
@@ -421,7 +419,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     fn box_alloc(
-        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        _ecx: &mut InterpretCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         Err(
@@ -429,7 +427,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         )
     }
 
-    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn before_terminator(ecx: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         {
             let steps = &mut ecx.machine.steps_since_detector_enabled;
 
@@ -454,18 +452,13 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn stack_push(
-        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-    ) -> InterpResult<'tcx> {
+    fn stack_push(_ecx: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 
     /// Called immediately before a stack frame gets popped.
     #[inline(always)]
-    fn stack_pop(
-        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-        _extra: (),
-    ) -> InterpResult<'tcx> {
+    fn stack_pop(_ecx: &mut InterpretCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
         Ok(())
     }
 }
@@ -473,8 +466,8 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 /// Extracts a field of a (variant of a) const.
 // this function uses `unwrap` copiously, because an already validated constant must have valid
 // fields and can thus never fail outside of compiler bugs
-pub fn const_field<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn const_field<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
@@ -498,8 +491,8 @@ pub fn const_field<'a, 'tcx>(
 
 // this function uses `unwrap` copiously, because an already validated constant must have valid
 // fields and can thus never fail outside of compiler bugs
-pub fn const_variant_index<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn const_variant_index<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     val: &'tcx ty::Const<'tcx>,
 ) -> VariantIdx {
@@ -509,17 +502,17 @@ pub fn const_variant_index<'a, 'tcx>(
     ecx.read_discriminant(op).unwrap().1
 }
 
-pub fn error_to_const_error<'a, 'mir, 'tcx>(
-    ecx: &InterpretCx<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
-    mut error: InterpErrorInfo<'tcx>
+pub fn error_to_const_error<'mir, 'tcx>(
+    ecx: &InterpretCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    mut error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
     let stacktrace = ecx.generate_stacktrace(None);
     ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
 }
 
-fn validate_and_turn_into_const<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn validate_and_turn_into_const<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     constant: RawConst<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
@@ -561,8 +554,8 @@ fn validate_and_turn_into_const<'a, 'tcx>(
     })
 }
 
-pub fn const_eval_provider<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn const_eval_provider<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     // see comment in const_eval_provider for what we're doing here
@@ -585,8 +578,8 @@ pub fn const_eval_provider<'a, 'tcx>(
     })
 }
 
-pub fn const_eval_raw_provider<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn const_eval_raw_provider<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalRawResult<'tcx> {
     // Because the constant is computed twice (once per value of `Reveal`), we are at risk of

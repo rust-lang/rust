@@ -78,7 +78,7 @@ impl<T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
 }
 
 impl dyn TraitEngine<'tcx> {
-    pub fn new(tcx: TyCtxt<'_, '_, 'tcx>) -> Box<Self> {
+    pub fn new(tcx: TyCtxt<'_, 'tcx>) -> Box<Self> {
         if tcx.sess.opts.debugging_opts.chalk {
             Box::new(ChalkFulfillmentContext::new())
         } else {

@@ -11,7 +11,7 @@ use syntax::symbol::{Symbol, sym};
 const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
 const DEF_PATH: Symbol = sym::rustc_def_path;
 
-pub fn report_symbol_names<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn report_symbol_names<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     // if the `rustc_attrs` feature is not enabled, then the
     // attributes we are interested in cannot be present anyway, so
     // skip the walk.
@@ -25,11 +25,11 @@ pub fn report_symbol_names<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     })
 }
 
-struct SymbolNamesTest<'a, 'tcx:'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct SymbolNamesTest<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
+impl SymbolNamesTest<'tcx> {
     fn process_attrs(&mut self,
                      hir_id: hir::HirId) {
         let tcx = self.tcx;
@@ -56,7 +56,7 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'a, 'tcx> {
+impl hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.process_attrs(item.hir_id);
     }

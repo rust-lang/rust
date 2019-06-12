@@ -934,7 +934,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
 pub struct FmtPrinter<'a, 'gcx, 'tcx, F>(Box<FmtPrinterData<'a, 'gcx, 'tcx, F>>);
 
 pub struct FmtPrinterData<'a, 'gcx, 'tcx, F> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     fmt: F,
 
     empty_path: bool,
@@ -963,7 +963,7 @@ impl<F> DerefMut for FmtPrinter<'_, '_, '_, F> {
 }
 
 impl<F> FmtPrinter<'a, 'gcx, 'tcx, F> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, fmt: F, ns: Namespace) -> Self {
+    pub fn new(tcx: TyCtxt<'gcx, 'tcx>, fmt: F, ns: Namespace) -> Self {
         FmtPrinter(Box::new(FmtPrinterData {
             tcx,
             fmt,
@@ -978,7 +978,7 @@ impl<F> FmtPrinter<'a, 'gcx, 'tcx, F> {
     }
 }
 
-impl TyCtxt<'_, '_, '_> {
+impl TyCtxt<'_, '_> {
     // HACK(eddyb) get rid of `def_path_str` and/or pass `Namespace` explicitly always
     // (but also some things just print a `DefId` generally so maybe we need this?)
     fn guess_def_namespace(self, def_id: DefId) -> Namespace {
@@ -1025,7 +1025,7 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
     type DynExistential = Self;
     type Const = Self;
 
-    fn tcx(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
+    fn tcx(&'a self) -> TyCtxt<'gcx, 'tcx> {
         self.tcx
     }
 

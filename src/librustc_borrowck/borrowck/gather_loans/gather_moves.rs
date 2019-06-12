@@ -45,7 +45,7 @@ pub enum PatternSource<'tcx> {
 ///
 /// In this latter case, this function will return `PatternSource::LetDecl`
 /// with a reference to the let
-fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> PatternSource<'tcx> {
+fn get_pattern_source<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, pat: &Pat) -> PatternSource<'tcx> {
 
     let parent = tcx.hir().get_parent_node_by_hir_id(pat.hir_id);
 

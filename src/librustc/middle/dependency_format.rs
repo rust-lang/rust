@@ -81,7 +81,7 @@ pub enum Linkage {
     Dynamic,
 }
 
-pub fn calculate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn calculate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     let sess = &tcx.sess;
     let fmts = sess.crate_types.borrow().iter().map(|&ty| {
         let linkage = calculate_type(tcx, ty);
@@ -92,9 +92,7 @@ pub fn calculate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     sess.dependency_formats.set(fmts);
 }
 
-fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            ty: config::CrateType) -> DependencyList {
-
+fn calculate_type<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: config::CrateType) -> DependencyList {
     let sess = &tcx.sess;
 
     if !sess.opts.output_types.should_codegen() {
@@ -242,10 +240,12 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ret
 }
 
-fn add_library(tcx: TyCtxt<'_, '_, '_>,
-               cnum: CrateNum,
-               link: LinkagePreference,
-               m: &mut FxHashMap<CrateNum, LinkagePreference>) {
+fn add_library(
+    tcx: TyCtxt<'_, '_>,
+    cnum: CrateNum,
+    link: LinkagePreference,
+    m: &mut FxHashMap<CrateNum, LinkagePreference>,
+) {
     match m.get(&cnum) {
         Some(&link2) => {
             // If the linkages differ, then we'd have two copies of the library
@@ -267,7 +267,7 @@ fn add_library(tcx: TyCtxt<'_, '_, '_>,
     }
 }
 
-fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyList> {
+fn attempt_static<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Option<DependencyList> {
     let sess = &tcx.sess;
     let crates = cstore::used_crates(tcx, RequireStatic);
     if !crates.iter().by_ref().all(|&(_, ref p)| p.is_some()) {
@@ -324,7 +324,7 @@ fn activate_injected_dep(injected: Option<CrateNum>,
 
 // After the linkage for a crate has been determined we need to verify that
 // there's only going to be one allocator in the output.
-fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
+fn verify_ok<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, list: &[Linkage]) {
     let sess = &tcx.sess;
     if list.len() == 0 {
         return

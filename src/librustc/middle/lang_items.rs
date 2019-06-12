@@ -104,14 +104,14 @@ impl LanguageItems {
     )*
 }
 
-struct LanguageItemCollector<'a, 'tcx: 'a> {
+struct LanguageItemCollector<'tcx> {
     items: LanguageItems,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     /// A mapping from the name of the lang item to its order and the form it must be of.
     item_refs: FxHashMap<&'static str, (usize, Target)>,
 }
 
-impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
+impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let Some((value, span)) = extract(&item.attrs) {
             let actual_target = Target::from_item(item);
@@ -159,8 +159,8 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItemCollector<'a, 'tcx> {
+impl LanguageItemCollector<'tcx> {
+    fn new(tcx: TyCtxt<'tcx, 'tcx>) -> LanguageItemCollector<'tcx> {
         let mut item_refs = FxHashMap::default();
 
         $( item_refs.insert($name, ($variant as usize, $target)); )*
@@ -217,7 +217,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
 }
 
 /// Traverse and collect all the lang items in all crates.
-pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItems {
+pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> LanguageItems {
     // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx);
 
@@ -402,7 +402,7 @@ language_item_table! {
     Rc,                          "rc",                 rc,                      Target::Struct;
 }
 
-impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {
+impl<'tcx, 'gcx> TyCtxt<'tcx, 'gcx> {
     /// Returns the `DefId` for a given `LangItem`.
     /// If not found, fatally abort compilation.
     pub fn require_lang_item(&self, lang_item: LangItem) -> DefId {

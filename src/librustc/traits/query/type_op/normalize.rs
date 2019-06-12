@@ -24,7 +24,7 @@ where
 {
     type QueryResponse = T;
 
-    fn try_fast_path(_tcx: TyCtxt<'_, 'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
+    fn try_fast_path(_tcx: TyCtxt<'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
         if !key.value.value.has_projections() {
             Some(key.value.value)
         } else {
@@ -33,7 +33,7 @@ where
     }
 
     fn perform_query(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self::QueryResponse>> {
         T::type_op_method(tcx, canonicalized)
@@ -48,7 +48,7 @@ where
 
 pub trait Normalizable<'gcx, 'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx> + Copy {
     fn type_op_method(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>>;
 
@@ -64,7 +64,7 @@ where
     'gcx: 'tcx,
 {
     fn type_op_method(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>> {
         tcx.type_op_normalize_ty(canonicalized)
@@ -82,7 +82,7 @@ where
     'gcx: 'tcx,
 {
     fn type_op_method(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>> {
         tcx.type_op_normalize_predicate(canonicalized)
@@ -100,7 +100,7 @@ where
     'gcx: 'tcx,
 {
     fn type_op_method(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>> {
         tcx.type_op_normalize_poly_fn_sig(canonicalized)
@@ -118,7 +118,7 @@ where
     'gcx: 'tcx,
 {
     fn type_op_method(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self>> {
         tcx.type_op_normalize_fn_sig(canonicalized)

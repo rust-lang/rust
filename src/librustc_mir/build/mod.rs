@@ -25,7 +25,7 @@ use syntax_pos::Span;
 use super::lints;
 
 /// Construct the MIR for a given `DefId`.
-pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'tcx> {
+pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Body<'tcx> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
@@ -184,12 +184,12 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Body<'
 /// A pass to lift all the types and substitutions in a MIR
 /// to the global tcx. Sadly, we don't have a "folder" that
 /// can change `'tcx` so we have to transmute afterwards.
-struct GlobalizeMir<'a, 'gcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    span: Span
+struct GlobalizeMir<'gcx> {
+    tcx: TyCtxt<'gcx, 'gcx>,
+    span: Span,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
+impl<'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'gcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
         if let Some(lifted) = self.tcx.lift(ty) {
             *ty = lifted;
@@ -234,10 +234,11 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                            closure_expr_id: hir::HirId,
-                                            body_id: hir::BodyId)
-                                            -> Ty<'tcx> {
+fn liberated_closure_env_ty<'gcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'tcx>,
+    closure_expr_id: hir::HirId,
+    body_id: hir::BodyId,
+) -> Ty<'tcx> {
     let closure_ty = tcx.body_tables(body_id).node_type(closure_expr_id);
 
     let (closure_def_id, closure_substs) = match closure_ty.sty {
@@ -551,10 +552,7 @@ macro_rules! unpack {
     };
 }
 
-fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                         fn_def_id: DefId,
-                                         abi: Abi)
-                                         -> bool {
+fn should_abort_on_panic<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>, fn_def_id: DefId, abi: Abi) -> bool {
     // Not callable from C, so we can safely unwind through these
     if abi == Abi::Rust || abi == Abi::RustCall { return false; }
 

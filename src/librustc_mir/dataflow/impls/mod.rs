@@ -64,17 +64,17 @@ pub(super) mod borrows;
 /// between this data and `MaybeUninitializedPlaces` yields the set of
 /// places that would require a dynamic drop-flag at that statement.
 pub struct MaybeInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               body: &'a Body<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
-               -> Self
-    {
+    pub fn new(
+        tcx: TyCtxt<'gcx, 'tcx>,
+        body: &'a Body<'tcx>,
+        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    ) -> Self {
         MaybeInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
@@ -119,17 +119,17 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 'tcx
 /// between this data and `MaybeInitializedPlaces` yields the set of
 /// places that would require a dynamic drop-flag at that statement.
 pub struct MaybeUninitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               body: &'a Body<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
-               -> Self
-    {
+    pub fn new(
+        tcx: TyCtxt<'gcx, 'tcx>,
+        body: &'a Body<'tcx>,
+        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    ) -> Self {
         MaybeUninitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
@@ -173,17 +173,17 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 't
 /// this data and `MaybeInitializedPlaces` yields the set of places
 /// that would require a dynamic drop-flag at that statement.
 pub struct DefinitelyInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               body: &'a Body<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
-               -> Self
-    {
+    pub fn new(
+        tcx: TyCtxt<'gcx, 'tcx>,
+        body: &'a Body<'tcx>,
+        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    ) -> Self {
         DefinitelyInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
@@ -222,17 +222,17 @@ impl<'a, 'gcx, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, '
 /// }
 /// ```
 pub struct EverInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx: 'a> EverInitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               body: &'a Body<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>)
-               -> Self
-    {
+    pub fn new(
+        tcx: TyCtxt<'gcx, 'tcx>,
+        body: &'a Body<'tcx>,
+        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    ) -> Self {
         EverInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }

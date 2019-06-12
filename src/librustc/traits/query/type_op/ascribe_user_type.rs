@@ -25,14 +25,14 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for AscribeUserType<'tcx> 
     type QueryResponse = ();
 
     fn try_fast_path(
-        _tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        _tcx: TyCtxt<'gcx, 'tcx>,
         _key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
         None
     }
 
     fn perform_query(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, ()>> {
         tcx.type_op_ascribe_user_type(canonicalized)

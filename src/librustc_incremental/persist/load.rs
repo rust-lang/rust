@@ -15,7 +15,7 @@ use super::fs::*;
 use super::file_format;
 use super::work_product;
 
-pub fn dep_graph_tcx_init<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn dep_graph_tcx_init<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     if !tcx.dep_graph.is_fully_enabled() {
         return
     }

@@ -39,7 +39,7 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,
     cdata: Option<&'a CrateMetadata>,
     sess: Option<&'a Session>,
-    tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
+    tcx: Option<TyCtxt<'tcx, 'tcx>>,
 
     // Cache the last used source_file for translating spans as an optimization.
     last_source_file_index: usize,
@@ -55,7 +55,9 @@ pub trait Metadata<'a, 'tcx>: Copy {
     fn raw_bytes(self) -> &'a [u8];
     fn cdata(self) -> Option<&'a CrateMetadata> { None }
     fn sess(self) -> Option<&'a Session> { None }
-    fn tcx(self) -> Option<TyCtxt<'a, 'tcx, 'tcx>> { None }
+    fn tcx(self) -> Option<TyCtxt<'tcx, 'tcx>> {
+        None
+        }
 
     fn decoder(self, pos: usize) -> DecodeContext<'a, 'tcx> {
         let tcx = self.tcx();
@@ -114,14 +116,14 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, &'a Session) {
     }
 }
 
-impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'a, 'tcx, 'tcx>) {
+impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'tcx, 'tcx>) {
     fn raw_bytes(self) -> &'a [u8] {
         self.0.raw_bytes()
     }
     fn cdata(self) -> Option<&'a CrateMetadata> {
         Some(self.0)
     }
-    fn tcx(self) -> Option<TyCtxt<'a, 'tcx, 'tcx>> {
+    fn tcx(self) -> Option<TyCtxt<'tcx, 'tcx>> {
         Some(self.1)
     }
 }
@@ -146,7 +148,7 @@ impl<'a, 'tcx: 'a, T: Decodable> LazySeq<T> {
 }
 
 impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx.expect("missing TyCtxt in DecodeContext")
     }
 
@@ -169,10 +171,9 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx: 'a> TyDecoder<'a, 'tcx> for DecodeContext<'a, 'tcx> {
-
+impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     #[inline]
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx.expect("missing TyCtxt in DecodeContext")
     }
 
@@ -547,11 +548,11 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn get_variant(
         &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         item: &Entry<'_>,
         index: DefIndex,
         parent_did: DefId,
-        adt_kind: ty::AdtKind
+        adt_kind: ty::AdtKind,
     ) -> ty::VariantDef {
         let data = match item.kind {
             EntryKind::Variant(data) |
@@ -588,10 +589,7 @@ impl<'a, 'tcx> CrateMetadata {
         )
     }
 
-    pub fn get_adt_def(&self,
-                       item_id: DefIndex,
-                       tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                       -> &'tcx ty::AdtDef {
+    pub fn get_adt_def(&self, item_id: DefIndex, tcx: TyCtxt<'tcx, 'tcx>) -> &'tcx ty::AdtDef {
         let item = self.entry(item_id);
         let did = self.local_def_id(item_id);
 
@@ -616,24 +614,27 @@ impl<'a, 'tcx> CrateMetadata {
         tcx.alloc_adt_def(did, kind, variants, repr)
     }
 
-    pub fn get_predicates(&self,
-                          item_id: DefIndex,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                          -> ty::GenericPredicates<'tcx> {
+    pub fn get_predicates(
+        &self,
+        item_id: DefIndex,
+        tcx: TyCtxt<'tcx, 'tcx>,
+    ) -> ty::GenericPredicates<'tcx> {
         self.entry(item_id).predicates.unwrap().decode((self, tcx))
     }
 
-    pub fn get_predicates_defined_on(&self,
-                                   item_id: DefIndex,
-                                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                   -> ty::GenericPredicates<'tcx> {
+    pub fn get_predicates_defined_on(
+        &self,
+        item_id: DefIndex,
+        tcx: TyCtxt<'tcx, 'tcx>,
+    ) -> ty::GenericPredicates<'tcx> {
         self.entry(item_id).predicates_defined_on.unwrap().decode((self, tcx))
     }
 
-    pub fn get_super_predicates(&self,
-                                item_id: DefIndex,
-                                tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                -> ty::GenericPredicates<'tcx> {
+    pub fn get_super_predicates(
+        &self,
+        item_id: DefIndex,
+        tcx: TyCtxt<'tcx, 'tcx>,
+    ) -> ty::GenericPredicates<'tcx> {
         let super_predicates = match self.entry(item_id).kind {
             EntryKind::Trait(data) => data.decode(self).super_predicates,
             EntryKind::TraitAlias(data) => data.decode(self).super_predicates,
@@ -650,7 +651,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(item_id).generics.unwrap().decode((self, sess))
     }
 
-    pub fn get_type(&self, id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
+    pub fn get_type(&self, id: DefIndex, tcx: TyCtxt<'tcx, 'tcx>) -> Ty<'tcx> {
         self.entry(id).ty.unwrap().decode((self, tcx))
     }
 
@@ -700,17 +701,18 @@ impl<'a, 'tcx> CrateMetadata {
         self.get_impl_data(id).coerce_unsized_info
     }
 
-    pub fn get_impl_trait(&self,
-                          id: DefIndex,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                          -> Option<ty::TraitRef<'tcx>> {
+    pub fn get_impl_trait(
+        &self,
+        id: DefIndex,
+        tcx: TyCtxt<'tcx, 'tcx>,
+    ) -> Option<ty::TraitRef<'tcx>> {
         self.get_impl_data(id).trait_ref.map(|tr| tr.decode((self, tcx)))
     }
 
     /// Iterates over all the stability attributes in the given crate.
     pub fn get_lib_features(
         &self,
-        tcx: TyCtxt<'_, 'tcx, '_>,
+        tcx: TyCtxt<'tcx, '_>,
     ) -> &'tcx [(ast::Name, Option<ast::Name>)] {
         // FIXME: For a proc macro crate, not sure whether we should return the "host"
         // features or an empty Vec. Both don't cause ICEs.
@@ -720,10 +722,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     /// Iterates over the language items in the given crate.
-    pub fn get_lang_items(
-        &self,
-        tcx: TyCtxt<'_, 'tcx, '_>,
-    ) -> &'tcx [(DefId, usize)] {
+    pub fn get_lang_items(&self, tcx: TyCtxt<'tcx, '_>) -> &'tcx [(DefId, usize)] {
         if self.proc_macros.is_some() {
             // Proc macro crates do not export any lang-items to the target.
             &[]
@@ -884,10 +883,11 @@ impl<'a, 'tcx> CrateMetadata {
         self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()
     }
 
-    pub fn maybe_get_optimized_mir(&self,
-                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   id: DefIndex)
-                                   -> Option<Body<'tcx>> {
+    pub fn maybe_get_optimized_mir(
+        &self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        id: DefIndex,
+    ) -> Option<Body<'tcx>> {
         match self.is_proc_macro(id) {
             true => None,
             false => self.entry(id).mir.map(|mir| mir.decode((self, tcx))),
@@ -1019,8 +1019,8 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn get_inherent_implementations_for_type(
         &self,
-        tcx: TyCtxt<'_, 'tcx, '_>,
-        id: DefIndex
+        tcx: TyCtxt<'tcx, '_>,
+        id: DefIndex,
     ) -> &'tcx [DefId] {
         tcx.arena.alloc_from_iter(self.entry(id)
                                       .inherent_impls
@@ -1030,7 +1030,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn get_implementations_for_trait(
         &self,
-        tcx: TyCtxt<'_, 'tcx, '_>,
+        tcx: TyCtxt<'tcx, '_>,
         filter: Option<DefId>,
     ) -> &'tcx [DefId] {
         if self.proc_macros.is_some() {
@@ -1085,10 +1085,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_foreign_modules(
-        &self,
-        tcx: TyCtxt<'_, 'tcx, '_>,
-    ) -> &'tcx [ForeignModule] {
+    pub fn get_foreign_modules(&self, tcx: TyCtxt<'tcx, '_>) -> &'tcx [ForeignModule] {
         if self.proc_macros.is_some() {
             // Proc macro crates do not have any *target* foreign modules.
             &[]
@@ -1099,7 +1096,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn get_dylib_dependency_formats(
         &self,
-        tcx: TyCtxt<'_, 'tcx, '_>,
+        tcx: TyCtxt<'tcx, '_>,
     ) -> &'tcx [(CrateNum, LinkagePreference)] {
         tcx.arena.alloc_from_iter(self.root
             .dylib_dependency_formats
@@ -1111,10 +1108,7 @@ impl<'a, 'tcx> CrateMetadata {
             }))
     }
 
-    pub fn get_missing_lang_items(
-        &self,
-        tcx: TyCtxt<'_, 'tcx, '_>,
-    ) -> &'tcx [lang_items::LangItem] {
+    pub fn get_missing_lang_items(&self, tcx: TyCtxt<'tcx, '_>) -> &'tcx [lang_items::LangItem] {
         if self.proc_macros.is_some() {
             // Proc macro crates do not depend on any target weak lang-items.
             &[]
@@ -1135,9 +1129,10 @@ impl<'a, 'tcx> CrateMetadata {
         arg_names.decode(self).collect()
     }
 
-    pub fn exported_symbols(&self,
-                            tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                            -> Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)> {
+    pub fn exported_symbols(
+        &self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+    ) -> Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)> {
         if self.proc_macros.is_some() {
             // If this crate is a custom derive crate, then we're not even going to
             // link those in so we skip those crates.
@@ -1192,10 +1187,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn fn_sig(&self,
-                  id: DefIndex,
-                  tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                  -> ty::PolyFnSig<'tcx> {
+    pub fn fn_sig(&self, id: DefIndex, tcx: TyCtxt<'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
         let sig = match self.entry(id).kind {
             EntryKind::Fn(data) |
             EntryKind::ForeignFn(data) => data.decode(self).sig,

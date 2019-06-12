@@ -6,16 +6,16 @@ use rustc::ty::{self, TyCtxt};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
 
-pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn check<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     let mut orphan = OrphanChecker { tcx };
     tcx.hir().krate().visit_all_item_likes(&mut orphan);
 }
 
-struct OrphanChecker<'cx, 'tcx: 'cx> {
-    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
+struct OrphanChecker<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
-impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
+impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
     /// Checks exactly one impl for orphan rules and other such
     /// restrictions. In this fn, it can happen that multiple errors
     /// apply to a specific impl, so just return after reporting one

@@ -83,7 +83,7 @@ struct QueryNormalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 }
 
 impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx> {
-    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'tcx> {
+    fn tcx<'c>(&'c self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 

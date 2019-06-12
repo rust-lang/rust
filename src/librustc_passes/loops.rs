@@ -45,7 +45,7 @@ struct CheckLoopVisitor<'a, 'hir: 'a> {
     cx: Context,
 }
 
-fn check_mod_loops<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_loops<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckLoopVisitor {
         sess: &tcx.sess,
         hir_map: &tcx.hir(),

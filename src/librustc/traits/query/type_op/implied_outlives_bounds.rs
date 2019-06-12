@@ -18,14 +18,14 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ImpliedOutlivesBounds<
     type QueryResponse = Vec<OutlivesBound<'tcx>>;
 
     fn try_fast_path(
-        _tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        _tcx: TyCtxt<'gcx, 'tcx>,
         _key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
         None
     }
 
     fn perform_query(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self::QueryResponse>> {
         // FIXME this `unchecked_map` is only necessary because the

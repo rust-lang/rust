@@ -37,7 +37,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     type DynExistential;
     type Const;
 
-    fn tcx(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
+    fn tcx(&'a self) -> TyCtxt<'gcx, 'tcx>;
 
     fn print_def_path(
         self,

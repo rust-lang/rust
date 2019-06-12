@@ -8,10 +8,11 @@ use rustc_data_structures::fx::FxHashSet;
 // any caching, i.e., calling the function twice with the same type will also do
 // the work twice. The `qualified` parameter only affects the first level of the
 // type name, further levels (i.e., type parameters) are always fully qualified.
-pub fn compute_debuginfo_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                             t: Ty<'tcx>,
-                                             qualified: bool)
-                                             -> String {
+pub fn compute_debuginfo_type_name<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    t: Ty<'tcx>,
+    qualified: bool,
+) -> String {
     let mut result = String::with_capacity(64);
     let mut visited = FxHashSet::default();
     push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited);
@@ -20,12 +21,13 @@ pub fn compute_debuginfo_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 // Pushes the name of the type as it should be stored in debuginfo on the
 // `output` String. See also compute_debuginfo_type_name().
-pub fn push_debuginfo_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                          t: Ty<'tcx>,
-                                          qualified: bool,
-                                          output: &mut String,
-                                          visited: &mut FxHashSet<Ty<'tcx>>) {
-
+pub fn push_debuginfo_type_name<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    t: Ty<'tcx>,
+    qualified: bool,
+    output: &mut String,
+    visited: &mut FxHashSet<Ty<'tcx>>,
+) {
     // When targeting MSVC, emit C++ style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let cpp_like_names = tcx.sess.target.target.options.is_like_msvc;
@@ -208,10 +210,12 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    fn push_item_name(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                      def_id: DefId,
-                      qualified: bool,
-                      output: &mut String) {
+    fn push_item_name(
+        tcx: TyCtxt<'tcx, 'tcx>,
+        def_id: DefId,
+        qualified: bool,
+        output: &mut String,
+    ) {
         if qualified {
             output.push_str(&tcx.crate_name(def_id.krate).as_str());
             for path_element in tcx.def_path(def_id).data {
@@ -228,10 +232,12 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // reconstructed for items from non-local crates. For local crates, this
     // would be possible but with inlining and LTO we have to use the least
     // common denominator - otherwise we would run into conflicts.
-    fn push_type_params<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  substs: SubstsRef<'tcx>,
-                                  output: &mut String,
-                                  visited: &mut FxHashSet<Ty<'tcx>>) {
+    fn push_type_params<'tcx>(
+        tcx: TyCtxt<'tcx, 'tcx>,
+        substs: SubstsRef<'tcx>,
+        output: &mut String,
+        visited: &mut FxHashSet<Ty<'tcx>>,
+    ) {
         if substs.types().next().is_none() {
             return;
         }

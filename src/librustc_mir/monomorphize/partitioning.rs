@@ -121,16 +121,18 @@ pub enum PartitioningStrategy {
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
-fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_, '_, '_>) -> InternedString {
+fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_, '_>) -> InternedString {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
-pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              mono_items: I,
-                              strategy: PartitioningStrategy,
-                              inlining_map: &InliningMap<'tcx>)
-                              -> Vec<CodegenUnit<'tcx>>
-    where I: Iterator<Item = MonoItem<'tcx>>
+pub fn partition<'tcx, I>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    mono_items: I,
+    strategy: PartitioningStrategy,
+    inlining_map: &InliningMap<'tcx>,
+) -> Vec<CodegenUnit<'tcx>>
+where
+    I: Iterator<Item = MonoItem<'tcx>>,
 {
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
@@ -201,10 +203,12 @@ struct PostInliningPartitioning<'tcx> {
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
-fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                             mono_items: I)
-                                             -> PreInliningPartitioning<'tcx>
-    where I: Iterator<Item = MonoItem<'tcx>>
+fn place_root_mono_items<'tcx, I>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    mono_items: I,
+) -> PreInliningPartitioning<'tcx>
+where
+    I: Iterator<Item = MonoItem<'tcx>>,
 {
     let mut roots = FxHashSet::default();
     let mut codegen_units = FxHashMap::default();
@@ -276,7 +280,7 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn mono_item_linkage_and_visibility(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
     export_generics: bool,
@@ -294,7 +298,7 @@ fn mono_item_linkage_and_visibility(
 }
 
 fn mono_item_visibility(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
     export_generics: bool,
@@ -439,7 +443,7 @@ fn mono_item_visibility(
     }
 }
 
-fn default_visibility(tcx: TyCtxt<'_, '_, '_>, id: DefId, is_generic: bool) -> Visibility {
+fn default_visibility(tcx: TyCtxt<'_, '_>, id: DefId, is_generic: bool) -> Visibility {
     if !tcx.sess.target.target.options.default_hidden_visibility {
         return Visibility::Default
     }
@@ -463,9 +467,11 @@ fn default_visibility(tcx: TyCtxt<'_, '_, '_>, id: DefId, is_generic: bool) -> V
     }
 }
 
-fn merge_codegen_units<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
-                             initial_partitioning: &mut PreInliningPartitioning<'tcx>,
-                             target_cgu_count: usize) {
+fn merge_codegen_units<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    initial_partitioning: &mut PreInliningPartitioning<'tcx>,
+    target_cgu_count: usize,
+) {
     assert!(target_cgu_count >= 1);
     let codegen_units = &mut initial_partitioning.codegen_units;
 
@@ -585,9 +591,11 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
     }
 }
 
-fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 partitioning: &mut PostInliningPartitioning<'tcx>,
-                                 inlining_map: &InliningMap<'tcx>) {
+fn internalize_symbols<'tcx>(
+    _tcx: TyCtxt<'tcx, 'tcx>,
+    partitioning: &mut PostInliningPartitioning<'tcx>,
+    inlining_map: &InliningMap<'tcx>,
+) {
     if partitioning.codegen_units.len() == 1 {
         // Fast path for when there is only one codegen unit. In this case we
         // can internalize all candidates, since there is nowhere else they
@@ -650,9 +658,10 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                mono_item: MonoItem<'tcx>)
-                                                -> Option<DefId> {
+fn characteristic_def_id_of_mono_item<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    mono_item: MonoItem<'tcx>,
+) -> Option<DefId> {
     match mono_item {
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
@@ -698,12 +707,13 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 type CguNameCache = FxHashMap<(DefId, bool), InternedString>;
 
-fn compute_codegen_unit_name(tcx: TyCtxt<'_, '_, '_>,
-                             name_builder: &mut CodegenUnitNameBuilder<'_, '_, '_>,
-                             def_id: DefId,
-                             volatile: bool,
-                             cache: &mut CguNameCache)
-                             -> InternedString {
+fn compute_codegen_unit_name(
+    tcx: TyCtxt<'_, '_>,
+    name_builder: &mut CodegenUnitNameBuilder<'_, '_>,
+    def_id: DefId,
+    volatile: bool,
+    cache: &mut CguNameCache,
+) -> InternedString {
     // Find the innermost module that is not nested within a function.
     let mut current_def_id = def_id;
     let mut cgu_def_id = None;
@@ -752,17 +762,17 @@ fn compute_codegen_unit_name(tcx: TyCtxt<'_, '_, '_>,
     }).clone()
 }
 
-fn numbered_codegen_unit_name(name_builder: &mut CodegenUnitNameBuilder<'_, '_, '_>,
-                              index: usize)
-                              -> InternedString {
+fn numbered_codegen_unit_name(
+    name_builder: &mut CodegenUnitNameBuilder<'_, '_>,
+    index: usize,
+) -> InternedString {
     name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index))
 }
 
-fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               label: &str,
-                               cgus: I)
-    where I: Iterator<Item=&'b CodegenUnit<'tcx>>,
-          'tcx: 'a + 'b
+fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'tcx, 'tcx>, label: &str, cgus: I)
+where
+    I: Iterator<Item = &'b CodegenUnit<'tcx>>,
+    'tcx: 'a + 'b,
 {
     if cfg!(debug_assertions) {
         debug!("{}", label);
@@ -787,8 +797,9 @@ fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 #[inline(never)] // give this a place in the profiler
-fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mono_items: I)
-    where I: Iterator<Item=&'a MonoItem<'tcx>>
+fn assert_symbols_are_distinct<'a, 'tcx: 'a, I>(tcx: TyCtxt<'tcx, 'tcx>, mono_items: I)
+where
+    I: Iterator<Item = &'a MonoItem<'tcx>>,
 {
     let mut symbols: Vec<_> = mono_items.map(|mono_item| {
         (mono_item, mono_item.symbol_name(tcx))
@@ -830,11 +841,10 @@ fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mono_it
     }
 }
 
-fn collect_and_partition_mono_items<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn collect_and_partition_mono_items<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     cnum: CrateNum,
-) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>)
-{
+) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>) {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {

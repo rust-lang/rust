@@ -75,7 +75,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn lint_mod<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+fn lint_mod<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
     lint::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 

@@ -29,8 +29,8 @@ use syntax_pos::Span;
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn check_drop_impl<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     drop_impl_did: DefId,
 ) -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
@@ -64,8 +64,8 @@ pub fn check_drop_impl<'a, 'tcx>(
     }
 }
 
-fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn ensure_drop_params_and_item_params_correspond<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     drop_impl_did: DefId,
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId,
@@ -140,8 +140,8 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 
 /// Confirms that every predicate imposed by dtor_predicates is
 /// implied by assuming the predicates attached to self_type_did.
-fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,

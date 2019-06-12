@@ -5,16 +5,16 @@ use rustc::ty::TyCtxt;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, Unsafety};
 
-pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn check<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     let mut unsafety = UnsafetyChecker { tcx };
     tcx.hir().krate().visit_all_item_likes(&mut unsafety);
 }
 
-struct UnsafetyChecker<'cx, 'tcx: 'cx> {
-    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
+struct UnsafetyChecker<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
-impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
+impl UnsafetyChecker<'tcx> {
     fn check_unsafety_coherence(&mut self,
                                 item: &'v hir::Item,
                                 impl_generics: Option<&hir::Generics>,
@@ -69,7 +69,7 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for UnsafetyChecker<'cx, 'tcx> {
+impl ItemLikeVisitor<'v> for UnsafetyChecker<'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         if let hir::ItemKind::Impl(unsafety, polarity, _, ref generics, ..) = item.node {
             self.check_unsafety_coherence(item, Some(generics), unsafety, polarity);

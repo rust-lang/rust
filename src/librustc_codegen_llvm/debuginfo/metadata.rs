@@ -222,8 +222,7 @@ impl TypeMap<'ll, 'tcx> {
     // Get the unique type id string for an enum variant part.
     // Variant parts are not types and shouldn't really have their own id,
     // but it makes set_members_of_composite_type() simpler.
-    fn get_unique_type_id_str_of_enum_variant_part<'a>(&mut self,
-                                                       enum_type_id: UniqueTypeId) -> &str {
+    fn get_unique_type_id_str_of_enum_variant_part(&mut self, enum_type_id: UniqueTypeId) -> &str {
         let variant_part_type_id = format!("{}_variant_part",
                                            self.get_unique_type_id_as_string(enum_type_id));
         let interner_key = self.unique_id_interner.intern(&variant_part_type_id);
@@ -894,10 +893,11 @@ fn pointer_type_metadata(
     }
 }
 
-pub fn compile_unit_metadata(tcx: TyCtxt<'_, '_, '_>,
-                             codegen_unit_name: &str,
-                             debug_context: &CrateDebugContext<'ll, '_>)
-                             -> &'ll DIDescriptor {
+pub fn compile_unit_metadata(
+    tcx: TyCtxt<'_, '_>,
+    codegen_unit_name: &str,
+    debug_context: &CrateDebugContext<'ll, '_>,
+) -> &'ll DIDescriptor {
     let mut name_in_debuginfo = match tcx.sess.local_crate_source_file {
         Some(ref path) => path.clone(),
         None => PathBuf::from(&*tcx.crate_name(LOCAL_CRATE).as_str()),
@@ -2257,11 +2257,7 @@ pub fn create_global_var_metadata(
 /// given type.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_vtable_metadata(
-    cx: &CodegenCx<'ll, 'tcx>,
-    ty: ty::Ty<'tcx>,
-    vtable: &'ll Value,
-) {
+pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &'ll Value) {
     if cx.dbg_cx.is_none() {
         return;
     }

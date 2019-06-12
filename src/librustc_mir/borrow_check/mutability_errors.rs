@@ -522,8 +522,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+fn suggest_ampmut_self<'gcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'tcx>,
     local_decl: &mir::LocalDecl<'tcx>,
 ) -> (Span, String) {
     let sp = local_decl.source_info.span;
@@ -555,8 +555,8 @@ fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
 //
 // This implementation attempts to emulate AST-borrowck prioritization
 // by trying (3.), then (2.) and finally falling back on (1.).
-fn suggest_ampmut<'cx, 'gcx, 'tcx>(
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+fn suggest_ampmut<'gcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &Body<'tcx>,
     local: Local,
     local_decl: &mir::LocalDecl<'tcx>,
@@ -623,7 +623,7 @@ fn is_closure_or_generator(ty: Ty<'_>) -> bool {
 ///    |        ---------- use `&'a mut String` here to make mutable
 /// ```
 fn annotate_struct_field(
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     ty: Ty<'tcx>,
     field: &mir::Field,
 ) -> Option<(Span, String)> {

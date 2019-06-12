@@ -30,7 +30,7 @@ newtype_index! {
 /// describing the borrow. These indexes are used for representing the
 /// borrows in compact bitvectors.
 pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &'a Body<'tcx>,
 
     borrow_set: Rc<BorrowSet<'tcx>>,
@@ -135,7 +135,7 @@ fn precompute_borrows_out_of_scope<'tcx>(
 
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     crate fn new(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         body: &'a Body<'tcx>,
         nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
         borrow_set: &Rc<BorrowSet<'tcx>>,

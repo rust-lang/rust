@@ -25,7 +25,7 @@ crate enum PlaceConflictBias {
 /// This is used to check for places conflicting outside of the borrow checking code (such as in
 /// dataflow).
 crate fn places_conflict<'gcx, 'tcx>(
-    tcx: TyCtxt<'_, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     access_place: &Place<'tcx>,
@@ -47,7 +47,7 @@ crate fn places_conflict<'gcx, 'tcx>(
 /// array indices, for example) should be interpreted - this depends on what the caller wants in
 /// order to make the conservative choice and preserve soundness.
 pub(super) fn borrow_conflicts_with_place<'gcx, 'tcx>(
-    tcx: TyCtxt<'_, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     borrow_kind: BorrowKind,
@@ -84,7 +84,7 @@ pub(super) fn borrow_conflicts_with_place<'gcx, 'tcx>(
 }
 
 fn place_components_conflict<'gcx, 'tcx>(
-    tcx: TyCtxt<'_, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &Body<'tcx>,
     borrow_projections: (&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>),
     borrow_kind: BorrowKind,
@@ -298,8 +298,8 @@ fn place_components_conflict<'gcx, 'tcx>(
 // Given that the bases of `elem1` and `elem2` are always either equal
 // or disjoint (and have the same type!), return the overlap situation
 // between `elem1` and `elem2`.
-fn place_base_conflict<'a, 'gcx: 'tcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+fn place_base_conflict<'gcx: 'tcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'tcx>,
     elem1: &PlaceBase<'tcx>,
     elem2: &PlaceBase<'tcx>,
 ) -> Overlap {
@@ -365,8 +365,8 @@ fn place_base_conflict<'a, 'gcx: 'tcx, 'tcx>(
 // Given that the bases of `elem1` and `elem2` are always either equal
 // or disjoint (and have the same type!), return the overlap situation
 // between `elem1` and `elem2`.
-fn place_projection_conflict<'a, 'gcx: 'tcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+fn place_projection_conflict<'gcx: 'tcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &Body<'tcx>,
     pi1: &Projection<'tcx>,
     pi2: &Projection<'tcx>,

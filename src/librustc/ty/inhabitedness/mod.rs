@@ -51,7 +51,7 @@ mod def_id_forest;
 // This code should only compile in modules where the uninhabitedness of Foo is
 // visible.
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     /// Checks whether a type is visibly uninhabited from a particular module.
     /// # Example
     /// ```rust
@@ -106,13 +106,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> AdtDef {
+impl<'gcx, 'tcx> AdtDef {
     /// Calculate the forest of DefIds from which this adt is visibly uninhabited.
-    fn uninhabited_from(
-        &self,
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        substs: SubstsRef<'tcx>) -> DefIdForest
-    {
+    fn uninhabited_from(&self, tcx: TyCtxt<'gcx, 'tcx>, substs: SubstsRef<'tcx>) -> DefIdForest {
         // Non-exhaustive ADTs from other crates are always considered inhabited.
         if self.is_variant_list_non_exhaustive() && !self.did.is_local() {
             DefIdForest::empty()
@@ -124,14 +120,14 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 }
 
-impl<'a, 'gcx, 'tcx> VariantDef {
+impl<'gcx, 'tcx> VariantDef {
     /// Calculate the forest of DefIds from which this variant is visibly uninhabited.
     pub fn uninhabited_from(
         &self,
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         substs: SubstsRef<'tcx>,
-        adt_kind: AdtKind) -> DefIdForest
-    {
+        adt_kind: AdtKind,
+    ) -> DefIdForest {
         let is_enum = match adt_kind {
             // For now, `union`s are never considered uninhabited.
             // The precise semantics of inhabitedness with respect to unions is currently undecided.
@@ -150,11 +146,11 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     }
 }
 
-impl<'a, 'gcx, 'tcx> FieldDef {
+impl<'gcx, 'tcx> FieldDef {
     /// Calculate the forest of DefIds from which this field is visibly uninhabited.
     fn uninhabited_from(
         &self,
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         substs: SubstsRef<'tcx>,
         is_enum: bool,
     ) -> DefIdForest {
@@ -180,10 +176,9 @@ impl<'a, 'gcx, 'tcx> FieldDef {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyS<'tcx> {
+impl<'gcx, 'tcx> TyS<'tcx> {
     /// Calculate the forest of DefIds from which this type is visibly uninhabited.
-    fn uninhabited_from(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest
-    {
+    fn uninhabited_from(&self, tcx: TyCtxt<'gcx, 'tcx>) -> DefIdForest {
         match self.sty {
             Adt(def, substs) => def.uninhabited_from(tcx, substs),
 

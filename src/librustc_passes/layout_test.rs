@@ -14,7 +14,7 @@ use rustc::ty::TyCtxt;
 use syntax::ast::Attribute;
 use syntax::symbol::sym;
 
-pub fn test_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn test_layout<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     if tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
         tcx.hir()
@@ -23,11 +23,11 @@ pub fn test_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 }
 
-struct VarianceTest<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct VarianceTest<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx> ItemLikeVisitor<'tcx> for VarianceTest<'a, 'tcx> {
+impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
 
@@ -44,7 +44,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for VarianceTest<'a, 'tcx> {
     fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) {}
 }
 
-impl<'a, 'tcx> VarianceTest<'a, 'tcx> {
+impl VarianceTest<'tcx> {
     fn dump_layout_of(&self, item_def_id: DefId, item: &hir::Item, attr: &Attribute) {
         let tcx = self.tcx;
         let param_env = self.tcx.param_env(item_def_id);
@@ -104,12 +104,12 @@ impl<'a, 'tcx> VarianceTest<'a, 'tcx> {
     }
 }
 
-struct UnwrapLayoutCx<'me, 'tcx> {
-    tcx: TyCtxt<'me, 'tcx, 'tcx>,
+struct UnwrapLayoutCx<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     param_env: ParamEnv<'tcx>,
 }
 
-impl<'me, 'tcx> LayoutOf for UnwrapLayoutCx<'me, 'tcx> {
+impl LayoutOf for UnwrapLayoutCx<'tcx> {
     type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;
 
@@ -118,19 +118,19 @@ impl<'me, 'tcx> LayoutOf for UnwrapLayoutCx<'me, 'tcx> {
     }
 }
 
-impl<'me, 'tcx> HasTyCtxt<'tcx> for UnwrapLayoutCx<'me, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+impl HasTyCtxt<'tcx> for UnwrapLayoutCx<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl<'me, 'tcx> HasParamEnv<'tcx> for UnwrapLayoutCx<'me, 'tcx> {
+impl HasParamEnv<'tcx> for UnwrapLayoutCx<'tcx> {
     fn param_env(&self) -> ParamEnv<'tcx> {
         self.param_env
     }
 }
 
-impl<'me, 'tcx> HasDataLayout for UnwrapLayoutCx<'me, 'tcx> {
+impl HasDataLayout for UnwrapLayoutCx<'tcx> {
     fn data_layout(&self) -> &TargetDataLayout {
         self.tcx.data_layout()
     }

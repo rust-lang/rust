@@ -87,7 +87,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> BorrowCheckResult<'tcx> {
+fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> BorrowCheckResult<'tcx> {
     let input_body = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def_id));
 

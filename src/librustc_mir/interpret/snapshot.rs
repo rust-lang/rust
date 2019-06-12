@@ -28,7 +28,7 @@ use super::{Frame, Memory, Operand, MemPlace, Place, Immediate, ScalarMaybeUndef
 use crate::const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
-pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir> {
+pub(crate) struct InfiniteLoopDetector<'mir, 'tcx> {
     /// The set of all `InterpSnapshot` *hashes* observed by this detector.
     ///
     /// When a collision occurs in this table, we store the full snapshot in
@@ -40,16 +40,15 @@ pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir> {
     /// An `InterpSnapshot` will only be fully cloned once it has caused a
     /// collision in `hashes`. As a result, the detector must observe at least
     /// *two* full cycles of an infinite loop before it triggers.
-    snapshots: FxHashSet<InterpSnapshot<'a, 'mir, 'tcx>>,
+    snapshots: FxHashSet<InterpSnapshot<'mir, 'tcx>>,
 }
 
-impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
-{
-    pub fn observe_and_analyze<'b>(
+impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx> {
+    pub fn observe_and_analyze(
         &mut self,
-        tcx: TyCtxt<'b, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         span: Span,
-        memory: &Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
+        memory: &Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>],
     ) -> InterpResult<'tcx, ()> {
         // Compute stack's hash before copying anything
@@ -373,8 +372,8 @@ impl_stable_hash_for!(struct LocalState<'tcx> {
     layout -> _,
 });
 
-impl<'a, 'b, 'mir, 'tcx: 'a+'mir> SnapshotContext<'b>
-    for Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>
+impl<'b, 'mir, 'tcx> SnapshotContext<'b>
+    for Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>
 {
     fn resolve(&'b self, id: &AllocId) -> Option<&'b Allocation> {
         self.get(*id).ok()
@@ -384,16 +383,15 @@ impl<'a, 'b, 'mir, 'tcx: 'a+'mir> SnapshotContext<'b>
 /// The virtual machine state during const-evaluation at a given point in time.
 /// We assume the `CompileTimeInterpreter` has no interesting extra state that
 /// is worth considering here.
-struct InterpSnapshot<'a, 'mir, 'tcx: 'a + 'mir> {
-    memory: Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
+struct InterpSnapshot<'mir, 'tcx> {
+    memory: Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     stack: Vec<Frame<'mir, 'tcx>>,
 }
 
-impl<'a, 'mir, 'tcx: 'a + 'mir> InterpSnapshot<'a, 'mir, 'tcx>
-{
+impl InterpSnapshot<'mir, 'tcx> {
     fn new(
-        memory: &Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
-        stack: &[Frame<'mir, 'tcx>]
+        memory: &Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+        stack: &[Frame<'mir, 'tcx>],
     ) -> Self {
         InterpSnapshot {
             memory: memory.clone(),
@@ -408,11 +406,9 @@ impl<'a, 'mir, 'tcx: 'a + 'mir> InterpSnapshot<'a, 'mir, 'tcx>
         // Start with the stack, iterate and recursively snapshot
         self.stack.iter().map(|frame| frame.snapshot(&self.memory)).collect()
     }
-
 }
 
-impl<'a, 'mir, 'tcx> Hash for InterpSnapshot<'a, 'mir, 'tcx>
-{
+impl<'mir, 'tcx> Hash for InterpSnapshot<'mir, 'tcx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Implement in terms of hash stable, so that k1 == k2 -> hash(k1) == hash(k2)
         let mut hcx = self.memory.tcx.get_stable_hashing_context();
@@ -422,17 +418,15 @@ impl<'a, 'mir, 'tcx> Hash for InterpSnapshot<'a, 'mir, 'tcx>
     }
 }
 
-impl_stable_hash_for!(impl<> for struct InterpSnapshot<'_, 'mir, 'tcx> {
+impl_stable_hash_for!(impl<> for struct InterpSnapshot<'mir, 'tcx> {
     // Not hashing memory: Avoid hashing memory all the time during execution
     memory -> _,
     stack,
 });
 
-impl<'a, 'mir, 'tcx> Eq for InterpSnapshot<'a, 'mir, 'tcx>
-{}
+impl<'mir, 'tcx> Eq for InterpSnapshot<'mir, 'tcx> {}
 
-impl<'a, 'mir, 'tcx> PartialEq for InterpSnapshot<'a, 'mir, 'tcx>
-{
+impl<'mir, 'tcx> PartialEq for InterpSnapshot<'mir, 'tcx> {
     fn eq(&self, other: &Self) -> bool {
         // FIXME: This looks to be a *ridiculously expensive* comparison operation.
         // Doesn't this make tons of copies?  Either `snapshot` is very badly named,

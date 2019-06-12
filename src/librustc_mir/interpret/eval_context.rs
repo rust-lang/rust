@@ -26,27 +26,25 @@ use super::{
     Memory, Machine
 };
 
-pub struct InterpretCx<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
+pub struct InterpretCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
     pub machine: M,
 
     /// The results of the type checker, from rustc.
-    pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+    pub tcx: TyCtxtAt<'tcx, 'tcx>,
 
     /// Bounds in scope for polymorphic evaluations.
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 
     /// The virtual memory system.
-    pub(crate) memory: Memory<'a, 'mir, 'tcx, M>,
+    pub(crate) memory: Memory<'mir, 'tcx, M>,
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>>,
 
     /// A cache for deduplicating vtables
-    pub(super) vtables: FxHashMap<
-        (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
-        Pointer<M::PointerTag>
-    >,
+    pub(super) vtables:
+        FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Pointer<M::PointerTag>>,
 }
 
 /// A stack frame.
@@ -160,35 +158,33 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
-    for InterpretCx<'a, 'mir, 'tcx, M>
-{
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpretCx<'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpretCx<'a, 'mir, 'tcx, M>
-    where M: Machine<'a, 'mir, 'tcx>
+impl<'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpretCx<'mir, 'tcx, M>
+where
+    M: Machine<'mir, 'tcx>,
 {
     #[inline]
-    fn tcx<'d>(&'d self) -> TyCtxt<'d, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         *self.tcx
     }
 }
 
-impl<'a, 'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpretCx<'a, 'mir, 'tcx, M>
-    where M: Machine<'a, 'mir, 'tcx>
+impl<'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpretCx<'mir, 'tcx, M>
+where
+    M: Machine<'mir, 'tcx>,
 {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
-    for InterpretCx<'a, 'mir, 'tcx, M>
-{
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpretCx<'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyLayout = InterpResult<'tcx, TyLayout<'tcx>>;
 
@@ -199,12 +195,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
     }
 }
 
-impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
-    pub fn new(
-        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        machine: M,
-    ) -> Self {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+    pub fn new(tcx: TyCtxtAt<'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>, machine: M) -> Self {
         InterpretCx {
             machine,
             tcx,
@@ -216,12 +208,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
     }
 
     #[inline(always)]
-    pub fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
+    pub fn memory(&self) -> &Memory<'mir, 'tcx, M> {
         &self.memory
     }
 
     #[inline(always)]
-    pub fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
+    pub fn memory_mut(&mut self) -> &mut Memory<'mir, 'tcx, M> {
         &mut self.memory
     }
 

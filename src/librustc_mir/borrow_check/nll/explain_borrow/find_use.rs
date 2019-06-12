@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 crate fn find<'tcx>(
     body: &Body<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
-    tcx: TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, 'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 ) -> Option<Cause> {
@@ -30,7 +30,7 @@ crate fn find<'tcx>(
 struct UseFinder<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     body: &'cx Body<'tcx>,
     regioncx: &'cx Rc<RegionInferenceContext<'tcx>>,
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 }
@@ -101,7 +101,7 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
 
 struct DefUseVisitor<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     body: &'cx Body<'tcx>,
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     region_vid: RegionVid,
     def_use_result: Option<DefUseResult>,
 }

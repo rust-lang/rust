@@ -3,15 +3,15 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
 use syntax::symbol::sym;
 
-pub fn test_variance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn test_variance<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     tcx.hir().krate().visit_all_item_likes(&mut VarianceTest { tcx });
 }
 
-struct VarianceTest<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>
+struct VarianceTest<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx> ItemLikeVisitor<'tcx> for VarianceTest<'a, 'tcx> {
+impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
 

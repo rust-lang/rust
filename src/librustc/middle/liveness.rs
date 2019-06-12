@@ -150,7 +150,7 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_, '_>) -> String {
+fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_>) -> String {
     let cm = tcx.sess.source_map();
     match lnk {
         UpvarNode(s) => {
@@ -166,7 +166,7 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_, '_>) -> Strin
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
@@ -181,7 +181,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
     fn visit_arm(&mut self, a: &'tcx hir::Arm) { visit_arm(self, a); }
 }
 
-fn check_mod_liveness<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_liveness<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut IrMaps::new(tcx, module_def_id).as_deep_visitor(),
@@ -256,8 +256,8 @@ enum VarKind {
     CleanExit
 }
 
-struct IrMaps<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct IrMaps<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     body_owner: DefId,
     num_live_nodes: usize,
     num_vars: usize,
@@ -268,8 +268,8 @@ struct IrMaps<'a, 'tcx: 'a> {
     lnks: Vec<LiveNodeKind>,
 }
 
-impl<'a, 'tcx> IrMaps<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, body_owner: DefId) -> IrMaps<'a, 'tcx> {
+impl IrMaps<'tcx> {
+    fn new(tcx: TyCtxt<'tcx, 'tcx>, body_owner: DefId) -> IrMaps<'tcx> {
         IrMaps {
             tcx,
             body_owner,
@@ -352,12 +352,14 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     }
 }
 
-fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
-                          fk: FnKind<'tcx>,
-                          decl: &'tcx hir::FnDecl,
-                          body_id: hir::BodyId,
-                          sp: Span,
-                          id: hir::HirId) {
+fn visit_fn<'a, 'tcx: 'a>(
+    ir: &mut IrMaps<'tcx>,
+    fk: FnKind<'tcx>,
+    decl: &'tcx hir::FnDecl,
+    body_id: hir::BodyId,
+    sp: Span,
+    id: hir::HirId,
+) {
     debug!("visit_fn");
 
     // swap in a new set of IR maps for this function body:
@@ -374,7 +376,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
         }
     }
 
-    debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps<'_, '_>);
+    debug!("creating fn_maps: {:p}", &fn_maps);
 
     let body = ir.tcx.hir().body(body_id);
 
@@ -411,7 +413,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     lsets.warn_about_unused_args(body, entry_ln);
 }
 
-fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, pat: &P<hir::Pat>) {
+fn add_from_pat<'tcx>(ir: &mut IrMaps<'tcx>, pat: &P<hir::Pat>) {
     // For struct patterns, take note of which fields used shorthand
     // (`x` rather than `x: x`).
     let mut shorthand_field_ids = HirIdSet::default();
@@ -457,19 +459,19 @@ fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, pat: &P<hir::Pat>) {
     });
 }
 
-fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
+fn visit_local<'tcx>(ir: &mut IrMaps<'tcx>, local: &'tcx hir::Local) {
     add_from_pat(ir, &local.pat);
     intravisit::walk_local(ir, local);
 }
 
-fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
+fn visit_arm<'tcx>(ir: &mut IrMaps<'tcx>, arm: &'tcx hir::Arm) {
     for pat in &arm.pats {
         add_from_pat(ir, pat);
     }
     intravisit::walk_arm(ir, arm);
 }
 
-fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
+fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
@@ -681,7 +683,7 @@ const ACC_WRITE: u32 = 2;
 const ACC_USE: u32 = 4;
 
 struct Liveness<'a, 'tcx: 'a> {
-    ir: &'a mut IrMaps<'a, 'tcx>,
+    ir: &'a mut IrMaps<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     s: Specials,
     successors: Vec<LiveNode>,
@@ -695,7 +697,7 @@ struct Liveness<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn new(ir: &'a mut IrMaps<'a, 'tcx>, body: hir::BodyId) -> Liveness<'a, 'tcx> {
+    fn new(ir: &'a mut IrMaps<'tcx>, body: hir::BodyId) -> Liveness<'a, 'tcx> {
         // Special nodes and variables:
         // - exit_ln represents the end of the fn, either by return or panic
         // - implicit_ret_var is a pseudo-variable that represents

@@ -22,7 +22,7 @@ where
     type QueryResponse = DropckOutlivesResult<'tcx>;
 
     fn try_fast_path(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
         if trivial_dropck_outlives(tcx, key.value.dropped_ty) {
@@ -33,7 +33,7 @@ where
     }
 
     fn perform_query(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self::QueryResponse>> {
         // Subtle: note that we are not invoking

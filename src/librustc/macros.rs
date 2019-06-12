@@ -195,7 +195,7 @@ macro_rules! CloneLiftImpls {
         $(
             impl<$tcx> $crate::ty::Lift<$tcx> for $ty {
                 type Lifted = Self;
-                fn lift_to_tcx<'a, 'gcx>(&self, _: $crate::ty::TyCtxt<'a, 'gcx, $tcx>) -> Option<Self> {
+                fn lift_to_tcx<'gcx>(&self, _: $crate::ty::TyCtxt<'gcx, $tcx>) -> Option<Self> {
                     Some(Clone::clone(self))
                 }
             }
@@ -264,7 +264,7 @@ macro_rules! BraceStructLiftImpl {
         {
             type Lifted = $lifted;
 
-            fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<$lifted> {
+            fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<$lifted> {
                 $(let $field = tcx.lift(&self.$field)?;)*
                 Some(Self::Lifted { $($field),* })
             }
@@ -283,7 +283,7 @@ macro_rules! EnumLiftImpl {
         {
             type Lifted = $lifted;
 
-            fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<$lifted> {
+            fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<$lifted> {
                 EnumLiftImpl!(@Variants(self, tcx) input($($variants)*) output())
             }
         }

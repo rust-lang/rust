@@ -112,7 +112,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) -> InternedString {
+fn symbol_name(tcx: TyCtxt<'tcx, 'tcx>, instance: Instance<'tcx>) -> InternedString {
     let def_id = instance.def_id();
     let substs = instance.substs;
 

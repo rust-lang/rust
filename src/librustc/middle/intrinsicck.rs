@@ -10,7 +10,7 @@ use syntax_pos::{Span, sym};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir;
 
-fn check_mod_intrinsics<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_intrinsics<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut ItemVisitor { tcx }.as_deep_visitor()
@@ -24,21 +24,19 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-struct ItemVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>
+struct ItemVisitor<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
-struct ExprVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct ExprVisitor<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     tables: &'tcx ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
-fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                ty: Ty<'tcx>)
-                                -> Ty<'tcx> {
+fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let (def, substs) = match ty.sty {
         ty::Adt(def, substs) => (def, substs),
         _ => return ty
@@ -66,7 +64,7 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty
 }
 
-impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
+impl ExprVisitor<'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
         self.tcx.fn_sig(def_id).abi() == RustIntrinsic &&
         self.tcx.item_name(def_id) == sym::transmute
@@ -131,7 +129,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
+impl Visitor<'tcx> for ItemVisitor<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
@@ -146,7 +144,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ItemVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
+impl Visitor<'tcx> for ExprVisitor<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }

@@ -67,7 +67,7 @@ mod need_type_info;
 
 pub mod nice_region_error;
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     pub fn note_and_explain_region(
         self,
         region_scope_tree: &region::ScopeTree,
@@ -445,13 +445,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         use ty::print::Printer;
         use ty::subst::Kind;
 
-        struct AbsolutePathPrinter<'a, 'gcx, 'tcx> {
-            tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        struct AbsolutePathPrinter<'gcx, 'tcx> {
+            tcx: TyCtxt<'gcx, 'tcx>,
         }
 
         struct NonTrivialPath;
 
-        impl<'gcx, 'tcx> Printer<'gcx, 'tcx> for AbsolutePathPrinter<'_, 'gcx, 'tcx> {
+        impl<'gcx, 'tcx> Printer<'gcx, 'tcx> for AbsolutePathPrinter<'gcx, 'tcx> {
             type Error = NonTrivialPath;
 
             type Path = Vec<String>;
@@ -460,7 +460,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             type DynExistential = !;
             type Const = !;
 
-            fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
+            fn tcx<'a>(&'a self) -> TyCtxt<'gcx, 'tcx> {
                 self.tcx
             }
 

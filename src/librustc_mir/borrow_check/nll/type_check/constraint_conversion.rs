@@ -15,7 +15,7 @@ use syntax_pos::DUMMY_SP;
 
 crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,

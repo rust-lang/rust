@@ -16,7 +16,7 @@ use crate::ty::{self, TyCtxt, Region};
 /// This stuff is a bit convoluted and should be refactored, but as we
 /// transition to NLL, it'll all go away anyhow.
 pub struct RegionRelations<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub tcx: TyCtxt<'gcx, 'tcx>,
 
     /// The context used to fetch the region maps.
     pub context: DefId,
@@ -30,7 +30,7 @@ pub struct RegionRelations<'a, 'gcx: 'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
     pub fn new(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         context: DefId,
         region_scope_tree: &'a region::ScopeTree,
         free_regions: &'a FreeRegionMap<'tcx>,

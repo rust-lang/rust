@@ -29,7 +29,7 @@ use crate::ty::subst::{Kind, UnpackedKind};
 use crate::ty::{self, BoundVar, InferConst, Lift, Ty, TyCtxt};
 use crate::util::captures::Captures;
 
-impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
     /// The "main method" for a canonicalized trait query. Given the
     /// canonical key `canonical_key`, this method will create a new
     /// inference context, instantiate the key, and run your operation
@@ -647,7 +647,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 /// Given the region obligations and constraints scraped from the infcx,
 /// creates query region constraints.
 pub fn make_query_outlives<'tcx>(
-    tcx: TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, 'tcx>,
     outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
 ) -> Vec<QueryRegionConstraint<'tcx>> {

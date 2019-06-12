@@ -105,7 +105,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// for some compile-time benchmarks.
     #[inline(always)]
     pub(super) fn try_get(
-        tcx: TyCtxt<'a, 'tcx, '_>,
+        tcx: TyCtxt<'tcx, '_>,
         span: Span,
         key: &Q::Key,
     ) -> TryGetJob<'a, 'tcx, Q> {
@@ -247,7 +247,7 @@ pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
     Cycle(D::Value),
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     /// Executes a job by changing the ImplicitCtxt to point to the
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
@@ -256,10 +256,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         job: Lrc<QueryJob<'gcx>>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: F)
-    -> R
+        compute: F,
+    ) -> R
     where
-        F: for<'b, 'lcx> FnOnce(TyCtxt<'b, 'gcx, 'lcx>) -> R
+        F: for<'lcx> FnOnce(TyCtxt<'gcx, 'lcx>) -> R,
     {
         // The TyCtxt stored in TLS has the same global interner lifetime
         // as `self`, so we use `with_related_context` to relate the 'gcx lifetimes
@@ -285,9 +285,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     #[cold]
     pub(super) fn report_cycle(
         self,
-        CycleError { usage, cycle: stack }: CycleError<'gcx>
-    ) -> DiagnosticBuilder<'a>
-    {
+        CycleError { usage, cycle: stack }: CycleError<'gcx>,
+    ) -> DiagnosticBuilder<'tcx> {
         assert!(!stack.is_empty());
 
         let fix_span = |span: Span, query: &Query<'gcx>| {
@@ -874,7 +873,7 @@ macro_rules! define_queries_inner {
                 }
             }
 
-            pub fn describe(&self, tcx: TyCtxt<'_, '_, '_>) -> Cow<'static, str> {
+            pub fn describe(&self, tcx: TyCtxt<'_, '_>) -> Cow<'static, str> {
                 let (r, name) = match *self {
                     $(Query::$name(key) => {
                         (queries::$name::describe(tcx, key), stringify!($name))
@@ -888,7 +887,7 @@ macro_rules! define_queries_inner {
             }
 
             // FIXME(eddyb) Get more valid Span's on queries.
-            pub fn default_span(&self, tcx: TyCtxt<'_, $tcx, '_>, span: Span) -> Span {
+            pub fn default_span(&self, tcx: TyCtxt<$tcx, '_>, span: Span) -> Span {
                 if !span.is_dummy() {
                     return span;
                 }
@@ -954,20 +953,20 @@ macro_rules! define_queries_inner {
             }
 
             #[inline(always)]
-            fn query_cache<'a>(tcx: TyCtxt<'a, $tcx, '_>) -> &'a Lock<QueryCache<$tcx, Self>> {
+            fn query_cache<'a>(tcx: TyCtxt<$tcx, '_>) -> &'a Lock<QueryCache<$tcx, Self>> {
                 &tcx.queries.$name
             }
 
             #[allow(unused)]
             #[inline(always)]
-            fn to_dep_node(tcx: TyCtxt<'_, $tcx, '_>, key: &Self::Key) -> DepNode {
+            fn to_dep_node(tcx: TyCtxt<$tcx, '_>, key: &Self::Key) -> DepNode {
                 use crate::dep_graph::DepConstructor::*;
 
                 DepNode::new(tcx, $node(*key))
             }
 
             #[inline]
-            fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value {
+            fn compute(tcx: TyCtxt<'tcx, '_>, key: Self::Key) -> Self::Value {
                 __query_compute::$name(move || {
                     let provider = tcx.queries.providers.get(key.query_crate())
                         // HACK(eddyb) it's possible crates may be loaded after
@@ -988,7 +987,7 @@ macro_rules! define_queries_inner {
             }
 
             fn handle_cycle_error(
-                tcx: TyCtxt<'_, 'tcx, '_>,
+                tcx: TyCtxt<'tcx, '_>,
                 error: CycleError<'tcx>
             ) -> Self::Value {
                 handle_cycle_error!([$($modifiers)*][tcx, error])
@@ -996,11 +995,11 @@ macro_rules! define_queries_inner {
         })*
 
         #[derive(Copy, Clone)]
-        pub struct TyCtxtEnsure<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-            pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        pub struct TyCtxtEnsure<'gcx, 'tcx> {
+            pub tcx: TyCtxt<'gcx, 'tcx>,
         }
 
-        impl<'a, $tcx, 'lcx> TyCtxtEnsure<'a, $tcx, 'lcx> {
+        impl TyCtxtEnsure<$tcx, 'lcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: $K) {
@@ -1009,24 +1008,24 @@ macro_rules! define_queries_inner {
         }
 
         #[derive(Copy, Clone)]
-        pub struct TyCtxtAt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-            pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        pub struct TyCtxtAt<'gcx, 'tcx> {
+            pub tcx: TyCtxt<'gcx, 'tcx>,
             pub span: Span,
         }
 
-        impl<'a, 'gcx, 'tcx> Deref for TyCtxtAt<'a, 'gcx, 'tcx> {
-            type Target = TyCtxt<'a, 'gcx, 'tcx>;
+        impl Deref for TyCtxtAt<'gcx, 'tcx> {
+            type Target = TyCtxt<'gcx, 'tcx>;
             #[inline(always)]
             fn deref(&self) -> &Self::Target {
                 &self.tcx
             }
         }
 
-        impl<'a, $tcx, 'lcx> TyCtxt<'a, $tcx, 'lcx> {
+        impl TyCtxt<$tcx, 'lcx> {
             /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
             /// are executed instead of just returing their results.
             #[inline(always)]
-            pub fn ensure(self) -> TyCtxtEnsure<'a, $tcx, 'lcx> {
+            pub fn ensure(self) -> TyCtxtEnsure<$tcx, 'lcx> {
                 TyCtxtEnsure {
                     tcx: self,
                 }
@@ -1035,7 +1034,7 @@ macro_rules! define_queries_inner {
             /// Returns a transparent wrapper for `TyCtxt` which uses
             /// `span` as the location of queries performed through it.
             #[inline(always)]
-            pub fn at(self, span: Span) -> TyCtxtAt<'a, $tcx, 'lcx> {
+            pub fn at(self, span: Span) -> TyCtxtAt<$tcx, 'lcx> {
                 TyCtxtAt {
                     tcx: self,
                     span
@@ -1049,7 +1048,7 @@ macro_rules! define_queries_inner {
             })*
         }
 
-        impl<'a, $tcx, 'lcx> TyCtxtAt<'a, $tcx, 'lcx> {
+        impl TyCtxtAt<$tcx, 'lcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: $K) -> $V {
@@ -1090,12 +1089,12 @@ macro_rules! define_provider_struct {
     (tcx: $tcx:tt,
      input: ($(([$($modifiers:tt)*] [$name:ident] [$K:ty] [$R:ty]))*)) => {
         pub struct Providers<$tcx> {
-            $(pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $R,)*
+            $(pub $name: fn(TyCtxt<$tcx, $tcx>, $K) -> $R,)*
         }
 
         impl<$tcx> Default for Providers<$tcx> {
             fn default() -> Self {
-                $(fn $name<'a, $tcx>(_: TyCtxt<'a, $tcx, $tcx>, key: $K) -> $R {
+                $(fn $name<$tcx>(_: TyCtxt<$tcx, $tcx>, key: $K) -> $R {
                     bug!("tcx.{}({:?}) unsupported by its crate",
                          stringify!($name), key);
                 })*
@@ -1148,10 +1147,7 @@ macro_rules! define_provider_struct {
 /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
 /// add it to the "We don't have enough information to reconstruct..." group in
 /// the match below.
-pub fn force_from_dep_node<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    dep_node: &DepNode
-) -> bool {
+pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, dep_node: &DepNode) -> bool {
     use crate::dep_graph::RecoverKey;
 
     // We must avoid ever having to call force_from_dep_node() for a
@@ -1237,7 +1233,7 @@ macro_rules! impl_load_from_cache {
         impl DepNode {
             // Check whether the query invocation corresponding to the given
             // DepNode is eligible for on-disk-caching.
-            pub fn cache_on_disk(&self, tcx: TyCtxt<'_, '_, '_>) -> bool {
+            pub fn cache_on_disk(&self, tcx: TyCtxt<'_, '_>) -> bool {
                 use crate::ty::query::queries;
                 use crate::ty::query::QueryDescription;
 
@@ -1255,7 +1251,7 @@ macro_rules! impl_load_from_cache {
             // above `cache_on_disk` methods returns true.
             // Also, as a sanity check, it expects that the corresponding query
             // invocation has been marked as green already.
-            pub fn load_from_on_disk_cache(&self, tcx: TyCtxt<'_, '_, '_>) {
+            pub fn load_from_on_disk_cache(&self, tcx: TyCtxt<'_, '_>) {
                 match self.kind {
                     $(DepKind::$dep_kind => {
                         debug_assert!(tcx.dep_graph

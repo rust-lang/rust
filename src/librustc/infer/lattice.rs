@@ -27,7 +27,7 @@ use crate::ty::TyVar;
 use crate::ty::{self, Ty};
 use crate::ty::relate::{RelateResult, TypeRelation};
 
-pub trait LatticeDir<'f, 'gcx: 'f+'tcx, 'tcx: 'f> : TypeRelation<'f, 'gcx, 'tcx> {
+pub trait LatticeDir<'f, 'gcx: 'f + 'tcx, 'tcx: 'f>: TypeRelation<'gcx, 'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'gcx, 'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;

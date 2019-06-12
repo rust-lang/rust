@@ -314,7 +314,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
 fn add_query_description_impl(
     query: &Query,
     modifiers: QueryModifiers,
-    impls: &mut proc_macro2::TokenStream
+    impls: &mut proc_macro2::TokenStream,
 ) {
     let name = &query.name;
     let arg = &query.arg;
@@ -327,7 +327,7 @@ fn add_query_description_impl(
             quote! {
                 #[inline]
                 fn try_load_from_disk(
-                    #tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                    #tcx: TyCtxt<'tcx, 'tcx>,
                     #id: SerializedDepNodeIndex
                 ) -> Option<Self::Value> {
                     #block
@@ -338,7 +338,7 @@ fn add_query_description_impl(
             quote! {
                 #[inline]
                 fn try_load_from_disk(
-                    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                    tcx: TyCtxt<'tcx, 'tcx>,
                     id: SerializedDepNodeIndex
                 ) -> Option<Self::Value> {
                     tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
@@ -350,7 +350,7 @@ fn add_query_description_impl(
         quote! {
             #[inline]
             #[allow(unused_variables)]
-            fn cache_on_disk(#tcx: TyCtxt<'_, 'tcx, 'tcx>, #key: Self::Key) -> bool {
+            fn cache_on_disk(#tcx: TyCtxt<'tcx, 'tcx>, #key: Self::Key) -> bool {
                 #expr
             }
 
@@ -367,7 +367,7 @@ fn add_query_description_impl(
         quote! {
             #[allow(unused_variables)]
             fn describe(
-                #tcx: TyCtxt<'_, '_, '_>,
+                #tcx: TyCtxt<'_, '_>,
                 #key: #arg,
             ) -> Cow<'static, str> {
                 format!(#desc).into()

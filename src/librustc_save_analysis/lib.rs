@@ -52,7 +52,7 @@ use log::{debug, error, info};
 
 
 pub struct SaveContext<'l, 'tcx: 'l> {
-    tcx: TyCtxt<'l, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     tables: &'l ty::TypeckTables<'tcx>,
     access_levels: &'l AccessLevels,
     span_utils: SpanUtils<'tcx>,
@@ -1115,7 +1115,7 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
 }
 
 pub fn process_crate<'l, 'tcx, H: SaveHandler>(
-    tcx: TyCtxt<'l, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     krate: &ast::Crate,
     cratename: &str,
     input: &'l Input,

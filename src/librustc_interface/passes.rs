@@ -798,7 +798,7 @@ declare_box_region_type!(
 impl BoxedGlobalCtxt {
     pub fn enter<F, R>(&mut self, f: F) -> R
     where
-        F: for<'tcx> FnOnce(TyCtxt<'tcx, 'tcx, 'tcx>) -> R
+        F: for<'tcx> FnOnce(TyCtxt<'tcx, 'tcx>) -> R,
     {
         self.access(|gcx| ty::tls::enter_global(gcx, |tcx| f(tcx)))
     }
@@ -878,10 +878,7 @@ pub fn create_global_ctxt(
 
 /// Runs the resolution, type-checking, region checking and other
 /// miscellaneous analysis passes on the crate.
-fn analysis<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    cnum: CrateNum,
-) -> Result<()> {
+fn analysis<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, cnum: CrateNum) -> Result<()> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let sess = tcx.sess;
@@ -999,7 +996,7 @@ fn analysis<'tcx>(
 }
 
 fn encode_and_write_metadata<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     outputs: &OutputFilenames,
 ) -> (middle::cstore::EncodedMetadata, bool) {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -1062,7 +1059,7 @@ fn encode_and_write_metadata<'tcx>(
 /// be discarded.
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     rx: mpsc::Receiver<Box<dyn Any + Send>>,
     outputs: &OutputFilenames,
 ) -> Box<dyn Any> {

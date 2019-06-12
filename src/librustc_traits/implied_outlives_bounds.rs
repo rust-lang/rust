@@ -23,11 +23,11 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 fn implied_outlives_bounds<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     goal: CanonicalTyGoal<'tcx>,
 ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
-        NoSolution,
+    &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
+    NoSolution,
 > {
     tcx.infer_ctxt()
        .enter_canonical_trait_query(&goal, |infcx, _fulfill_cx, key| {

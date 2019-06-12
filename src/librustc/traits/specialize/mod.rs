@@ -109,8 +109,8 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 /// the kind `kind`, and trait method substitutions `substs`, in
 /// that impl, a less specialized impl, or the trait default,
 /// whichever applies.
-pub fn find_associated_item<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn find_associated_item<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     item: &ty::AssocItem,
     substs: SubstsRef<'tcx>,
@@ -149,10 +149,10 @@ pub fn find_associated_item<'a, 'tcx>(
 /// Specialization is determined by the sets of types to which the impls apply;
 /// `impl1` specializes `impl2` if it applies to a subset of the types `impl2` applies
 /// to.
-pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    (impl1_def_id, impl2_def_id): (DefId, DefId))
-    -> bool
-{
+pub(super) fn specializes<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    (impl1_def_id, impl2_def_id): (DefId, DefId),
+) -> bool {
     debug!("specializes({:?}, {:?})", impl1_def_id, impl2_def_id);
 
     // The feature gate should prevent introducing new specializations, but not
@@ -285,8 +285,8 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 // Query provider for `specialization_graph_of`.
-pub(super) fn specialization_graph_provider<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(super) fn specialization_graph_provider<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     trait_id: DefId,
 ) -> &'tcx specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
@@ -390,7 +390,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a
 /// string.
-fn to_pretty_impl_header(tcx: TyCtxt<'_, '_, '_>, impl_def_id: DefId) -> Option<String> {
+fn to_pretty_impl_header(tcx: TyCtxt<'_, '_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
 
     let trait_ref = if let Some(tr) = tcx.impl_trait_ref(impl_def_id) {

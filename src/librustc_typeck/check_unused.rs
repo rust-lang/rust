@@ -13,7 +13,7 @@ use rustc::util::nodemap::DefIdSet;
 
 use rustc_data_structures::fx::FxHashMap;
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     let mut used_trait_imports = DefIdSet::default();
     for &body_id in tcx.hir().krate().bodies.keys() {
         let item_def_id = tcx.hir().body_owner_def_id(body_id);
@@ -28,7 +28,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     unused_crates_lint(tcx);
 }
 
-impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
+impl ItemLikeVisitor<'v> for CheckVisitor<'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if item.vis.node.is_pub() || item.span.is_dummy() {
             return;
@@ -45,12 +45,12 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
     }
 }
 
-struct CheckVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct CheckVisitor<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     used_trait_imports: DefIdSet,
 }
 
-impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
+impl CheckVisitor<'tcx> {
     fn check_import(&self, id: hir::HirId, span: Span) {
         let def_id = self.tcx.hir().local_def_id_from_hir_id(id);
         if !self.tcx.maybe_unused_trait_import(def_id) {
@@ -70,7 +70,7 @@ impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
     }
 }
 
-fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
+fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
     let lint = lint::builtin::UNUSED_EXTERN_CRATES;
 
     // Collect first the crates that are completely unused.  These we
@@ -195,7 +195,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
 }
 
 struct CollectExternCrateVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     crates_to_lint: &'a mut Vec<ExternCrateToLint>,
 }
 

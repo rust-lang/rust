@@ -21,11 +21,7 @@ use syntax_pos::Span;
 pub struct ElaborateDrops;
 
 impl MirPass for ElaborateDrops {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource<'tcx>,
-                          body: &mut Body<'tcx>)
-    {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", src, body.span);
 
         let def_id = src.def_id();
@@ -77,13 +73,12 @@ impl MirPass for ElaborateDrops {
 /// Returns the set of basic blocks whose unwind edges are known
 /// to not be reachable, because they are `drop` terminators
 /// that can't drop anything.
-fn find_dead_unwinds<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn find_dead_unwinds<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     body: &Body<'tcx>,
     def_id: hir::def_id::DefId,
-    env: &MoveDataParamEnv<'tcx, 'tcx>)
-    -> BitSet<BasicBlock>
-{
+    env: &MoveDataParamEnv<'tcx, 'tcx>,
+) -> BitSet<BasicBlock> {
     debug!("find_dead_unwinds({:?})", body.span);
     // We only need to do this pass once, because unwind edges can only
     // reach cleanup blocks, which can't have unwind edges themselves.
@@ -141,12 +136,13 @@ struct InitializationData {
 }
 
 impl InitializationData {
-    fn apply_location<'a,'tcx>(&mut self,
-                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               body: &Body<'tcx>,
-                               env: &MoveDataParamEnv<'tcx, 'tcx>,
-                               loc: Location)
-    {
+    fn apply_location<'tcx>(
+        &mut self,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        body: &Body<'tcx>,
+        env: &MoveDataParamEnv<'tcx, 'tcx>,
+        loc: Location,
+    ) {
         drop_flag_effects_for_location(tcx, body, env, loc, |path, df| {
             debug!("at location {:?}: setting {:?} to {:?}",
                    loc, path, df);
@@ -190,7 +186,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         self.ctxt.body
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.ctxt.tcx
     }
 
@@ -290,11 +286,11 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
 }
 
 struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     body: &'a Body<'tcx>,
     env: &'a MoveDataParamEnv<'tcx, 'tcx>,
     flow_inits: DataflowResults<'tcx, MaybeInitializedPlaces<'a, 'tcx, 'tcx>>,
-    flow_uninits:  DataflowResults<'tcx, MaybeUninitializedPlaces<'a, 'tcx, 'tcx>>,
+    flow_uninits: DataflowResults<'tcx, MaybeUninitializedPlaces<'a, 'tcx, 'tcx>>,
     drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
 }

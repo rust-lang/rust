@@ -22,7 +22,7 @@ use crate::hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 
     pub root_lint_level: hir::HirId,
@@ -200,7 +200,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         ty.needs_drop(self.tcx.global_tcx(), param_env)
     }
 
-    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.tcx
     }
 
@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 }
 
 impl UserAnnotatedTyHelpers<'gcx, 'tcx> for Cx<'_, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.tcx()
     }
 

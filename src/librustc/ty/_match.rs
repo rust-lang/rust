@@ -19,19 +19,19 @@ use crate::mir::interpret::ConstValue;
 /// Like subtyping, matching is really a binary relation, so the only
 /// important thing about the result is Ok/Err. Also, matching never
 /// affects any type variables or unification state.
-pub struct Match<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>
+pub struct Match<'gcx, 'tcx> {
+    tcx: TyCtxt<'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> Match<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Match<'a, 'gcx, 'tcx> {
+impl Match<'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'gcx, 'tcx>) -> Match<'gcx, 'tcx> {
         Match { tcx }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Match<'a, 'gcx, 'tcx> {
+impl TypeRelation<'gcx, 'tcx> for Match<'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Match" }
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.tcx }
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> { self.tcx }
     fn a_is_expected(&self) -> bool { true } // irrelevant
 
     fn relate_with_variance<T: Relate<'tcx>>(&mut self,

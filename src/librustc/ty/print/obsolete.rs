@@ -16,15 +16,15 @@ use syntax::ast;
 
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.
-pub struct DefPathBasedNames<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct DefPathBasedNames<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     omit_disambiguators: bool,
     omit_local_crate_name: bool,
 }
 
-impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
+impl DefPathBasedNames<'tcx> {
     pub fn new(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         omit_disambiguators: bool,
         omit_local_crate_name: bool,
     ) -> Self {

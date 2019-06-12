@@ -56,7 +56,7 @@ impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
         Self { infcx, error: None, regions: Some((span, sub, sup)), tables }
     }
 
-    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 

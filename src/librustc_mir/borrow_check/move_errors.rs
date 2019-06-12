@@ -96,7 +96,7 @@ impl BorrowedContentSource<'tcx> {
         }
     }
 
-    fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'_, '_, 'tcx>) -> Option<Self> {
+    fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'_, 'tcx>) -> Option<Self> {
         match func.sty {
             ty::FnDef(def_id, substs) => {
                 let trait_id = tcx.trait_of_item(def_id)?;

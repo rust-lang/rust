@@ -31,38 +31,36 @@ pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     fn query(key: Self::Key) -> Query<'tcx>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_cache<'a>(tcx: TyCtxt<'a, 'tcx, '_>) -> &'a Lock<QueryCache<'tcx, Self>>;
+    fn query_cache<'a>(tcx: TyCtxt<'tcx, '_>) -> &'a Lock<QueryCache<'tcx, Self>>;
 
-    fn to_dep_node(tcx: TyCtxt<'_, 'tcx, '_>, key: &Self::Key) -> DepNode;
+    fn to_dep_node(tcx: TyCtxt<'tcx, '_>, key: &Self::Key) -> DepNode;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
-    fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value;
+    fn compute(tcx: TyCtxt<'tcx, '_>, key: Self::Key) -> Self::Value;
 
     fn hash_result(
         hcx: &mut StableHashingContext<'_>,
         result: &Self::Value
     ) -> Option<Fingerprint>;
 
-    fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>, error: CycleError<'tcx>) -> Self::Value;
+    fn handle_cycle_error(tcx: TyCtxt<'tcx, '_>, error: CycleError<'tcx>) -> Self::Value;
 }
 
 pub(crate) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
-    fn describe(tcx: TyCtxt<'_, '_, '_>, key: Self::Key) -> Cow<'static, str>;
+    fn describe(tcx: TyCtxt<'_, '_>, key: Self::Key) -> Cow<'static, str>;
 
     #[inline]
-    fn cache_on_disk(_: TyCtxt<'_, 'tcx, 'tcx>, _: Self::Key) -> bool {
+    fn cache_on_disk(_: TyCtxt<'tcx, 'tcx>, _: Self::Key) -> bool {
         false
     }
 
-    fn try_load_from_disk(_: TyCtxt<'_, 'tcx, 'tcx>,
-                          _: SerializedDepNodeIndex)
-                          -> Option<Self::Value> {
+    fn try_load_from_disk(_: TyCtxt<'tcx, 'tcx>, _: SerializedDepNodeIndex) -> Option<Self::Value> {
         bug!("QueryDescription::load_from_disk() called for an unsupported query.")
     }
 }
 
-impl<'tcx, M: QueryAccessors<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
-    default fn describe(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Cow<'static, str> {
+impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M {
+    default fn describe(tcx: TyCtxt<'_, '_>, def_id: DefId) -> Cow<'static, str> {
         if !tcx.sess.verbose() {
             format!("processing `{}`", tcx.def_path_str(def_id)).into()
         } else {
@@ -73,7 +71,7 @@ impl<'tcx, M: QueryAccessors<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::analysis<'tcx> {
-    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
+    fn describe(_tcx: TyCtxt<'_, '_>, _: CrateNum) -> Cow<'static, str> {
         "running analysis passes on this crate".into()
     }
 }
@@ -82,12 +80,12 @@ macro_rules! impl_disk_cacheable_query(
     ($query_name:ident, |$tcx:tt, $key:tt| $cond:expr) => {
         impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {
             #[inline]
-            fn cache_on_disk($tcx: TyCtxt<'_, 'tcx, 'tcx>, $key: Self::Key) -> bool {
+            fn cache_on_disk($tcx: TyCtxt<'tcx, 'tcx>, $key: Self::Key) -> bool {
                 $cond
             }
 
             #[inline]
-            fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+            fn try_load_from_disk(tcx: TyCtxt<'tcx, 'tcx>,
                                       id: SerializedDepNodeIndex)
                                       -> Option<Self::Value> {
                 tcx.queries.on_disk_cache.try_load_query_result(tcx, id)

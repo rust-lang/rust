@@ -58,12 +58,14 @@ pub enum RelationDir {
 }
 
 impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
-    pub fn super_combine_tys<R>(&self,
-                                relation: &mut R,
-                                a: Ty<'tcx>,
-                                b: Ty<'tcx>)
-                                -> RelateResult<'tcx, Ty<'tcx>>
-        where R: TypeRelation<'infcx, 'gcx, 'tcx>
+    pub fn super_combine_tys<R>(
+        &self,
+        relation: &mut R,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>>
+    where
+        R: TypeRelation<'gcx, 'tcx>,
     {
         let a_is_expected = relation.a_is_expected();
 
@@ -123,7 +125,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
         b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>
     where
-        R: TypeRelation<'infcx, 'gcx, 'tcx>,
+        R: TypeRelation<'gcx, 'tcx>,
     {
         let a_is_expected = relation.a_is_expected();
 
@@ -207,7 +209,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
 }
 
 impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'infcx, 'gcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -413,8 +415,8 @@ struct Generalization<'tcx> {
     needs_wf: bool,
 }
 
-impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
+impl TypeRelation<'gcx, 'tcx> for Generalizer<'_, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 

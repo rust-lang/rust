@@ -4,36 +4,36 @@ use crate::ty::util::NeedsDrop;
 use syntax::symbol::InternedString;
 
 pub(super) trait Value<'tcx>: Sized {
-    fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self;
+    fn from_cycle_error(tcx: TyCtxt<'tcx, 'tcx>) -> Self;
 }
 
 impl<'tcx, T> Value<'tcx> for T {
-    default fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> T {
+    default fn from_cycle_error(tcx: TyCtxt<'tcx, 'tcx>) -> T {
         tcx.sess.abort_if_errors();
         bug!("Value::from_cycle_error called without errors");
     }
 }
 
 impl<'tcx> Value<'tcx> for Ty<'tcx> {
-    fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
+    fn from_cycle_error(tcx: TyCtxt<'tcx, 'tcx>) -> Ty<'tcx> {
         tcx.types.err
     }
 }
 
 impl<'tcx> Value<'tcx> for ty::SymbolName {
-    fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+    fn from_cycle_error(_: TyCtxt<'tcx, 'tcx>) -> Self {
         ty::SymbolName { name: InternedString::intern("<error>") }
     }
 }
 
 impl<'tcx> Value<'tcx> for NeedsDrop {
-    fn from_cycle_error(_: TyCtxt<'_, 'tcx, 'tcx>) -> Self {
+    fn from_cycle_error(_: TyCtxt<'tcx, 'tcx>) -> Self {
         NeedsDrop(false)
     }
 }
 
 impl<'tcx> Value<'tcx> for AdtSizedConstraint<'tcx> {
-    fn from_cycle_error(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> Self {
+    fn from_cycle_error(tcx: TyCtxt<'tcx, 'tcx>) -> Self {
         AdtSizedConstraint(tcx.intern_type_list(&[tcx.types.err]))
     }
 }

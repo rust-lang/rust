@@ -277,7 +277,7 @@ impl CanonicalizeRegionMode for CanonicalizeFreeRegionsOtherThanStatic {
 
 struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     variables: SmallVec<[CanonicalVarInfo; 8]>,
     query_state: &'cx mut OriginalQueryValues<'tcx>,
     // Note that indices is only used once `var_values` is big enough to be
@@ -290,7 +290,7 @@ struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 }
 
 impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
         self.tcx
     }
 
@@ -501,7 +501,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     fn canonicalize<V>(
         value: &V,
         infcx: Option<&InferCtxt<'_, 'gcx, 'tcx>>,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalize_region_mode: &dyn CanonicalizeRegionMode,
         query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'gcx, V>

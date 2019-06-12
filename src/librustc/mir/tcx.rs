@@ -21,7 +21,7 @@ pub struct PlaceTy<'tcx> {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(PlaceTy<'_>, 16);
 
-impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
+impl<'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
         PlaceTy { ty, variant_index: None }
     }
@@ -33,8 +33,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     /// not carry a `Ty` for `T`.)
     ///
     /// Note that the resulting type has not been normalized.
-    pub fn field_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, f: &Field) -> Ty<'tcx>
-    {
+    pub fn field_ty(self, tcx: TyCtxt<'gcx, 'tcx>, f: &Field) -> Ty<'tcx> {
         let answer = match self.ty.sty {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
@@ -57,10 +56,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     /// Convenience wrapper around `projection_ty_core` for
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
-    pub fn projection_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                         elem: &PlaceElem<'tcx>)
-                         -> PlaceTy<'tcx>
-    {
+    pub fn projection_ty(self, tcx: TyCtxt<'gcx, 'tcx>, elem: &PlaceElem<'tcx>) -> PlaceTy<'tcx> {
         self.projection_ty_core(tcx, elem, |_, _, ty| ty)
     }
 
@@ -71,12 +67,13 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     /// (which should be trivial when `T` = `Ty`).
     pub fn projection_ty_core<V, T>(
         self,
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         elem: &ProjectionElem<V, T>,
-        mut handle_field: impl FnMut(&Self, &Field, &T) -> Ty<'tcx>)
-        -> PlaceTy<'tcx>
+        mut handle_field: impl FnMut(&Self, &Field, &T) -> Ty<'tcx>,
+    ) -> PlaceTy<'tcx>
     where
-        V: ::std::fmt::Debug, T: ::std::fmt::Debug
+        V: ::std::fmt::Debug,
+        T: ::std::fmt::Debug,
     {
         let answer = match *elem {
             ProjectionElem::Deref => {
@@ -121,8 +118,9 @@ BraceStructTypeFoldableImpl! {
 }
 
 impl<'tcx> Place<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PlaceTy<'tcx>
-        where D: HasLocalDecls<'tcx>
+    pub fn ty<'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'gcx, 'tcx>) -> PlaceTy<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
     {
         match *self {
             Place::Base(PlaceBase::Local(index)) =>
@@ -141,8 +139,9 @@ pub enum RvalueInitializationState {
 }
 
 impl<'tcx> Rvalue<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
-        where D: HasLocalDecls<'tcx>
+    pub fn ty<'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'gcx, 'tcx>) -> Ty<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
     {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
@@ -222,8 +221,9 @@ impl<'tcx> Rvalue<'tcx> {
 }
 
 impl<'tcx> Operand<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
-        where D: HasLocalDecls<'tcx>
+    pub fn ty<'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'gcx, 'tcx>) -> Ty<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
     {
         match self {
             &Operand::Copy(ref l) |
@@ -234,10 +234,12 @@ impl<'tcx> Operand<'tcx> {
 }
 
 impl<'tcx> BinOp {
-      pub fn ty<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                          lhs_ty: Ty<'tcx>,
-                          rhs_ty: Ty<'tcx>)
-                          -> Ty<'tcx> {
+    pub fn ty<'gcx>(
+        &self,
+        tcx: TyCtxt<'gcx, 'tcx>,
+        lhs_ty: Ty<'tcx>,
+        rhs_ty: Ty<'tcx>,
+    ) -> Ty<'tcx> {
         // FIXME: handle SIMD correctly
         match self {
             &BinOp::Add | &BinOp::Sub | &BinOp::Mul | &BinOp::Div | &BinOp::Rem |

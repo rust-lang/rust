@@ -17,9 +17,10 @@ use syntax::ast;
 use syntax_pos::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
-pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                      crate_num: CrateNum)
-                                      -> &'tcx CrateInherentImpls {
+pub fn crate_inherent_impls<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    crate_num: CrateNum,
+) -> &'tcx CrateInherentImpls {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     let krate = tcx.hir().krate();
@@ -32,9 +33,7 @@ pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
-pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                ty_def_id: DefId)
-                                -> &'tcx [DefId] {
+pub fn inherent_impls<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty_def_id: DefId) -> &'tcx [DefId] {
     assert!(ty_def_id.is_local());
 
     // NB. Until we adopt the red-green dep-tracking algorithm (see
@@ -68,12 +67,12 @@ pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result
 }
 
-struct InherentCollect<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct InherentCollect<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     impls_map: CrateInherentImpls,
 }
 
-impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
+impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let ty = match item.node {
             hir::ItemKind::Impl(.., None, ref ty, _) => ty,
@@ -277,7 +276,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> InherentCollect<'a, 'tcx> {
+impl InherentCollect<'tcx> {
     fn check_def_id(&mut self, item: &hir::Item, def_id: DefId) {
         if def_id.is_local() {
             // Add the implementation to the mapping from implementation to base

@@ -47,12 +47,12 @@ pub struct AutoTraitInfo<'cx> {
     pub vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'cx>>,
 }
 
-pub struct AutoTraitFinder<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct AutoTraitFinder<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
 }
 
-impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+impl<'tcx> AutoTraitFinder<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx, 'tcx>) -> Self {
         AutoTraitFinder { tcx }
     }
 
@@ -232,7 +232,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
+impl AutoTraitFinder<'tcx> {
     // The core logic responsible for computing the bounds for our synthesized impl.
     //
     // To calculate the bounds, we call SelectionContext.select in a loop. Like FulfillmentContext,
@@ -834,11 +834,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 // Replaces all ReVars in a type with ty::Region's, using the provided map
 pub struct RegionReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
         self.tcx
     }
 

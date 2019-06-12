@@ -233,7 +233,7 @@ where
     // See the comments on `process_registered_region_obligations` for the meaning
     // of these fields.
     delegate: D,
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     verify_bound: VerifyBoundCx<'cx, 'gcx, 'tcx>,
 }
 
@@ -260,7 +260,7 @@ where
 {
     pub fn new(
         delegate: D,
-        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,

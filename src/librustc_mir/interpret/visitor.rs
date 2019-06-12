@@ -14,15 +14,14 @@ use super::{
 // A thing that we can project into, and that has a layout.
 // This wouldn't have to depend on `Machine` but with the current type inference,
 // that's just more convenient to work with (avoids repeating all the `Machine` bounds).
-pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
-{
+pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     /// Gets this value's layout.
     fn layout(&self) -> TyLayout<'tcx>;
 
     /// Makes this into an `OpTy`.
     fn to_op(
         self,
-        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
 
     /// Creates this from an `MPlaceTy`.
@@ -31,23 +30,21 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
     /// Projects to the given enum variant.
     fn project_downcast(
         self,
-        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, Self>;
 
     /// Projects to the n-th field.
     fn project_field(
         self,
-        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'mir, 'tcx, M>,
         field: u64,
     ) -> InterpResult<'tcx, Self>;
 }
 
 // Operands and memory-places are both values.
 // Places in general are not due to `place_field` having to do `force_allocation`.
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
-    for OpTy<'tcx, M::PointerTag>
-{
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::PointerTag> {
     #[inline(always)]
     fn layout(&self) -> TyLayout<'tcx> {
         self.layout
@@ -56,7 +53,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn to_op(
         self,
-        _ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
+        _ecx: &InterpretCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         Ok(self)
     }
@@ -69,7 +66,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_downcast(
         self,
-        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, Self> {
         ecx.operand_downcast(self, variant)
@@ -78,15 +75,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_field(
         self,
-        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'mir, 'tcx, M>,
         field: u64,
     ) -> InterpResult<'tcx, Self> {
         ecx.operand_field(self, field)
     }
 }
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
-    for MPlaceTy<'tcx, M::PointerTag>
-{
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for MPlaceTy<'tcx, M::PointerTag> {
     #[inline(always)]
     fn layout(&self) -> TyLayout<'tcx> {
         self.layout
@@ -95,7 +90,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn to_op(
         self,
-        _ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
+        _ecx: &InterpretCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         Ok(self.into())
     }
@@ -108,7 +103,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_downcast(
         self,
-        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, Self> {
         ecx.mplace_downcast(self, variant)
@@ -117,7 +112,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_field(
         self,
-        ecx: &InterpretCx<'a, 'mir, 'tcx, M>,
+        ecx: &InterpretCx<'mir, 'tcx, M>,
         field: u64,
     ) -> InterpResult<'tcx, Self> {
         ecx.mplace_field(self, field)
@@ -127,12 +122,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
 macro_rules! make_value_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {
         // How to traverse a value and what to do when we are at the leaves.
-        pub trait $visitor_trait_name<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Sized {
-            type V: Value<'a, 'mir, 'tcx, M>;
+        pub trait $visitor_trait_name<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
+            type V: Value<'mir, 'tcx, M>;
 
             /// The visitor must have an `InterpretCx` in it.
             fn ecx(&$($mutability)? self)
-                -> &$($mutability)? InterpretCx<'a, 'mir, 'tcx, M>;
+                -> &$($mutability)? InterpretCx<'mir, 'tcx, M>;
 
             // Recursive actions, ready to be overloaded.
             /// Visits the given value, dispatching as appropriate to more specialized visitors.

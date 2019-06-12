@@ -194,7 +194,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// named variants.
     fn give_name_from_error_region(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
@@ -303,7 +303,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn get_named_span(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         error_region: &RegionKind,
         name: InternedString,
     ) -> Span {
@@ -461,7 +461,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// to highlighting that closest type instead.
     fn give_name_if_we_can_match_hir_ty(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
         argument_hir_ty: &hir::Ty,
@@ -653,7 +653,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn give_name_if_anonymous_region_appears_in_upvars(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         upvars: &[Upvar],
         fr: RegionVid,
         counter: &mut usize,

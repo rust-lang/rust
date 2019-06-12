@@ -51,9 +51,9 @@ impl BorrowExplanation {
             _ => true,
         }
     }
-    pub(in crate::borrow_check) fn add_explanation_to_diagnostic<'cx, 'gcx, 'tcx>(
+    pub(in crate::borrow_check) fn add_explanation_to_diagnostic<'gcx, 'tcx>(
         &self,
-        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         body: &Body<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         borrow_desc: &str,

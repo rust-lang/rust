@@ -14,7 +14,7 @@ use std::fmt::{self, Write};
 use std::mem::{self, discriminant};
 
 pub(super) fn mangle(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     instance: Instance<'tcx>,
     instantiating_crate: Option<CrateNum>,
 ) -> String {
@@ -68,8 +68,8 @@ pub(super) fn mangle(
     printer.path.finish(hash)
 }
 
-fn get_symbol_hash<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn get_symbol_hash<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
 
     // instance this name will be for
     instance: Instance<'tcx>,
@@ -179,8 +179,8 @@ impl SymbolPath {
     }
 }
 
-struct SymbolPrinter<'a, 'tcx> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct SymbolPrinter<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     path: SymbolPath,
 
     // When `true`, `finalize_pending_component` isn't used.
@@ -194,7 +194,7 @@ struct SymbolPrinter<'a, 'tcx> {
 // `PrettyPrinter` aka pretty printing of e.g. types in paths,
 // symbol names should have their own printing machinery.
 
-impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
+impl Printer<'tcx, 'tcx> for SymbolPrinter<'tcx> {
     type Error = fmt::Error;
 
     type Path = Self;
@@ -203,7 +203,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     type DynExistential = Self;
     type Const = Self;
 
-    fn tcx(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
         self.tcx
     }
 
@@ -360,7 +360,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     }
 }
 
-impl PrettyPrinter<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
+impl PrettyPrinter<'tcx, 'tcx> for SymbolPrinter<'tcx> {
     fn region_should_not_be_omitted(
         &self,
         _region: ty::Region<'_>,
@@ -400,7 +400,7 @@ impl PrettyPrinter<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     }
 }
 
-impl fmt::Write for SymbolPrinter<'_, '_> {
+impl fmt::Write for SymbolPrinter<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         // Name sanitation. LLVM will happily accept identifiers with weird names, but
         // gas doesn't!

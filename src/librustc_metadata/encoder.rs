@@ -40,9 +40,9 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::intravisit;
 
-pub struct EncodeContext<'a, 'tcx: 'a> {
+pub struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx, 'tcx>,
 
     entries_index: Index<'tcx>,
 
@@ -65,7 +65,7 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
+impl<'tcx> Encoder for EncodeContext<'tcx> {
     type Error = <opaque::Encoder as Encoder>::Error;
 
     fn emit_unit(&mut self) -> Result<(), Self::Error> {
@@ -95,13 +95,13 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T> SpecializedEncoder<Lazy<T>> for EncodeContext<'a, 'tcx> {
+impl<'tcx, T> SpecializedEncoder<Lazy<T>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<T>) -> Result<(), Self::Error> {
         self.emit_lazy_distance(lazy.position, Lazy::<T>::min_size())
     }
 }
 
-impl<'a, 'tcx, T> SpecializedEncoder<LazySeq<T>> for EncodeContext<'a, 'tcx> {
+impl<'tcx, T> SpecializedEncoder<LazySeq<T>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, seq: &LazySeq<T>) -> Result<(), Self::Error> {
         self.emit_usize(seq.len)?;
         if seq.len == 0 {
@@ -111,14 +111,14 @@ impl<'a, 'tcx, T> SpecializedEncoder<LazySeq<T>> for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'a, 'tcx> {
+impl<'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'tcx> {
     #[inline]
     fn specialized_encode(&mut self, cnum: &CrateNum) -> Result<(), Self::Error> {
         self.emit_u32(cnum.as_u32())
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<DefId> for EncodeContext<'a, 'tcx> {
+impl<'tcx> SpecializedEncoder<DefId> for EncodeContext<'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_id: &DefId) -> Result<(), Self::Error> {
         let DefId {
@@ -131,14 +131,14 @@ impl<'a, 'tcx> SpecializedEncoder<DefId> for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
+impl<'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_index: &DefIndex) -> Result<(), Self::Error> {
         self.emit_u32(def_index.as_u32())
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
+impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, span: &Span) -> Result<(), Self::Error> {
         if span.is_dummy() {
             return TAG_INVALID_SPAN.encode(self)
@@ -173,20 +173,20 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'a, 'tcx> {
+impl<'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_id: &LocalDefId) -> Result<(), Self::Error> {
         self.specialized_encode(&def_id.to_def_id())
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
+impl<'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
         ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
+impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
         use std::collections::hash_map::Entry;
         let index = match self.interpret_allocs.entry(*alloc_id) {
@@ -203,7 +203,7 @@ impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext<'a, 'tcx> {
+impl<'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self,
                           predicates: &ty::GenericPredicates<'tcx>)
                           -> Result<(), Self::Error> {
@@ -211,14 +211,13 @@ impl<'a, 'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext
     }
 }
 
-impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'a, 'tcx> {
+impl<'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.opaque)
     }
 }
 
-impl<'a, 'tcx, T: Encodable> SpecializedEncoder<mir::ClearCrossCrate<T>>
-for EncodeContext<'a, 'tcx> {
+impl<'tcx, T: Encodable> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self,
                           _: &mir::ClearCrossCrate<T>)
                           -> Result<(), Self::Error> {
@@ -226,14 +225,13 @@ for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
+impl<'tcx> TyEncoder for EncodeContext<'tcx> {
     fn position(&self) -> usize {
         self.opaque.position()
     }
 }
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-
+impl<'tcx> EncodeContext<'tcx> {
     fn emit_node<F: FnOnce(&mut Self, usize) -> R, R>(&mut self, f: F) -> R {
         assert_eq!(self.lazy_state, LazyState::NoNode);
         let pos = self.position();
@@ -544,7 +542,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
-impl EncodeContext<'_, 'tcx> {
+impl EncodeContext<'tcx> {
     fn encode_variances_of(&mut self, def_id: DefId) -> LazySeq<ty::Variance> {
         debug!("EncodeContext::encode_variances_of({:?})", def_id);
         let tcx = self.tcx;
@@ -1648,7 +1646,7 @@ impl EncodeContext<'_, 'tcx> {
     }
 }
 
-impl Visitor<'tcx> for EncodeContext<'_, 'tcx> {
+impl Visitor<'tcx> for EncodeContext<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
@@ -1698,7 +1696,7 @@ impl Visitor<'tcx> for EncodeContext<'_, 'tcx> {
     }
 }
 
-impl EncodeContext<'_, 'tcx> {
+impl EncodeContext<'tcx> {
     fn encode_fields(&mut self, adt_def_id: DefId) {
         let def = self.tcx.adt_def(adt_def_id);
         for (variant_index, variant) in def.variants.iter_enumerated() {
@@ -1817,12 +1815,12 @@ impl EncodeContext<'_, 'tcx> {
     }
 }
 
-struct ImplVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct ImplVisitor<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     impls: FxHashMap<DefId, Vec<DefIndex>>,
 }
 
-impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
+impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemKind::Impl(..) = item.node {
             let impl_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
@@ -1865,9 +1863,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                 -> EncodedMetadata
-{
+pub fn encode_metadata<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> EncodedMetadata {
     let mut encoder = opaque::Encoder::new(vec![]);
     encoder.emit_raw_bytes(METADATA_HEADER);
 
@@ -1909,7 +1905,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     EncodedMetadata { raw_data: result }
 }
 
-pub fn get_repr_options<'a, 'tcx, 'gcx>(tcx: TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {
+pub fn get_repr_options<'tcx, 'gcx>(tcx: TyCtxt<'tcx, 'gcx>, did: DefId) -> ReprOptions {
     let ty = tcx.type_of(did);
     match ty.sty {
         ty::Adt(ref def, _) => return def.repr,

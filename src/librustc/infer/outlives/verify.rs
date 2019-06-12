@@ -13,7 +13,7 @@ use crate::util::captures::Captures;
 /// accrues them into the `region_obligations` code, but for NLL we
 /// use something else.
 pub struct VerifyBoundCx<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
@@ -21,7 +21,7 @@ pub struct VerifyBoundCx<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 
 impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     pub fn new(
-        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,

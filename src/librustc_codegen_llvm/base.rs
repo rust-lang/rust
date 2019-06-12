@@ -41,10 +41,10 @@ use rustc::hir::CodegenFnAttrs;
 
 use crate::value::Value;
 
-pub fn write_compressed_metadata<'a, 'gcx>(
-    tcx: TyCtxt<'a, 'gcx, 'gcx>,
+pub fn write_compressed_metadata<'gcx>(
+    tcx: TyCtxt<'gcx, 'gcx>,
     metadata: &EncodedMetadata,
-    llvm_module: &mut ModuleLlvm
+    llvm_module: &mut ModuleLlvm,
 ) {
     use std::io::Write;
     use flate2::Compression;
@@ -103,7 +103,7 @@ pub fn iter_globals(llmod: &'ll llvm::Module) -> ValueIter<'ll> {
     }
 }
 
-pub fn compile_codegen_unit(tcx: TyCtxt<'a, 'tcx, 'tcx>, cgu_name: InternedString) {
+pub fn compile_codegen_unit(tcx: TyCtxt<'tcx, 'tcx>, cgu_name: InternedString) {
     let start_time = Instant::now();
 
     let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
@@ -123,8 +123,8 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'a, 'tcx, 'tcx>, cgu_name: InternedStrin
 
     submit_codegened_module_to_llvm(&LlvmCodegenBackend(()), tcx, module, cost);
 
-    fn module_codegen<'ll, 'tcx>(
-        tcx: TyCtxt<'ll, 'tcx, 'tcx>,
+    fn module_codegen<'tcx>(
+        tcx: TyCtxt<'tcx, 'tcx>,
         cgu_name: InternedString,
     ) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);

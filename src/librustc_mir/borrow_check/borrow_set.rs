@@ -122,12 +122,11 @@ impl LocalsStateAtExit {
 
 impl<'tcx> BorrowSet<'tcx> {
     pub fn build(
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         locals_are_invalidated_at_exit: bool,
-        move_data: &MoveData<'tcx>
+        move_data: &MoveData<'tcx>,
     ) -> Self {
-
         let mut visitor = GatherBorrows {
             tcx,
             body,
@@ -162,7 +161,7 @@ impl<'tcx> BorrowSet<'tcx> {
 }
 
 struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     body: &'a Body<'tcx>,
     idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,

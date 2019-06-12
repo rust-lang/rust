@@ -86,11 +86,12 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 }
 
-pub fn identify_constrained_generic_params<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
-                                              predicates: &ty::GenericPredicates<'tcx>,
-                                              impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-                                              input_parameters: &mut FxHashSet<Parameter>)
-{
+pub fn identify_constrained_generic_params<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    predicates: &ty::GenericPredicates<'tcx>,
+    impl_trait_ref: Option<ty::TraitRef<'tcx>>,
+    input_parameters: &mut FxHashSet<Parameter>,
+) {
     let mut predicates = predicates.predicates.clone();
     setup_constraining_predicates(tcx, &mut predicates, impl_trait_ref, input_parameters);
 }
@@ -136,11 +137,12 @@ pub fn identify_constrained_generic_params<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>,
 /// which is determined by 1, which requires `U`, that is determined
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
-pub fn setup_constraining_predicates<'tcx>(tcx: TyCtxt<'_, '_, '_>,
-                                           predicates: &mut [(ty::Predicate<'tcx>, Span)],
-                                           impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-                                           input_parameters: &mut FxHashSet<Parameter>)
-{
+pub fn setup_constraining_predicates<'tcx>(
+    tcx: TyCtxt<'_, '_>,
+    predicates: &mut [(ty::Predicate<'tcx>, Span)],
+    impl_trait_ref: Option<ty::TraitRef<'tcx>>,
+    input_parameters: &mut FxHashSet<Parameter>,
+) {
     // The canonical way of doing the needed topological sort
     // would be a DFS, but getting the graph and its ownership
     // right is annoying, so I am using an in-place fixed-point iteration,

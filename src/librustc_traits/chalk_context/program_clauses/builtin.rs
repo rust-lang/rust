@@ -15,10 +15,10 @@ use crate::generic_types;
 /// `Implemented(ty: Trait) :- Implemented(nested: Trait)...`
 /// where `Trait` is specified by `trait_def_id`.
 fn builtin_impl_clause(
-    tcx: TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
     nested: &[Kind<'tcx>],
-    trait_def_id: DefId
+    trait_def_id: DefId,
 ) -> ProgramClause<'tcx> {
     ProgramClause {
         goal: ty::TraitPredicate {
@@ -43,11 +43,11 @@ fn builtin_impl_clause(
 }
 
 crate fn assemble_builtin_unsize_impls<'tcx>(
-    tcx: TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, 'tcx>,
     unsize_def_id: DefId,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
-    clauses: &mut Vec<Clause<'tcx>>
+    clauses: &mut Vec<Clause<'tcx>>,
 ) {
     match (&source.sty, &target.sty) {
         (ty::Dynamic(data_a, ..), ty::Dynamic(data_b, ..)) => {
@@ -119,10 +119,10 @@ crate fn assemble_builtin_unsize_impls<'tcx>(
 }
 
 crate fn assemble_builtin_sized_impls<'tcx>(
-    tcx: TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, 'tcx>,
     sized_def_id: DefId,
     ty: Ty<'tcx>,
-    clauses: &mut Vec<Clause<'tcx>>
+    clauses: &mut Vec<Clause<'tcx>>,
 ) {
     let mut push_builtin_impl = |ty: Ty<'tcx>, nested: &[Kind<'tcx>]| {
         let clause = builtin_impl_clause(tcx, ty, nested, sized_def_id);
@@ -223,10 +223,10 @@ crate fn assemble_builtin_sized_impls<'tcx>(
 }
 
 crate fn assemble_builtin_copy_clone_impls<'tcx>(
-    tcx: TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, 'tcx>,
     trait_def_id: DefId,
     ty: Ty<'tcx>,
-    clauses: &mut Vec<Clause<'tcx>>
+    clauses: &mut Vec<Clause<'tcx>>,
 ) {
     let mut push_builtin_impl = |ty: Ty<'tcx>, nested: &[Kind<'tcx>]| {
         let clause = builtin_impl_clause(tcx, ty, nested, trait_def_id);

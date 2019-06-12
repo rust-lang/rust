@@ -395,10 +395,10 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.method_autoderef_steps = method_autoderef_steps;
 }
 
-fn method_autoderef_steps<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
-                                          goal: CanonicalTyGoal<'tcx>)
-                                          -> MethodAutoderefStepsResult<'gcx>
-{
+fn method_autoderef_steps<'gcx, 'tcx>(
+    tcx: TyCtxt<'gcx, 'gcx>,
+    goal: CanonicalTyGoal<'tcx>,
+) -> MethodAutoderefStepsResult<'gcx> {
     debug!("method_autoderef_steps({:?})", goal);
 
     tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &goal, |ref infcx, goal, inference_vars| {

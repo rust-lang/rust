@@ -700,7 +700,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn lub_regions(
         &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         origin: SubregionOrigin<'tcx>,
         a: Region<'tcx>,
         b: Region<'tcx>,
@@ -722,7 +722,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn glb_regions(
         &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         origin: SubregionOrigin<'tcx>,
         a: Region<'tcx>,
         b: Region<'tcx>,
@@ -744,7 +744,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn opportunistic_resolve_var(
         &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         rid: RegionVid,
     ) -> ty::Region<'tcx> {
         let vid = self.unification_table.probe_value(rid).min_vid;
@@ -760,7 +760,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     fn combine_vars(
         &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         t: CombineMapType,
         a: Region<'tcx>,
         b: Region<'tcx>,
@@ -849,8 +849,8 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
-    pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+impl<'gcx, 'tcx> GenericKind<'tcx> {
+    pub fn to_ty(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
             GenericKind::Projection(ref p) => tcx.mk_projection(p.item_def_id, p.substs),

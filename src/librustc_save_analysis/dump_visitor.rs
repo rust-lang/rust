@@ -77,7 +77,7 @@ macro_rules! access_from_vis {
 
 pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput> {
     save_ctxt: SaveContext<'l, 'tcx>,
-    tcx: TyCtxt<'l, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     dumper: &'ll mut JsonDumper<O>,
 
     span: SpanUtils<'l>,

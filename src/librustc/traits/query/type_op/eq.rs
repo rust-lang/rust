@@ -18,7 +18,7 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
     type QueryResponse = ();
 
     fn try_fast_path(
-        _tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        _tcx: TyCtxt<'gcx, 'tcx>,
         key: &ParamEnvAnd<'tcx, Eq<'tcx>>,
     ) -> Option<Self::QueryResponse> {
         if key.value.a == key.value.b {
@@ -29,7 +29,7 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
     }
 
     fn perform_query(
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, ()>> {
         tcx.type_op_eq(canonicalized)

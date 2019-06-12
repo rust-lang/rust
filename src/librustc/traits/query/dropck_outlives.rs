@@ -85,12 +85,7 @@ pub struct DropckOutlivesResult<'tcx> {
 }
 
 impl<'tcx> DropckOutlivesResult<'tcx> {
-    pub fn report_overflows(
-        &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        span: Span,
-        ty: Ty<'tcx>,
-    ) {
+    pub fn report_overflows(&self, tcx: TyCtxt<'_, 'tcx>, span: Span, ty: Ty<'tcx>) {
         if let Some(overflow_ty) = self.overflows.iter().next() {
             let mut err = struct_span_err!(
                 tcx.sess,
@@ -106,7 +101,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
 
     pub fn into_kinds_reporting_overflows(
         self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         span: Span,
         ty: Ty<'tcx>,
     ) -> Vec<Kind<'tcx>> {
@@ -190,7 +185,7 @@ impl_stable_hash_for!(struct DtorckConstraint<'tcx> {
 ///
 /// Note also that `needs_drop` requires a "global" type (i.e., one
 /// with erased regions), but this function does not.
-pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         // None of these types have a destructor and hence they do not
         // require anything in particular to outlive the dtor's

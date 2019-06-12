@@ -788,25 +788,25 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> BorrowckErrors<'cx> for TyCtxt<'cx, 'gcx, 'tcx> {
+impl BorrowckErrors<'tcx> for TyCtxt<'gcx, 'tcx> {
     fn struct_span_err_with_code<S: Into<MultiSpan>>(
         self,
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         self.sess.struct_span_err_with_code(sp, msg, code)
     }
 
-    fn struct_span_err<S: Into<MultiSpan>>(self, sp: S, msg: &str) -> DiagnosticBuilder<'cx> {
+    fn struct_span_err<S: Into<MultiSpan>>(self, sp: S, msg: &str) -> DiagnosticBuilder<'tcx> {
         self.sess.struct_span_err(sp, msg)
     }
 
     fn cancel_if_wrong_origin(
         self,
-        mut diag: DiagnosticBuilder<'cx>,
+        mut diag: DiagnosticBuilder<'tcx>,
         o: Origin,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         if !o.should_emit_errors(self.borrowck_mode()) {
             self.sess.diagnostic().cancel(&mut diag);
         }

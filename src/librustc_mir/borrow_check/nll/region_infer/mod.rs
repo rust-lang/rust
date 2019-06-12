@@ -370,7 +370,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
-    crate fn annotate(&self, tcx: TyCtxt<'_, '_, 'tcx>, err: &mut DiagnosticBuilder<'_>) {
+    crate fn annotate(&self, tcx: TyCtxt<'_, 'tcx>, err: &mut DiagnosticBuilder<'_>) {
         self.universal_regions.annotate(tcx, err)
     }
 
@@ -943,7 +943,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `point`.
     fn eval_verify_bound(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
@@ -976,7 +976,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     fn eval_if_eq(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
@@ -1022,7 +1022,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// higher-ranked things and so forth, and right now the inference
     /// context is not permitted to make more inference variables. So
     /// we use this kind of hacky solution.
-    fn normalize_to_scc_representatives<T>(&self, tcx: TyCtxt<'_, '_, 'tcx>, value: T) -> T
+    fn normalize_to_scc_representatives<T>(&self, tcx: TyCtxt<'_, 'tcx>, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -1368,14 +1368,14 @@ impl<'tcx> RegionDefinition<'tcx> {
 pub trait ClosureRegionRequirementsExt<'gcx, 'tcx> {
     fn apply_requirements(
         &self,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         closure_def_id: DefId,
         closure_substs: SubstsRef<'tcx>,
     ) -> Vec<QueryRegionConstraint<'tcx>>;
 
     fn subst_closure_mapping<T>(
         &self,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         closure_mapping: &IndexVec<RegionVid, ty::Region<'tcx>>,
         value: &T,
     ) -> T
@@ -1398,7 +1398,7 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
     /// requirements.
     fn apply_requirements(
         &self,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         closure_def_id: DefId,
         closure_substs: SubstsRef<'tcx>,
     ) -> Vec<QueryRegionConstraint<'tcx>> {
@@ -1453,7 +1453,7 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
 
     fn subst_closure_mapping<T>(
         &self,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         closure_mapping: &IndexVec<RegionVid, ty::Region<'tcx>>,
         value: &T,
     ) -> T

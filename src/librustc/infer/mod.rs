@@ -91,7 +91,7 @@ impl SuppressRegionErrors {
     /// Indicates that the MIR borrowck will repeat these region
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
-    pub fn when_nll_is_enabled(tcx: TyCtxt<'_, '_, '_>) -> Self {
+    pub fn when_nll_is_enabled(tcx: TyCtxt<'_, '_>) -> Self {
         match tcx.borrowck_mode() {
             // If we're on Migrate mode, report AST region errors
             BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
@@ -102,8 +102,8 @@ impl SuppressRegionErrors {
     }
 }
 
-pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+pub struct InferCtxt<'a, 'gcx, 'tcx> {
+    pub tcx: TyCtxt<'gcx, 'tcx>,
 
     /// During type-checking/inference of a body, `in_progress_tables`
     /// contains a reference to the tables being built up, which are
@@ -465,13 +465,13 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 /// Helper type of a temporary returned by `tcx.infer_ctxt()`.
 /// Necessary because we can't write the following bound:
 /// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>)`.
-pub struct InferCtxtBuilder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
+pub struct InferCtxtBuilder<'gcx, 'tcx> {
+    global_tcx: TyCtxt<'gcx, 'gcx>,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
-    pub fn infer_ctxt(self) -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+impl TyCtxt<'gcx, 'gcx> {
+    pub fn infer_ctxt<'tcx>(self) -> InferCtxtBuilder<'gcx, 'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
             fresh_tables: None,
@@ -479,7 +479,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
     /// will initialize `in_progress_tables` with fresh `TypeckTables`.
     pub fn with_fresh_in_progress_tables(mut self, table_owner: DefId) -> Self {
@@ -498,7 +498,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         &'tcx mut self,
         span: Span,
         canonical: &Canonical<'tcx, T>,
-        f: impl for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>, T, CanonicalVarValues<'tcx>) -> R,
+        f: impl for<'a> FnOnce(InferCtxt<'a, 'gcx, 'tcx>, T, CanonicalVarValues<'tcx>) -> R,
     ) -> R
     where
         T: TypeFoldable<'tcx>,
@@ -510,7 +510,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn enter<R>(&'tcx mut self, f: impl for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R) -> R {
+    pub fn enter<R>(&'tcx mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'gcx, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
             ref fresh_tables,
@@ -1600,7 +1600,7 @@ impl<'a, 'gcx, 'tcx> ShallowResolver<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ShallowResolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -1624,7 +1624,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ShallowResolver<'a, 'gcx, 'tcx> 
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeTrace<'tcx> {
+impl<'gcx, 'tcx> TypeTrace<'tcx> {
     pub fn span(&self) -> Span {
         self.cause.span
     }
@@ -1641,7 +1641,7 @@ impl<'a, 'gcx, 'tcx> TypeTrace<'tcx> {
         }
     }
 
-    pub fn dummy(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> TypeTrace<'tcx> {
+    pub fn dummy(tcx: TyCtxt<'gcx, 'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: ObligationCause::dummy(),
             values: Types(ExpectedFound {

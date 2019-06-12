@@ -4,6 +4,7 @@
 #![deny(internal)]
 #![deny(unused_lifetimes)]
 
+#![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 
@@ -47,14 +48,14 @@ mod error_codes;
 /// First, it doesn't have overridable `fn visit_trait_ref`, so we have to catch trait `DefId`s
 /// manually. Second, it doesn't visit some type components like signatures of fn types, or traits
 /// in `impl Trait`, see individual comments in `DefIdVisitorSkeleton::visit_ty`.
-trait DefIdVisitor<'a, 'tcx: 'a> {
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
+trait DefIdVisitor<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx>;
     fn shallow(&self) -> bool { false }
     fn skip_assoc_tys(&self) -> bool { false }
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool;
 
     /// Not overridden, but used to actually visit types and traits.
-    fn skeleton(&mut self) -> DefIdVisitorSkeleton<'_, 'a, 'tcx, Self> {
+    fn skeleton(&mut self) -> DefIdVisitorSkeleton<'_, 'tcx, Self> {
         DefIdVisitorSkeleton {
             def_id_visitor: self,
             visited_opaque_tys: Default::default(),
@@ -72,16 +73,18 @@ trait DefIdVisitor<'a, 'tcx: 'a> {
     }
 }
 
-struct DefIdVisitorSkeleton<'v, 'a, 'tcx, V>
-    where V: DefIdVisitor<'a, 'tcx> + ?Sized
+struct DefIdVisitorSkeleton<'v, 'tcx, V>
+where
+    V: DefIdVisitor<'tcx> + ?Sized,
 {
     def_id_visitor: &'v mut V,
     visited_opaque_tys: FxHashSet<DefId>,
-    dummy: PhantomData<TyCtxt<'a, 'tcx, 'tcx>>,
+    dummy: PhantomData<TyCtxt<'tcx, 'tcx>>,
 }
 
-impl<'a, 'tcx, V> DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
-    where V: DefIdVisitor<'a, 'tcx> + ?Sized
+impl<'tcx, V> DefIdVisitorSkeleton<'_, 'tcx, V>
+where
+    V: DefIdVisitor<'tcx> + ?Sized,
 {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> bool {
         let TraitRef { def_id, substs } = trait_ref;
@@ -123,8 +126,9 @@ impl<'a, 'tcx, V> DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
     }
 }
 
-impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
-    where V: DefIdVisitor<'a, 'tcx> + ?Sized
+impl<'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'tcx, V>
+where
+    V: DefIdVisitor<'tcx> + ?Sized,
 {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let tcx = self.def_id_visitor.tcx();
@@ -219,8 +223,10 @@ impl<'a, 'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'a, 'tcx, V>
     }
 }
 
-fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                               -> (ty::Visibility, Span, &'static str) {
+fn def_id_visibility<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    def_id: DefId,
+) -> (ty::Visibility, Span, &'static str) {
     match tcx.hir().as_local_hir_id(def_id) {
         Some(hir_id) => {
             let vis = match tcx.hir().get_by_hir_id(hir_id) {
@@ -322,16 +328,20 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 
 // Set the correct `TypeckTables` for the given `item_id` (or an empty table if
 // there is no `TypeckTables` for the item).
-fn item_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         hir_id: hir::HirId,
-                         empty_tables: &'a ty::TypeckTables<'tcx>)
-                         -> &'a ty::TypeckTables<'tcx> {
+fn item_tables<'a, 'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    hir_id: hir::HirId,
+    empty_tables: &'a ty::TypeckTables<'tcx>,
+) -> &'a ty::TypeckTables<'tcx> {
     let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
     if tcx.has_typeck_tables(def_id) { tcx.typeck_tables_of(def_id) } else { empty_tables }
 }
 
-fn min<'a, 'tcx>(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                 -> ty::Visibility {
+fn min<'tcx>(
+    vis1: ty::Visibility,
+    vis2: ty::Visibility,
+    tcx: TyCtxt<'tcx, 'tcx>,
+) -> ty::Visibility {
     if vis1.is_at_least(vis2, tcx) { vis2 } else { vis1 }
 }
 
@@ -341,12 +351,12 @@ fn min<'a, 'tcx>(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'a, 'tc
 /// This is done so that `private_in_public` warnings can be turned into hard errors
 /// in crates that have been updated to use pub(restricted).
 ////////////////////////////////////////////////////////////////////////////////
-struct PubRestrictedVisitor<'a, 'tcx: 'a> {
-    tcx:  TyCtxt<'a, 'tcx, 'tcx>,
+struct PubRestrictedVisitor<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     has_pub_restricted: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for PubRestrictedVisitor<'a, 'tcx> {
+impl Visitor<'tcx> for PubRestrictedVisitor<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
@@ -360,13 +370,13 @@ impl<'a, 'tcx> Visitor<'tcx> for PubRestrictedVisitor<'a, 'tcx> {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct FindMin<'a, 'tcx, VL: VisibilityLike> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     access_levels: &'a AccessLevels,
     min: VL,
 }
 
-impl<'a, 'tcx, VL: VisibilityLike> DefIdVisitor<'a, 'tcx> for FindMin<'a, 'tcx, VL> {
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
+impl<'a, 'tcx, VL: VisibilityLike> DefIdVisitor<'tcx> for FindMin<'a, 'tcx, VL> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> { self.tcx }
     fn shallow(&self) -> bool { VL::SHALLOW }
     fn skip_assoc_tys(&self) -> bool { true }
     fn visit_def_id(&mut self, def_id: DefId, _kind: &str, _descr: &dyn fmt::Display) -> bool {
@@ -382,8 +392,11 @@ trait VisibilityLike: Sized {
 
     // Returns an over-approximation (`skip_assoc_tys` = true) of visibility due to
     // associated types for which we can't determine visibility precisely.
-    fn of_impl<'a, 'tcx>(hir_id: hir::HirId, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         access_levels: &'a AccessLevels) -> Self {
+    fn of_impl<'a, 'tcx>(
+        hir_id: hir::HirId,
+        tcx: TyCtxt<'tcx, 'tcx>,
+        access_levels: &'a AccessLevels,
+    ) -> Self {
         let mut find = FindMin { tcx, access_levels, min: Self::MAX };
         let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
         find.visit(tcx.type_of(def_id));
@@ -424,8 +437,8 @@ impl VisibilityLike for Option<AccessLevel> {
 /// The embargo visitor, used to determine the exports of the AST.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct EmbargoVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct EmbargoVisitor<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
 
     // Accessibility levels for reachable nodes.
     access_levels: AccessLevels,
@@ -435,13 +448,13 @@ struct EmbargoVisitor<'a, 'tcx: 'a> {
     changed: bool,
 }
 
-struct ReachEverythingInTheInterfaceVisitor<'b, 'a: 'b, 'tcx: 'a> {
+struct ReachEverythingInTheInterfaceVisitor<'a, 'tcx> {
     access_level: Option<AccessLevel>,
     item_def_id: DefId,
-    ev: &'b mut EmbargoVisitor<'a, 'tcx>,
+    ev: &'a mut EmbargoVisitor<'tcx>,
 }
 
-impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
+impl EmbargoVisitor<'tcx> {
     fn get(&self, id: hir::HirId) -> Option<AccessLevel> {
         self.access_levels.map.get(&id).cloned()
     }
@@ -459,8 +472,11 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
         }
     }
 
-    fn reach(&mut self, item_id: hir::HirId, access_level: Option<AccessLevel>)
-             -> ReachEverythingInTheInterfaceVisitor<'_, 'a, 'tcx> {
+    fn reach(
+        &mut self,
+        item_id: hir::HirId,
+        access_level: Option<AccessLevel>,
+    ) -> ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
         ReachEverythingInTheInterfaceVisitor {
             access_level: cmp::min(access_level, Some(AccessLevel::Reachable)),
             item_def_id: self.tcx.hir().local_def_id_from_hir_id(item_id),
@@ -506,7 +522,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
+impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
     /// We want to visit items in the context of their containing
     /// module and so forth, so supply a crate for doing a deep walk.
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
@@ -777,7 +793,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'_, 'a, 'tcx> {
+impl ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
     fn generics(&mut self) -> &mut Self {
         for param in &self.ev.tcx.generics_of(self.item_def_id).params {
             match param.kind {
@@ -813,8 +829,8 @@ impl<'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'_, 'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> DefIdVisitor<'a, 'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'a, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.ev.tcx }
+impl DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> { self.ev.tcx }
     fn visit_def_id(&mut self, def_id: DefId, _kind: &str, _descr: &dyn fmt::Display) -> bool {
         if let Some(hir_id) = self.ev.tcx.hir().as_local_hir_id(def_id) {
             self.ev.update(hir_id, self.access_level);
@@ -831,7 +847,7 @@ impl<'a, 'tcx> DefIdVisitor<'a, 'tcx> for ReachEverythingInTheInterfaceVisitor<'
 //////////////////////////////////////////////////////////////////////////////////////
 
 struct NamePrivacyVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     current_item: hir::HirId,
     empty_tables: &'a ty::TypeckTables<'tcx>,
@@ -958,7 +974,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 struct TypePrivacyVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     current_item: DefId,
     in_body: bool,
@@ -1176,8 +1192,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> DefIdVisitor<'a, 'tcx> for TypePrivacyVisitor<'a, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
+impl DefIdVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> { self.tcx }
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         self.check_def_id(def_id, kind, descr)
     }
@@ -1191,7 +1207,7 @@ impl<'a, 'tcx> DefIdVisitor<'a, 'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////////
 
 struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     access_levels: &'a AccessLevels,
     in_variant: bool,
     // Set of errors produced by this obsolete visitor.
@@ -1534,8 +1550,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 /// and traits in public interfaces.
 ///////////////////////////////////////////////////////////////////////////////
 
-struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     item_id: hir::HirId,
     item_def_id: DefId,
     span: Span,
@@ -1546,7 +1562,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     in_assoc_ty: bool,
 }
 
-impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
+impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
     fn generics(&mut self) -> &mut Self {
         for param in &self.tcx.generics_of(self.item_def_id).params {
             match param.kind {
@@ -1632,22 +1648,25 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> DefIdVisitor<'a, 'tcx> for SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
+impl DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> { self.tcx }
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         self.check_def_id(def_id, kind, descr)
     }
 }
 
 struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     has_pub_restricted: bool,
     old_error_set: &'a HirIdSet,
 }
 
 impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
-    fn check(&self, item_id: hir::HirId, required_visibility: ty::Visibility)
-             -> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
+    fn check(
+        &self,
+        item_id: hir::HirId,
+        required_visibility: ty::Visibility,
+    ) -> SearchInterfaceForPrivateItemsVisitor<'tcx> {
         let mut has_old_errors = false;
 
         // Slow path taken only if there any errors in the crate.
@@ -1813,7 +1832,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_privacy<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
     let empty_tables = ty::TypeckTables::empty(None);
 
     // Check privacy of names not checked in previous compilation stages.
@@ -1840,10 +1859,7 @@ fn check_mod_privacy<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
     intravisit::walk_mod(&mut visitor, module, hir_id);
 }
 
-fn privacy_access_levels<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    krate: CrateNum,
-) -> &'tcx AccessLevels {
+fn privacy_access_levels<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, krate: CrateNum) -> &'tcx AccessLevels {
     assert_eq!(krate, LOCAL_CRATE);
 
     // Build up a set of all exported items in the AST. This is a set of all
@@ -1867,7 +1883,7 @@ fn privacy_access_levels<'tcx>(
     tcx.arena.alloc(visitor.access_levels)
 }
 
-fn check_private_in_public<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, krate: CrateNum) {
+fn check_private_in_public<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, krate: CrateNum) {
     assert_eq!(krate, LOCAL_CRATE);
 
     let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);

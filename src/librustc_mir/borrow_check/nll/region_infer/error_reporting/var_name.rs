@@ -10,7 +10,7 @@ use syntax_pos::symbol::Symbol;
 impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn get_var_name_and_span_for_region(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         upvars: &[Upvar],
         fr: RegionVid,
@@ -35,7 +35,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Search the upvars (if any) to find one that references fr. Return its index.
     crate fn get_upvar_index_for_region(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         fr: RegionVid,
     ) -> Option<usize> {
         let upvar_index = self
@@ -69,7 +69,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// declared.
     crate fn get_upvar_name_and_span_for_region(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         upvars: &[Upvar],
         upvar_index: usize,
     ) -> (Symbol, Span) {
@@ -91,7 +91,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// user - in particular, index 0 is not the implicit self parameter.
     crate fn get_argument_index_for_region(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, 'tcx>,
         fr: RegionVid,
     ) -> Option<usize> {
         let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();

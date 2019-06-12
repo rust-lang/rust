@@ -25,8 +25,7 @@ use crate::dataflow::has_rustc_mir_with;
 pub struct SanityCheck;
 
 impl MirPass for SanityCheck {
-    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let def_id = src.def_id();
         if !tcx.has_attr(def_id, sym::rustc_mir) {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
@@ -84,12 +83,14 @@ impl MirPass for SanityCheck {
 /// (If there are any calls to `rustc_peek` that do not match the
 /// expression form above, then that emits an error as well, but those
 /// errors are not intended to be used for unit tests.)
-pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                body: &Body<'tcx>,
-                                                def_id: DefId,
-                                                _attributes: &[ast::Attribute],
-                                                results: &DataflowResults<'tcx, O>)
-    where O: BitDenotation<'tcx, Idx=MovePathIndex> + HasMoveData<'tcx>
+pub fn sanity_check_via_rustc_peek<'tcx, O>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    body: &Body<'tcx>,
+    def_id: DefId,
+    _attributes: &[ast::Attribute],
+    results: &DataflowResults<'tcx, O>,
+) where
+    O: BitDenotation<'tcx, Idx = MovePathIndex> + HasMoveData<'tcx>,
 {
     debug!("sanity_check_via_rustc_peek def_id: {:?}", def_id);
     // FIXME: this is not DRY. Figure out way to abstract this and
@@ -101,11 +102,13 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           body: &Body<'tcx>,
-                           results: &DataflowResults<'tcx, O>,
-                           bb: mir::BasicBlock) where
-    O: BitDenotation<'tcx, Idx=MovePathIndex> + HasMoveData<'tcx>
+fn each_block<'tcx, O>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    body: &Body<'tcx>,
+    results: &DataflowResults<'tcx, O>,
+    bb: mir::BasicBlock,
+) where
+    O: BitDenotation<'tcx, Idx = MovePathIndex> + HasMoveData<'tcx>,
 {
     let move_data = results.0.operator.move_data();
     let mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = body[bb];
@@ -214,9 +217,10 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       form `&expr`"));
 }
 
-fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           terminator: &'a Option<mir::Terminator<'tcx>>)
-                           -> Option<(&'a [mir::Operand<'tcx>], Span)> {
+fn is_rustc_peek<'a, 'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
+    terminator: &'a Option<mir::Terminator<'tcx>>,
+) -> Option<(&'a [mir::Operand<'tcx>], Span)> {
     if let Some(mir::Terminator { ref kind, source_info, .. }) = *terminator {
         if let mir::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind {
             if let mir::Operand::Constant(ref func) = *oper {
