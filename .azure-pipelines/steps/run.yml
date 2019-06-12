@@ -11,6 +11,12 @@ steps:
 - checkout: self
   fetchDepth: 2
 
+# Spawn a background process to collect CPU usage statistics which we'll upload
+# at the end of the build. See the comments in the script here for more
+# information.
+- bash: python src/ci/cpu-usage-over-time.py &> cpu-usage.csv &
+  displayName: "Collect CPU-usage statistics in the background"
+
 - bash: printenv | sort
   displayName: Show environment variables
 
@@ -142,3 +148,13 @@ steps:
     AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
   condition: and(succeeded(), or(eq(variables.DEPLOY, '1'), eq(variables.DEPLOY_ALT, '1')))
   displayName: Upload artifacts
+
+# Upload CPU usage statistics that we've been gathering this whole time. Always
+# execute this step in case we want to inspect failed builds, but don't let
+# errors here ever fail the build since this is just informational.
+- bash: aws s3 cp --acl public-read cpu-usage.csv s3://$DEPLOY_BUCKET/rustc-builds/$BUILD_SOURCEVERSION/cpu-$SYSTEM_JOBNAME.csv
+  env:
+    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+  condition: contains(variables, 'AWS_SECRET_ACCESS_KEY')
+  continueOnError: true
+  displayName: Upload CPU usage statistics
