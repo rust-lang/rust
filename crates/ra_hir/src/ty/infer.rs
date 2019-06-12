@@ -54,7 +54,6 @@ mod unify;
 /// The entry point of type inference.
 pub fn infer_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
     let _p = profile("infer_query");
-    db.check_canceled();
     let body = def.body(db);
     let resolver = def.resolver(db);
     let mut ctx = InferenceContext::new(db, body, resolver);

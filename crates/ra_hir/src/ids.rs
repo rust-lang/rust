@@ -61,7 +61,6 @@ impl HirFileId {
         db: &impl AstDatabase,
         file_id: HirFileId,
     ) -> Option<TreeArc<SyntaxNode>> {
-        db.check_canceled();
         match file_id.0 {
             HirFileIdRepr::File(file_id) => Some(db.parse(file_id).tree.syntax().to_owned()),
             HirFileIdRepr::Macro(macro_file) => db.parse_macro(macro_file),
