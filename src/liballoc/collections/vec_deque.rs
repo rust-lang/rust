@@ -2714,28 +2714,6 @@ impl<T> From<Vec<T>> for VecDeque<T> {
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// // Start with a `VecDeque<i32>`.
-    /// let deque: VecDeque<_> = (1..5).collect();
-    ///
-    /// // Turn it into a `Vec<i32>` with no allocation needed.
-    /// let mut vec = Vec::from(deque);
-    ///
-    /// // Modify it, being careful not to trigger reallocation.
-    /// vec.pop();
-    /// vec.push(100);
-    ///
-    /// // Turn it back into a `VecDeque<i32>` with no allocation needed.
-    /// let ptr = vec.as_ptr();
-    /// let deque = VecDeque::from(vec);
-    /// assert_eq!(deque, [1, 2, 3, 100]);
-    /// assert_eq!(deque.as_slices().0.as_ptr(), ptr);
-    /// ```
     fn from(mut other: Vec<T>) -> Self {
         unsafe {
             let other_buf = other.as_mut_ptr();
