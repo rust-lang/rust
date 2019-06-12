@@ -1,6 +1,7 @@
 // assembly-output: ptx-linker
 // compile-flags: --crate-type cdylib -C link-arg=--arch=sm_60
 // only-nvptx64
+// ignore-nvptx64
 
 #![no_std]
 
