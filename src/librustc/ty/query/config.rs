@@ -11,7 +11,7 @@ use crate::util::profiling::ProfileCategory;
 use std::borrow::Cow;
 use std::hash::Hash;
 use std::fmt::Debug;
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::fingerprint::Fingerprint;
 use crate::ich::StableHashingContext;
 
@@ -34,7 +34,7 @@ pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     fn query(key: Self::Key) -> Query<'tcx>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_cache<'a>(tcx: TyCtxt<'tcx>) -> &'a Lock<QueryCache<'tcx, Self>>;
+    fn query_cache<'a>(tcx: TyCtxt<'tcx>) -> &'a Sharded<QueryCache<'tcx, Self>>;
 
     fn to_dep_node(tcx: TyCtxt<'tcx>, key: &Self::Key) -> DepNode;
 
