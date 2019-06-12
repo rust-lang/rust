@@ -1,6 +1,6 @@
 // ignore-compile-mode-nll
 #![allow(warnings)]
-#![feature(nll)]
+#![feature(constants_in_array_repeat_expressions, nll)]
 
 // Some type that is not copyable.
 struct Bar;

@@ -1,5 +1,6 @@
 // ignore-compile-mode-nll
 // compile-flags: -Z borrowck=migrate
+#![feature(constants_in_array_repeat_expressions)]
 #![allow(warnings)]
 
 // Some type that is not copyable.

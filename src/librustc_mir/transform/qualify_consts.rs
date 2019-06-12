@@ -811,7 +811,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 let not_promotable = IsNotImplicitlyPromotable::in_operand(self, operand) ||
                                      IsNotPromotable::in_operand(self, operand);
                 debug!("assign: self.def_id={:?} operand={:?}", self.def_id, operand);
-                if !not_promotable {
+                if !not_promotable && self.tcx.features().const_in_array_repeat_expressions {
                     debug!("assign: candidate={:?}", candidate);
                     self.promotion_candidates.push(candidate);
                 }
