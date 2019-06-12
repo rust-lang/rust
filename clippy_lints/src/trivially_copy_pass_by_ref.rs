@@ -64,6 +64,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
             // Cap the calculated bit width at 32-bits to reduce
             // portability problems between 32 and 64-bit targets
             let bit_width = cmp::min(bit_width, 32);
+            #[allow(clippy::integer_division)]
             let byte_width = bit_width / 8;
             // Use a limit of 2 times the register byte width
             byte_width * 2

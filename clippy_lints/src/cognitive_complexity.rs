@@ -74,7 +74,8 @@ impl CognitiveComplexity {
         let ret_adjust = if match_type(cx, ret_ty, &paths::RESULT) {
             returns
         } else {
-            returns / 2
+            #[allow(clippy::integer_division)]
+            (returns / 2)
         };
 
         if cc + divergence < match_arms + short_circuits {
