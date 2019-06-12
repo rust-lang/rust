@@ -4094,7 +4094,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         hir::UnNeg => {
                             let result = self.check_user_unop(expr, oprnd_t, unop);
                             // If it's builtin, we can reuse the type, this helps inference.
-                            if !(oprnd_t.is_integral() || oprnd_t.is_fp()) {
+                            if !oprnd_t.is_numeric() {
                                 oprnd_t = result;
                             }
                         }
