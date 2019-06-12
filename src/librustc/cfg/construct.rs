@@ -1,11 +1,11 @@
 use crate::cfg::*;
 use crate::middle::region;
 use rustc_data_structures::graph::implementation as graph;
-use syntax::ptr::P;
 use crate::ty::{self, TyCtxt};
 
 use crate::hir::{self, PatKind};
 use crate::hir::def_id::DefId;
+use crate::hir::ptr::P;
 
 struct CFGBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,

@@ -20,13 +20,13 @@ use crate::astconv::AstConv as _;
 
 use errors::{Applicability, DiagnosticBuilder};
 use syntax::ast;
-use syntax::ptr::P;
 use syntax::symbol::{Symbol, LocalInternedString, kw, sym};
 use syntax::source_map::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
 use rustc::hir;
 use rustc::hir::{ExprKind, QPath};
 use rustc::hir::def::{CtorKind, Res, DefKind};
+use rustc::hir::ptr::P;
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::mir::interpret::GlobalId;

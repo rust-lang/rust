@@ -1,7 +1,7 @@
 use crate::hair::*;
 
 use rustc::hir;
-use syntax::ptr::P;
+use rustc::hir::ptr::P;
 
 pub trait ToRef {
     type Output;
