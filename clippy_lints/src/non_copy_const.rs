@@ -12,7 +12,7 @@ use rustc::ty::{Ty, TypeFlags};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use rustc_typeck::hir_ty_to_ty;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{InnerSpan, Span, DUMMY_SP};
 
 use crate::utils::{in_constant, in_macro_or_desugar, is_copy, span_lint_and_then};
 
@@ -123,7 +123,7 @@ fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, source: S
         }
         match source {
             Source::Item { .. } => {
-                let const_kw_span = span.from_inner_byte_pos(0, 5);
+                let const_kw_span = span.from_inner(InnerSpan::new(0, 5));
                 db.span_suggestion(
                     const_kw_span,
                     "make this a static item",
