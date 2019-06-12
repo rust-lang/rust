@@ -98,7 +98,7 @@ script:
       export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
   - |
     if [ -z ${INTEGRATION} ]; then
-      ./ci/base-tests.sh && sleep 5
+      travis_wait 30 ./ci/base-tests.sh && sleep 5
     else
       ./ci/integration-tests.sh && sleep 5
     fi
