@@ -33,7 +33,7 @@ use crate::types::{rewrite_path, PathContext};
 use crate::utils::{
     colon_spaces, contains_skip, count_newlines, first_line_ends_with, inner_attributes,
     last_line_extendable, last_line_width, mk_sp, outer_attributes, ptr_vec_to_ref_vec,
-    semicolon_for_expr, semicolon_for_stmt, wrap_str,
+    semicolon_for_expr, semicolon_for_stmt, unicode_str_width, wrap_str,
 };
 use crate::vertical::rewrite_with_alignment;
 use crate::visitor::FmtVisitor;
@@ -1973,7 +1973,9 @@ fn choose_rhs<R: Rewrite>(
     rhs_tactics: RhsTactics,
 ) -> Option<String> {
     match orig_rhs {
-        Some(ref new_str) if !new_str.contains('\n') && new_str.len() <= shape.width => {
+        Some(ref new_str)
+            if !new_str.contains('\n') && unicode_str_width(new_str) <= shape.width =>
+        {
             Some(format!(" {}", new_str))
         }
         _ => {
