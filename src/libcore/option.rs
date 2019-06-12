@@ -725,8 +725,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_xor)]
-    ///
     /// let x = Some(2);
     /// let y: Option<u32> = None;
     /// assert_eq!(x.xor(y), Some(2));
@@ -744,7 +742,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.xor(y), None);
     /// ```
     #[inline]
-    #[unstable(feature = "option_xor", issue = "50512")]
+    #[stable(feature = "option_xor", since = "1.37.0")]
     pub fn xor(self, optb: Option<T>) -> Option<T> {
         match (self, optb) {
             (Some(a), None) => Some(a),
