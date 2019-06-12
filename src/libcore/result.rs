@@ -240,7 +240,7 @@ use crate::ops::{self, Deref};
 ///
 /// [`Ok`]: enum.Result.html#variant.Ok
 /// [`Err`]: enum.Result.html#variant.Err
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Result<T, E> {
@@ -1002,6 +1002,27 @@ fn unwrap_failed<E: fmt::Debug>(msg: &str, error: E) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Clone, E: Clone> Clone for Result<T, E> {
+    #[inline]
+    fn clone(&self) -> Self {
+        match self {
+            Ok(x) => Ok(x.clone()),
+            Err(x) => Err(x.clone()),
+        }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        match (self, source) {
+            (Ok(to), Ok(from)) => to.clone_from(from),
+            (Err(to), Err(from)) => to.clone_from(from),
+            (to, from) => *to = from.clone(),
+        }
+    }
+}
+
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, E> IntoIterator for Result<T, E> {
