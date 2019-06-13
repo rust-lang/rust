@@ -181,6 +181,8 @@ for
                     (InternMode::Const, hir::Mutability::MutMutable) =>
                         bug!("const qualif failed to prevent mutable references"),
                 }
+                // Compute the mutability with which we'll start visiting the allocation. This is
+                // what gets changed when we encounter an `UnsafeCell`
                 let mutability = match (self.mutability, mutability) {
                     // The only way a mutable reference actually works as a mutable reference is
                     // by being in a `static mut` directly or behind another mutable reference.
@@ -190,6 +192,7 @@ for
                     (Mutability::Mutable, hir::Mutability::MutMutable) => Mutability::Mutable,
                     _ => Mutability::Immutable,
                 };
+                // Compute the mutability of the allocation
                 let intern_mutability = intern_mutability(
                     self.ecx.tcx.tcx,
                     self.param_env,
@@ -244,6 +247,7 @@ pub fn intern_const_alloc_recursive(
     param_env: ty::ParamEnv<'tcx>,
 ) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
+    // this `mutability` is the mutability of the place, ignoring the type
     let (mutability, base_intern_mode) = match tcx.static_mutability(def_id) {
         Some(hir::Mutability::MutImmutable) => (Mutability::Immutable, InternMode::Static),
         None => (Mutability::Immutable, InternMode::ConstBase),
@@ -255,6 +259,10 @@ pub fn intern_const_alloc_recursive(
     let mut ref_tracking = RefTracking::new((ret, mutability, base_intern_mode));
     let leftover_relocations = &mut FxHashSet::default();
 
+    // This mutability is the combination of the place mutability and the type mutability. If either
+    // is mutable, `alloc_mutability` is mutable. This exists because the entire allocation needs
+    // to be mutable if it contains an `UnsafeCell` anywhere. The other `mutability` exists so that
+    // the visitor does not treat everything outside the `UnsafeCell` as mutable.
     let alloc_mutability = intern_mutability(
         tcx.tcx, param_env, ret.layout.ty, tcx.span, mutability,
     );
