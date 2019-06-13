@@ -59,7 +59,8 @@ enum InternMode {
 struct IsStaticOrFn;
 
 impl<'rt, 'a, 'mir, 'tcx> InternVisitor<'rt, 'a, 'mir, 'tcx> {
-    fn intern(
+    /// Intern an allocation without looking at its children
+    fn intern_shallow(
         &mut self,
         ptr: Pointer,
         mutability: Mutability,
@@ -152,7 +153,7 @@ for
                         if let Ok(vtable) = meta.unwrap().to_ptr() {
                             // explitly choose `Immutable` here, since vtables are immutable, even
                             // if the reference of the fat pointer is mutable
-                            self.intern(vtable, Mutability::Immutable)?;
+                            self.intern_shallow(vtable, Mutability::Immutable)?;
                         }
                     }
                 }
@@ -206,7 +207,7 @@ for
                     InternMode::ConstBase => InternMode::Const,
                     other => other,
                 };
-                match self.intern(ptr, intern_mutability)? {
+                match self.intern_shallow(ptr, intern_mutability)? {
                     // No need to recurse, these are interned already and statics may have
                     // cycles, so we don't want to recurse there
                     Some(IsStaticOrFn) => {},
@@ -270,7 +271,7 @@ pub fn intern_const_alloc_recursive(
         leftover_relocations,
         param_env,
         mutability,
-    }.intern(ret.ptr.to_ptr()?, alloc_mutability)?;
+    }.intern_shallow(ret.ptr.to_ptr()?, alloc_mutability)?;
 
     while let Some(((mplace, mutability, mode), _)) = ref_tracking.todo.pop() {
         let interned = InternVisitor {
