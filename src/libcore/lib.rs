@@ -236,3 +236,8 @@ mod core_arch;
 
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub use core_arch::arch;
+
+// Include a number of private modules that exist solely to provide
+// the rustdoc documentation for primitive types. Using `include!`
+// because rustdoc only looks for these modules at the crate level.
+include!("primitive_docs.rs");
