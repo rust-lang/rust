@@ -55,7 +55,7 @@ commit_toolstate_change() {
     git config --global credential.helper store
     printf 'https://%s:x-oauth-basic@github.com\n' "$TOOLSTATE_REPO_ACCESS_TOKEN" \
         > "$HOME/.git-credentials"
-    git clone --depth=1 https://github.com/rust-lang-nursery/rust-toolstate.git
+    git clone --depth=1 $TOOLSTATE_REPO
 
     cd rust-toolstate
     FAILURE=1
