@@ -492,7 +492,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
-            self.dep_graph.mark_loaded_from_cache(dep_node_index, true);
+            self.dep_graph.mark_loaded_from_cache(*dep_node, true);
         }
 
         result
@@ -568,7 +568,7 @@ impl<'tcx> TyCtxt<'tcx> {
         profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
         if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
-            self.dep_graph.mark_loaded_from_cache(dep_node_index, false);
+            self.dep_graph.mark_loaded_from_cache(dep_node, false);
         }
 
         if dep_node.kind != crate::dep_graph::DepKind::Null {
