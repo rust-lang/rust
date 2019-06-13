@@ -33,7 +33,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar<Tag>>;
 }
 
-impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
+impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,

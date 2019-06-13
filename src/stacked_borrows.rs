@@ -519,8 +519,8 @@ impl AllocationExtra<Tag> for Stacks {
 
 /// Retagging/reborrowing.  There is some policy in here, such as which permissions
 /// to grant for which references, and when to add protectors.
-impl<'a, 'mir, 'tcx> EvalContextPrivExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
-trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
+impl<'mir, 'tcx> EvalContextPrivExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn reborrow(
         &mut self,
         place: MPlaceTy<'tcx, Tag>,
@@ -599,8 +599,8 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
     }
 }
 
-impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
-pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
+impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn retag(
         &mut self,
         kind: RetagKind,
@@ -643,19 +643,19 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         visitor.visit_value(place)?;
 
         // The actual visitor.
-        struct RetagVisitor<'ecx, 'a, 'mir, 'tcx> {
-            ecx: &'ecx mut MiriEvalContext<'a, 'mir, 'tcx>,
+        struct RetagVisitor<'ecx, 'mir, 'tcx> {
+            ecx: &'ecx mut MiriEvalContext<'mir, 'tcx>,
             kind: RetagKind,
         }
-        impl<'ecx, 'a, 'mir, 'tcx>
-            MutValueVisitor<'a, 'mir, 'tcx, Evaluator<'tcx>>
+        impl<'ecx, 'mir, 'tcx>
+            MutValueVisitor<'mir, 'tcx, Evaluator<'tcx>>
         for
-            RetagVisitor<'ecx, 'a, 'mir, 'tcx>
+            RetagVisitor<'ecx, 'mir, 'tcx>
         {
             type V = MPlaceTy<'tcx, Tag>;
 
             #[inline(always)]
-            fn ecx(&mut self) -> &mut MiriEvalContext<'a, 'mir, 'tcx> {
+            fn ecx(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
                 &mut self.ecx
             }
 

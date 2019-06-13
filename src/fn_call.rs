@@ -9,8 +9,8 @@ use rand::RngCore;
 
 use crate::*;
 
-impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
-pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
+impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn find_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -930,8 +930,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
     }
 }
 
-fn gen_random<'a, 'mir, 'tcx>(
-    this: &mut MiriEvalContext<'a, 'mir, 'tcx>,
+fn gen_random<'mir, 'tcx>(
+    this: &mut MiriEvalContext<'mir, 'tcx>,
     len: usize,
     dest: Scalar<Tag>,
 ) -> InterpResult<'tcx>  {
