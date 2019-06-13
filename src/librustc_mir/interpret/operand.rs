@@ -185,11 +185,9 @@ impl<'tcx, Tag> OpTy<'tcx, Tag> {
     /// packedness. We could clone the allocation and adjust the alignment, but that seems wasteful,
     /// since the alignment is already encoded in the allocation. We know it is alright, because
     /// validation checked everything before the initial constant entered match checking.
-    pub(crate) fn force_alignment(&mut self, align: Align) {
+    pub(crate) fn force_unaligned_access(&mut self) {
         if let Operand::Indirect(mplace) = &mut self.op {
-            if align < mplace.align {
-                mplace.align = align;
-            }
+            mplace.align = Align::from_bytes(1).unwrap();
         }
     }
 }
