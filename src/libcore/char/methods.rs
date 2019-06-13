@@ -523,7 +523,14 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` is an alphabetic code point, and false if not.
+    /// Returns `true` if this `char` has the `Alphabetic` property; otherwise, returns `false`.
+    ///
+    /// `Alphabetic` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
+    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     ///
     /// # Examples
     ///
@@ -547,12 +554,15 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` satisfies the 'XID_Start' Unicode property, and false
-    /// otherwise.
+    /// Returns `true` if this `char` has the `XID_Start` property; otherwise, returns `false`.
     ///
-    /// 'XID_Start' is a Unicode Derived Property specified in
-    /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
-    /// mostly similar to `ID_Start` but modified for closure under `NFKx`.
+    /// `XID_Start` is described in [Unicode Standard Annex #31 (Unicode Identifier and Pattern
+    /// Syntax)][uax31] and specified in the [Unicode Character Database][ucd]
+    /// [`DerivedCoreProperties.txt`].
+    ///
+    /// [uax31]: https://www.unicode.org/reports/tr31/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     #[unstable(feature = "rustc_private",
                reason = "mainly needed for compiler internals",
                issue = "27812")]
@@ -561,12 +571,15 @@ impl char {
         derived_property::XID_Start(self)
     }
 
-    /// Returns `true` if this `char` satisfies the 'XID_Continue' Unicode property, and false
-    /// otherwise.
+    /// Returns `true` if this `char` has the `XID_Continue` property; otherwise, returns `false`.
     ///
-    /// 'XID_Continue' is a Unicode Derived Property specified in
-    /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
-    /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
+    /// `XID_Continue` is described in [Unicode Standard Annex #31 (Unicode Identifier and Pattern
+    /// Syntax)][uax31] and specified in the [Unicode Character Database][ucd]
+    /// [`DerivedCoreProperties.txt`].
+    ///
+    /// [uax31]: https://www.unicode.org/reports/tr31/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     #[unstable(feature = "rustc_private",
                reason = "mainly needed for compiler internals",
                issue = "27812")]
@@ -575,10 +588,14 @@ impl char {
         derived_property::XID_Continue(self)
     }
 
-    /// Returns `true` if this `char` is lowercase.
+    /// Returns `true` if this `char` has the `Lowercase` property; otherwise, returns `false`.
     ///
-    /// 'Lowercase' is defined according to the terms of the Unicode Derived Core
-    /// Property `Lowercase`.
+    /// `Lowercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
+    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     ///
     /// # Examples
     ///
@@ -603,10 +620,14 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` is uppercase.
+    /// Returns `true` if this `char` has the `Uppercase` property; otherwise, returns `false`.
     ///
-    /// 'Uppercase' is defined according to the terms of the Unicode Derived Core
-    /// Property `Uppercase`.
+    /// `Uppercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
+    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     ///
     /// # Examples
     ///
@@ -631,10 +652,12 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` is whitespace.
+    /// Returns `true` if this `char` has the `White_Space` property; otherwise, returns `false`.
     ///
-    /// 'Whitespace' is defined according to the terms of the Unicode Derived Core
-    /// Property `White_Space`.
+    /// `White_Space` is specified in the [Unicode Character Database][ucd] [`PropList.txt`].
+    ///
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`PropList.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/PropList.txt
     ///
     /// # Examples
     ///
@@ -658,10 +681,11 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` is alphanumeric.
+    /// Returns `true` if this `char` satisfies either [`is_alphabetic()`] or [`is_numeric()`];
+    /// otherwise, returns `false`
     ///
-    /// 'Alphanumeric'-ness is defined in terms of the Unicode General Categories
-    /// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
+    /// [`is_alphabetic()`]: ../std/primitive.char.html#method.is_alphabetic
+    /// [`is_numeric()`]: ../std/primitive.char.html#method.is_numeric
     ///
     /// # Examples
     ///
@@ -683,10 +707,16 @@ impl char {
         self.is_alphabetic() || self.is_numeric()
     }
 
-    /// Returns `true` if this `char` is a control code point.
+    /// Returns `true` if this `char` has the general category for control codes; otherwise,
+    /// returns `false`.
     ///
-    /// 'Control code point' is defined in terms of the Unicode General
-    /// Category `Cc`.
+    /// Control codes (code points with the general category of `Cc`) are described in Chapter 4
+    /// (Character Properties) of the [Unicode Standard] and specified in the [Unicode Character
+    /// Database][ucd] [`UnicodeData.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
     /// # Examples
     ///
@@ -703,20 +733,32 @@ impl char {
         general_category::Cc(self)
     }
 
-    /// Returns `true` if this `char` is an extended grapheme character.
+    /// Returns `true` if this `char` has the `Grapheme_Extend` property; otherwise, returns `false`.
     ///
-    /// 'Extended grapheme character' is defined in terms of the Unicode Shaping and Rendering
-    /// Category `Grapheme_Extend`.
+    /// `Grapheme_Extend` is described in [Unicode Standard Annex #29 (Unicode Text
+    /// Segmentation)][uax29] and specified in the [Unicode Character Database][ucd]
+    /// [`DerivedCoreProperties.txt`].
+    ///
+    /// [uax29]: https://www.unicode.org/reports/tr29/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     #[inline]
     pub(crate) fn is_grapheme_extended(self) -> bool {
         derived_property::Grapheme_Extend(self)
     }
 
-    /// Returns `true` if this `char` is numeric.
+    /// Returns `true` if this `char` has one of the general categories for numbers; otherwise,
+    /// returns `false`.
     ///
-    /// 'Numeric'-ness is defined in terms of the Unicode General Categories
-    /// 'Nd', 'Nl', 'No'.
+    /// The general categories for numbers (`Nd` for decimal digits, `Nl` for letter-like numeric
+    /// characters, and `No` for other numeric characters) are specified in the [Unicode Character
+    /// Database][ucd] [`UnicodeData.txt`].
     ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+
     /// # Examples
     ///
     /// Basic usage:
@@ -741,25 +783,29 @@ impl char {
         }
     }
 
-    /// Returns an iterator that yields the lowercase equivalent of a `char`
-    /// as one or more `char`s.
+    /// Returns an iterator that yields the lowercase mapping of this `char` as one or more
+    /// `char`s.
     ///
-    /// If a character does not have a lowercase equivalent, the same character
-    /// will be returned back by the iterator.
+    /// If this `char` does not have a lowercase mapping, the iterator yields the same `char`.
     ///
-    /// This performs complex unconditional mappings with no tailoring: it maps
-    /// one Unicode character to its lowercase equivalent according to the
-    /// [Unicode database] and the additional complex mappings
-    /// [`SpecialCasing.txt`]. Conditional mappings (based on context or
-    /// language) are not considered here.
+    /// If this `char` has a one-to-one lowercase mapping given by the [Unicode Character
+    /// Database][ucd] [`UnicodeData.txt`], the iterator yields that `char`.
     ///
-    /// For a full reference, see [here][reference].
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
-    /// [Unicode database]: ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
+    /// If this `char` requires special considerations (e.g. multiple `char`s) the iterator yields
+    /// the `char`(s) given by [`SpecialCasing.txt`].
     ///
-    /// [`SpecialCasing.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
+    /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
     ///
-    /// [reference]: http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
+    /// This operation performs an unconditional mapping without tailoring. That is, the conversion
+    /// is independent of context and language.
+    ///
+    /// In the [Unicode Standard], Chapter 4 (Character Properties) discusses case mapping in
+    /// general and Chapter 3 (Conformance) discusses the default algorithm for case conversion.
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     ///
     /// # Examples
     ///
@@ -802,25 +848,29 @@ impl char {
         ToLowercase(CaseMappingIter::new(conversions::to_lower(self)))
     }
 
-    /// Returns an iterator that yields the uppercase equivalent of a `char`
-    /// as one or more `char`s.
+    /// Returns an iterator that yields the uppercase mapping of this `char` as one or more
+    /// `char`s.
     ///
-    /// If a character does not have an uppercase equivalent, the same character
-    /// will be returned back by the iterator.
+    /// If this `char` does not have a uppercase mapping, the iterator yields the same `char`.
     ///
-    /// This performs complex unconditional mappings with no tailoring: it maps
-    /// one Unicode character to its uppercase equivalent according to the
-    /// [Unicode database] and the additional complex mappings
-    /// [`SpecialCasing.txt`]. Conditional mappings (based on context or
-    /// language) are not considered here.
+    /// If this `char` has a one-to-one uppercase mapping given by the [Unicode Character
+    /// Database][ucd] [`UnicodeData.txt`], the iterator yields that `char`.
     ///
-    /// For a full reference, see [here][reference].
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
-    /// [Unicode database]: ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
+    /// If this `char` requires special considerations (e.g. multiple `char`s) the iterator yields
+    /// the `char`(s) given by [`SpecialCasing.txt`].
     ///
-    /// [`SpecialCasing.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
+    /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
     ///
-    /// [reference]: http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
+    /// This operation performs an unconditional mapping without tailoring. That is, the conversion
+    /// is independent of context and language.
+    ///
+    /// In the [Unicode Standard], Chapter 4 (Character Properties) discusses case mapping in
+    /// general and Chapter 3 (Conformance) discusses the default algorithm for case conversion.
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     ///
     /// # Examples
     ///
