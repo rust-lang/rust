@@ -33,6 +33,8 @@ const EXCEPTIONS: &[&str] = &[
     "is-match",           // MPL-2.0, mdbook
     "cssparser",          // MPL-2.0, rustdoc
     "smallvec",           // MPL-2.0, rustdoc
+    "rdrand",             // ISC, mdbook, rustfmt
+    "fuchsia-cprng",      // BSD-3-Clause, mdbook, rustfmt
     "fuchsia-zircon-sys", // BSD-3-Clause, rustdoc, rustc, cargo
     "fuchsia-zircon",     // BSD-3-Clause, rustdoc, rustc, cargo (jobserver & tempdir)
     "cssparser-macros",   // MPL-2.0, rustdoc
