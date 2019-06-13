@@ -46,10 +46,11 @@ macro_rules! book {
             }
 
             fn run(self, builder: &Builder<'_>) {
-                builder.ensure(Rustbook {
+                builder.ensure(RustbookSrc {
                     target: self.target,
                     name: INTERNER.intern_str($book_name),
                     version: $book_ver,
+                    src: doc_src(builder),
                 })
             }
         }
@@ -75,35 +76,8 @@ enum RustbookVersion {
     MdBook2,
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-struct Rustbook {
-    target: Interned<String>,
-    name: Interned<String>,
-    version: RustbookVersion,
-}
-
-impl Step for Rustbook {
-    type Output = ();
-
-    // rustbook is never directly called, and only serves as a shim for the nomicon and the
-    // reference.
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
-    /// Invoke `rustbook` for `target` for the doc book `name`.
-    ///
-    /// This will not actually generate any documentation if the documentation has
-    /// already been generated.
-    fn run(self, builder: &Builder<'_>) {
-        let src = builder.src.join("src/doc");
-        builder.ensure(RustbookSrc {
-            target: self.target,
-            name: self.name,
-            src: INTERNER.intern_path(src),
-            version: self.version,
-        });
-    }
+fn doc_src(builder: &Builder<'_>) -> Interned<PathBuf> {
+    INTERNER.intern_path(builder.src.join("src/doc"))
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -274,33 +248,37 @@ impl Step for TheBook {
         let name = self.name;
 
         // build book
-        builder.ensure(Rustbook {
+        builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(name.to_string()),
             version: RustbookVersion::MdBook2,
+            src: doc_src(builder),
         });
 
         // building older edition redirects
 
         let source_name = format!("{}/first-edition", name);
-        builder.ensure(Rustbook {
+        builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
             version: RustbookVersion::MdBook2,
+            src: doc_src(builder),
         });
 
         let source_name = format!("{}/second-edition", name);
-        builder.ensure(Rustbook {
+        builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
             version: RustbookVersion::MdBook2,
+            src: doc_src(builder),
         });
 
         let source_name = format!("{}/2018-edition", name);
-        builder.ensure(Rustbook {
+        builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
             version: RustbookVersion::MdBook2,
+            src: doc_src(builder),
         });
 
         // build the version info page and CSS
@@ -897,11 +875,6 @@ impl Step for UnstableBookGen {
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-
-        builder.ensure(compile::Std {
-            compiler: builder.compiler(builder.top_stage, builder.config.build),
-            target,
-        });
 
         builder.info(&format!("Generating unstable book md files ({})", target));
         let out = builder.md_doc_out(target).join("unstable-book");

@@ -268,10 +268,6 @@ macro_rules! bootstrap_tool {
         }
 
         impl Tool {
-            pub fn get_mode(&self) -> Mode {
-                Mode::ToolBootstrap
-            }
-
             /// Whether this tool requires LLVM to run
             pub fn uses_llvm_tools(&self) -> bool {
                 match self {
@@ -659,23 +655,14 @@ impl<'a> Builder<'a> {
     pub fn tool_cmd(&self, tool: Tool) -> Command {
         let mut cmd = Command::new(self.tool_exe(tool));
         let compiler = self.compiler(0, self.config.build);
-        self.prepare_tool_cmd(compiler, tool, &mut cmd);
-        cmd
-    }
-
-    /// Prepares the `cmd` provided to be able to run the `compiler` provided.
-    ///
-    /// Notably this munges the dynamic library lookup path to point to the
-    /// right location to run `compiler`.
-    fn prepare_tool_cmd(&self, compiler: Compiler, tool: Tool, cmd: &mut Command) {
         let host = &compiler.host;
+        // Prepares the `cmd` provided to be able to run the `compiler` provided.
+        //
+        // Notably this munges the dynamic library lookup path to point to the
+        // right location to run `compiler`.
         let mut lib_paths: Vec<PathBuf> = vec![
-            if compiler.stage == 0 {
-                self.build.rustc_snapshot_libdir()
-            } else {
-                PathBuf::from(&self.sysroot_libdir(compiler, compiler.host))
-            },
-            self.cargo_out(compiler, tool.get_mode(), *host).join("deps"),
+            self.build.rustc_snapshot_libdir(),
+            self.cargo_out(compiler, Mode::ToolBootstrap, *host).join("deps"),
         ];
 
         // On MSVC a tool may invoke a C compiler (e.g., compiletest in run-make
@@ -696,6 +683,7 @@ impl<'a> Builder<'a> {
             }
         }
 
-        add_lib_path(lib_paths, cmd);
+        add_lib_path(lib_paths, &mut cmd);
+        cmd
     }
 }
