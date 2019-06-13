@@ -473,7 +473,7 @@ where
                 let layout = self.layout_of(self.tcx.types.usize)?;
                 let n = self.access_local(self.frame(), local, Some(layout))?;
                 let n = self.read_scalar(n)?;
-                let n = n.to_bits(self.tcx.data_layout.pointer_size)?;
+                let n = self.force_bits(n.not_undef()?, self.tcx.data_layout.pointer_size)?;
                 self.mplace_field(base, u64::try_from(n).unwrap())?
             }
 

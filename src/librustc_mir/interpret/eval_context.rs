@@ -775,7 +775,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn force_bits(&self, scalar: Scalar<M::PointerTag>) -> InterpResult<'tcx, u128> {
-        self.memory.force_bits(scalar)
+    pub fn force_bits(
+        &self,
+        scalar: Scalar<M::PointerTag>,
+        size: Size
+    ) -> InterpResult<'tcx, u128> {
+        self.memory.force_bits(scalar, size)
     }
 }

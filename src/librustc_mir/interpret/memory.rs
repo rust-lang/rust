@@ -885,8 +885,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
-    pub fn force_bits(&self, scalar: Scalar<M::PointerTag>) -> InterpResult<'tcx, u128> {
-        match scalar.to_bits_or_ptr(self.pointer_size(), self) {
+    pub fn force_bits(
+        &self,
+        scalar: Scalar<M::PointerTag>,
+        size: Size
+    ) -> InterpResult<'tcx, u128> {
+        match scalar.to_bits_or_ptr(size, self) {
             Ok(bits) => Ok(bits),
             Err(ptr) => Ok(M::ptr_to_int(ptr, &self.extra)? as u128)
         }
