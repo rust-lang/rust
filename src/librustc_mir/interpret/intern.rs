@@ -162,10 +162,6 @@ for
             // Check if we have encountered this pointer+layout combination before.
             // Only recurse for allocation-backed pointers.
             if let Scalar::Ptr(ptr) = mplace.ptr {
-                // In the future we will probably allow `& &mut T`, and thus will want to merge
-                // `mutability` with `self.mutability` to only choose `Mutable` if both are
-                // `Mutable`.
-
                 // We do not have any `frozen` logic here, because it's essentially equivalent to
                 // the mutability except for the outermost item. Only `UnsafeCell` can "unfreeze",
                 // and we check that in `visit_aggregate`.
