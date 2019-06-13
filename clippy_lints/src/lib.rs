@@ -208,6 +208,7 @@ pub mod let_if_seq;
 pub mod lifetimes;
 pub mod literal_representation;
 pub mod loops;
+pub mod main_recursion;
 pub mod map_clone;
 pub mod map_unit_fn;
 pub mod matches;
@@ -473,6 +474,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box types::LetUnitValue);
     reg.register_late_lint_pass(box types::UnitCmp);
     reg.register_late_lint_pass(box loops::Loops);
+    reg.register_early_lint_pass(box main_recursion::MainRecursion::new());
     reg.register_late_lint_pass(box lifetimes::Lifetimes);
     reg.register_late_lint_pass(box entry::HashMapPass);
     reg.register_late_lint_pass(box ranges::Ranges);

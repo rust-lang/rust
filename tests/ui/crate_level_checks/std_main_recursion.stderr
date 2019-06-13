@@ -1,0 +1,11 @@
+error: You are recursing into main()
+  --> $DIR/std_main_recursion.rs:4:5
+   |
+LL |     main();
+   |     ^^^^^^
+   |
+   = note: `-D clippy::main-recursion` implied by `-D warnings`
+   = help: Consider using another function for this recursion
+
+error: aborting due to previous error
+
