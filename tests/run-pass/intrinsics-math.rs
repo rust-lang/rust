@@ -67,6 +67,22 @@ pub fn main() {
     assert_approx_eq!(0.1f32.trunc(), 0.0f32);
     assert_approx_eq!((-0.1f64).trunc(), 0.0f64);
 
-    assert_approx_eq!(27f64.cbrt(), 3.0f64);
-    assert_approx_eq!(3f64.hypot(4f64), 5.0f64);
+    assert_approx_eq!(27.0f32.cbrt(), 3.0f32);
+    assert_approx_eq!(27.0f64.cbrt(), 3.0f64);
+
+    assert_approx_eq!(3.0f32.hypot(4.0f32), 5.0f32);
+    assert_approx_eq!(3.0f64.hypot(4.0f64), 5.0f64);
+
+    assert_approx_eq!(1.0f32.atan2(2.0f32), 0.46364761f32);
+    assert_approx_eq!(1.0f32.atan2(2.0f32), 0.46364761f32);
+
+    assert_approx_eq!(1.0f32.cosh(), 1.54308f32);
+    assert_approx_eq!(1.0f64.cosh(), 1.54308f64);
+
+    assert_approx_eq!(1.0f32.sinh(), 1.1752012f32);
+    assert_approx_eq!(1.0f64.sinh(), 1.1752012f64);
+
+    assert_approx_eq!(1.0f32.tan(), 1.557408f32);
+    assert_approx_eq!(1.0f64.tan(), 1.557408f64);
+
 }

@@ -560,18 +560,56 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let n = this.memory().get(ptr.alloc_id)?.read_c_str(tcx, ptr)?.len();
                 this.write_scalar(Scalar::from_uint(n as u64, dest.layout.size), dest)?;
             }
-            "cbrt" => {
+
+            // math functions
+
+            "cbrtf" | "coshf" | "sinhf" |"tanf" => {
                 // FIXME: Using host floats.
-                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
-                let n = f.cbrt();
-                this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
+                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
+                let f = match link_name {
+                    "cbrtf" => f.cbrt(),
+                    "coshf" => f.cosh(),
+                    "sinhf" => f.sinh(),
+                        "tanf" => f.tan(),
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
             }
             // underscore case for windows
-            "_hypot" | "hypot" => {
+            "_hypotf" | "hypotf" | "atan2f" => {
+                // FIXME: Using host floats.
+                let f1 = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
+                let f2 = f32::from_bits(this.read_scalar(args[1])?.to_u32()?);
+                let n = match link_name {
+                    "_hypotf" | "hypotf" => f1.hypot(f2),
+                    "atan2f" => f1.atan2(f2),
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_u32(n.to_bits()), dest)?;
+            }
+
+            "cbrt" | "cosh" | "sinh" | "tan" => {
+                // FIXME: Using host floats.
+                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+                let f = match link_name {
+                    "cbrt" => f.cbrt(),
+                    "cosh" => f.cosh(),
+                    "sinh" => f.sinh(),
+                    "tan" => f.tan(),
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
+            }
+            // underscore case for windows
+            "_hypot" | "hypot" | "atan2" => {
                 // FIXME: Using host floats.
                 let f1 = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
                 let f2 = f64::from_bits(this.read_scalar(args[1])?.to_u64()?);
-                let n = f1.hypot(f2);
+                let n = match link_name {
+                    "_hypot" | "hypot" => f1.hypot(f2),
+                    "atan2" => f1.atan2(f2),
+                    _ => bug!(),
+                };
                 this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
             }
 
