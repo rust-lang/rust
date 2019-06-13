@@ -1,5 +1,14 @@
 // run-pass
 
+// Tests that the return type of trait methods is correctly normalized when
+// checking that a method in an impl matches the trait definition when the
+// return type involves a defaulted associated type.
+// ie. the trait has a method with return type `-> Self::R`, and `type R = ()`,
+// but the impl leaves out the return type (resulting in `()`).
+// Note that specialization is not involved in this test; no items in
+// implementations may be overridden. If they were, the normalization wouldn't
+// happen.
+
 #![feature(associated_type_defaults)]
 
 macro_rules! overload {
@@ -12,20 +21,20 @@ macro_rules! overload {
 }
 
 fn main() {
-    let r = overload!(42, true);
-    println!("-> {:?}", r);
+    let r: () = overload!(42, true);
 
-    let r = overload!("Hello world", 13.0);
-    println!("-> {:?}", r);
+    let r: f32 = overload!("Hello world", 13.0);
+    assert_eq!(r, 13.0);
 
-    let r = overload!(42, true, 42.5);
-    println!("-> {:?}", r);
+    let r: () = overload!(42, true, 42.5);
 
-    let r = overload!("Hello world", 13.0, 42);
-    println!("-> {:?}", r);
+    let r: i32 = overload!("Hello world", 13.0, 42);
+    assert_eq!(r, 42);
 }
 
 mod overload {
+    /// This trait has an assoc. type defaulting to `()`, and a required method returning a value
+    /// of that assoc. type.
     pub trait Overload {
         // type R;
         type R = ();
@@ -35,6 +44,10 @@ mod overload {
     // overloads for 2 args
     impl Overload for (i32, bool) {
         // type R = ();
+
+        /// This function has no return type specified, and so defaults to `()`.
+        ///
+        /// This should work, but didn't, until RFC 2532 was implemented.
         fn overload(self) /*-> Self::R*/ {
             let (a, b) = self; // destructure args
             println!("i32 and bool {:?}", (a, b));
