@@ -71,11 +71,11 @@ pub struct MiriConfig {
 }
 
 // Used by priroda.
-pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn create_ecx<'mir, 'tcx: 'mir>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     main_id: DefId,
     config: MiriConfig,
-) -> InterpResult<'tcx, InterpretCx<'a, 'mir, 'tcx, Evaluator<'tcx>>> {
+) -> InterpResult<'tcx, InterpretCx<'mir, 'tcx, Evaluator<'tcx>>> {
     let mut ecx = InterpretCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
@@ -211,8 +211,8 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     Ok(ecx)
 }
 
-pub fn eval_main<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn eval_main<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     main_id: DefId,
     config: MiriConfig,
 ) {
@@ -364,25 +364,25 @@ impl<'tcx> Evaluator<'tcx> {
 
 // FIXME: rustc issue <https://github.com/rust-lang/rust/issues/47131>.
 #[allow(dead_code)]
-type MiriEvalContext<'a, 'mir, 'tcx> = InterpretCx<'a, 'mir, 'tcx, Evaluator<'tcx>>;
+type MiriEvalContext<'mir, 'tcx> = InterpretCx<'mir, 'tcx, Evaluator<'tcx>>;
 
 // A little trait that's useful to be inherited by extension traits.
-pub trait MiriEvalContextExt<'a, 'mir, 'tcx> {
-    fn eval_context_ref(&self) -> &MiriEvalContext<'a, 'mir, 'tcx>;
-    fn eval_context_mut(&mut self) -> &mut MiriEvalContext<'a, 'mir, 'tcx>;
+pub trait MiriEvalContextExt<'mir, 'tcx> {
+    fn eval_context_ref(&self) -> &MiriEvalContext<'mir, 'tcx>;
+    fn eval_context_mut(&mut self) -> &mut MiriEvalContext<'mir, 'tcx>;
 }
-impl<'a, 'mir, 'tcx> MiriEvalContextExt<'a, 'mir, 'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
+impl<'mir, 'tcx> MiriEvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> {
     #[inline(always)]
-    fn eval_context_ref(&self) -> &MiriEvalContext<'a, 'mir, 'tcx> {
+    fn eval_context_ref(&self) -> &MiriEvalContext<'mir, 'tcx> {
         self
     }
     #[inline(always)]
-    fn eval_context_mut(&mut self) -> &mut MiriEvalContext<'a, 'mir, 'tcx> {
+    fn eval_context_mut(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
         self
     }
 }
 
-impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
+impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
 
     type FrameExtra = stacked_borrows::CallId;
@@ -395,14 +395,14 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Static);
 
     #[inline(always)]
-    fn enforce_validity(ecx: &InterpretCx<'a, 'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(ecx: &InterpretCx<'mir, 'tcx, Self>) -> bool {
         ecx.machine.validate
     }
 
     /// Returns `Ok()` when the function was handled; fail otherwise.
     #[inline(always)]
     fn find_fn(
-        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
@@ -413,7 +413,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn call_intrinsic(
-        ecx: &mut rustc_mir::interpret::InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &mut rustc_mir::interpret::InterpretCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         dest: PlaceTy<'tcx, Tag>,
@@ -423,7 +423,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn ptr_op(
-        ecx: &rustc_mir::interpret::InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &rustc_mir::interpret::InterpretCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
@@ -432,7 +432,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn box_alloc(
-        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         trace!("box_alloc for {:?}", dest.layout.ty);
@@ -475,7 +475,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     fn find_foreign_static(
         def_id: DefId,
-        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxtAt<'tcx, 'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
@@ -498,7 +498,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn before_terminator(_ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx>
+    fn before_terminator(_ecx: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>
     {
         // We are not interested in detecting loops.
         Ok(())
@@ -550,7 +550,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn retag(
-        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
         kind: mir::RetagKind,
         place: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
@@ -568,14 +568,14 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn stack_push(
-        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
     ) -> InterpResult<'tcx, stacked_borrows::CallId> {
         Ok(ecx.memory().extra.borrow_mut().new_call())
     }
 
     #[inline(always)]
     fn stack_pop(
-        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpretCx<'mir, 'tcx, Self>,
         extra: stacked_borrows::CallId,
     ) -> InterpResult<'tcx> {
         Ok(ecx.memory().extra.borrow_mut().end_call(extra))

@@ -5,9 +5,9 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 
 use crate::*;
 
-impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
+impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 
-pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Gets an instance for a path.
     fn resolve_path(&self, path: &[&str]) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         let this = self.eval_context_ref();
@@ -119,24 +119,24 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
 
         /// Visiting the memory covered by a `MemPlace`, being aware of
         /// whether we are inside an `UnsafeCell` or not.
-        struct UnsafeCellVisitor<'ecx, 'a, 'mir, 'tcx, F>
+        struct UnsafeCellVisitor<'ecx, 'mir, 'tcx, F>
             where F: FnMut(MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>
         {
-            ecx: &'ecx MiriEvalContext<'a, 'mir, 'tcx>,
+            ecx: &'ecx MiriEvalContext<'mir, 'tcx>,
             unsafe_cell_action: F,
         }
 
-        impl<'ecx, 'a, 'mir, 'tcx, F>
-            ValueVisitor<'a, 'mir, 'tcx, Evaluator<'tcx>>
+        impl<'ecx, 'mir, 'tcx, F>
+            ValueVisitor<'mir, 'tcx, Evaluator<'tcx>>
         for
-            UnsafeCellVisitor<'ecx, 'a, 'mir, 'tcx, F>
+            UnsafeCellVisitor<'ecx, 'mir, 'tcx, F>
         where
             F: FnMut(MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>
         {
             type V = MPlaceTy<'tcx, Tag>;
 
             #[inline(always)]
-            fn ecx(&self) -> &MiriEvalContext<'a, 'mir, 'tcx> {
+            fn ecx(&self) -> &MiriEvalContext<'mir, 'tcx> {
                 &self.ecx
             }
 
