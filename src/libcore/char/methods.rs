@@ -759,7 +759,6 @@ impl char {
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
-
     /// # Examples
     ///
     /// Basic usage:
