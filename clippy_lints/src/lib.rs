@@ -248,7 +248,7 @@ pub mod ranges;
 pub mod redundant_clone;
 pub mod redundant_field_names;
 pub mod redundant_pattern_matching;
-pub mod redundant_static_lifetime;
+pub mod redundant_static_lifetimes;
 pub mod reference;
 pub mod regex;
 pub mod replace_consts;
@@ -553,7 +553,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box invalid_ref::InvalidRef);
     reg.register_late_lint_pass(box identity_conversion::IdentityConversion::default());
     reg.register_late_lint_pass(box types::ImplicitHasher);
-    reg.register_early_lint_pass(box redundant_static_lifetime::RedundantStaticLifetime);
+    reg.register_early_lint_pass(box redundant_static_lifetimes::RedundantStaticLifetimes);
     reg.register_late_lint_pass(box fallible_impl_from::FallibleImplFrom);
     reg.register_late_lint_pass(box replace_consts::ReplaceConsts);
     reg.register_late_lint_pass(box types::UnitArg);
@@ -833,7 +833,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         ranges::RANGE_ZIP_WITH_LEN,
         redundant_field_names::REDUNDANT_FIELD_NAMES,
         redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING,
-        redundant_static_lifetime::REDUNDANT_STATIC_LIFETIME,
+        redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
         reference::DEREF_ADDROF,
         reference::REF_IN_DEREF,
         regex::INVALID_REGEX,
@@ -956,7 +956,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         question_mark::QUESTION_MARK,
         redundant_field_names::REDUNDANT_FIELD_NAMES,
         redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING,
-        redundant_static_lifetime::REDUNDANT_STATIC_LIFETIME,
+        redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
         regex::REGEX_MACRO,
         regex::TRIVIAL_REGEX,
         returns::LET_AND_RETURN,

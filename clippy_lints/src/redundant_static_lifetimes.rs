@@ -24,14 +24,14 @@ declare_clippy_lint! {
     ///  const FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
     ///  static FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
     /// ```
-    pub REDUNDANT_STATIC_LIFETIME,
+    pub REDUNDANT_STATIC_LIFETIMES,
     style,
     "Using explicit `'static` lifetime for constants or statics when elision rules would allow omitting them."
 }
 
-declare_lint_pass!(RedundantStaticLifetime => [REDUNDANT_STATIC_LIFETIME]);
+declare_lint_pass!(RedundantStaticLifetimes => [REDUNDANT_STATIC_LIFETIMES]);
 
-impl RedundantStaticLifetime {
+impl RedundantStaticLifetimes {
     // Recursively visit types
     fn visit_type(&mut self, ty: &Ty, cx: &EarlyContext<'_>, reason: &str) {
         match ty.node {
@@ -53,7 +53,7 @@ impl RedundantStaticLifetime {
                             if lifetime.ident.name == syntax::symbol::kw::StaticLifetime {
                                 let snip = snippet(cx, borrow_type.ty.span, "<type>");
                                 let sugg = format!("&{}", snip);
-                                span_lint_and_then(cx, REDUNDANT_STATIC_LIFETIME, lifetime.ident.span, reason, |db| {
+                                span_lint_and_then(cx, REDUNDANT_STATIC_LIFETIMES, lifetime.ident.span, reason, |db| {
                                     db.span_suggestion(
                                         ty.span,
                                         "consider removing `'static`",
@@ -76,7 +76,7 @@ impl RedundantStaticLifetime {
     }
 }
 
-impl EarlyLintPass for RedundantStaticLifetime {
+impl EarlyLintPass for RedundantStaticLifetimes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if !in_macro_or_desugar(item.span) {
             if let ItemKind::Const(ref var_type, _) = item.node {
