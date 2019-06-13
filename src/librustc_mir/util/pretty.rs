@@ -93,11 +93,7 @@ pub fn dump_mir<'tcx, F>(
     );
 }
 
-pub fn dump_enabled<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    pass_name: &str,
-    source: MirSource<'tcx>,
-) -> bool {
+pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, source: MirSource<'tcx>) -> bool {
     let filters = match tcx.sess.opts.debugging_opts.dump_mir {
         None => return false,
         Some(ref filters) => filters,
@@ -370,11 +366,7 @@ where
 /// After we print the main statement, we sometimes dump extra
 /// information. There's often a lot of little things "nuzzled up" in
 /// a statement.
-fn write_extra<'tcx, F>(
-    tcx: TyCtxt<'tcx>,
-    write: &mut dyn Write,
-    mut visit_op: F,
-) -> io::Result<()>
+fn write_extra<'tcx, F>(tcx: TyCtxt<'tcx>, write: &mut dyn Write, mut visit_op: F) -> io::Result<()>
 where
     F: FnMut(&mut ExtraComments<'tcx>),
 {

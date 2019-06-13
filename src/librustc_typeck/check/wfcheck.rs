@@ -227,18 +227,11 @@ fn check_associated_item<'tcx>(
     })
 }
 
-fn for_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    item: &hir::Item,
-) -> CheckWfFcxBuilder<'tcx> {
+fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item) -> CheckWfFcxBuilder<'tcx> {
     for_id(tcx, item.hir_id, item.span)
 }
 
-fn for_id<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    id: hir::HirId,
-    span: Span,
-) -> CheckWfFcxBuilder<'tcx> {
+fn for_id<'tcx>(tcx: TyCtxt<'tcx>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'tcx> {
     let def_id = tcx.hir().local_def_id_from_hir_id(id);
     CheckWfFcxBuilder {
         inherited: Inherited::build(tcx, def_id),
@@ -768,11 +761,12 @@ fn check_existential_types<'fcx, 'tcx>(
     substituted_predicates
 }
 
-fn check_method_receiver<'fcx, 'tcx>(fcx: &FnCtxt<'fcx, 'tcx>,
-                                           method_sig: &hir::MethodSig,
-                                           method: &ty::AssocItem,
-                                           self_ty: Ty<'tcx>)
-{
+fn check_method_receiver<'fcx, 'tcx>(
+    fcx: &FnCtxt<'fcx, 'tcx>,
+    method_sig: &hir::MethodSig,
+    method: &ty::AssocItem,
+    self_ty: Ty<'tcx>,
+) {
     // Check that the method has a valid receiver type, given the type `Self`.
     debug!("check_method_receiver({:?}, self_ty={:?})",
            method, self_ty);
@@ -1028,11 +1022,7 @@ fn reject_shadowing_parameters(tcx: TyCtxt<'_>, def_id: DefId) {
 
 /// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
 /// aren't true.
-fn check_false_global_bounds<'a, 'tcx>(
-    fcx: &FnCtxt<'a, 'tcx>,
-    span: Span,
-    id: hir::HirId)
-{
+fn check_false_global_bounds<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, span: Span, id: hir::HirId) {
     let empty_env = ty::ParamEnv::empty();
 
     let def_id = fcx.tcx.hir().local_def_id_from_hir_id(id);

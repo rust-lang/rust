@@ -16,10 +16,7 @@ pub fn renumber_mir<'tcx>(infcx: &InferCtxt<'_, 'tcx>, body: &mut Body<'tcx>) {
 
 /// Replaces all regions appearing in `value` with fresh inference
 /// variables.
-pub fn renumber_regions<'tcx, T>(
-    infcx: &InferCtxt<'_, 'tcx>,
-    value: &T,
-) -> T
+pub fn renumber_regions<'tcx, T>(infcx: &InferCtxt<'_, 'tcx>, value: &T) -> T
 where
     T: TypeFoldable<'tcx>,
 {

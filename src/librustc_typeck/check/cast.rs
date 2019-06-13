@@ -158,12 +158,13 @@ impl From<ErrorReported> for CastError {
     }
 }
 
-fn make_invalid_casting_error<'a, 'tcx>(sess: &'a Session,
-                                              span: Span,
-                                              expr_ty: Ty<'tcx>,
-                                              cast_ty: Ty<'tcx>,
-                                              fcx: &FnCtxt<'a, 'tcx>)
-                                              -> DiagnosticBuilder<'a> {
+fn make_invalid_casting_error<'a, 'tcx>(
+    sess: &'a Session,
+    span: Span,
+    expr_ty: Ty<'tcx>,
+    cast_ty: Ty<'tcx>,
+    fcx: &FnCtxt<'a, 'tcx>,
+) -> DiagnosticBuilder<'a> {
     type_error_struct!(sess, span, expr_ty, E0606,
                        "casting `{}` as `{}` is invalid",
                        fcx.ty_to_string(expr_ty),
@@ -171,13 +172,14 @@ fn make_invalid_casting_error<'a, 'tcx>(sess: &'a Session,
 }
 
 impl<'a, 'tcx> CastCheck<'tcx> {
-    pub fn new(fcx: &FnCtxt<'a, 'tcx>,
-               expr: &'tcx hir::Expr,
-               expr_ty: Ty<'tcx>,
-               cast_ty: Ty<'tcx>,
-               cast_span: Span,
-               span: Span)
-               -> Result<CastCheck<'tcx>, ErrorReported> {
+    pub fn new(
+        fcx: &FnCtxt<'a, 'tcx>,
+        expr: &'tcx hir::Expr,
+        expr_ty: Ty<'tcx>,
+        cast_ty: Ty<'tcx>,
+        cast_span: Span,
+        span: Span,
+    ) -> Result<CastCheck<'tcx>, ErrorReported> {
         let check = CastCheck {
             expr,
             expr_ty,
@@ -531,11 +533,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn check_ptr_ptr_cast(&self,
-                          fcx: &FnCtxt<'a, 'tcx>,
-                          m_expr: ty::TypeAndMut<'tcx>,
-                          m_cast: ty::TypeAndMut<'tcx>)
-                          -> Result<CastKind, CastError> {
+    fn check_ptr_ptr_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        m_expr: ty::TypeAndMut<'tcx>,
+        m_cast: ty::TypeAndMut<'tcx>,
+    ) -> Result<CastKind, CastError> {
         debug!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}", m_expr, m_cast);
         // ptr-ptr cast. vtables must match.
 
@@ -572,10 +575,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn check_fptr_ptr_cast(&self,
-                           fcx: &FnCtxt<'a, 'tcx>,
-                           m_cast: ty::TypeAndMut<'tcx>)
-                           -> Result<CastKind, CastError> {
+    fn check_fptr_ptr_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        m_cast: ty::TypeAndMut<'tcx>,
+    ) -> Result<CastKind, CastError> {
         // fptr-ptr cast. must be to thin ptr
 
         match fcx.pointer_kind(m_cast.ty, self.span)? {
@@ -585,10 +589,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn check_ptr_addr_cast(&self,
-                           fcx: &FnCtxt<'a, 'tcx>,
-                           m_expr: ty::TypeAndMut<'tcx>)
-                           -> Result<CastKind, CastError> {
+    fn check_ptr_addr_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        m_expr: ty::TypeAndMut<'tcx>,
+    ) -> Result<CastKind, CastError> {
         // ptr-addr cast. must be from thin ptr
 
         match fcx.pointer_kind(m_expr.ty, self.span)? {
@@ -598,11 +603,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn check_ref_cast(&self,
-                      fcx: &FnCtxt<'a, 'tcx>,
-                      m_expr: ty::TypeAndMut<'tcx>,
-                      m_cast: ty::TypeAndMut<'tcx>)
-                      -> Result<CastKind, CastError> {
+    fn check_ref_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        m_expr: ty::TypeAndMut<'tcx>,
+        m_cast: ty::TypeAndMut<'tcx>,
+    ) -> Result<CastKind, CastError> {
         // array-ptr-cast.
 
         if m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutImmutable {
@@ -623,10 +629,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         Err(CastError::IllegalCast)
     }
 
-    fn check_addr_ptr_cast(&self,
-                           fcx: &FnCtxt<'a, 'tcx>,
-                           m_cast: TypeAndMut<'tcx>)
-                           -> Result<CastKind, CastError> {
+    fn check_addr_ptr_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        m_cast: TypeAndMut<'tcx>,
+    ) -> Result<CastKind, CastError> {
         // ptr-addr cast. pointer must be thin.
         match fcx.pointer_kind(m_cast.ty, self.span)? {
             None => Err(CastError::UnknownCastPtrKind),

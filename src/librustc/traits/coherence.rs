@@ -87,11 +87,11 @@ where
     })
 }
 
-fn with_fresh_ty_vars<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
-                                       param_env: ty::ParamEnv<'tcx>,
-                                       impl_def_id: DefId)
-                                       -> ty::ImplHeader<'tcx>
-{
+fn with_fresh_ty_vars<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl_def_id: DefId,
+) -> ty::ImplHeader<'tcx> {
     let tcx = selcx.tcx();
     let impl_substs = selcx.infcx().fresh_substs_for_item(DUMMY_SP, impl_def_id);
 

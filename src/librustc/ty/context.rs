@@ -139,7 +139,7 @@ impl<'tcx> CtxtInterners<'tcx> {
     fn intern_ty(
         local: &CtxtInterners<'tcx>,
         global: &CtxtInterners<'tcx>,
-        st: TyKind<'tcx>
+        st: TyKind<'tcx>,
     ) -> Ty<'tcx> {
         let flags = super::flags::FlagComputation::for_sty(&st);
 
@@ -857,7 +857,6 @@ BraceStructLiftImpl! {
     }
 }
 
-
 /// Canonicalized user type annotation.
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
@@ -1139,12 +1138,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.arena.alloc(Steal::new(mir))
     }
 
-    pub fn alloc_adt_def(self,
-                         did: DefId,
-                         kind: AdtKind,
-                         variants: IndexVec<VariantIdx, ty::VariantDef>,
-                         repr: ReprOptions)
-                         -> &'tcx ty::AdtDef {
+    pub fn alloc_adt_def(
+        self,
+        did: DefId,
+        kind: AdtKind,
+        variants: IndexVec<VariantIdx, ty::VariantDef>,
+        repr: ReprOptions,
+    ) -> &'tcx ty::AdtDef {
         let def = ty::AdtDef::new(self, did, kind, variants, repr);
         self.arena.alloc(def)
     }
@@ -1923,9 +1923,9 @@ pub mod tls {
 
     /// Sets `context` as the new current ImplicitCtxt for the duration of the function `f`
     #[inline]
-    pub fn enter_context<'a, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'tcx>,
-                                                     f: F) -> R
-        where F: FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R
+    pub fn enter_context<'a, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'tcx>, f: F) -> R
+    where
+        F: FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
     {
         set_tlv(context as *const _ as usize, || {
             f(&context)
@@ -1999,7 +1999,8 @@ pub mod tls {
     /// Allows access to the current ImplicitCtxt in a closure if one is available
     #[inline]
     pub fn with_context_opt<F, R>(f: F) -> R
-        where F: for<'a, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'tcx>>) -> R
+    where
+        F: for<'a, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'tcx>>) -> R,
     {
         let context = get_tlv();
         if context == 0 {
@@ -2017,7 +2018,8 @@ pub mod tls {
     /// Panics if there is no ImplicitCtxt available
     #[inline]
     pub fn with_context<F, R>(f: F) -> R
-        where F: for<'a, 'tcx> FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R
+    where
+        F: for<'a, 'tcx> FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
     {
         with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
     }
@@ -2254,14 +2256,14 @@ impl<'tcx> Borrow<GoalKind<'tcx>> for Interned<'tcx, GoalKind<'tcx>> {
 }
 
 impl<'tcx> Borrow<[ExistentialPredicate<'tcx>]>
-    for Interned<'tcx, List<ExistentialPredicate<'tcx>>> {
+    for Interned<'tcx, List<ExistentialPredicate<'tcx>>>
+{
     fn borrow<'a>(&'a self) -> &'a [ExistentialPredicate<'tcx>] {
         &self.0[..]
     }
 }
 
-impl<'tcx> Borrow<[Predicate<'tcx>]>
-    for Interned<'tcx, List<Predicate<'tcx>>> {
+impl<'tcx> Borrow<[Predicate<'tcx>]> for Interned<'tcx, List<Predicate<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [Predicate<'tcx>] {
         &self.0[..]
     }
@@ -2273,15 +2275,13 @@ impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
     }
 }
 
-impl<'tcx> Borrow<[Clause<'tcx>]>
-for Interned<'tcx, List<Clause<'tcx>>> {
+impl<'tcx> Borrow<[Clause<'tcx>]> for Interned<'tcx, List<Clause<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [Clause<'tcx>] {
         &self.0[..]
     }
 }
 
-impl<'tcx> Borrow<[Goal<'tcx>]>
-for Interned<'tcx, List<Goal<'tcx>>> {
+impl<'tcx> Borrow<[Goal<'tcx>]> for Interned<'tcx, List<Goal<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [Goal<'tcx>] {
         &self.0[..]
     }
@@ -2942,9 +2942,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .unwrap_or(false)
     }
 
-    pub fn object_lifetime_defaults(self, id: HirId)
-        -> Option<&'tcx [ObjectLifetimeDefault]>
-    {
+    pub fn object_lifetime_defaults(self, id: HirId) -> Option<&'tcx [ObjectLifetimeDefault]> {
         self.object_lifetime_defaults_map(id.owner)
             .and_then(|map| map.get(&id.local_id).map(|v| &**v))
     }

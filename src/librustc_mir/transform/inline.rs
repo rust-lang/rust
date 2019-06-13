@@ -38,12 +38,7 @@ struct CallSite<'tcx> {
 }
 
 impl MirPass for Inline {
-    fn run_pass<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        source: MirSource<'tcx>,
-        body: &mut Body<'tcx>,
-    ) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(body);
         }

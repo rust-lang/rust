@@ -241,12 +241,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
         tcx.intern_substs(&substs)
     }
 
-    pub fn extend_to<F>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-        mut mk_kind: F,
-    ) -> SubstsRef<'tcx>
+    pub fn extend_to<F>(&self, tcx: TyCtxt<'tcx>, def_id: DefId, mut mk_kind: F) -> SubstsRef<'tcx>
     where
         F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>,
     {
@@ -418,21 +413,11 @@ pub trait Subst<'tcx>: Sized {
         self.subst_spanned(tcx, substs, None)
     }
 
-    fn subst_spanned(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        substs: &[Kind<'tcx>],
-        span: Option<Span>,
-    ) -> Self;
+    fn subst_spanned(&self, tcx: TyCtxt<'tcx>, substs: &[Kind<'tcx>], span: Option<Span>) -> Self;
 }
 
 impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for T {
-    fn subst_spanned(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        substs: &[Kind<'tcx>],
-        span: Option<Span>,
-    ) -> T {
+    fn subst_spanned(&self, tcx: TyCtxt<'tcx>, substs: &[Kind<'tcx>], span: Option<Span>) -> T {
         let mut folder = SubstFolder { tcx,
                                        substs,
                                        span,

@@ -121,9 +121,11 @@ fn success<'tcx>(adj: Vec<Adjustment<'tcx>>,
 }
 
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
-    fn new(fcx: &'f FnCtxt<'f, 'tcx>,
-           cause: ObligationCause<'tcx>,
-           allow_two_phase: AllowTwoPhase) -> Self {
+    fn new(
+        fcx: &'f FnCtxt<'f, 'tcx>,
+        cause: ObligationCause<'tcx>,
+        allow_two_phase: AllowTwoPhase,
+    ) -> Self {
         Coerce {
             fcx,
             cause,
@@ -1073,12 +1075,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     /// could coerce from. This will record `expression`, and later
     /// calls to `coerce` may come back and add adjustments and things
     /// if necessary.
-    pub fn coerce<'a>(&mut self,
-                      fcx: &FnCtxt<'a, 'tcx>,
-                      cause: &ObligationCause<'tcx>,
-                      expression: &'tcx hir::Expr,
-                      expression_ty: Ty<'tcx>)
-    {
+    pub fn coerce<'a>(
+        &mut self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        cause: &ObligationCause<'tcx>,
+        expression: &'tcx hir::Expr,
+        expression_ty: Ty<'tcx>,
+    ) {
         self.coerce_inner(fcx,
                           cause,
                           Some(expression),
@@ -1098,12 +1101,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     /// The `augment_error` gives you a chance to extend the error
     /// message, in case any results (e.g., we use this to suggest
     /// removing a `;`).
-    pub fn coerce_forced_unit<'a>(&mut self,
-                                  fcx: &FnCtxt<'a, 'tcx>,
-                                  cause: &ObligationCause<'tcx>,
-                                  augment_error: &mut dyn FnMut(&mut DiagnosticBuilder<'_>),
-                                  label_unit_as_expected: bool)
-    {
+    pub fn coerce_forced_unit<'a>(
+        &mut self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        cause: &ObligationCause<'tcx>,
+        augment_error: &mut dyn FnMut(&mut DiagnosticBuilder<'_>),
+        label_unit_as_expected: bool,
+    ) {
         self.coerce_inner(fcx,
                           cause,
                           None,
@@ -1115,14 +1119,15 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     /// The inner coercion "engine". If `expression` is `None`, this
     /// is a forced-unit case, and hence `expression_ty` must be
     /// `Nil`.
-    fn coerce_inner<'a>(&mut self,
-                        fcx: &FnCtxt<'a, 'tcx>,
-                        cause: &ObligationCause<'tcx>,
-                        expression: Option<&'tcx hir::Expr>,
-                        mut expression_ty: Ty<'tcx>,
-                        augment_error: Option<&mut dyn FnMut(&mut DiagnosticBuilder<'_>)>,
-                        label_expression_as_expected: bool)
-    {
+    fn coerce_inner<'a>(
+        &mut self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        cause: &ObligationCause<'tcx>,
+        expression: Option<&'tcx hir::Expr>,
+        mut expression_ty: Ty<'tcx>,
+        augment_error: Option<&mut dyn FnMut(&mut DiagnosticBuilder<'_>)>,
+        label_expression_as_expected: bool,
+    ) {
         // Incorporate whatever type inference information we have
         // until now; in principle we might also want to process
         // pending obligations, but doing so should only improve

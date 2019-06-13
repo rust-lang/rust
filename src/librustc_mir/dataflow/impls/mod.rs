@@ -70,11 +70,7 @@ pub struct MaybeInitializedPlaces<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        body: &'a Body<'tcx>,
-        mdpe: &'a MoveDataParamEnv<'tcx>,
-    ) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         MaybeInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
@@ -125,11 +121,7 @@ pub struct MaybeUninitializedPlaces<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        body: &'a Body<'tcx>,
-        mdpe: &'a MoveDataParamEnv<'tcx>,
-    ) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         MaybeUninitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
@@ -179,11 +171,7 @@ pub struct DefinitelyInitializedPlaces<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        body: &'a Body<'tcx>,
-        mdpe: &'a MoveDataParamEnv<'tcx>,
-    ) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         DefinitelyInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
@@ -228,11 +216,7 @@ pub struct EverInitializedPlaces<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx: 'a> EverInitializedPlaces<'a, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        body: &'a Body<'tcx>,
-        mdpe: &'a MoveDataParamEnv<'tcx>,
-    ) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         EverInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
@@ -240,7 +224,6 @@ impl<'a, 'tcx: 'a> EverInitializedPlaces<'a, 'tcx> {
 impl<'a, 'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'a, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
-
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     fn update_bits(sets: &mut BlockSets<'_, MovePathIndex>, path: MovePathIndex,

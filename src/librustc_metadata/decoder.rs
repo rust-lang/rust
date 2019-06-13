@@ -620,7 +620,7 @@ impl<'a, 'tcx> CrateMetadata {
         tcx: TyCtxt<'tcx>,
     ) -> ty::GenericPredicates<'tcx> {
         self.entry(item_id).predicates.unwrap().decode((self, tcx))
-    }
+}
 
     pub fn get_predicates_defined_on(
         &self,
@@ -701,19 +701,12 @@ impl<'a, 'tcx> CrateMetadata {
         self.get_impl_data(id).coerce_unsized_info
     }
 
-    pub fn get_impl_trait(
-        &self,
-        id: DefIndex,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<ty::TraitRef<'tcx>> {
+    pub fn get_impl_trait(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> Option<ty::TraitRef<'tcx>> {
         self.get_impl_data(id).trait_ref.map(|tr| tr.decode((self, tcx)))
     }
 
     /// Iterates over all the stability attributes in the given crate.
-    pub fn get_lib_features(
-        &self,
-        tcx: TyCtxt<'tcx>,
-    ) -> &'tcx [(ast::Name, Option<ast::Name>)] {
+    pub fn get_lib_features(&self, tcx: TyCtxt<'tcx>) -> &'tcx [(ast::Name, Option<ast::Name>)] {
         // FIXME: For a proc macro crate, not sure whether we should return the "host"
         // features or an empty Vec. Both don't cause ICEs.
         tcx.arena.alloc_from_iter(self.root
@@ -883,11 +876,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()
     }
 
-    pub fn maybe_get_optimized_mir(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        id: DefIndex,
-    ) -> Option<Body<'tcx>> {
+    pub fn maybe_get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Option<Body<'tcx>> {
         match self.is_proc_macro(id) {
             true => None,
             false => self.entry(id).mir.map(|mir| mir.decode((self, tcx))),

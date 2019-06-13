@@ -1456,10 +1456,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
     })
 }
 
-fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
-    tcx: TyCtxt<'tcx>,
-    builtin_lints: T,
-) {
+fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
     let mut passes = tcx.sess.lint_store.borrow().late_passes.lock().take().unwrap();
 
     if !tcx.sess.opts.debugging_opts.no_interleave_lints {

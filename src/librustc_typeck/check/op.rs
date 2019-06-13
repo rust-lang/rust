@@ -13,12 +13,13 @@ use rustc::hir;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
-    pub fn check_binop_assign(&self,
-                              expr: &'tcx hir::Expr,
-                              op: hir::BinOp,
-                              lhs_expr: &'tcx hir::Expr,
-                              rhs_expr: &'tcx hir::Expr) -> Ty<'tcx>
-    {
+    pub fn check_binop_assign(
+        &self,
+        expr: &'tcx hir::Expr,
+        op: hir::BinOp,
+        lhs_expr: &'tcx hir::Expr,
+        rhs_expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
         let (lhs_ty, rhs_ty, return_ty) =
             self.check_overloaded_binop(expr, lhs_expr, rhs_expr, op, IsAssign::Yes);
 
@@ -43,12 +44,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Checks a potentially overloaded binary operator.
-    pub fn check_binop(&self,
-                       expr: &'tcx hir::Expr,
-                       op: hir::BinOp,
-                       lhs_expr: &'tcx hir::Expr,
-                       rhs_expr: &'tcx hir::Expr) -> Ty<'tcx>
-    {
+    pub fn check_binop(
+        &self,
+        expr: &'tcx hir::Expr,
+        op: hir::BinOp,
+        lhs_expr: &'tcx hir::Expr,
+        rhs_expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
         debug!("check_binop(expr.hir_id={}, expr={:?}, op={:?}, lhs_expr={:?}, rhs_expr={:?})",
@@ -104,14 +106,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn enforce_builtin_binop_types(&self,
-                                   lhs_expr: &'tcx hir::Expr,
-                                   lhs_ty: Ty<'tcx>,
-                                   rhs_expr: &'tcx hir::Expr,
-                                   rhs_ty: Ty<'tcx>,
-                                   op: hir::BinOp)
-                                   -> Ty<'tcx>
-    {
+    fn enforce_builtin_binop_types(
+        &self,
+        lhs_expr: &'tcx hir::Expr,
+        lhs_ty: Ty<'tcx>,
+        rhs_expr: &'tcx hir::Expr,
+        rhs_ty: Ty<'tcx>,
+        op: hir::BinOp,
+    ) -> Ty<'tcx> {
         debug_assert!(is_builtin_binop(lhs_ty, rhs_ty, op));
 
         let tcx = self.tcx;
@@ -142,14 +144,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_overloaded_binop(&self,
-                              expr: &'tcx hir::Expr,
-                              lhs_expr: &'tcx hir::Expr,
-                              rhs_expr: &'tcx hir::Expr,
-                              op: hir::BinOp,
-                              is_assign: IsAssign)
-                              -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)
-    {
+    fn check_overloaded_binop(
+        &self,
+        expr: &'tcx hir::Expr,
+        lhs_expr: &'tcx hir::Expr,
+        rhs_expr: &'tcx hir::Expr,
+        op: hir::BinOp,
+        is_assign: IsAssign,
+    ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
         debug!("check_overloaded_binop(expr.hir_id={}, op={:?}, is_assign={:?})",
                expr.hir_id,
                op,
@@ -611,12 +613,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_user_unop(&self,
-                           ex: &'tcx hir::Expr,
-                           operand_ty: Ty<'tcx>,
-                           op: hir::UnOp)
-                           -> Ty<'tcx>
-    {
+    pub fn check_user_unop(
+        &self,
+        ex: &'tcx hir::Expr,
+        operand_ty: Ty<'tcx>,
+        op: hir::UnOp,
+    ) -> Ty<'tcx> {
         assert!(op.is_by_value());
         match self.lookup_op_method(operand_ty, &[], Op::Unary(op, ex.span)) {
             Ok(method) => {

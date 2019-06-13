@@ -36,7 +36,6 @@ impl<'tcx> IsPrefixOf<'tcx> for Place<'tcx> {
     }
 }
 
-
 pub(super) struct Prefixes<'cx, 'tcx: 'cx> {
     body: &'cx Body<'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -60,11 +59,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Returns an iterator over the prefixes of `place`
     /// (inclusive) from longest to smallest, potentially
     /// terminating the iteration early based on `kind`.
-    pub(super) fn prefixes(
-        &self,
-        place: &'cx Place<'tcx>,
-        kind: PrefixSet,
-    ) -> Prefixes<'cx, 'tcx> {
+    pub(super) fn prefixes(&self, place: &'cx Place<'tcx>, kind: PrefixSet) -> Prefixes<'cx, 'tcx> {
         Prefixes {
             next: Some(place),
             kind,

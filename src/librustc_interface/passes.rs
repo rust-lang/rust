@@ -811,7 +811,7 @@ pub fn create_global_ctxt(
     resolutions: Resolutions,
     outputs: OutputFilenames,
     tx: mpsc::Sender<Box<dyn Any + Send>>,
-    crate_name: &str
+    crate_name: &str,
 ) -> BoxedGlobalCtxt {
     let sess = compiler.session().clone();
     let cstore = compiler.cstore.clone();

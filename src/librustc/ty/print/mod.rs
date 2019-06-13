@@ -326,9 +326,7 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P>
-    for &'tcx ty::List<ty::ExistentialPredicate<'tcx>>
-{
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
     type Output = P::DynExistential;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {

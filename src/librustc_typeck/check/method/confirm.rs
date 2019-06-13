@@ -58,11 +58,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
-    fn new(fcx: &'a FnCtxt<'a, 'tcx>,
-           span: Span,
-           self_expr: &'tcx hir::Expr,
-           call_expr: &'tcx hir::Expr)
-           -> ConfirmContext<'a, 'tcx> {
+    fn new(
+        fcx: &'a FnCtxt<'a, 'tcx>,
+        span: Span,
+        self_expr: &'tcx hir::Expr,
+        call_expr: &'tcx hir::Expr,
+    ) -> ConfirmContext<'a, 'tcx> {
         ConfirmContext {
             fcx,
             span,
@@ -263,10 +264,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     }
 
     fn extract_existential_trait_ref<R, F>(&mut self, self_ty: Ty<'tcx>, mut closure: F) -> R
-        where F: FnMut(&mut ConfirmContext<'a, 'tcx>,
-                       Ty<'tcx>,
-                       ty::PolyExistentialTraitRef<'tcx>)
-                       -> R
+    where
+        F: FnMut(&mut ConfirmContext<'a, 'tcx>, Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>) -> R,
     {
         // If we specified that this is an object method, then the
         // self-type ought to be something that can be dereferenced to

@@ -190,11 +190,8 @@ impl<'a, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     /// contain inference variables, it must be supplied, in which
     /// case we will register "givens" on the inference context. (See
     /// `RegionConstraintData`.)
-    fn add_outlives_bounds<I>(
-        &mut self,
-        infcx: Option<&InferCtxt<'a, 'tcx>>,
-        outlives_bounds: I,
-    ) where
+    fn add_outlives_bounds<I>(&mut self, infcx: Option<&InferCtxt<'a, 'tcx>>, outlives_bounds: I)
+    where
         I: IntoIterator<Item = OutlivesBound<'tcx>>,
     {
         // Record relationships such as `T:'x` that don't go into the

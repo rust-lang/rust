@@ -33,10 +33,7 @@ pub fn resolve<'tcx>(
     region_rels: &RegionRelations<'_, 'tcx>,
     var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
-) -> (
-    LexicalRegionResolutions<'tcx>,
-    Vec<RegionResolutionError<'tcx>>,
-) {
+) -> (LexicalRegionResolutions<'tcx>, Vec<RegionResolutionError<'tcx>>) {
     debug!("RegionConstraintData: resolve_regions()");
     let mut errors = vec![];
     let mut resolver = LexicalResolver {

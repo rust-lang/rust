@@ -2443,23 +2443,26 @@ impl_stable_hash_for!(struct crate::ty::layout::AbiAndPrefAlign {
 });
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Align {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'tcx>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'tcx>,
+        hasher: &mut StableHasher<W>,
+    ) {
         self.bytes().hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Size {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'tcx>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'tcx>,
+        hasher: &mut StableHasher<W>,
+    ) {
         self.bytes().hash_stable(hcx, hasher);
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx>
-{
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for LayoutError<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {

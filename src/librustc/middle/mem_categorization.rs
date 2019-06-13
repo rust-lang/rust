@@ -432,11 +432,12 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ///   temporaries may be overly conservative;
     /// - similarly, as the results of upvar analysis are not yet
     ///   known, the results around upvar accesses may be incorrect.
-    pub fn with_infer(infcx: &'a InferCtxt<'a, 'tcx>,
-                      body_owner: DefId,
-                      region_scope_tree: &'a region::ScopeTree,
-                      tables: &'a ty::TypeckTables<'tcx>)
-                      -> MemCategorizationContext<'a, 'tcx> {
+    pub fn with_infer(
+        infcx: &'a InferCtxt<'a, 'tcx>,
+        body_owner: DefId,
+        region_scope_tree: &'a region::ScopeTree,
+        tables: &'a ty::TypeckTables<'tcx>,
+    ) -> MemCategorizationContext<'a, 'tcx> {
         let tcx = infcx.tcx;
 
         // Subtle: we can't do rvalue promotion analysis until the
@@ -586,10 +587,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     pub fn cat_expr(&self, expr: &hir::Expr) -> McResult<cmt_<'tcx>> {
         // This recursion helper avoids going through *too many*
         // adjustments, since *only* non-overloaded deref recurses.
-        fn helper<'a, 'tcx>(mc: &MemCategorizationContext<'a, 'tcx>,
-                                  expr: &hir::Expr,
-                                  adjustments: &[adjustment::Adjustment<'tcx>])
-                                  -> McResult<cmt_<'tcx>> {
+        fn helper<'a, 'tcx>(
+            mc: &MemCategorizationContext<'a, 'tcx>,
+            expr: &hir::Expr,
+            adjustments: &[adjustment::Adjustment<'tcx>],
+        ) -> McResult<cmt_<'tcx>> {
             match adjustments.split_last() {
                 None => mc.cat_expr_unadjusted(expr),
                 Some((adjustment, previous)) => {

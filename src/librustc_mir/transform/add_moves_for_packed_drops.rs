@@ -46,11 +46,7 @@ impl MirPass for AddMovesForPackedDrops {
     }
 }
 
-pub fn add_moves_for_packed_drops<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    def_id: DefId,
-) {
+pub fn add_moves_for_packed_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, def_id: DefId) {
     let patch = add_moves_for_packed_drops_patch(tcx, body, def_id);
     patch.apply(body);
 }

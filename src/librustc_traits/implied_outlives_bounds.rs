@@ -39,7 +39,7 @@ fn implied_outlives_bounds<'tcx>(
 fn compute_implied_outlives_bounds<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>
+    ty: Ty<'tcx>,
 ) -> Fallible<Vec<OutlivesBound<'tcx>>> {
     let tcx = infcx.tcx;
 

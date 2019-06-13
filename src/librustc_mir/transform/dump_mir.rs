@@ -18,12 +18,7 @@ impl MirPass for Marker {
         Cow::Borrowed(self.0)
     }
 
-    fn run_pass<'tcx>(
-        &self,
-        _tcx: TyCtxt<'tcx>,
-        _source: MirSource<'tcx>,
-        _body: &mut Body<'tcx>,
-    ) {
+    fn run_pass<'tcx>(&self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body: &mut Body<'tcx>) {
     }
 }
 

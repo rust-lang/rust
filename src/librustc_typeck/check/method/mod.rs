@@ -174,13 +174,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * `self_ty`:               the (unadjusted) type of the self expression (`foo`)
     /// * `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
     /// * `self_expr`:             the self expression (`foo`)
-    pub fn lookup_method(&self,
-                         self_ty: Ty<'tcx>,
-                         segment: &hir::PathSegment,
-                         span: Span,
-                         call_expr: &'tcx hir::Expr,
-                         self_expr: &'tcx hir::Expr)
-                         -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
+    pub fn lookup_method(
+        &self,
+        self_ty: Ty<'tcx>,
+        segment: &hir::PathSegment,
+        span: Span,
+        call_expr: &'tcx hir::Expr,
+        self_expr: &'tcx hir::Expr,
+    ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
                segment.ident,
                self_ty,
@@ -245,13 +246,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(result.callee)
     }
 
-    fn lookup_probe(&self,
-                    span: Span,
-                    method_name: ast::Ident,
-                    self_ty: Ty<'tcx>,
-                    call_expr: &'tcx hir::Expr,
-                    scope: ProbeScope)
-                    -> probe::PickResult<'tcx> {
+    fn lookup_probe(
+        &self,
+        span: Span,
+        method_name: ast::Ident,
+        self_ty: Ty<'tcx>,
+        call_expr: &'tcx hir::Expr,
+        scope: ProbeScope,
+    ) -> probe::PickResult<'tcx> {
         let mode = probe::Mode::MethodCall;
         let self_ty = self.resolve_vars_if_possible(&self_ty);
         self.probe_for_name(span, mode, method_name, IsSuggestion(false),

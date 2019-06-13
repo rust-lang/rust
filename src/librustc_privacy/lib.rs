@@ -337,11 +337,7 @@ fn item_tables<'a, 'tcx>(
     if tcx.has_typeck_tables(def_id) { tcx.typeck_tables_of(def_id) } else { empty_tables }
 }
 
-fn min<'tcx>(
-    vis1: ty::Visibility,
-    vis2: ty::Visibility,
-    tcx: TyCtxt<'tcx>,
-) -> ty::Visibility {
+fn min<'tcx>(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'tcx>) -> ty::Visibility {
     if vis1.is_at_least(vis2, tcx) { vis2 } else { vis1 }
 }
 

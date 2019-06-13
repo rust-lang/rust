@@ -315,10 +315,7 @@ pub fn collect_crate_mono_items<'tcx>(
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
-fn collect_roots<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    mode: MonoItemCollectionMode,
-) -> Vec<MonoItem<'tcx>> {
+fn collect_roots<'tcx>(tcx: TyCtxt<'tcx>, mode: MonoItemCollectionMode) -> Vec<MonoItem<'tcx>> {
     debug!("Collecting roots");
     let mut roots = Vec::new();
 
@@ -1188,11 +1185,7 @@ fn create_mono_items_for_default_impls<'tcx>(
 }
 
 /// Scan the miri alloc in order to find function calls, closures, and drop-glue
-fn collect_miri<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    alloc_id: AllocId,
-    output: &mut Vec<MonoItem<'tcx>>,
-) {
+fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut Vec<MonoItem<'tcx>>) {
     let alloc_kind = tcx.alloc_map.lock().get(alloc_id);
     match alloc_kind {
         Some(GlobalAlloc::Static(def_id)) => {

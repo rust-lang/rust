@@ -30,7 +30,7 @@ impl FulfillmentContext<'tcx> {
 
 fn in_environment(
     infcx: &InferCtxt<'_, 'tcx>,
-    obligation: PredicateObligation<'tcx>
+    obligation: PredicateObligation<'tcx>,
 ) -> InEnvironment<'tcx, PredicateObligation<'tcx>> {
     assert!(!infcx.is_in_snapshot());
     let obligation = infcx.resolve_vars_if_possible(&obligation);

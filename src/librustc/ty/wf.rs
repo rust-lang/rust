@@ -15,13 +15,13 @@ use crate::mir::interpret::ConstValue;
 /// inference variable, returns `None`, because we are not able to
 /// make any progress at all. This is to prevent "livelock" where we
 /// say "$0 is WF if $0 is WF".
-pub fn obligations<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                   param_env: ty::ParamEnv<'tcx>,
-                                   body_id: hir::HirId,
-                                   ty: Ty<'tcx>,
-                                   span: Span)
-                                   -> Option<Vec<traits::PredicateObligation<'tcx>>>
-{
+pub fn obligations<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    body_id: hir::HirId,
+    ty: Ty<'tcx>,
+    span: Span,
+) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
     let mut wf = WfPredicates { infcx,
                                 param_env,
                                 body_id,
@@ -41,25 +41,25 @@ pub fn obligations<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 /// well-formed.  For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
-pub fn trait_obligations<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                         param_env: ty::ParamEnv<'tcx>,
-                                         body_id: hir::HirId,
-                                         trait_ref: &ty::TraitRef<'tcx>,
-                                         span: Span)
-                                         -> Vec<traits::PredicateObligation<'tcx>>
-{
+pub fn trait_obligations<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    body_id: hir::HirId,
+    trait_ref: &ty::TraitRef<'tcx>,
+    span: Span,
+) -> Vec<traits::PredicateObligation<'tcx>> {
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
     wf.compute_trait_ref(trait_ref, Elaborate::All);
     wf.normalize()
 }
 
-pub fn predicate_obligations<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                             param_env: ty::ParamEnv<'tcx>,
-                                             body_id: hir::HirId,
-                                             predicate: &ty::Predicate<'tcx>,
-                                             span: Span)
-                                             -> Vec<traits::PredicateObligation<'tcx>>
-{
+pub fn predicate_obligations<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    body_id: hir::HirId,
+    predicate: &ty::Predicate<'tcx>,
+    span: Span,
+) -> Vec<traits::PredicateObligation<'tcx>> {
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
 
     // (*) ok to skip binders, because wf code is prepared for it

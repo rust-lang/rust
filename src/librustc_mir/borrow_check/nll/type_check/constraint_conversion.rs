@@ -150,9 +150,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx>
-    for &'a mut ConstraintConversion<'b, 'tcx>
-{
+impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'b, 'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         _origin: SubregionOrigin<'tcx>,

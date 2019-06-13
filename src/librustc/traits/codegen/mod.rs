@@ -116,7 +116,7 @@ impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
 // # Global Cache
 
 pub struct ProjectionCache<'tcx> {
-    data: PhantomData<&'tcx ()>
+    data: PhantomData<&'tcx ()>,
 }
 
 impl<'tcx> DepTrackingMapConfig for ProjectionCache<'tcx> {
@@ -137,11 +137,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// type inference variables that appear in `result` to be
     /// unified, and hence we need to process those obligations to get
     /// the complete picture of the type.
-    fn drain_fulfillment_cx_or_panic<T>(&self,
-                                        fulfill_cx: &mut FulfillmentContext<'tcx>,
-                                        result: &T)
-                                        -> T::Lifted
-        where T: TypeFoldable<'tcx> + ty::Lift<'tcx>
+    fn drain_fulfillment_cx_or_panic<T>(
+        &self,
+        fulfill_cx: &mut FulfillmentContext<'tcx>,
+        result: &T,
+    ) -> T::Lifted
+    where
+        T: TypeFoldable<'tcx> + ty::Lift<'tcx>,
     {
         debug!("drain_fulfillment_cx_or_panic()");
 

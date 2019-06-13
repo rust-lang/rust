@@ -443,12 +443,7 @@ struct BoundVarReplacer<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> BoundVarReplacer<'a, 'tcx> {
-    fn new<F, G, H>(
-        tcx: TyCtxt<'tcx>,
-        fld_r: &'a mut F,
-        fld_t: &'a mut G,
-        fld_c: &'a mut H,
-    ) -> Self
+    fn new<F, G, H>(tcx: TyCtxt<'tcx>, fld_r: &'a mut F, fld_t: &'a mut G, fld_c: &'a mut H) -> Self
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         G: FnMut(ty::BoundTy) -> Ty<'tcx>,

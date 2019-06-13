@@ -288,14 +288,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
-    pub fn with_infer(delegate: &'a mut (dyn Delegate<'tcx>+'a),
-                      infcx: &'a InferCtxt<'a, 'tcx>,
-                      body_owner: DefId,
-                      param_env: ty::ParamEnv<'tcx>,
-                      region_scope_tree: &'a region::ScopeTree,
-                      tables: &'a ty::TypeckTables<'tcx>)
-                      -> Self
-    {
+    pub fn with_infer(
+        delegate: &'a mut (dyn Delegate<'tcx> + 'a),
+        infcx: &'a InferCtxt<'a, 'tcx>,
+        body_owner: DefId,
+        param_env: ty::ParamEnv<'tcx>,
+        region_scope_tree: &'a region::ScopeTree,
+        tables: &'a ty::TypeckTables<'tcx>,
+    ) -> Self {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::with_infer(
                 infcx,
@@ -974,12 +974,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 }
 
-fn copy_or_move<'a, 'tcx>(mc: &mc::MemCategorizationContext<'a, 'tcx>,
-                                param_env: ty::ParamEnv<'tcx>,
-                                cmt: &mc::cmt_<'tcx>,
-                                move_reason: MoveReason)
-                                -> ConsumeMode
-{
+fn copy_or_move<'a, 'tcx>(
+    mc: &mc::MemCategorizationContext<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cmt: &mc::cmt_<'tcx>,
+    move_reason: MoveReason,
+) -> ConsumeMode {
     if !mc.type_is_copy_modulo_regions(param_env, cmt.ty, cmt.span) {
         Move(move_reason)
     } else {

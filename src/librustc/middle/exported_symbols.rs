@@ -52,11 +52,7 @@ impl<'tcx> ExportedSymbol<'tcx> {
         }
     }
 
-    pub fn compare_stable(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        other: &ExportedSymbol<'tcx>,
-    ) -> cmp::Ordering {
+    pub fn compare_stable(&self, tcx: TyCtxt<'tcx>, other: &ExportedSymbol<'tcx>) -> cmp::Ordering {
         match *self {
             ExportedSymbol::NonGeneric(self_def_id) => match *other {
                 ExportedSymbol::NonGeneric(other_def_id) => {

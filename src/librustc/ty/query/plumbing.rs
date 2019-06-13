@@ -104,11 +104,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    pub(super) fn try_get(
-        tcx: TyCtxt<'tcx>,
-        span: Span,
-        key: &Q::Key,
-    ) -> TryGetJob<'a, 'tcx, Q> {
+    pub(super) fn try_get(tcx: TyCtxt<'tcx>, span: Span, key: &Q::Key) -> TryGetJob<'a, 'tcx, Q> {
         let cache = Q::query_cache(tcx);
         loop {
             let mut lock = cache.borrow_mut();
@@ -351,11 +347,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(never)]
-    pub(super) fn get_query<Q: QueryDescription<'tcx>>(
-        self,
-        span: Span,
-        key: Q::Key)
-    -> Q::Value {
+    pub(super) fn get_query<Q: QueryDescription<'tcx>>(self, span: Span, key: Q::Key) -> Q::Value {
         debug!("ty::query::get_query<{}>(key={:?}, span={:?})",
                Q::NAME.as_str(),
                key,
@@ -444,9 +436,8 @@ impl<'tcx> TyCtxt<'tcx> {
         key: Q::Key,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node_index: DepNodeIndex,
-        dep_node: &DepNode
-    ) -> Q::Value
-    {
+        dep_node: &DepNode,
+    ) -> Q::Value {
         // Note this function can be called concurrently from the same query
         // We must ensure that this is handled correctly
 
@@ -537,8 +528,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         key: Q::Key,
         job: JobOwner<'_, 'tcx, Q>,
-        dep_node: DepNode)
-    -> (Q::Value, DepNodeIndex) {
+        dep_node: DepNode,
+    ) -> (Q::Value, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in DepGraph::try_mark_green()
@@ -623,12 +614,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[allow(dead_code)]
-    fn force_query<Q: QueryDescription<'tcx>>(
-        self,
-        key: Q::Key,
-        span: Span,
-        dep_node: DepNode
-    ) {
+    fn force_query<Q: QueryDescription<'tcx>>(self, key: Q::Key, span: Span, dep_node: DepNode) {
         profq_msg!(
             self,
             ProfileQueriesMsg::QueryBegin(span.data(),

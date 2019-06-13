@@ -179,10 +179,7 @@ impl context::AggregateOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
 impl context::ContextOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
     /// Returns `true` if this is a coinductive goal: basically proving that an auto trait
     /// is implemented or proving that a trait reference is well-formed.
-    fn is_coinductive(
-        &self,
-        goal: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>
-    ) -> bool {
+    fn is_coinductive(&self, goal: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>) -> bool {
         use rustc::traits::{WellFormed, WhereClause};
 
         let mut goal = goal.value.goal;
@@ -441,12 +438,9 @@ impl context::UnificationOps<ChalkArenas<'tcx>, ChalkArenas<'tcx>>
     fn u_canonicalize_goal(
         &mut self,
         value: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>,
-    ) -> (
-        Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>,
-        UniverseMap,
-    ) {
+    ) -> (Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>, UniverseMap) {
         (value.clone(), UniverseMap)
-    }
+}
 
     fn invert_goal(
         &mut self,
@@ -652,7 +646,8 @@ impl<'tcx> Upcast<'tcx> for ExClause<ChalkArenas<'tcx>> {
 }
 
 impl<'tcx, T> Upcast<'tcx> for Canonical<'tcx, T>
-    where T: Upcast<'tcx>
+where
+    T: Upcast<'tcx>,
 {
     type Upcasted = Canonical<'tcx, T::Upcasted>;
 

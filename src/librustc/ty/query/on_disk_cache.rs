@@ -156,11 +156,7 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn serialize<'tcx, E>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        encoder: &mut E,
-    ) -> Result<(), E::Error>
+    pub fn serialize<'tcx, E>(&self, tcx: TyCtxt<'tcx>, encoder: &mut E) -> Result<(), E::Error>
     where
         E: ty_codec::TyEncoder,
     {

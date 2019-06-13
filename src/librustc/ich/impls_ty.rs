@@ -11,9 +11,10 @@ use crate::middle::region;
 use crate::ty;
 use crate::mir;
 
-impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>>
-for &'tcx ty::List<T>
-    where T: HashStable<StableHashingContext<'a>> {
+impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for &'tcx ty::List<T>
+where
+    T: HashStable<StableHashingContext<'a>>,
+{
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -41,7 +42,8 @@ for &'tcx ty::List<T>
 }
 
 impl<'a, 'tcx, T> ToStableHashKey<StableHashingContext<'a>> for &'tcx ty::List<T>
-    where T: HashStable<StableHashingContext<'a>>
+where
+    T: HashStable<StableHashingContext<'a>>,
 {
     type KeyType = Fingerprint;
 
@@ -119,18 +121,22 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionVid {
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::ConstVid<'tcx> {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         self.index.hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for ty::BoundVar {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'tcx>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'tcx>,
+        hasher: &mut StableHasher<W>,
+    ) {
         self.index().hash_stable(hcx, hasher);
     }
 }

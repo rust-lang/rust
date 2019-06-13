@@ -49,8 +49,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     pub fn enter_canonical_trait_query<K, R>(
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'tcx>, &mut dyn TraitEngine<'tcx>, K)
-            -> Fallible<R>,
+        operation: impl FnOnce(&InferCtxt<'_, 'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
@@ -126,7 +125,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     pub fn make_query_response_ignoring_pending_obligations<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
-        answer: T
+        answer: T,
     ) -> Canonical<'tcx, QueryResponse<'tcx, <T as Lift<'tcx>>::Lifted>>
     where
         T: Debug + Lift<'tcx> + TypeFoldable<'tcx>,

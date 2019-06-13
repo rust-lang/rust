@@ -1249,10 +1249,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         expected_ref: ty::PolyTraitRef<'tcx>,
         found: ty::PolyTraitRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
-        fn build_fn_sig_string<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            trait_ref: &ty::TraitRef<'tcx>,
-        ) -> String {
+        fn build_fn_sig_string<'tcx>(tcx: TyCtxt<'tcx>, trait_ref: &ty::TraitRef<'tcx>) -> String {
             let inputs = trait_ref.substs.type_at(1);
             let sig = if let ty::Tuple(inputs) = inputs.sty {
                 tcx.mk_fn_sig(
@@ -1456,7 +1453,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> bool {
         struct ParamToVarFolder<'a, 'tcx: 'a> {
             infcx: &'a InferCtxt<'a, 'tcx>,
-            var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>
+            var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
         }
 
         impl<'a, 'tcx> TypeFolder<'tcx> for ParamToVarFolder<'a, 'tcx> {

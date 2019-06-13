@@ -1027,8 +1027,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         expected: Ty<'tcx>,
         def_bm: ty::BindingMode,
         discrim_span: Option<Span>,
-    ) -> Ty<'tcx>
-    {
+    ) -> Ty<'tcx> {
         // Resolve the path and check the definition for errors.
         let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(qpath, pat.hir_id)
         {

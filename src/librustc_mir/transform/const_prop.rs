@@ -31,12 +31,7 @@ use crate::transform::{MirPass, MirSource};
 pub struct ConstProp;
 
 impl MirPass for ConstProp {
-    fn run_pass<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        source: MirSource<'tcx>,
-        body: &mut Body<'tcx>,
-    ) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
             return;

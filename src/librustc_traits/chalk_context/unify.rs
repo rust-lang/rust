@@ -15,7 +15,7 @@ crate fn unify<'me, 'tcx, T: Relate<'tcx>>(
     environment: Environment<'tcx>,
     variance: ty::Variance,
     a: &T,
-    b: &T
+    b: &T,
 ) -> RelateResult<'tcx, UnificationResult<'tcx>> {
     debug!("unify(
         a = {:?},
@@ -50,10 +50,7 @@ struct ChalkTypeRelatingDelegate<'me, 'tcx: 'me> {
 }
 
 impl ChalkTypeRelatingDelegate<'me, 'tcx> {
-    fn new(
-        infcx: &'me InferCtxt<'me, 'tcx>,
-        environment: Environment<'tcx>,
-    ) -> Self {
+    fn new(infcx: &'me InferCtxt<'me, 'tcx>, environment: Environment<'tcx>) -> Self {
         Self {
             infcx,
             environment,

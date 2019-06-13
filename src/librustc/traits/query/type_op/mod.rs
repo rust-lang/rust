@@ -44,9 +44,7 @@ pub trait TypeOp<'tcx>: Sized + fmt::Debug {
 /// which produces the resulting query region constraints.
 ///
 /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
-pub trait QueryTypeOp<'tcx>:
-    fmt::Debug + Sized + TypeFoldable<'tcx> + Lift<'tcx>
-{
+pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + Lift<'tcx> {
     type QueryResponse: TypeFoldable<'tcx> + Lift<'tcx>;
 
     /// Give query the option for a simple fast path that never

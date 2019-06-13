@@ -183,10 +183,7 @@ fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: &str) 
 }
 
 /// Enforce that we do not have two items in an impl with the same name.
-fn enforce_impl_items_are_distinct<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_item_refs: &[hir::ImplItemRef],
-) {
+fn enforce_impl_items_are_distinct<'tcx>(tcx: TyCtxt<'tcx>, impl_item_refs: &[hir::ImplItemRef]) {
     let mut seen_type_items = FxHashMap::default();
     let mut seen_value_items = FxHashMap::default();
     for impl_item_ref in impl_item_refs {

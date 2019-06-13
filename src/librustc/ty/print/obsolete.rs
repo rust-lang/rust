@@ -23,11 +23,7 @@ pub struct DefPathBasedNames<'tcx> {
 }
 
 impl DefPathBasedNames<'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        omit_disambiguators: bool,
-        omit_local_crate_name: bool,
-    ) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, omit_disambiguators: bool, omit_local_crate_name: bool) -> Self {
         DefPathBasedNames { tcx, omit_disambiguators, omit_local_crate_name }
     }
 

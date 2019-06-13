@@ -74,7 +74,6 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
     }
 }
 
-
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn extract_type_name(
         &self,
@@ -102,7 +101,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         body_id: Option<hir::BodyId>,
         span: Span,
-        ty: Ty<'tcx>
+        ty: Ty<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty, None);
@@ -229,7 +228,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn need_type_info_err_in_generator(
         &self,
         span: Span,
-        ty: Ty<'tcx>
+        ty: Ty<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty, None);

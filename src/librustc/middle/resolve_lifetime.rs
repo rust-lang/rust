@@ -1125,12 +1125,7 @@ fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_>, params: &P<[hir::Gener
     }
 }
 
-fn signal_shadowing_problem(
-    tcx: TyCtxt<'_>,
-    name: ast::Name,
-    orig: Original,
-    shadower: Shadower,
-) {
+fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: ast::Name, orig: Original, shadower: Shadower) {
     let mut err = if let (ShadowKind::Lifetime, ShadowKind::Lifetime) = (orig.kind, shadower.kind) {
         // lifetime/lifetime shadowing is an error
         struct_span_err!(

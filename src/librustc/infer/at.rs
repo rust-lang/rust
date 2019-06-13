@@ -44,11 +44,11 @@ pub struct Trace<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[inline]
-    pub fn at(&'a self,
-              cause: &'a ObligationCause<'tcx>,
-              param_env: ty::ParamEnv<'tcx>)
-              -> At<'a, 'tcx>
-    {
+    pub fn at(
+        &'a self,
+        cause: &'a ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> At<'a, 'tcx> {
         At { infcx: self, cause, param_env }
     }
 }
@@ -186,11 +186,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// error-reporting, but doesn't actually perform any operation
     /// yet (this is useful when you want to set the trace using
     /// distinct values from those you wish to operate upon).
-    pub fn trace<T>(self,
-                    expected: T,
-                    actual: T)
-                    -> Trace<'a, 'tcx>
-        where T: ToTrace<'tcx>
+    pub fn trace<T>(self, expected: T, actual: T) -> Trace<'a, 'tcx>
+    where
+        T: ToTrace<'tcx>,
     {
         self.trace_exp(true, expected, actual)
     }
@@ -198,12 +196,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// Like `trace`, but the expected value is determined by the
     /// boolean argument (if true, then the first argument `a` is the
     /// "expected" value).
-    pub fn trace_exp<T>(self,
-                        a_is_expected: bool,
-                        a: T,
-                        b: T)
-                        -> Trace<'a, 'tcx>
-        where T: ToTrace<'tcx>
+    pub fn trace_exp<T>(self, a_is_expected: bool, a: T, b: T) -> Trace<'a, 'tcx>
+    where
+        T: ToTrace<'tcx>,
     {
         let trace = ToTrace::to_trace(self.cause, a_is_expected, a, b);
         Trace { at: self, trace: trace, a_is_expected }

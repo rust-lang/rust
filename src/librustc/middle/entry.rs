@@ -140,10 +140,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
     }
 }
 
-fn configure_main(
-    tcx: TyCtxt<'_>,
-    visitor: &EntryContext<'_, '_>,
-) -> Option<(DefId, EntryFnType)> {
+fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(DefId, EntryFnType)> {
     if let Some((hir_id, _)) = visitor.start_fn {
         Some((tcx.hir().local_def_id_from_hir_id(hir_id), EntryFnType::Start))
     } else if let Some((hir_id, _)) = visitor.attr_main_fn {

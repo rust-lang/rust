@@ -167,15 +167,15 @@ impl RegionHighlightMode {
 
 /// Trait for printers that pretty-print using `fmt::Write` to the printer.
 pub trait PrettyPrinter<'tcx>:
-    Printer<'tcx,
+    Printer<
+        'tcx,
         Error = fmt::Error,
         Path = Self,
         Region = Self,
         Type = Self,
         DynExistential = Self,
         Const = Self,
-    > +
-    fmt::Write
+    > + fmt::Write
 {
     /// Like `print_def_path` but for value paths.
     fn print_value_path(
@@ -186,21 +186,17 @@ pub trait PrettyPrinter<'tcx>:
         self.print_def_path(def_id, substs)
     }
 
-    fn in_binder<T>(
-        self,
-        value: &ty::Binder<T>,
-    ) -> Result<Self, Self::Error>
-        where T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>
+    fn in_binder<T>(self, value: &ty::Binder<T>) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
     {
         value.skip_binder().print(self)
     }
 
     /// Print comma-separated elements.
-    fn comma_sep<T>(
-        mut self,
-        mut elems: impl Iterator<Item = T>,
-    ) -> Result<Self, Self::Error>
-        where T: Print<'tcx, Self, Output = Self, Error = Self::Error>
+    fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error>,
     {
         if let Some(first) = elems.next() {
             self = first.print(self)?;
@@ -1239,11 +1235,9 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         Ok(self)
     }
 
-    fn in_binder<T>(
-        self,
-        value: &ty::Binder<T>,
-    ) -> Result<Self, Self::Error>
-        where T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>
+    fn in_binder<T>(self, value: &ty::Binder<T>) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
     {
         self.pretty_in_binder(value)
     }
@@ -1417,11 +1411,9 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
 // HACK(eddyb) limited to `FmtPrinter` because of `binder_depth`,
 // `region_index` and `used_region_names`.
 impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
-    pub fn pretty_in_binder<T>(
-        mut self,
-        value: &ty::Binder<T>,
-    ) -> Result<Self, fmt::Error>
-        where T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>
+    pub fn pretty_in_binder<T>(mut self, value: &ty::Binder<T>) -> Result<Self, fmt::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
     {
         fn name_by_region_index(index: usize) -> InternedString {
             match index {
@@ -1510,9 +1502,9 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
     }
 }
 
-impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<'tcx, P>
-    for ty::Binder<T>
-    where T: Print<'tcx, P, Output = P, Error = P::Error> + TypeFoldable<'tcx>
+impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::Binder<T>
+where
+    T: Print<'tcx, P, Output = P, Error = P::Error> + TypeFoldable<'tcx>,
 {
     type Output = P;
     type Error = P::Error;
@@ -1521,10 +1513,10 @@ impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<'tcx, P>
     }
 }
 
-impl<'tcx, T, U, P: PrettyPrinter<'tcx>> Print<'tcx, P>
-    for ty::OutlivesPredicate<T, U>
-    where T: Print<'tcx, P, Output = P, Error = P::Error>,
-          U: Print<'tcx, P, Output = P, Error = P::Error>,
+impl<'tcx, T, U, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::OutlivesPredicate<T, U>
+where
+    T: Print<'tcx, P, Output = P, Error = P::Error>,
+    U: Print<'tcx, P, Output = P, Error = P::Error>,
 {
     type Output = P;
     type Error = P::Error;

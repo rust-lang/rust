@@ -105,11 +105,7 @@ impl<'tcx> Discr<'tcx> {
 
 pub trait IntTypeExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
-    fn disr_incr<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        val: Option<Discr<'tcx>>,
-    ) -> Option<Discr<'tcx>>;
+    fn disr_incr<'tcx>(&self, tcx: TyCtxt<'tcx>, val: Option<Discr<'tcx>>) -> Option<Discr<'tcx>>;
     fn initial_discriminant<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Discr<'tcx>;
 }
 
@@ -138,11 +134,7 @@ impl IntTypeExt for attr::IntType {
         }
     }
 
-    fn disr_incr<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        val: Option<Discr<'tcx>>,
-    ) -> Option<Discr<'tcx>> {
+    fn disr_incr<'tcx>(&self, tcx: TyCtxt<'tcx>, val: Option<Discr<'tcx>>) -> Option<Discr<'tcx>> {
         if let Some(val) = val {
             assert_eq!(self.to_ty(tcx), val.ty);
             let (new, oflo) = val.checked_add(tcx, 1);
@@ -714,11 +706,7 @@ impl<'tcx> ty::TyS<'tcx> {
     /// over-approximation in generic contexts, where one can have
     /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
     /// actually carry lifetime requirements.
-    pub fn is_sized(
-        &'tcx self,
-        tcx_at: TyCtxtAt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> bool {
+    pub fn is_sized(&'tcx self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         tcx_at.is_sized_raw(param_env.and(self))
     }
 
@@ -979,10 +967,7 @@ fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
 #[derive(Clone, HashStable)]
 pub struct NeedsDrop(pub bool);
 
-fn needs_drop_raw<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-) -> NeedsDrop {
+fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> NeedsDrop {
     let (param_env, ty) = query.into_parts();
 
     let needs_drop = |ty: Ty<'tcx>| -> bool {

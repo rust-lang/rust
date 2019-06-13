@@ -259,18 +259,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                       |probe_cx| probe_cx.pick())
     }
 
-    fn probe_op<OP,R>(&'a self,
-                      span: Span,
-                      mode: Mode,
-                      method_name: Option<ast::Ident>,
-                      return_type: Option<Ty<'tcx>>,
-                      is_suggestion: IsSuggestion,
-                      self_ty: Ty<'tcx>,
-                      scope_expr_id: hir::HirId,
-                      scope: ProbeScope,
-                      op: OP)
-                      -> Result<R, MethodError<'tcx>>
-        where OP: FnOnce(ProbeContext<'a, 'tcx>) -> Result<R, MethodError<'tcx>>
+    fn probe_op<OP, R>(
+        &'a self,
+        span: Span,
+        mode: Mode,
+        method_name: Option<ast::Ident>,
+        return_type: Option<Ty<'tcx>>,
+        is_suggestion: IsSuggestion,
+        self_ty: Ty<'tcx>,
+        scope_expr_id: hir::HirId,
+        scope: ProbeScope,
+        op: OP,
+    ) -> Result<R, MethodError<'tcx>>
+    where
+        OP: FnOnce(ProbeContext<'a, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();
         let param_env_and_self_ty =
@@ -463,17 +465,17 @@ fn method_autoderef_steps<'tcx>(
     })
 }
 
-
 impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
-    fn new(fcx: &'a FnCtxt<'a, 'tcx>,
-           span: Span,
-           mode: Mode,
-           method_name: Option<ast::Ident>,
-           return_type: Option<Ty<'tcx>>,
-           orig_steps_var_values: OriginalQueryValues<'tcx>,
-           steps: Lrc<Vec<CandidateStep<'tcx>>>,
-           is_suggestion: IsSuggestion)
-           -> ProbeContext<'a, 'tcx> {
+    fn new(
+        fcx: &'a FnCtxt<'a, 'tcx>,
+        span: Span,
+        mode: Mode,
+        method_name: Option<ast::Ident>,
+        return_type: Option<Ty<'tcx>>,
+        orig_steps_var_values: OriginalQueryValues<'tcx>,
+        steps: Lrc<Vec<CandidateStep<'tcx>>>,
+        is_suggestion: IsSuggestion,
+    ) -> ProbeContext<'a, 'tcx> {
         ProbeContext {
             fcx,
             span,
@@ -808,12 +810,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     // Do a search through a list of bounds, using a callback to actually
     // create the candidates.
-    fn elaborate_bounds<F>(&mut self,
-                           bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-                           mut mk_cand: F)
-        where F: for<'b> FnMut(&mut ProbeContext<'b, 'tcx>,
-                               ty::PolyTraitRef<'tcx>,
-                               ty::AssocItem)
+    fn elaborate_bounds<F>(
+        &mut self,
+        bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+        mut mk_cand: F,
+    ) where
+        F: for<'b> FnMut(&mut ProbeContext<'b, 'tcx>, ty::PolyTraitRef<'tcx>, ty::AssocItem),
     {
         let tcx = self.tcx;
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
@@ -1045,9 +1047,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             .next()
     }
 
-    fn pick_by_value_method(&mut self, step: &CandidateStep<'tcx>, self_ty: Ty<'tcx>)
-                            -> Option<PickResult<'tcx>>
-    {
+    fn pick_by_value_method(
+        &mut self,
+        step: &CandidateStep<'tcx>,
+        self_ty: Ty<'tcx>,
+    ) -> Option<PickResult<'tcx>> {
         //! For each type `T` in the step list, this attempts to find a
         //! method where the (transformed) self type is exactly `T`. We
         //! do however do one transformation on the adjustment: if we
@@ -1075,11 +1079,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         })
     }
 
-    fn pick_autorefd_method(&mut self,
-                            step: &CandidateStep<'tcx>,
-                            self_ty: Ty<'tcx>,
-                            mutbl: hir::Mutability)
-                            -> Option<PickResult<'tcx>> {
+    fn pick_autorefd_method(
+        &mut self,
+        step: &CandidateStep<'tcx>,
+        self_ty: Ty<'tcx>,
+        mutbl: hir::Mutability,
+    ) -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
 
         // In general, during probing we erase regions. See

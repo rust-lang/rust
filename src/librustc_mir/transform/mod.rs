@@ -141,12 +141,7 @@ pub trait MirPass {
         default_name::<Self>()
     }
 
-    fn run_pass<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        source: MirSource<'tcx>,
-        body: &mut Body<'tcx>,
-    );
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>);
 }
 
 pub fn run_passes(

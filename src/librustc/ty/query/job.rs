@@ -100,11 +100,7 @@ impl<'tcx> QueryJob<'tcx> {
     }
 
     #[cfg(not(parallel_compiler))]
-    pub(super) fn find_cycle_in_stack(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        span: Span,
-    ) -> CycleError<'tcx> {
+    pub(super) fn find_cycle_in_stack(&self, tcx: TyCtxt<'tcx>, span: Span) -> CycleError<'tcx> {
         // Get the current executing query (waiter) and find the waitee amongst its parents
         let mut current_job = tls::with_related_context(tcx, |icx| icx.query.clone());
         let mut cycle = Vec::new();

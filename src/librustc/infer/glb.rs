@@ -14,9 +14,10 @@ pub struct Glb<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
 }
 
 impl<'combine, 'infcx, 'tcx> Glb<'combine, 'infcx, 'tcx> {
-    pub fn new(fields: &'combine mut CombineFields<'infcx, 'tcx>, a_is_expected: bool)
-        -> Glb<'combine, 'infcx, 'tcx>
-    {
+    pub fn new(
+        fields: &'combine mut CombineFields<'infcx, 'tcx>,
+        a_is_expected: bool,
+    ) -> Glb<'combine, 'infcx, 'tcx> {
         Glb { fields: fields, a_is_expected: a_is_expected }
     }
 }
@@ -85,9 +86,7 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
     }
 }
 
-impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx>
-    for Glb<'combine, 'infcx, 'tcx>
-{
+impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 'tcx> {
     fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'tcx> {
         self.fields.infcx
     }

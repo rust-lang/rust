@@ -57,12 +57,7 @@ impl MirPass for SimplifyCfg {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass<'tcx>(
-        &self,
-        _tcx: TyCtxt<'tcx>,
-        _src: MirSource<'tcx>,
-        body: &mut Body<'tcx>,
-    ) {
+    fn run_pass<'tcx>(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body);
         simplify_cfg(body);
     }

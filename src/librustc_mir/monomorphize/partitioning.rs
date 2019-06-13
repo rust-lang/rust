@@ -203,10 +203,7 @@ struct PostInliningPartitioning<'tcx> {
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
-fn place_root_mono_items<'tcx, I>(
-    tcx: TyCtxt<'tcx>,
-    mono_items: I,
-) -> PreInliningPartitioning<'tcx>
+fn place_root_mono_items<'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I) -> PreInliningPartitioning<'tcx>
 where
     I: Iterator<Item = MonoItem<'tcx>>,
 {

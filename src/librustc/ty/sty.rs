@@ -558,11 +558,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// This is the types of the fields of a generator which are not stored in a
     /// variant.
     #[inline]
-    pub fn prefix_tys(
-        self,
-        def_id: DefId,
-        tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = Ty<'tcx>> {
+    pub fn prefix_tys(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> impl Iterator<Item = Ty<'tcx>> {
         self.upvar_tys(def_id, tcx)
     }
 }
@@ -2265,11 +2261,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn from_bits(
-        tcx: TyCtxt<'tcx>,
-        bits: u128,
-        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> &'tcx Self {
+    pub fn from_bits(tcx: TyCtxt<'tcx>, bits: u128, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> &'tcx Self {
         let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).unwrap_or_else(|e| {
             panic!("could not compute layout for {:?}: {:?}", ty, e)
@@ -2308,11 +2300,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn assert_bits(
-        &self,
-        tcx: TyCtxt<'_>,
-        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Option<u128> {
+    pub fn assert_bits(&self, tcx: TyCtxt<'_>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
         assert_eq!(self.ty, ty.value);
         let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).ok()?.size;

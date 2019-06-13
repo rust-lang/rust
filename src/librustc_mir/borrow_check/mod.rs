@@ -1511,12 +1511,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    fn check_activations(
-        &mut self,
-        location: Location,
-        span: Span,
-        flow_state: &Flows<'cx, 'tcx>,
-    ) {
+    fn check_activations(&mut self, location: Location, span: Span, flow_state: &Flows<'cx, 'tcx>) {
         // Two-phase borrow support: For each activation that is newly
         // generated at this statement, check if it interferes with
         // another borrow.
@@ -2034,11 +2029,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
     }
 
-    fn is_local_ever_initialized(&self,
-                                 local: Local,
-                                 flow_state: &Flows<'cx, 'tcx>)
-                                 -> Option<InitIndex>
-    {
+    fn is_local_ever_initialized(
+        &self,
+        local: Local,
+        flow_state: &Flows<'cx, 'tcx>,
+    ) -> Option<InitIndex> {
         let mpi = self.move_data.rev_lookup.find_local(local);
         let ii = &self.move_data.init_path_map[mpi];
         for &index in ii {
@@ -2050,11 +2045,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// Adds the place into the used mutable variables set
-    fn add_used_mut<'d>(
-        &mut self,
-        root_place: RootPlace<'d, 'tcx>,
-        flow_state: &Flows<'cx, 'tcx>,
-    ) {
+    fn add_used_mut<'d>(&mut self, root_place: RootPlace<'d, 'tcx>, flow_state: &Flows<'cx, 'tcx>) {
         match root_place {
             RootPlace {
                 place: Place::Base(PlaceBase::Local(local)),

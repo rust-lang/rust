@@ -17,9 +17,10 @@ pub struct Equate<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
 }
 
 impl<'combine, 'infcx, 'tcx> Equate<'combine, 'infcx, 'tcx> {
-    pub fn new(fields: &'combine mut CombineFields<'infcx, 'tcx>, a_is_expected: bool)
-        -> Equate<'combine, 'infcx, 'tcx>
-    {
+    pub fn new(
+        fields: &'combine mut CombineFields<'infcx, 'tcx>,
+        a_is_expected: bool,
+    ) -> Equate<'combine, 'infcx, 'tcx> {
         Equate { fields: fields, a_is_expected: a_is_expected }
     }
 }

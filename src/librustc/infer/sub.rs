@@ -17,9 +17,10 @@ pub struct Sub<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
 }
 
 impl<'combine, 'infcx, 'tcx> Sub<'combine, 'infcx, 'tcx> {
-    pub fn new(f: &'combine mut CombineFields<'infcx, 'tcx>, a_is_expected: bool)
-        -> Sub<'combine, 'infcx, 'tcx>
-    {
+    pub fn new(
+        f: &'combine mut CombineFields<'infcx, 'tcx>,
+        a_is_expected: bool,
+    ) -> Sub<'combine, 'infcx, 'tcx> {
         Sub { fields: f, a_is_expected: a_is_expected }
     }
 

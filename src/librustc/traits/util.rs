@@ -12,10 +12,7 @@ use crate::util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
-fn anonymize_predicate<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    pred: &ty::Predicate<'tcx>,
-) -> ty::Predicate<'tcx> {
+fn anonymize_predicate<'tcx>(tcx: TyCtxt<'tcx>, pred: &ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
     match *pred {
         ty::Predicate::Trait(ref data) =>
             ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data)),
@@ -420,10 +417,7 @@ pub struct SupertraitDefIds<'tcx> {
     visited: FxHashSet<DefId>,
 }
 
-pub fn supertrait_def_ids<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_def_id: DefId,
-) -> SupertraitDefIds<'tcx> {
+pub fn supertrait_def_ids<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId) -> SupertraitDefIds<'tcx> {
     SupertraitDefIds {
         tcx,
         stack: vec![trait_def_id],
@@ -489,13 +483,12 @@ impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<
 /// Instantiate all bound parameters of the impl with the given substs,
 /// returning the resulting trait ref and all obligations that arise.
 /// The obligations are closed under normalization.
-pub fn impl_trait_ref_and_oblig<'a, 'tcx>(selcx: &mut SelectionContext<'a, 'tcx>,
-                                                param_env: ty::ParamEnv<'tcx>,
-                                                impl_def_id: DefId,
-                                                impl_substs: SubstsRef<'tcx>,)
-                                                -> (ty::TraitRef<'tcx>,
-                                                    Vec<PredicateObligation<'tcx>>)
-{
+pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
+    selcx: &mut SelectionContext<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl_def_id: DefId,
+    impl_substs: SubstsRef<'tcx>,
+) -> (ty::TraitRef<'tcx>, Vec<PredicateObligation<'tcx>>) {
     let impl_trait_ref =
         selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
     let impl_trait_ref =

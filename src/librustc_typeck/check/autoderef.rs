@@ -31,7 +31,7 @@ pub struct Autoderef<'a, 'tcx: 'a> {
     include_raw_pointers: bool,
     span: Span,
     silence_errors: bool,
-    reached_recursion_limit: bool
+    reached_recursion_limit: bool,
 }
 
 impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
@@ -86,13 +86,13 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Autoderef<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>,
-               param_env: ty::ParamEnv<'tcx>,
-               body_id: hir::HirId,
-               span: Span,
-               base_ty: Ty<'tcx>)
-               -> Autoderef<'a, 'tcx>
-    {
+    pub fn new(
+        infcx: &'a InferCtxt<'a, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        body_id: hir::HirId,
+        span: Span,
+        base_ty: Ty<'tcx>,
+    ) -> Autoderef<'a, 'tcx> {
         Autoderef {
             infcx,
             body_id,
@@ -172,13 +172,15 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     }
 
     /// Returns the adjustment steps.
-    pub fn adjust_steps(&self, fcx: &FnCtxt<'a, 'tcx>, needs: Needs)
-                        -> Vec<Adjustment<'tcx>> {
+    pub fn adjust_steps(&self, fcx: &FnCtxt<'a, 'tcx>, needs: Needs) -> Vec<Adjustment<'tcx>> {
         fcx.register_infer_ok_obligations(self.adjust_steps_as_infer_ok(fcx, needs))
     }
 
-    pub fn adjust_steps_as_infer_ok(&self, fcx: &FnCtxt<'a, 'tcx>, needs: Needs)
-                                    -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
+    pub fn adjust_steps_as_infer_ok(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        needs: Needs,
+    ) -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
         let mut obligations = vec![];
         let targets = self.steps.iter().skip(1).map(|&(ty, _)| ty)
             .chain(iter::once(self.cur_ty));
@@ -239,11 +241,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     }
 }
 
-pub fn report_autoderef_recursion_limit_error<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    span: Span,
-    ty: Ty<'tcx>,
-) {
+pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Span, ty: Ty<'tcx>) {
     // We've reached the recursion limit, error gracefully.
     let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
     let msg = format!("reached the recursion limit while auto-dereferencing `{:?}`",

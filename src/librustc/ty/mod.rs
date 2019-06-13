@@ -975,11 +975,7 @@ impl<'tcx> Generics {
     }
 
     /// Returns the `GenericParamDef` associated with this `ParamTy`.
-    pub fn type_param(
-        &'tcx self,
-        param: &ParamTy,
-        tcx: TyCtxt<'tcx>,
-    ) -> &'tcx GenericParamDef {
+    pub fn type_param(&'tcx self, param: &ParamTy, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
         if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
             let param = &self.params[index as usize];
             match param.kind {
@@ -993,11 +989,7 @@ impl<'tcx> Generics {
     }
 
     /// Returns the `ConstParameterDef` associated with this `ParamConst`.
-    pub fn const_param(
-        &'tcx self,
-        param: &ParamConst,
-        tcx: TyCtxt<'tcx>,
-    ) -> &GenericParamDef {
+    pub fn const_param(&'tcx self, param: &ParamConst, tcx: TyCtxt<'tcx>) -> &GenericParamDef {
         if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
             let param = &self.params[index as usize];
             match param.kind {
@@ -1772,7 +1764,8 @@ impl<'tcx, T> ParamEnvAnd<'tcx, T> {
 }
 
 impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for ParamEnvAnd<'tcx, T>
-    where T: HashStable<StableHashingContext<'a>>
+where
+    T: HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
@@ -2363,11 +2356,7 @@ impl<'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn eval_explicit_discr(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        expr_did: DefId,
-    ) -> Option<Discr<'tcx>> {
+    pub fn eval_explicit_discr(&self, tcx: TyCtxt<'tcx>, expr_did: DefId) -> Option<Discr<'tcx>> {
         let param_env = ParamEnv::empty();
         let repr_type = self.repr.discr_type();
         let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), expr_did);
@@ -2714,7 +2703,7 @@ impl BorrowKind {
 #[derive(Debug, Clone)]
 pub enum Attributes<'tcx> {
     Owned(Lrc<[ast::Attribute]>),
-    Borrowed(&'tcx [ast::Attribute])
+    Borrowed(&'tcx [ast::Attribute]),
 }
 
 impl<'tcx> ::std::ops::Deref for Attributes<'tcx> {
@@ -3007,9 +2996,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
-    pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>)
-                        -> &'tcx Body<'tcx>
-    {
+    pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
         match instance {
             ty::InstanceDef::Item(did) => {
                 self.optimized_mir(did)
@@ -3300,10 +3287,7 @@ fn crate_hash<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> Svh {
     tcx.hir().crate_hash
 }
 
-fn instance_def_size_estimate<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance_def: InstanceDef<'tcx>,
-) -> usize {
+fn instance_def_size_estimate<'tcx>(tcx: TyCtxt<'tcx>, instance_def: InstanceDef<'tcx>) -> usize {
     match instance_def {
         InstanceDef::Item(..) |
         InstanceDef::DropGlue(..) => {

@@ -46,8 +46,8 @@ graphs will be printed.                                                     \n\
 
 pub fn maybe_print_constraints_for<'a, 'tcx>(
     region_data: &RegionConstraintData<'tcx>,
-    region_rels: &RegionRelations<'a, 'tcx>)
-{
+    region_rels: &RegionRelations<'a, 'tcx>,
+) {
     let tcx = region_rels.tcx;
     let context = region_rels.context;
 
@@ -127,10 +127,11 @@ enum Edge<'tcx> {
 }
 
 impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
-    fn new(name: String,
-           region_rels: &'a RegionRelations<'a, 'tcx>,
-           map: &'a ConstraintMap<'tcx>)
-           -> ConstraintGraph<'a, 'tcx> {
+    fn new(
+        name: String,
+        region_rels: &'a RegionRelations<'a, 'tcx>,
+        map: &'a ConstraintMap<'tcx>,
+    ) -> ConstraintGraph<'a, 'tcx> {
         let mut i = 0;
         let mut node_ids = FxHashMap::default();
         {
@@ -246,10 +247,11 @@ impl<'a, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'tcx> {
 
 pub type ConstraintMap<'tcx> = BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
 
-fn dump_region_data_to<'a, 'tcx>(region_rels: &RegionRelations<'a, 'tcx>,
-                                       map: &ConstraintMap<'tcx>,
-                                       path: &str)
-                                       -> io::Result<()> {
+fn dump_region_data_to<'a, 'tcx>(
+    region_rels: &RegionRelations<'a, 'tcx>,
+    map: &ConstraintMap<'tcx>,
+    path: &str,
+) -> io::Result<()> {
     debug!("dump_region_data map (len: {}) path: {}",
            map.len(),
            path);

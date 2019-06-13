@@ -514,11 +514,7 @@ fn convert_variant_ctor<'tcx>(tcx: TyCtxt<'tcx>, ctor_id: hir::HirId) {
     tcx.predicates_of(def_id);
 }
 
-fn convert_enum_variant_types<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    variants: &[hir::Variant],
-) {
+fn convert_enum_variant_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, variants: &[hir::Variant]) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr.discr_type();
     let initial = repr_type.initial_discriminant(tcx);
@@ -1143,11 +1139,7 @@ fn type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Ty<'tcx> {
 ///
 /// If you want to fail anyway, you can set the `fail` parameter to true, but in this case,
 /// you'd better just call [`type_of`] directly.
-pub fn checked_type_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    fail: bool,
-) -> Option<Ty<'tcx>> {
+pub fn checked_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fail: bool) -> Option<Ty<'tcx>> {
     use rustc::hir::*;
 
     let hir_id = match tcx.hir().as_local_hir_id(def_id) {
@@ -1842,10 +1834,7 @@ fn predicates_defined_on<'tcx>(
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
 /// `Self: Trait` predicates for traits.
-fn predicates_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-) -> &'tcx ty::GenericPredicates<'tcx> {
+fn predicates_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::GenericPredicates<'tcx> {
     let mut result = tcx.predicates_defined_on(def_id);
 
     if tcx.is_trait(def_id) {

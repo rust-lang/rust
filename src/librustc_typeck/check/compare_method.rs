@@ -410,15 +410,16 @@ fn check_region_bounds_on_impl_method<'tcx>(
     Ok(())
 }
 
-fn extract_spans_for_error_reporting<'a, 'tcx>(infcx: &infer::InferCtxt<'a, 'tcx>,
-                                                     param_env: ty::ParamEnv<'tcx>,
-                                                     terr: &TypeError<'_>,
-                                                     cause: &ObligationCause<'tcx>,
-                                                     impl_m: &ty::AssocItem,
-                                                     impl_sig: ty::FnSig<'tcx>,
-                                                     trait_m: &ty::AssocItem,
-                                                     trait_sig: ty::FnSig<'tcx>)
-                                                     -> (Span, Option<Span>) {
+fn extract_spans_for_error_reporting<'a, 'tcx>(
+    infcx: &infer::InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    terr: &TypeError<'_>,
+    cause: &ObligationCause<'tcx>,
+    impl_m: &ty::AssocItem,
+    impl_sig: ty::FnSig<'tcx>,
+    trait_m: &ty::AssocItem,
+    trait_sig: ty::FnSig<'tcx>,
+) -> (Span, Option<Span>) {
     let tcx = infcx.tcx;
     let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id).unwrap();
     let (impl_m_output, impl_m_iter) = match tcx.hir()

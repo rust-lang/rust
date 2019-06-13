@@ -367,11 +367,9 @@ impl PrettyPrinter<'tcx> for SymbolPrinter<'tcx> {
     ) -> bool {
         false
     }
-    fn comma_sep<T>(
-        mut self,
-        mut elems: impl Iterator<Item = T>,
-    ) -> Result<Self, Self::Error>
-        where T: Print<'tcx, Self, Output = Self, Error = Self::Error>
+    fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error>,
     {
         if let Some(first) = elems.next() {
             self = first.print(self)?;

@@ -33,11 +33,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Search the upvars (if any) to find one that references fr. Return its index.
-    crate fn get_upvar_index_for_region(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        fr: RegionVid,
-    ) -> Option<usize> {
+    crate fn get_upvar_index_for_region(&self, tcx: TyCtxt<'tcx>, fr: RegionVid) -> Option<usize> {
         let upvar_index = self
             .universal_regions
             .defining_ty
@@ -134,5 +130,4 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         (argument_name, argument_span)
     }
-
 }

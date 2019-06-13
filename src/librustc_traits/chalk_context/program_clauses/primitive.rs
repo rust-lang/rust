@@ -15,10 +15,7 @@ use crate::lowering::Lower;
 use crate::generic_types;
 use std::iter;
 
-crate fn wf_clause_for_raw_ptr<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    mutbl: hir::Mutability,
-) -> Clauses<'tcx> {
+crate fn wf_clause_for_raw_ptr<'tcx>(tcx: TyCtxt<'tcx>, mutbl: hir::Mutability) -> Clauses<'tcx> {
     let ptr_ty = generic_types::raw_ptr(tcx, mutbl);
 
     let wf_clause = ProgramClause {

@@ -210,12 +210,7 @@ pub fn push_debuginfo_type_name<'tcx>(
         }
     }
 
-    fn push_item_name(
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-        qualified: bool,
-        output: &mut String,
-    ) {
+    fn push_item_name(tcx: TyCtxt<'tcx>, def_id: DefId, qualified: bool, output: &mut String) {
         if qualified {
             output.push_str(&tcx.crate_name(def_id.krate).as_str());
             for path_element in tcx.def_path(def_id).data {

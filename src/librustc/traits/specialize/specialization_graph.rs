@@ -383,12 +383,7 @@ impl<'tcx> Graph {
     }
 
     /// Insert cached metadata mapping from a child impl back to its parent.
-    pub fn record_impl_from_cstore(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        parent: DefId,
-        child: DefId,
-    ) {
+    pub fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'tcx>, parent: DefId, child: DefId) {
         if self.parent.insert(child, parent).is_some() {
             bug!("When recording an impl from the crate store, information about its parent \
                   was already present.");

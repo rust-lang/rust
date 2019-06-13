@@ -50,8 +50,7 @@ pub struct TypeFreshener<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>)
-               -> TypeFreshener<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> TypeFreshener<'a, 'tcx> {
         TypeFreshener {
             infcx,
             ty_freshen_count: 0,

@@ -14,9 +14,10 @@ pub struct Lub<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
 }
 
 impl<'combine, 'infcx, 'tcx> Lub<'combine, 'infcx, 'tcx> {
-    pub fn new(fields: &'combine mut CombineFields<'infcx, 'tcx>, a_is_expected: bool)
-        -> Lub<'combine, 'infcx, 'tcx>
-    {
+    pub fn new(
+        fields: &'combine mut CombineFields<'infcx, 'tcx>,
+        a_is_expected: bool,
+    ) -> Lub<'combine, 'infcx, 'tcx> {
         Lub { fields: fields, a_is_expected: a_is_expected }
     }
 }
@@ -85,9 +86,7 @@ impl TypeRelation<'tcx> for Lub<'combine, 'infcx, 'tcx> {
     }
 }
 
-impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx>
-    for Lub<'combine, 'infcx, 'tcx>
-{
+impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Lub<'combine, 'infcx, 'tcx> {
     fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'tcx> {
         self.fields.infcx
     }

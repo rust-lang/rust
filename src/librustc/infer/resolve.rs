@@ -105,7 +105,7 @@ pub struct UnresolvedTypeFinder<'a, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
 
     /// Used to find the type parameter name and location for error reporting.
-    pub first_unresolved: Option<(Ty<'tcx>,Option<Span>)>,
+    pub first_unresolved: Option<(Ty<'tcx>, Option<Span>)>,
 }
 
 impl<'a, 'tcx> UnresolvedTypeFinder<'a, 'tcx> {
@@ -157,9 +157,9 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
 /// Full type resolution replaces all type and region variables with
 /// their concrete results. If any variable cannot be replaced (never unified, etc)
 /// then an `Err` result is returned.
-pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
-                                        value: &T) -> FixupResult<'tcx, T>
-    where T : TypeFoldable<'tcx>
+pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>, value: &T) -> FixupResult<'tcx, T>
+where
+    T: TypeFoldable<'tcx>,
 {
     let mut full_resolver = FullTypeResolver { infcx: infcx, err: None };
     let result = value.fold_with(&mut full_resolver);
