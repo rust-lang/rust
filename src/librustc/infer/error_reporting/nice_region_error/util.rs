@@ -24,7 +24,7 @@ pub(super) struct AnonymousArgInfo<'tcx> {
     pub is_first: bool,
 }
 
-impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     // This method walks the Type of the function body arguments using
     // `fold_regions()` function and returns the
     // &hir::Arg of the function argument corresponding to the anonymous

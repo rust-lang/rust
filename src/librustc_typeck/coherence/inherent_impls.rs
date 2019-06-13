@@ -18,7 +18,7 @@ use syntax_pos::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub fn crate_inherent_impls<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     crate_num: CrateNum,
 ) -> &'tcx CrateInherentImpls {
     assert_eq!(crate_num, LOCAL_CRATE);
@@ -33,7 +33,7 @@ pub fn crate_inherent_impls<'tcx>(
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
-pub fn inherent_impls<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty_def_id: DefId) -> &'tcx [DefId] {
+pub fn inherent_impls<'tcx>(tcx: TyCtxt<'tcx>, ty_def_id: DefId) -> &'tcx [DefId] {
     assert!(ty_def_id.is_local());
 
     // NB. Until we adopt the red-green dep-tracking algorithm (see
@@ -68,7 +68,7 @@ pub fn inherent_impls<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty_def_id: DefId) -> &'tcx 
 }
 
 struct InherentCollect<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     impls_map: CrateInherentImpls,
 }
 

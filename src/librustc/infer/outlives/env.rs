@@ -67,7 +67,7 @@ pub struct OutlivesEnvironment<'tcx> {
 /// because of implied bounds.
 pub type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
 
-impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
+impl<'a, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
         let mut env = OutlivesEnvironment {
             param_env,
@@ -160,7 +160,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     /// Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
     pub fn add_implied_bounds(
         &mut self,
-        infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'a, 'tcx>,
         fn_sig_tys: &[Ty<'tcx>],
         body_id: hir::HirId,
         span: Span,
@@ -192,7 +192,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     /// `RegionConstraintData`.)
     fn add_outlives_bounds<I>(
         &mut self,
-        infcx: Option<&InferCtxt<'a, 'gcx, 'tcx>>,
+        infcx: Option<&InferCtxt<'a, 'tcx>>,
         outlives_bounds: I,
     ) where
         I: IntoIterator<Item = OutlivesBound<'tcx>>,

@@ -24,8 +24,8 @@ crate enum PlaceConflictBias {
 /// Helper function for checking if places conflict with a mutable borrow and deep access depth.
 /// This is used to check for places conflicting outside of the borrow checking code (such as in
 /// dataflow).
-crate fn places_conflict<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+crate fn places_conflict<'tcx>(
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     access_place: &Place<'tcx>,
@@ -46,8 +46,8 @@ crate fn places_conflict<'gcx, 'tcx>(
 /// access depth. The `bias` parameter is used to determine how the unknowable (comparing runtime
 /// array indices, for example) should be interpreted - this depends on what the caller wants in
 /// order to make the conservative choice and preserve soundness.
-pub(super) fn borrow_conflicts_with_place<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub(super) fn borrow_conflicts_with_place<'tcx>(
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     borrow_kind: BorrowKind,
@@ -83,8 +83,8 @@ pub(super) fn borrow_conflicts_with_place<'gcx, 'tcx>(
     })
 }
 
-fn place_components_conflict<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+fn place_components_conflict<'tcx>(
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     borrow_projections: (&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>),
     borrow_kind: BorrowKind,
@@ -298,8 +298,8 @@ fn place_components_conflict<'gcx, 'tcx>(
 // Given that the bases of `elem1` and `elem2` are always either equal
 // or disjoint (and have the same type!), return the overlap situation
 // between `elem1` and `elem2`.
-fn place_base_conflict<'gcx: 'tcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+fn place_base_conflict<'tcx>(
+    tcx: TyCtxt<'tcx>,
     elem1: &PlaceBase<'tcx>,
     elem2: &PlaceBase<'tcx>,
 ) -> Overlap {
@@ -365,8 +365,8 @@ fn place_base_conflict<'gcx: 'tcx, 'tcx>(
 // Given that the bases of `elem1` and `elem2` are always either equal
 // or disjoint (and have the same type!), return the overlap situation
 // between `elem1` and `elem2`.
-fn place_projection_conflict<'gcx: 'tcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+fn place_projection_conflict<'tcx>(
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     pi1: &Projection<'tcx>,
     pi2: &Projection<'tcx>,

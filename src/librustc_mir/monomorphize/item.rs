@@ -48,7 +48,7 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
         }
     }
 
-    fn symbol_name(&self, tcx: TyCtxt<'tcx, 'tcx>) -> ty::SymbolName {
+    fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> ty::SymbolName {
         match *self.as_mono_item() {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => {
@@ -62,7 +62,7 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
             }
         }
     }
-    fn instantiation_mode(&self, tcx: TyCtxt<'tcx, 'tcx>) -> InstantiationMode {
+    fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
         let inline_in_all_cgus =
             tcx.sess.opts.debugging_opts.inline_in_all_cgus.unwrap_or_else(|| {
                 tcx.sess.opts.optimize != OptLevel::No
@@ -106,7 +106,7 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
         }
     }
 
-    fn explicit_linkage(&self, tcx: TyCtxt<'tcx, 'tcx>) -> Option<Linkage> {
+    fn explicit_linkage(&self, tcx: TyCtxt<'tcx>) -> Option<Linkage> {
         let def_id = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => instance.def_id(),
             MonoItem::Static(def_id) => def_id,
@@ -142,7 +142,7 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
     /// Similarly, if a vtable method has such a signature, and therefore can't
     /// be used, we can just not emit it and have a placeholder (a null pointer,
     /// which will never be accessed) in its place.
-    fn is_instantiable(&self, tcx: TyCtxt<'tcx, 'tcx>) -> bool {
+    fn is_instantiable(&self, tcx: TyCtxt<'tcx>) -> bool {
         debug!("is_instantiable({:?})", self);
         let (def_id, substs) = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
@@ -154,7 +154,7 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
         tcx.substitute_normalize_and_test_predicates((def_id, &substs))
     }
 
-    fn to_string(&self, tcx: TyCtxt<'tcx, 'tcx>, debug: bool) -> String {
+    fn to_string(&self, tcx: TyCtxt<'tcx>, debug: bool) -> String {
         return match *self.as_mono_item() {
             MonoItem::Fn(instance) => {
                 to_string_internal(tcx, "fn ", instance, debug)
@@ -169,7 +169,7 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
         };
 
         fn to_string_internal<'a, 'tcx>(
-            tcx: TyCtxt<'tcx, 'tcx>,
+            tcx: TyCtxt<'tcx>,
             prefix: &str,
             instance: Instance<'tcx>,
             debug: bool,
@@ -182,7 +182,7 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
         }
     }
 
-    fn local_span(&self, tcx: TyCtxt<'tcx, 'tcx>) -> Option<Span> {
+    fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
         match *self.as_mono_item() {
             MonoItem::Fn(Instance { def, .. }) => {
                 tcx.hir().as_local_hir_id(def.def_id())

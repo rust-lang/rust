@@ -71,8 +71,8 @@ use syntax::ptr::P;
 use syntax::symbol::sym;
 use syntax_pos;
 
-struct Coerce<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+struct Coerce<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
     cause: ObligationCause<'tcx>,
     use_lub: bool,
     /// Determines whether or not allow_two_phase_borrow is set on any
@@ -84,8 +84,8 @@ struct Coerce<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     allow_two_phase: AllowTwoPhase,
 }
 
-impl<'a, 'gcx, 'tcx> Deref for Coerce<'a, 'gcx, 'tcx> {
-    type Target = FnCtxt<'a, 'gcx, 'tcx>;
+impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
+    type Target = FnCtxt<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
         &self.fcx
     }
@@ -120,8 +120,8 @@ fn success<'tcx>(adj: Vec<Adjustment<'tcx>>,
     })
 }
 
-impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
-    fn new(fcx: &'f FnCtxt<'f, 'gcx, 'tcx>,
+impl<'f, 'tcx> Coerce<'f, 'tcx> {
+    fn new(fcx: &'f FnCtxt<'f, 'tcx>,
            cause: ObligationCause<'tcx>,
            allow_two_phase: AllowTwoPhase) -> Self {
         Coerce {
@@ -792,7 +792,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Attempt to coerce an expression to a type, and return the
     /// adjusted type of the expression, if successful.
     /// Adjustments are only recorded if the coercion succeeded.
@@ -1004,29 +1004,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 /// }
 /// let final_ty = coerce.complete(fcx);
 /// ```
-pub struct CoerceMany<'gcx, 'tcx, 'exprs, E>
-    where 'gcx: 'tcx, E: 'exprs + AsCoercionSite,
-{
+pub struct CoerceMany<'tcx, 'exprs, E: AsCoercionSite> {
     expected_ty: Ty<'tcx>,
     final_ty: Option<Ty<'tcx>>,
-    expressions: Expressions<'gcx, 'exprs, E>,
+    expressions: Expressions<'tcx, 'exprs, E>,
     pushed: usize,
 }
 
 /// The type of a `CoerceMany` that is storing up the expressions into
 /// a buffer. We use this in `check/mod.rs` for things like `break`.
-pub type DynamicCoerceMany<'gcx, 'tcx> = CoerceMany<'gcx, 'tcx, 'gcx, P<hir::Expr>>;
+pub type DynamicCoerceMany<'tcx> = CoerceMany<'tcx, 'tcx, P<hir::Expr>>;
 
-enum Expressions<'gcx, 'exprs, E>
-    where E: 'exprs + AsCoercionSite,
-{
-    Dynamic(Vec<&'gcx hir::Expr>),
+enum Expressions<'tcx, 'exprs, E: AsCoercionSite> {
+    Dynamic(Vec<&'tcx hir::Expr>),
     UpFront(&'exprs [E]),
 }
 
-impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
-    where 'gcx: 'tcx, E: 'exprs + AsCoercionSite,
-{
+impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     /// The usual case; collect the set of expressions dynamically.
     /// If the full set of coercion sites is known before hand,
     /// consider `with_coercion_sites()` instead to avoid allocation.
@@ -1045,7 +1039,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         Self::make(expected_ty, Expressions::UpFront(coercion_sites))
     }
 
-    fn make(expected_ty: Ty<'tcx>, expressions: Expressions<'gcx, 'exprs, E>) -> Self {
+    fn make(expected_ty: Ty<'tcx>, expressions: Expressions<'tcx, 'exprs, E>) -> Self {
         CoerceMany {
             expected_ty,
             final_ty: None,
@@ -1080,9 +1074,9 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// calls to `coerce` may come back and add adjustments and things
     /// if necessary.
     pub fn coerce<'a>(&mut self,
-                      fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+                      fcx: &FnCtxt<'a, 'tcx>,
                       cause: &ObligationCause<'tcx>,
-                      expression: &'gcx hir::Expr,
+                      expression: &'tcx hir::Expr,
                       expression_ty: Ty<'tcx>)
     {
         self.coerce_inner(fcx,
@@ -1105,7 +1099,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// message, in case any results (e.g., we use this to suggest
     /// removing a `;`).
     pub fn coerce_forced_unit<'a>(&mut self,
-                                  fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+                                  fcx: &FnCtxt<'a, 'tcx>,
                                   cause: &ObligationCause<'tcx>,
                                   augment_error: &mut dyn FnMut(&mut DiagnosticBuilder<'_>),
                                   label_unit_as_expected: bool)
@@ -1122,9 +1116,9 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// is a forced-unit case, and hence `expression_ty` must be
     /// `Nil`.
     fn coerce_inner<'a>(&mut self,
-                        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+                        fcx: &FnCtxt<'a, 'tcx>,
                         cause: &ObligationCause<'tcx>,
-                        expression: Option<&'gcx hir::Expr>,
+                        expression: Option<&'tcx hir::Expr>,
                         mut expression_ty: Ty<'tcx>,
                         augment_error: Option<&mut dyn FnMut(&mut DiagnosticBuilder<'_>)>,
                         label_expression_as_expected: bool)
@@ -1270,9 +1264,9 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         err: TypeError<'tcx>,
-        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        fcx: &FnCtxt<'a, 'tcx>,
         id: hir::HirId,
-        expression: Option<(&'gcx hir::Expr, hir::HirId)>,
+        expression: Option<(&'tcx hir::Expr, hir::HirId)>,
     ) -> DiagnosticBuilder<'a> {
         let mut db = fcx.report_mismatched_types(cause, expected, found, err);
 
@@ -1317,7 +1311,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         db
     }
 
-    pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Ty<'tcx> {
         if let Some(final_ty) = self.final_ty {
             final_ty
         } else {

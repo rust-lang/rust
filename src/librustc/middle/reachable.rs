@@ -27,7 +27,7 @@ use crate::hir::intravisit;
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(tcx: TyCtxt<'tcx, 'tcx>, item: &hir::Item, attrs: CodegenFnAttrs) -> bool {
+fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item, attrs: CodegenFnAttrs) -> bool {
     if attrs.requests_inline() {
         return true
     }
@@ -43,7 +43,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx, 'tcx>, item: &hir::Item, attrs: Codeg
 }
 
 fn method_might_be_inlined<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     impl_item: &hir::ImplItem,
     impl_src: DefId,
 ) -> bool {
@@ -67,7 +67,7 @@ fn method_might_be_inlined<'tcx>(
 // Information needed while computing reachability.
 struct ReachableContext<'a, 'tcx: 'a> {
     // The type context.
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: HirIdSet,
@@ -335,7 +335,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 // trait items are used from inlinable code through method call syntax or UFCS, or their
 // trait is a lang item.
 struct CollectPrivateImplItemsVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     access_levels: &'a privacy::AccessLevels,
     worklist: &'a mut Vec<hir::HirId>,
 }
@@ -391,7 +391,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
 #[derive(Clone, HashStable)]
 pub struct ReachableSet(pub Lrc<HirIdSet>);
 
-fn reachable_set<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, crate_num: CrateNum) -> ReachableSet {
+fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> ReachableSet {
     debug_assert!(crate_num == LOCAL_CRATE);
 
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);

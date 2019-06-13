@@ -14,20 +14,20 @@ impl<'tcx> ImpliedOutlivesBounds<'tcx> {
     }
 }
 
-impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ImpliedOutlivesBounds<'tcx> {
+impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
     type QueryResponse = Vec<OutlivesBound<'tcx>>;
 
     fn try_fast_path(
-        _tcx: TyCtxt<'gcx, 'tcx>,
+        _tcx: TyCtxt<'tcx>,
         _key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
         None
     }
 
     fn perform_query(
-        tcx: TyCtxt<'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self::QueryResponse>> {
+        tcx: TyCtxt<'tcx>,
+        canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
+    ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self::QueryResponse>> {
         // FIXME this `unchecked_map` is only necessary because the
         // query is defined as taking a `ParamEnvAnd<Ty>`; it should
         // take a `ImpliedOutlivesBounds` instead
@@ -40,7 +40,7 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ImpliedOutlivesBounds<
     }
 
     fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'gcx, Self::QueryResponse>,
+        v: &'a CanonicalizedQueryResponse<'tcx, Self::QueryResponse>,
     ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self::QueryResponse>> {
         v
     }

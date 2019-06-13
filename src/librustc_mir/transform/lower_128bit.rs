@@ -12,7 +12,7 @@ pub struct Lower128Bit;
 impl MirPass for Lower128Bit {
     fn run_pass<'tcx>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         _src: MirSource<'tcx>,
         body: &mut Body<'tcx>,
     ) {
@@ -27,7 +27,7 @@ impl MirPass for Lower128Bit {
 }
 
 impl Lower128Bit {
-    fn lower_128bit_ops<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, body: &mut Body<'tcx>) {
+    fn lower_128bit_ops<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut new_blocks = Vec::new();
         let cur_len = body.basic_blocks().len();
 
@@ -128,7 +128,7 @@ fn check_lang_item_type<'tcx, D>(
     lhs: &Operand<'tcx>,
     rhs: &Operand<'tcx>,
     local_decls: &D,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) -> DefId
 where
     D: HasLocalDecls<'tcx>,
@@ -148,7 +148,7 @@ where
 fn lower_to<'tcx, D>(
     statement: &Statement<'tcx>,
     local_decls: &D,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) -> Option<(LangItem, RhsKind)>
 where
     D: HasLocalDecls<'tcx>,
@@ -179,7 +179,7 @@ enum RhsKind {
 }
 
 impl RhsKind {
-    fn ty<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>) -> Option<Ty<'tcx>> {
+    fn ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<Ty<'tcx>> {
         match *self {
             RhsKind::Unchanged => None,
             RhsKind::ForceU128 => Some(tcx.types.u128),

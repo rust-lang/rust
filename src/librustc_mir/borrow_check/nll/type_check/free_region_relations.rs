@@ -55,7 +55,7 @@ crate struct CreateResult<'tcx> {
 }
 
 crate fn create(
-    infcx: &InferCtxt<'_, '_, 'tcx>,
+    infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
@@ -219,8 +219,8 @@ impl UniversalRegionRelations<'tcx> {
     }
 }
 
-struct UniversalRegionRelationsBuilder<'this, 'gcx: 'tcx, 'tcx: 'this> {
-    infcx: &'this InferCtxt<'this, 'gcx, 'tcx>,
+struct UniversalRegionRelationsBuilder<'this, 'tcx: 'this> {
+    infcx: &'this InferCtxt<'this, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     universal_regions: Rc<UniversalRegions<'tcx>>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -231,7 +231,7 @@ struct UniversalRegionRelationsBuilder<'this, 'gcx: 'tcx, 'tcx: 'this> {
     region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
-impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
+impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
     crate fn create(mut self) -> CreateResult<'tcx> {
         let unnormalized_input_output_tys = self
             .universal_regions

@@ -66,7 +66,7 @@ enum AllocDiscriminant {
 
 pub fn specialized_encode_alloc_id<'tcx, E: Encoder>(
     encoder: &mut E,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
 ) -> Result<(), E::Error> {
     let alloc: GlobalAlloc<'tcx> =

@@ -91,7 +91,7 @@ impl SuppressRegionErrors {
     /// Indicates that the MIR borrowck will repeat these region
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
-    pub fn when_nll_is_enabled(tcx: TyCtxt<'_, '_>) -> Self {
+    pub fn when_nll_is_enabled(tcx: TyCtxt<'_>) -> Self {
         match tcx.borrowck_mode() {
             // If we're on Migrate mode, report AST region errors
             BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
@@ -102,8 +102,8 @@ impl SuppressRegionErrors {
     }
 }
 
-pub struct InferCtxt<'a, 'gcx, 'tcx> {
-    pub tcx: TyCtxt<'gcx, 'tcx>,
+pub struct InferCtxt<'a, 'tcx> {
+    pub tcx: TyCtxt<'tcx>,
 
     /// During type-checking/inference of a body, `in_progress_tables`
     /// contains a reference to the tables being built up, which are
@@ -464,14 +464,14 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 
 /// Helper type of a temporary returned by `tcx.infer_ctxt()`.
 /// Necessary because we can't write the following bound:
-/// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>)`.
-pub struct InferCtxtBuilder<'gcx: 'tcx, 'tcx> {
-    global_tcx: TyCtxt<'gcx, 'gcx>,
+/// `F: for<'b, 'tcx> where 'tcx FnOnce(InferCtxt<'b, 'tcx>)`.
+pub struct InferCtxtBuilder<'tcx> {
+    global_tcx: TyCtxt<'tcx>,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
 }
 
-impl TyCtxt<'gcx, 'gcx> {
-    pub fn infer_ctxt<'tcx>(self) -> InferCtxtBuilder<'gcx, 'tcx> {
+impl TyCtxt<'tcx> {
+    pub fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
             fresh_tables: None,
@@ -479,7 +479,7 @@ impl TyCtxt<'gcx, 'gcx> {
     }
 }
 
-impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
+impl<'tcx> InferCtxtBuilder<'tcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
     /// will initialize `in_progress_tables` with fresh `TypeckTables`.
     pub fn with_fresh_in_progress_tables(mut self, table_owner: DefId) -> Self {
@@ -495,10 +495,10 @@ impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
     /// the bound values in `C` to their instantiated values in `V`
     /// (in other words, `S(C) = V`).
     pub fn enter_with_canonical<T, R>(
-        &'tcx mut self,
+        &mut self,
         span: Span,
         canonical: &Canonical<'tcx, T>,
-        f: impl for<'a> FnOnce(InferCtxt<'a, 'gcx, 'tcx>, T, CanonicalVarValues<'tcx>) -> R,
+        f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>, T, CanonicalVarValues<'tcx>) -> R,
     ) -> R
     where
         T: TypeFoldable<'tcx>,
@@ -510,7 +510,7 @@ impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
         })
     }
 
-    pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'gcx, 'tcx>) -> R) -> R {
+    pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
             ref fresh_tables,
@@ -567,7 +567,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
     /// Extracts `value`, registering any obligations into `fulfill_cx`.
     pub fn into_value_registering_obligations(
         self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> T {
         let InferOk { value, obligations } = self;
@@ -598,7 +598,7 @@ pub struct CombinedSnapshot<'a, 'tcx: 'a> {
     _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn is_in_snapshot(&self) -> bool {
         self.in_snapshot.get()
     }
@@ -614,7 +614,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'gcx, 'tcx> {
+    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
         freshen::TypeFreshener::new(self)
     }
 
@@ -677,7 +677,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &'a self,
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> CombineFields<'a, 'gcx, 'tcx> {
+    ) -> CombineFields<'a, 'tcx> {
         CombineFields {
             infcx: self,
             trace,
@@ -1548,13 +1548,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub struct ShallowResolver<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub struct ShallowResolver<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> ShallowResolver<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
     #[inline(always)]
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
         ShallowResolver { infcx }
     }
 
@@ -1599,8 +1599,8 @@ impl<'a, 'gcx, 'tcx> ShallowResolver<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ShallowResolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -1624,7 +1624,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ShallowResolver<'a, 'gcx, 'tcx> 
     }
 }
 
-impl<'gcx, 'tcx> TypeTrace<'tcx> {
+impl<'tcx> TypeTrace<'tcx> {
     pub fn span(&self) -> Span {
         self.cause.span
     }
@@ -1641,7 +1641,7 @@ impl<'gcx, 'tcx> TypeTrace<'tcx> {
         }
     }
 
-    pub fn dummy(tcx: TyCtxt<'gcx, 'tcx>) -> TypeTrace<'tcx> {
+    pub fn dummy(tcx: TyCtxt<'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: ObligationCause::dummy(),
             values: Types(ExpectedFound {

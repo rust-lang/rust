@@ -7,7 +7,7 @@ use rustc::mir::{self, Body, TerminatorKind};
 use rustc::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc::ty::subst::InternalSubsts;
 
-pub fn check(tcx: TyCtxt<'tcx, 'tcx>, body: &Body<'tcx>, def_id: DefId) {
+pub fn check(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get_by_hir_id(hir_id)) {
@@ -16,7 +16,7 @@ pub fn check(tcx: TyCtxt<'tcx, 'tcx>, body: &Body<'tcx>, def_id: DefId) {
 }
 
 fn check_fn_for_unconditional_recursion(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     fn_kind: FnKind<'_>,
     body: &Body<'tcx>,
     def_id: DefId,

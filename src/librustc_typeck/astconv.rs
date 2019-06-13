@@ -40,8 +40,8 @@ use rustc_data_structures::fx::FxHashSet;
 #[derive(Debug)]
 pub struct PathSeg(pub DefId, pub usize);
 
-pub trait AstConv<'gcx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'gcx, 'tcx>;
+pub trait AstConv<'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
     /// Returns the set of bounds in scope for the type parameter with
     /// the given id.
@@ -115,7 +115,7 @@ enum GenericArgPosition {
     MethodCall,
 }
 
-impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
+impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn ast_region_to_region(&self,
         lifetime: &hir::Lifetime,
         def: Option<&ty::GenericParamDef>)
@@ -208,7 +208,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     /// Report error if there is an explicit type parameter when using `impl Trait`.
     fn check_impl_trait(
-        tcx: TyCtxt<'_, '_>,
+        tcx: TyCtxt<'_>,
         span: Span,
         seg: &hir::PathSegment,
         generics: &ty::Generics,
@@ -239,7 +239,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// Checks that the correct number of generic arguments have been provided.
     /// Used specifically for function calls.
     pub fn check_generic_arg_count_for_call(
-        tcx: TyCtxt<'_, '_>,
+        tcx: TyCtxt<'_>,
         span: Span,
         def: &ty::Generics,
         seg: &hir::PathSegment,
@@ -271,7 +271,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// Checks that the correct number of generic arguments have been provided.
     /// This is used both for datatypes and function calls.
     fn check_generic_arg_count(
-        tcx: TyCtxt<'_, '_>,
+        tcx: TyCtxt<'_>,
         span: Span,
         def: &ty::Generics,
         args: &hir::GenericArgs,
@@ -462,7 +462,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
     ///   creates a suitable inference variable.
     pub fn create_substs_for_generic_args<'b>(
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
         parent_substs: &[Kind<'tcx>],
         has_self: bool,
@@ -1810,7 +1810,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         has_err
     }
 
-    pub fn prohibit_assoc_ty_binding(tcx: TyCtxt<'_, '_>, span: Span) {
+    pub fn prohibit_assoc_ty_binding(tcx: TyCtxt<'_>, span: Span) {
         let mut err = struct_span_err!(tcx.sess, span, E0229,
                                        "associated type bindings are not allowed here");
         err.span_label(span, "associated type not allowed here").emit();
@@ -2415,14 +2415,14 @@ pub struct Bounds<'tcx> {
     pub implicitly_sized: Option<Span>,
 }
 
-impl<'gcx, 'tcx> Bounds<'tcx> {
+impl<'tcx> Bounds<'tcx> {
     /// Converts a bounds list into a flat set of predicates (like
     /// where-clauses). Because some of our bounds listings (e.g.,
     /// regions) don't include the self-type, you must supply the
     /// self-type here (the `param_ty` parameter).
     pub fn predicates(
         &self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         param_ty: Ty<'tcx>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         // If it could be sized, and is, add the `Sized` predicate.

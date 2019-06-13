@@ -21,7 +21,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 fn inferred_outlives_of<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     item_def_id: DefId,
 ) -> &'tcx [ty::Predicate<'tcx>] {
     let id = tcx
@@ -71,7 +71,7 @@ fn inferred_outlives_of<'tcx>(
 }
 
 fn inferred_outlives_crate<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     crate_num: CrateNum,
 ) -> &'tcx CratePredicatesMap<'tcx> {
     assert_eq!(crate_num, LOCAL_CRATE);

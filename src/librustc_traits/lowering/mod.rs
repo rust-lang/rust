@@ -155,7 +155,7 @@ impl<'tcx> IntoWellFormedGoal for DomainGoal<'tcx> {
     }
 }
 
-crate fn program_clauses_for<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
+crate fn program_clauses_for<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Clauses<'tcx> {
     // FIXME(eddyb) this should only be using `def_kind`.
     match tcx.def_key(def_id).disambiguated_data.data {
         DefPathData::TypeNs(..) => match tcx.def_kind(def_id) {
@@ -181,7 +181,7 @@ crate fn program_clauses_for<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Cl
     }
 }
 
-fn program_clauses_for_trait<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
+fn program_clauses_for_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Clauses<'tcx> {
     // `trait Trait<P1..Pn> where WC { .. } // P0 == Self`
 
     // Rule Implemented-From-Env (see rustc guide)
@@ -294,7 +294,7 @@ fn program_clauses_for_trait<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Cl
     )
 }
 
-fn program_clauses_for_impl(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
+fn program_clauses_for_impl(tcx: TyCtxt<'tcx>, def_id: DefId) -> Clauses<'tcx> {
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
         return List::empty();
     }
@@ -337,7 +337,7 @@ fn program_clauses_for_impl(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Clauses<'
     tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::bind(clause))))
 }
 
-pub fn program_clauses_for_type_def<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
+pub fn program_clauses_for_type_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Clauses<'tcx> {
     // Rule WellFormed-Type
     //
     // `struct Ty<P1..Pn> where WC1, ..., WCm`
@@ -412,7 +412,7 @@ pub fn program_clauses_for_type_def<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId
 }
 
 pub fn program_clauses_for_associated_type_def<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     item_id: DefId,
 ) -> Clauses<'tcx> {
     // Rule ProjectionEq-Placeholder
@@ -550,7 +550,7 @@ pub fn program_clauses_for_associated_type_def<'tcx>(
 }
 
 pub fn program_clauses_for_associated_type_value<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     item_id: DefId,
 ) -> Clauses<'tcx> {
     // Rule Normalize-From-Impl (see rustc guide)
@@ -611,7 +611,7 @@ pub fn program_clauses_for_associated_type_value<'tcx>(
     tcx.mk_clauses(iter::once(normalize_clause))
 }
 
-pub fn dump_program_clauses<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
+pub fn dump_program_clauses<'tcx>(tcx: TyCtxt<'tcx>) {
     if !tcx.features().rustc_attrs {
         return;
     }
@@ -623,7 +623,7 @@ pub fn dump_program_clauses<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
 }
 
 struct ClauseDumper<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl ClauseDumper<'tcx> {

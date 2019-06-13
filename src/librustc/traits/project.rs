@@ -183,8 +183,8 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
 ///
 /// If successful, this may result in additional obligations. Also returns
 /// the projection cache key used to track these additional obligations.
-pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+pub fn poly_project_and_unify_type<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &PolyProjectionObligation<'tcx>)
     -> Result<Option<Vec<PredicateObligation<'tcx>>>,
               MismatchedProjectionTypes<'tcx>>
@@ -210,8 +210,8 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
 ///     <T as Trait>::U == V
 ///
 /// If successful, this may result in additional obligations.
-fn project_and_unify_type<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn project_and_unify_type<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionObligation<'tcx>)
     -> Result<Option<Vec<PredicateObligation<'tcx>>>,
               MismatchedProjectionTypes<'tcx>>
@@ -253,7 +253,7 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
 /// them with a fully resolved type where possible. The return value
 /// combines the normalized result and any additional obligations that
 /// were incurred as result.
-pub fn normalize<'a, 'b, 'gcx, 'tcx, T>(selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
+pub fn normalize<'a, 'b, 'tcx, T>(selcx: &'a mut SelectionContext<'b, 'tcx>,
                                         param_env: ty::ParamEnv<'tcx>,
                                         cause: ObligationCause<'tcx>,
                                         value: &T)
@@ -264,8 +264,8 @@ pub fn normalize<'a, 'b, 'gcx, 'tcx, T>(selcx: &'a mut SelectionContext<'b, 'gcx
 }
 
 /// As `normalize`, but with a custom depth.
-pub fn normalize_with_depth<'a, 'b, 'gcx, 'tcx, T>(
-    selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
+pub fn normalize_with_depth<'a, 'b, 'tcx, T>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
@@ -287,20 +287,20 @@ pub fn normalize_with_depth<'a, 'b, 'gcx, 'tcx, T>(
     }
 }
 
-struct AssocTypeNormalizer<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
-    selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
+struct AssocTypeNormalizer<'a, 'b: 'a, 'tcx: 'b> {
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
     depth: usize,
 }
 
-impl<'a, 'b, 'gcx, 'tcx> AssocTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
-    fn new(selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
+impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
+    fn new(selcx: &'a mut SelectionContext<'b, 'tcx>,
            param_env: ty::ParamEnv<'tcx>,
            cause: ObligationCause<'tcx>,
            depth: usize)
-           -> AssocTypeNormalizer<'a, 'b, 'gcx, 'tcx>
+           -> AssocTypeNormalizer<'a, 'b, 'tcx>
     {
         AssocTypeNormalizer {
             selcx,
@@ -322,8 +322,8 @@ impl<'a, 'b, 'gcx, 'tcx> AssocTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssocTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
-    fn tcx<'c>(&'c self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
+    fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
         self.selcx.tcx()
     }
 
@@ -456,8 +456,8 @@ impl<'tcx,T> Normalized<'tcx,T> {
 /// there are unresolved type variables in the projection, we will
 /// substitute a fresh type variable `$X` and generate a new
 /// obligation `<T as Trait>::Item == $X` for later.
-pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
-    selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
+pub fn normalize_projection_type<'a, 'b, 'tcx>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     projection_ty: ty::ProjectionTy<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -501,8 +501,8 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 /// often immediately appended to another obligations vector. So now this
 /// function takes an obligations vector and appends to it directly, which is
 /// slightly uglier but avoids the need for an extra short-lived allocation.
-fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
-    selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
+fn opt_normalize_projection_type<'a, 'b, 'tcx>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     projection_ty: ty::ProjectionTy<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -705,7 +705,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 /// If there are unresolved type variables, then we need to include
 /// any subobligations that bind them, at least until those type
 /// variables are fully resolved.
-fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+fn prune_cache_value_obligations<'a, 'tcx>(infcx: &'a InferCtxt<'a, 'tcx>,
                                                  result: &NormalizedTy<'tcx>)
                                                  -> NormalizedTy<'tcx> {
     if infcx.unresolved_type_vars(&result.value).is_none() {
@@ -763,8 +763,8 @@ fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 
 /// that may yet turn out to be wrong. This *may* lead to some sort
 /// of trouble, though we don't have a concrete example of how that
 /// can occur yet. But it seems risky at best.
-fn get_paranoid_cache_value_obligation<'a, 'gcx, 'tcx>(
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+fn get_paranoid_cache_value_obligation<'a, 'tcx>(
+    infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     projection_ty: ty::ProjectionTy<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -799,7 +799,7 @@ fn get_paranoid_cache_value_obligation<'a, 'gcx, 'tcx>(
 /// an error for this obligation, but we legitimately should not,
 /// because it contains `[type error]`. Yuck! (See issue #29857 for
 /// one case where this arose.)
-fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
+fn normalize_to_error<'a, 'tcx>(selcx: &mut SelectionContext<'a, 'tcx>,
                                       param_env: ty::ParamEnv<'tcx>,
                                       projection_ty: ty::ProjectionTy<'tcx>,
                                       cause: ObligationCause<'tcx>,
@@ -836,7 +836,7 @@ struct Progress<'tcx> {
 }
 
 impl<'tcx> Progress<'tcx> {
-    fn error<'gcx>(tcx: TyCtxt<'gcx, 'tcx>) -> Self {
+    fn error(tcx: TyCtxt<'tcx>) -> Self {
         Progress {
             ty: tcx.types.err,
             obligations: vec![],
@@ -861,8 +861,8 @@ impl<'tcx> Progress<'tcx> {
 ///
 /// IMPORTANT:
 /// - `obligation` must be fully normalized
-fn project_type<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn project_type<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>)
     -> Result<ProjectedTy<'tcx>, ProjectionTyError<'tcx>>
 {
@@ -925,8 +925,8 @@ fn project_type<'cx, 'gcx, 'tcx>(
 /// The first thing we have to do is scan through the parameter
 /// environment to see whether there are any projection predicates
 /// there that can answer this question.
-fn assemble_candidates_from_param_env<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn assemble_candidates_from_param_env<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
@@ -950,8 +950,8 @@ fn assemble_candidates_from_param_env<'cx, 'gcx, 'tcx>(
 /// ```
 ///
 /// Here, for example, we could conclude that the result is `i32`.
-fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn assemble_candidates_from_trait_def<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
@@ -986,8 +986,8 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
                                         bounds)
 }
 
-fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn assemble_candidates_from_predicates<'cx, 'tcx, I>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
@@ -1029,8 +1029,8 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
     }
 }
 
-fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn assemble_candidates_from_impls<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
@@ -1177,8 +1177,8 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
     });
 }
 
-fn confirm_candidate<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn confirm_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate: ProjectionTyCandidate<'tcx>)
@@ -1200,8 +1200,8 @@ fn confirm_candidate<'cx, 'gcx, 'tcx>(
     }
 }
 
-fn confirm_select_candidate<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn confirm_select_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     vtable: Selection<'tcx>)
@@ -1230,8 +1230,8 @@ fn confirm_select_candidate<'cx, 'gcx, 'tcx>(
     }
 }
 
-fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn confirm_object_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation:  &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>)
     -> Progress<'tcx>
@@ -1295,8 +1295,8 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
     confirm_param_env_candidate(selcx, obligation, env_predicate)
 }
 
-fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn confirm_generator_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     vtable: VtableGeneratorData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
@@ -1348,8 +1348,8 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
         .with_addl_obligations(obligations)
 }
 
-fn confirm_fn_pointer_candidate<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn confirm_fn_pointer_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     fn_pointer_vtable: VtableFnPointerData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
@@ -1370,8 +1370,8 @@ fn confirm_fn_pointer_candidate<'cx, 'gcx, 'tcx>(
         .with_addl_obligations(obligations)
 }
 
-fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn confirm_closure_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     vtable: VtableClosureData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
@@ -1402,8 +1402,8 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
         .with_addl_obligations(obligations)
 }
 
-fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn confirm_callable_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     fn_sig: ty::PolyFnSig<'tcx>,
     flag: util::TupleArgumentsFlag)
@@ -1437,8 +1437,8 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
     confirm_param_env_candidate(selcx, obligation, predicate)
 }
 
-fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn confirm_param_env_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     poly_cache_entry: ty::PolyProjectionPredicate<'tcx>,
 ) -> Progress<'tcx> {
@@ -1478,8 +1478,8 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
     }
 }
 
-fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn confirm_impl_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     impl_vtable: VtableImplData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
@@ -1521,8 +1521,8 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
 ///
 /// Based on the "projection mode", this lookup may in fact only examine the
 /// topmost impl. See the comments for `Reveal` for more details.
-fn assoc_ty_def<'cx, 'gcx, 'tcx>(
-    selcx: &SelectionContext<'cx, 'gcx, 'tcx>,
+fn assoc_ty_def<'cx, 'tcx>(
+    selcx: &SelectionContext<'cx, 'tcx>,
     impl_def_id: DefId,
     assoc_ty_def_id: DefId)
     -> specialization_graph::NodeItem<ty::AssocItem>
@@ -1608,8 +1608,8 @@ pub struct ProjectionCacheKey<'tcx> {
     ty: ty::ProjectionTy<'tcx>
 }
 
-impl<'cx, 'gcx, 'tcx> ProjectionCacheKey<'tcx> {
-    pub fn from_poly_projection_predicate(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+impl<'cx, 'tcx> ProjectionCacheKey<'tcx> {
+    pub fn from_poly_projection_predicate(selcx: &mut SelectionContext<'cx, 'tcx>,
                                           predicate: &ty::PolyProjectionPredicate<'tcx>)
                                           -> Option<Self>
     {

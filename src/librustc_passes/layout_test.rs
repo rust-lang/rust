@@ -14,7 +14,7 @@ use rustc::ty::TyCtxt;
 use syntax::ast::Attribute;
 use syntax::symbol::sym;
 
-pub fn test_layout<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
+pub fn test_layout<'tcx>(tcx: TyCtxt<'tcx>) {
     if tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
         tcx.hir()
@@ -24,7 +24,7 @@ pub fn test_layout<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
 }
 
 struct VarianceTest<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
@@ -105,7 +105,7 @@ impl VarianceTest<'tcx> {
 }
 
 struct UnwrapLayoutCx<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
 }
 
@@ -119,7 +119,7 @@ impl LayoutOf for UnwrapLayoutCx<'tcx> {
 }
 
 impl HasTyCtxt<'tcx> for UnwrapLayoutCx<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }

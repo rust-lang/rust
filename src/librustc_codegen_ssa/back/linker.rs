@@ -25,7 +25,7 @@ pub struct LinkerInfo {
 }
 
 impl LinkerInfo {
-    pub fn new(tcx: TyCtxt<'_, '_>) -> LinkerInfo {
+    pub fn new(tcx: TyCtxt<'_>) -> LinkerInfo {
         LinkerInfo {
             exports: tcx.sess.crate_types.borrow().iter().map(|&c| {
                 (c, exported_symbols(tcx, c))
@@ -1012,7 +1012,7 @@ impl<'a> Linker for WasmLd<'a> {
     }
 }
 
-fn exported_symbols(tcx: TyCtxt<'_, '_>, crate_type: CrateType) -> Vec<String> {
+fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
     if let Some(ref exports) = tcx.sess.target.target.options.override_export_symbols {
         return exports.clone()
     }

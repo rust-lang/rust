@@ -50,15 +50,15 @@ use std::iter;
 use std::rc::Rc;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
-pub struct SelectionContext<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+pub struct SelectionContext<'cx, 'tcx: 'cx> {
+    infcx: &'cx InferCtxt<'cx, 'tcx>,
 
     /// Freshener used specifically for entries on the obligation
     /// stack. This ensures that all entries on the stack at one time
     /// will have the same set of placeholder entries, which is
     /// important for checking for trait bounds that recursively
     /// require themselves.
-    freshener: TypeFreshener<'cx, 'gcx, 'tcx>,
+    freshener: TypeFreshener<'cx, 'tcx>,
 
     /// If `true`, indicates that the evaluation should be conservative
     /// and consider the possibility of types outside this crate.
@@ -300,7 +300,7 @@ enum SelectionCandidate<'tcx> {
 
 impl<'a, 'tcx> ty::Lift<'tcx> for SelectionCandidate<'a> {
     type Lifted = SelectionCandidate<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         Some(match *self {
             BuiltinCandidate { has_nested } => BuiltinCandidate { has_nested },
             ImplCandidate(def_id) => ImplCandidate(def_id),
@@ -487,8 +487,8 @@ pub struct EvaluationCache<'tcx> {
     hashmap: Lock<FxHashMap<ty::PolyTraitRef<'tcx>, WithDepNode<EvaluationResult>>>,
 }
 
-impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
-    pub fn new(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>) -> SelectionContext<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
+    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
             freshener: infcx.freshener(),
@@ -500,9 +500,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     pub fn intercrate(
-        infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+        infcx: &'cx InferCtxt<'cx, 'tcx>,
         mode: IntercrateMode,
-    ) -> SelectionContext<'cx, 'gcx, 'tcx> {
+    ) -> SelectionContext<'cx, 'tcx> {
         debug!("intercrate({:?})", mode);
         SelectionContext {
             infcx,
@@ -515,9 +515,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     pub fn with_negative(
-        infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+        infcx: &'cx InferCtxt<'cx, 'tcx>,
         allow_negative_impls: bool,
-    ) -> SelectionContext<'cx, 'gcx, 'tcx> {
+    ) -> SelectionContext<'cx, 'tcx> {
         debug!("with_negative({:?})", allow_negative_impls);
         SelectionContext {
             infcx,
@@ -530,9 +530,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     pub fn with_query_mode(
-        infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+        infcx: &'cx InferCtxt<'cx, 'tcx>,
         query_mode: TraitQueryMode,
-    ) -> SelectionContext<'cx, 'gcx, 'tcx> {
+    ) -> SelectionContext<'cx, 'tcx> {
         debug!("with_query_mode({:?})", query_mode);
         SelectionContext {
             infcx,
@@ -564,15 +564,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.intercrate_ambiguity_causes.take().unwrap_or(vec![])
     }
 
-    pub fn infcx(&self) -> &'cx InferCtxt<'cx, 'gcx, 'tcx> {
+    pub fn infcx(&self) -> &'cx InferCtxt<'cx, 'tcx> {
         self.infcx
     }
 
-    pub fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
-    pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'gcx, 'tcx> {
+    pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'tcx> {
         self.infcx
     }
 
@@ -3989,7 +3989,7 @@ impl<T: Clone> WithDepNode<T> {
         }
     }
 
-    pub fn get(&self, tcx: TyCtxt<'_, '_>) -> T {
+    pub fn get(&self, tcx: TyCtxt<'_>) -> T {
         tcx.dep_graph.read_index(self.dep_node);
         self.cached_value.clone()
     }

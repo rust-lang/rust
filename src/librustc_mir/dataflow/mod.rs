@@ -116,13 +116,13 @@ pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: Symbol) -> Opti
     return None;
 }
 
-pub struct MoveDataParamEnv<'gcx, 'tcx> {
+pub struct MoveDataParamEnv<'tcx> {
     pub(crate) move_data: MoveData<'tcx>,
-    pub(crate) param_env: ty::ParamEnv<'gcx>,
+    pub(crate) param_env: ty::ParamEnv<'tcx>,
 }
 
-pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     def_id: DefId,
     attributes: &[ast::Attribute],
@@ -138,13 +138,13 @@ where
     flow_state.run(tcx, def_id, attributes, p)
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
+impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
 where
     BD: BitDenotation<'tcx>,
 {
     pub(crate) fn run<P>(
         self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
         attributes: &[ast::Attribute],
         p: P,

@@ -35,7 +35,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 fn crate_variances<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     crate_num: CrateNum,
 ) -> &'tcx CrateVariancesMap<'tcx> {
     assert_eq!(crate_num, LOCAL_CRATE);
@@ -45,7 +45,7 @@ fn crate_variances<'tcx>(
     tcx.arena.alloc(solve::solve_constraints(constraints_cx))
 }
 
-fn variances_of<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, item_def_id: DefId) -> &'tcx [ty::Variance] {
+fn variances_of<'tcx>(tcx: TyCtxt<'tcx>, item_def_id: DefId) -> &'tcx [ty::Variance] {
     let id = tcx.hir().as_local_hir_id(item_def_id).expect("expected local def-id");
     let unsupported = || {
         // Variance not relevant.

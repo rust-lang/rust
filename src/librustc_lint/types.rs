@@ -519,11 +519,11 @@ enum FfiResult<'tcx> {
     },
 }
 
-fn is_zst<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, did: DefId, ty: Ty<'tcx>) -> bool {
+fn is_zst<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, ty: Ty<'tcx>) -> bool {
     tcx.layout_of(tcx.param_env(did).and(ty)).map(|layout| layout.is_zst()).unwrap_or(false)
 }
 
-fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
@@ -556,7 +556,7 @@ fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
 /// core::ptr::NonNull, and #[repr(transparent)] newtypes.
 /// FIXME: This duplicates code in codegen.
 fn is_repr_nullable_ptr<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     ty_def: &'tcx ty::AdtDef,
     substs: SubstsRef<'tcx>,

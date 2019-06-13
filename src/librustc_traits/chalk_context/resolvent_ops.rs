@@ -25,8 +25,8 @@ use syntax_pos::DUMMY_SP;
 use super::{ChalkInferenceContext, ChalkArenas, ChalkExClause, ConstrainedSubst};
 use super::unify::*;
 
-impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
-    for ChalkInferenceContext<'cx, 'gcx, 'tcx>
+impl context::ResolventOps<ChalkArenas<'tcx>, ChalkArenas<'tcx>>
+    for ChalkInferenceContext<'cx, 'tcx>
 {
     fn resolvent_clause(
         &mut self,
@@ -34,7 +34,7 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         goal: &DomainGoal<'tcx>,
         subst: &CanonicalVarValues<'tcx>,
         clause: &Clause<'tcx>,
-    ) -> Fallible<Canonical<'gcx, ChalkExClause<'gcx>>> {
+    ) -> Fallible<Canonical<'tcx, ChalkExClause<'tcx>>> {
         use chalk_engine::context::UnificationOps;
 
         debug!("resolvent_clause(goal = {:?}, clause = {:?})", goal, clause);
@@ -106,8 +106,8 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         &mut self,
         ex_clause: ChalkExClause<'tcx>,
         selected_goal: &InEnvironment<'tcx, Goal<'tcx>>,
-        answer_table_goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-        canonical_answer_subst: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
+        answer_table_goal: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>,
+        canonical_answer_subst: &Canonical<'tcx, ConstrainedSubst<'tcx>>,
     ) -> Fallible<ChalkExClause<'tcx>> {
         debug!(
             "apply_answer_subst(ex_clause = {:?}, selected_goal = {:?})",
@@ -139,15 +139,15 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     }
 }
 
-struct AnswerSubstitutor<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+struct AnswerSubstitutor<'cx, 'tcx: 'cx> {
+    infcx: &'cx InferCtxt<'cx, 'tcx>,
     environment: Environment<'tcx>,
     answer_subst: CanonicalVarValues<'tcx>,
     binder_index: ty::DebruijnIndex,
     ex_clause: ChalkExClause<'tcx>,
 }
 
-impl AnswerSubstitutor<'cx, 'gcx, 'tcx> {
+impl AnswerSubstitutor<'cx, 'tcx> {
     fn unify_free_answer_var(
         &mut self,
         answer_var: ty::BoundVar,
@@ -169,8 +169,8 @@ impl AnswerSubstitutor<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl TypeRelation<'gcx, 'tcx> for AnswerSubstitutor<'cx, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

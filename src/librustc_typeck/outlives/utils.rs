@@ -11,7 +11,7 @@ pub type RequiredPredicates<'tcx> = BTreeSet<ty::OutlivesPredicate<Kind<'tcx>, t
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_predicates`
 pub fn insert_outlives_predicate<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     kind: Kind<'tcx>,
     outlived_region: Region<'tcx>,
     required_predicates: &mut RequiredPredicates<'tcx>,
@@ -125,7 +125,7 @@ pub fn insert_outlives_predicate<'tcx>(
     }
 }
 
-fn is_free_region<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, region: Region<'_>) -> bool {
+fn is_free_region<'tcx>(tcx: TyCtxt<'tcx>, region: Region<'_>) -> bool {
     // First, screen for regions that might appear in a type header.
     match region {
         // These correspond to `T: 'a` relationships:

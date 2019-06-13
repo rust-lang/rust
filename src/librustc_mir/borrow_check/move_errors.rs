@@ -96,7 +96,7 @@ impl BorrowedContentSource<'tcx> {
         }
     }
 
-    fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'_, 'tcx>) -> Option<Self> {
+    fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
         match func.sty {
             ty::FnDef(def_id, substs) => {
                 let trait_id = tcx.trait_of_item(def_id)?;
@@ -119,7 +119,7 @@ impl BorrowedContentSource<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     pub(crate) fn report_move_errors(&mut self, move_errors: Vec<(Place<'tcx>, MoveError<'tcx>)>) {
         let grouped_errors = self.group_move_errors(move_errors);
         for error in grouped_errors {

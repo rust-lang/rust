@@ -35,7 +35,7 @@ use crate::abi::Abi;
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
 pub struct CodegenCx<'ll, 'tcx: 'll> {
-    pub tcx: TyCtxt<'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx>,
     pub check_overflow: bool,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
@@ -141,7 +141,7 @@ pub fn is_pie_binary(sess: &Session) -> bool {
 }
 
 pub unsafe fn create_module(
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
     mod_name: &str,
 ) -> &'ll llvm::Module {
@@ -208,7 +208,7 @@ pub unsafe fn create_module(
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     crate fn new(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         codegen_unit: Arc<CodegenUnit<'tcx>>,
         llvm_module: &'ll crate::ModuleLlvm,
     ) -> Self {
@@ -839,7 +839,7 @@ impl HasTargetSpec for CodegenCx<'ll, 'tcx> {
 }
 
 impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }

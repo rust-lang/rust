@@ -24,7 +24,7 @@ use std::cmp::Ordering;
 use super::{MethodError, NoMatchData, CandidateSource};
 use super::probe::Mode;
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let tcx = self.tcx;
         match ty.sty {
@@ -69,7 +69,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         item_name: ast::Ident,
         source: SelfSource<'b>,
         error: MethodError<'tcx>,
-        args: Option<&'gcx [hir::Expr]>,
+        args: Option<&'tcx [hir::Expr]>,
     ) {
         let orig_span = span;
         let mut span = span;
@@ -775,12 +775,12 @@ impl Ord for TraitInfo {
 }
 
 /// Retrieves all traits in this crate and any dependent crates.
-pub fn all_traits<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>) -> Vec<TraitInfo> {
+pub fn all_traits<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<TraitInfo> {
     tcx.all_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
 }
 
 /// Computes all traits in this crate and any dependent crates.
-fn compute_all_traits<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>) -> Vec<DefId> {
+fn compute_all_traits<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<DefId> {
     use hir::itemlikevisit;
 
     let mut traits = vec![];
@@ -818,7 +818,7 @@ fn compute_all_traits<'gcx, 'tcx>(tcx: TyCtxt<'gcx, 'tcx>) -> Vec<DefId> {
 
     let mut external_mods = FxHashSet::default();
     fn handle_external_res(
-        tcx: TyCtxt<'_, '_>,
+        tcx: TyCtxt<'_>,
         traits: &mut Vec<DefId>,
         external_mods: &mut FxHashSet<DefId>,
         res: Res,
@@ -857,16 +857,16 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     }
 }
 
-struct UsePlacementFinder<'tcx, 'gcx> {
+struct UsePlacementFinder<'tcx> {
     target_module: hir::HirId,
     span: Option<Span>,
     found_use: bool,
-    tcx: TyCtxt<'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl UsePlacementFinder<'tcx, 'gcx> {
+impl UsePlacementFinder<'tcx> {
     fn check(
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         krate: &'tcx hir::Crate,
         target_module: hir::HirId,
     ) -> (Option<Span>, bool) {
@@ -881,7 +881,7 @@ impl UsePlacementFinder<'tcx, 'gcx> {
     }
 }
 
-impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx, 'gcx> {
+impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
     fn visit_mod(
         &mut self,
         module: &'tcx hir::Mod,

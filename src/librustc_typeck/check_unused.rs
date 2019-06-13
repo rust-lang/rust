@@ -13,7 +13,7 @@ use rustc::util::nodemap::DefIdSet;
 
 use rustc_data_structures::fx::FxHashMap;
 
-pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     let mut used_trait_imports = DefIdSet::default();
     for &body_id in tcx.hir().krate().bodies.keys() {
         let item_def_id = tcx.hir().body_owner_def_id(body_id);
@@ -46,7 +46,7 @@ impl ItemLikeVisitor<'v> for CheckVisitor<'tcx> {
 }
 
 struct CheckVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     used_trait_imports: DefIdSet,
 }
 
@@ -70,7 +70,7 @@ impl CheckVisitor<'tcx> {
     }
 }
 
-fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
+fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx>) {
     let lint = lint::builtin::UNUSED_EXTERN_CRATES;
 
     // Collect first the crates that are completely unused.  These we
@@ -195,7 +195,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
 }
 
 struct CollectExternCrateVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     crates_to_lint: &'a mut Vec<ExternCrateToLint>,
 }
 

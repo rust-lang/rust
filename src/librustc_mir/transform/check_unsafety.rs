@@ -25,7 +25,7 @@ pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
     violations: Vec<UnsafetyViolation>,
     source_info: SourceInfo,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     /// Mark an `unsafe` block as used, so we don't lint it.
     used_unsafe: FxHashSet<hir::HirId>,
@@ -38,7 +38,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         min_const_fn: bool,
         body: &'a Body<'tcx>,
         source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
         // sanity check
@@ -481,7 +481,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
 }
 
 fn check_unused_unsafe<'a, 'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     def_id: DefId,
     used_unsafe: &FxHashSet<hir::HirId>,
     unsafe_blocks: &'a mut Vec<(hir::HirId, bool)>,
@@ -506,7 +506,7 @@ fn check_unused_unsafe<'a, 'tcx>(
     hir::intravisit::Visitor::visit_body(&mut visitor, body);
 }
 
-fn unsafety_check_result<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> UnsafetyCheckResult {
+fn unsafety_check_result<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> UnsafetyCheckResult {
     debug!("unsafety_violations({:?})", def_id);
 
     // N.B., this borrow is valid because all the consumers of
@@ -545,7 +545,7 @@ fn unsafety_check_result<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Unsafe
     }
 }
 
-fn unsafe_derive_on_repr_packed<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) {
+fn unsafe_derive_on_repr_packed<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) {
     let lint_hir_id = tcx.hir().as_local_hir_id(def_id).unwrap_or_else(||
         bug!("checking unsafety for non-local def id {:?}", def_id));
 
@@ -566,7 +566,7 @@ fn unsafe_derive_on_repr_packed<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) {
 
 /// Returns the `HirId` for an enclosing scope that is also `unsafe`.
 fn is_enclosed(
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     used_unsafe: &FxHashSet<hir::HirId>,
     id: hir::HirId,
 ) -> Option<(String, hir::HirId)> {
@@ -590,7 +590,7 @@ fn is_enclosed(
     }
 }
 
-fn report_unused_unsafe(tcx: TyCtxt<'_, '_>, used_unsafe: &FxHashSet<hir::HirId>, id: hir::HirId) {
+fn report_unused_unsafe(tcx: TyCtxt<'_>, used_unsafe: &FxHashSet<hir::HirId>, id: hir::HirId) {
     let span = tcx.sess.source_map().def_span(tcx.hir().span_by_hir_id(id));
     let msg = "unnecessary `unsafe` block";
     let mut db = tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, msg);
@@ -602,7 +602,7 @@ fn report_unused_unsafe(tcx: TyCtxt<'_, '_>, used_unsafe: &FxHashSet<hir::HirId>
     db.emit();
 }
 
-fn builtin_derive_def_id<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Option<DefId> {
+fn builtin_derive_def_id<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<DefId> {
     debug!("builtin_derive_def_id({:?})", def_id);
     if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
         if tcx.has_attr(impl_def_id, sym::automatically_derived) {
@@ -618,7 +618,7 @@ fn builtin_derive_def_id<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> Option
     }
 }
 
-pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) {
+pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) {
     debug!("check_unsafety({:?})", def_id);
 
     // closures are handled by their parent fn.

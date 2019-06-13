@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 crate fn find<'tcx>(
     body: &Body<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 ) -> Option<Cause> {
@@ -27,15 +27,15 @@ crate fn find<'tcx>(
     uf.find()
 }
 
-struct UseFinder<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+struct UseFinder<'cx, 'tcx: 'cx> {
     body: &'cx Body<'tcx>,
     regioncx: &'cx Rc<RegionInferenceContext<'tcx>>,
-    tcx: TyCtxt<'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 }
 
-impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
     fn find(&mut self) -> Option<Cause> {
         let mut queue = VecDeque::new();
         let mut visited = FxHashSet::default();
@@ -99,9 +99,9 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
     }
 }
 
-struct DefUseVisitor<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+struct DefUseVisitor<'cx, 'tcx: 'cx> {
     body: &'cx Body<'tcx>,
-    tcx: TyCtxt<'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     def_use_result: Option<DefUseResult>,
 }
@@ -112,7 +112,7 @@ enum DefUseResult {
     UseDrop { local: Local },
 }
 
-impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
         let local_ty = self.body.local_decls[local].ty;
 

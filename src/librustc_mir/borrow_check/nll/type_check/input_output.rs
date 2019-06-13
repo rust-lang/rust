@@ -17,7 +17,7 @@ use syntax_pos::Span;
 
 use super::{Locations, TypeChecker};
 
-impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
         body: &Body<'tcx>,

@@ -11,13 +11,13 @@ use syntax_pos::Span;
 use syntax::ast::Ident;
 use rustc::hir;
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
     pub fn check_binop_assign(&self,
-                              expr: &'gcx hir::Expr,
+                              expr: &'tcx hir::Expr,
                               op: hir::BinOp,
-                              lhs_expr: &'gcx hir::Expr,
-                              rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
+                              lhs_expr: &'tcx hir::Expr,
+                              rhs_expr: &'tcx hir::Expr) -> Ty<'tcx>
     {
         let (lhs_ty, rhs_ty, return_ty) =
             self.check_overloaded_binop(expr, lhs_expr, rhs_expr, op, IsAssign::Yes);
@@ -44,10 +44,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Checks a potentially overloaded binary operator.
     pub fn check_binop(&self,
-                       expr: &'gcx hir::Expr,
+                       expr: &'tcx hir::Expr,
                        op: hir::BinOp,
-                       lhs_expr: &'gcx hir::Expr,
-                       rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
+                       lhs_expr: &'tcx hir::Expr,
+                       rhs_expr: &'tcx hir::Expr) -> Ty<'tcx>
     {
         let tcx = self.tcx;
 
@@ -105,9 +105,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn enforce_builtin_binop_types(&self,
-                                   lhs_expr: &'gcx hir::Expr,
+                                   lhs_expr: &'tcx hir::Expr,
                                    lhs_ty: Ty<'tcx>,
-                                   rhs_expr: &'gcx hir::Expr,
+                                   rhs_expr: &'tcx hir::Expr,
                                    rhs_ty: Ty<'tcx>,
                                    op: hir::BinOp)
                                    -> Ty<'tcx>
@@ -143,9 +143,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn check_overloaded_binop(&self,
-                              expr: &'gcx hir::Expr,
-                              lhs_expr: &'gcx hir::Expr,
-                              rhs_expr: &'gcx hir::Expr,
+                              expr: &'tcx hir::Expr,
+                              lhs_expr: &'tcx hir::Expr,
+                              rhs_expr: &'tcx hir::Expr,
                               op: hir::BinOp,
                               is_assign: IsAssign)
                               -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)
@@ -515,8 +515,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// to print the normal "implementation of `std::ops::Add` might be missing" note
     fn check_str_addition(
         &self,
-        lhs_expr: &'gcx hir::Expr,
-        rhs_expr: &'gcx hir::Expr,
+        lhs_expr: &'tcx hir::Expr,
+        rhs_expr: &'tcx hir::Expr,
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
         err: &mut errors::DiagnosticBuilder<'_>,
@@ -612,7 +612,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_user_unop(&self,
-                           ex: &'gcx hir::Expr,
+                           ex: &'tcx hir::Expr,
                            operand_ty: Ty<'tcx>,
                            op: hir::UnOp)
                            -> Ty<'tcx>

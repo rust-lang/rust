@@ -14,7 +14,7 @@ mod outlives_closure;
 mod static_impl_trait;
 mod util;
 
-impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     pub fn try_report_nice_region_error(&self, error: &RegionResolutionError<'tcx>) -> bool {
         match *error {
             ConcreteFailure(..) | SubSupConflict(..) => {}
@@ -30,16 +30,16 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     }
 }
 
-pub struct NiceRegionError<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+pub struct NiceRegionError<'cx, 'tcx: 'cx> {
+    infcx: &'cx InferCtxt<'cx, 'tcx>,
     error: Option<RegionResolutionError<'tcx>>,
     regions: Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)>,
     tables: Option<&'cx ty::TypeckTables<'tcx>>,
 }
 
-impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
     pub fn new(
-        infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+        infcx: &'cx InferCtxt<'cx, 'tcx>,
         error: RegionResolutionError<'tcx>,
         tables: Option<&'cx ty::TypeckTables<'tcx>>,
     ) -> Self {
@@ -47,7 +47,7 @@ impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
     }
 
     pub fn new_from_span(
-        infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+        infcx: &'cx InferCtxt<'cx, 'tcx>,
         span: Span,
         sub: ty::Region<'tcx>,
         sup: ty::Region<'tcx>,
@@ -56,7 +56,7 @@ impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
         Self { infcx, error: None, regions: Some((span, sub, sup)), tables }
     }
 
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

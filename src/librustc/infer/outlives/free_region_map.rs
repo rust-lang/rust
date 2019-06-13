@@ -28,9 +28,9 @@ impl<'tcx> FreeRegionMap<'tcx> {
     /// cases, this is more conservative than necessary, in order to
     /// avoid making arbitrary choices. See
     /// `TransitiveRelation::postdom_upper_bound` for more details.
-    pub fn lub_free_regions<'gcx>(
+    pub fn lub_free_regions(
         &self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         r_a: Region<'tcx>,
         r_b: Region<'tcx>,
     ) -> Region<'tcx> {
@@ -91,7 +91,7 @@ impl_stable_hash_for!(struct FreeRegionMap<'tcx> {
 
 impl<'a, 'tcx> Lift<'tcx> for FreeRegionMap<'a> {
     type Lifted = FreeRegionMap<'tcx>;
-    fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<FreeRegionMap<'tcx>> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<FreeRegionMap<'tcx>> {
         self.relation.maybe_map(|&fr| tcx.lift(&fr))
                      .map(|relation| FreeRegionMap { relation })
     }

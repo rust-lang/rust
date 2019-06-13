@@ -43,7 +43,7 @@ enum StorageDeadOrDrop<'tcx> {
     Destructor(Ty<'tcx>),
 }
 
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(super) fn report_use_of_moved_or_uninitialized(
         &mut self,
         location: Location,
@@ -1903,7 +1903,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
     /// helps explain.
     pub(super) fn emit(
         &self,
-        cx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
+        cx: &mut MirBorrowckCtxt<'_, 'tcx>,
         diag: &mut DiagnosticBuilder<'_>,
     ) -> String {
         match self {

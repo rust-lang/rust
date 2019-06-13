@@ -14,7 +14,7 @@ use rustc::hir;
 use std::iter;
 
 fn equate_intrinsic_type<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     it: &hir::ForeignItem,
     n_tps: usize,
     abi: Abi,
@@ -79,7 +79,7 @@ pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
 
 /// Remember to add all intrinsics here, in librustc_codegen_llvm/intrinsic.rs,
 /// and in libcore/intrinsics.rs
-pub fn check_intrinsic_type<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, it: &hir::ForeignItem) {
+pub fn check_intrinsic_type<'tcx>(tcx: TyCtxt<'tcx>, it: &hir::ForeignItem) {
     let param = |n| tcx.mk_ty_param(n, InternedString::intern(&format!("P{}", n)));
     let name = it.ident.as_str();
 
@@ -399,7 +399,7 @@ pub fn check_intrinsic_type<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, it: &hir::ForeignItem
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
-pub fn check_platform_intrinsic_type<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, it: &hir::ForeignItem) {
+pub fn check_platform_intrinsic_type<'tcx>(tcx: TyCtxt<'tcx>, it: &hir::ForeignItem) {
     let param = |n| {
         let name = InternedString::intern(&format!("P{}", n));
         tcx.mk_ty_param(n, name)

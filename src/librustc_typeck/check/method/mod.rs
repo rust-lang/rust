@@ -100,7 +100,7 @@ pub enum CandidateSource {
     TraitSource(DefId /* trait id */),
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Determines whether the type `self_ty` supports a method name `method_name` or not.
     pub fn method_exists(&self,
                          method_name: ast::Ident,
@@ -178,8 +178,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          self_ty: Ty<'tcx>,
                          segment: &hir::PathSegment,
                          span: Span,
-                         call_expr: &'gcx hir::Expr,
-                         self_expr: &'gcx hir::Expr)
+                         call_expr: &'tcx hir::Expr,
+                         self_expr: &'tcx hir::Expr)
                          -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
                segment.ident,
@@ -249,7 +249,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     span: Span,
                     method_name: ast::Ident,
                     self_ty: Ty<'tcx>,
-                    call_expr: &'gcx hir::Expr,
+                    call_expr: &'tcx hir::Expr,
                     scope: ProbeScope)
                     -> probe::PickResult<'tcx> {
         let mode = probe::Mode::MethodCall;

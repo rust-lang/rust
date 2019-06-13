@@ -10,8 +10,8 @@ crate struct UnificationResult<'tcx> {
     crate constraints: Vec<super::RegionConstraint<'tcx>>,
 }
 
-crate fn unify<'me, 'gcx, 'tcx, T: Relate<'tcx>>(
-    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+crate fn unify<'me, 'tcx, T: Relate<'tcx>>(
+    infcx: &'me InferCtxt<'me, 'tcx>,
     environment: Environment<'tcx>,
     variance: ty::Variance,
     a: &T,
@@ -42,16 +42,16 @@ crate fn unify<'me, 'gcx, 'tcx, T: Relate<'tcx>>(
     })
 }
 
-struct ChalkTypeRelatingDelegate<'me, 'gcx: 'tcx, 'tcx: 'me> {
-    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+struct ChalkTypeRelatingDelegate<'me, 'tcx: 'me> {
+    infcx: &'me InferCtxt<'me, 'tcx>,
     environment: Environment<'tcx>,
     goals: Vec<InEnvironment<'tcx, Goal<'tcx>>>,
     constraints: Vec<super::RegionConstraint<'tcx>>,
 }
 
-impl ChalkTypeRelatingDelegate<'me, 'gcx, 'tcx> {
+impl ChalkTypeRelatingDelegate<'me, 'tcx> {
     fn new(
-        infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+        infcx: &'me InferCtxt<'me, 'tcx>,
         environment: Environment<'tcx>,
     ) -> Self {
         Self {
@@ -63,7 +63,7 @@ impl ChalkTypeRelatingDelegate<'me, 'gcx, 'tcx> {
     }
 }
 
-impl TypeRelatingDelegate<'tcx> for &mut ChalkTypeRelatingDelegate<'_, '_, 'tcx> {
+impl TypeRelatingDelegate<'tcx> for &mut ChalkTypeRelatingDelegate<'_, 'tcx> {
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
         self.infcx.create_next_universe()
     }

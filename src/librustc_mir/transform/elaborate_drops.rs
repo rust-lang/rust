@@ -21,7 +21,7 @@ use syntax_pos::Span;
 pub struct ElaborateDrops;
 
 impl MirPass for ElaborateDrops {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", src, body.span);
 
         let def_id = src.def_id();
@@ -74,10 +74,10 @@ impl MirPass for ElaborateDrops {
 /// to not be reachable, because they are `drop` terminators
 /// that can't drop anything.
 fn find_dead_unwinds<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     def_id: hir::def_id::DefId,
-    env: &MoveDataParamEnv<'tcx, 'tcx>,
+    env: &MoveDataParamEnv<'tcx>,
 ) -> BitSet<BasicBlock> {
     debug!("find_dead_unwinds({:?})", body.span);
     // We only need to do this pass once, because unwind edges can only
@@ -138,9 +138,9 @@ struct InitializationData {
 impl InitializationData {
     fn apply_location<'tcx>(
         &mut self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        env: &MoveDataParamEnv<'tcx, 'tcx>,
+        env: &MoveDataParamEnv<'tcx>,
         loc: Location,
     ) {
         drop_flag_effects_for_location(tcx, body, env, loc, |path, df| {
@@ -186,7 +186,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         self.ctxt.body
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.ctxt.tcx
     }
 
@@ -286,11 +286,11 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
 }
 
 struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    env: &'a MoveDataParamEnv<'tcx, 'tcx>,
-    flow_inits: DataflowResults<'tcx, MaybeInitializedPlaces<'a, 'tcx, 'tcx>>,
-    flow_uninits: DataflowResults<'tcx, MaybeUninitializedPlaces<'a, 'tcx, 'tcx>>,
+    env: &'a MoveDataParamEnv<'tcx>,
+    flow_inits: DataflowResults<'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
+    flow_uninits: DataflowResults<'tcx, MaybeUninitializedPlaces<'a, 'tcx>>,
     drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
 }

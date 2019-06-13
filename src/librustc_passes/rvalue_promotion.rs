@@ -39,7 +39,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn const_is_rvalue_promotable_to_static<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+fn const_is_rvalue_promotable_to_static<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     assert!(def_id.is_local());
 
     let hir_id = tcx.hir().as_local_hir_id(def_id)
@@ -48,7 +48,7 @@ fn const_is_rvalue_promotable_to_static<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: D
     tcx.rvalue_promotable_map(def_id).contains(&body_id.hir_id.local_id)
 }
 
-fn rvalue_promotable_map<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> &'tcx ItemLocalSet {
+fn rvalue_promotable_map<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ItemLocalSet {
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
         return tcx.rvalue_promotable_map(outer_def_id);
@@ -75,7 +75,7 @@ fn rvalue_promotable_map<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 }
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     in_fn: bool,
     in_static: bool,
     mut_rvalue_borrows: HirIdSet,
@@ -120,9 +120,9 @@ impl BitOr for Promotability {
     }
 }
 
-impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
+impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     // Returns true iff all the values of the type are promotable.
-    fn type_promotability(&mut self, ty: Ty<'gcx>) -> Promotability {
+    fn type_promotability(&mut self, ty: Ty<'tcx>) -> Promotability {
         debug!("type_promotability({})", ty);
 
         if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) &&
@@ -593,7 +593,7 @@ fn check_adjustments<'a, 'tcx>(
     Promotable
 }
 
-impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
+impl<'a, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'tcx> {
     fn consume(&mut self,
                _consume_id: hir::HirId,
                _consume_span: Span,

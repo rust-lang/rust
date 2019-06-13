@@ -205,7 +205,7 @@ impl fmt::Debug for Init {
 }
 
 impl Init {
-    crate fn span<'gcx>(&self, body: &Body<'gcx>) -> Span {
+    crate fn span<'tcx>(&self, body: &Body<'tcx>) -> Span {
         match self.location {
             InitLocation::Argument(local) => body.local_decls[local].source_info.span,
             InitLocation::Statement(location) => body.source_info(location).span,
@@ -305,10 +305,10 @@ impl<'tcx> MoveError<'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> MoveData<'tcx> {
+impl<'tcx> MoveData<'tcx> {
     pub fn gather_moves(
         body: &Body<'tcx>,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
     ) -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
         builder::gather_moves(body, tcx)
     }

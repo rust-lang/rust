@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::middle::cstore::ForeignModule;
 use rustc::ty::TyCtxt;
 
-pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Vec<ForeignModule> {
+pub fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<ForeignModule> {
     let mut collector = Collector {
         tcx,
         modules: Vec::new(),
@@ -13,7 +13,7 @@ pub fn collect<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> Vec<ForeignModule> {
 }
 
 struct Collector<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     modules: Vec<ForeignModule>,
 }
 

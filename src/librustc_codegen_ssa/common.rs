@@ -122,7 +122,7 @@ mod temp_stable_hash_impls {
     }
 }
 
-pub fn langcall(tcx: TyCtxt<'_, '_>, span: Option<Span>, msg: &str, li: LangItem) -> DefId {
+pub fn langcall(tcx: TyCtxt<'_>, span: Option<Span>, msg: &str, li: LangItem) -> DefId {
     tcx.lang_items().require(li).unwrap_or_else(|s| {
         let msg = format!("{} {}", msg, s);
         match span {

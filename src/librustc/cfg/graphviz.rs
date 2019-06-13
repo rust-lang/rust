@@ -12,7 +12,7 @@ pub type Node<'a> = (cfg::CFGIndex, &'a cfg::CFGNode);
 pub type Edge<'a> = &'a cfg::CFGEdge;
 
 pub struct LabelledCFG<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx>,
     pub cfg: &'a cfg::CFG,
     pub name: String,
     /// `labelled_edges` controls whether we emit labels on the edges

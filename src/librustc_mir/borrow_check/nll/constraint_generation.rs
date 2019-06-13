@@ -13,8 +13,8 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty};
 use rustc::ty::subst::SubstsRef;
 
-pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
+pub(super) fn generate_constraints<'cx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'tcx>,
     liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
@@ -35,15 +35,15 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
 }
 
 /// 'cg = the duration of the constraint generation process itself.
-struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
-    infcx: &'cg InferCtxt<'cx, 'gcx, 'tcx>,
+struct ConstraintGeneration<'cg, 'cx: 'cg, 'tcx: 'cx> {
+    infcx: &'cg InferCtxt<'cx, 'tcx>,
     all_facts: &'cg mut Option<AllFacts>,
     location_table: &'cg LocationTable,
     liveness_constraints: &'cg mut LivenessValues<RegionVid>,
     borrow_set: &'cg BorrowSet<'tcx>,
 }
 
-impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx, 'tcx> {
+impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, data: &BasicBlockData<'tcx>) {
         self.super_basic_block_data(bb, data);
     }
@@ -177,7 +177,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
     }
 }
 
-impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
+impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
     /// Some variable with type `live_ty` is "regular live" at
     /// `location` -- i.e., it may be used later. This means that all
     /// regions appearing in the type `live_ty` must be live at

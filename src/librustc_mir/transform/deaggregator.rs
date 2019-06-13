@@ -8,7 +8,7 @@ pub struct Deaggregator;
 impl MirPass for Deaggregator {
     fn run_pass<'tcx>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         _source: MirSource<'tcx>,
         body: &mut Body<'tcx>,
     ) {

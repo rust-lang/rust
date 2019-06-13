@@ -195,7 +195,7 @@ pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx
 }
 
 struct LiteralExpander<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl LiteralExpander<'tcx> {
@@ -350,7 +350,7 @@ impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pattern<'tcx>; 2]>> for Matrix<'p, 'tc
 }
 
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx>,
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
     /// inhabited can depend on whether it was defined in the current module or
@@ -365,7 +365,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub fn create_and_enter<F, R>(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         module: DefId,
         f: F,
@@ -829,7 +829,7 @@ struct IntRange<'tcx> {
 }
 
 impl<'tcx> IntRange<'tcx> {
-    fn from_ctor(tcx: TyCtxt<'tcx, 'tcx>, ctor: &Constructor<'tcx>) -> Option<IntRange<'tcx>> {
+    fn from_ctor(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) -> Option<IntRange<'tcx>> {
         // Floating-point ranges are permitted and we don't want
         // to consider them when constructing integer ranges.
         fn is_integral<'tcx>(ty: Ty<'tcx>) -> bool {
@@ -867,7 +867,7 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    fn from_pat(tcx: TyCtxt<'tcx, 'tcx>, mut pat: &Pattern<'tcx>) -> Option<IntRange<'tcx>> {
+    fn from_pat(tcx: TyCtxt<'tcx>, mut pat: &Pattern<'tcx>) -> Option<IntRange<'tcx>> {
         let range = loop {
             match pat.kind {
                 box PatternKind::Constant { value } => break ConstantValue(value),
@@ -887,7 +887,7 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
-    fn signed_bias(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> u128 {
+    fn signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u128 {
         match ty.sty {
             ty::Int(ity) => {
                 let bits = Integer::from_attr(&tcx, SignedInt(ity)).size().bits() as u128;
@@ -899,7 +899,7 @@ impl<'tcx> IntRange<'tcx> {
 
     /// Converts a `RangeInclusive` to a `ConstantValue` or inclusive `ConstantRange`.
     fn range_to_ctor(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         r: RangeInclusive<u128>,
     ) -> Constructor<'tcx> {
@@ -917,7 +917,7 @@ impl<'tcx> IntRange<'tcx> {
     /// by the values covered by `self`: i.e., `ranges \ self` (in set notation).
     fn subtract_from(
         self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         ranges: Vec<Constructor<'tcx>>,
     ) -> Vec<Constructor<'tcx>> {
         let ranges = ranges.into_iter().filter_map(|r| {
@@ -987,7 +987,7 @@ enum MissingCtors<'tcx> {
 // to compute the full set.)
 fn compute_missing_ctors<'a, 'tcx: 'a>(
     info: MissingCtorsInfo,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     all_ctors: &Vec<Constructor<'tcx>>,
     used_ctors: &Vec<Constructor<'tcx>>,
 ) -> MissingCtors<'tcx> {
@@ -1423,7 +1423,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
 // meaning all other types will compare unequal and thus equal patterns often do not cause the
 // second pattern to lint about unreachable match arms.
 fn slice_pat_covered_by_const<'tcx>(
-    tcx: TyCtxt<'tcx, '_>,
+    tcx: TyCtxt<'tcx>,
     _span: Span,
     const_val: &'tcx ty::Const<'tcx>,
     prefix: &[Pattern<'tcx>],
@@ -1475,7 +1475,7 @@ fn slice_pat_covered_by_const<'tcx>(
 
 // Whether to evaluate a constructor using exhaustive integer matching. This is true if the
 // constructor is a range or constant with an integer type.
-fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx, 'tcx>, ctor: &Constructor<'tcx>) -> bool {
+fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) -> bool {
     let ty = match ctor {
         ConstantValue(value) => value.ty,
         ConstantRange(_, _, ty, _) => ty,
@@ -1521,7 +1521,7 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx, 'tcx>, ctor: &Constructor<'
 /// between every pair of boundary points. (This essentially sums up to performing the intuitive
 /// merging operation depicted above.)
 fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     ctors: Vec<Constructor<'tcx>>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
     ty: Ty<'tcx>,
@@ -1599,7 +1599,7 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
 
 /// Checks whether there exists any shared value in either `ctor` or `pat` by intersecting them.
 fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     ctor: &Constructor<'tcx>,
     pat: &'p Pattern<'tcx>,
 ) -> Option<SmallVec<[&'p Pattern<'tcx>; 2]>> {
@@ -1627,7 +1627,7 @@ fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
 }
 
 fn constructor_covered_by_range<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     ctor: &Constructor<'tcx>,
     pat: &Pattern<'tcx>,
 ) -> Result<bool, ErrorReported> {

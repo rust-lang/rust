@@ -8,7 +8,7 @@ use syntax_pos::Span;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
-pub fn is_min_const_fn(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body: &'a Body<'tcx>) -> McfResult {
+pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -> McfResult {
     let mut current = def_id;
     loop {
         let predicates = tcx.predicates_of(current);
@@ -75,7 +75,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body: &'a Body<'t
     Ok(())
 }
 
-fn check_ty(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
+fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
     for ty in ty.walk() {
         match ty.sty {
             ty::Ref(_, _, hir::Mutability::MutMutable) => return Err((
@@ -120,7 +120,7 @@ fn check_ty(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId)
 }
 
 fn check_rvalue(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     rvalue: &Rvalue<'tcx>,
     span: Span,
@@ -200,7 +200,7 @@ fn check_rvalue(
 }
 
 fn check_statement(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     statement: &Statement<'tcx>,
 ) -> McfResult {
@@ -270,7 +270,7 @@ fn check_place(
 }
 
 fn check_terminator(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     terminator: &Terminator<'tcx>,
 ) -> McfResult {
@@ -366,7 +366,7 @@ fn check_terminator(
 /// for being called from stable `const fn`s (`min_const_fn`).
 ///
 /// Adding more intrinsics requires sign-off from @rust-lang/lang.
-fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     match &tcx.item_name(def_id).as_str()[..] {
         | "size_of"
         | "min_align_of"

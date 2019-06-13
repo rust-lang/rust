@@ -37,9 +37,9 @@ impl<'tcx> IsPrefixOf<'tcx> for Place<'tcx> {
 }
 
 
-pub(super) struct Prefixes<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+pub(super) struct Prefixes<'cx, 'tcx: 'cx> {
     body: &'cx Body<'tcx>,
-    tcx: TyCtxt<'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     kind: PrefixSet,
     next: Option<&'cx Place<'tcx>>,
 }
@@ -56,7 +56,7 @@ pub(super) enum PrefixSet {
     Supporting,
 }
 
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Returns an iterator over the prefixes of `place`
     /// (inclusive) from longest to smallest, potentially
     /// terminating the iteration early based on `kind`.
@@ -64,7 +64,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &self,
         place: &'cx Place<'tcx>,
         kind: PrefixSet,
-    ) -> Prefixes<'cx, 'gcx, 'tcx> {
+    ) -> Prefixes<'cx, 'tcx> {
         Prefixes {
             next: Some(place),
             kind,
@@ -74,7 +74,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
     type Item = &'cx Place<'tcx>;
     fn next(&mut self) -> Option<Self::Item> {
         let mut cursor = self.next?;

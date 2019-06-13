@@ -12,7 +12,7 @@ crate trait PlaceExt<'tcx> {
     /// for borrows of raw pointer dereferents as well as shared references.
     fn ignore_borrow(
         &self,
-        tcx: TyCtxt<'_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
     ) -> bool;
@@ -21,7 +21,7 @@ crate trait PlaceExt<'tcx> {
 impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
     fn ignore_borrow(
         &self,
-        tcx: TyCtxt<'_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
     ) -> bool {

@@ -89,7 +89,7 @@ pub fn create_informational_target_machine(
 }
 
 pub fn create_target_machine(
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     find_features: bool,
 ) -> &'static mut llvm::TargetMachine {
     target_machine_factory(&tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE), find_features)()

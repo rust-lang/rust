@@ -108,7 +108,7 @@ pub fn encode_predicates<'tcx, E, C>(encoder: &mut E,
 }
 
 pub trait TyDecoder<'tcx>: Decoder {
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx>;
+    fn tcx(&self) -> TyCtxt<'tcx>;
 
     fn peek_byte(&self) -> u8;
 

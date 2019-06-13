@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxHashSet;
 // the work twice. The `qualified` parameter only affects the first level of the
 // type name, further levels (i.e., type parameters) are always fully qualified.
 pub fn compute_debuginfo_type_name<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
     qualified: bool,
 ) -> String {
@@ -22,7 +22,7 @@ pub fn compute_debuginfo_type_name<'tcx>(
 // Pushes the name of the type as it should be stored in debuginfo on the
 // `output` String. See also compute_debuginfo_type_name().
 pub fn push_debuginfo_type_name<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
     qualified: bool,
     output: &mut String,
@@ -211,7 +211,7 @@ pub fn push_debuginfo_type_name<'tcx>(
     }
 
     fn push_item_name(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
         qualified: bool,
         output: &mut String,
@@ -233,7 +233,7 @@ pub fn push_debuginfo_type_name<'tcx>(
     // would be possible but with inlining and LTO we have to use the least
     // common denominator - otherwise we would run into conflicts.
     fn push_type_params<'tcx>(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,

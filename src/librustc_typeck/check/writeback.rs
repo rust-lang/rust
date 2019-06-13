@@ -31,8 +31,8 @@ use syntax_pos::Span;
 // so instead all of the replacement happens at the end in
 // resolve_type_vars_in_body, which creates a new TypeTables which
 // doesn't contain any inference types.
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body) -> &'gcx ty::TypeckTables<'gcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn resolve_type_vars_in_body(&self, body: &'tcx hir::Body) -> &'tcx ty::TypeckTables<'tcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
         let item_def_id = self.tcx.hir().local_def_id(item_id);
 
@@ -97,22 +97,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 // there, it applies a few ad-hoc checks that were not convenient to
 // do elsewhere.
 
-struct WritebackCx<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
-    fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
+struct WritebackCx<'cx, 'tcx: 'cx> {
+    fcx: &'cx FnCtxt<'cx, 'tcx>,
 
-    tables: ty::TypeckTables<'gcx>,
+    tables: ty::TypeckTables<'tcx>,
 
-    body: &'gcx hir::Body,
+    body: &'tcx hir::Body,
 
     rustc_dump_user_substs: bool,
 }
 
-impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn new(
-        fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
-        body: &'gcx hir::Body,
+        fcx: &'cx FnCtxt<'cx, 'tcx>,
+        body: &'tcx hir::Body,
         rustc_dump_user_substs: bool,
-    ) -> WritebackCx<'cx, 'gcx, 'tcx> {
+    ) -> WritebackCx<'cx, 'tcx> {
         let owner = body.id().hir_id;
 
         WritebackCx {
@@ -123,11 +123,11 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.fcx.tcx
     }
 
-    fn write_ty_to_tables(&mut self, hir_id: hir::HirId, ty: Ty<'gcx>) {
+    fn write_ty_to_tables(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
         debug!("write_ty_to_tables({:?}, {:?})", hir_id, ty);
         assert!(!ty.needs_infer() && !ty.has_placeholders());
         self.tables.node_types_mut().insert(hir_id, ty);
@@ -234,12 +234,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 // below. In general, a function is made into a `visitor` if it must
 // traffic in node-ids or update tables in the type context etc.
 
-impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_expr(&mut self, e: &'gcx hir::Expr) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr) {
         self.fix_scalar_builtin_expr(e);
         self.fix_index_builtin_expr(e);
 
@@ -268,12 +268,12 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         intravisit::walk_expr(self, e);
     }
 
-    fn visit_block(&mut self, b: &'gcx hir::Block) {
+    fn visit_block(&mut self, b: &'tcx hir::Block) {
         self.visit_node_id(b.span, b.hir_id);
         intravisit::walk_block(self, b);
     }
 
-    fn visit_pat(&mut self, p: &'gcx hir::Pat) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
         match p.node {
             hir::PatKind::Binding(..) => {
                 if let Some(&bm) = self.fcx.tables.borrow().pat_binding_modes().get(p.hir_id) {
@@ -298,14 +298,14 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         intravisit::walk_pat(self, p);
     }
 
-    fn visit_local(&mut self, l: &'gcx hir::Local) {
+    fn visit_local(&mut self, l: &'tcx hir::Local) {
         intravisit::walk_local(self, l);
         let var_ty = self.fcx.local_ty(l.span, l.hir_id).decl_ty;
         let var_ty = self.resolve(&var_ty, &l.span);
         self.write_ty_to_tables(l.hir_id, var_ty);
     }
 
-    fn visit_ty(&mut self, hir_ty: &'gcx hir::Ty) {
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty) {
         intravisit::walk_ty(self, hir_ty);
         let ty = self.fcx.node_ty(hir_ty.hir_id);
         let ty = self.resolve(&ty, &hir_ty.span);
@@ -313,7 +313,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_upvar_capture_map(&mut self) {
         for (upvar_id, upvar_capture) in self.fcx.tables.borrow().upvar_capture_map.iter() {
             let new_upvar_capture = match *upvar_capture {
@@ -746,7 +746,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn resolve<T>(&self, x: &T, span: &dyn Locatable) -> T::Lifted
     where
-        T: TypeFoldable<'tcx> + ty::Lift<'gcx>,
+        T: TypeFoldable<'tcx> + ty::Lift<'tcx>,
     {
         let x = x.fold_with(&mut Resolver::new(self.fcx, span, self.body));
         if let Some(lifted) = self.tcx().lift_to_global(&x) {
@@ -762,24 +762,24 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 }
 
 trait Locatable {
-    fn to_span(&self, tcx: TyCtxt<'_, '_>) -> Span;
+    fn to_span(&self, tcx: TyCtxt<'_>) -> Span;
 }
 
 impl Locatable for Span {
-    fn to_span(&self, _: TyCtxt<'_, '_>) -> Span {
+    fn to_span(&self, _: TyCtxt<'_>) -> Span {
         *self
     }
 }
 
 impl Locatable for DefIndex {
-    fn to_span(&self, tcx: TyCtxt<'_, '_>) -> Span {
+    fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
         let hir_id = tcx.hir().def_index_to_hir_id(*self);
         tcx.hir().span_by_hir_id(hir_id)
     }
 }
 
 impl Locatable for hir::HirId {
-    fn to_span(&self, tcx: TyCtxt<'_, '_>) -> Span {
+    fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.hir().span_by_hir_id(*self)
     }
 }
@@ -788,19 +788,19 @@ impl Locatable for hir::HirId {
 // The Resolver. This is the type folding engine that detects
 // unresolved types and so forth.
 
-struct Resolver<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+struct Resolver<'cx, 'tcx: 'cx> {
+    tcx: TyCtxt<'tcx>,
+    infcx: &'cx InferCtxt<'cx, 'tcx>,
     span: &'cx dyn Locatable,
-    body: &'gcx hir::Body,
+    body: &'tcx hir::Body,
 }
 
-impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn new(
-        fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
+        fcx: &'cx FnCtxt<'cx, 'tcx>,
         span: &'cx dyn Locatable,
-        body: &'gcx hir::Body,
-    ) -> Resolver<'cx, 'gcx, 'tcx> {
+        body: &'tcx hir::Body,
+    ) -> Resolver<'cx, 'tcx> {
         Resolver {
             tcx: fcx.tcx,
             infcx: fcx,
@@ -818,8 +818,8 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'gcx, 'tcx> {
+impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

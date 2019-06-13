@@ -5,7 +5,7 @@ use rustc::mir::*;
 /// than its containing struct (because it is within a packed
 /// struct).
 pub fn is_disaligned<'tcx, L>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     local_decls: &L,
     param_env: ty::ParamEnv<'tcx>,
     place: &Place<'tcx>,
@@ -34,7 +34,7 @@ where
     }
 }
 
-fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx, 'tcx>, local_decls: &L, place: &Place<'tcx>) -> bool
+fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx>, local_decls: &L, place: &Place<'tcx>) -> bool
 where
     L: HasLocalDecls<'tcx>,
 {

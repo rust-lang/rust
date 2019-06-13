@@ -508,9 +508,9 @@ fn stable_non_narrow_char(swc: ::syntax_pos::NonNarrowChar,
 
 
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for feature_gate::Features {
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for feature_gate::Features {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hcx: &mut StableHashingContext<'tcx>,
                                           hasher: &mut StableHasher<W>) {
         // Unfortunately we cannot exhaustively list fields here, since the
         // struct is macro generated.

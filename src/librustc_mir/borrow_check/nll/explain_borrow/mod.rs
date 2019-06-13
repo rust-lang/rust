@@ -51,9 +51,9 @@ impl BorrowExplanation {
             _ => true,
         }
     }
-    pub(in crate::borrow_check) fn add_explanation_to_diagnostic<'gcx, 'tcx>(
+    pub(in crate::borrow_check) fn add_explanation_to_diagnostic<'tcx>(
         &self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         borrow_desc: &str,
@@ -207,7 +207,7 @@ impl BorrowExplanation {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Returns structured explanation for *why* the borrow contains the
     /// point from `location`. This is key for the "3-point errors"
     /// [described in the NLL RFC][d].

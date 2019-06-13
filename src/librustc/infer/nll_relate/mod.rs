@@ -38,11 +38,11 @@ pub enum NormalizationStrategy {
     Eager,
 }
 
-pub struct TypeRelating<'me, 'gcx: 'tcx, 'tcx: 'me, D>
+pub struct TypeRelating<'me, 'tcx: 'me, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+    infcx: &'me InferCtxt<'me, 'tcx>,
 
     /// Callback to use when we deduce an outlives relationship
     delegate: D,
@@ -135,12 +135,12 @@ struct BoundRegionScope<'tcx> {
 #[derive(Copy, Clone)]
 struct UniversallyQuantified(bool);
 
-impl<'me, 'gcx, 'tcx, D> TypeRelating<'me, 'gcx, 'tcx, D>
+impl<'me, 'tcx, D> TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
     pub fn new(
-        infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+        infcx: &'me InferCtxt<'me, 'tcx>,
         delegate: D,
         ambient_variance: ty::Variance,
     ) -> Self {
@@ -416,7 +416,7 @@ trait VidValuePair<'tcx>: Debug {
     /// for more details on why we want them.
     fn vid_scopes<D: TypeRelatingDelegate<'tcx>>(
         &self,
-        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>;
 
     /// Given a generalized type G that should replace the vid, relate
@@ -424,7 +424,7 @@ trait VidValuePair<'tcx>: Debug {
     /// appeared.
     fn relate_generalized_ty<D>(
         &self,
-        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &mut TypeRelating<'_, 'tcx, D>,
         generalized_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
@@ -442,7 +442,7 @@ impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
 
     fn vid_scopes<D>(
         &self,
-        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>
     where
         D: TypeRelatingDelegate<'tcx>,
@@ -452,7 +452,7 @@ impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
 
     fn relate_generalized_ty<D>(
         &self,
-        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &mut TypeRelating<'_, 'tcx, D>,
         generalized_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
@@ -474,7 +474,7 @@ impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
 
     fn vid_scopes<D>(
         &self,
-        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>
     where
         D: TypeRelatingDelegate<'tcx>,
@@ -484,7 +484,7 @@ impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
 
     fn relate_generalized_ty<D>(
         &self,
-        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &mut TypeRelating<'_, 'tcx, D>,
         generalized_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
@@ -494,11 +494,11 @@ impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
     }
 }
 
-impl<D> TypeRelation<'gcx, 'tcx> for TypeRelating<'me, 'gcx, 'tcx, D>
+impl<D> TypeRelation<'tcx> for TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -798,11 +798,11 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
 /// scopes.
 ///
 /// [blog post]: https://is.gd/0hKvIr
-struct TypeGeneralizer<'me, 'gcx: 'tcx, 'tcx: 'me, D>
+struct TypeGeneralizer<'me, 'tcx: 'me, D>
 where
     D: TypeRelatingDelegate<'tcx> + 'me,
 {
-    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+    infcx: &'me InferCtxt<'me, 'tcx>,
 
     delegate: &'me mut D,
 
@@ -823,11 +823,11 @@ where
     universe: ty::UniverseIndex,
 }
 
-impl<D> TypeRelation<'gcx, 'tcx> for TypeGeneralizer<'me, 'gcx, 'tcx, D>
+impl<D> TypeRelation<'tcx> for TypeGeneralizer<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

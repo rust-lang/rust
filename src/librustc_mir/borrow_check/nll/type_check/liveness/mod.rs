@@ -25,11 +25,11 @@ mod trace;
 ///
 /// N.B., this computation requires normalization; therefore, it must be
 /// performed before
-pub(super) fn generate<'gcx, 'tcx>(
-    typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,
+pub(super) fn generate<'tcx>(
+    typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &Rc<RegionValueElements>,
-    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
     location_table: &LocationTable,
 ) {
@@ -75,7 +75,7 @@ pub(super) fn generate<'gcx, 'tcx>(
 // some region `R` in its type where `R` is not known to outlive a free
 // region (i.e., where `R` may be valid for just a subset of the fn body).
 fn compute_live_locals(
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     free_regions: &FxHashSet<RegionVid>,
     body: &Body<'tcx>,
 ) -> Vec<Local> {

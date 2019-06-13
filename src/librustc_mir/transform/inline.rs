@@ -40,7 +40,7 @@ struct CallSite<'tcx> {
 impl MirPass for Inline {
     fn run_pass<'tcx>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         source: MirSource<'tcx>,
         body: &mut Body<'tcx>,
     ) {
@@ -51,7 +51,7 @@ impl MirPass for Inline {
 }
 
 struct Inliner<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
 }
 
@@ -634,7 +634,7 @@ impl Inliner<'tcx> {
 }
 
 fn type_size_of<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<u64> {

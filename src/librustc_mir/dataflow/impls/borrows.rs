@@ -29,8 +29,8 @@ newtype_index! {
 /// `BorrowIndex`, and maps each such index to a `BorrowData`
 /// describing the borrow. These indexes are used for representing the
 /// borrows in compact bitvectors.
-pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub struct Borrows<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
 
     borrow_set: Rc<BorrowSet<'tcx>>,
@@ -133,9 +133,9 @@ fn precompute_borrows_out_of_scope<'tcx>(
     }
 }
 
-impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Borrows<'a, 'tcx> {
     crate fn new(
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
         nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
         borrow_set: &Rc<BorrowSet<'tcx>>,
@@ -234,7 +234,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
     type Idx = BorrowIndex;
     fn name() -> &'static str { "borrows" }
     fn bits_per_block(&self) -> usize {
@@ -330,14 +330,14 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitSetOperator for Borrows<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BitSetOperator for Borrows<'a, 'tcx> {
     #[inline]
     fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
         inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for Borrows<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InitialFlow for Borrows<'a, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = nothing is reserved or activated yet

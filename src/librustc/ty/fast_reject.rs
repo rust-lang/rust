@@ -55,8 +55,8 @@ pub enum SimplifiedTypeGen<D>
 /// then we can't say much about whether two types would unify. Put another way,
 /// `can_simplify_params` should be true if type parameters appear free in `ty` and `false` if they
 /// are to be considered bound.
-pub fn simplify_type<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn simplify_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
     ty: Ty<'_>,
     can_simplify_params: bool,
 ) -> Option<SimplifiedType> {

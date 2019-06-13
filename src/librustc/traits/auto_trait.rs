@@ -48,11 +48,11 @@ pub struct AutoTraitInfo<'cx> {
 }
 
 pub struct AutoTraitFinder<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> AutoTraitFinder<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx, 'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         AutoTraitFinder { tcx }
     }
 
@@ -79,7 +79,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         ty: Ty<'tcx>,
         orig_env: ty::ParamEnv<'tcx>,
         trait_did: DefId,
-        auto_trait_callback: impl for<'i> Fn(&InferCtxt<'_, 'tcx, 'i>, AutoTraitInfo<'i>) -> A,
+        auto_trait_callback: impl Fn(&InferCtxt<'_, 'tcx>, AutoTraitInfo<'tcx>) -> A,
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
@@ -270,16 +270,16 @@ impl AutoTraitFinder<'tcx> {
     // the final synthesized generics: we don't want our generated docs page to contain something
     // like 'T: Copy + Clone', as that's redundant. Therefore, we keep track of a separate
     // 'user_env', which only holds the predicates that will actually be displayed to the user.
-    fn evaluate_predicates<'b, 'c>(
+    fn evaluate_predicates(
         &self,
-        infcx: &InferCtxt<'b, 'tcx, 'c>,
+        infcx: &InferCtxt<'_, 'tcx>,
         trait_did: DefId,
-        ty: Ty<'c>,
-        param_env: ty::ParamEnv<'c>,
-        user_env: ty::ParamEnv<'c>,
-        fresh_preds: &mut FxHashSet<ty::Predicate<'c>>,
+        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        user_env: ty::ParamEnv<'tcx>,
+        fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
         only_projections: bool,
-    ) -> Option<(ty::ParamEnv<'c>, ty::ParamEnv<'c>)> {
+    ) -> Option<(ty::ParamEnv<'tcx>, ty::ParamEnv<'tcx>)> {
         let tcx = infcx.tcx;
 
         let mut select = SelectionContext::with_negative(&infcx, true);
@@ -617,20 +617,14 @@ impl AutoTraitFinder<'tcx> {
         }
     }
 
-    fn evaluate_nested_obligations<
-        'b,
-        'c,
-        'd,
-        'cx,
-        T: Iterator<Item = Obligation<'cx, ty::Predicate<'cx>>>,
-    >(
+    fn evaluate_nested_obligations(
         &self,
         ty: Ty<'_>,
-        nested: T,
-        computed_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,
-        fresh_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,
-        predicates: &'b mut VecDeque<ty::PolyTraitPredicate<'cx>>,
-        select: &mut SelectionContext<'c, 'd, 'cx>,
+        nested: impl Iterator<Item = Obligation<'tcx, ty::Predicate<'tcx>>>,
+        computed_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,
+        select: &mut SelectionContext<'_, 'tcx>,
         only_projections: bool,
     ) -> bool {
         let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
@@ -822,23 +816,23 @@ impl AutoTraitFinder<'tcx> {
         return true;
     }
 
-    pub fn clean_pred<'c, 'd, 'cx>(
+    pub fn clean_pred(
         &self,
-        infcx: &InferCtxt<'c, 'd, 'cx>,
-        p: ty::Predicate<'cx>,
-    ) -> ty::Predicate<'cx> {
+        infcx: &InferCtxt<'_, 'tcx>,
+        p: ty::Predicate<'tcx>,
+    ) -> ty::Predicate<'tcx> {
         infcx.freshen(p)
     }
 }
 
 // Replaces all ReVars in a type with ty::Region's, using the provided map
-pub struct RegionReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+pub struct RegionReplacer<'a, 'tcx> {
     vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
-    tcx: TyCtxt<'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

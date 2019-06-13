@@ -107,8 +107,8 @@ macro_rules! ignore_err {
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn regionck_expr(&self, body: &'gcx hir::Body) {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn regionck_expr(&self, body: &'tcx hir::Body) {
         let subject = self.tcx.hir().body_owner_def_id(body.id());
         let id = body.value.hir_id;
         let mut rcx = RegionCtxt::new(
@@ -161,7 +161,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// rest of type check and because sometimes we need type
     /// inference to have completed before we can determine which
     /// constraints to add.
-    pub fn regionck_fn(&self, fn_id: hir::HirId, body: &'gcx hir::Body) {
+    pub fn regionck_fn(&self, fn_id: hir::HirId, body: &'tcx hir::Body) {
         debug!("regionck_fn(id={})", fn_id);
         let subject = self.tcx.hir().body_owner_def_id(body.id());
         let hir_id = body.value.hir_id;
@@ -191,10 +191,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // INTERNALS
 
-pub struct RegionCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    pub fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+pub struct RegionCtxt<'a, 'tcx> {
+    pub fcx: &'a FnCtxt<'a, 'tcx>,
 
-    pub region_scope_tree: &'gcx region::ScopeTree,
+    pub region_scope_tree: &'tcx region::ScopeTree,
 
     outlives_environment: OutlivesEnvironment<'tcx>,
 
@@ -212,8 +212,8 @@ pub struct RegionCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     subject_def_id: DefId,
 }
 
-impl<'a, 'gcx, 'tcx> Deref for RegionCtxt<'a, 'gcx, 'tcx> {
-    type Target = FnCtxt<'a, 'gcx, 'tcx>;
+impl<'a, 'tcx> Deref for RegionCtxt<'a, 'tcx> {
+    type Target = FnCtxt<'a, 'tcx>;
     fn deref(&self) -> &Self::Target {
         &self.fcx
     }
@@ -222,14 +222,14 @@ impl<'a, 'gcx, 'tcx> Deref for RegionCtxt<'a, 'gcx, 'tcx> {
 pub struct RepeatingScope(hir::HirId);
 pub struct Subject(DefId);
 
-impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     pub fn new(
-        fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+        fcx: &'a FnCtxt<'a, 'tcx>,
         RepeatingScope(initial_repeating_scope): RepeatingScope,
         initial_body_id: hir::HirId,
         Subject(subject): Subject,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> RegionCtxt<'a, 'gcx, 'tcx> {
+    ) -> RegionCtxt<'a, 'tcx> {
         let region_scope_tree = fcx.tcx.region_scope_tree(subject);
         let outlives_environment = OutlivesEnvironment::new(param_env);
         RegionCtxt {
@@ -302,7 +302,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn visit_fn_body(
         &mut self,
         id: hir::HirId, // the id of the fn itself
-        body: &'gcx hir::Body,
+        body: &'tcx hir::Body,
         span: Span,
     ) {
         // When we enter a function, we can derive
@@ -437,7 +437,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
     // (..) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the
@@ -446,14 +446,14 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
     // hierarchy, and in particular the relationships between free
     // regions, until regionck, as described in #3238.
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
 
     fn visit_fn(
         &mut self,
-        fk: intravisit::FnKind<'gcx>,
-        _: &'gcx hir::FnDecl,
+        fk: intravisit::FnKind<'tcx>,
+        _: &'tcx hir::FnDecl,
         body_id: hir::BodyId,
         span: Span,
         hir_id: hir::HirId,
@@ -486,7 +486,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
 
     //visit_pat: visit_pat, // (..) see above
 
-    fn visit_arm(&mut self, arm: &'gcx hir::Arm) {
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm) {
         // see above
         for p in &arm.pats {
             self.constrain_bindings_in_pat(p);
@@ -494,14 +494,14 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         intravisit::walk_arm(self, arm);
     }
 
-    fn visit_local(&mut self, l: &'gcx hir::Local) {
+    fn visit_local(&mut self, l: &'tcx hir::Local) {
         // see above
         self.constrain_bindings_in_pat(&l.pat);
         self.link_local(l);
         intravisit::walk_local(self, l);
     }
 
-    fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         debug!(
             "regionck::visit_expr(e={:?}, repeating_scope={:?})",
             expr, self.repeating_scope
@@ -717,7 +717,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn constrain_cast(&mut self, cast_expr: &hir::Expr, source_expr: &hir::Expr) {
         debug!(
             "constrain_cast(cast_expr={:?}, source_expr={:?})",
@@ -758,7 +758,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_expr_fn_block(&mut self, expr: &'gcx hir::Expr, body_id: hir::BodyId) {
+    fn check_expr_fn_block(&mut self, expr: &'tcx hir::Expr, body_id: hir::BodyId) {
         let repeating_scope = self.set_repeating_scope(body_id.hir_id);
         intravisit::walk_expr(self, expr);
         self.set_repeating_scope(repeating_scope);
@@ -830,7 +830,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// Creates a temporary `MemCategorizationContext` and pass it to the closure.
     fn with_mc<F, R>(&self, f: F) -> R
     where
-        F: for<'b> FnOnce(mc::MemCategorizationContext<'b, 'gcx, 'tcx>) -> R,
+        F: for<'b> FnOnce(mc::MemCategorizationContext<'b, 'tcx>) -> R,
     {
         f(mc::MemCategorizationContext::with_infer(
             &self.infcx,

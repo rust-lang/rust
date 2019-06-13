@@ -18,7 +18,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
 
     pub fn explicit_predicates_of(
         &mut self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
     ) -> &RequiredPredicates<'tcx> {
         self.map.entry(def_id).or_insert_with(|| {

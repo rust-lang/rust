@@ -9,7 +9,7 @@ use crate::hir::Node;
 use crate::util::common::ErrorReported;
 use crate::infer::lexical_region_resolve::RegionResolutionError::SubSupConflict;
 
-impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when binding escapes a closure.
     ///
     /// Consider a case where we have

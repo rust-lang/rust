@@ -12,7 +12,7 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 fn normalize_ty_after_erasing_regions<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     goal: ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {
     debug!("normalize_ty_after_erasing_regions(goal={:#?})", goal);

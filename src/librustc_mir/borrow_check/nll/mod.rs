@@ -46,8 +46,8 @@ use self::universal_regions::UniversalRegions;
 /// scraping out the set of universal regions (e.g., region parameters)
 /// declared on the function. That set will need to be given to
 /// `compute_regions`.
-pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
+pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
@@ -69,22 +69,22 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
-pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
+pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     upvars: &[Upvar],
     location_table: &LocationTable,
-    param_env: ty::ParamEnv<'gcx>,
-    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'cx, 'gcx, 'tcx>>,
+    param_env: ty::ParamEnv<'tcx>,
+    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     errors_buffer: &mut Vec<Diagnostic>,
 ) -> (
     RegionInferenceContext<'tcx>,
     Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
-    Option<ClosureRegionRequirements<'gcx>>,
+    Option<ClosureRegionRequirements<'tcx>>,
 ) {
     let mut all_facts = if AllFacts::enabled(infcx.tcx) {
         Some(AllFacts::default())
@@ -210,8 +210,8 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     (regioncx, polonius_output, closure_region_requirements)
 }
 
-fn dump_mir_results<'a, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+fn dump_mir_results<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
     source: MirSource<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'_>,
@@ -271,8 +271,8 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     };
 }
 
-fn dump_annotation<'a, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+fn dump_annotation<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
     body: &Body<'tcx>,
     mir_def_id: DefId,
     regioncx: &RegionInferenceContext<'tcx>,

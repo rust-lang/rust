@@ -33,7 +33,7 @@ pub struct ConstProp;
 impl MirPass for ConstProp {
     fn run_pass<'tcx>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         source: MirSource<'tcx>,
         body: &mut Body<'tcx>,
     ) {
@@ -87,7 +87,7 @@ type Const<'tcx> = OpTy<'tcx>;
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpretCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
     places: IndexVec<Local, Option<Const<'tcx>>>,
     can_const_prop: IndexVec<Local, bool>,
@@ -115,7 +115,7 @@ impl<'mir, 'tcx> HasDataLayout for ConstPropagator<'mir, 'tcx> {
 
 impl<'mir, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
     #[inline]
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
@@ -123,7 +123,7 @@ impl<'mir, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
 impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(
         body: &mut Body<'tcx>,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         source: MirSource<'tcx>,
     ) -> ConstPropagator<'mir, 'tcx> {
         let param_env = tcx.param_env(source.def_id());
@@ -602,7 +602,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 }
 
 fn type_size_of<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<u64> {

@@ -239,7 +239,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         upvars: &[Upvar],
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         outlived_fr: RegionVid,
@@ -359,7 +359,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         upvars: &[Upvar],
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         mir_def_id: DefId,
         _fr: RegionVid,
         outlived_fr: RegionVid,
@@ -424,7 +424,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         upvars: &[Upvar],
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         outlived_fr: RegionVid,
@@ -516,7 +516,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         upvars: &[Upvar],
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         fr_is_local: bool,
@@ -585,7 +585,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn add_static_impl_trait_suggestion(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         diag: &mut DiagnosticBuilder<'_>,
         fr: RegionVid,
         // We need to pass `fr_name` - computing it again will label it twice.
@@ -671,7 +671,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         body: &Body<'tcx>,
         upvars: &[Upvar],
         mir_def_id: DefId,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
     ) -> (ConstraintCategory, bool, Span, Option<RegionName>) {
@@ -752,7 +752,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Returns `true` if a closure is inferred to be an `FnMut` closure.
-    crate fn is_closure_fn_mut(&self, infcx: &InferCtxt<'_, '_, 'tcx>, fr: RegionVid) -> bool {
+    crate fn is_closure_fn_mut(&self, infcx: &InferCtxt<'_, 'tcx>, fr: RegionVid) -> bool {
         if let Some(ty::ReFree(free_region)) = self.to_error_region(fr) {
             if let ty::BoundRegion::BrEnv = free_region.bound_region {
                 if let DefiningTy::Closure(def_id, substs) = self.universal_regions.defining_ty {

@@ -31,7 +31,7 @@ pub struct InterpretCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub machine: M,
 
     /// The results of the type checker, from rustc.
-    pub tcx: TyCtxtAt<'tcx, 'tcx>,
+    pub tcx: TyCtxtAt<'tcx>,
 
     /// Bounds in scope for polymorphic evaluations.
     pub(crate) param_env: ty::ParamEnv<'tcx>,
@@ -170,7 +170,7 @@ where
     M: Machine<'mir, 'tcx>,
 {
     #[inline]
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         *self.tcx
     }
 }
@@ -196,7 +196,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpretCx<'mir, 'tcx, M>
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxtAt<'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>, machine: M) -> Self {
+    pub fn new(tcx: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>, machine: M) -> Self {
         InterpretCx {
             machine,
             tcx,

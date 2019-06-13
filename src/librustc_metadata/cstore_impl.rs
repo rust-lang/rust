@@ -40,11 +40,12 @@ macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
       $($name:ident => $compute:block)*) => {
         pub fn provide_extern<$lt>(providers: &mut Providers<$lt>) {
-            $(fn $name<$lt:$lt, T>($tcx: TyCtxt<$lt, $lt>, def_id_arg: T)
-                                    -> <ty::queries::$name<$lt> as
-                                        QueryConfig<$lt>>::Value
-                where T: IntoArgs,
-            {
+            // HACK(eddyb) `$lt: $lt` forces `$lt` to be early-bound, which
+            // allows the associated type in the return type to be normalized.
+            $(fn $name<$lt: $lt, T: IntoArgs>(
+                $tcx: TyCtxt<$lt>,
+                def_id_arg: T,
+            ) -> <ty::queries::$name<$lt> as QueryConfig<$lt>>::Value {
                 #[allow(unused_variables)]
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
@@ -550,7 +551,7 @@ impl CrateStore for cstore::CStore {
         self.do_postorder_cnums_untracked()
     }
 
-    fn encode_metadata<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>) -> EncodedMetadata {
+    fn encode_metadata<'tcx>(&self, tcx: TyCtxt<'tcx>) -> EncodedMetadata {
         encoder::encode_metadata(tcx)
     }
 
