@@ -45,7 +45,7 @@ struct InternVisitor<'rt, 'a: 'rt, 'mir: 'rt, 'tcx: 'a+'rt+'mir> {
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
 enum InternMode {
     /// Mutable references must in fact be immutable due to their surrounding immutability in a
-    /// `static`. In a `static mut` we start out as mutable and thus can also contain further `&mtu`
+    /// `static`. In a `static mut` we start out as mutable and thus can also contain further `&mut`
     /// that will actually be treated as mutable.
     Static,
     /// UnsafeCell is OK in the value of a constant, but not behind references in a constant
