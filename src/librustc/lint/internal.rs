@@ -9,6 +9,7 @@ use errors::Applicability;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Ident, Item, ItemKind};
 use syntax::symbol::{sym, Symbol};
+use syntax_pos::ExpnInfo;
 
 declare_lint! {
     pub DEFAULT_HASH_TYPES,
@@ -225,19 +226,32 @@ declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
 impl EarlyLintPass for LintPassImpl {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if let ItemKind::Impl(_, _, _, _, Some(lint_pass), _, _) = &item.node {
-            if !lint_pass.path.span.ctxt().outer_expn_info().is_some() {
-                if let Some(last) = lint_pass.path.segments.last() {
-                    if last.ident.as_str() == "LintPass" {
-                        cx.struct_span_lint(
-                            LINT_PASS_IMPL_WITHOUT_MACRO,
-                            lint_pass.path.span,
-                            "implementing `LintPass` by hand",
-                        )
-                        .help("try using `declare_lint_pass!` or `impl_lint_pass!` instead")
-                        .emit();
+            if let Some(last) = lint_pass.path.segments.last() {
+                if last.ident.name == sym::LintPass {
+                    match &lint_pass.path.span.ctxt().outer_expn_info() {
+                        Some(info) if is_lint_pass_expansion(info) => {}
+                        _ => {
+                            cx.struct_span_lint(
+                                LINT_PASS_IMPL_WITHOUT_MACRO,
+                                lint_pass.path.span,
+                                "implementing `LintPass` by hand",
+                            )
+                            .help("try using `declare_lint_pass!` or `impl_lint_pass!` instead")
+                            .emit();
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+fn is_lint_pass_expansion(expn_info: &ExpnInfo) -> bool {
+    if expn_info.format.name() == sym::impl_lint_pass {
+        true
+    } else if let Some(info) = expn_info.call_site.ctxt().outer_expn_info() {
+        info.format.name() == sym::declare_lint_pass
+    } else {
+        false
     }
 }

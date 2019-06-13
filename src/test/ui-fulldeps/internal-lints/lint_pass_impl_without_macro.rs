@@ -26,6 +26,24 @@ impl LintPass for Foo { //~ERROR implementing `LintPass` by hand
     }
 }
 
+macro_rules! custom_lint_pass_macro {
+    () => {
+        struct Custom;
+
+        impl LintPass for Custom { //~ERROR implementing `LintPass` by hand
+            fn get_lints(&self) -> LintArray {
+                lint_array!(TEST_LINT)
+            }
+
+            fn name(&self) -> &'static str {
+                "Custom"
+            }
+        }
+    };
+}
+
+custom_lint_pass_macro!();
+
 struct Bar;
 
 impl_lint_pass!(Bar => [TEST_LINT]);
