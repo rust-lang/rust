@@ -11,13 +11,13 @@ fn arena() -> &'static ArenaSet<Vec<u8>> {
         ArenaSet(vec![], &Z)
     }
     unsafe {
-        use std::sync::{Once, ONCE_INIT};
+        use std::sync::Once;
         fn require_sync<T: Sync>(_: &T) { }
         unsafe fn __stability() -> &'static ArenaSet<Vec<u8>> {
             use std::mem::transmute;
             static mut DATA: *const ArenaSet<Vec<u8>> = 0 as *const ArenaSet<Vec<u8>>;
 
-            static mut ONCE: Once = ONCE_INIT;
+            static mut ONCE: Once = Once::new();
             ONCE.call_once(|| {
                 DATA = transmute
                     ::<Box<ArenaSet<Vec<u8>>>, *const ArenaSet<Vec<u8>>>
