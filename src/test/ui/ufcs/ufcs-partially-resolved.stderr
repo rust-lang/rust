@@ -205,19 +205,19 @@ error[E0223]: ambiguous associated type
   --> $DIR/ufcs-partially-resolved.rs:36:12
    |
 LL |     let _: <u8 as Tr>::Y::NN;
-   |            ^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<<u8 as Tr>::Y as Trait>::NN`
+   |            ^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<u16 as Trait>::NN`
 
-error[E0599]: no associated item named `NN` found for associated type `<u8 as Tr>::Y` in the current scope
+error[E0599]: no associated item named `NN` found for type `u16` in the current scope
   --> $DIR/ufcs-partially-resolved.rs:38:20
    |
 LL |     <u8 as Tr>::Y::NN;
-   |                    ^^ associated item not found in `<u8 as Tr>::Y`
+   |                    ^^ associated item not found in `u16`
 
-error[E0599]: no associated item named `N` found for associated type `<u8 as Dr>::X` in the current scope
+error[E0599]: no associated item named `N` found for type `u16` in the current scope
   --> $DIR/ufcs-partially-resolved.rs:55:20
    |
 LL |     <u8 as Dr>::X::N;
-   |                    ^ associated item not found in `<u8 as Dr>::X`
+   |                    ^ associated item not found in `u16`
 
 error: aborting due to 32 previous errors
 
