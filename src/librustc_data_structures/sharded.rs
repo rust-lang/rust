@@ -58,6 +58,11 @@ impl<T> Sharded<T> {
     }
 
     #[inline]
+    pub fn get_shard_by_index(&self, index: usize) -> &Lock<T> {
+        &self.shards[index % SHARDS].0
+    }
+
+    #[inline]
     pub fn get_shard_by_value<K: Hash + ?Sized>(&self, val: &K) -> &Lock<T> {
         if SHARDS == 1 {
             &self.shards[0].0

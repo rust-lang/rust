@@ -3,11 +3,15 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use smallvec::SmallVec;
-use rustc_data_structures::sync::{Lrc, Lock, AtomicU32, AtomicU64, Ordering};
+use rustc_data_structures::sync::{
+    Lrc, Lock, LockGuard, MappedLockGuard, AtomicU32, AtomicU64, Ordering
+};
 use rustc_data_structures::sharded::{self, Sharded};
 use std::sync::atomic::Ordering::{Acquire, SeqCst};
 use std::env;
+use std::iter;
 use std::hash::Hash;
+use std::convert::TryFrom;
 use std::collections::hash_map::Entry;
 use crate::ty::{self, TyCtxt};
 use crate::util::common::{ProfileQueriesMsg, profq_msg};
@@ -123,7 +127,15 @@ impl DepGraph {
     }
 
     pub fn query(&self) -> DepGraphQuery {
-        let data = self.data.as_ref().unwrap().current.data.lock();
+        let current = &self.data.as_ref().unwrap().current;
+        let shards = current.data.lock_shards();
+        let node_count = current.node_count.load(Acquire) as usize;
+        let data: IndexVec<DepNodeIndex, _> = (0..node_count).map(|i| {
+            let shard = i % sharded::SHARDS;
+            let inner = i / sharded::SHARDS;
+            &shards[shard][inner]
+        }).collect();
+
         let nodes: Vec<_> = data.iter().map(|n| n.node).collect();
         let mut edges = Vec::new();
         for (from, edge_targets) in data.iter()
@@ -441,8 +453,7 @@ impl DepGraph {
 
     #[inline]
     pub fn fingerprint_of(&self, dep_node_index: DepNodeIndex) -> Fingerprint {
-        let data = self.data.as_ref().expect("dep graph enabled").current.data.lock();
-        data[dep_node_index].fingerprint
+        self.data.as_ref().expect("dep graph enabled").current.data(dep_node_index).fingerprint
     }
 
     pub fn prev_fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
@@ -506,25 +517,32 @@ impl DepGraph {
     }
 
     pub fn serialize(&self) -> SerializedDepGraph {
-        let data = self.data.as_ref().unwrap().current.data.lock();
+        let current = &self.data.as_ref().unwrap().current;
+        let shards = current.data.lock_shards();
+        let node_count = current.node_count.load(Acquire) as usize;
+        let data = || (0..node_count).map(|i| {
+            let shard = i % sharded::SHARDS;
+            let inner = i / sharded::SHARDS;
+            &shards[shard][inner]
+        });
 
         let fingerprints: IndexVec<SerializedDepNodeIndex, _> =
-            data.iter().map(|d| d.fingerprint).collect();
+            data().map(|d| d.fingerprint).collect();
         let nodes: IndexVec<SerializedDepNodeIndex, _> =
-            data.iter().map(|d| d.node).collect();
+            data().map(|d| d.node).collect();
 
-        let total_edge_count: usize = data.iter().map(|d| d.edges.len()).sum();
+        let total_edge_count: usize = data().map(|d| d.edges.len()).sum();
 
         let mut edge_list_indices = IndexVec::with_capacity(nodes.len());
         let mut edge_list_data = Vec::with_capacity(total_edge_count);
 
-        for (current_dep_node_index, edges) in data.iter_enumerated().map(|(i, d)| (i, &d.edges)) {
+        for (current_dep_node_index, edges) in data().enumerate().map(|(i, d)| (i, &d.edges)) {
             let start = edge_list_data.len() as u32;
             // This should really just be a memcpy :/
             edge_list_data.extend(edges.iter().map(|i| SerializedDepNodeIndex::new(i.index())));
             let end = edge_list_data.len() as u32;
 
-            debug_assert_eq!(current_dep_node_index.index(), edge_list_indices.len());
+            debug_assert_eq!(current_dep_node_index, edge_list_indices.len());
             edge_list_indices.push((start, end));
         }
 
@@ -945,7 +963,14 @@ struct DepNodeData {
 }
 
 pub(super) struct CurrentDepGraph {
-    data: Lock<IndexVec<DepNodeIndex, DepNodeData>>,
+    /// The current node count. Used to allocate an index before storing it in the
+    /// `data` and `node_to_node_index` field below.
+    node_count: AtomicU64,
+
+    /// Maps from a `DepNodeIndex` to `DepNodeData`. The lowest bits of `DepNodeIndex` determines
+    /// which shard is used and the higher bits are the index into the vector.
+    data: Sharded<Vec<DepNodeData>>,
+
     node_to_node_index: Sharded<FxHashMap<DepNode, DepNodeIndex>>,
     #[allow(dead_code)]
     forbidden_edge: Option<EdgeFilter>,
@@ -998,7 +1023,8 @@ impl CurrentDepGraph {
         let new_node_count_estimate = (prev_graph_node_count * 102) / 100 + 200;
 
         CurrentDepGraph {
-            data: Lock::new(IndexVec::with_capacity(new_node_count_estimate)),
+            node_count: AtomicU64::new(0),
+            data: Sharded::new(|| Vec::with_capacity(new_node_count_estimate / sharded::SHARDS)),
             node_to_node_index: Sharded::new(|| FxHashMap::with_capacity_and_hasher(
                 new_node_count_estimate / sharded::SHARDS,
                 Default::default(),
@@ -1062,20 +1088,56 @@ impl CurrentDepGraph {
         edges: SmallVec<[DepNodeIndex; 8]>,
         fingerprint: Fingerprint
     ) -> (DepNodeIndex, bool) {
-        match self.node_to_node_index.get_shard_by_value(&dep_node).lock().entry(dep_node) {
+        let (index, inserted) = match self.node_to_node_index
+                                          .get_shard_by_value(&dep_node)
+                                          .lock()
+                                          .entry(dep_node) {
             Entry::Occupied(entry) => (*entry.get(), false),
             Entry::Vacant(entry) => {
-                let mut data = self.data.lock();
-                let dep_node_index = DepNodeIndex::new(data.len());
-                data.push(DepNodeData {
-                    node: dep_node,
-                    edges,
-                    fingerprint
-                });
+                let index = self.node_count.fetch_add(1, SeqCst);
+                // Cast to u32 to ensure we didn't overflow.
+                let index = u32::try_from(index).unwrap();
+
+                let dep_node_index = DepNodeIndex::new(index as usize);
                 entry.insert(dep_node_index);
                 (dep_node_index, true)
             }
+        };
+
+        if inserted {
+            let dep_node_data = DepNodeData {
+                node: dep_node,
+                edges,
+                fingerprint
+            };
+            let inner_index = index.as_usize() / sharded::SHARDS;
+            let mut data = self.data.get_shard_by_index(index.as_usize()).lock();
+            let len = data.len();
+            if likely!(len == inner_index) {
+                data.push(dep_node_data)
+            } else {
+                let dummy_data = DepNodeData {
+                    node: DepNode::new_no_params(DepKind::Null),
+                    edges: SmallVec::default(),
+                    fingerprint: Fingerprint::ZERO,
+                };
+                if inner_index >= len {
+                    data.extend(iter::repeat(dummy_data).take(inner_index - len + 1));
+                }
+                data[inner_index] = dep_node_data;
+            }
         }
+
+        (index, inserted)
+    }
+
+    fn data(
+        &self,
+        index: DepNodeIndex,
+    ) -> MappedLockGuard<'_, DepNodeData> {
+        LockGuard::map(self.data.get_shard_by_index(index.as_usize()).lock(), |vec| {
+            &mut vec[index.as_usize() / sharded::SHARDS]
+        })
     }
 }
 
@@ -1094,9 +1156,8 @@ impl DepGraphData {
                     #[cfg(debug_assertions)]
                     {
                         if let Some(target) = task_deps.node {
-                            let data = self.current.data.lock();
                             if let Some(ref forbidden_edge) = self.current.forbidden_edge {
-                                let source = data[source].node;
+                                let source = self.current.data(source).node;
                                 if forbidden_edge.test(&source, &target) {
                                     bug!("forbidden edge {:?} -> {:?} created",
                                         source,
