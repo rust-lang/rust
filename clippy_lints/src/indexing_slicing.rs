@@ -37,7 +37,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of indexing or slicing. Arrays are special cased, this lint
+    /// **What it does:** Checks for usage of indexing or slicing. Arrays are special cases, this lint
     /// does report on arrays if we can tell that slicing operations are in bounds and does not
     /// lint on constant `usize` indexing on arrays because that is handled by rustc's `const_err` lint.
     ///

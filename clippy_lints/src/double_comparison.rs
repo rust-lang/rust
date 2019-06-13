@@ -9,7 +9,7 @@ use syntax::source_map::Span;
 use crate::utils::{snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for double comparions that could be simplified to a single expression.
+    /// **What it does:** Checks for double comparisons that could be simplified to a single expression.
     ///
     ///
     /// **Why is this bad?** Readability.

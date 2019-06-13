@@ -56,7 +56,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for public functions that dereferences raw pointer
+    /// **What it does:** Checks for public functions that dereference raw pointer
     /// arguments but are not marked unsafe.
     ///
     /// **Why is this bad?** The function should probably be marked `unsafe`, since

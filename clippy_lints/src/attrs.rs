@@ -134,7 +134,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `allow`/`warn`/`deny`/`forbid` attributes with scoped clippy
-    /// lints and if those lints exist in clippy. If there is a uppercase letter in the lint name
+    /// lints and if those lints exist in clippy. If there is an uppercase letter in the lint name
     /// (not the tool name) and a lowercase version of this lint exists, it will suggest to lowercase
     /// the lint name.
     ///

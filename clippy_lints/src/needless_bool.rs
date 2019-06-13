@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** Redundant code.
     ///
     /// **Known problems:** Maybe false positives: Sometimes, the two branches are
-    /// painstakingly documented (which we of course do not detect), so they *may*
+    /// painstakingly documented (which we, of course, do not detect), so they *may*
     /// have some value. Even then, the documentation can be rewritten to match the
     /// shorter code.
     ///
