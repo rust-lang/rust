@@ -155,7 +155,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         }
     }
 
-    fn emit_location(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, entry_id: UnitEntryId, span: Span) {
+    fn emit_location(&mut self, tcx: TyCtxt<'tcx, 'tcx>, entry_id: UnitEntryId, span: Span) {
         let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
 
         let file_id = line_program_add_file(
@@ -232,7 +232,7 @@ pub struct FunctionDebugContext<'a, 'tcx> {
 
 impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
     pub fn new(
-        tcx: TyCtxt<'b, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         debug_context: &'a mut DebugContext<'tcx>,
         mir: &Body,
         name: &str,

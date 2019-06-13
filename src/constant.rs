@@ -28,7 +28,7 @@ enum TodoItem {
 impl ConstantCx {
     pub fn finalize<'a, 'tcx: 'a, B: Backend>(
         mut self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         module: &mut Module<B>,
     ) {
         //println!("todo {:?}", self.todo);
@@ -184,7 +184,7 @@ fn data_id_for_alloc_id<B: Backend>(module: &mut Module<B>, alloc_id: AllocId) -
 }
 
 fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     module: &mut Module<B>,
     def_id: DefId,
     linkage: Linkage,
@@ -238,7 +238,7 @@ fn cplace_for_dataid<'a, 'tcx: 'a>(
 }
 
 fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     module: &mut Module<B>,
     cx: &mut ConstantCx,
 ) {
@@ -336,7 +336,7 @@ fn pop_set<T: Copy + Eq + ::std::hash::Hash>(set: &mut HashSet<T>) -> Option<T> 
 
 struct TransPlaceInterpreter;
 
-impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
+impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
     type MemoryKinds = !;
     type PointerTag = ();
     type AllocExtra = ();
@@ -345,16 +345,16 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
     const STATIC_KIND: Option<!> = None;
 
-    fn enforce_validity(_: &InterpretCx<'a, 'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(_: &InterpretCx<'mir, 'tcx, Self>) -> bool {
         false
     }
 
-    fn before_terminator(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn before_terminator(_: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         panic!();
     }
 
     fn find_fn(
-        _: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        _: &mut InterpretCx<'mir, 'tcx, Self>,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: Option<PlaceTy<'tcx>>,
@@ -364,7 +364,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     }
 
     fn call_intrinsic(
-        _: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        _: &mut InterpretCx<'mir, 'tcx, Self>,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: PlaceTy<'tcx>,
@@ -374,13 +374,13 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
 
     fn find_foreign_static(
         _: DefId,
-        _: ::rustc::ty::query::TyCtxtAt<'a, 'tcx, 'tcx>,
+        _: ::rustc::ty::query::TyCtxtAt<'tcx, 'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
         panic!();
     }
 
     fn ptr_op(
-        _: &InterpretCx<'a, 'mir, 'tcx, Self>,
+        _: &InterpretCx<'mir, 'tcx, Self>,
         _: mir::BinOp,
         _: ImmTy<'tcx>,
         _: ImmTy<'tcx>,
@@ -388,7 +388,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn box_alloc(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> InterpResult<'tcx> {
+    fn box_alloc(_: &mut InterpretCx<'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> InterpResult<'tcx> {
         panic!();
     }
 
@@ -405,11 +405,11 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         ()
     }
 
-    fn stack_push(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn stack_push(_: &mut InterpretCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 
-    fn stack_pop(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>, _: ()) -> InterpResult<'tcx> {
+    fn stack_pop(_: &mut InterpretCx<'mir, 'tcx, Self>, _: ()) -> InterpResult<'tcx> {
         Ok(())
     }
 }

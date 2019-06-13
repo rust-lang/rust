@@ -77,7 +77,7 @@ pub struct CommentWriter {
 }
 
 impl CommentWriter {
-    pub fn new<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>) -> Self {
+    pub fn new<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx, 'tcx>, instance: Instance<'tcx>) -> Self {
         CommentWriter {
             global_comments: vec![
                 format!("symbol {}", tcx.symbol_name(instance).as_str()),
@@ -194,7 +194,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
 }
 
 pub fn write_clif_file<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     postfix: &str,
     instance: Instance<'tcx>,
     func: &ir::Function,

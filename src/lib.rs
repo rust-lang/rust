@@ -122,17 +122,17 @@ impl<'tcx> Default for Caches<'tcx> {
     }
 }
 
-pub struct CodegenCx<'a, 'clif, 'tcx, B: Backend + 'static> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct CodegenCx<'clif, 'tcx, B: Backend + 'static> {
+    tcx: TyCtxt<'tcx, 'tcx>,
     module: &'clif mut Module<B>,
     ccx: ConstantCx,
     caches: Caches<'tcx>,
     debug_context: Option<&'clif mut DebugContext<'tcx>>,
 }
 
-impl<'a, 'clif, 'tcx, B: Backend + 'static> CodegenCx<'a, 'clif, 'tcx, B> {
+impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
     fn new(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         module: &'clif mut Module<B>,
         debug_context: Option<&'clif mut DebugContext<'tcx>>,
     ) -> Self {
@@ -195,7 +195,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn codegen_crate<'a, 'tcx>(
         &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
         _rx: mpsc::Receiver<Box<dyn Any + Send>>,

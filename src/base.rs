@@ -3,7 +3,7 @@ use rustc::ty::adjustment::PointerCast;
 use crate::prelude::*;
 
 pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
-    cx: &mut crate::CodegenCx<'a, 'clif, 'tcx, B>,
+    cx: &mut crate::CodegenCx<'clif, 'tcx, B>,
     instance: Instance<'tcx>,
     linkage: Linkage,
 ) {
@@ -18,9 +18,9 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         // Check sig for u128 and i128
         let fn_sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &instance.fn_sig(tcx));
 
-        struct UI128Visitor<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx, 'tcx>, bool);
+        struct UI128Visitor<'tcx>(TyCtxt<'tcx, 'tcx>, bool);
 
-        impl<'a, 'tcx: 'a> rustc::ty::fold::TypeVisitor<'tcx> for UI128Visitor<'a, 'tcx> {
+        impl<'tcx> rustc::ty::fold::TypeVisitor<'tcx> for UI128Visitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
                 if t.sty == self.0.types.u128.sty || t.sty == self.0.types.i128.sty {
                     self.1 = true;

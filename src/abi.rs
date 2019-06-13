@@ -39,8 +39,8 @@ pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
     }
 }
 
-fn get_pass_mode<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn get_pass_mode<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     ty: Ty<'tcx>,
 ) -> PassMode {
     let layout = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
@@ -76,7 +76,7 @@ fn adjust_arg_for_abi<'a, 'tcx: 'a>(
     }
 }
 
-fn clif_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: FnSig<'tcx>) -> Signature {
+fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, sig: FnSig<'tcx>) -> Signature {
     let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
         Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
@@ -128,8 +128,8 @@ fn clif_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: FnSig<'t
     }
 }
 
-pub fn get_function_name_and_sig<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn get_function_name_and_sig<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     inst: Instance<'tcx>,
     support_vararg: bool,
 ) -> (String, Signature) {
@@ -143,8 +143,8 @@ pub fn get_function_name_and_sig<'a, 'tcx>(
 }
 
 /// Instance must be monomorphized
-pub fn import_function<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn import_function<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     module: &mut Module<impl Backend>,
     inst: Instance<'tcx>,
 ) -> FuncId {

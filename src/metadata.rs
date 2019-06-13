@@ -49,7 +49,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
 
 // Adapted from https://github.com/rust-lang/rust/blob/da573206f87b5510de4b0ee1a9c044127e409bd3/src/librustc_codegen_llvm/base.rs#L47-L112
 pub fn write_metadata<'a, 'gcx>(
-    tcx: TyCtxt<'a, 'gcx, 'gcx>,
+    tcx: TyCtxt<'gcx, 'gcx>,
     artifact: &mut faerie::Artifact
 ) -> EncodedMetadata {
     use std::io::Write;

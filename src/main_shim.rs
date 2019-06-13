@@ -3,7 +3,7 @@ use crate::prelude::*;
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
 pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     module: &mut Module<impl Backend + 'static>,
 ) {
     use rustc::middle::lang_items::StartFnLangItem;
@@ -23,7 +23,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
     create_entry_fn(tcx, module, main_def_id, use_start_lang_item);;
 
     fn create_entry_fn<'a, 'tcx: 'a>(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx, 'tcx>,
         m: &mut Module<impl Backend + 'static>,
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
