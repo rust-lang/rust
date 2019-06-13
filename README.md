@@ -57,7 +57,7 @@ make
 make install
 
 # Register the toolchain with rustup
-rustup toolchain link avr-toolchain $(realpath $(find . -name 'stage1'))
+rustup toolchain link avr-toolchain $(realpath $(find . -name 'stage2'))
 
 # Optionally enable the avr toolchain globally
 rustup default avr-toolchain
