@@ -21,10 +21,10 @@ use super::{
 };
 use crate::const_eval::{CompileTimeInterpreter, CompileTimeEvalContext};
 
-struct InternVisitor<'rt, 'a: 'rt, 'mir: 'rt, 'tcx: 'a+'rt+'mir> {
+struct InternVisitor<'rt, 'mir: 'rt, 'tcx: 'rt + 'mir> {
     /// previously encountered safe references
     ref_tracking: &'rt mut RefTracking<(MPlaceTy<'tcx>, Mutability, InternMode)>,
-    ecx: &'rt mut CompileTimeEvalContext<'a, 'mir, 'tcx>,
+    ecx: &'rt mut CompileTimeEvalContext<'mir, 'tcx>,
     param_env: ParamEnv<'tcx>,
     /// The root node of the value that we're looking at. This field is never mutated and only used
     /// for sanity assertions that will ICE when `const_qualif` screws up.
@@ -58,7 +58,7 @@ enum InternMode {
 /// into the memory of other constants or statics
 struct IsStaticOrFn;
 
-impl<'rt, 'a, 'mir, 'tcx> InternVisitor<'rt, 'a, 'mir, 'tcx> {
+impl<'rt, 'mir, 'tcx> InternVisitor<'rt, 'mir, 'tcx> {
     /// Intern an allocation without looking at its children
     fn intern_shallow(
         &mut self,
@@ -103,15 +103,15 @@ impl<'rt, 'a, 'mir, 'tcx> InternVisitor<'rt, 'a, 'mir, 'tcx> {
     }
 }
 
-impl<'rt, 'a, 'mir, 'tcx>
-    ValueVisitor<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>
+impl<'rt, 'mir, 'tcx>
+    ValueVisitor<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>
 for
-    InternVisitor<'rt, 'a, 'mir, 'tcx>
+    InternVisitor<'rt, 'mir, 'tcx>
 {
     type V = MPlaceTy<'tcx>;
 
     #[inline(always)]
-    fn ecx(&self) -> &CompileTimeEvalContext<'a, 'mir, 'tcx> {
+    fn ecx(&self) -> &CompileTimeEvalContext<'mir, 'tcx> {
         &self.ecx
     }
 
@@ -220,8 +220,8 @@ for
 
 /// Figure out the mutability of the allocation.
 /// Mutable if it has interior mutability *anywhere* in the type.
-fn intern_mutability<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn intern_mutability<'tcx>(
+    tcx: TyCtxt<'tcx, 'tcx>,
     param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     span: Span,
@@ -236,7 +236,7 @@ fn intern_mutability<'a, 'tcx>(
 }
 
 pub fn intern_const_alloc_recursive(
-    ecx: &mut CompileTimeEvalContext<'a, 'mir, 'tcx>,
+    ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     def_id: DefId,
     ret: MPlaceTy<'tcx>,
     // FIXME(oli-obk): can we scrap the param env? I think we can, the final value of a const eval
