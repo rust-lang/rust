@@ -99,7 +99,9 @@ pub fn find(build: &mut Build) {
 
         // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
         // We'll need one anyways if the target triple is also a host triple
-        cfg.cpp(true);
+        let mut cfg = cc::Build::new();
+        cfg.cargo_metadata(false).opt_level(2).warnings(false).debug(false).cpp(true)
+            .target(&target).host(&build.build);
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
         } else {
