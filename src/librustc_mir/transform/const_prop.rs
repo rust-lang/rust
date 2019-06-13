@@ -147,6 +147,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
+    fn get_const(&self, local: Local) -> Option<Const<'tcx>> {
+        self.places[local]
+    }
+
+    fn set_const(&mut self, local: Local, c: Option<Const<'tcx>>) {
+        self.places[local] = c;
+    }
+
     fn use_ecx<F, T>(
         &mut self,
         source_info: SourceInfo,
@@ -296,7 +304,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         trace!("eval_place(place={:?})", place);
         place.iterate(|place_base, place_projection| {
             let mut eval = match place_base {
-                PlaceBase::Local(loc) => self.places[*loc].clone()?,
+                PlaceBase::Local(loc) => self.get_const(*loc).clone()?,
                 PlaceBase::Static(box Static {kind: StaticKind::Promoted(promoted), ..}) => {
                     let generics = self.tcx.generics_of(self.source.def_id());
                     if generics.requires_monomorphization(self.tcx) {
@@ -699,8 +707,8 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
                             trace!("storing {:?} to {:?}", value, local);
-                            assert!(self.places[local].is_none());
-                            self.places[local] = Some(value);
+                            assert!(self.get_const(local).is_none());
+                            self.set_const(local, Some(value));
 
                             if self.should_const_prop() {
                                 self.replace_with_const(
@@ -740,7 +748,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                                     place = &proj.base;
                                 }
                                 if let Place::Base(PlaceBase::Local(local)) = *place {
-                                    self.places[local] = None;
+                                    self.set_const(local, None);
                                 }
                             },
                             Operand::Constant(_) => {}
