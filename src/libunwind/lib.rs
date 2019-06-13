@@ -11,10 +11,7 @@
 
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 
-#[macro_use]
-mod macros;
-
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(target_env = "msvc")] {
         // no extra unwinder support needed
     } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {

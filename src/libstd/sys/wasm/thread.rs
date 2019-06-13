@@ -59,7 +59,7 @@ pub mod guard {
     pub unsafe fn init() -> Option<Guard> { None }
 }
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(all(target_feature = "atomics", feature = "wasm-bindgen-threads"))] {
         #[link(wasm_import_module = "__wbindgen_thread_xform__")]
         extern {
