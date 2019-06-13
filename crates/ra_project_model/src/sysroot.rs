@@ -70,6 +70,11 @@ impl Sysroot {
                 }
             }
         }
+        if let Some(alloc) = sysroot.by_name("alloc") {
+            if let Some(core) = sysroot.by_name("core") {
+                sysroot.crates[alloc].deps.push(core);
+            }
+        }
         Ok(sysroot)
     }
 
