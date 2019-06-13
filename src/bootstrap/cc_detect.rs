@@ -110,7 +110,7 @@ pub fn find(build: &mut Build) {
             set_compiler(&mut cfg, Language::CPlusPlus, target, config, build)
         };
 
-        if cxx_configured {
+        if cxx_configured || build.hosts.contains(&target) {
             let compiler = cfg.get_compiler();
             build.cxx.insert(target, compiler);
         }
