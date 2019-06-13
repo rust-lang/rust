@@ -40,7 +40,7 @@ pub mod stdio;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(target_feature = "atomics")] {
         #[path = "condvar_atomics.rs"]
         pub mod condvar;

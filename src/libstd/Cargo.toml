@@ -15,6 +15,7 @@ crate-type = ["dylib", "rlib"]
 
 [dependencies]
 alloc = { path = "../liballoc" }
+cfg-if = "0.1.8"
 panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
 core = { path = "../libcore" }
