@@ -523,7 +523,7 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` has the `Alphabetic` property; otherwise, returns `false`.
+    /// Returns `true` if this `char` has the `Alphabetic` property.
     ///
     /// `Alphabetic` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
     /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
@@ -554,7 +554,7 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` has the `XID_Start` property; otherwise, returns `false`.
+    /// Returns `true` if this `char` has the `XID_Start` property.
     ///
     /// `XID_Start` is described in [Unicode Standard Annex #31 (Unicode Identifier and Pattern
     /// Syntax)][uax31] and specified in the [Unicode Character Database][ucd]
@@ -571,7 +571,7 @@ impl char {
         derived_property::XID_Start(self)
     }
 
-    /// Returns `true` if this `char` has the `XID_Continue` property; otherwise, returns `false`.
+    /// Returns `true` if this `char` has the `XID_Continue` property.
     ///
     /// `XID_Continue` is described in [Unicode Standard Annex #31 (Unicode Identifier and Pattern
     /// Syntax)][uax31] and specified in the [Unicode Character Database][ucd]
@@ -588,7 +588,7 @@ impl char {
         derived_property::XID_Continue(self)
     }
 
-    /// Returns `true` if this `char` has the `Lowercase` property; otherwise, returns `false`.
+    /// Returns `true` if this `char` has the `Lowercase` property.
     ///
     /// `Lowercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
     /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
@@ -620,7 +620,7 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` has the `Uppercase` property; otherwise, returns `false`.
+    /// Returns `true` if this `char` has the `Uppercase` property.
     ///
     /// `Uppercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
     /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
@@ -652,7 +652,7 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` has the `White_Space` property; otherwise, returns `false`.
+    /// Returns `true` if this `char` has the `White_Space` property.
     ///
     /// `White_Space` is specified in the [Unicode Character Database][ucd] [`PropList.txt`].
     ///
@@ -681,8 +681,7 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` satisfies either [`is_alphabetic()`] or [`is_numeric()`];
-    /// otherwise, returns `false`
+    /// Returns `true` if this `char` satisfies either [`is_alphabetic()`] or [`is_numeric()`].
     ///
     /// [`is_alphabetic()`]: #method.is_alphabetic
     /// [`is_numeric()`]: #method.is_numeric
@@ -707,8 +706,7 @@ impl char {
         self.is_alphabetic() || self.is_numeric()
     }
 
-    /// Returns `true` if this `char` has the general category for control codes; otherwise,
-    /// returns `false`.
+    /// Returns `true` if this `char` has the general category for control codes.
     ///
     /// Control codes (code points with the general category of `Cc`) are described in Chapter 4
     /// (Character Properties) of the [Unicode Standard] and specified in the [Unicode Character
@@ -733,8 +731,7 @@ impl char {
         general_category::Cc(self)
     }
 
-    /// Returns `true` if this `char` has the `Grapheme_Extend` property; otherwise, returns
-    /// `false`.
+    /// Returns `true` if this `char` has the `Grapheme_Extend` property.
     ///
     /// `Grapheme_Extend` is described in [Unicode Standard Annex #29 (Unicode Text
     /// Segmentation)][uax29] and specified in the [Unicode Character Database][ucd]
@@ -748,8 +745,7 @@ impl char {
         derived_property::Grapheme_Extend(self)
     }
 
-    /// Returns `true` if this `char` has one of the general categories for numbers; otherwise,
-    /// returns `false`.
+    /// Returns `true` if this `char` has one of the general categories for numbers.
     ///
     /// The general categories for numbers (`Nd` for decimal digits, `Nl` for letter-like numeric
     /// characters, and `No` for other numeric characters) are specified in the [Unicode Character
