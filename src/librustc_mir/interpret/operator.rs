@@ -347,7 +347,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             }
             _ => {
                 assert!(layout.ty.is_integral());
-                let val = val.to_bits(layout.size)?;
+                let val = self.force_bits(val, layout.size)?;
                 let res = match un_op {
                     Not => !val,
                     Neg => {
