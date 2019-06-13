@@ -815,8 +815,13 @@ impl Build {
     }
 
     /// Returns the path to the C++ compiler for the target specified.
-    fn cxx(&self, target: Interned<String>) -> &Path {
-        self.cxx[&target].path()
+    fn cxx(&self, target: Interned<String>) -> Result<&Path, String> {
+        match self.cxx.get(&target) {
+            Some(p) => Ok(p.path()),
+            None => Err(format!(
+                    "target `{}` is not configured as a host, only as a target",
+                    target))
+        }
     }
 
     /// Returns the path to the linker for the given target if it needs to be overridden.

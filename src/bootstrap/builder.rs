@@ -1135,10 +1135,12 @@ impl<'a> Builder<'a> {
                     .env(format!("RANLIB_{}", target), ranlib);
             }
 
-            let cxx = ccacheify(&self.cxx(target));
-            cargo
-                .env(format!("CXX_{}", target), &cxx)
-                .env(format!("CXXFLAGS_{}", target), cflags);
+            if let Ok(cxx) = self.cxx(target) {
+                let cxx = ccacheify(&cxx);
+                cargo
+                    .env(format!("CXX_{}", target), &cxx)
+                    .env(format!("CXXFLAGS_{}", target), cflags);
+            }
         }
 
         if (cmd == "build" || cmd == "rustc")
