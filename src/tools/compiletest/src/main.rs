@@ -484,6 +484,11 @@ pub fn run_tests(config: &Config) {
 
     // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
     if let Mode::CodegenUnits = config.mode {
+        // codegen-units tests use wrong directory, for more info see
+        // https://github.com/rust-lang/rust/issues/34586#issuecomment-501681886
+        if let Ok(build_dir) = env::var("BUILD_DIR") {
+            let _ = env::set_current_dir(build_dir);
+        }
         let _ = fs::remove_dir_all("tmp/partitioning-tests");
     }
 
