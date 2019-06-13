@@ -733,7 +733,8 @@ impl char {
         general_category::Cc(self)
     }
 
-    /// Returns `true` if this `char` has the `Grapheme_Extend` property; otherwise, returns `false`.
+    /// Returns `true` if this `char` has the `Grapheme_Extend` property; otherwise, returns
+    /// `false`.
     ///
     /// `Grapheme_Extend` is described in [Unicode Standard Annex #29 (Unicode Text
     /// Segmentation)][uax29] and specified in the [Unicode Character Database][ucd]
