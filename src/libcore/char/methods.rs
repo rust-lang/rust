@@ -684,8 +684,8 @@ impl char {
     /// Returns `true` if this `char` satisfies either [`is_alphabetic()`] or [`is_numeric()`];
     /// otherwise, returns `false`
     ///
-    /// [`is_alphabetic()`]: ../std/primitive.char.html#method.is_alphabetic
-    /// [`is_numeric()`]: ../std/primitive.char.html#method.is_numeric
+    /// [`is_alphabetic()`]: #method.is_alphabetic
+    /// [`is_numeric()`]: #method.is_numeric
     ///
     /// # Examples
     ///
