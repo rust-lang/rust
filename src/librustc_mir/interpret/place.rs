@@ -348,8 +348,12 @@ where
                 offsets[usize::try_from(field).unwrap()],
             layout::FieldPlacement::Array { stride, .. } => {
                 let len = base.len(self)?;
-                assert!(field < len, "Tried to access element {} of array/slice with length {}",
-                    field, len);
+                if field >= len {
+                    // This can be violated because this runs during promotion on code where the
+                    // type system has not yet ensured that such things don't happen.
+                    debug!("Tried to access element {} of array/slice with length {}", field, len);
+                    return err!(BoundsCheck { len, index: field });
+                }
                 stride * field
             }
             layout::FieldPlacement::Union(count) => {
