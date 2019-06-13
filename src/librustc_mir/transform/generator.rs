@@ -68,7 +68,7 @@ use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
 use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
-use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals, RequiresStorage};
 use crate::util::dump_mir;
 use crate::util::liveness;
 
@@ -449,6 +449,13 @@ fn locals_live_across_suspend_points(
         None
     };
 
+    // Calculate the MIR locals that we actually need to keep storage around
+    // for.
+    let requires_storage_analysis = RequiresStorage::new(body, borrowed_locals.as_ref());
+    let requires_storage =
+        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis,
+                    |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
     let mut liveness = liveness::liveness_of_locals(
@@ -490,26 +497,33 @@ fn locals_live_across_suspend_points(
                 liveness.outs[block].union(&borrowed_locals);
             }
 
-            let mut storage_liveness = state_for_location(loc,
-                                                          &storage_live_analysis,
-                                                          &storage_live,
-                                                          body);
+            let storage_liveness = state_for_location(loc,
+                                                      &storage_live_analysis,
+                                                      &storage_live,
+                                                      body);
 
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point
             storage_liveness_map.insert(block, storage_liveness.clone());
 
-            // Mark locals without storage statements as always having live storage
-            storage_liveness.union(&ignored.0);
+            let mut storage_required = state_for_location(loc,
+                                                          &requires_storage_analysis,
+                                                          &requires_storage,
+                                                          body);
+
+            // Mark locals without storage statements as always requiring storage
+            storage_required.union(&ignored.0);
 
             // Locals live are live at this point only if they are used across
             // suspension points (the `liveness` variable)
-            // and their storage is live (the `storage_liveness` variable)
-            let mut live_locals_here = storage_liveness;
+            // and their storage is required (the `storage_required` variable)
+            let mut live_locals_here = storage_required;
             live_locals_here.intersect(&liveness.outs[block]);
 
             // The generator argument is ignored
             live_locals_here.remove(self_arg());
+
+            debug!("loc = {:?}, live_locals_here = {:?}", loc, live_locals_here);
 
             // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
@@ -518,6 +532,7 @@ fn locals_live_across_suspend_points(
             live_locals_at_suspension_points.push(live_locals_here);
         }
     }
+    debug!("live_locals = {:?}", live_locals);
 
     // Renumber our liveness_map bitsets to include only the locals we are
     // saving.
