@@ -7,6 +7,9 @@ fn main() {}
 #[warn(clippy::new_without_default_derive)]
 struct Foo;
 
+#[warn(clippy::const_static_lifetime)]
+static Bar: &'static str = "baz";
+
 impl Foo {
     fn new() -> Self {
         Foo

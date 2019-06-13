@@ -1153,6 +1153,7 @@ pub fn register_renamed(ls: &mut rustc::lint::LintStore) {
     ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
     ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
+    ls.register_renamed("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes");
 }
 
 // only exists to let the dogfood integration test works.
