@@ -765,4 +765,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     pub fn truncate(&self, value: u128, ty: TyLayout<'_>) -> u128 {
         truncate(value, ty.size)
     }
+
+    #[inline(always)]
+    pub fn force_ptr(
+        &self,
+        scalar: Scalar<M::PointerTag>,
+    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
+        self.memory.force_ptr(scalar)
+    }
+
+    #[inline(always)]
+    pub fn force_bits(
+        &self,
+        scalar: Scalar<M::PointerTag>,
+        size: Size
+    ) -> InterpResult<'tcx, u128> {
+        self.memory.force_bits(scalar, size)
+    }
 }
