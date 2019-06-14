@@ -994,7 +994,7 @@ pub enum PatKind {
     /// A literal.
     Lit(P<Expr>),
 
-    /// A range pattern (e.g., `1...2` or `1..2`).
+    /// A range pattern (e.g., `1..=2` or `1..2`).
     Range(P<Expr>, P<Expr>, RangeEnd),
 
     /// `[a, b, ..i, y, z]` is represented as:

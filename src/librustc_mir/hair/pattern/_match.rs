@@ -428,7 +428,7 @@ enum Constructor<'tcx> {
     Variant(DefId),
     /// Literal values.
     ConstantValue(&'tcx ty::Const<'tcx>),
-    /// Ranges of literal values (`2...5` and `2..5`).
+    /// Ranges of literal values (`2..=5` and `2..5`).
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
     /// Array patterns of length n.
     Slice(u64),
@@ -816,7 +816,7 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 /// `IntRange`s always store a contiguous range. This means that values are
 /// encoded such that `0` encodes the minimum value for the integer,
 /// regardless of the signedness.
-/// For example, the pattern `-128...127i8` is encoded as `0..=255`.
+/// For example, the pattern `-128..=127i8` is encoded as `0..=255`.
 /// This makes comparisons and arithmetic on interval endpoints much more
 /// straightforward. See `signed_bias` for details.
 ///
