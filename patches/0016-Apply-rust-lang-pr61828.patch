@@ -1,0 +1,23 @@
+From e5f840ecb5093e4f5e96f76119d5e3b733e660f3 Mon Sep 17 00:00:00 2001
+From: Ralf Jung <post@ralfj.de>
+Date: Fri, 14 Jun 2019 11:00:37 +0200
+Subject: [PATCH] make sure we use cfg-if as a std dependency
+
+---
+ src/libstd/Cargo.toml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libstd/Cargo.toml b/src/libstd/Cargo.toml
+index a170dae2b08c..38df1f26d95f 100644
+--- a/src/libstd/Cargo.toml
++++ b/src/libstd/Cargo.toml
+@@ -15,7 +15,7 @@ crate-type = ["dylib", "rlib"]
+ 
+ [dependencies]
+ alloc = { path = "../liballoc" }
+-cfg-if = "0.1.8"
++cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
+ panic_unwind = { path = "../libpanic_unwind", optional = true }
+ panic_abort = { path = "../libpanic_abort" }
+ core = { path = "../libcore" }
+
