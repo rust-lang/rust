@@ -122,9 +122,10 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                                        .find(|&(_, &entry)| hir_id == entry)
                                        .expect("no node_to_hir_id entry");
                 let node_id = NodeId::from_usize(node_id);
+                let hir_id = self.hir_map.node_to_hir_id(node_id);
                 missing_items.push(format!("[local_id: {}, node:{}]",
                                            local_id,
-                                           self.hir_map.node_to_string(node_id)));
+                                           self.hir_map.hir_to_string(hir_id)));
             }
             self.error(|| format!(
                 "ItemLocalIds not assigned densely in {}. \

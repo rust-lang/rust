@@ -1013,10 +1013,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     ) {
         let hir = self.tcx.hir();
-        let parent_node = hir.get_parent_node(
-            hir.hir_to_node_id(obligation.cause.body_id),
-        );
-        let node = hir.find(parent_node);
+        let parent_node = hir.get_parent_node_by_hir_id(obligation.cause.body_id);
+        let node = hir.find_by_hir_id(parent_node);
         if let Some(hir::Node::Item(hir::Item {
             node: hir::ItemKind::Fn(decl, _, _, body_id),
             ..

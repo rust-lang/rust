@@ -14,7 +14,6 @@ use std::mem;
 use std::fmt;
 use rustc_macros::HashStable;
 use syntax::source_map;
-use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use crate::ty::{DefIdTree, TyCtxt};
 use crate::ty::query::Providers;
@@ -169,15 +168,15 @@ impl Scope {
         self.id
     }
 
-    pub fn node_id(&self, tcx: TyCtxt<'_>, scope_tree: &ScopeTree) -> ast::NodeId {
+    pub fn hir_id(&self, scope_tree: &ScopeTree) -> hir::HirId {
         match scope_tree.root_body {
             Some(hir_id) => {
-                tcx.hir().hir_to_node_id(hir::HirId {
+                hir::HirId {
                     owner: hir_id.owner,
                     local_id: self.item_local_id()
-                })
+                }
             }
-            None => ast::DUMMY_NODE_ID
+            None => hir::DUMMY_HIR_ID
         }
     }
 
@@ -185,13 +184,13 @@ impl Scope {
     /// returned span may not correspond to the span of any `NodeId` in
     /// the AST.
     pub fn span(&self, tcx: TyCtxt<'_>, scope_tree: &ScopeTree) -> Span {
-        let node_id = self.node_id(tcx, scope_tree);
-        if node_id == ast::DUMMY_NODE_ID {
+        let hir_id = self.hir_id(scope_tree);
+        if hir_id == hir::DUMMY_HIR_ID {
             return DUMMY_SP;
         }
-        let span = tcx.hir().span(node_id);
+        let span = tcx.hir().span_by_hir_id(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
-            if let Node::Block(ref blk) = tcx.hir().get(node_id) {
+            if let Node::Block(ref blk) = tcx.hir().get_by_hir_id(hir_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
                 // `blk`; reuse span of `blk` and shift `lo`
@@ -1278,7 +1277,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
-        if self.tcx.hir().body_owner_kind(owner_id).is_fn_or_closure() {
+        if self.tcx.hir().body_owner_kind_by_hir_id(owner_id).is_fn_or_closure() {
             self.visit_expr(&body.value)
         } else {
             // Only functions have an outer terminating (drop) scope, while

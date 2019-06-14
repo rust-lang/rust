@@ -287,18 +287,8 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn def_index_to_node_id(&self, def_index: DefIndex) -> NodeId {
-        self.definitions.def_index_to_node_id(def_index)
-    }
-
-    #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
         self.definitions.def_index_to_hir_id(def_id.to_def_id().index)
-    }
-
-    #[inline]
-    pub fn local_def_id_to_node_id(&self, def_id: LocalDefId) -> NodeId {
-        self.definitions.as_local_node_id(def_id.to_def_id()).unwrap()
     }
 
     fn def_kind(&self, node_id: NodeId) -> Option<DefKind> {
@@ -422,12 +412,6 @@ impl<'hir> Map<'hir> {
         self.forest.krate.body(id)
     }
 
-    pub fn fn_decl(&self, node_id: ast::NodeId) -> Option<FnDecl> {
-        let hir_id = self.node_to_hir_id(node_id);
-        self.fn_decl_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<FnDecl> {
         if let Some(entry) = self.find_entry(hir_id) {
             entry.fn_decl().cloned()
@@ -439,24 +423,18 @@ impl<'hir> Map<'hir> {
     /// Returns the `NodeId` that corresponds to the definition of
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
-    pub fn body_owner(&self, BodyId { hir_id }: BodyId) -> NodeId {
+    pub fn body_owner(&self, BodyId { hir_id }: BodyId) -> HirId {
         let parent = self.get_parent_node_by_hir_id(hir_id);
         assert!(self.lookup(parent).map_or(false, |e| e.is_body_owner(hir_id)));
-        self.hir_to_node_id(parent)
+        parent
     }
 
     pub fn body_owner_def_id(&self, id: BodyId) -> DefId {
-        self.local_def_id(self.body_owner(id))
+        self.local_def_id_from_hir_id(self.body_owner(id))
     }
 
-    /// Given a `NodeId`, returns the `BodyId` associated with it,
+    /// Given a `HirId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
-    pub fn maybe_body_owned_by(&self, id: NodeId) -> Option<BodyId> {
-        let hir_id = self.node_to_hir_id(id);
-        self.maybe_body_owned_by_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn maybe_body_owned_by_by_hir_id(&self, hir_id: HirId) -> Option<BodyId> {
         if let Some(entry) = self.find_entry(hir_id) {
             if self.dep_graph.is_fully_enabled() {
@@ -479,12 +457,6 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    pub fn body_owner_kind(&self, id: NodeId) -> BodyOwnerKind {
-        let hir_id = self.node_to_hir_id(id);
-        self.body_owner_kind_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn body_owner_kind_by_hir_id(&self, id: HirId) -> BodyOwnerKind {
         match self.get_by_hir_id(id) {
             Node::Item(&Item { node: ItemKind::Const(..), .. }) |
@@ -793,17 +765,10 @@ impl<'hir> Map<'hir> {
         self.walk_parent_nodes(id, match_fn, match_non_returning_block).ok()
     }
 
-    /// Retrieves the `NodeId` for `id`'s parent item, or `id` itself if no
+    /// Retrieves the `HirId` for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
-    pub fn get_parent(&self, id: NodeId) -> NodeId {
-        let hir_id = self.node_to_hir_id(id);
-        let parent_hir_id = self.get_parent_item(hir_id);
-        self.hir_to_node_id(parent_hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn get_parent_item(&self, hir_id: HirId) -> HirId {
         match self.walk_parent_nodes(hir_id, |node| match *node {
             Node::Item(_) |
@@ -819,12 +784,6 @@ impl<'hir> Map<'hir> {
 
     /// Returns the `DefId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
-    pub fn get_module_parent(&self, id: NodeId) -> DefId {
-        let hir_id = self.node_to_hir_id(id);
-        self.get_module_parent_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn get_module_parent_by_hir_id(&self, id: HirId) -> DefId {
         self.local_def_id_from_hir_id(self.get_module_parent_node(id))
     }
@@ -901,22 +860,10 @@ impl<'hir> Map<'hir> {
         Some(scope)
     }
 
-    pub fn get_parent_did(&self, id: NodeId) -> DefId {
-        let hir_id = self.node_to_hir_id(id);
-        self.get_parent_did_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn get_parent_did_by_hir_id(&self, id: HirId) -> DefId {
         self.local_def_id_from_hir_id(self.get_parent_item(id))
     }
 
-    pub fn get_foreign_abi(&self, id: NodeId) -> Abi {
-        let hir_id = self.node_to_hir_id(id);
-        self.get_foreign_abi_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn get_foreign_abi_by_hir_id(&self, hir_id: HirId) -> Abi {
         let parent = self.get_parent_item(hir_id);
         if let Some(entry) = self.find_entry(parent) {
@@ -930,12 +877,6 @@ impl<'hir> Map<'hir> {
         bug!("expected foreign mod or inlined parent, found {}", self.hir_to_string(parent))
     }
 
-    pub fn expect_item(&self, id: NodeId) -> &'hir Item {
-        let hir_id = self.node_to_hir_id(id);
-        self.expect_item_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn expect_item_by_hir_id(&self, id: HirId) -> &'hir Item {
         match self.find_by_hir_id(id) { // read recorded by `find`
             Some(Node::Item(item)) => item,
@@ -1024,12 +965,6 @@ impl<'hir> Map<'hir> {
 
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
-    pub fn attrs(&self, id: NodeId) -> &'hir [ast::Attribute] {
-        let hir_id = self.node_to_hir_id(id);
-        self.attrs_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn attrs_by_hir_id(&self, id: HirId) -> &'hir [ast::Attribute] {
         self.read(id); // reveals attributes on the node
         let attrs = match self.find_entry(id).map(|entry| entry.node) {
@@ -1093,12 +1028,6 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    pub fn span(&self, id: NodeId) -> Span {
-        let hir_id = self.node_to_hir_id(id);
-        self.span_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn span_by_hir_id(&self, hir_id: HirId) -> Span {
         self.read(hir_id); // reveals span from node
         match self.find_entry(hir_id).map(|entry| entry.node) {
@@ -1139,32 +1068,17 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
-        self.as_local_node_id(id).map(|id| self.span(id))
+        self.as_local_hir_id(id).map(|id| self.span_by_hir_id(id))
     }
 
-    pub fn node_to_string(&self, id: NodeId) -> String {
-        hir_id_to_string(self, self.node_to_hir_id(id), true)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn hir_to_string(&self, id: HirId) -> String {
         hir_id_to_string(self, id, true)
     }
 
-    pub fn node_to_user_string(&self, id: NodeId) -> String {
-        hir_id_to_string(self, self.node_to_hir_id(id), false)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn hir_to_user_string(&self, id: HirId) -> String {
         hir_id_to_string(self, id, false)
     }
 
-    pub fn node_to_pretty_string(&self, id: NodeId) -> String {
-        print::to_string(self, |s| s.print_node(self.get(id)))
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn hir_to_pretty_string(&self, id: HirId) -> String {
         print::to_string(self, |s| s.print_node(self.get_by_hir_id(id)))
     }

@@ -395,7 +395,7 @@ fn is_param<'tcx>(tcx: TyCtxt<'tcx>, ast_ty: &hir::Ty, param_id: hir::HirId) -> 
 }
 
 fn convert_item<'tcx>(tcx: TyCtxt<'tcx>, item_id: hir::HirId) {
-    let it = tcx.hir().expect_item_by_hir_id(item_id);
+    let it = tcx.hir().expect_item(item_id);
     debug!("convert: item {} with id {}", it.ident, it.hir_id);
     let def_id = tcx.hir().local_def_id_from_hir_id(item_id);
     match it.node {

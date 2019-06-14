@@ -86,7 +86,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     )
                 };
                 let span = scope.span(self, region_scope_tree);
-                let tag = match self.hir().find(scope.node_id(self, region_scope_tree)) {
+                let tag = match self.hir().find_by_hir_id(scope.hir_id(region_scope_tree)) {
                     Some(Node::Block(_)) => "block",
                     Some(Node::Expr(expr)) => match expr.node {
                         hir::ExprKind::Call(..) => "call",
@@ -1330,15 +1330,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if !param.is_self() {
                         let type_param = generics.type_param(param, self.tcx);
                         let hir = &self.tcx.hir();
-                        hir.as_local_node_id(type_param.def_id).map(|id| {
+                        hir.as_local_hir_id(type_param.def_id).map(|id| {
                             // Get the `hir::Param` to verify whether it already has any bounds.
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                             // instead we suggest `T: 'a + 'b` in that case.
                             let mut has_bounds = false;
-                            if let Node::GenericParam(ref param) = hir.get(id) {
+                            if let Node::GenericParam(ref param) = hir.get_by_hir_id(id) {
                                 has_bounds = !param.bounds.is_empty();
                             }
-                            let sp = hir.span(id);
+                            let sp = hir.span_by_hir_id(id);
                             // `sp` only covers `T`, change it so that it covers
                             // `T:` when appropriate
                             let is_impl_trait = bound_kind.to_string().starts_with("impl ");

@@ -34,7 +34,7 @@ use syntax_pos::Span;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn resolve_type_vars_in_body(&self, body: &'tcx hir::Body) -> &'tcx ty::TypeckTables<'tcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
-        let item_def_id = self.tcx.hir().local_def_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is uSymbolfor unit tests.
@@ -45,10 +45,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             wbcx.visit_node_id(arg.pat.span, arg.hir_id);
         }
         // Type only exists for constants and statics, not functions.
-        match self.tcx.hir().body_owner_kind(item_id) {
+        match self.tcx.hir().body_owner_kind_by_hir_id(item_id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => {
-                let item_hir_id = self.tcx.hir().node_to_hir_id(item_id);
-                wbcx.visit_node_id(body.value.span, item_hir_id);
+                wbcx.visit_node_id(body.value.span, item_id);
             }
             hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => (),
         }

@@ -1823,7 +1823,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 // Do not free early-bound regions, only late-bound ones.
             } else if let Some(body_id) = outermost_body {
                 let fn_id = self.tcx.hir().body_owner(body_id);
-                match self.tcx.hir().get(fn_id) {
+                match self.tcx.hir().get_by_hir_id(fn_id) {
                     Node::Item(&hir::Item {
                         node: hir::ItemKind::Fn(..),
                         ..
@@ -1836,7 +1836,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         node: hir::ImplItemKind::Method(..),
                         ..
                     }) => {
-                        let scope = self.tcx.hir().local_def_id(fn_id);
+                        let scope = self.tcx.hir().local_def_id_from_hir_id(fn_id);
                         def = Region::Free(scope, def.id().unwrap());
                     }
                     _ => {}

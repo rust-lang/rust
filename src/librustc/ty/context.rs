@@ -250,11 +250,9 @@ fn validate_hir_id_for_typeck_tables(local_id_root: Option<DefId>,
         if let Some(local_id_root) = local_id_root {
             if hir_id.owner != local_id_root.index {
                 ty::tls::with(|tcx| {
-                    let node_id = tcx.hir().hir_to_node_id(hir_id);
-
                     bug!("node {} with HirId::owner {:?} cannot be placed in \
                           TypeckTables with local_id_root {:?}",
-                         tcx.hir().node_to_string(node_id),
+                         tcx.hir().hir_to_string(hir_id),
                          DefId::local(hir_id.owner),
                          local_id_root)
                 });

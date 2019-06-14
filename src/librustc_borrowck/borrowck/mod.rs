@@ -198,7 +198,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     cfg: &cfg::CFG,
 ) -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'tcx>) {
     let owner_id = tcx.hir().body_owner(body_id);
-    let owner_def_id = tcx.hir().local_def_id(owner_id);
+    let owner_def_id = tcx.hir().local_def_id_from_hir_id(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_scope_tree = tcx.region_scope_tree(owner_def_id);
     let body = tcx.hir().body(body_id);
@@ -389,8 +389,8 @@ pub enum LoanPathElem<'tcx> {
 }
 
 fn closure_to_block(closure_id: LocalDefId, tcx: TyCtxt<'_>) -> HirId {
-    let closure_id = tcx.hir().local_def_id_to_node_id(closure_id);
-    match tcx.hir().get(closure_id) {
+    let closure_id = tcx.hir().local_def_id_to_hir_id(closure_id);
+    match tcx.hir().get_by_hir_id(closure_id) {
         Node::Expr(expr) => match expr.node {
             hir::ExprKind::Closure(.., body_id, _, _) => {
                 body_id.hir_id
@@ -896,8 +896,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                 // to implement two traits for "one operator" is not very intuitive for
                 // many programmers.
                 if err.cmt.note == mc::NoteIndex {
-                    let node_id = self.tcx.hir().hir_to_node_id(err.cmt.hir_id);
-                    let node =  self.tcx.hir().get(node_id);
+                    let node =  self.tcx.hir().get_by_hir_id(err.cmt.hir_id);
 
                     // This pattern probably always matches.
                     if let Node::Expr(
@@ -1022,8 +1021,8 @@ impl BorrowckCtxt<'_, 'tcx> {
                 }
 
                 if let ty::ReScope(scope) = *super_scope {
-                    let node_id = scope.node_id(self.tcx, &self.region_scope_tree);
-                    match self.tcx.hir().find(node_id) {
+                    let hir_id = scope.hir_id(&self.region_scope_tree);
+                    match self.tcx.hir().find_by_hir_id(hir_id) {
                         Some(Node::Stmt(_)) => {
                             if *sub_scope != ty::ReStatic {
                                 db.note("consider using a `let` binding to increase its lifetime");
@@ -1514,8 +1513,7 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
 
             LpUpvar(ty::UpvarId{ var_path: ty::UpvarPath {hir_id: var_id}, closure_expr_id }) => {
                 let s = ty::tls::with(|tcx| {
-                    let var_node_id = tcx.hir().hir_to_node_id(var_id);
-                    tcx.hir().node_to_string(var_node_id)
+                    tcx.hir().hir_to_string(var_id)
                 });
                 write!(f, "$({} captured by id={:?})", s, closure_expr_id)
             }
@@ -1549,8 +1547,7 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
 
             LpUpvar(ty::UpvarId{ var_path: ty::UpvarPath { hir_id }, closure_expr_id: _ }) => {
                 let s = ty::tls::with(|tcx| {
-                    let var_node_id = tcx.hir().hir_to_node_id(hir_id);
-                    tcx.hir().node_to_string(var_node_id)
+                    tcx.hir().hir_to_string(hir_id)
                 });
                 write!(f, "$({} captured by closure)", s)
             }

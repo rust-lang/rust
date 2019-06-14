@@ -101,7 +101,7 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
                         let owner_id = tcx.hir().body_owner(body_id);
                         let opt_ty_info;
                         let self_arg;
-                        if let Some(ref fn_decl) = tcx.hir().fn_decl(owner_id) {
+                        if let Some(ref fn_decl) = tcx.hir().fn_decl_by_hir_id(owner_id) {
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
                             let ty_span = tcx.hir().span_by_hir_id(ty_hir_id);
                             opt_ty_info = Some(ty_span);
@@ -650,7 +650,7 @@ fn construct_const<'a, 'tcx>(
 ) -> Body<'tcx> {
     let tcx = hir.tcx();
     let owner_id = tcx.hir().body_owner(body_id);
-    let span = tcx.hir().span(owner_id);
+    let span = tcx.hir().span_by_hir_id(owner_id);
     let mut builder = Builder::new(
         hir,
         span,
@@ -689,7 +689,7 @@ fn construct_error<'a, 'tcx>(
     body_id: hir::BodyId
 ) -> Body<'tcx> {
     let owner_id = hir.tcx().hir().body_owner(body_id);
-    let span = hir.tcx().hir().span(owner_id);
+    let span = hir.tcx().hir().span_by_hir_id(owner_id);
     let ty = hir.tcx().types.err;
     let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, vec![], vec![], false);
     let source_info = builder.source_info(span);

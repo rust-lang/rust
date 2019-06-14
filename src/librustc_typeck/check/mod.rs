@@ -2517,9 +2517,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(&t) => t,
             None if self.is_tainted_by_errors() => self.tcx.types.err,
             None => {
-                let node_id = self.tcx.hir().hir_to_node_id(id);
                 bug!("no type for node {}: {} in fcx {}",
-                     node_id, self.tcx.hir().node_to_string(node_id),
+                     id, self.tcx.hir().hir_to_string(id),
                      self.tag());
             }
         }

@@ -42,7 +42,8 @@ pub fn construct<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body) -> CFG {
     let body_exit;
 
     // Find the tables for this body.
-    let owner_def_id = tcx.hir().local_def_id(tcx.hir().body_owner(body.id()));
+    let owner_hir_id = tcx.hir().body_owner(body.id());
+    let owner_def_id = tcx.hir().local_def_id_from_hir_id(owner_hir_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
 
     let mut cfg_builder = CFGBuilder {

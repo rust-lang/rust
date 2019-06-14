@@ -2196,12 +2196,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let Some(def_id) = self.const_param_def_id(expr) {
             // Find the name and index of the const parameter by indexing the generics of the
             // parent item and construct a `ParamConst`.
-            let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-            let item_id = tcx.hir().get_parent_node(node_id);
-            let item_def_id = tcx.hir().local_def_id(item_id);
+            let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+            let item_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
+            let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
             let generics = tcx.generics_of(item_def_id);
-            let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(node_id)];
-            let name = tcx.hir().name(node_id).as_interned_str();
+            let index = generics.param_def_id_to_index[&tcx.hir().local_def_id_from_hir_id(hir_id)];
+            let name = tcx.hir().name_by_hir_id(hir_id).as_interned_str();
             const_.val = ConstValue::Param(ty::ParamConst::new(index, name));
         }
 

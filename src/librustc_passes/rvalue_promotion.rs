@@ -165,7 +165,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn check_nested_body(&mut self, body_id: hir::BodyId) -> Promotability {
         let item_id = self.tcx.hir().body_owner(body_id);
-        let item_def_id = self.tcx.hir().local_def_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
 
         let outer_in_fn = self.in_fn;
         let outer_tables = self.tables;
@@ -175,7 +175,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         self.in_fn = false;
         self.in_static = false;
 
-        match self.tcx.hir().body_owner_kind(item_id) {
+        match self.tcx.hir().body_owner_kind_by_hir_id(item_id) {
             hir::BodyOwnerKind::Closure |
             hir::BodyOwnerKind::Fn => self.in_fn = true,
             hir::BodyOwnerKind::Static(_) => self.in_static = true,
