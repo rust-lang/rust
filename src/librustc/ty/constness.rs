@@ -2,12 +2,8 @@ use crate::ty::query::Providers;
 use crate::hir::def_id::DefId;
 use crate::hir;
 use crate::ty::TyCtxt;
-<<<<<<< HEAD
 use syntax_pos::symbol::{sym, Symbol};
-=======
-use syntax_pos::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
->>>>>>> Organize intrinsics promotion checks
 use crate::hir::map::blocks::FnLikeNode;
 use syntax::attr;
 
@@ -73,8 +69,9 @@ impl<'tcx> TyCtxt<'tcx, 'tcx> {
 
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
-    fn is_intrinsic_promotable(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
-        // Intrinsics promotion whitelist is here to check const context at the top level beforehand.
+    fn is_intrinsic_promotable(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+        // Intrinsics promotion whitelist is here to check const context at the
+        // top level beforehand.
         match tcx.fn_sig(def_id).abi() {
             Abi::RustIntrinsic |
             Abi::PlatformIntrinsic => {
@@ -113,7 +110,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
     }
 
     /// Checks whether the function has a `const` modifier and intrinsics can be promotable in it
-    fn is_const_fn_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+    fn is_const_fn_raw<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
         let hir_id = tcx.hir().as_local_hir_id(def_id)
                               .expect("Non-local call to local provider is_const_fn");
 
