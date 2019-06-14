@@ -101,7 +101,7 @@ pub trait Drop {
     ///
     /// [E0040]: ../../error-index.html#E0040
     /// [`panic!`]: ../macro.panic.html
-    /// [`std::mem::drop`]: ../../std/mem/fn.drop.html
+    /// [`std::mem::drop`]: ../mem/fn.drop.html
     #[stable(feature = "rust1", since = "1.0.0")]
     fn drop(&mut self);
 }

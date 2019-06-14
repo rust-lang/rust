@@ -104,7 +104,7 @@ pub struct Error;
 /// library. The [`write!`] macro accepts an instance of [`io::Write`], and the
 /// [`io::Write`] trait is favored over implementing this trait.
 ///
-/// [`write!`]: ../../std/macro.write.html
+/// [`write!`]: ../macro.write.html
 /// [`io::Write`]: ../../std/io/trait.Write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Write {
@@ -148,7 +148,7 @@ pub trait Write {
     ///
     /// This function will return an instance of [`Error`] on error.
     ///
-    /// [`char`]: ../../std/primitive.char.html
+    /// [`char`]: ../primitive.char.html
     /// [`Error`]: struct.Error.html
     ///
     /// # Examples
@@ -175,7 +175,7 @@ pub trait Write {
     /// This method should generally not be invoked manually, but rather through
     /// the [`write!`] macro itself.
     ///
-    /// [`write!`]: ../../std/macro.write.html
+    /// [`write!`]: ../macro.write.html
     ///
     /// # Examples
     ///
@@ -387,9 +387,9 @@ impl<'a> Arguments<'a> {
 /// assert_eq!(display, debug);
 /// ```
 ///
-/// [`format_args!`]: ../../std/macro.format_args.html
+/// [`format_args!`]: ../macro.format_args.html
 /// [`format`]: ../../std/fmt/fn.format.html
-/// [`write`]: ../../std/fmt/fn.write.html
+/// [`write`]: ../fmt/fn.write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
@@ -485,8 +485,8 @@ impl Display for Arguments<'_> {
 /// `Debug` implementations using either `derive` or the debug builder API
 /// on [`Formatter`] support pretty-printing using the alternate flag: `{:#?}`.
 ///
-/// [debug_struct]: ../../std/fmt/struct.Formatter.html#method.debug_struct
-/// [`Formatter`]: ../../std/fmt/struct.Formatter.html
+/// [debug_struct]: ../fmt/struct.Formatter.html#method.debug_struct
+/// [`Formatter`]: ../fmt/struct.Formatter.html
 ///
 /// Pretty-printing with `#?`:
 ///
@@ -714,10 +714,10 @@ pub trait Octal {
 /// ```
 ///
 /// [module]: ../../std/fmt/index.html
-/// [`i8`]: ../../std/primitive.i8.html
-/// [`i128`]: ../../std/primitive.i128.html
-/// [`isize`]: ../../std/primitive.isize.html
-/// [`i32`]: ../../std/primitive.i32.html
+/// [`i8`]: ../primitive.i8.html
+/// [`i128`]: ../primitive.i128.html
+/// [`isize`]: ../primitive.isize.html
+/// [`i32`]: ../primitive.i32.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Binary {
     /// Formats the value using the given formatter.
@@ -992,7 +992,7 @@ pub trait UpperExp {
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
-/// [`write!`]: ../../std/macro.write.html
+/// [`write!`]: ../macro.write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     let mut formatter = Formatter {
@@ -1704,8 +1704,8 @@ impl<'a> Formatter<'a> {
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
     /// [`fmt::Debug`] implementations for structs.
     ///
-    /// [`DebugStruct`]: ../../std/fmt/struct.DebugStruct.html
-    /// [`fmt::Debug`]: ../../std/fmt/trait.Debug.html
+    /// [`DebugStruct`]: ../fmt/struct.DebugStruct.html
+    /// [`fmt::Debug`]: ../fmt/trait.Debug.html
     ///
     /// # Examples
     ///
@@ -1818,7 +1818,7 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo(vec![10, 11]));
     /// ```
     ///
-    /// [`format_args!`]: ../../std/macro.format_args.html
+    /// [`format_args!`]: ../macro.format_args.html
     ///
     /// In this more complex example, we use [`format_args!`] and `.debug_set()`
     /// to build a list of match arms:

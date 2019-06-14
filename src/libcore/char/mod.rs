@@ -9,7 +9,7 @@
 //! [Unicode code point]: http://www.unicode.org/glossary/#code_point
 //!
 //! This module exists for technical reasons, the primary documentation for
-//! `char` is directly on [the `char` primitive type](../../std/primitive.char.html)
+//! `char` is directly on [the `char` primitive type](../primitive.char.html)
 //! itself.
 //!
 //! This module is the home of the iterator implementations for the iterators
@@ -92,7 +92,7 @@ const MAX_THREE_B: u32 =  0x10000;
 /// Point], but only ones within a certain range. `MAX` is the highest valid
 /// code point that's a valid [Unicode Scalar Value].
 ///
-/// [`char`]: ../../std/primitive.char.html
+/// [`char`]: ../primitive.char.html
 /// [Unicode Scalar Value]: http://www.unicode.org/glossary/#unicode_scalar_value
 /// [Code Point]: http://www.unicode.org/glossary/#code_point
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -112,8 +112,8 @@ pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 /// This `struct` is created by the [`escape_unicode`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`escape_unicode`]: ../../std/primitive.char.html#method.escape_unicode
-/// [`char`]: ../../std/primitive.char.html
+/// [`escape_unicode`]: ../primitive.char.html#method.escape_unicode
+/// [`char`]: ../primitive.char.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeUnicode {
@@ -233,8 +233,8 @@ impl fmt::Display for EscapeUnicode {
 /// This `struct` is created by the [`escape_default`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`escape_default`]: ../../std/primitive.char.html#method.escape_default
-/// [`char`]: ../../std/primitive.char.html
+/// [`escape_default`]: ../primitive.char.html#method.escape_default
+/// [`char`]: ../primitive.char.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeDefault {
@@ -346,8 +346,8 @@ impl fmt::Display for EscapeDefault {
 /// This `struct` is created by the [`escape_debug`] method on [`char`]. See its
 /// documentation for more.
 ///
-/// [`escape_debug`]: ../../std/primitive.char.html#method.escape_debug
-/// [`char`]: ../../std/primitive.char.html
+/// [`escape_debug`]: ../primitive.char.html#method.escape_debug
+/// [`char`]: ../primitive.char.html
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
 #[derive(Clone, Debug)]
 pub struct EscapeDebug(EscapeDefault);
@@ -377,8 +377,8 @@ impl fmt::Display for EscapeDebug {
 /// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`to_lowercase`]: ../../std/primitive.char.html#method.to_lowercase
-/// [`char`]: ../../std/primitive.char.html
+/// [`to_lowercase`]: ../primitive.char.html#method.to_lowercase
+/// [`char`]: ../primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug, Clone)]
 pub struct ToLowercase(CaseMappingIter);
@@ -405,8 +405,8 @@ impl ExactSizeIterator for ToLowercase {}
 /// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`to_uppercase`]: ../../std/primitive.char.html#method.to_uppercase
-/// [`char`]: ../../std/primitive.char.html
+/// [`to_uppercase`]: ../primitive.char.html#method.to_uppercase
+/// [`char`]: ../primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug, Clone)]
 pub struct ToUppercase(CaseMappingIter);

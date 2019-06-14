@@ -156,7 +156,7 @@ pub fn spin_loop_hint() {
 ///
 /// This type has the same in-memory representation as a [`bool`].
 ///
-/// [`bool`]: ../../../std/primitive.bool.html
+/// [`bool`]: ../../primitive.bool.html
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(C, align(1))]
@@ -333,7 +333,7 @@ impl AtomicBool {
     /// This is safe because the mutable reference guarantees that no other threads are
     /// concurrently accessing the atomic data.
     ///
-    /// [`bool`]: ../../../std/primitive.bool.html
+    /// [`bool`]: ../../primitive.bool.html
     ///
     /// # Examples
     ///
@@ -480,7 +480,7 @@ impl AtomicBool {
     /// [`Release`]: enum.Ordering.html#variant.Release
     /// [`Acquire`]: enum.Ordering.html#variant.Acquire
     /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
-    /// [`bool`]: ../../../std/primitive.bool.html
+    /// [`bool`]: ../../primitive.bool.html
     ///
     /// # Examples
     ///
@@ -519,7 +519,7 @@ impl AtomicBool {
     /// and must be equivalent to or weaker than the success ordering.
     ///
     ///
-    /// [`bool`]: ../../../std/primitive.bool.html
+    /// [`bool`]: ../../primitive.bool.html
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
     /// [`Release`]: enum.Ordering.html#variant.Release
@@ -578,7 +578,7 @@ impl AtomicBool {
     /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
     /// and must be equivalent to or weaker than the success ordering.
     ///
-    /// [`bool`]: ../../../std/primitive.bool.html
+    /// [`bool`]: ../../primitive.bool.html
     /// [`compare_exchange`]: #method.compare_exchange
     /// [`Ordering`]: enum.Ordering.html
     /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1742,7 +1742,7 @@ of this operation [`Relaxed`], and using [`Release`] makes the final successful 
 [`Relaxed`]. The (failed) load ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
 and must be equivalent to or weaker than the success ordering.
 
-[`bool`]: ../../../std/primitive.bool.html
+[`bool`]: ../../primitive.bool.html
 [`compare_exchange`]: #method.compare_exchange
 [`Ordering`]: enum.Ordering.html
 [`Relaxed`]: enum.Ordering.html#variant.Relaxed
@@ -1898,7 +1898,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "i8", "../../../std/primitive.i8.html",
+    "i8", "../../primitive.i8.html",
     "",
     atomic_min, atomic_max,
     1,
@@ -1914,7 +1914,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "u8", "../../../std/primitive.u8.html",
+    "u8", "../../primitive.u8.html",
     "",
     atomic_umin, atomic_umax,
     1,
@@ -1930,7 +1930,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "i16", "../../../std/primitive.i16.html",
+    "i16", "../../primitive.i16.html",
     "",
     atomic_min, atomic_max,
     2,
@@ -1946,7 +1946,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "u16", "../../../std/primitive.u16.html",
+    "u16", "../../primitive.u16.html",
     "",
     atomic_umin, atomic_umax,
     2,
@@ -1962,7 +1962,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "i32", "../../../std/primitive.i32.html",
+    "i32", "../../primitive.i32.html",
     "",
     atomic_min, atomic_max,
     4,
@@ -1978,7 +1978,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "u32", "../../../std/primitive.u32.html",
+    "u32", "../../primitive.u32.html",
     "",
     atomic_umin, atomic_umax,
     4,
@@ -1994,7 +1994,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "i64", "../../../std/primitive.i64.html",
+    "i64", "../../primitive.i64.html",
     "",
     atomic_min, atomic_max,
     8,
@@ -2010,7 +2010,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "u64", "../../../std/primitive.u64.html",
+    "u64", "../../primitive.u64.html",
     "",
     atomic_umin, atomic_umax,
     8,
@@ -2026,7 +2026,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "i128", "../../../std/primitive.i128.html",
+    "i128", "../../primitive.i128.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
     16,
@@ -2042,7 +2042,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "u128", "../../../std/primitive.u128.html",
+    "u128", "../../primitive.u128.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
     16,
@@ -2070,7 +2070,7 @@ atomic_int!{
     stable(feature = "atomic_from", since = "1.23.0"),
     stable(feature = "atomic_nand", since = "1.27.0"),
     stable(feature = "rust1", since = "1.0.0"),
-    "isize", "../../../std/primitive.isize.html",
+    "isize", "../../primitive.isize.html",
     "",
     atomic_min, atomic_max,
     ptr_width!(),
@@ -2086,7 +2086,7 @@ atomic_int!{
     stable(feature = "atomic_from", since = "1.23.0"),
     stable(feature = "atomic_nand", since = "1.27.0"),
     stable(feature = "rust1", since = "1.0.0"),
-    "usize", "../../../std/primitive.usize.html",
+    "usize", "../../primitive.usize.html",
     "",
     atomic_umin, atomic_umax,
     ptr_width!(),

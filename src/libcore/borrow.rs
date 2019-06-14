@@ -40,12 +40,12 @@
 /// provide a reference to related type `T`, it is often better to use
 /// [`AsRef<T>`] as more types can safely implement it.
 ///
-/// [`AsRef<T>`]: ../../std/convert/trait.AsRef.html
+/// [`AsRef<T>`]: ../convert/trait.AsRef.html
 /// [`BorrowMut<T>`]: trait.BorrowMut.html
 /// [`Box<T>`]: ../../std/boxed/struct.Box.html
 /// [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
 /// [`Rc<T>`]: ../../std/rc/struct.Rc.html
-/// [`str`]: ../../std/primitive.str.html
+/// [`str`]: ../primitive.str.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`borrow`]: #tymethod.borrow
 ///
@@ -152,10 +152,10 @@
 /// If it wants to allow others access to the underlying `str`, it can do
 /// that via `AsRef<str>` which doesn’t carry any extra requirements.
 ///
-/// [`Hash`]: ../../std/hash/trait.Hash.html
+/// [`Hash`]: ../hash/trait.Hash.html
 /// [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`str`]: ../../std/primitive.str.html
+/// [`str`]: ../primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrows from an owned value.

@@ -249,7 +249,7 @@ pub const fn size_of<T>() -> usize {
 /// statically-known size, e.g., a slice [`[T]`][slice] or a [trait object],
 /// then `size_of_val` can be used to get the dynamically-known size.
 ///
-/// [slice]: ../../std/primitive.slice.html
+/// [slice]: ../primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 ///
 /// # Examples
@@ -551,7 +551,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// }
 /// ```
 ///
-/// [`Clone`]: ../../std/clone/trait.Clone.html
+/// [`Clone`]: ../clone/trait.Clone.html
 #[inline]
 #[unstable(feature = "mem_take", issue = "61129")]
 pub fn take<T: Default>(dest: &mut T) -> T {
@@ -608,7 +608,7 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 /// }
 /// ```
 ///
-/// [`Clone`]: ../../std/clone/trait.Clone.html
+/// [`Clone`]: ../clone/trait.Clone.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn replace<T>(dest: &mut T, mut src: T) -> T {
@@ -676,8 +676,8 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// println!("x: {}, y: {}", x, y.0); // still available
 /// ```
 ///
-/// [`RefCell`]: ../../std/cell/struct.RefCell.html
-/// [`Copy`]: ../../std/marker/trait.Copy.html
+/// [`RefCell`]: ../cell/struct.RefCell.html
+/// [`Copy`]: ../marker/trait.Copy.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn drop<T>(_x: T) { }

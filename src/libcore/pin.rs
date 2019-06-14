@@ -250,15 +250,15 @@
 //! pinned, meaning pinning is *not* structural.
 //!
 //! [`Pin<P>`]: struct.Pin.html
-//! [`Unpin`]: ../../std/marker/trait.Unpin.html
-//! [`Deref`]: ../../std/ops/trait.Deref.html
-//! [`DerefMut`]: ../../std/ops/trait.DerefMut.html
-//! [`mem::swap`]: ../../std/mem/fn.swap.html
-//! [`mem::forget`]: ../../std/mem/fn.forget.html
+//! [`Unpin`]: ../marker/trait.Unpin.html
+//! [`Deref`]: ../ops/trait.Deref.html
+//! [`DerefMut`]: ../ops/trait.DerefMut.html
+//! [`mem::swap`]: ../mem/fn.swap.html
+//! [`mem::forget`]: ../mem/fn.forget.html
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len
-//! [`None`]: ../../std/option/enum.Option.html#variant.None
-//! [`Some(v)`]: ../../std/option/enum.Option.html#variant.Some
+//! [`None`]: ../option/enum.Option.html#variant.None
+//! [`Some(v)`]: ../option/enum.Option.html#variant.Some
 //! [drop-impl]: #drop-implementation
 //! [drop-guarantee]: #drop-guarantee
 
@@ -277,8 +277,8 @@ use crate::ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
 ///
 /// *See the [`pin` module] documentation for an explanation of pinning.*
 ///
-/// [`Unpin`]: ../../std/marker/trait.Unpin.html
-/// [`pin` module]: ../../std/pin/index.html
+/// [`Unpin`]: ../marker/trait.Unpin.html
+/// [`pin` module]: ../pin/index.html
 //
 // Note: the derives below, and the explicit `PartialEq` and `PartialOrd`
 // implementations, are allowed because they all only use `&P`, so they cannot move
@@ -342,7 +342,7 @@ where
     /// Unlike `Pin::new_unchecked`, this method is safe because the pointer
     /// `P` dereferences to an [`Unpin`] type, which cancels the pinning guarantees.
     ///
-    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
+    /// [`Unpin`]: ../marker/trait.Unpin.html
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn new(pointer: P) -> Pin<P> {
@@ -356,7 +356,7 @@ where
     /// This requires that the data inside this `Pin` is [`Unpin`] so that we
     /// can ignore the pinning invariants when unwrapping it.
     ///
-    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
+    /// [`Unpin`]: ../marker/trait.Unpin.html
     #[unstable(feature = "pin_into_inner", issue = "60245")]
     #[inline(always)]
     pub fn into_inner(pin: Pin<P>) -> P {
@@ -428,7 +428,7 @@ impl<P: Deref> Pin<P> {
     ///  }
     ///  ```
     ///
-    /// [`mem::swap`]: ../../std/mem/fn.swap.html
+    /// [`mem::swap`]: ../mem/fn.swap.html
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub unsafe fn new_unchecked(pointer: P) -> Pin<P> {
@@ -462,7 +462,7 @@ impl<P: Deref> Pin<P> {
     /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
     /// instead.
     ///
-    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
+    /// [`Unpin`]: ../marker/trait.Unpin.html
     /// [`Pin::into_inner`]: #method.into_inner
     #[unstable(feature = "pin_into_inner", issue = "60245")]
     #[inline(always)]
@@ -514,7 +514,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     ///
-    /// [`pin` module]: ../../std/pin/index.html#projections-and-structural-pinning
+    /// [`pin` module]: ../pin/index.html#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked<U, F>(self: Pin<&'a T>, func: F) -> Pin<&'a U> where
         F: FnOnce(&T) -> &U,
@@ -540,7 +540,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// the `Pin` itself. This method allows turning the `Pin` into a reference
     /// with the same lifetime as the original `Pin`.
     ///
-    /// ["pinning projections"]: ../../std/pin/index.html#projections-and-structural-pinning
+    /// ["pinning projections"]: ../pin/index.html#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn get_ref(self: Pin<&'a T>) -> &'a T {
@@ -603,7 +603,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     ///
-    /// [`pin` module]: ../../std/pin/index.html#projections-and-structural-pinning
+    /// [`pin` module]: ../pin/index.html#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked_mut<U, F>(self: Pin<&'a mut T>, func: F) -> Pin<&'a mut U> where
         F: FnOnce(&mut T) -> &mut U,

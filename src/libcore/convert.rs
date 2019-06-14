@@ -112,13 +112,13 @@ pub const fn identity<T>(x: T) -> T { x }
 ///   equivalent to those of the owned value. For this reason, if you want to
 ///   borrow only a single field of a struct you can implement `AsRef`, but not `Borrow`.
 ///
-/// [`Borrow`]: ../../std/borrow/trait.Borrow.html
+/// [`Borrow`]: ../borrow/trait.Borrow.html
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
 ///
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Option<T>`]: ../option/enum.Option.html
+/// [`Result<T, E>`]: ../result/enum.Result.html
 ///
 /// # Generic Implementations
 ///
@@ -164,8 +164,8 @@ pub trait AsRef<T: ?Sized> {
 /// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
 ///
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Option<T>`]: ../option/enum.Option.html
+/// [`Result<T, E>`]: ../result/enum.Result.html
 ///
 /// # Generic Implementations
 ///
@@ -269,8 +269,8 @@ pub trait AsMut<T: ?Sized> {
 /// ```
 ///
 /// [`TryInto`]: trait.TryInto.html
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Option<T>`]: ../option/enum.Option.html
+/// [`Result<T, E>`]: ../result/enum.Result.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`From`]: trait.From.html
 /// [`into`]: trait.Into.html#tymethod.into
@@ -358,8 +358,8 @@ pub trait Into<T>: Sized {
 /// ```
 ///
 /// [`TryFrom`]: trait.TryFrom.html
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Option<T>`]: ../option/enum.Option.html
+/// [`Result<T, E>`]: ../result/enum.Result.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Into`]: trait.Into.html
 /// [`from`]: trait.From.html#tymethod.from
@@ -651,7 +651,7 @@ impl AsRef<str> for str {
 /// [`Result`]: ../result/enum.Result.html
 /// [`TryFrom`]: trait.TryFrom.html
 /// [`Into`]: trait.Into.html
-/// [never]: ../../std/primitive.never.html
+/// [never]: ../primitive.never.html
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 #[derive(Copy)]
 pub enum Infallible {}

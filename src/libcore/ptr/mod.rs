@@ -1,6 +1,6 @@
 //! Manually manage memory through raw pointers.
 //!
-//! *[See also the pointer primitive types](../../std/primitive.pointer.html).*
+//! *[See also the pointer primitive types](../primitive.pointer.html).*
 //!
 //! # Safety
 //!
@@ -52,9 +52,9 @@
 //! [ub]: ../../reference/behavior-considered-undefined.html
 //! [null]: ./fn.null.html
 //! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
-//! [atomic operations]: ../../std/sync/atomic/index.html
-//! [`copy`]: ../../std/ptr/fn.copy.html
-//! [`offset`]: ../../std/primitive.pointer.html#method.offset
+//! [atomic operations]: ../sync/atomic/index.html
+//! [`copy`]: ../ptr/fn.copy.html
+//! [`offset`]: ../primitive.pointer.html#method.offset
 //! [`read_unaligned`]: ./fn.read_unaligned.html
 //! [`write_unaligned`]: ./fn.write_unaligned.html
 //! [`read_volatile`]: ./fn.read_volatile.html

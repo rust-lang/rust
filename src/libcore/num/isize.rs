@@ -1,6 +1,6 @@
 //! The pointer-sized signed integer type.
 //!
-//! *[See also the `isize` primitive type](../../std/primitive.isize.html).*
+//! *[See also the `isize` primitive type](../primitive.isize.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

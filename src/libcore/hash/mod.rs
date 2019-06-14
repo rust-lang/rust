@@ -149,7 +149,7 @@ mod sip;
 /// Thankfully, you won't need to worry about upholding this property when
 /// deriving both [`Eq`] and `Hash` with `#[derive(PartialEq, Eq, Hash)]`.
 ///
-/// [`Eq`]: ../../std/cmp/trait.Eq.html
+/// [`Eq`]: ../cmp/trait.Eq.html
 /// [`Hasher`]: trait.Hasher.html
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html

@@ -80,8 +80,8 @@ pub trait DoubleEndedIterator: Iterator {
     /// `nth_back()` will return [`None`] if `n` is greater than or equal to the length of the
     /// iterator.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`nth`]: ../../std/iter/trait.Iterator.html#method.nth
+    /// [`None`]: ../option/enum.Option.html#variant.None
+    /// [`nth`]: ../iter/trait.Iterator.html#method.nth
     ///
     /// # Examples
     ///
@@ -242,8 +242,8 @@ pub trait DoubleEndedIterator: Iterator {
     /// argument is a double reference. You can see this effect in the
     /// examples below, with `&&x`.
     ///
-    /// [`Some(element)`]: ../../std/option/enum.Option.html#variant.Some
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`Some(element)`]: ../option/enum.Option.html#variant.Some
+    /// [`None`]: ../option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///

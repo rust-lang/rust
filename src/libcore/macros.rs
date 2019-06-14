@@ -196,7 +196,7 @@ macro_rules! debug_assert {
 /// expensive to be present in a release build but may be helpful during
 /// development.
 ///
-/// [`assert_eq!`]: ../std/macro.assert_eq.html
+/// [`assert_eq!`]: macro.assert_eq.html
 ///
 /// # Examples
 ///
@@ -223,7 +223,7 @@ macro_rules! debug_assert_eq {
 /// expensive to be present in a release build but may be helpful during
 /// development.
 ///
-/// [`assert_ne!`]: ../std/macro.assert_ne.html
+/// [`assert_ne!`]: macro.assert_ne.html
 ///
 /// # Examples
 ///
@@ -257,7 +257,7 @@ macro_rules! debug_assert_ne {
 /// Because of the early return, `try!` can only be used in functions that
 /// return [`Result`].
 ///
-/// [`Result`]: ../std/result/enum.Result.html
+/// [`Result`]: result/enum.Result.html
 ///
 /// # Examples
 ///
@@ -325,9 +325,9 @@ macro_rules! r#try {
 /// See [`std::fmt`] for more information on the format string syntax.
 ///
 /// [`std::fmt`]: ../std/fmt/index.html
-/// [`std::fmt::Write`]: ../std/fmt/trait.Write.html
+/// [`std::fmt::Write`]: fmt/trait.Write.html
 /// [`std::io::Write`]: ../std/io/trait.Write.html
-/// [`std::fmt::Result`]: ../std/fmt/type.Result.html
+/// [`std::fmt::Result`]: fmt/type.Result.html
 /// [`io::Result`]: ../std/io/type.Result.html
 ///
 /// # Examples
@@ -450,15 +450,15 @@ macro_rules! writeln {
 /// The unsafe counterpart of this macro is the [`unreachable_unchecked`] function, which
 /// will cause undefined behavior if the code is reached.
 ///
-/// [`panic!`]:  ../std/macro.panic.html
-/// [`unreachable_unchecked`]: ../std/hint/fn.unreachable_unchecked.html
-/// [`std::hint`]: ../std/hint/index.html
+/// [`panic!`]:  macro.panic.html
+/// [`unreachable_unchecked`]: hint/fn.unreachable_unchecked.html
+/// [`std::hint`]: hint/index.html
 ///
 /// # Panics
 ///
 /// This will always [`panic!`]
 ///
-/// [`panic!`]: ../std/macro.panic.html
+/// [`panic!`]: macro.panic.html
 /// # Examples
 ///
 /// Match arms:

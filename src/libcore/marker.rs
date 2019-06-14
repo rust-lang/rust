@@ -276,11 +276,11 @@ pub trait Unsize<T: ?Sized> {
 ///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`Drop`]: ../../std/ops/trait.Drop.html
-/// [`size_of::<T>`]: ../../std/mem/fn.size_of.html
+/// [`Drop`]: ../ops/trait.Drop.html
+/// [`size_of::<T>`]: ../mem/fn.size_of.html
 /// [`Clone`]: ../clone/trait.Clone.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`i32`]: ../../std/primitive.i32.html
+/// [`i32`]: ../primitive.i32.html
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
@@ -342,8 +342,8 @@ pub trait Copy : Clone {
 /// details about `Sync`.
 ///
 /// [send]: trait.Send.html
-/// [u8]: ../../std/primitive.u8.html
-/// [f64]: ../../std/primitive.f64.html
+/// [u8]: ../primitive.u8.html
+/// [f64]: ../primitive.f64.html
 /// [box]: ../../std/boxed/struct.Box.html
 /// [vec]: ../../std/vec/struct.Vec.html
 /// [cell]: ../cell/struct.Cell.html
@@ -355,7 +355,7 @@ pub trait Copy : Clone {
 /// [rwlock]: ../../std/sync/struct.RwLock.html
 /// [unsafecell]: ../cell/struct.UnsafeCell.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
-/// [transmute]: ../../std/mem/fn.transmute.html
+/// [transmute]: ../mem/fn.transmute.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
 #[rustc_on_unimplemented(
@@ -632,9 +632,9 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 ///
 /// This trait is automatically implemented for almost every type.
 ///
-/// [`mem::replace`]: ../../std/mem/fn.replace.html
+/// [`mem::replace`]: ../mem/fn.replace.html
 /// [`Pin<P>`]: ../pin/struct.Pin.html
-/// [`pin module`]: ../../std/pin/index.html
+/// [`pin module`]: ../pin/index.html
 #[stable(feature = "pin", since = "1.33.0")]
 #[lang = "unpin"]
 pub auto trait Unpin {}

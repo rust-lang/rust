@@ -55,7 +55,7 @@
 //!
 //! [`Iterator`]: trait.Iterator.html
 //! [`next`]: trait.Iterator.html#tymethod.next
-//! [`Option`]: ../../std/option/enum.Option.html
+//! [`Option`]: ../option/enum.Option.html
 //!
 //! # The three forms of iteration
 //!

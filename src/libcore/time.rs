@@ -33,9 +33,9 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 /// `Duration`s implement many common traits, including [`Add`], [`Sub`], and other
 /// [`ops`] traits.
 ///
-/// [`Add`]: ../../std/ops/trait.Add.html
-/// [`Sub`]: ../../std/ops/trait.Sub.html
-/// [`ops`]: ../../std/ops/index.html
+/// [`Add`]: ../ops/trait.Add.html
+/// [`Sub`]: ../ops/trait.Sub.html
+/// [`ops`]: ../ops/index.html
 ///
 /// # Examples
 ///
@@ -362,7 +362,7 @@ impl Duration {
     /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
     /// if overflow occurred.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`None`]: ../option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -400,7 +400,7 @@ impl Duration {
     /// Checked `Duration` subtraction. Computes `self - other`, returning [`None`]
     /// if the result would be negative or if overflow occurred.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`None`]: ../option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -436,7 +436,7 @@ impl Duration {
     /// Checked `Duration` multiplication. Computes `self * other`, returning
     /// [`None`] if overflow occurred.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`None`]: ../option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -471,7 +471,7 @@ impl Duration {
     /// Checked `Duration` division. Computes `self / other`, returning [`None`]
     /// if `other == 0`.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`None`]: ../option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///

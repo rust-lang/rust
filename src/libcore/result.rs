@@ -220,7 +220,7 @@
 //! [`Write`]: ../../std/io/trait.Write.html
 //! [`write_all`]: ../../std/io/trait.Write.html#method.write_all
 //! [`io::Result`]: ../../std/io/type.Result.html
-//! [`?`]: ../../std/macro.try.html
+//! [`?`]: ../macro.try.html
 //! [`Result`]: enum.Result.html
 //! [`Ok(T)`]: enum.Result.html#variant.Ok
 //! [`Err(E)`]: enum.Result.html#variant.Err
@@ -318,7 +318,7 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an [`Option<T>`], consuming `self`,
     /// and discarding the error, if any.
     ///
-    /// [`Option<T>`]: ../../std/option/enum.Option.html
+    /// [`Option<T>`]: ../option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -345,7 +345,7 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an [`Option<E>`], consuming `self`,
     /// and discarding the success value, if any.
     ///
-    /// [`Option<E>`]: ../../std/option/enum.Option.html
+    /// [`Option<E>`]: ../option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -913,8 +913,8 @@ impl<T: Default, E> Result<T, E> {
     /// assert_eq!(0, bad_year);
     /// ```
     ///
-    /// [`parse`]: ../../std/primitive.str.html#method.parse
-    /// [`FromStr`]: ../../std/str/trait.FromStr.html
+    /// [`parse`]: ../primitive.str.html#method.parse
+    /// [`FromStr`]: ../str/trait.FromStr.html
     /// [`Ok`]: enum.Result.html#variant.Ok
     /// [`Err`]: enum.Result.html#variant.Err
     #[inline]

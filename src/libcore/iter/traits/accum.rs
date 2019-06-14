@@ -8,9 +8,9 @@ use crate::num::Wrapping;
 /// [`FromIterator`] this trait should rarely be called directly and instead
 /// interacted with through [`Iterator::sum`].
 ///
-/// [`sum`]: ../../std/iter/trait.Sum.html#tymethod.sum
-/// [`FromIterator`]: ../../std/iter/trait.FromIterator.html
-/// [`Iterator::sum`]: ../../std/iter/trait.Iterator.html#method.sum
+/// [`sum`]: ../iter/trait.Sum.html#tymethod.sum
+/// [`FromIterator`]: ../iter/trait.FromIterator.html
+/// [`Iterator::sum`]: ../iter/trait.Iterator.html#method.sum
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
 pub trait Sum<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
@@ -27,9 +27,9 @@ pub trait Sum<A = Self>: Sized {
 /// [`FromIterator`] this trait should rarely be called directly and instead
 /// interacted with through [`Iterator::product`].
 ///
-/// [`product`]: ../../std/iter/trait.Product.html#tymethod.product
-/// [`FromIterator`]: ../../std/iter/trait.FromIterator.html
-/// [`Iterator::product`]: ../../std/iter/trait.Iterator.html#method.product
+/// [`product`]: ../iter/trait.Product.html#tymethod.product
+/// [`FromIterator`]: ../iter/trait.FromIterator.html
+/// [`Iterator::product`]: ../iter/trait.Iterator.html#method.product
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
 pub trait Product<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by

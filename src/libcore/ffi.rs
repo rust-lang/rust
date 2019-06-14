@@ -16,7 +16,7 @@ use crate::fmt;
 /// stabilized, it is recommended to use a newtype wrapper around an empty
 /// byte array. See the [Nomicon] for details.
 ///
-/// [pointer]: ../../std/primitive.pointer.html
+/// [pointer]: ../primitive.pointer.html
 /// [Nomicon]: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
 // N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in

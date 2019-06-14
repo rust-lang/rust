@@ -5,8 +5,8 @@
 /// [`IndexMut`] is used instead. This allows nice things such as
 /// `let value = v[index]` if the type of `value` implements [`Copy`].
 ///
-/// [`IndexMut`]: ../../std/ops/trait.IndexMut.html
-/// [`Copy`]: ../../std/marker/trait.Copy.html
+/// [`IndexMut`]: ../ops/trait.IndexMut.html
+/// [`Copy`]: ../marker/trait.Copy.html
 ///
 /// # Examples
 ///
@@ -75,7 +75,7 @@ pub trait Index<Idx: ?Sized> {
 /// an immutable value is requested, the [`Index`] trait is used instead. This
 /// allows nice things such as `v[index] = value`.
 ///
-/// [`Index`]: ../../std/ops/trait.Index.html
+/// [`Index`]: ../ops/trait.Index.html
 ///
 /// # Examples
 ///

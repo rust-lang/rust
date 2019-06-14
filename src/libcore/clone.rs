@@ -11,7 +11,7 @@
 //!
 //! [`Clone`]: trait.Clone.html
 //! [clone]: trait.Clone.html#tymethod.clone
-//! [`Drop`]: ../../std/ops/trait.Drop.html
+//! [`Drop`]: ../ops/trait.Drop.html
 //!
 //! Basic usage example:
 //!
@@ -74,7 +74,7 @@
 /// An example is a generic struct holding a function pointer. In this case, the
 /// implementation of `Clone` cannot be `derive`d, but can be implemented as:
 ///
-/// [`Copy`]: ../../std/marker/trait.Copy.html
+/// [`Copy`]: ../marker/trait.Copy.html
 /// [`clone`]: trait.Clone.html#tymethod.clone
 ///
 /// ```

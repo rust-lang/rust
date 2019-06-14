@@ -131,7 +131,7 @@
 //! [`Some`]: enum.Option.html#variant.Some
 //! [`None`]: enum.Option.html#variant.None
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
-//! [`i32`]: ../../std/primitive.i32.html
+//! [`i32`]: ../primitive.i32.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -223,7 +223,7 @@ impl<T> Option<T> {
     ///
     /// [`map`]: enum.Option.html#method.map
     /// [`String`]: ../../std/string/struct.String.html
-    /// [`usize`]: ../../std/primitive.usize.html
+    /// [`usize`]: ../primitive.usize.html
     ///
     /// ```
     /// let text: Option<String> = Some("Hello, world!".to_string());
@@ -400,7 +400,7 @@ impl<T> Option<T> {
     /// Converts an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, consuming the original:
     ///
     /// [`String`]: ../../std/string/struct.String.html
-    /// [`usize`]: ../../std/primitive.usize.html
+    /// [`usize`]: ../primitive.usize.html
     ///
     /// ```
     /// let maybe_some_string = Some(String::from("Hello, World!"));
@@ -469,9 +469,9 @@ impl<T> Option<T> {
     /// result of a function call, it is recommended to use [`ok_or_else`], which is
     /// lazily evaluated.
     ///
-    /// [`Result<T, E>`]: ../../std/result/enum.Result.html
-    /// [`Ok(v)`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Err(err)`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Result<T, E>`]: ../result/enum.Result.html
+    /// [`Ok(v)`]: ../result/enum.Result.html#variant.Ok
+    /// [`Err(err)`]: ../result/enum.Result.html#variant.Err
     /// [`None`]: #variant.None
     /// [`Some(v)`]: #variant.Some
     /// [`ok_or_else`]: #method.ok_or_else
@@ -497,9 +497,9 @@ impl<T> Option<T> {
     /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping [`Some(v)`] to
     /// [`Ok(v)`] and [`None`] to [`Err(err())`].
     ///
-    /// [`Result<T, E>`]: ../../std/result/enum.Result.html
-    /// [`Ok(v)`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Err(err())`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Result<T, E>`]: ../result/enum.Result.html
+    /// [`Ok(v)`]: ../result/enum.Result.html#variant.Ok
+    /// [`Err(err())`]: ../result/enum.Result.html#variant.Err
     /// [`None`]: #variant.None
     /// [`Some(v)`]: #variant.Some
     ///
@@ -977,8 +977,8 @@ impl<T: Default> Option<T> {
     /// [`Some`]: #variant.Some
     /// [`None`]: #variant.None
     /// [default value]: ../default/trait.Default.html#tymethod.default
-    /// [`parse`]: ../../std/primitive.str.html#method.parse
-    /// [`FromStr`]: ../../std/str/trait.FromStr.html
+    /// [`parse`]: ../primitive.str.html#method.parse
+    /// [`FromStr`]: ../str/trait.FromStr.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unwrap_or_default(self) -> T {

@@ -96,7 +96,7 @@ impl<'a> PanicInfo<'a> {
     /// This method will currently always return [`Some`], but this may change
     /// in future versions.
     ///
-    /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
+    /// [`Some`]: ../option/enum.Option.html#variant.Some
     ///
     /// # Examples
     ///
