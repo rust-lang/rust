@@ -2208,15 +2208,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.tables.borrow_mut().field_indices_mut().insert(hir_id, index);
     }
 
+    fn write_resolution(&self, hir_id: hir::HirId, r: Result<(DefKind, DefId), ErrorReported>) {
+        self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, r);
+    }
+
     pub fn write_method_call(&self,
                              hir_id: hir::HirId,
                              method: MethodCallee<'tcx>) {
         debug!("write_method_call(hir_id={:?}, method={:?})", hir_id, method);
-        self.tables
-            .borrow_mut()
-            .type_dependent_defs_mut()
-            .insert(hir_id, Ok((DefKind::Method, method.def_id)));
-
+        self.write_resolution(hir_id, Ok((DefKind::Method, method.def_id)));
         self.write_substs(hir_id, method.substs);
 
         // When the method is confirmed, the `method.substs` includes
@@ -4724,7 +4724,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
                 // Write back the new resolution.
-                self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, result);
+                self.write_resolution(hir_id, result);
 
                 (result.map(|(kind, def_id)| Res::Def(kind, def_id)).unwrap_or(Res::Err), ty)
             }
@@ -4777,7 +4777,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         });
 
         // Write back the new resolution.
-        self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, result);
+        self.write_resolution(hir_id, result);
         (
             result.map(|(kind, def_id)| Res::Def(kind, def_id)).unwrap_or(Res::Err),
             Some(ty),
