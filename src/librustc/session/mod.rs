@@ -1303,15 +1303,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // PGO does not work reliably with panic=unwind on Windows. Let's make it
-    // an error to combine the two for now. It always runs into an assertions
+    // a warning to combine the two for now. It always runs into an assertions
     // if LLVM is built with assertions, but without assertions it sometimes
     // does not crash and will probably generate a corrupted binary.
     if sess.opts.cg.profile_generate.enabled() &&
        sess.target.target.options.is_like_msvc &&
        sess.panic_strategy() == PanicStrategy::Unwind {
-        sess.err("Profile-guided optimization does not yet work in conjunction \
-                  with `-Cpanic=unwind` on Windows when targeting MSVC. \
-                  See https://github.com/rust-lang/rust/issues/61002 for details.");
+        sess.warn("Profile-guided optimization does not yet work in conjunction \
+                   with `-Cpanic=unwind` on Windows when targeting MSVC. \
+                   See https://github.com/rust-lang/rust/issues/61002 for details.");
     }
 }
 
