@@ -439,10 +439,7 @@ impl<'a> WorkInfo<'a> {
         let package = source.download_now(package_id, config)?;
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
 
-        Ok(Self {
-            package: package,
-            workspace,
-        })
+        Ok(Self { package, workspace })
     }
 
     /// Obtain the paths to the produced rlib and the dependency output directory.

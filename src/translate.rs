@@ -15,9 +15,9 @@ use rustc::{
 use std::collections::HashMap;
 
 /// The context in which `DefId` translation happens.
-pub struct TranslationContext<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
+pub struct TranslationContext<'a, 'gcx: 'tcx, 'tcx> {
     /// The type context to use.
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'gcx, 'tcx>,
     /// The id mapping to use.
     id_mapping: &'a IdMapping,
     /// Whether to translate type and region parameters.
@@ -31,7 +31,7 @@ pub struct TranslationContext<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     /// Construct a translation context translating to the new crate's `DefId`s.
     pub fn target_new(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         id_mapping: &'a IdMapping,
         translate_params: bool,
     ) -> TranslationContext<'a, 'gcx, 'tcx> {
@@ -46,7 +46,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
 
     /// Construct a translation context translating to the old crate's `DefId`s.
     pub fn target_old(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        tcx: TyCtxt<'gcx, 'tcx>,
         id_mapping: &'a IdMapping,
         translate_params: bool,
     ) -> TranslationContext<'a, 'gcx, 'tcx> {
@@ -533,7 +533,7 @@ impl<'a, 'gcx, 'tcx> InferenceCleanupFolder<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceCleanupFolder<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
         self.infcx.tcx
     }
 

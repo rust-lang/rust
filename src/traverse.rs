@@ -35,11 +35,7 @@ use std::collections::{BTreeMap, HashSet, VecDeque};
 /// The main entry point to our analysis passes.
 ///
 /// Set up the necessary data structures and run the analysis passes and call the actual passes.
-pub fn run_analysis<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    old: DefId,
-    new: DefId,
-) -> ChangeSet<'tcx> {
+pub fn run_analysis<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, old: DefId, new: DefId) -> ChangeSet<'tcx> {
     let mut changes = ChangeSet::default();
     let mut id_mapping = IdMapping::new(old.krate, new.krate);
 
@@ -78,7 +74,7 @@ fn get_vis(outer_vis: Visibility, def: Export<HirId>) -> Visibility {
     }
 }
 
-pub fn run_traversal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, new: DefId) {
+pub fn run_traversal<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, new: DefId) {
     use rustc::hir::def::DefKind::*;
     let mut visited = HashSet::new();
     let mut mod_queue = VecDeque::new();
@@ -125,10 +121,10 @@ pub fn run_traversal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, new: DefId) {
 /// from the two crate versions and compare for changes. Matching children get processed
 /// in the same fashion.
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::cognitive_complexity))]
-fn diff_structure<'a, 'tcx>(
+fn diff_structure<'tcx>(
     changes: &mut ChangeSet,
     id_mapping: &mut IdMapping,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     old: DefId,
     new: DefId,
 ) {
@@ -362,7 +358,7 @@ fn diff_structure<'a, 'tcx>(
 }
 
 /// Given two fn items, perform structural checks.
-fn diff_fn<'a, 'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: Res, new: Res) {
+fn diff_fn<'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'tcx, 'tcx>, old: Res, new: Res) {
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
 
@@ -381,9 +377,9 @@ fn diff_fn<'a, 'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: 
 }
 
 /// Given two method items, perform structural checks.
-fn diff_method<'a, 'tcx>(
+fn diff_method<'tcx>(
     changes: &mut ChangeSet,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     old: AssocItem,
     new: AssocItem,
 ) {
@@ -562,10 +558,10 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
 ///
 /// This establishes the needed correspondence between non-toplevel items found in the trait
 /// definition.
-fn diff_traits<'a, 'tcx>(
+fn diff_traits<'tcx>(
     changes: &mut ChangeSet,
     id_mapping: &mut IdMapping,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     old: DefId,
     new: DefId,
     output: bool,
@@ -833,10 +829,10 @@ fn diff_generics(
 // of matching items are compared for changes.
 
 /// Given two items, compare their types.
-fn diff_types<'a, 'tcx>(
+fn diff_types<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     old: Res,
     new: Res,
 ) {
@@ -902,10 +898,10 @@ fn diff_types<'a, 'tcx>(
 }
 
 /// Compare two types and their trait bounds, possibly registering the resulting change.
-fn cmp_types<'a, 'tcx>(
+fn cmp_types<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     orig_def_id: DefId,
     target_def_id: DefId,
     orig: Ty<'tcx>,
@@ -955,10 +951,10 @@ fn cmp_types<'a, 'tcx>(
 }
 
 /// Compare the trait bounds of two items, possibly registering the resulting change.
-fn cmp_bounds<'a, 'tcx>(
+fn cmp_bounds<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     orig_def_id: DefId,
     target_def_id: DefId,
 ) {
@@ -988,10 +984,10 @@ fn cmp_bounds<'a, 'tcx>(
 // their trait bounds and compared for changes, if applicable.
 
 /// Compare the inherent implementations of all matching items.
-fn diff_inherent_impls<'a, 'tcx>(
+fn diff_inherent_impls<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
 ) {
     debug!("diffing inherent impls");
 
@@ -1071,8 +1067,8 @@ fn diff_inherent_impls<'a, 'tcx>(
 // from perfect and will cause false positives in some cases (see comment in the inner function).
 #[allow(clippy::let_and_return)]
 #[allow(clippy::match_same_arms)]
-fn is_impl_trait_public<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_def_id: DefId) -> bool {
-    fn type_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty) -> Visibility {
+fn is_impl_trait_public<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, impl_def_id: DefId) -> bool {
+    fn type_visibility<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty) -> Visibility {
         match ty.sty {
             TyKind::Adt(def, _) => tcx.visibility(def.did),
 
@@ -1112,10 +1108,10 @@ fn is_impl_trait_public<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_def_id: DefI
 }
 
 /// Compare the implementations of all matching traits.
-fn diff_trait_impls<'a, 'tcx>(
+fn diff_trait_impls<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
 ) {
     debug!("diffing trait impls");
 
@@ -1165,10 +1161,10 @@ fn diff_trait_impls<'a, 'tcx>(
 
 /// Compare an item pair in two inherent implementations and indicate whether the target one is
 /// compatible with the original one.
-fn match_inherent_impl<'a, 'tcx>(
+fn match_inherent_impl<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     orig_impl_def_id: DefId,
     target_impl_def_id: DefId,
     orig_item: AssocItem,
@@ -1294,7 +1290,7 @@ fn match_inherent_impl<'a, 'tcx>(
 /// Compare two implementations and indicate whether the target one is compatible with the
 /// original one.
 fn match_trait_impl<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx, 'tcx>,
     trans: &TranslationContext<'a, 'tcx, 'tcx>,
     orig_def_id: DefId,
 ) -> bool {

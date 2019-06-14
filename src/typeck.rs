@@ -201,9 +201,9 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     }
 
     /// Check for type mismatches in a pair of items.
-    pub fn check_type_error<'b, 'tcx2>(
+    pub fn check_type_error<'tcx2>(
         &self,
-        lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+        lift_tcx: TyCtxt<'tcx2, 'tcx2>,
         target_def_id: DefId,
         target_param_env: ParamEnv<'tcx>,
         orig: Ty<'tcx>,
@@ -258,9 +258,9 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     }
 
     /// Check for trait bound mismatches in a pair of items.
-    pub fn check_bounds_error<'b, 'tcx2>(
+    pub fn check_bounds_error<'tcx2>(
         &self,
-        lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+        lift_tcx: TyCtxt<'tcx2, 'tcx2>,
         orig_param_env: ParamEnv<'tcx>,
         target_def_id: DefId,
         target_substs: SubstsRef<'tcx>,
@@ -289,10 +289,10 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     }
 
     /// Check the bounds on an item in both directions and register changes found.
-    pub fn check_bounds_bidirectional<'b, 'tcx2>(
+    pub fn check_bounds_bidirectional<'tcx2>(
         &self,
         changes: &mut ChangeSet<'tcx2>,
-        lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+        lift_tcx: TyCtxt<'tcx2, 'tcx2>,
         orig_def_id: DefId,
         target_def_id: DefId,
         orig_substs: SubstsRef<'tcx>,
