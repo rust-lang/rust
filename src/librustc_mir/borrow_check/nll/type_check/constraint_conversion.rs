@@ -13,9 +13,9 @@ use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, TyCtxt};
 use syntax_pos::DUMMY_SP;
 
-crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    tcx: TyCtxt<'gcx, 'tcx>,
+crate struct ConstraintConversion<'a, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -25,9 +25,9 @@ crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     crate fn new(
-        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        infcx: &'a InferCtxt<'a, 'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -150,9 +150,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'gcx, 'tcx> TypeOutlivesDelegate<'tcx>
-    for &'a mut ConstraintConversion<'b, 'gcx, 'tcx>
-{
+impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'b, 'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         _origin: SubregionOrigin<'tcx>,

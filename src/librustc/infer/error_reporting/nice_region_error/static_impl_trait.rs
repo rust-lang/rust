@@ -6,7 +6,7 @@ use crate::ty::{BoundRegion, FreeRegion, RegionKind};
 use crate::util::common::ErrorReported;
 use errors::Applicability;
 
-impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static impl Trait.
     pub(super) fn try_report_static_impl_trait(&self) -> Option<ErrorReported> {
         if let Some(ref error) = self.error {

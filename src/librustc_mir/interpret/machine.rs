@@ -137,7 +137,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// This allocation will then be fed to `tag_allocation` to initialize the "extra" state.
     fn find_foreign_static(
         def_id: DefId,
-        tcx: TyCtxtAt<'tcx, 'tcx>,
+        tcx: TyCtxtAt<'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>>;
 
     /// Called for all binary operations on integer(-like) types when one operand is a pointer

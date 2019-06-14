@@ -4,7 +4,7 @@ use crate::ty::{self, Region};
 use crate::ty::error::TypeError;
 use errors::DiagnosticBuilder;
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self,
                                      err: &mut DiagnosticBuilder<'_>,
                                      origin: &SubregionOrigin<'tcx>) {

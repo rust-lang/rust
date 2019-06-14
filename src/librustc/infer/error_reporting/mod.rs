@@ -67,7 +67,7 @@ mod need_type_info;
 
 pub mod nice_region_error;
 
-impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn note_and_explain_region(
         self,
         region_scope_tree: &region::ScopeTree,
@@ -282,7 +282,7 @@ impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_region_errors(
         &self,
         region_scope_tree: &region::ScopeTree,
@@ -445,13 +445,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         use ty::print::Printer;
         use ty::subst::Kind;
 
-        struct AbsolutePathPrinter<'gcx, 'tcx> {
-            tcx: TyCtxt<'gcx, 'tcx>,
+        struct AbsolutePathPrinter<'tcx> {
+            tcx: TyCtxt<'tcx>,
         }
 
         struct NonTrivialPath;
 
-        impl<'gcx, 'tcx> Printer<'gcx, 'tcx> for AbsolutePathPrinter<'gcx, 'tcx> {
+        impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             type Error = NonTrivialPath;
 
             type Path = Vec<String>;
@@ -460,7 +460,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             type DynExistential = !;
             type Const = !;
 
-            fn tcx<'a>(&'a self) -> TyCtxt<'gcx, 'tcx> {
+            fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
@@ -1546,7 +1546,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn report_inference_failure(
         &self,
         var_origin: RegionVariableOrigin,

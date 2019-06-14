@@ -40,23 +40,19 @@ use crate::util;
 pub struct AddMovesForPackedDrops;
 
 impl MirPass for AddMovesForPackedDrops {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", src, body.span);
         add_moves_for_packed_drops(tcx, body, src.def_id());
     }
 }
 
-pub fn add_moves_for_packed_drops<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    body: &mut Body<'tcx>,
-    def_id: DefId,
-) {
+pub fn add_moves_for_packed_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, def_id: DefId) {
     let patch = add_moves_for_packed_drops_patch(tcx, body, def_id);
     patch.apply(body);
 }
 
 fn add_moves_for_packed_drops_patch<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     def_id: DefId,
 ) -> MirPatch<'tcx> {
@@ -86,7 +82,7 @@ fn add_moves_for_packed_drops_patch<'tcx>(
 }
 
 fn add_move_for_packed_drop<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     patch: &mut MirPatch<'tcx>,
     terminator: &Terminator<'tcx>,

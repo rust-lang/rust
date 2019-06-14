@@ -12,16 +12,16 @@ use crate::util::captures::Captures;
 /// via a "delegate" of type `D` -- this is usually the `infcx`, which
 /// accrues them into the `region_obligations` code, but for NLL we
 /// use something else.
-pub struct VerifyBoundCx<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub struct VerifyBoundCx<'cx, 'tcx: 'cx> {
+    tcx: TyCtxt<'tcx>,
     region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     pub fn new(
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
@@ -102,7 +102,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     pub fn projection_declared_bounds_from_trait(
         &self,
         projection_ty: ty::ProjectionTy<'tcx>,
-    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'cx + Captures<'gcx> {
+    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'cx + Captures<'tcx> {
         self.declared_projection_bounds_from_trait(projection_ty)
     }
 
@@ -244,7 +244,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     fn declared_projection_bounds_from_trait(
         &self,
         projection_ty: ty::ProjectionTy<'tcx>,
-    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'cx + Captures<'gcx> {
+    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'cx + Captures<'tcx> {
         debug!("projection_bounds(projection_ty={:?})", projection_ty);
         let tcx = self.tcx;
         self.region_bounds_declared_on_associated_item(projection_ty.item_def_id)
@@ -284,7 +284,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
     fn region_bounds_declared_on_associated_item(
         &self,
         assoc_item_def_id: DefId,
-    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'cx + Captures<'gcx> {
+    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'cx + Captures<'tcx> {
         let tcx = self.tcx;
         let assoc_item = tcx.associated_item(assoc_item_def_id);
         let trait_def_id = assoc_item.container.assert_trait();

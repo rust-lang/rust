@@ -791,14 +791,14 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
 
 declare_box_region_type!(
     pub BoxedGlobalCtxt,
-    for('gcx),
-    (&'gcx GlobalCtxt<'gcx>) -> ((), ())
+    for('tcx),
+    (&'tcx GlobalCtxt<'tcx>) -> ((), ())
 );
 
 impl BoxedGlobalCtxt {
     pub fn enter<F, R>(&mut self, f: F) -> R
     where
-        F: for<'tcx> FnOnce(TyCtxt<'tcx, 'tcx>) -> R,
+        F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> R,
     {
         self.access(|gcx| ty::tls::enter_global(gcx, |tcx| f(tcx)))
     }
@@ -811,7 +811,7 @@ pub fn create_global_ctxt(
     resolutions: Resolutions,
     outputs: OutputFilenames,
     tx: mpsc::Sender<Box<dyn Any + Send>>,
-    crate_name: &str
+    crate_name: &str,
 ) -> BoxedGlobalCtxt {
     let sess = compiler.session().clone();
     let cstore = compiler.cstore.clone();
@@ -866,7 +866,7 @@ pub fn create_global_ctxt(
         });
 
         yield BoxedGlobalCtxt::initial_yield(());
-        box_region_allow_access!(for('gcx), (&'gcx GlobalCtxt<'gcx>), (gcx));
+        box_region_allow_access!(for('tcx), (&'tcx GlobalCtxt<'tcx>), (gcx));
 
         if sess.opts.debugging_opts.query_stats {
             gcx.queries.print_stats();
@@ -878,7 +878,7 @@ pub fn create_global_ctxt(
 
 /// Runs the resolution, type-checking, region checking and other
 /// miscellaneous analysis passes on the crate.
-fn analysis<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, cnum: CrateNum) -> Result<()> {
+fn analysis<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Result<()> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let sess = tcx.sess;
@@ -996,7 +996,7 @@ fn analysis<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, cnum: CrateNum) -> Result<()> {
 }
 
 fn encode_and_write_metadata<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     outputs: &OutputFilenames,
 ) -> (middle::cstore::EncodedMetadata, bool) {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -1059,7 +1059,7 @@ fn encode_and_write_metadata<'tcx>(
 /// be discarded.
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     rx: mpsc::Receiver<Box<dyn Any + Send>>,
     outputs: &OutputFilenames,
 ) -> Box<dyn Any> {

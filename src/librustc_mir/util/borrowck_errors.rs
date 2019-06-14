@@ -788,7 +788,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     }
 }
 
-impl BorrowckErrors<'tcx> for TyCtxt<'gcx, 'tcx> {
+impl BorrowckErrors<'tcx> for TyCtxt<'tcx> {
     fn struct_span_err_with_code<S: Into<MultiSpan>>(
         self,
         sp: S,

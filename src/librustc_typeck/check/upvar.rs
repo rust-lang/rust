@@ -45,8 +45,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use syntax::ast;
 use syntax_pos::Span;
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn closure_analyze(&self, body: &'gcx hir::Body) {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn closure_analyze(&self, body: &'tcx hir::Body) {
         InferBorrowKindVisitor { fcx: self }.visit_body(body);
 
         // it's our job to process these.
@@ -54,16 +54,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-struct InferBorrowKindVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+struct InferBorrowKindVisitor<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if let hir::ExprKind::Closure(cc, _, body_id, _, _) = expr.node {
             let body = self.fcx.tcx.hir().body(body_id);
             self.visit_body(body);
@@ -75,7 +75,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn analyze_closure(
         &self,
         closure_hir_id: hir::HirId,
@@ -282,8 +282,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-struct InferBorrowKind<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+struct InferBorrowKind<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
 
     // The def-id of the closure whose kind and upvar accesses are being inferred.
     closure_def_id: DefId,
@@ -305,7 +305,7 @@ struct InferBorrowKind<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     adjust_upvar_captures: ty::UpvarCaptureMap<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
     fn adjust_upvar_borrow_kind_for_consume(
         &mut self,
         cmt: &mc::cmt_<'tcx>,
@@ -581,7 +581,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
     fn consume(
         &mut self,
         _consume_id: hir::HirId,
@@ -651,6 +651,6 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
     }
 }
 
-fn var_name(tcx: TyCtxt<'_, '_>, var_hir_id: hir::HirId) -> ast::Name {
+fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> ast::Name {
     tcx.hir().name_by_hir_id(var_hir_id)
 }

@@ -150,7 +150,7 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_>) -> String {
+fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
     let cm = tcx.sess.source_map();
     match lnk {
         UpvarNode(s) => {
@@ -181,7 +181,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn visit_arm(&mut self, a: &'tcx hir::Arm) { visit_arm(self, a); }
 }
 
-fn check_mod_liveness<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_liveness<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut IrMaps::new(tcx, module_def_id).as_deep_visitor(),
@@ -257,7 +257,7 @@ enum VarKind {
 }
 
 struct IrMaps<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body_owner: DefId,
     num_live_nodes: usize,
     num_vars: usize,
@@ -269,7 +269,7 @@ struct IrMaps<'tcx> {
 }
 
 impl IrMaps<'tcx> {
-    fn new(tcx: TyCtxt<'tcx, 'tcx>, body_owner: DefId) -> IrMaps<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, body_owner: DefId) -> IrMaps<'tcx> {
         IrMaps {
             tcx,
             body_owner,

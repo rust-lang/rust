@@ -14,7 +14,7 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 fn evaluate_obligation<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     canonical_goal: CanonicalPredicateGoal<'tcx>,
 ) -> Result<EvaluationResult, OverflowError> {
     tcx.infer_ctxt().enter_with_canonical(

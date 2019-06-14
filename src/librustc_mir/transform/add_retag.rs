@@ -48,7 +48,7 @@ fn is_stable<'tcx>(
 
 /// Determine whether this type may have a reference in it, recursing below compound types but
 /// not below references.
-fn may_have_reference<'gcx, 'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'gcx, 'tcx>) -> bool {
+fn may_have_reference<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
     match ty.sty {
         // Primitive types that are not references
         ty::Bool | ty::Char |
@@ -74,12 +74,7 @@ fn may_have_reference<'gcx, 'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'gcx, 'tcx>) -> bool
 }
 
 impl MirPass for AddRetag {
-    fn run_pass<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
-        _src: MirSource<'tcx>,
-        body: &mut Body<'tcx>,
-    ) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {
             return;
         }

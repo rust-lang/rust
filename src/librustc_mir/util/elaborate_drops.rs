@@ -75,7 +75,7 @@ pub trait DropElaborator<'a, 'tcx: 'a>: fmt::Debug {
 
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
     fn body(&self) -> &'a Body<'tcx>;
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx>;
+    fn tcx(&self) -> TyCtxt<'tcx>;
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle;
@@ -126,7 +126,7 @@ where
         place.ty(self.elaborator.body(), self.tcx()).ty
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.elaborator.tcx()
     }
 

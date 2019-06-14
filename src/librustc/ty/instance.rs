@@ -43,7 +43,7 @@ pub enum InstanceDef<'tcx> {
 }
 
 impl<'tcx> Instance<'tcx> {
-    pub fn ty(&self, tcx: TyCtxt<'tcx, 'tcx>) -> Ty<'tcx> {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
         tcx.subst_and_normalize_erasing_regions(
             self.substs,
@@ -52,7 +52,7 @@ impl<'tcx> Instance<'tcx> {
         )
     }
 
-    fn fn_sig_noadjust(&self, tcx: TyCtxt<'tcx, 'tcx>) -> PolyFnSig<'tcx> {
+    fn fn_sig_noadjust(&self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         let ty = self.ty(tcx);
         match ty.sty {
             ty::FnDef(..) |
@@ -102,7 +102,7 @@ impl<'tcx> Instance<'tcx> {
         }
     }
 
-    pub fn fn_sig(&self, tcx: TyCtxt<'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
+    pub fn fn_sig(&self, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
         let mut fn_sig = self.fn_sig_noadjust(tcx);
         if let InstanceDef::VtableShim(..) = self.def {
             // Modify fn(self, ...) to fn(self: *mut Self, ...)
@@ -133,11 +133,11 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn attrs(&self, tcx: TyCtxt<'tcx, 'tcx>) -> ty::Attributes<'tcx> {
+    pub fn attrs(&self, tcx: TyCtxt<'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 
-    pub fn is_inline(&self, tcx: TyCtxt<'tcx, 'tcx>) -> bool {
+    pub fn is_inline(&self, tcx: TyCtxt<'tcx>) -> bool {
         use crate::hir::map::DefPathData;
         let def_id = match *self {
             ty::InstanceDef::Item(def_id) => def_id,
@@ -150,7 +150,7 @@ impl<'tcx> InstanceDef<'tcx> {
         }
     }
 
-    pub fn requires_local(&self, tcx: TyCtxt<'tcx, 'tcx>) -> bool {
+    pub fn requires_local(&self, tcx: TyCtxt<'tcx>) -> bool {
         if self.is_inline(tcx) {
             return true
         }
@@ -200,7 +200,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
     }
 }
 
-impl<'b, 'tcx> Instance<'tcx> {
+impl<'tcx> Instance<'tcx> {
     pub fn new(def_id: DefId, substs: SubstsRef<'tcx>)
                -> Instance<'tcx> {
         assert!(!substs.has_escaping_bound_vars(),
@@ -209,7 +209,7 @@ impl<'b, 'tcx> Instance<'tcx> {
         Instance { def: InstanceDef::Item(def_id), substs: substs }
     }
 
-    pub fn mono(tcx: TyCtxt<'tcx, 'b>, def_id: DefId) -> Instance<'tcx> {
+    pub fn mono(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
         Instance::new(def_id, tcx.global_tcx().empty_substs_for_def_id(def_id))
     }
 
@@ -237,7 +237,7 @@ impl<'b, 'tcx> Instance<'tcx> {
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
     /// `Some`.
     pub fn resolve(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
@@ -291,7 +291,7 @@ impl<'b, 'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_for_vtable(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
@@ -312,7 +312,7 @@ impl<'b, 'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_closure(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
         substs: ty::ClosureSubsts<'tcx>,
         requested_kind: ty::ClosureKind,
@@ -325,14 +325,14 @@ impl<'b, 'tcx> Instance<'tcx> {
         }
     }
 
-    pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
+    pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(DropInPlaceFnLangItem);
         let substs = tcx.intern_substs(&[ty.into()]);
         Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap()
     }
 
     pub fn fn_once_adapter_instance(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         closure_did: DefId,
         substs: ty::ClosureSubsts<'tcx>,
     ) -> Instance<'tcx> {
@@ -366,7 +366,7 @@ impl<'b, 'tcx> Instance<'tcx> {
 }
 
 fn resolve_associated_item<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     trait_item: &ty::AssocItem,
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,

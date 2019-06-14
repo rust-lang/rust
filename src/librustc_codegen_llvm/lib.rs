@@ -105,31 +105,27 @@ mod va_arg;
 pub struct LlvmCodegenBackend(());
 
 impl ExtraBackendMethods for LlvmCodegenBackend {
-    fn new_metadata(&self, tcx: TyCtxt<'_, '_>, mod_name: &str) -> ModuleLlvm {
+    fn new_metadata(&self, tcx: TyCtxt<'_>, mod_name: &str) -> ModuleLlvm {
         ModuleLlvm::new_metadata(tcx, mod_name)
     }
 
-    fn write_compressed_metadata<'gcx>(
+    fn write_compressed_metadata<'tcx>(
         &self,
-        tcx: TyCtxt<'gcx, 'gcx>,
+        tcx: TyCtxt<'tcx>,
         metadata: &EncodedMetadata,
         llvm_module: &mut ModuleLlvm,
     ) {
         base::write_compressed_metadata(tcx, metadata, llvm_module)
     }
-    fn codegen_allocator<'gcx>(
+    fn codegen_allocator<'tcx>(
         &self,
-        tcx: TyCtxt<'gcx, 'gcx>,
+        tcx: TyCtxt<'tcx>,
         mods: &mut ModuleLlvm,
         kind: AllocatorKind,
     ) {
         unsafe { allocator::codegen(tcx, mods, kind) }
     }
-    fn compile_codegen_unit<'a, 'tcx: 'a>(
-        &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
-        cgu_name: InternedString,
-    ) {
+    fn compile_codegen_unit<'a, 'tcx: 'a>(&self, tcx: TyCtxt<'tcx>, cgu_name: InternedString) {
         base::compile_codegen_unit(tcx, cgu_name);
     }
     fn target_machine_factory(
@@ -288,7 +284,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn codegen_crate<'tcx>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
         rx: mpsc::Receiver<Box<dyn Any + Send>>,
@@ -367,7 +363,7 @@ unsafe impl Send for ModuleLlvm { }
 unsafe impl Sync for ModuleLlvm { }
 
 impl ModuleLlvm {
-    fn new(tcx: TyCtxt<'_, '_>, mod_name: &str) -> Self {
+    fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
@@ -379,7 +375,7 @@ impl ModuleLlvm {
         }
     }
 
-    fn new_metadata(tcx: TyCtxt<'_, '_>, mod_name: &str) -> Self {
+    fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;

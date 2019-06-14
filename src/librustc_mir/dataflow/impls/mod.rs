@@ -63,23 +63,19 @@ pub(super) mod borrows;
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeUninitializedPlaces` yields the set of
 /// places that would require a dynamic drop-flag at that statement.
-pub struct MaybeInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub struct MaybeInitializedPlaces<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'gcx, 'tcx>,
-        body: &'a Body<'tcx>,
-        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
-    ) -> Self {
+impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         MaybeInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -118,23 +114,19 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 'tcx
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeInitializedPlaces` yields the set of
 /// places that would require a dynamic drop-flag at that statement.
-pub struct MaybeUninitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub struct MaybeUninitializedPlaces<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'gcx, 'tcx>,
-        body: &'a Body<'tcx>,
-        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
-    ) -> Self {
+impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         MaybeUninitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -172,23 +164,19 @@ impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 't
 /// Similarly, at a given `drop` statement, the set-difference between
 /// this data and `MaybeInitializedPlaces` yields the set of places
 /// that would require a dynamic drop-flag at that statement.
-pub struct DefinitelyInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub struct DefinitelyInitializedPlaces<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'gcx, 'tcx>,
-        body: &'a Body<'tcx>,
-        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
-    ) -> Self {
+impl<'a, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         DefinitelyInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
 
-impl<'a, 'gcx, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -221,28 +209,23 @@ impl<'a, 'gcx, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, '
 ///     c = S;                                 // {a, b, c, d }
 /// }
 /// ```
-pub struct EverInitializedPlaces<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub struct EverInitializedPlaces<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
+    mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx: 'a> EverInitializedPlaces<'a, 'gcx, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'gcx, 'tcx>,
-        body: &'a Body<'tcx>,
-        mdpe: &'a MoveDataParamEnv<'gcx, 'tcx>,
-    ) -> Self {
+impl<'a, 'tcx: 'a> EverInitializedPlaces<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         EverInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
 
-impl<'a, 'gcx, 'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> HasMoveData<'tcx> for EverInitializedPlaces<'a, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
-
-impl<'a, 'gcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     fn update_bits(sets: &mut BlockSets<'_, MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -253,7 +236,7 @@ impl<'a, 'gcx, 'tcx> MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     fn update_bits(sets: &mut BlockSets<'_, MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -264,7 +247,7 @@ impl<'a, 'gcx, 'tcx> MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     fn update_bits(sets: &mut BlockSets<'_, MovePathIndex>, path: MovePathIndex,
                    state: DropFlagState)
     {
@@ -275,7 +258,7 @@ impl<'a, 'gcx, 'tcx> DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "maybe_init" }
     fn bits_per_block(&self) -> usize {
@@ -328,7 +311,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'gcx, 't
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "maybe_uninit" }
     fn bits_per_block(&self) -> usize {
@@ -386,7 +369,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'gcx, 
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     type Idx = MovePathIndex;
     fn name() -> &'static str { "definite_init" }
     fn bits_per_block(&self) -> usize {
@@ -442,7 +425,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'gc
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'tcx> {
     type Idx = InitIndex;
     fn name() -> &'static str { "ever_init" }
     fn bits_per_block(&self) -> usize {
@@ -519,28 +502,28 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'gcx, 'tc
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitSetOperator for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BitSetOperator for MaybeInitializedPlaces<'a, 'tcx> {
     #[inline]
     fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
         inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitSetOperator for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BitSetOperator for MaybeUninitializedPlaces<'a, 'tcx> {
     #[inline]
     fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
         inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitSetOperator for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BitSetOperator for DefinitelyInitializedPlaces<'a, 'tcx> {
     #[inline]
     fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
         inout_set.intersect(in_set) // "definitely" means we intersect effects of both preds
     }
 }
 
-impl<'a, 'gcx, 'tcx> BitSetOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BitSetOperator for EverInitializedPlaces<'a, 'tcx> {
     #[inline]
     fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
         inout_set.union(in_set) // inits from both preds are in scope
@@ -557,28 +540,28 @@ impl<'a, 'gcx, 'tcx> BitSetOperator for EverInitializedPlaces<'a, 'gcx, 'tcx> {
 // propagating, or you start at all-ones and then use Intersect as
 // your merge when propagating.
 
-impl<'a, 'gcx, 'tcx> InitialFlow for MaybeInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InitialFlow for MaybeInitializedPlaces<'a, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = uninitialized
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for MaybeUninitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InitialFlow for MaybeUninitializedPlaces<'a, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = initialized (start_block_effect counters this at outset)
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for DefinitelyInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InitialFlow for DefinitelyInitializedPlaces<'a, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         true // bottom = initialized (start_block_effect counters this at outset)
     }
 }
 
-impl<'a, 'gcx, 'tcx> InitialFlow for EverInitializedPlaces<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InitialFlow for EverInitializedPlaces<'a, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = no initialized variables by default

@@ -12,15 +12,15 @@ use super::{LocationMap, MoveData, MovePath, MovePathLookup, MovePathIndex, Move
 use super::{MoveError, InitIndex, Init, InitLocation, LookupResult, InitKind};
 use super::IllegalMoveOriginKind::*;
 
-struct MoveDataBuilder<'a, 'gcx: 'tcx, 'tcx: 'a> {
+struct MoveDataBuilder<'a, 'tcx: 'a> {
     body: &'a Body<'tcx>,
-    tcx: TyCtxt<'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     data: MoveData<'tcx>,
     errors: Vec<(Place<'tcx>, MoveError<'tcx>)>,
 }
 
-impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
-    fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'gcx, 'tcx>) -> Self {
+impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
+    fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
         let mut init_path_map = IndexVec::new();
@@ -83,7 +83,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
+impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     /// This creates a MovePath for a given place, returning an `MovePathError`
     /// if that place can't be moved from.
     ///
@@ -178,7 +178,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn finalize(
         self
     ) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
@@ -202,9 +202,9 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     }
 }
 
-pub(super) fn gather_moves<'gcx, 'tcx>(
+pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
-    tcx: TyCtxt<'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
     let mut builder = MoveDataBuilder::new(body, tcx);
 
@@ -226,7 +226,7 @@ pub(super) fn gather_moves<'gcx, 'tcx>(
     builder.finalize()
 }
 
-impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn gather_args(&mut self) {
         for arg in self.body.args_iter() {
             let path = self.data.rev_lookup.locals[arg];
@@ -253,12 +253,12 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     }
 }
 
-struct Gatherer<'b, 'a: 'b, 'gcx: 'tcx, 'tcx: 'a> {
-    builder: &'b mut MoveDataBuilder<'a, 'gcx, 'tcx>,
+struct Gatherer<'b, 'a: 'b, 'tcx: 'a> {
+    builder: &'b mut MoveDataBuilder<'a, 'tcx>,
     loc: Location,
 }
 
-impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
+impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match stmt.kind {
             StatementKind::Assign(ref place, ref rval) => {

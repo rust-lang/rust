@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashSet;
 
 use crate::borrow_check::MirBorrowckCtxt;
 
-impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Walks the MIR adding to the set of `used_mut` locals that will be ignored for the purposes
     /// of the `unused_mut` lint.
     ///
@@ -46,13 +46,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
 /// MIR visitor for collecting used mutable variables.
 /// The 'visit lifetime represents the duration of the MIR walk.
-struct GatherUsedMutsVisitor<'visit, 'cx: 'visit, 'gcx: 'tcx, 'tcx: 'cx> {
+struct GatherUsedMutsVisitor<'visit, 'cx: 'visit, 'tcx: 'cx> {
     temporary_used_locals: FxHashSet<Local>,
     never_initialized_mut_locals: &'visit mut FxHashSet<Local>,
-    mbcx: &'visit mut MirBorrowckCtxt<'cx, 'gcx, 'tcx>,
+    mbcx: &'visit mut MirBorrowckCtxt<'cx, 'tcx>,
 }
 
-impl GatherUsedMutsVisitor<'_, '_, '_, '_> {
+impl GatherUsedMutsVisitor<'_, '_, '_> {
     fn remove_never_initialized_mut_locals(&mut self, into: &Place<'_>) {
         // Remove any locals that we found were initialized from the
         // `never_initialized_mut_locals` set. At the end, the only remaining locals will
@@ -65,7 +65,7 @@ impl GatherUsedMutsVisitor<'_, '_, '_, '_> {
     }
 }
 
-impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'gcx, 'tcx> {
+impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tcx> {
     fn visit_terminator_kind(
         &mut self,
         kind: &TerminatorKind<'tcx>,

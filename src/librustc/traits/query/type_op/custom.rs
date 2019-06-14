@@ -14,9 +14,9 @@ pub struct CustomTypeOp<F, G> {
 }
 
 impl<F, G> CustomTypeOp<F, G> {
-    pub fn new<'gcx, 'tcx, R>(closure: F, description: G) -> Self
+    pub fn new<'tcx, R>(closure: F, description: G) -> Self
     where
-        F: FnOnce(&InferCtxt<'_, 'gcx, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
+        F: FnOnce(&InferCtxt<'_, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
         G: Fn() -> String,
     {
         CustomTypeOp {
@@ -26,9 +26,9 @@ impl<F, G> CustomTypeOp<F, G> {
     }
 }
 
-impl<'gcx, 'tcx, F, R, G> super::TypeOp<'gcx, 'tcx> for CustomTypeOp<F, G>
+impl<'tcx, F, R, G> super::TypeOp<'tcx> for CustomTypeOp<F, G>
 where
-    F: for<'a, 'cx> FnOnce(&'a InferCtxt<'cx, 'gcx, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
+    F: for<'a, 'cx> FnOnce(&'a InferCtxt<'cx, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
     G: Fn() -> String,
 {
     type Output = R;
@@ -38,7 +38,7 @@ where
     /// (they will be given over to the NLL region solver).
     fn fully_perform(
         self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
     ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
         if cfg!(debug_assertions) {
             info!("fully_perform({:?})", self);
@@ -59,8 +59,8 @@ where
 
 /// Executes `op` and then scrapes out all the "old style" region
 /// constraints that result, creating query-region-constraints.
-fn scrape_region_constraints<'gcx, 'tcx, R>(
-    infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+fn scrape_region_constraints<'tcx, R>(
+    infcx: &InferCtxt<'_, 'tcx>,
     op: impl FnOnce() -> Fallible<InferOk<'tcx, R>>,
 ) -> Fallible<(R, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
     let mut fulfill_cx = TraitEngine::new(infcx.tcx);

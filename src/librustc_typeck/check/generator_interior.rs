@@ -12,14 +12,14 @@ use syntax_pos::Span;
 use super::FnCtxt;
 use crate::util::nodemap::FxHashMap;
 
-struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+struct InteriorVisitor<'a, 'tcx: 'a> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
     types: FxHashMap<Ty<'tcx>, usize>,
-    region_scope_tree: &'gcx region::ScopeTree,
+    region_scope_tree: &'tcx region::ScopeTree,
     expr_count: usize,
 }
 
-impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
     fn record(&mut self,
               ty: Ty<'tcx>,
               scope: Option<region::Scope>,
@@ -75,10 +75,12 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
     }
 }
 
-pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-                                        def_id: DefId,
-                                        body_id: hir::BodyId,
-                                        interior: Ty<'tcx>) {
+pub fn resolve_interior<'a, 'tcx>(
+    fcx: &'a FnCtxt<'a, 'tcx>,
+    def_id: DefId,
+    body_id: hir::BodyId,
+    interior: Ty<'tcx>,
+) {
     let body = fcx.tcx.hir().body(body_id);
     let mut visitor = InteriorVisitor {
         fcx,
@@ -136,7 +138,7 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
 // This visitor has to have the same visit_expr calls as RegionResolutionVisitor in
 // librustc/middle/region.rs since `expr_count` is compared against the results
 // there.
-impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }

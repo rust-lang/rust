@@ -45,8 +45,8 @@ use crate::util::nodemap::FxHashSet;
 /// To implement this conveniently, use the
 /// `BraceStructTypeFoldableImpl` etc macros found in `macros.rs`.
 pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self;
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self;
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         self.super_fold_with(folder)
     }
 
@@ -155,8 +155,8 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
 /// default implementation that does an "identity" fold. Within each
 /// identity fold, it should invoke `foo.fold_with(self)` to fold each
 /// sub-item.
-pub trait TypeFolder<'gcx: 'tcx, 'tcx>: Sized {
-    fn tcx<'a>(&'a self) -> TyCtxt<'gcx, 'tcx>;
+pub trait TypeFolder<'tcx>: Sized {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
     fn fold_binder<T>(&mut self, t: &Binder<T>) -> Binder<T>
         where T : TypeFoldable<'tcx>
@@ -198,25 +198,25 @@ pub trait TypeVisitor<'tcx> : Sized {
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
-pub struct BottomUpFolder<'gcx, 'tcx, F, G, H>
+pub struct BottomUpFolder<'tcx, F, G, H>
 where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
     G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
     H: FnMut(&'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx>,
 {
-    pub tcx: TyCtxt<'gcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx>,
     pub ty_op: F,
     pub lt_op: G,
     pub ct_op: H,
 }
 
-impl<'gcx, 'tcx, F, G, H> TypeFolder<'gcx, 'tcx> for BottomUpFolder<'gcx, 'tcx, F, G, H>
+impl<'tcx, F, G, H> TypeFolder<'tcx> for BottomUpFolder<'tcx, F, G, H>
 where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
     G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
     H: FnMut(&'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx>,
 {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
         }
 
@@ -239,7 +239,7 @@ where
 ///////////////////////////////////////////////////////////////////////////
 // Region folder
 
-impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Collects the free and escaping regions in `value` into `region_set`. Returns
     /// whether any late-bound regions were skipped
     pub fn collect_regions<T>(self,
@@ -365,8 +365,8 @@ impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
 /// visited by this folder; only regions that occur free will be
 /// visited by `fld_r`.
 
-pub struct RegionFolder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub struct RegionFolder<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     skipped_regions: &'a mut bool,
 
     /// Stores the index of a binder *just outside* the stuff we have
@@ -381,13 +381,13 @@ pub struct RegionFolder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
         &'a mut (dyn FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx> + 'a),
 }
 
-impl<'a, 'gcx, 'tcx> RegionFolder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
     #[inline]
     pub fn new(
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         skipped_regions: &'a mut bool,
         fold_region_fn: &'a mut dyn FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
-    ) -> RegionFolder<'a, 'gcx, 'tcx> {
+    ) -> RegionFolder<'a, 'tcx> {
         RegionFolder {
             tcx,
             skipped_regions,
@@ -397,8 +397,8 @@ impl<'a, 'gcx, 'tcx> RegionFolder<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFolder<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
         }
 
@@ -430,8 +430,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFolder<'a, 'gcx, 'tcx> {
 // Bound vars replacer
 
 /// Replaces the escaping bound vars (late bound regions or bound types) in a type.
-struct BoundVarReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+struct BoundVarReplacer<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
 
     /// As with `RegionFolder`, represents the index of a binder *just outside*
     /// the ones we have visited.
@@ -442,13 +442,8 @@ struct BoundVarReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fld_c: &'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx> + 'a),
 }
 
-impl<'a, 'gcx, 'tcx> BoundVarReplacer<'a, 'gcx, 'tcx> {
-    fn new<F, G, H>(
-        tcx: TyCtxt<'gcx, 'tcx>,
-        fld_r: &'a mut F,
-        fld_t: &'a mut G,
-        fld_c: &'a mut H,
-    ) -> Self
+impl<'a, 'tcx> BoundVarReplacer<'a, 'tcx> {
+    fn new<F, G, H>(tcx: TyCtxt<'tcx>, fld_r: &'a mut F, fld_t: &'a mut G, fld_c: &'a mut H) -> Self
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         G: FnMut(ty::BoundTy) -> Ty<'tcx>,
@@ -464,8 +459,8 @@ impl<'a, 'gcx, 'tcx> BoundVarReplacer<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
         }
 
@@ -549,7 +544,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx>
     }
 }
 
-impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Replaces all regions bound by the given `Binder` with the
     /// results returned by the closure; the closure is expected to
     /// return a free region (relative to this binder), and hence the
@@ -729,15 +724,15 @@ enum Direction {
     Out,
 }
 
-struct Shifter<'gcx, 'tcx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+struct Shifter<'tcx> {
+    tcx: TyCtxt<'tcx>,
     current_index: ty::DebruijnIndex,
     amount: u32,
     direction: Direction,
 }
 
-impl Shifter<'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'gcx, 'tcx>, amount: u32, direction: Direction) -> Self {
+impl Shifter<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, amount: u32, direction: Direction) -> Self {
         Shifter {
             tcx,
             current_index: ty::INNERMOST,
@@ -747,8 +742,8 @@ impl Shifter<'gcx, 'tcx> {
     }
 }
 
-impl TypeFolder<'gcx, 'tcx> for Shifter<'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+impl TypeFolder<'tcx> for Shifter<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
         }
 
@@ -826,8 +821,8 @@ impl TypeFolder<'gcx, 'tcx> for Shifter<'gcx, 'tcx> {
     }
 }
 
-pub fn shift_region<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn shift_region<'tcx>(
+    tcx: TyCtxt<'tcx>,
     region: ty::Region<'tcx>,
     amount: u32,
 ) -> ty::Region<'tcx> {
@@ -841,7 +836,7 @@ pub fn shift_region<'gcx, 'tcx>(
     }
 }
 
-pub fn shift_vars<'gcx, 'tcx, T>(tcx: TyCtxt<'gcx, 'tcx>, value: &T, amount: u32) -> T
+pub fn shift_vars<'tcx, T>(tcx: TyCtxt<'tcx>, value: &T, amount: u32) -> T
 where
     T: TypeFoldable<'tcx>,
 {
@@ -851,7 +846,7 @@ where
     value.fold_with(&mut Shifter::new(tcx, amount, Direction::In))
 }
 
-pub fn shift_out_vars<'gcx, 'tcx, T>(tcx: TyCtxt<'gcx, 'tcx>, value: &T, amount: u32) -> T
+pub fn shift_out_vars<'tcx, T>(tcx: TyCtxt<'tcx>, value: &T, amount: u32) -> T
 where
     T: TypeFoldable<'tcx>,
 {

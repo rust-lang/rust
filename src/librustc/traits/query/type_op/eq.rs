@@ -14,11 +14,11 @@ impl<'tcx> Eq<'tcx> {
     }
 }
 
-impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
+impl<'tcx> super::QueryTypeOp<'tcx> for Eq<'tcx> {
     type QueryResponse = ();
 
     fn try_fast_path(
-        _tcx: TyCtxt<'gcx, 'tcx>,
+        _tcx: TyCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Eq<'tcx>>,
     ) -> Option<Self::QueryResponse> {
         if key.value.a == key.value.b {
@@ -29,14 +29,14 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
     }
 
     fn perform_query(
-        tcx: TyCtxt<'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResponse<'gcx, ()>> {
+        tcx: TyCtxt<'tcx>,
+        canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
+    ) -> Fallible<CanonicalizedQueryResponse<'tcx, ()>> {
         tcx.type_op_eq(canonicalized)
     }
 
     fn shrink_to_tcx_lifetime(
-        v: &'a CanonicalizedQueryResponse<'gcx, ()>,
+        v: &'a CanonicalizedQueryResponse<'tcx, ()>,
     ) -> &'a Canonical<'tcx, QueryResponse<'tcx, ()>> {
         v
     }

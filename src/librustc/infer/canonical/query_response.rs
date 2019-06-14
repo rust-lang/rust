@@ -29,7 +29,7 @@ use crate::ty::subst::{Kind, UnpackedKind};
 use crate::ty::{self, BoundVar, InferConst, Lift, Ty, TyCtxt};
 use crate::util::captures::Captures;
 
-impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
+impl<'tcx> InferCtxtBuilder<'tcx> {
     /// The "main method" for a canonicalized trait query. Given the
     /// canonical key `canonical_key`, this method will create a new
     /// inference context, instantiate the key, and run your operation
@@ -42,20 +42,19 @@ impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
     ///
     /// (It might be mildly nicer to implement this on `TyCtxt`, and
     /// not `InferCtxtBuilder`, but that is a bit tricky right now.
-    /// In part because we would need a `for<'gcx: 'tcx>` sort of
+    /// In part because we would need a `for<'tcx>` sort of
     /// bound for the closure and in part because it is convenient to
     /// have `'tcx` be free on this function so that we can talk about
     /// `K: TypeFoldable<'tcx>`.)
     pub fn enter_canonical_trait_query<K, R>(
-        &'tcx mut self,
+        &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>, &mut dyn TraitEngine<'tcx>, K)
-            -> Fallible<R>,
-    ) -> Fallible<CanonicalizedQueryResponse<'gcx, R>>
+        operation: impl FnOnce(&InferCtxt<'_, 'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
+    ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
-        R: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
-        Canonical<'gcx, <QueryResponse<'gcx, R> as Lift<'gcx>>::Lifted>: ArenaAllocatable,
+        R: Debug + Lift<'tcx> + TypeFoldable<'tcx>,
+        Canonical<'tcx, <QueryResponse<'tcx, R> as Lift<'tcx>>::Lifted>: ArenaAllocatable,
     {
         self.enter_with_canonical(
             DUMMY_SP,
@@ -73,7 +72,7 @@ impl<'gcx, 'tcx> InferCtxtBuilder<'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
     /// implementation. It is given:
     ///
@@ -98,10 +97,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
-    ) -> Fallible<CanonicalizedQueryResponse<'gcx, T>>
+    ) -> Fallible<CanonicalizedQueryResponse<'tcx, T>>
     where
-        T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
-        Canonical<'gcx, <QueryResponse<'gcx, T> as Lift<'gcx>>::Lifted>: ArenaAllocatable,
+        T: Debug + Lift<'tcx> + TypeFoldable<'tcx>,
+        Canonical<'tcx, <QueryResponse<'tcx, T> as Lift<'tcx>>::Lifted>: ArenaAllocatable,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
         let canonical_result = self.canonicalize_response(&query_response);
@@ -126,10 +125,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn make_query_response_ignoring_pending_obligations<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
-        answer: T
-    ) -> Canonical<'gcx, QueryResponse<'gcx, <T as Lift<'gcx>>::Lifted>>
+        answer: T,
+    ) -> Canonical<'tcx, QueryResponse<'tcx, <T as Lift<'tcx>>::Lifted>>
     where
-        T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+        T: Debug + Lift<'tcx> + TypeFoldable<'tcx>,
     {
         self.canonicalize_response(&QueryResponse {
             var_values: inference_vars,
@@ -148,7 +147,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
-        T: Debug + TypeFoldable<'tcx> + Lift<'gcx>,
+        T: Debug + TypeFoldable<'tcx> + Lift<'tcx>,
     {
         let tcx = self.tcx;
 
@@ -567,7 +566,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         unsubstituted_region_constraints: &'a [QueryRegionConstraint<'tcx>],
         result_subst: &'a CanonicalVarValues<'tcx>,
-    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'gcx> {
+    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
         unsubstituted_region_constraints
             .iter()
             .map(move |constraint| {
@@ -647,7 +646,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 /// Given the region obligations and constraints scraped from the infcx,
 /// creates query region constraints.
 pub fn make_query_outlives<'tcx>(
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
 ) -> Vec<QueryRegionConstraint<'tcx>> {

@@ -61,12 +61,12 @@ pub enum NodeIdHashingMode {
 /// We could also just store a plain reference to the hir::Crate but we want
 /// to avoid that the crate is used to get untracked access to all of the HIR.
 #[derive(Clone, Copy)]
-struct BodyResolver<'gcx>(&'gcx hir::Crate);
+struct BodyResolver<'tcx>(&'tcx hir::Crate);
 
-impl<'gcx> BodyResolver<'gcx> {
+impl<'tcx> BodyResolver<'tcx> {
     // Return a reference to the hir::Body with the given BodyId.
     // DOES NOT DO ANY TRACKING, use carefully.
-    fn body(self, id: hir::BodyId) -> &'gcx hir::Body {
+    fn body(self, id: hir::BodyId) -> &'tcx hir::Body {
         self.0.body(id)
     }
 }
@@ -205,8 +205,8 @@ for &'b mut T {
     }
 }
 
-impl StableHashingContextProvider<'lcx> for TyCtxt<'gcx, 'lcx> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'lcx> {
+impl StableHashingContextProvider<'tcx> for TyCtxt<'tcx> {
+    fn get_stable_hashing_context(&self) -> StableHashingContext<'tcx> {
         (*self).create_stable_hashing_context()
     }
 }

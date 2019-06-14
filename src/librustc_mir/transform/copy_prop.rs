@@ -30,12 +30,7 @@ use crate::util::def_use::DefUseAnalysis;
 pub struct CopyPropagation;
 
 impl MirPass for CopyPropagation {
-    fn run_pass<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
-        _source: MirSource<'tcx>,
-        body: &mut Body<'tcx>,
-    ) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
         if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {

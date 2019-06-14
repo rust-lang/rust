@@ -10,11 +10,11 @@ use std::fmt::Write;
 use rustc::mir::interpret::{Allocation, ConstValue};
 
 struct AbsolutePathPrinter<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     path: String,
 }
 
-impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'tcx> {
+impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     type Error = std::fmt::Error;
 
     type Path = Self;
@@ -23,7 +23,7 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'tcx> {
     type DynExistential = Self;
     type Const = Self;
 
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -167,18 +167,16 @@ impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'tcx> {
         }
     }
 }
-impl PrettyPrinter<'tcx, 'tcx> for AbsolutePathPrinter<'tcx> {
+impl PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     fn region_should_not_be_omitted(
         &self,
         _region: ty::Region<'_>,
     ) -> bool {
         false
     }
-    fn comma_sep<T>(
-        mut self,
-        mut elems: impl Iterator<Item = T>,
-    ) -> Result<Self, Self::Error>
-        where T: Print<'tcx, 'tcx, Self, Output = Self, Error = Self::Error>
+    fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error>,
     {
         if let Some(first) = elems.next() {
             self = first.print(self)?;
@@ -212,7 +210,7 @@ impl Write for AbsolutePathPrinter<'_> {
 
 /// Produces an absolute path representation of the given type. See also the documentation on
 /// `std::any::type_name`
-pub fn type_name<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
+pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
     let alloc = alloc_type_name(tcx, ty);
     tcx.mk_const(ty::Const {
         val: ConstValue::Slice {
@@ -225,7 +223,7 @@ pub fn type_name<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-pub(super) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> &'tcx Allocation {
+pub(super) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx Allocation {
     let path = AbsolutePathPrinter { tcx, path: String::new() }.print_type(ty).unwrap().path;
     let alloc = Allocation::from_byte_aligned_bytes(path.into_bytes());
     tcx.intern_const_alloc(alloc)

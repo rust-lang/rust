@@ -124,7 +124,7 @@ impl<Q: Qualif, T> IndexMut<Q> for PerQualif<T> {
 }
 
 struct ConstCx<'a, 'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     mode: Mode,
     body: &'a Body<'tcx>,
@@ -652,7 +652,7 @@ impl Deref for Checker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body: &'a Body<'tcx>, mode: Mode) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>, mode: Mode) -> Self {
         assert!(def_id.is_local());
         let mut rpo = traversal::reverse_postorder(body);
         let temps = promote_consts::collect_temps(body, &mut rpo);
@@ -1468,7 +1468,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn mir_const_qualif<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> (u8, &'tcx BitSet<Local>) {
+fn mir_const_qualif<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> (u8, &'tcx BitSet<Local>) {
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1486,7 +1486,7 @@ fn mir_const_qualif<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> (u8, &'tcx 
 pub struct QualifyAndPromoteConstants;
 
 impl MirPass for QualifyAndPromoteConstants {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if body.return_ty().references_error() {
             tcx.sess.delay_span_bug(body.span, "QualifyAndPromoteConstants: MIR had errors");
@@ -1659,7 +1659,7 @@ impl MirPass for QualifyAndPromoteConstants {
     }
 }
 
-fn args_required_const(tcx: TyCtxt<'_, '_>, def_id: DefId) -> Option<FxHashSet<usize>> {
+fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize>> {
     let attrs = tcx.get_attrs(def_id);
     let attr = attrs.iter().find(|a| a.check_name(sym::rustc_args_required_const))?;
     let mut ret = FxHashSet::default();

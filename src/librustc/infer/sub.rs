@@ -11,15 +11,16 @@ use crate::mir::interpret::ConstValue;
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
-pub struct Sub<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+pub struct Sub<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
+    fields: &'combine mut CombineFields<'infcx, 'tcx>,
     a_is_expected: bool,
 }
 
-impl<'combine, 'infcx, 'gcx, 'tcx> Sub<'combine, 'infcx, 'gcx, 'tcx> {
-    pub fn new(f: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
-        -> Sub<'combine, 'infcx, 'gcx, 'tcx>
-    {
+impl<'combine, 'infcx, 'tcx> Sub<'combine, 'infcx, 'tcx> {
+    pub fn new(
+        f: &'combine mut CombineFields<'infcx, 'tcx>,
+        a_is_expected: bool,
+    ) -> Sub<'combine, 'infcx, 'tcx> {
         Sub { fields: f, a_is_expected: a_is_expected }
     }
 
@@ -31,9 +32,9 @@ impl<'combine, 'infcx, 'gcx, 'tcx> Sub<'combine, 'infcx, 'gcx, 'tcx> {
     }
 }
 
-impl TypeRelation<'gcx, 'tcx> for Sub<'combine, 'infcx, 'gcx, 'tcx> {
+impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> { self.fields.infcx.tcx }
+    fn tcx(&self) -> TyCtxt<'tcx> { self.fields.infcx.tcx }
     fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R

@@ -27,7 +27,7 @@ pub enum EntryOrExit {
 
 #[derive(Clone)]
 pub struct DataFlowContext<'tcx, O> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 
     /// a name for the analysis using this dataflow instance
     analysis_name: &'static str,
@@ -225,7 +225,7 @@ pub enum KillFrom {
 
 impl<'tcx, O: DataFlowOperator> DataFlowContext<'tcx, O> {
     pub fn new(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         analysis_name: &'static str,
         body: Option<&hir::Body>,
         cfg: &cfg::CFG,

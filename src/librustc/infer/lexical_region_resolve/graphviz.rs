@@ -44,10 +44,10 @@ graphs will be printed.                                                     \n\
 ");
 }
 
-pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
+pub fn maybe_print_constraints_for<'a, 'tcx>(
     region_data: &RegionConstraintData<'tcx>,
-    region_rels: &RegionRelations<'a, 'gcx, 'tcx>)
-{
+    region_rels: &RegionRelations<'a, 'tcx>,
+) {
     let tcx = region_rels.tcx;
     let context = region_rels.context;
 
@@ -107,9 +107,9 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
     }
 }
 
-struct ConstraintGraph<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct ConstraintGraph<'a, 'tcx: 'a> {
     graph_name: String,
-    region_rels: &'a RegionRelations<'a, 'gcx, 'tcx>,
+    region_rels: &'a RegionRelations<'a, 'tcx>,
     map: &'a BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
     node_ids: FxHashMap<Node, usize>,
 }
@@ -126,11 +126,12 @@ enum Edge<'tcx> {
     EnclScope(region::Scope, region::Scope),
 }
 
-impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
-    fn new(name: String,
-           region_rels: &'a RegionRelations<'a, 'gcx, 'tcx>,
-           map: &'a ConstraintMap<'tcx>)
-           -> ConstraintGraph<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
+    fn new(
+        name: String,
+        region_rels: &'a RegionRelations<'a, 'tcx>,
+        map: &'a ConstraintMap<'tcx>,
+    ) -> ConstraintGraph<'a, 'tcx> {
         let mut i = 0;
         let mut node_ids = FxHashMap::default();
         {
@@ -161,7 +162,7 @@ impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'tcx> {
     type Node = Node;
     type Edge = Edge<'tcx>;
     fn graph_id(&self) -> dot::Id<'_> {
@@ -215,7 +216,7 @@ fn edge_to_nodes(e: &Edge<'_>) -> (Node, Node) {
     }
 }
 
-impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'tcx> {
     type Node = Node;
     type Edge = Edge<'tcx>;
     fn nodes(&self) -> dot::Nodes<'_, Node> {
@@ -246,10 +247,11 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
 
 pub type ConstraintMap<'tcx> = BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
 
-fn dump_region_data_to<'a, 'gcx, 'tcx>(region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
-                                       map: &ConstraintMap<'tcx>,
-                                       path: &str)
-                                       -> io::Result<()> {
+fn dump_region_data_to<'a, 'tcx>(
+    region_rels: &RegionRelations<'a, 'tcx>,
+    map: &ConstraintMap<'tcx>,
+    path: &str,
+) -> io::Result<()> {
     debug!("dump_region_data map (len: {}) path: {}",
            map.len(),
            path);

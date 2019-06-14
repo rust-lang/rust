@@ -195,7 +195,7 @@ macro_rules! CloneLiftImpls {
         $(
             impl<$tcx> $crate::ty::Lift<$tcx> for $ty {
                 type Lifted = Self;
-                fn lift_to_tcx<'gcx>(&self, _: $crate::ty::TyCtxt<'gcx, $tcx>) -> Option<Self> {
+                fn lift_to_tcx(&self, _: $crate::ty::TyCtxt<$tcx>) -> Option<Self> {
                     Some(Clone::clone(self))
                 }
             }
@@ -218,7 +218,7 @@ macro_rules! CloneTypeFoldableImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
         $(
             impl<$tcx> $crate::ty::fold::TypeFoldable<$tcx> for $ty {
-                fn super_fold_with<'gcx: $tcx, F: $crate::ty::fold::TypeFolder<'gcx, $tcx>>(
+                fn super_fold_with<F: $crate::ty::fold::TypeFolder<$tcx>>(
                     &self,
                     _: &mut F
                 ) -> $ty {
@@ -264,7 +264,7 @@ macro_rules! BraceStructLiftImpl {
         {
             type Lifted = $lifted;
 
-            fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<$lifted> {
+            fn lift_to_tcx(&self, tcx: TyCtxt<$tcx>) -> Option<$lifted> {
                 $(let $field = tcx.lift(&self.$field)?;)*
                 Some(Self::Lifted { $($field),* })
             }
@@ -283,7 +283,7 @@ macro_rules! EnumLiftImpl {
         {
             type Lifted = $lifted;
 
-            fn lift_to_tcx<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Option<$lifted> {
+            fn lift_to_tcx(&self, tcx: TyCtxt<$tcx>) -> Option<$lifted> {
                 EnumLiftImpl!(@Variants(self, tcx) input($($variants)*) output())
             }
         }
@@ -332,7 +332,7 @@ macro_rules! BraceStructTypeFoldableImpl {
         impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
             $(where $($wc)*)*
         {
-            fn super_fold_with<'gcx: $tcx, V: $crate::ty::fold::TypeFolder<'gcx, $tcx>>(
+            fn super_fold_with<V: $crate::ty::fold::TypeFolder<$tcx>>(
                 &self,
                 folder: &mut V,
             ) -> Self {
@@ -359,7 +359,7 @@ macro_rules! TupleStructTypeFoldableImpl {
         impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
             $(where $($wc)*)*
         {
-            fn super_fold_with<'gcx: $tcx, V: $crate::ty::fold::TypeFolder<'gcx, $tcx>>(
+            fn super_fold_with<V: $crate::ty::fold::TypeFolder<$tcx>>(
                 &self,
                 folder: &mut V,
             ) -> Self {
@@ -386,7 +386,7 @@ macro_rules! EnumTypeFoldableImpl {
         impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
             $(where $($wc)*)*
         {
-            fn super_fold_with<'gcx: $tcx, V: $crate::ty::fold::TypeFolder<'gcx, $tcx>>(
+            fn super_fold_with<V: $crate::ty::fold::TypeFolder<$tcx>>(
                 &self,
                 folder: &mut V,
             ) -> Self {

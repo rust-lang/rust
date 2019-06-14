@@ -12,7 +12,7 @@ use crate::transform::{MirPass, MirSource};
 pub struct InstCombine;
 
 impl MirPass for InstCombine {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return
@@ -62,12 +62,12 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
 /// Finds optimization opportunities on the MIR.
 struct OptimizationFinder<'b, 'tcx> {
     body: &'b Body<'tcx>,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     optimizations: OptimizationList<'tcx>,
 }
 
 impl OptimizationFinder<'b, 'tcx> {
-    fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx, 'tcx>) -> OptimizationFinder<'b, 'tcx> {
+    fn new(body: &'b Body<'tcx>, tcx: TyCtxt<'tcx>) -> OptimizationFinder<'b, 'tcx> {
         OptimizationFinder {
             body,
             tcx,

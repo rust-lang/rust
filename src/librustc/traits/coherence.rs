@@ -48,8 +48,8 @@ pub fn add_placeholder_note(err: &mut errors::DiagnosticBuilder<'_>) {
 /// If there are types that satisfy both impls, invokes `on_overlap`
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, invokes `no_overlap`.
-pub fn overlapping_impls<'gcx, F1, F2, R>(
-    tcx: TyCtxt<'gcx, 'gcx>,
+pub fn overlapping_impls<'tcx, F1, F2, R>(
+    tcx: TyCtxt<'tcx>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     intercrate_mode: IntercrateMode,
@@ -87,11 +87,11 @@ where
     })
 }
 
-fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
-                                       param_env: ty::ParamEnv<'tcx>,
-                                       impl_def_id: DefId)
-                                       -> ty::ImplHeader<'tcx>
-{
+fn with_fresh_ty_vars<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl_def_id: DefId,
+) -> ty::ImplHeader<'tcx> {
     let tcx = selcx.tcx();
     let impl_substs = selcx.infcx().fresh_substs_for_item(DUMMY_SP, impl_def_id);
 
@@ -111,8 +111,8 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
 
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// where-clauses)? If so, returns an `ImplHeader` that unifies the two impls.
-fn overlap<'cx, 'gcx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+fn overlap<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     a_def_id: DefId,
     b_def_id: DefId,
 ) -> Option<OverlapResult<'tcx>> {
@@ -122,7 +122,7 @@ fn overlap<'cx, 'gcx, 'tcx>(
 }
 
 fn overlap_within_probe(
-    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+    selcx: &mut SelectionContext<'cx, 'tcx>,
     a_def_id: DefId,
     b_def_id: DefId,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
@@ -183,8 +183,8 @@ fn overlap_within_probe(
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }
 
-pub fn trait_ref_is_knowable<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn trait_ref_is_knowable<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> Option<Conflict> {
     debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
@@ -229,8 +229,8 @@ pub fn trait_ref_is_knowable<'gcx, 'tcx>(
     }
 }
 
-pub fn trait_ref_is_local_or_fundamental<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn trait_ref_is_local_or_fundamental<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> bool {
     trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, sym::fundamental)
@@ -247,8 +247,8 @@ pub enum OrphanCheckErr<'tcx> {
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
-pub fn orphan_check<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn orphan_check<'tcx>(
+    tcx: TyCtxt<'tcx>,
     impl_def_id: DefId,
 ) -> Result<(), OrphanCheckErr<'tcx>> {
     debug!("orphan_check({:?})", impl_def_id);
@@ -355,7 +355,7 @@ pub fn orphan_check<'gcx, 'tcx>(
 /// Note that this function is never called for types that have both type
 /// parameters and inference variables.
 fn orphan_check_trait_ref<'tcx>(
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     trait_ref: ty::TraitRef<'tcx>,
     in_crate: InCrate,
 ) -> Result<(), OrphanCheckErr<'tcx>> {
@@ -431,7 +431,7 @@ fn orphan_check_trait_ref<'tcx>(
     }
 }
 
-fn uncovered_tys<'tcx>(tcx: TyCtxt<'_, '_>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<Ty<'tcx>> {
+fn uncovered_tys<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<Ty<'tcx>> {
     if ty_is_local_constructor(ty, in_crate) {
         vec![]
     } else if fundamental_ty(ty) {
@@ -450,7 +450,7 @@ fn is_possibly_remote_type(ty: Ty<'_>, _in_crate: InCrate) -> bool {
     }
 }
 
-fn ty_is_local(tcx: TyCtxt<'_, '_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
+fn ty_is_local(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
     ty_is_local_constructor(ty, in_crate) ||
         fundamental_ty(ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, in_crate))
 }

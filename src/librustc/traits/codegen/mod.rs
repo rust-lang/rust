@@ -19,7 +19,7 @@ use crate::ty::fold::TypeFoldable;
 /// obligations *could be* resolved if we wanted to.
 /// Assumes that this is run after the entire crate has been successfully type-checked.
 pub fn codegen_fulfill_obligation<'tcx>(
-    ty: TyCtxt<'tcx, 'tcx>,
+    ty: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
 ) -> Vtable<'tcx, ()> {
     // Remove any references to regions; this helps improve caching.
@@ -73,7 +73,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
     })
 }
 
-impl<'tcx> TyCtxt<'tcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Monomorphizes a type from the AST by first applying the
     /// in-scope substitutions and then normalizing any associated
     /// types.
@@ -115,19 +115,19 @@ impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
 
 // # Global Cache
 
-pub struct ProjectionCache<'gcx> {
-    data: PhantomData<&'gcx ()>
+pub struct ProjectionCache<'tcx> {
+    data: PhantomData<&'tcx ()>,
 }
 
-impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
-    type Key = Ty<'gcx>;
-    type Value = Ty<'gcx>;
+impl<'tcx> DepTrackingMapConfig for ProjectionCache<'tcx> {
+    type Key = Ty<'tcx>;
+    type Value = Ty<'tcx>;
     fn to_dep_kind() -> DepKind {
         DepKind::TraitSelect
     }
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Finishes processes any obligations that remain in the
     /// fulfillment context, and then returns the result with all type
     /// variables removed and regions erased. Because this is intended
@@ -137,11 +137,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// type inference variables that appear in `result` to be
     /// unified, and hence we need to process those obligations to get
     /// the complete picture of the type.
-    fn drain_fulfillment_cx_or_panic<T>(&self,
-                                        fulfill_cx: &mut FulfillmentContext<'tcx>,
-                                        result: &T)
-                                        -> T::Lifted
-        where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
+    fn drain_fulfillment_cx_or_panic<T>(
+        &self,
+        fulfill_cx: &mut FulfillmentContext<'tcx>,
+        result: &T,
+    ) -> T::Lifted
+    where
+        T: TypeFoldable<'tcx> + ty::Lift<'tcx>,
     {
         debug!("drain_fulfillment_cx_or_panic()");
 

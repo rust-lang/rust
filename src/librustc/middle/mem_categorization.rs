@@ -287,14 +287,14 @@ impl HirNode for hir::Pat {
 }
 
 #[derive(Clone)]
-pub struct MemCategorizationContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    pub tcx: TyCtxt<'gcx, 'tcx>,
+pub struct MemCategorizationContext<'a, 'tcx> {
+    pub tcx: TyCtxt<'tcx>,
     pub body_owner: DefId,
     pub upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
     rvalue_promotable_map: Option<&'tcx ItemLocalSet>,
-    infcx: Option<&'a InferCtxt<'a, 'gcx, 'tcx>>,
+    infcx: Option<&'a InferCtxt<'a, 'tcx>>,
 }
 
 pub type McResult<T> = Result<T, ()>;
@@ -340,7 +340,7 @@ impl MutabilityCategory {
     }
 
     fn from_local(
-        tcx: TyCtxt<'_, '_>,
+        tcx: TyCtxt<'_>,
         tables: &ty::TypeckTables<'_>,
         id: ast::NodeId,
     ) -> MutabilityCategory {
@@ -402,14 +402,14 @@ impl MutabilityCategory {
     }
 }
 
-impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
+impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     pub fn new(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         body_owner: DefId,
         region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
         rvalue_promotable_map: Option<&'tcx ItemLocalSet>,
-    ) -> MemCategorizationContext<'a, 'tcx, 'tcx> {
+    ) -> MemCategorizationContext<'a, 'tcx> {
         MemCategorizationContext {
             tcx,
             body_owner,
@@ -422,7 +422,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Creates a `MemCategorizationContext` during type inference.
     /// This is used during upvar analysis and a few other places.
     /// Because the typeck tables are not yet complete, the results
@@ -432,11 +432,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     ///   temporaries may be overly conservative;
     /// - similarly, as the results of upvar analysis are not yet
     ///   known, the results around upvar accesses may be incorrect.
-    pub fn with_infer(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                      body_owner: DefId,
-                      region_scope_tree: &'a region::ScopeTree,
-                      tables: &'a ty::TypeckTables<'tcx>)
-                      -> MemCategorizationContext<'a, 'gcx, 'tcx> {
+    pub fn with_infer(
+        infcx: &'a InferCtxt<'a, 'tcx>,
+        body_owner: DefId,
+        region_scope_tree: &'a region::ScopeTree,
+        tables: &'a ty::TypeckTables<'tcx>,
+    ) -> MemCategorizationContext<'a, 'tcx> {
         let tcx = infcx.tcx;
 
         // Subtle: we can't do rvalue promotion analysis until the
@@ -586,10 +587,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn cat_expr(&self, expr: &hir::Expr) -> McResult<cmt_<'tcx>> {
         // This recursion helper avoids going through *too many*
         // adjustments, since *only* non-overloaded deref recurses.
-        fn helper<'a, 'gcx, 'tcx>(mc: &MemCategorizationContext<'a, 'gcx, 'tcx>,
-                                  expr: &hir::Expr,
-                                  adjustments: &[adjustment::Adjustment<'tcx>])
-                                  -> McResult<cmt_<'tcx>> {
+        fn helper<'a, 'tcx>(
+            mc: &MemCategorizationContext<'a, 'tcx>,
+            expr: &hir::Expr,
+            adjustments: &[adjustment::Adjustment<'tcx>],
+        ) -> McResult<cmt_<'tcx>> {
             match adjustments.split_last() {
                 None => mc.cat_expr_unadjusted(expr),
                 Some((adjustment, previous)) => {
@@ -1518,7 +1520,7 @@ impl<'tcx> cmt_<'tcx> {
         }
     }
 
-    pub fn descriptive_string(&self, tcx: TyCtxt<'_, '_>) -> Cow<'static, str> {
+    pub fn descriptive_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match self.cat {
             Categorization::StaticItem => {
                 "static item".into()

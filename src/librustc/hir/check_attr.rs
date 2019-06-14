@@ -88,7 +88,7 @@ impl Target {
 }
 
 struct CheckAttrVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl CheckAttrVisitor<'tcx> {
@@ -347,7 +347,7 @@ fn is_c_like_enum(item: &hir::Item) -> bool {
     }
 }
 
-fn check_mod_attrs<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_attrs<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut CheckAttrVisitor { tcx }.as_deep_visitor()

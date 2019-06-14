@@ -48,7 +48,7 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
 // The first pass over the crate simply builds up the set of inferreds.
 
 pub struct TermsContext<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx>,
     pub arena: &'a TypedArena<VarianceTerm<'a>>,
 
     // For marker types, UnsafeCell, and other lang items where
@@ -65,7 +65,7 @@ pub struct TermsContext<'a, 'tcx: 'a> {
 }
 
 pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     arena: &'a mut TypedArena<VarianceTerm<'a>>,
 ) -> TermsContext<'a, 'tcx> {
     let mut terms_cx = TermsContext {
@@ -86,7 +86,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
     terms_cx
 }
 
-fn lang_items(tcx: TyCtxt<'_, '_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
+fn lang_items(tcx: TyCtxt<'_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
     let lang_items = tcx.lang_items();
     let all = vec![
         (lang_items.phantom_data(), vec![ty::Covariant]),

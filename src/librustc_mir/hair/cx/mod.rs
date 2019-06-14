@@ -22,8 +22,8 @@ use crate::hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx, 'tcx>,
-    infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    infcx: &'a InferCtxt<'a, 'tcx>,
 
     pub root_lint_level: hir::HirId,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -52,8 +52,7 @@ pub struct Cx<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Cx<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
-               src_id: hir::HirId) -> Cx<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>, src_id: hir::HirId) -> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;
         let src_def_id = tcx.hir().local_def_id_from_hir_id(src_id);
         let tables = tcx.typeck_tables_of(src_def_id);
@@ -200,7 +199,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         ty.needs_drop(self.tcx.global_tcx(), param_env)
     }
 
-    pub fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -218,7 +217,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
 }
 
 impl UserAnnotatedTyHelpers<'tcx> for Cx<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx()
     }
 

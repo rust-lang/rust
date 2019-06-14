@@ -12,10 +12,7 @@ use crate::util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
-fn anonymize_predicate<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
-    pred: &ty::Predicate<'tcx>,
-) -> ty::Predicate<'tcx> {
+fn anonymize_predicate<'tcx>(tcx: TyCtxt<'tcx>, pred: &ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
     match *pred {
         ty::Predicate::Trait(ref data) =>
             ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data)),
@@ -46,13 +43,13 @@ fn anonymize_predicate<'gcx, 'tcx>(
     }
 }
 
-struct PredicateSet<'gcx, 'tcx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+struct PredicateSet<'tcx> {
+    tcx: TyCtxt<'tcx>,
     set: FxHashSet<ty::Predicate<'tcx>>,
 }
 
-impl PredicateSet<'gcx, 'tcx> {
-    fn new(tcx: TyCtxt<'gcx, 'tcx>) -> Self {
+impl PredicateSet<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self { tcx: tcx, set: Default::default() }
     }
 
@@ -71,7 +68,7 @@ impl PredicateSet<'gcx, 'tcx> {
     }
 }
 
-impl<T: AsRef<ty::Predicate<'tcx>>> Extend<T> for PredicateSet<'gcx, 'tcx> {
+impl<T: AsRef<ty::Predicate<'tcx>>> Extend<T> for PredicateSet<'tcx> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         for pred in iter {
             self.insert(pred.as_ref());
@@ -89,36 +86,36 @@ impl<T: AsRef<ty::Predicate<'tcx>>> Extend<T> for PredicateSet<'gcx, 'tcx> {
 /// if we know that `T: Ord`, the elaborator would deduce that `T: PartialOrd`
 /// holds as well. Similarly, if we have `trait Foo: 'static`, and we know that
 /// `T: Foo`, then we know that `T: 'static`.
-pub struct Elaborator<'gcx, 'tcx> {
+pub struct Elaborator<'tcx> {
     stack: Vec<ty::Predicate<'tcx>>,
-    visited: PredicateSet<'gcx, 'tcx>,
+    visited: PredicateSet<'tcx>,
 }
 
-pub fn elaborate_trait_ref<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn elaborate_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-) -> Elaborator<'gcx, 'tcx> {
+) -> Elaborator<'tcx> {
     elaborate_predicates(tcx, vec![trait_ref.to_predicate()])
 }
 
-pub fn elaborate_trait_refs<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn elaborate_trait_refs<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-) -> Elaborator<'gcx, 'tcx> {
+) -> Elaborator<'tcx> {
     let predicates = trait_refs.map(|trait_ref| trait_ref.to_predicate()).collect();
     elaborate_predicates(tcx, predicates)
 }
 
-pub fn elaborate_predicates<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn elaborate_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
     mut predicates: Vec<ty::Predicate<'tcx>>,
-) -> Elaborator<'gcx, 'tcx> {
+) -> Elaborator<'tcx> {
     let mut visited = PredicateSet::new(tcx);
     predicates.retain(|pred| visited.insert(pred));
     Elaborator { stack: predicates, visited }
 }
 
-impl Elaborator<'gcx, 'tcx> {
+impl Elaborator<'tcx> {
     pub fn filter_to_traits(self) -> FilterToTraits<Self> {
         FilterToTraits::new(self)
     }
@@ -230,7 +227,7 @@ impl Elaborator<'gcx, 'tcx> {
     }
 }
 
-impl Iterator for Elaborator<'gcx, 'tcx> {
+impl Iterator for Elaborator<'tcx> {
     type Item = ty::Predicate<'tcx>;
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -252,19 +249,19 @@ impl Iterator for Elaborator<'gcx, 'tcx> {
 // Supertrait iterator
 ///////////////////////////////////////////////////////////////////////////
 
-pub type Supertraits<'gcx, 'tcx> = FilterToTraits<Elaborator<'gcx, 'tcx>>;
+pub type Supertraits<'tcx> = FilterToTraits<Elaborator<'tcx>>;
 
-pub fn supertraits<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn supertraits<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-) -> Supertraits<'gcx, 'tcx> {
+) -> Supertraits<'tcx> {
     elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
 }
 
-pub fn transitive_bounds<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn transitive_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
     bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-) -> Supertraits<'gcx, 'tcx> {
+) -> Supertraits<'tcx> {
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
 }
 
@@ -280,8 +277,8 @@ pub fn transitive_bounds<'gcx, 'tcx>(
 /// `Read + Write + Sync + Send`.
 /// Expansion is done via a DFS (depth-first search), and the `visited` field
 /// is used to avoid cycles.
-pub struct TraitAliasExpander<'gcx, 'tcx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub struct TraitAliasExpander<'tcx> {
+    tcx: TyCtxt<'tcx>,
     stack: Vec<TraitAliasExpansionInfo<'tcx>>,
 }
 
@@ -337,10 +334,10 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
     }
 }
 
-pub fn expand_trait_aliases<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn expand_trait_aliases<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>,
-) -> TraitAliasExpander<'gcx, 'tcx> {
+) -> TraitAliasExpander<'tcx> {
     let items: Vec<_> = trait_refs
         .into_iter()
         .map(|(trait_ref, span)| TraitAliasExpansionInfo::new(trait_ref, span))
@@ -348,7 +345,7 @@ pub fn expand_trait_aliases<'gcx, 'tcx>(
     TraitAliasExpander { tcx, stack: items }
 }
 
-impl<'gcx, 'tcx> TraitAliasExpander<'gcx, 'tcx> {
+impl<'tcx> TraitAliasExpander<'tcx> {
     /// If `item` is a trait alias and its predicate has not yet been visited, then expands `item`
     /// to the definition, pushes the resulting expansion onto `self.stack`, and returns `false`.
     /// Otherwise, immediately returns `true` if `item` is a regular trait, or `false` if it is a
@@ -393,7 +390,7 @@ impl<'gcx, 'tcx> TraitAliasExpander<'gcx, 'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> Iterator for TraitAliasExpander<'gcx, 'tcx> {
+impl<'tcx> Iterator for TraitAliasExpander<'tcx> {
     type Item = TraitAliasExpansionInfo<'tcx>;
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -414,16 +411,13 @@ impl<'gcx, 'tcx> Iterator for TraitAliasExpander<'gcx, 'tcx> {
 // Iterator over def-IDs of supertraits
 ///////////////////////////////////////////////////////////////////////////
 
-pub struct SupertraitDefIds<'gcx, 'tcx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub struct SupertraitDefIds<'tcx> {
+    tcx: TyCtxt<'tcx>,
     stack: Vec<DefId>,
     visited: FxHashSet<DefId>,
 }
 
-pub fn supertrait_def_ids<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
-    trait_def_id: DefId,
-) -> SupertraitDefIds<'gcx, 'tcx> {
+pub fn supertrait_def_ids<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId) -> SupertraitDefIds<'tcx> {
     SupertraitDefIds {
         tcx,
         stack: vec![trait_def_id],
@@ -431,7 +425,7 @@ pub fn supertrait_def_ids<'gcx, 'tcx>(
     }
 }
 
-impl Iterator for SupertraitDefIds<'gcx, 'tcx> {
+impl Iterator for SupertraitDefIds<'tcx> {
     type Item = DefId;
 
     fn next(&mut self) -> Option<DefId> {
@@ -489,13 +483,12 @@ impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<
 /// Instantiate all bound parameters of the impl with the given substs,
 /// returning the resulting trait ref and all obligations that arise.
 /// The obligations are closed under normalization.
-pub fn impl_trait_ref_and_oblig<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
-                                                param_env: ty::ParamEnv<'tcx>,
-                                                impl_def_id: DefId,
-                                                impl_substs: SubstsRef<'tcx>,)
-                                                -> (ty::TraitRef<'tcx>,
-                                                    Vec<PredicateObligation<'tcx>>)
-{
+pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
+    selcx: &mut SelectionContext<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl_def_id: DefId,
+    impl_substs: SubstsRef<'tcx>,
+) -> (ty::TraitRef<'tcx>, Vec<PredicateObligation<'tcx>>) {
     let impl_trait_ref =
         selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
     let impl_trait_ref =
@@ -552,7 +545,7 @@ pub fn predicate_for_trait_ref<'tcx>(
     }
 }
 
-impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn predicate_for_trait_def(self,
                                    param_env: ty::ParamEnv<'tcx>,
                                    cause: ObligationCause<'tcx>,

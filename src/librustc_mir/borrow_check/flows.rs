@@ -22,20 +22,20 @@ use std::fmt;
 use std::rc::Rc;
 
 // (forced to be `pub` due to its use as an associated type below.)
-crate struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
-    borrows: FlowAtLocation<'tcx, Borrows<'b, 'gcx, 'tcx>>,
-    pub uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
-    pub ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'gcx, 'tcx>>,
+crate struct Flows<'b, 'tcx: 'b> {
+    borrows: FlowAtLocation<'tcx, Borrows<'b, 'tcx>>,
+    pub uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'tcx>>,
+    pub ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'tcx>>,
 
     /// Polonius Output
     pub polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
 }
 
-impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
+impl<'b, 'tcx> Flows<'b, 'tcx> {
     crate fn new(
-        borrows: FlowAtLocation<'tcx, Borrows<'b, 'gcx, 'tcx>>,
-        uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
-        ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'gcx, 'tcx>>,
+        borrows: FlowAtLocation<'tcx, Borrows<'b, 'tcx>>,
+        uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'tcx>>,
+        ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'tcx>>,
         polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
     ) -> Self {
         Flows {
@@ -70,7 +70,7 @@ macro_rules! each_flow {
     };
 }
 
-impl<'b, 'gcx, 'tcx> FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
+impl<'b, 'tcx> FlowsAtLocation for Flows<'b, 'tcx> {
     fn reset_to_entry_of(&mut self, bb: BasicBlock) {
         each_flow!(self, reset_to_entry_of(bb));
     }
@@ -92,7 +92,7 @@ impl<'b, 'gcx, 'tcx> FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
     }
 }
 
-impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
+impl<'b, 'tcx> fmt::Display for Flows<'b, 'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
 

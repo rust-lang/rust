@@ -22,8 +22,8 @@ pub enum Cause {
     ExistentialRegionBound, // relating an existential region bound
 }
 
-pub trait TypeRelation<'gcx: 'tcx, 'tcx>: Sized {
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx>;
+pub trait TypeRelation<'tcx>: Sized {
+    fn tcx(&self) -> TyCtxt<'tcx>;
 
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
@@ -94,27 +94,22 @@ pub trait TypeRelation<'gcx: 'tcx, 'tcx>: Sized {
 }
 
 pub trait Relate<'tcx>: TypeFoldable<'tcx> {
-    fn relate<'a, 'gcx, R>(relation: &mut R, a: &Self, b: &Self) -> RelateResult<'tcx, Self>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a;
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: &Self,
+        b: &Self,
+    ) -> RelateResult<'tcx, Self>;
 }
 
 ///////////////////////////////////////////////////////////////////////////
 // Relate impls
 
 impl<'tcx> Relate<'tcx> for ty::TypeAndMut<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::TypeAndMut<'tcx>,
         b: &ty::TypeAndMut<'tcx>,
-    ) -> RelateResult<'tcx, ty::TypeAndMut<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::TypeAndMut<'tcx>> {
         debug!("{}.mts({:?}, {:?})",
                relation.tag(),
                a,
@@ -133,17 +128,12 @@ impl<'tcx> Relate<'tcx> for ty::TypeAndMut<'tcx> {
     }
 }
 
-pub fn relate_substs<'a, 'gcx, 'tcx, R>(
+pub fn relate_substs<R: TypeRelation<'tcx>>(
     relation: &mut R,
     variances: Option<&[ty::Variance]>,
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
-) -> RelateResult<'tcx, SubstsRef<'tcx>>
-where
-    R: TypeRelation<'gcx, 'tcx>,
-    'gcx: 'a + 'tcx,
-    'tcx: 'a,
-{
+) -> RelateResult<'tcx, SubstsRef<'tcx>> {
     let tcx = relation.tcx();
 
     let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
@@ -155,16 +145,11 @@ where
 }
 
 impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::FnSig<'tcx>,
         b: &ty::FnSig<'tcx>,
-    ) -> RelateResult<'tcx, ty::FnSig<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::FnSig<'tcx>> {
         let tcx = relation.tcx();
 
         if a.c_variadic != b.c_variadic {
@@ -199,16 +184,11 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for ast::Unsafety {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ast::Unsafety,
         b: &ast::Unsafety,
-    ) -> RelateResult<'tcx, ast::Unsafety>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ast::Unsafety> {
         if a != b {
             Err(TypeError::UnsafetyMismatch(expected_found(relation, a, b)))
         } else {
@@ -218,16 +198,11 @@ impl<'tcx> Relate<'tcx> for ast::Unsafety {
 }
 
 impl<'tcx> Relate<'tcx> for abi::Abi {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &abi::Abi,
         b: &abi::Abi,
-    ) -> RelateResult<'tcx, abi::Abi>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, abi::Abi> {
         if a == b {
             Ok(*a)
         } else {
@@ -237,16 +212,11 @@ impl<'tcx> Relate<'tcx> for abi::Abi {
 }
 
 impl<'tcx> Relate<'tcx> for ty::ProjectionTy<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::ProjectionTy<'tcx>,
         b: &ty::ProjectionTy<'tcx>,
-    ) -> RelateResult<'tcx, ty::ProjectionTy<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::ProjectionTy<'tcx>> {
         if a.item_def_id != b.item_def_id {
             Err(TypeError::ProjectionMismatched(
                 expected_found(relation, &a.item_def_id, &b.item_def_id)))
@@ -261,16 +231,11 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionTy<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::ExistentialProjection<'tcx>,
         b: &ty::ExistentialProjection<'tcx>,
-    ) -> RelateResult<'tcx, ty::ExistentialProjection<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::ExistentialProjection<'tcx>> {
         if a.item_def_id != b.item_def_id {
             Err(TypeError::ProjectionMismatched(
                 expected_found(relation, &a.item_def_id, &b.item_def_id)))
@@ -287,16 +252,11 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for Vec<ty::PolyExistentialProjection<'tcx>> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &Vec<ty::PolyExistentialProjection<'tcx>>,
         b: &Vec<ty::PolyExistentialProjection<'tcx>>,
-    ) -> RelateResult<'tcx, Vec<ty::PolyExistentialProjection<'tcx>>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, Vec<ty::PolyExistentialProjection<'tcx>>> {
         // To be compatible, `a` and `b` must be for precisely the
         // same set of traits and item names. We always require that
         // projection bounds lists are sorted by trait-def-id and item-name,
@@ -314,16 +274,11 @@ impl<'tcx> Relate<'tcx> for Vec<ty::PolyExistentialProjection<'tcx>> {
 }
 
 impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::TraitRef<'tcx>,
         b: &ty::TraitRef<'tcx>,
-    ) -> RelateResult<'tcx, ty::TraitRef<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::TraitRef<'tcx>> {
         // Different traits cannot be related
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
@@ -335,16 +290,11 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::ExistentialTraitRef<'tcx>,
         b: &ty::ExistentialTraitRef<'tcx>,
-    ) -> RelateResult<'tcx, ty::ExistentialTraitRef<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::ExistentialTraitRef<'tcx>> {
         // Different traits cannot be related
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
@@ -365,16 +315,11 @@ TupleStructTypeFoldableImpl! {
 }
 
 impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &GeneratorWitness<'tcx>,
         b: &GeneratorWitness<'tcx>,
-    ) -> RelateResult<'tcx, GeneratorWitness<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
         assert_eq!(a.0.len(), b.0.len());
         let tcx = relation.tcx();
         let types = tcx.mk_type_list(a.0.iter().zip(b.0).map(|(a, b)| relation.relate(a, b)))?;
@@ -383,16 +328,11 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for Ty<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &Ty<'tcx>,
         b: &Ty<'tcx>,
-    ) -> RelateResult<'tcx, Ty<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
         relation.tys(a, b)
     }
 }
@@ -400,16 +340,11 @@ impl<'tcx> Relate<'tcx> for Ty<'tcx> {
 /// The main "type relation" routine. Note that this does not handle
 /// inference artifacts, so you should filter those out before calling
 /// it.
-pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(
+pub fn super_relate_tys<R: TypeRelation<'tcx>>(
     relation: &mut R,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
-) -> RelateResult<'tcx, Ty<'tcx>>
-where
-    R: TypeRelation<'gcx, 'tcx>,
-    'gcx: 'a + 'tcx,
-    'tcx: 'a,
-{
+) -> RelateResult<'tcx, Ty<'tcx>> {
     let tcx = relation.tcx();
     debug!("super_relate_tys: a={:?} b={:?}", a, b);
     match (&a.sty, &b.sty) {
@@ -604,16 +539,11 @@ where
 /// The main "const relation" routine. Note that this does not handle
 /// inference artifacts, so you should filter those out before calling
 /// it.
-pub fn super_relate_consts<'a, 'gcx, 'tcx, R>(
+pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     relation: &mut R,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
-) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>
-where
-    R: TypeRelation<'gcx, 'tcx>,
-    'gcx: 'a + 'tcx,
-    'tcx: 'a,
-{
+) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
     let tcx = relation.tcx();
 
     let eagerly_eval = |x: &'tcx ty::Const<'tcx>| {
@@ -688,12 +618,11 @@ where
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
-    fn relate<'a, 'gcx, R>(relation: &mut R, a: &Self, b: &Self) -> RelateResult<'tcx, Self>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: &Self,
+        b: &Self,
+    ) -> RelateResult<'tcx, Self> {
         if a.len() != b.len() {
             return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
         }
@@ -713,104 +642,73 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
 }
 
 impl<'tcx> Relate<'tcx> for ty::ClosureSubsts<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::ClosureSubsts<'tcx>,
         b: &ty::ClosureSubsts<'tcx>,
-    ) -> RelateResult<'tcx, ty::ClosureSubsts<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::ClosureSubsts<'tcx>> {
         let substs = relate_substs(relation, None, a.substs, b.substs)?;
         Ok(ty::ClosureSubsts { substs })
     }
 }
 
 impl<'tcx> Relate<'tcx> for ty::GeneratorSubsts<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::GeneratorSubsts<'tcx>,
         b: &ty::GeneratorSubsts<'tcx>,
-    ) -> RelateResult<'tcx, ty::GeneratorSubsts<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::GeneratorSubsts<'tcx>> {
         let substs = relate_substs(relation, None, a.substs, b.substs)?;
         Ok(ty::GeneratorSubsts { substs })
     }
 }
 
 impl<'tcx> Relate<'tcx> for SubstsRef<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &SubstsRef<'tcx>,
         b: &SubstsRef<'tcx>,
-    ) -> RelateResult<'tcx, SubstsRef<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
         relate_substs(relation, None, a, b)
     }
 }
 
 impl<'tcx> Relate<'tcx> for ty::Region<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::Region<'tcx>,
         b: &ty::Region<'tcx>,
-    ) -> RelateResult<'tcx, ty::Region<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         relation.regions(*a, *b)
     }
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::Const<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &&'tcx ty::Const<'tcx>,
         b: &&'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         relation.consts(*a, *b)
     }
 }
 
 impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for ty::Binder<T> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::Binder<T>,
         b: &ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::Binder<T>> {
         relation.binders(a, b)
     }
 }
 
 impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Rc<T> {
-    fn relate<'a, 'gcx, R>(relation: &mut R, a: &Rc<T>, b: &Rc<T>) -> RelateResult<'tcx, Rc<T>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: &Rc<T>,
+        b: &Rc<T>,
+    ) -> RelateResult<'tcx, Rc<T>> {
         let a: &T = a;
         let b: &T = b;
         Ok(Rc::new(relation.relate(a, b)?))
@@ -818,12 +716,11 @@ impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Rc<T> {
 }
 
 impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Box<T> {
-    fn relate<'a, 'gcx, R>(relation: &mut R, a: &Box<T>, b: &Box<T>) -> RelateResult<'tcx, Box<T>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: &Box<T>,
+        b: &Box<T>,
+    ) -> RelateResult<'tcx, Box<T>> {
         let a: &T = a;
         let b: &T = b;
         Ok(Box::new(relation.relate(a, b)?))
@@ -831,16 +728,11 @@ impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Box<T> {
 }
 
 impl<'tcx> Relate<'tcx> for Kind<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &Kind<'tcx>,
         b: &Kind<'tcx>,
-    ) -> RelateResult<'tcx, Kind<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'a + 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, Kind<'tcx>> {
         match (a.unpack(), b.unpack()) {
             (UnpackedKind::Lifetime(a_lt), UnpackedKind::Lifetime(b_lt)) => {
                 Ok(relation.relate(&a_lt, &b_lt)?.into())
@@ -865,16 +757,11 @@ impl<'tcx> Relate<'tcx> for Kind<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::TraitPredicate<'tcx>,
         b: &ty::TraitPredicate<'tcx>,
-    ) -> RelateResult<'tcx, ty::TraitPredicate<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::TraitPredicate<'tcx>> {
         Ok(ty::TraitPredicate {
             trait_ref: relation.relate(&a.trait_ref, &b.trait_ref)?,
         })
@@ -882,16 +769,11 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &ty::ProjectionPredicate<'tcx>,
         b: &ty::ProjectionPredicate<'tcx>,
-    ) -> RelateResult<'tcx, ty::ProjectionPredicate<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, ty::ProjectionPredicate<'tcx>> {
         Ok(ty::ProjectionPredicate {
             projection_ty: relation.relate(&a.projection_ty, &b.projection_ty)?,
             ty: relation.relate(&a.ty, &b.ty)?,
@@ -900,16 +782,11 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for traits::WhereClause<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::WhereClause<'tcx>,
         b: &traits::WhereClause<'tcx>,
-    ) -> RelateResult<'tcx, traits::WhereClause<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::WhereClause<'tcx>> {
         use crate::traits::WhereClause::*;
         match (a, b) {
             (Implemented(a_pred), Implemented(b_pred)) => {
@@ -940,16 +817,11 @@ impl<'tcx> Relate<'tcx> for traits::WhereClause<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for traits::WellFormed<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::WellFormed<'tcx>,
         b: &traits::WellFormed<'tcx>,
-    ) -> RelateResult<'tcx, traits::WellFormed<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::WellFormed<'tcx>> {
         use crate::traits::WellFormed::*;
         match (a, b) {
             (Trait(a_pred), Trait(b_pred)) => Ok(Trait(relation.relate(a_pred, b_pred)?)),
@@ -960,16 +832,11 @@ impl<'tcx> Relate<'tcx> for traits::WellFormed<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for traits::FromEnv<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::FromEnv<'tcx>,
         b: &traits::FromEnv<'tcx>,
-    ) -> RelateResult<'tcx, traits::FromEnv<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::FromEnv<'tcx>> {
         use crate::traits::FromEnv::*;
         match (a, b) {
             (Trait(a_pred), Trait(b_pred)) => Ok(Trait(relation.relate(a_pred, b_pred)?)),
@@ -980,16 +847,11 @@ impl<'tcx> Relate<'tcx> for traits::FromEnv<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for traits::DomainGoal<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::DomainGoal<'tcx>,
         b: &traits::DomainGoal<'tcx>,
-    ) -> RelateResult<'tcx, traits::DomainGoal<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::DomainGoal<'tcx>> {
         use crate::traits::DomainGoal::*;
         match (a, b) {
             (Holds(a_wc), Holds(b_wc)) => Ok(Holds(relation.relate(a_wc, b_wc)?)),
@@ -1006,16 +868,11 @@ impl<'tcx> Relate<'tcx> for traits::DomainGoal<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for traits::Goal<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::Goal<'tcx>,
         b: &traits::Goal<'tcx>,
-    ) -> RelateResult<'tcx, traits::Goal<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::Goal<'tcx>> {
         use crate::traits::GoalKind::*;
         match (a, b) {
             (Implies(a_clauses, a_goal), Implies(b_clauses, b_goal)) => {
@@ -1055,16 +912,11 @@ impl<'tcx> Relate<'tcx> for traits::Goal<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for traits::Goals<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::Goals<'tcx>,
         b: &traits::Goals<'tcx>,
-    ) -> RelateResult<'tcx, traits::Goals<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::Goals<'tcx>> {
         if a.len() != b.len() {
             return Err(TypeError::Mismatch);
         }
@@ -1076,16 +928,11 @@ impl<'tcx> Relate<'tcx> for traits::Goals<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for traits::Clause<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::Clause<'tcx>,
         b: &traits::Clause<'tcx>,
-    ) -> RelateResult<'tcx, traits::Clause<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::Clause<'tcx>> {
         use crate::traits::Clause::*;
         match (a, b) {
             (Implies(a_clause), Implies(b_clause)) => {
@@ -1104,16 +951,11 @@ impl<'tcx> Relate<'tcx> for traits::Clause<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for traits::Clauses<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::Clauses<'tcx>,
         b: &traits::Clauses<'tcx>,
-    ) -> RelateResult<'tcx, traits::Clauses<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::Clauses<'tcx>> {
         if a.len() != b.len() {
             return Err(TypeError::Mismatch);
         }
@@ -1125,16 +967,11 @@ impl<'tcx> Relate<'tcx> for traits::Clauses<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for traits::ProgramClause<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::ProgramClause<'tcx>,
         b: &traits::ProgramClause<'tcx>,
-    ) -> RelateResult<'tcx, traits::ProgramClause<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::ProgramClause<'tcx>> {
         Ok(traits::ProgramClause {
             goal: relation.relate(&a.goal, &b.goal)?,
             hypotheses: relation.relate(&a.hypotheses, &b.hypotheses)?,
@@ -1144,16 +981,11 @@ impl<'tcx> Relate<'tcx> for traits::ProgramClause<'tcx> {
 }
 
 impl<'tcx> Relate<'tcx> for traits::Environment<'tcx> {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::Environment<'tcx>,
         b: &traits::Environment<'tcx>,
-    ) -> RelateResult<'tcx, traits::Environment<'tcx>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::Environment<'tcx>> {
         Ok(traits::Environment {
             clauses: relation.relate(&a.clauses, &b.clauses)?,
         })
@@ -1164,16 +996,11 @@ impl<'tcx, G> Relate<'tcx> for traits::InEnvironment<'tcx, G>
 where
     G: Relate<'tcx>,
 {
-    fn relate<'a, 'gcx, R>(
+    fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: &traits::InEnvironment<'tcx, G>,
         b: &traits::InEnvironment<'tcx, G>,
-    ) -> RelateResult<'tcx, traits::InEnvironment<'tcx, G>>
-    where
-        R: TypeRelation<'gcx, 'tcx>,
-        'gcx: 'tcx,
-        'tcx: 'a,
-    {
+    ) -> RelateResult<'tcx, traits::InEnvironment<'tcx, G>> {
         Ok(traits::InEnvironment {
             environment: relation.relate(&a.environment, &b.environment)?,
             goal: relation.relate(&a.goal, &b.goal)?,
@@ -1184,12 +1011,10 @@ where
 ///////////////////////////////////////////////////////////////////////////
 // Error handling
 
-pub fn expected_found<'a, 'gcx, 'tcx, R, T>(relation: &mut R, a: &T, b: &T) -> ExpectedFound<T>
+pub fn expected_found<R, T>(relation: &mut R, a: &T, b: &T) -> ExpectedFound<T>
 where
-    R: TypeRelation<'gcx, 'tcx>,
+    R: TypeRelation<'tcx>,
     T: Clone,
-    'gcx: 'a + 'tcx,
-    'tcx: 'a,
 {
     expected_found_bool(relation.a_is_expected(), a, b)
 }

@@ -11,9 +11,10 @@ use crate::middle::region;
 use crate::ty;
 use crate::mir;
 
-impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
-for &'gcx ty::List<T>
-    where T: HashStable<StableHashingContext<'a>> {
+impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for &'tcx ty::List<T>
+where
+    T: HashStable<StableHashingContext<'a>>,
+{
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -40,8 +41,9 @@ for &'gcx ty::List<T>
     }
 }
 
-impl<'a, 'gcx, T> ToStableHashKey<StableHashingContext<'a>> for &'gcx ty::List<T>
-    where T: HashStable<StableHashingContext<'a>>
+impl<'a, 'tcx, T> ToStableHashKey<StableHashingContext<'a>> for &'tcx ty::List<T>
+where
+    T: HashStable<StableHashingContext<'a>>,
 {
     type KeyType = Fingerprint;
 
@@ -54,7 +56,7 @@ impl<'a, 'gcx, T> ToStableHashKey<StableHashingContext<'a>> for &'gcx ty::List<T
     }
 }
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::subst::Kind<'gcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::Kind<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -117,20 +119,24 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionVid {
     }
 }
 
-impl<'gcx, 'tcx> HashStable<StableHashingContext<'gcx>> for ty::ConstVid<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::ConstVid<'tcx> {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
         self.index.hash_stable(hcx, hasher);
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::BoundVar {
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for ty::BoundVar {
     #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
-                                          hasher: &mut StableHasher<W>) {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'tcx>,
+        hasher: &mut StableHasher<W>,
+    ) {
         self.index().hash_stable(hcx, hasher);
     }
 }

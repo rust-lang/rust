@@ -38,7 +38,7 @@ use syntax::ast;
 use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span, ExpnInfo, ExpnFormat};
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(&self,
                                      errors: &[FulfillmentError<'tcx>],
                                      body_id: Option<hir::BodyId>,
@@ -1249,10 +1249,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         expected_ref: ty::PolyTraitRef<'tcx>,
         found: ty::PolyTraitRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
-        fn build_fn_sig_string<'gcx, 'tcx>(
-            tcx: TyCtxt<'gcx, 'tcx>,
-            trait_ref: &ty::TraitRef<'tcx>,
-        ) -> String {
+        fn build_fn_sig_string<'tcx>(tcx: TyCtxt<'tcx>, trait_ref: &ty::TraitRef<'tcx>) -> String {
             let inputs = trait_ref.substs.type_at(1);
             let sig = if let ty::Tuple(inputs) = inputs.sty {
                 tcx.mk_fn_sig(
@@ -1296,7 +1293,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn recursive_type_with_infinite_size_error(self,
                                                    type_def_id: DefId)
                                                    -> DiagnosticBuilder<'tcx>
@@ -1342,7 +1339,7 @@ impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>,
                               body_id: Option<hir::BodyId>) {
         // Unable to successfully determine, probably means
@@ -1454,13 +1451,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         pred: ty::PolyTraitRef<'tcx>,
     ) -> bool {
-        struct ParamToVarFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-            infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-            var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>
+        struct ParamToVarFolder<'a, 'tcx: 'a> {
+            infcx: &'a InferCtxt<'a, 'tcx>,
+            var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
         }
 
-        impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ParamToVarFolder<'a, 'gcx, 'tcx> {
-            fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> { self.infcx.tcx }
+        impl<'a, 'tcx> TypeFolder<'tcx> for ParamToVarFolder<'a, 'tcx> {
+            fn tcx<'b>(&'b self) -> TyCtxt<'tcx> { self.infcx.tcx }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
                 if let ty::Param(ty::ParamTy {name, .. }) = ty.sty {

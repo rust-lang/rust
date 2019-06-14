@@ -64,7 +64,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OutlivesBound<'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Implied bounds are region relationships that we deduce
     /// automatically. The idea is that (e.g.) a caller must check that a
     /// function's argument types are well-formed immediately before

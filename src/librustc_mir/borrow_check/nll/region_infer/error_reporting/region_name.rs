@@ -151,7 +151,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// and then return the name `'1` for us to use.
     crate fn give_region_a_name(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         upvars: &[Upvar],
         mir_def_id: DefId,
@@ -194,7 +194,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// named variants.
     fn give_name_from_error_region(
         &self,
-        tcx: TyCtxt<'_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
@@ -303,7 +303,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn get_named_span(
         &self,
-        tcx: TyCtxt<'_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         error_region: &RegionKind,
         name: InternedString,
     ) -> Span {
@@ -331,7 +331,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn give_name_if_anonymous_region_appears_in_arguments(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
@@ -359,7 +359,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     fn give_name_if_we_can_match_hir_ty_from_argument(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         mir_def_id: DefId,
         needle_fr: RegionVid,
@@ -405,7 +405,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn give_name_if_we_cannot_match_hir_ty(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
@@ -461,7 +461,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// to highlighting that closest type instead.
     fn give_name_if_we_can_match_hir_ty(
         &self,
-        tcx: TyCtxt<'_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
         argument_hir_ty: &hir::Ty,
@@ -653,7 +653,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     fn give_name_if_anonymous_region_appears_in_upvars(
         &self,
-        tcx: TyCtxt<'_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         upvars: &[Upvar],
         fr: RegionVid,
         counter: &mut usize,
@@ -675,7 +675,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// or be early bound (named, not in argument).
     fn give_name_if_anonymous_region_appears_in_output(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
@@ -735,7 +735,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     fn give_name_if_anonymous_region_appears_in_yield_ty(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,

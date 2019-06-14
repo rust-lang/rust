@@ -44,7 +44,7 @@ const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
 pub(crate) fn mk_eval_cx<'mir, 'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
@@ -53,7 +53,7 @@ pub(crate) fn mk_eval_cx<'mir, 'tcx>(
 }
 
 pub(crate) fn eval_promoted<'mir, 'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     cid: GlobalId<'tcx>,
     body: &'mir mir::Body<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -394,7 +394,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     fn find_foreign_static(
         _def_id: DefId,
-        _tcx: TyCtxtAt<'tcx, 'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
         err!(ReadForeignStatic)
     }
@@ -467,7 +467,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 // this function uses `unwrap` copiously, because an already validated constant must have valid
 // fields and can thus never fail outside of compiler bugs
 pub fn const_field<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
@@ -492,7 +492,7 @@ pub fn const_field<'tcx>(
 // this function uses `unwrap` copiously, because an already validated constant must have valid
 // fields and can thus never fail outside of compiler bugs
 pub fn const_variant_index<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     val: &'tcx ty::Const<'tcx>,
 ) -> VariantIdx {
@@ -512,7 +512,7 @@ pub fn error_to_const_error<'mir, 'tcx>(
 }
 
 fn validate_and_turn_into_const<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     constant: RawConst<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
@@ -555,7 +555,7 @@ fn validate_and_turn_into_const<'tcx>(
 }
 
 pub fn const_eval_provider<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     // see comment in const_eval_provider for what we're doing here
@@ -579,7 +579,7 @@ pub fn const_eval_provider<'tcx>(
 }
 
 pub fn const_eval_raw_provider<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalRawResult<'tcx> {
     // Because the constant is computed twice (once per value of `Reveal`), we are at risk of

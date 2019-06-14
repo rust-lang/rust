@@ -121,12 +121,12 @@ pub enum PartitioningStrategy {
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
-fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_, '_>) -> InternedString {
+fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> InternedString {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
 pub fn partition<'tcx, I>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     mono_items: I,
     strategy: PartitioningStrategy,
     inlining_map: &InliningMap<'tcx>,
@@ -203,10 +203,7 @@ struct PostInliningPartitioning<'tcx> {
     internalization_candidates: FxHashSet<MonoItem<'tcx>>,
 }
 
-fn place_root_mono_items<'tcx, I>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    mono_items: I,
-) -> PreInliningPartitioning<'tcx>
+fn place_root_mono_items<'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I) -> PreInliningPartitioning<'tcx>
 where
     I: Iterator<Item = MonoItem<'tcx>>,
 {
@@ -280,7 +277,7 @@ where
 }
 
 fn mono_item_linkage_and_visibility(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
     export_generics: bool,
@@ -298,7 +295,7 @@ fn mono_item_linkage_and_visibility(
 }
 
 fn mono_item_visibility(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
     export_generics: bool,
@@ -443,7 +440,7 @@ fn mono_item_visibility(
     }
 }
 
-fn default_visibility(tcx: TyCtxt<'_, '_>, id: DefId, is_generic: bool) -> Visibility {
+fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibility {
     if !tcx.sess.target.target.options.default_hidden_visibility {
         return Visibility::Default
     }
@@ -468,7 +465,7 @@ fn default_visibility(tcx: TyCtxt<'_, '_>, id: DefId, is_generic: bool) -> Visib
 }
 
 fn merge_codegen_units<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     initial_partitioning: &mut PreInliningPartitioning<'tcx>,
     target_cgu_count: usize,
 ) {
@@ -592,7 +589,7 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
 }
 
 fn internalize_symbols<'tcx>(
-    _tcx: TyCtxt<'tcx, 'tcx>,
+    _tcx: TyCtxt<'tcx>,
     partitioning: &mut PostInliningPartitioning<'tcx>,
     inlining_map: &InliningMap<'tcx>,
 ) {
@@ -659,7 +656,7 @@ fn internalize_symbols<'tcx>(
 }
 
 fn characteristic_def_id_of_mono_item<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     mono_item: MonoItem<'tcx>,
 ) -> Option<DefId> {
     match mono_item {
@@ -708,8 +705,8 @@ fn characteristic_def_id_of_mono_item<'tcx>(
 type CguNameCache = FxHashMap<(DefId, bool), InternedString>;
 
 fn compute_codegen_unit_name(
-    tcx: TyCtxt<'_, '_>,
-    name_builder: &mut CodegenUnitNameBuilder<'_, '_>,
+    tcx: TyCtxt<'_>,
+    name_builder: &mut CodegenUnitNameBuilder<'_>,
     def_id: DefId,
     volatile: bool,
     cache: &mut CguNameCache,
@@ -763,13 +760,13 @@ fn compute_codegen_unit_name(
 }
 
 fn numbered_codegen_unit_name(
-    name_builder: &mut CodegenUnitNameBuilder<'_, '_>,
+    name_builder: &mut CodegenUnitNameBuilder<'_>,
     index: usize,
 ) -> InternedString {
     name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index))
 }
 
-fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'tcx, 'tcx>, label: &str, cgus: I)
+fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'tcx>, label: &str, cgus: I)
 where
     I: Iterator<Item = &'b CodegenUnit<'tcx>>,
     'tcx: 'a + 'b,
@@ -797,7 +794,7 @@ where
 }
 
 #[inline(never)] // give this a place in the profiler
-fn assert_symbols_are_distinct<'a, 'tcx: 'a, I>(tcx: TyCtxt<'tcx, 'tcx>, mono_items: I)
+fn assert_symbols_are_distinct<'a, 'tcx: 'a, I>(tcx: TyCtxt<'tcx>, mono_items: I)
 where
     I: Iterator<Item = &'a MonoItem<'tcx>>,
 {
@@ -842,7 +839,7 @@ where
 }
 
 fn collect_and_partition_mono_items<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     cnum: CrateNum,
 ) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>) {
     assert_eq!(cnum, LOCAL_CRATE);

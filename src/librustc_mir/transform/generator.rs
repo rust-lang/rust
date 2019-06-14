@@ -169,7 +169,7 @@ struct SuspensionPoint {
 }
 
 struct TransformVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     state_adt_ref: &'tcx AdtDef,
     state_substs: SubstsRef<'tcx>,
 
@@ -311,7 +311,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
 }
 
 fn make_generator_state_argument_indirect<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     def_id: DefId,
     body: &mut Body<'tcx>,
 ) {
@@ -336,7 +336,7 @@ fn make_generator_state_argument_indirect<'tcx>(
     DerefArgVisitor.visit_body(body);
 }
 
-fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, body: &mut Body<'tcx>) {
+fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let ref_gen_ty = body.local_decls.raw[1].ty;
 
     let pin_did = tcx.lang_items().pin_type().unwrap();
@@ -415,7 +415,7 @@ struct LivenessInfo {
 }
 
 fn locals_live_across_suspend_points(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     source: MirSource<'tcx>,
     movable: bool,
@@ -678,7 +678,7 @@ impl<'body, 'tcx: 'body, 's> StorageConflictVisitor<'body, 'tcx, 's> {
 }
 
 fn compute_layout<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
     upvars: &Vec<Ty<'tcx>>,
     interior: Ty<'tcx>,
@@ -800,7 +800,7 @@ fn insert_switch<'tcx>(
     }
 }
 
-fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body: &mut Body<'tcx>) {
+fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut Body<'tcx>) {
     use crate::util::elaborate_drops::{elaborate_drop, Unwind};
     use crate::util::patch::MirPatch;
     use crate::shim::DropShimElaborator;
@@ -850,7 +850,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId, body:
 }
 
 fn create_generator_drop_shim<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     transform: &TransformVisitor<'tcx>,
     def_id: DefId,
     source: MirSource<'tcx>,
@@ -942,7 +942,7 @@ fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) ->
 }
 
 fn insert_panic_block<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
@@ -974,7 +974,7 @@ fn insert_panic_block<'tcx>(
 }
 
 fn create_generator_resume_function<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     transform: TransformVisitor<'tcx>,
     def_id: DefId,
     source: MirSource<'tcx>,
@@ -1092,12 +1092,7 @@ where
 }
 
 impl MirPass for StateTransform {
-    fn run_pass<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
-        source: MirSource<'tcx>,
-        body: &mut Body<'tcx>,
-    ) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let yield_ty = if let Some(yield_ty) = body.yield_ty {
             yield_ty
         } else {

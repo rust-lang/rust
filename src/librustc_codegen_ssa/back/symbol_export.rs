@@ -21,7 +21,7 @@ pub type ExportedSymbols = FxHashMap<
     Arc<Vec<(String, SymbolExportLevel)>>,
 >;
 
-pub fn threshold(tcx: TyCtxt<'_, '_>) -> SymbolExportLevel {
+pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types.borrow())
 }
 
@@ -47,7 +47,7 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType]) -> SymbolExpor
 }
 
 fn reachable_non_generics_provider<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     cnum: CrateNum,
 ) -> &'tcx DefIdMap<SymbolExportLevel> {
     assert_eq!(cnum, LOCAL_CRATE);
@@ -157,7 +157,7 @@ fn reachable_non_generics_provider<'tcx>(
     tcx.arena.alloc(reachable_non_generics)
 }
 
-fn is_reachable_non_generic_provider_local<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+fn is_reachable_non_generic_provider_local<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     let export_threshold = threshold(tcx);
 
     if let Some(&level) = tcx.reachable_non_generics(def_id.krate).get(&def_id) {
@@ -167,12 +167,12 @@ fn is_reachable_non_generic_provider_local<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id
     }
 }
 
-fn is_reachable_non_generic_provider_extern<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+fn is_reachable_non_generic_provider_extern<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
 }
 
 fn exported_symbols_provider_local<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     cnum: CrateNum,
 ) -> Arc<Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)>> {
     assert_eq!(cnum, LOCAL_CRATE);
@@ -274,7 +274,7 @@ fn exported_symbols_provider_local<'tcx>(
 }
 
 fn upstream_monomorphizations_provider<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     cnum: CrateNum,
 ) -> &'tcx DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>> {
     debug_assert!(cnum == LOCAL_CRATE);
@@ -323,14 +323,14 @@ fn upstream_monomorphizations_provider<'tcx>(
 }
 
 fn upstream_monomorphizations_for_provider<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>> {
     debug_assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(LOCAL_CRATE).get(&def_id)
 }
 
-fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_, '_>, def_id: DefId) -> bool {
+fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
         !tcx.reachable_set(LOCAL_CRATE).0.contains(&hir_id)
     } else {
@@ -352,7 +352,7 @@ pub fn provide_extern(providers: &mut Providers<'_>) {
     providers.upstream_monomorphizations_for = upstream_monomorphizations_for_provider;
 }
 
-fn symbol_export_level(tcx: TyCtxt<'_, '_>, sym_def_id: DefId) -> SymbolExportLevel {
+fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel {
     // We export anything that's not mangled at the "C" layer as it probably has
     // to do with ABI concerns. We do not, however, apply such treatment to
     // special symbols in the standard library for various plumbing between

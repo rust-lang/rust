@@ -5,7 +5,7 @@ use crate::middle::resolve_lifetime as rl;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 
-impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// This function calls the `visit_ty` method for the parameters
     /// corresponding to the anonymous regions. The `nested_visitor.found_type`
     /// contains the anonymous type.
@@ -60,9 +60,9 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     // to the anonymous region.
     fn find_component_for_bound_region(
         &self,
-        arg: &'gcx hir::Ty,
+        arg: &'tcx hir::Ty,
         br: &ty::BoundRegion,
-    ) -> Option<(&'gcx hir::Ty)> {
+    ) -> Option<(&'tcx hir::Ty)> {
         let mut nested_visitor = FindNestedTypeVisitor {
             tcx: self.tcx(),
             bound_region: *br,
@@ -81,23 +81,23 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 // walk the types like &mut Vec<&u8> and &u8 looking for the HIR
 // where that lifetime appears. This allows us to highlight the
 // specific part of the type in the error message.
-struct FindNestedTypeVisitor<'gcx, 'tcx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+struct FindNestedTypeVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
     // The bound_region corresponding to the Refree(freeregion)
     // associated with the anonymous region we are looking for.
     bound_region: ty::BoundRegion,
     // The type where the anonymous lifetime appears
     // for e.g., Vec<`&u8`> and <`&u8`>
-    found_type: Option<&'gcx hir::Ty>,
+    found_type: Option<&'tcx hir::Ty>,
     current_index: ty::DebruijnIndex,
 }
 
-impl Visitor<'gcx> for FindNestedTypeVisitor<'gcx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_ty(&mut self, arg: &'gcx hir::Ty) {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty) {
         match arg.node {
             hir::TyKind::BareFn(_) => {
                 self.current_index.shift_in(1);
@@ -208,15 +208,15 @@ impl Visitor<'gcx> for FindNestedTypeVisitor<'gcx, 'tcx> {
 // and would walk the types like Vec<Ref> in the above example and Ref looking for the HIR
 // where that lifetime appears. This allows us to highlight the
 // specific part of the type in the error message.
-struct TyPathVisitor<'gcx, 'tcx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+struct TyPathVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
     found_it: bool,
     bound_region: ty::BoundRegion,
     current_index: ty::DebruijnIndex,
 }
 
-impl Visitor<'gcx> for TyPathVisitor<'gcx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+impl Visitor<'tcx> for TyPathVisitor<'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
@@ -267,7 +267,7 @@ impl Visitor<'gcx> for TyPathVisitor<'gcx, 'tcx> {
         }
     }
 
-    fn visit_ty(&mut self, arg: &'gcx hir::Ty) {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty) {
         // ignore nested types
         //
         // If you have a type like `Foo<'a, &Ty>` we

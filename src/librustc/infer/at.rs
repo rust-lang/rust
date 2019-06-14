@@ -30,25 +30,25 @@ use super::*;
 use crate::ty::Const;
 use crate::ty::relate::{Relate, TypeRelation};
 
-pub struct At<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub struct At<'a, 'tcx: 'a> {
+    pub infcx: &'a InferCtxt<'a, 'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
-pub struct Trace<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    at: At<'a, 'gcx, 'tcx>,
+pub struct Trace<'a, 'tcx: 'a> {
+    at: At<'a, 'tcx>,
     a_is_expected: bool,
     trace: TypeTrace<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[inline]
-    pub fn at(&'a self,
-              cause: &'a ObligationCause<'tcx>,
-              param_env: ty::ParamEnv<'tcx>)
-              -> At<'a, 'gcx, 'tcx>
-    {
+    pub fn at(
+        &'a self,
+        cause: &'a ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> At<'a, 'tcx> {
         At { infcx: self, cause, param_env }
     }
 }
@@ -61,7 +61,7 @@ pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
                 -> TypeTrace<'tcx>;
 }
 
-impl<'a, 'gcx, 'tcx> At<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> At<'a, 'tcx> {
     /// Hacky routine for equating two impl headers in coherence.
     pub fn eq_impl_headers(self,
                            expected: &ty::ImplHeader<'tcx>,
@@ -186,11 +186,9 @@ impl<'a, 'gcx, 'tcx> At<'a, 'gcx, 'tcx> {
     /// error-reporting, but doesn't actually perform any operation
     /// yet (this is useful when you want to set the trace using
     /// distinct values from those you wish to operate upon).
-    pub fn trace<T>(self,
-                    expected: T,
-                    actual: T)
-                    -> Trace<'a, 'gcx, 'tcx>
-        where T: ToTrace<'tcx>
+    pub fn trace<T>(self, expected: T, actual: T) -> Trace<'a, 'tcx>
+    where
+        T: ToTrace<'tcx>,
     {
         self.trace_exp(true, expected, actual)
     }
@@ -198,19 +196,16 @@ impl<'a, 'gcx, 'tcx> At<'a, 'gcx, 'tcx> {
     /// Like `trace`, but the expected value is determined by the
     /// boolean argument (if true, then the first argument `a` is the
     /// "expected" value).
-    pub fn trace_exp<T>(self,
-                        a_is_expected: bool,
-                        a: T,
-                        b: T)
-                        -> Trace<'a, 'gcx, 'tcx>
-        where T: ToTrace<'tcx>
+    pub fn trace_exp<T>(self, a_is_expected: bool, a: T, b: T) -> Trace<'a, 'tcx>
+    where
+        T: ToTrace<'tcx>,
     {
         let trace = ToTrace::to_trace(self.cause, a_is_expected, a, b);
         Trace { at: self, trace: trace, a_is_expected }
     }
 }
 
-impl<'a, 'gcx, 'tcx> Trace<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Trace<'a, 'tcx> {
     /// Makes `a <: b` where `a` may or may not be expected (if
     /// `a_is_expected` is true, then `a` is expected).
     /// Makes `expected <: actual`.

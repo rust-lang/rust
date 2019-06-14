@@ -17,17 +17,13 @@ use syntax::ast;
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.
 pub struct DefPathBasedNames<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     omit_disambiguators: bool,
     omit_local_crate_name: bool,
 }
 
 impl DefPathBasedNames<'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx, 'tcx>,
-        omit_disambiguators: bool,
-        omit_local_crate_name: bool,
-    ) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, omit_disambiguators: bool, omit_local_crate_name: bool) -> Self {
         DefPathBasedNames { tcx, omit_disambiguators, omit_local_crate_name }
     }
 

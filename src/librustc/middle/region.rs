@@ -169,7 +169,7 @@ impl Scope {
         self.id
     }
 
-    pub fn node_id(&self, tcx: TyCtxt<'_, '_>, scope_tree: &ScopeTree) -> ast::NodeId {
+    pub fn node_id(&self, tcx: TyCtxt<'_>, scope_tree: &ScopeTree) -> ast::NodeId {
         match scope_tree.root_body {
             Some(hir_id) => {
                 tcx.hir().hir_to_node_id(hir::HirId {
@@ -184,7 +184,7 @@ impl Scope {
     /// Returns the span of this `Scope`. Note that in general the
     /// returned span may not correspond to the span of any `NodeId` in
     /// the AST.
-    pub fn span(&self, tcx: TyCtxt<'_, '_>, scope_tree: &ScopeTree) -> Span {
+    pub fn span(&self, tcx: TyCtxt<'_>, scope_tree: &ScopeTree) -> Span {
         let node_id = self.node_id(tcx, scope_tree);
         if node_id == ast::DUMMY_NODE_ID {
             return DUMMY_SP;
@@ -359,7 +359,7 @@ pub struct Context {
 }
 
 struct RegionResolutionVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 
     // The number of expressions and patterns visited in the current body
     expr_and_pat_count: usize,
@@ -646,11 +646,7 @@ impl<'tcx> ScopeTree {
 
     /// Assuming that the provided region was defined within this `ScopeTree`,
     /// returns the outermost `Scope` that the region outlives.
-    pub fn early_free_scope<'gcx>(
-        &self,
-        tcx: TyCtxt<'gcx, 'tcx>,
-        br: &ty::EarlyBoundRegion,
-    ) -> Scope {
+    pub fn early_free_scope(&self, tcx: TyCtxt<'tcx>, br: &ty::EarlyBoundRegion) -> Scope {
         let param_owner = tcx.parent(br.def_id).unwrap();
 
         let param_owner_id = tcx.hir().as_local_hir_id(param_owner).unwrap();
@@ -679,7 +675,7 @@ impl<'tcx> ScopeTree {
 
     /// Assuming that the provided region was defined within this `ScopeTree`,
     /// returns the outermost `Scope` that the region outlives.
-    pub fn free_scope<'gcx>(&self, tcx: TyCtxt<'gcx, 'tcx>, fr: &ty::FreeRegion) -> Scope {
+    pub fn free_scope(&self, tcx: TyCtxt<'tcx>, fr: &ty::FreeRegion) -> Scope {
         let param_owner = match fr.bound_region {
             ty::BoundRegion::BrNamed(def_id, _) => {
                 tcx.parent(def_id).unwrap()
@@ -1334,7 +1330,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     }
 }
 
-fn region_scope_tree<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> &'tcx ScopeTree {
+fn region_scope_tree<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ScopeTree {
     let closure_base_def_id = tcx.closure_base_def_id(def_id);
     if closure_base_def_id != def_id {
         return tcx.region_scope_tree(closure_base_def_id);

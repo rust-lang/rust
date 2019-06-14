@@ -31,10 +31,10 @@ use std::rc::Rc;
 /// `dropck_outlives` result of the variable's type (in particular,
 /// this respects `#[may_dangle]` annotations).
 pub(super) fn trace(
-    typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,
+    typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &Rc<RegionValueElements>,
-    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
     live_locals: Vec<Local>,
     location_table: &LocationTable,
@@ -58,15 +58,14 @@ pub(super) fn trace(
 }
 
 /// Contextual state for the type-liveness generator.
-struct LivenessContext<'me, 'typeck, 'flow, 'gcx, 'tcx>
+struct LivenessContext<'me, 'typeck, 'flow, 'tcx>
 where
     'typeck: 'me,
     'flow: 'me,
     'tcx: 'typeck + 'flow,
-    'gcx: 'tcx,
 {
     /// Current type-checker, giving us our inference context etc.
-    typeck: &'me mut TypeChecker<'typeck, 'gcx, 'tcx>,
+    typeck: &'me mut TypeChecker<'typeck, 'tcx>,
 
     /// Defines the `PointIndex` mapping
     elements: &'me RegionValueElements,
@@ -82,7 +81,7 @@ where
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: &'me mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
+    flow_inits: &'me mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'flow, 'tcx>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
@@ -97,14 +96,13 @@ struct DropData<'tcx> {
     region_constraint_data: Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>,
 }
 
-struct LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx>
+struct LivenessResults<'me, 'typeck, 'flow, 'tcx>
 where
     'typeck: 'me,
     'flow: 'me,
     'tcx: 'typeck + 'flow,
-    'gcx: 'tcx,
 {
-    cx: LivenessContext<'me, 'typeck, 'flow, 'gcx, 'tcx>,
+    cx: LivenessContext<'me, 'typeck, 'flow, 'tcx>,
 
     /// Set of points that define the current local.
     defs: HybridBitSet<PointIndex>,
@@ -125,8 +123,8 @@ where
     stack: Vec<PointIndex>,
 }
 
-impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
-    fn new(cx: LivenessContext<'me, 'typeck, 'flow, 'gcx, 'tcx>) -> Self {
+impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
+    fn new(cx: LivenessContext<'me, 'typeck, 'flow, 'tcx>) -> Self {
         let num_points = cx.elements.num_points();
         LivenessResults {
             cx,
@@ -392,7 +390,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'gcx, 'tcx> {
     }
 }
 
-impl LivenessContext<'_, '_, '_, '_, 'tcx> {
+impl LivenessContext<'_, '_, '_, 'tcx> {
     /// Returns `true` if the local variable (or some part of it) is initialized in
     /// the terminator of `block`. We need to check this to determine if a
     /// DROP of some local variable will have an effect -- note that
@@ -504,7 +502,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
 
     fn make_all_regions_live(
         elements: &RegionValueElements,
-        typeck: &mut TypeChecker<'_, '_, 'tcx>,
+        typeck: &mut TypeChecker<'_, 'tcx>,
         value: impl TypeFoldable<'tcx>,
         live_at: &HybridBitSet<PointIndex>,
         location_table: &LocationTable,
@@ -536,7 +534,7 @@ impl LivenessContext<'_, '_, '_, '_, 'tcx> {
     }
 
     fn compute_drop_data(
-        typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,
+        typeck: &mut TypeChecker<'_, 'tcx>,
         dropped_ty: Ty<'tcx>,
     ) -> DropData<'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);

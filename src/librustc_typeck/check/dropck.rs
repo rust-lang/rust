@@ -29,10 +29,7 @@ use syntax_pos::Span;
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    drop_impl_did: DefId,
-) -> Result<(), ErrorReported> {
+pub fn check_drop_impl<'tcx>(tcx: TyCtxt<'tcx>, drop_impl_did: DefId) -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
     match dtor_self_type.sty {
@@ -65,7 +62,7 @@ pub fn check_drop_impl<'tcx>(
 }
 
 fn ensure_drop_params_and_item_params_correspond<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     drop_impl_did: DefId,
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId,
@@ -141,7 +138,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 /// Confirms that every predicate imposed by dtor_predicates is
 /// implied by assuming the predicates attached to self_type_did.
 fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
@@ -287,8 +284,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 /// this conservative assumption (and thus assume the obligation of
 /// ensuring that they do not access data nor invoke methods of
 /// values that have been previously dropped).
-pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
-    rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
+pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(
+    rcx: &mut RegionCtxt<'a, 'tcx>,
     ty: Ty<'tcx>,
     span: Span,
     body_id: hir::HirId,

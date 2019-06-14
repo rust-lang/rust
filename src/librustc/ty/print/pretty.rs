@@ -166,16 +166,16 @@ impl RegionHighlightMode {
 }
 
 /// Trait for printers that pretty-print using `fmt::Write` to the printer.
-pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
-    Printer<'gcx, 'tcx,
+pub trait PrettyPrinter<'tcx>:
+    Printer<
+        'tcx,
         Error = fmt::Error,
         Path = Self,
         Region = Self,
         Type = Self,
         DynExistential = Self,
         Const = Self,
-    > +
-    fmt::Write
+    > + fmt::Write
 {
     /// Like `print_def_path` but for value paths.
     fn print_value_path(
@@ -186,21 +186,17 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
         self.print_def_path(def_id, substs)
     }
 
-    fn in_binder<T>(
-        self,
-        value: &ty::Binder<T>,
-    ) -> Result<Self, Self::Error>
-        where T: Print<'gcx, 'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>
+    fn in_binder<T>(self, value: &ty::Binder<T>) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
     {
         value.skip_binder().print(self)
     }
 
     /// Print comma-separated elements.
-    fn comma_sep<T>(
-        mut self,
-        mut elems: impl Iterator<Item = T>,
-    ) -> Result<Self, Self::Error>
-        where T: Print<'gcx, 'tcx, Self, Output = Self, Error = Self::Error>
+    fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error>,
     {
         if let Some(first) = elems.next() {
             self = first.print(self)?;
@@ -931,10 +927,10 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
 }
 
 // HACK(eddyb) boxed to avoid moving around a large struct by-value.
-pub struct FmtPrinter<'a, 'gcx, 'tcx, F>(Box<FmtPrinterData<'a, 'gcx, 'tcx, F>>);
+pub struct FmtPrinter<'a, 'tcx, F>(Box<FmtPrinterData<'a, 'tcx, F>>);
 
-pub struct FmtPrinterData<'a, 'gcx, 'tcx, F> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub struct FmtPrinterData<'a, 'tcx, F> {
+    tcx: TyCtxt<'tcx>,
     fmt: F,
 
     empty_path: bool,
@@ -949,21 +945,21 @@ pub struct FmtPrinterData<'a, 'gcx, 'tcx, F> {
     pub name_resolver: Option<Box<&'a dyn Fn(ty::sty::TyVid) -> Option<String>>>,
 }
 
-impl<F> Deref for FmtPrinter<'a, 'gcx, 'tcx, F> {
-    type Target = FmtPrinterData<'a, 'gcx, 'tcx, F>;
+impl<F> Deref for FmtPrinter<'a, 'tcx, F> {
+    type Target = FmtPrinterData<'a, 'tcx, F>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<F> DerefMut for FmtPrinter<'_, '_, '_, F> {
+impl<F> DerefMut for FmtPrinter<'_, '_, F> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<F> FmtPrinter<'a, 'gcx, 'tcx, F> {
-    pub fn new(tcx: TyCtxt<'gcx, 'tcx>, fmt: F, ns: Namespace) -> Self {
+impl<F> FmtPrinter<'a, 'tcx, F> {
+    pub fn new(tcx: TyCtxt<'tcx>, fmt: F, ns: Namespace) -> Self {
         FmtPrinter(Box::new(FmtPrinterData {
             tcx,
             fmt,
@@ -978,7 +974,7 @@ impl<F> FmtPrinter<'a, 'gcx, 'tcx, F> {
     }
 }
 
-impl TyCtxt<'_, '_> {
+impl TyCtxt<'_> {
     // HACK(eddyb) get rid of `def_path_str` and/or pass `Namespace` explicitly always
     // (but also some things just print a `DefId` generally so maybe we need this?)
     fn guess_def_namespace(self, def_id: DefId) -> Namespace {
@@ -1010,13 +1006,13 @@ impl TyCtxt<'_, '_> {
     }
 }
 
-impl<F: fmt::Write> fmt::Write for FmtPrinter<'_, '_, '_, F> {
+impl<F: fmt::Write> fmt::Write for FmtPrinter<'_, '_, F> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.fmt.write_str(s)
     }
 }
 
-impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
+impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     type Error = fmt::Error;
 
     type Path = Self;
@@ -1025,7 +1021,7 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
     type DynExistential = Self;
     type Const = Self;
 
-    fn tcx(&'a self) -> TyCtxt<'gcx, 'tcx> {
+    fn tcx(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1222,7 +1218,7 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
     }
 }
 
-impl<F: fmt::Write> PrettyPrinter<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
+impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
     fn infer_ty_name(&self, id: ty::TyVid) -> Option<String> {
         self.0.name_resolver.as_ref().and_then(|func| func(id))
     }
@@ -1239,11 +1235,9 @@ impl<F: fmt::Write> PrettyPrinter<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> 
         Ok(self)
     }
 
-    fn in_binder<T>(
-        self,
-        value: &ty::Binder<T>,
-    ) -> Result<Self, Self::Error>
-        where T: Print<'gcx, 'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>
+    fn in_binder<T>(self, value: &ty::Binder<T>) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
     {
         self.pretty_in_binder(value)
     }
@@ -1317,7 +1311,7 @@ impl<F: fmt::Write> PrettyPrinter<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> 
 }
 
 // HACK(eddyb) limited to `FmtPrinter` because of `region_highlight_mode`.
-impl<F: fmt::Write> FmtPrinter<'_, '_, '_, F> {
+impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
     pub fn pretty_print_region(
         mut self,
         region: ty::Region<'_>,
@@ -1416,12 +1410,10 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, '_, F> {
 
 // HACK(eddyb) limited to `FmtPrinter` because of `binder_depth`,
 // `region_index` and `used_region_names`.
-impl<F: fmt::Write> FmtPrinter<'_, 'gcx, 'tcx, F> {
-    pub fn pretty_in_binder<T>(
-        mut self,
-        value: &ty::Binder<T>,
-    ) -> Result<Self, fmt::Error>
-        where T: Print<'gcx, 'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>
+impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
+    pub fn pretty_in_binder<T>(mut self, value: &ty::Binder<T>) -> Result<Self, fmt::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
     {
         fn name_by_region_index(index: usize) -> InternedString {
             match index {
@@ -1510,9 +1502,9 @@ impl<F: fmt::Write> FmtPrinter<'_, 'gcx, 'tcx, F> {
     }
 }
 
-impl<'gcx: 'tcx, 'tcx, T, P: PrettyPrinter<'gcx, 'tcx>> Print<'gcx, 'tcx, P>
-    for ty::Binder<T>
-    where T: Print<'gcx, 'tcx, P, Output = P, Error = P::Error> + TypeFoldable<'tcx>
+impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::Binder<T>
+where
+    T: Print<'tcx, P, Output = P, Error = P::Error> + TypeFoldable<'tcx>,
 {
     type Output = P;
     type Error = P::Error;
@@ -1521,10 +1513,10 @@ impl<'gcx: 'tcx, 'tcx, T, P: PrettyPrinter<'gcx, 'tcx>> Print<'gcx, 'tcx, P>
     }
 }
 
-impl<'gcx: 'tcx, 'tcx, T, U, P: PrettyPrinter<'gcx, 'tcx>> Print<'gcx, 'tcx, P>
-    for ty::OutlivesPredicate<T, U>
-    where T: Print<'gcx, 'tcx, P, Output = P, Error = P::Error>,
-          U: Print<'gcx, 'tcx, P, Output = P, Error = P::Error>,
+impl<'tcx, T, U, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::OutlivesPredicate<T, U>
+where
+    T: Print<'tcx, P, Output = P, Error = P::Error>,
+    U: Print<'tcx, P, Output = P, Error = P::Error>,
 {
     type Output = P;
     type Error = P::Error;
@@ -1552,7 +1544,7 @@ macro_rules! forward_display_to_print {
 
 macro_rules! define_print_and_forward_display {
     (($self:ident, $cx:ident): $($ty:ty $print:block)+) => {
-        $(impl<'gcx: 'tcx, 'tcx, P: PrettyPrinter<'gcx, 'tcx>> Print<'gcx, 'tcx, P> for $ty {
+        $(impl<'tcx, P: PrettyPrinter<'tcx>> Print<'tcx, P> for $ty {
             type Output = P;
             type Error = fmt::Error;
             fn print(&$self, $cx: P) -> Result<Self::Output, Self::Error> {
@@ -1585,7 +1577,7 @@ forward_display_to_print! {
     &'tcx ty::Const<'tcx>,
 
     // HACK(eddyb) these are exhaustive instead of generic,
-    // because `for<'gcx: 'tcx, 'tcx>` isn't possible yet.
+    // because `for<'tcx>` isn't possible yet.
     ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
     ty::Binder<ty::TraitRef<'tcx>>,
     ty::Binder<ty::FnSig<'tcx>>,

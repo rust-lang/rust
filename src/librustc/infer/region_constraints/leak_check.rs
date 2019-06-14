@@ -22,7 +22,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     /// refactor the constraint set.
     pub fn leak_check(
         &mut self,
-        tcx: TyCtxt<'_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         overly_polymorphic: bool,
         placeholder_map: &PlaceholderMap<'tcx>,
         _snapshot: &CombinedSnapshot<'_, 'tcx>,
@@ -109,7 +109,7 @@ impl<'tcx> TaintSet<'tcx> {
 
     fn fixed_point(
         &mut self,
-        tcx: TyCtxt<'_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         undo_log: &[UndoLog<'tcx>],
         verifys: &[Verify<'tcx>],
     ) {

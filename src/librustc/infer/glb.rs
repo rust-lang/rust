@@ -8,23 +8,24 @@ use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Greatest lower bound" (common subtype)
-pub struct Glb<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+pub struct Glb<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
+    fields: &'combine mut CombineFields<'infcx, 'tcx>,
     a_is_expected: bool,
 }
 
-impl<'combine, 'infcx, 'gcx, 'tcx> Glb<'combine, 'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
-        -> Glb<'combine, 'infcx, 'gcx, 'tcx>
-    {
+impl<'combine, 'infcx, 'tcx> Glb<'combine, 'infcx, 'tcx> {
+    pub fn new(
+        fields: &'combine mut CombineFields<'infcx, 'tcx>,
+        a_is_expected: bool,
+    ) -> Glb<'combine, 'infcx, 'tcx> {
         Glb { fields: fields, a_is_expected: a_is_expected }
     }
 }
 
-impl TypeRelation<'gcx, 'tcx> for Glb<'combine, 'infcx, 'gcx, 'tcx> {
+impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
     fn tag(&self) -> &'static str { "Glb" }
 
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.a_is_expected }
 
@@ -85,10 +86,8 @@ impl TypeRelation<'gcx, 'tcx> for Glb<'combine, 'infcx, 'gcx, 'tcx> {
     }
 }
 
-impl<'combine, 'infcx, 'gcx, 'tcx> LatticeDir<'infcx, 'gcx, 'tcx>
-    for Glb<'combine, 'infcx, 'gcx, 'tcx>
-{
-    fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'gcx, 'tcx> {
+impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 'tcx> {
+    fn infcx(&self) -> &'infcx InferCtxt<'infcx, 'tcx> {
         self.fields.infcx
     }
 

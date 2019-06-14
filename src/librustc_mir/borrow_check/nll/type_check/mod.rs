@@ -109,16 +109,16 @@ mod relate_tys;
 ///   constraints for the regions in the types of variables
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
-pub(crate) fn type_check<'gcx, 'tcx>(
-    infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    param_env: ty::ParamEnv<'gcx>,
+pub(crate) fn type_check<'tcx>(
+    infcx: &InferCtxt<'_, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     mir_def_id: DefId,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
-    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
 ) -> MirTypeckResults<'tcx> {
@@ -175,16 +175,16 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     }
 }
 
-fn type_check_internal<'a, 'gcx, 'tcx, R>(
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+fn type_check_internal<'a, 'tcx, R>(
+    infcx: &'a InferCtxt<'a, 'tcx>,
     mir_def_id: DefId,
-    param_env: ty::ParamEnv<'gcx>,
+    param_env: ty::ParamEnv<'tcx>,
     body: &'a Body<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     universal_region_relations: &'a UniversalRegionRelations<'tcx>,
-    mut extra: impl FnMut(&mut TypeChecker<'a, 'gcx, 'tcx>) -> R,
+    mut extra: impl FnMut(&mut TypeChecker<'a, 'tcx>) -> R,
 ) -> R where {
     let mut checker = TypeChecker::new(
         infcx,
@@ -235,7 +235,7 @@ fn translate_outlives_facts(cx: &mut BorrowCheckContext<'_, '_>) {
     }
 }
 
-fn mirbug(tcx: TyCtxt<'_, '_>, span: Span, msg: &str) {
+fn mirbug(tcx: TyCtxt<'_>, span: Span, msg: &str) {
     // We sometimes see MIR failures (notably predicate failures) due to
     // the fact that we check rvalue sized predicates here. So use `delay_span_bug`
     // to avoid reporting bugs in those cases.
@@ -251,15 +251,15 @@ enum FieldAccessError {
 /// The sanitize_XYZ methods here take an MIR object and compute its
 /// type, calling `span_mirbug` and returning an error type if there
 /// is a problem.
-struct TypeVerifier<'a, 'b: 'a, 'gcx: 'tcx, 'tcx: 'b> {
-    cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>,
+struct TypeVerifier<'a, 'b: 'a, 'tcx: 'b> {
+    cx: &'a mut TypeChecker<'b, 'tcx>,
     body: &'b Body<'tcx>,
     last_span: Span,
     mir_def_id: DefId,
     errors_reported: bool,
 }
 
-impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
+impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     fn visit_span(&mut self, span: &Span) {
         if !span.is_dummy() {
             self.last_span = *span;
@@ -380,8 +380,8 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
-    fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, body: &'b Body<'tcx>) -> Self {
+impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
+    fn new(cx: &'a mut TypeChecker<'b, 'tcx>, body: &'b Body<'tcx>) -> Self {
         TypeVerifier {
             body,
             mir_def_id: cx.mir_def_id,
@@ -391,7 +391,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.cx.infcx.tcx
     }
 
@@ -455,7 +455,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 PlaceBase::Static(box Static { kind, ty: sty }) => {
                     let sty = self.sanitize_type(place, sty);
                     let check_err =
-                        |verifier: &mut TypeVerifier<'a, 'b, 'gcx, 'tcx>,
+                        |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
                          place: &Place<'tcx>,
                          ty,
                          sty| {
@@ -830,9 +830,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 /// constraints needed for it to be valid and well-typed. Along the
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
-struct TypeChecker<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    param_env: ty::ParamEnv<'gcx>,
+struct TypeChecker<'a, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
@@ -895,7 +895,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
 impl MirTypeckRegionConstraints<'tcx> {
     fn placeholder_region(
         &mut self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
     ) -> ty::Region<'tcx> {
         let placeholder_index = self.placeholder_indices.insert(placeholder);
@@ -977,12 +977,12 @@ impl Locations {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn new(
-        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        infcx: &'a InferCtxt<'a, 'tcx>,
         body: &'a Body<'tcx>,
         mir_def_id: DefId,
-        param_env: ty::ParamEnv<'gcx>,
+        param_env: ty::ParamEnv<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: ty::Region<'tcx>,
         borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
@@ -1078,7 +1078,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         locations: Locations,
         category: ConstraintCategory,
-        op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
+        op: impl type_op::TypeOp<'tcx, Output = R>,
     ) -> Fallible<R> {
         let (r, opt_data) = op.fully_perform(self.infcx)?;
 
@@ -1313,7 +1313,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -2504,7 +2504,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn prove_closure_bounds(
         &mut self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
         location: Location,
@@ -2652,7 +2652,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
     where
-        T: type_op::normalize::Normalizable<'gcx, 'tcx> + Copy,
+        T: type_op::normalize::Normalizable<'tcx> + Copy,
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
         let param_env = self.param_env;

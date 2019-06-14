@@ -26,7 +26,7 @@ use syntax_pos;
 // explored. For example, if it's a live Node::Item that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
-fn should_explore<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, hir_id: hir::HirId) -> bool {
+fn should_explore<'tcx>(tcx: TyCtxt<'tcx>, hir_id: hir::HirId) -> bool {
     match tcx.hir().find_by_hir_id(hir_id) {
         Some(Node::Item(..)) |
         Some(Node::ImplItem(..)) |
@@ -40,7 +40,7 @@ fn should_explore<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, hir_id: hir::HirId) -> bool {
 
 struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     worklist: Vec<hir::HirId>,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     live_symbols: FxHashSet<hir::HirId>,
     repr_has_repr_c: bool,
@@ -302,7 +302,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 }
 
 fn has_allow_dead_code_or_lang_attr(
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     id: hir::HirId,
     attrs: &[ast::Attribute],
 ) -> bool {
@@ -354,7 +354,7 @@ fn has_allow_dead_code_or_lang_attr(
 struct LifeSeeder<'k, 'tcx: 'k> {
     worklist: Vec<hir::HirId>,
     krate: &'k hir::Crate,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     // see `MarkSymbolVisitor::struct_constructors`
     struct_constructors: FxHashMap<hir::HirId, hir::HirId>,
 }
@@ -425,7 +425,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
 }
 
 fn create_and_seed_worklist<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     access_levels: &privacy::AccessLevels,
     krate: &hir::Crate,
 ) -> (Vec<hir::HirId>, FxHashMap<hir::HirId, hir::HirId>) {
@@ -453,7 +453,7 @@ fn create_and_seed_worklist<'tcx>(
 }
 
 fn find_live<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     access_levels: &privacy::AccessLevels,
     krate: &hir::Crate,
 ) -> FxHashSet<hir::HirId> {
@@ -474,7 +474,7 @@ fn find_live<'tcx>(
 }
 
 struct DeadVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     live_symbols: FxHashSet<hir::HirId>,
 }
 
@@ -662,7 +662,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     }
 }
 
-pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) {
+pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
     let krate = tcx.hir().krate();
     let live_symbols = find_live(tcx, access_levels, krate);

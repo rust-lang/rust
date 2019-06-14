@@ -10,23 +10,23 @@ note: lint level defined here
 LL | #![deny(ty_pass_by_reference)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: passing `TyCtxt<'_, '_>` by reference
+error: passing `TyCtxt<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:15:18
    |
-LL |     ty_ctxt_ref: &TyCtxt<'_, '_>,
-   |                  ^^^^^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_, '_>`
+LL |     ty_ctxt_ref: &TyCtxt<'_>,
+   |                  ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
 
 error: passing `Ty<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:19:28
    |
-LL | fn ty_multi_ref(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_, '_>) {}
+LL | fn ty_multi_ref(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>) {}
    |                            ^^^^^^^ help: try passing by value: `Ty<'_>`
 
-error: passing `TyCtxt<'_, '_>` by reference
+error: passing `TyCtxt<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:19:55
    |
-LL | fn ty_multi_ref(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_, '_>) {}
-   |                                                       ^^^^^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_, '_>`
+LL | fn ty_multi_ref(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>) {}
+   |                                                       ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
 
 error: passing `Ty<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:26:17
@@ -34,23 +34,23 @@ error: passing `Ty<'_>` by reference
 LL |         ty_ref: &Ty<'_>,
    |                 ^^^^^^^ help: try passing by value: `Ty<'_>`
 
-error: passing `TyCtxt<'_, '_>` by reference
+error: passing `TyCtxt<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:28:22
    |
-LL |         ty_ctxt_ref: &TyCtxt<'_, '_>,
-   |                      ^^^^^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_, '_>`
+LL |         ty_ctxt_ref: &TyCtxt<'_>,
+   |                      ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
 
 error: passing `Ty<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:31:41
    |
-LL |     fn ty_multi_ref_in_trait(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_, '_>);
+LL |     fn ty_multi_ref_in_trait(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>);
    |                                         ^^^^^^^ help: try passing by value: `Ty<'_>`
 
-error: passing `TyCtxt<'_, '_>` by reference
+error: passing `TyCtxt<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:31:68
    |
-LL |     fn ty_multi_ref_in_trait(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_, '_>);
-   |                                                                    ^^^^^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_, '_>`
+LL |     fn ty_multi_ref_in_trait(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>);
+   |                                                                    ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
 
 error: passing `Ty<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:53:17
@@ -58,23 +58,23 @@ error: passing `Ty<'_>` by reference
 LL |         ty_ref: &Ty<'_>,
    |                 ^^^^^^^ help: try passing by value: `Ty<'_>`
 
-error: passing `TyCtxt<'_, '_>` by reference
+error: passing `TyCtxt<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:55:22
    |
-LL |         ty_ctxt_ref: &TyCtxt<'_, '_>,
-   |                      ^^^^^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_, '_>`
+LL |         ty_ctxt_ref: &TyCtxt<'_>,
+   |                      ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
 
 error: passing `Ty<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:59:38
    |
-LL |     fn ty_multi_ref_assoc(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_, '_>) {}
+LL |     fn ty_multi_ref_assoc(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>) {}
    |                                      ^^^^^^^ help: try passing by value: `Ty<'_>`
 
-error: passing `TyCtxt<'_, '_>` by reference
+error: passing `TyCtxt<'_>` by reference
   --> $DIR/pass_ty_by_ref.rs:59:65
    |
-LL |     fn ty_multi_ref_assoc(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_, '_>) {}
-   |                                                                 ^^^^^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_, '_>`
+LL |     fn ty_multi_ref_assoc(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>) {}
+   |                                                                 ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
 
 error: aborting due to 12 previous errors
 

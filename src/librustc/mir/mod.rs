@@ -1240,8 +1240,8 @@ impl<'tcx> Terminator<'tcx> {
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
-    pub fn if_<'gcx>(
-        tcx: TyCtxt<'gcx, 'tcx>,
+    pub fn if_(
+        tcx: TyCtxt<'tcx>,
         cond: Operand<'tcx>,
         t: BasicBlock,
         f: BasicBlock,
@@ -2324,7 +2324,7 @@ impl<'tcx> Operand<'tcx> {
     /// with given `DefId` and substs. Since this is used to synthesize
     /// MIR, assumes `user_ty` is None.
     pub fn function_handle(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
         span: Span,
@@ -2795,7 +2795,7 @@ impl UserTypeProjection {
 CloneTypeFoldableAndLiftImpls! { ProjectionKind, }
 
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         use crate::mir::ProjectionElem::*;
 
         let base = self.base.fold_with(folder);
@@ -3012,8 +3012,8 @@ pub struct GeneratorLayout<'tcx> {
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct BorrowCheckResult<'gcx> {
-    pub closure_requirements: Option<ClosureRegionRequirements<'gcx>>,
+pub struct BorrowCheckResult<'tcx> {
+    pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[Field; 8]>,
 }
 
@@ -3068,7 +3068,7 @@ pub struct BorrowCheckResult<'gcx> {
 /// TyCtxt, and hence we cannot use `ReVar` (which is what we use
 /// internally within the rest of the NLL code).
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct ClosureRegionRequirements<'gcx> {
+pub struct ClosureRegionRequirements<'tcx> {
     /// The number of external regions defined on the closure. In our
     /// example above, it would be 3 -- one for `'static`, then `'1`
     /// and `'2`. This is just used for a sanity check later on, to
@@ -3078,7 +3078,7 @@ pub struct ClosureRegionRequirements<'gcx> {
 
     /// Requirements between the various free regions defined in
     /// indices.
-    pub outlives_requirements: Vec<ClosureOutlivesRequirement<'gcx>>,
+    pub outlives_requirements: Vec<ClosureOutlivesRequirement<'tcx>>,
 }
 
 /// Indicates an outlives constraint between a type or between two
@@ -3262,7 +3262,7 @@ EnumTypeFoldableImpl! {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         use crate::mir::TerminatorKind::*;
 
         let kind = match self.kind {
@@ -3430,7 +3430,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match self {
             &Place::Projection(ref p) => Place::Projection(p.fold_with(folder)),
             _ => self.clone(),
@@ -3447,7 +3447,7 @@ impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         use crate::mir::Rvalue::*;
         match *self {
             Use(ref op) => Use(op.fold_with(folder)),
@@ -3519,7 +3519,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             Operand::Copy(ref place) => Operand::Copy(place.fold_with(folder)),
             Operand::Move(ref place) => Operand::Move(place.fold_with(folder)),
@@ -3536,7 +3536,7 @@ impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Projection<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         use crate::mir::ProjectionElem::*;
 
         let base = self.base.fold_with(folder);
@@ -3562,7 +3562,7 @@ impl<'tcx> TypeFoldable<'tcx> for Projection<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Field {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
         *self
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
@@ -3571,7 +3571,7 @@ impl<'tcx> TypeFoldable<'tcx> for Field {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
         *self
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
@@ -3580,7 +3580,7 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
 }
 
 impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
         self.clone()
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
@@ -3589,7 +3589,7 @@ impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         Constant {
             span: self.span.clone(),
             ty: self.ty.fold_with(folder),

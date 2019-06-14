@@ -415,8 +415,8 @@ impl<'a> LoweringContext<'a> {
         /// needed from arbitrary locations in the crate,
         /// e.g., the number of lifetime generic parameters
         /// declared for every type and trait definition.
-        struct MiscCollector<'lcx, 'interner: 'lcx> {
-            lctx: &'lcx mut LoweringContext<'interner>,
+        struct MiscCollector<'tcx, 'interner: 'tcx> {
+            lctx: &'tcx mut LoweringContext<'interner>,
             hir_id_owner: Option<NodeId>,
         }
 
@@ -460,8 +460,8 @@ impl<'a> LoweringContext<'a> {
             }
         }
 
-        impl<'lcx, 'interner> Visitor<'lcx> for MiscCollector<'lcx, 'interner> {
-            fn visit_pat(&mut self, p: &'lcx Pat) {
+        impl<'tcx, 'interner> Visitor<'tcx> for MiscCollector<'tcx, 'interner> {
+            fn visit_pat(&mut self, p: &'tcx Pat) {
                 match p.node {
                     // Doesn't generate a HIR node
                     PatKind::Paren(..) => {},
@@ -475,7 +475,7 @@ impl<'a> LoweringContext<'a> {
                 visit::walk_pat(self, p)
             }
 
-            fn visit_item(&mut self, item: &'lcx Item) {
+            fn visit_item(&mut self, item: &'tcx Item) {
                 let hir_id = self.lctx.allocate_hir_id_counter(item.id);
 
                 match item.node {
@@ -507,7 +507,7 @@ impl<'a> LoweringContext<'a> {
                 });
             }
 
-            fn visit_trait_item(&mut self, item: &'lcx TraitItem) {
+            fn visit_trait_item(&mut self, item: &'tcx TraitItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
 
                 match item.node {
@@ -523,21 +523,21 @@ impl<'a> LoweringContext<'a> {
                 }
             }
 
-            fn visit_impl_item(&mut self, item: &'lcx ImplItem) {
+            fn visit_impl_item(&mut self, item: &'tcx ImplItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
                 self.with_hir_id_owner(Some(item.id), |this| {
                     visit::walk_impl_item(this, item);
                 });
             }
 
-            fn visit_foreign_item(&mut self, i: &'lcx ForeignItem) {
+            fn visit_foreign_item(&mut self, i: &'tcx ForeignItem) {
                 // Ignore patterns in foreign items
                 self.with_hir_id_owner(None, |this| {
                     visit::walk_foreign_item(this, i)
                 });
             }
 
-            fn visit_ty(&mut self, t: &'lcx Ty) {
+            fn visit_ty(&mut self, t: &'tcx Ty) {
                 match t.node {
                     // Mirrors the case in visit::walk_ty
                     TyKind::BareFn(ref f) => {
@@ -561,11 +561,11 @@ impl<'a> LoweringContext<'a> {
             }
         }
 
-        struct ItemLowerer<'lcx, 'interner: 'lcx> {
-            lctx: &'lcx mut LoweringContext<'interner>,
+        struct ItemLowerer<'tcx, 'interner: 'tcx> {
+            lctx: &'tcx mut LoweringContext<'interner>,
         }
 
-        impl<'lcx, 'interner> ItemLowerer<'lcx, 'interner> {
+        impl<'tcx, 'interner> ItemLowerer<'tcx, 'interner> {
             fn with_trait_impl_ref<F>(&mut self, trait_impl_ref: &Option<TraitRef>, f: F)
             where
                 F: FnOnce(&mut Self),
@@ -581,8 +581,8 @@ impl<'a> LoweringContext<'a> {
             }
         }
 
-        impl<'lcx, 'interner> Visitor<'lcx> for ItemLowerer<'lcx, 'interner> {
-            fn visit_mod(&mut self, m: &'lcx Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
+        impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
+            fn visit_mod(&mut self, m: &'tcx Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
                 self.lctx.modules.insert(n, hir::ModuleItems {
                     items: BTreeSet::new(),
                     trait_items: BTreeSet::new(),
@@ -595,7 +595,7 @@ impl<'a> LoweringContext<'a> {
                 self.lctx.current_module = old;
             }
 
-            fn visit_item(&mut self, item: &'lcx Item) {
+            fn visit_item(&mut self, item: &'tcx Item) {
                 let mut item_hir_id = None;
                 self.lctx.with_hir_id_owner(item.id, |lctx| {
                     if let Some(hir_item) = lctx.lower_item(item) {
@@ -626,7 +626,7 @@ impl<'a> LoweringContext<'a> {
                 }
             }
 
-            fn visit_trait_item(&mut self, item: &'lcx TraitItem) {
+            fn visit_trait_item(&mut self, item: &'tcx TraitItem) {
                 self.lctx.with_hir_id_owner(item.id, |lctx| {
                     let hir_item = lctx.lower_trait_item(item);
                     let id = hir::TraitItemId { hir_id: hir_item.hir_id };
@@ -637,7 +637,7 @@ impl<'a> LoweringContext<'a> {
                 visit::walk_trait_item(self, item);
             }
 
-            fn visit_impl_item(&mut self, item: &'lcx ImplItem) {
+            fn visit_impl_item(&mut self, item: &'tcx ImplItem) {
                 self.lctx.with_hir_id_owner(item.id, |lctx| {
                     let hir_item = lctx.lower_impl_item(item);
                     let id = hir::ImplItemId { hir_id: hir_item.hir_id };

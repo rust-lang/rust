@@ -19,7 +19,7 @@ use self::primitive::*;
 use self::builtin::*;
 
 fn assemble_clauses_from_impls<'tcx>(
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     clauses: &mut Vec<Clause<'tcx>>,
 ) {
@@ -33,7 +33,7 @@ fn assemble_clauses_from_impls<'tcx>(
 }
 
 fn assemble_clauses_from_assoc_ty_values<'tcx>(
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     clauses: &mut Vec<Clause<'tcx>>,
 ) {
@@ -48,7 +48,7 @@ fn assemble_clauses_from_assoc_ty_values<'tcx>(
     });
 }
 
-impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
+impl ChalkInferenceContext<'cx, 'tcx> {
     pub(super) fn program_clauses_impl(
         &self,
         environment: &Environment<'tcx>,

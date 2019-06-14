@@ -57,12 +57,7 @@ impl MirPass for SimplifyCfg {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass<'tcx>(
-        &self,
-        _tcx: TyCtxt<'tcx, 'tcx>,
-        _src: MirSource<'tcx>,
-        body: &mut Body<'tcx>,
-    ) {
+    fn run_pass<'tcx>(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body);
         simplify_cfg(body);
     }
@@ -298,7 +293,7 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
 pub struct SimplifyLocals;
 
 impl MirPass for SimplifyLocals {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let mut marker = DeclMarker { locals: BitSet::new_empty(body.local_decls.len()) };
         marker.visit_body(body);
         // Return pointer and arguments are always live

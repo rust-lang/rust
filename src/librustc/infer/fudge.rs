@@ -22,7 +22,7 @@ fn const_vars_since_snapshot<'tcx>(
     }).collect())
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// This rather funky routine is used while processing expected
     /// types. What happens here is that we want to propagate a
     /// coercion through the return type of a fn to its
@@ -133,8 +133,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub struct InferenceFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub struct InferenceFudger<'a, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
     type_vars: (Range<TyVid>, Vec<TypeVariableOrigin>),
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
@@ -142,8 +142,8 @@ pub struct InferenceFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     const_vars: (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>),
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceFudger<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

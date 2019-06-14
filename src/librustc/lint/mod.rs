@@ -761,12 +761,12 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     return err
 }
 
-pub fn maybe_lint_level_root(tcx: TyCtxt<'_, '_>, id: hir::HirId) -> bool {
+pub fn maybe_lint_level_root(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     let attrs = tcx.hir().attrs_by_hir_id(id);
     attrs.iter().any(|attr| Level::from_symbol(attr.name_or_empty()).is_some())
 }
 
-fn lint_levels<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, cnum: CrateNum) -> &'tcx LintLevelMap {
+fn lint_levels<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx LintLevelMap {
     assert_eq!(cnum, LOCAL_CRATE);
     let mut builder = LintLevelMapBuilder {
         levels: LintLevelSets::builder(tcx.sess),
@@ -787,7 +787,7 @@ fn lint_levels<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, cnum: CrateNum) -> &'tcx LintLevel
 
 struct LintLevelMapBuilder<'tcx> {
     levels: levels::LintLevelsBuilder<'tcx>,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl LintLevelMapBuilder<'tcx> {

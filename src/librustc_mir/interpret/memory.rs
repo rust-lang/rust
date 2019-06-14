@@ -66,7 +66,7 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub extra: M::MemoryExtra,
 
     /// Lets us implement `HasDataLayout`, which is awfully convenient.
-    pub(super) tcx: TyCtxtAt<'tcx, 'tcx>,
+    pub(super) tcx: TyCtxtAt<'tcx>,
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M> {
@@ -94,7 +94,7 @@ where
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxtAt<'tcx, 'tcx>) -> Self {
+    pub fn new(tcx: TyCtxtAt<'tcx>) -> Self {
         Memory {
             alloc_map: M::MemoryMap::default(),
             dead_alloc_map: FxHashMap::default(),
@@ -324,7 +324,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// another static), those inner references only exist in "resolved" form.
     fn get_static_alloc(
         id: AllocId,
-        tcx: TyCtxtAt<'tcx, 'tcx>,
+        tcx: TyCtxtAt<'tcx>,
         memory_extra: &M::MemoryExtra,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);

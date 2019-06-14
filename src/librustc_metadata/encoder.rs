@@ -42,7 +42,7 @@ use rustc::hir::intravisit;
 
 pub struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,
-    pub tcx: TyCtxt<'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx>,
 
     entries_index: Index<'tcx>,
 
@@ -1816,7 +1816,7 @@ impl EncodeContext<'tcx> {
 }
 
 struct ImplVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     impls: FxHashMap<DefId, Vec<DefIndex>>,
 }
 
@@ -1863,7 +1863,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-pub fn encode_metadata<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> EncodedMetadata {
+pub fn encode_metadata<'tcx>(tcx: TyCtxt<'tcx>) -> EncodedMetadata {
     let mut encoder = opaque::Encoder::new(vec![]);
     encoder.emit_raw_bytes(METADATA_HEADER);
 
@@ -1905,7 +1905,7 @@ pub fn encode_metadata<'tcx>(tcx: TyCtxt<'tcx, 'tcx>) -> EncodedMetadata {
     EncodedMetadata { raw_data: result }
 }
 
-pub fn get_repr_options<'tcx, 'gcx>(tcx: TyCtxt<'tcx, 'gcx>, did: DefId) -> ReprOptions {
+pub fn get_repr_options<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> ReprOptions {
     let ty = tcx.type_of(did);
     match ty.sty {
         ty::Adt(ref def, _) => return def.repr,

@@ -10,7 +10,7 @@ use syntax_pos::{Span, sym};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir;
 
-fn check_mod_intrinsics<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_intrinsics<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut ItemVisitor { tcx }.as_deep_visitor()
@@ -25,18 +25,18 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 struct ItemVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 struct ExprVisitor<'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     tables: &'tcx ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
-fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let (def, substs) = match ty.sty {
         ty::Adt(def, substs) => (def, substs),
         _ => return ty

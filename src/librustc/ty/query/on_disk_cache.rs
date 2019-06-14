@@ -156,11 +156,7 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn serialize<'tcx, E>(
-        &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
-        encoder: &mut E,
-    ) -> Result<(), E::Error>
+    pub fn serialize<'tcx, E>(&self, tcx: TyCtxt<'tcx>, encoder: &mut E) -> Result<(), E::Error>
     where
         E: ty_codec::TyEncoder,
     {
@@ -316,7 +312,7 @@ impl<'sess> OnDiskCache<'sess> {
 
             return Ok(());
 
-            fn sorted_cnums_including_local_crate(tcx: TyCtxt<'_, '_>) -> Vec<CrateNum> {
+            fn sorted_cnums_including_local_crate(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
                 let mut cnums = vec![LOCAL_CRATE];
                 cnums.extend_from_slice(&tcx.crates()[..]);
                 cnums.sort_unstable();
@@ -330,7 +326,7 @@ impl<'sess> OnDiskCache<'sess> {
     /// Loads a diagnostic emitted during the previous compilation session.
     pub fn load_diagnostics<'tcx>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         dep_node_index: SerializedDepNodeIndex,
     ) -> Vec<Diagnostic> {
         let diagnostics: Option<EncodedDiagnostics> = self.load_indexed(
@@ -359,7 +355,7 @@ impl<'sess> OnDiskCache<'sess> {
     /// the given `SerializedDepNodeIndex`; otherwise returns `None`.
     pub fn try_load_query_result<'tcx, T>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         dep_node_index: SerializedDepNodeIndex,
     ) -> Option<T>
     where
@@ -389,7 +385,7 @@ impl<'sess> OnDiskCache<'sess> {
 
     fn load_indexed<'tcx, T>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         dep_node_index: SerializedDepNodeIndex,
         index: &FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
         debug_tag: &'static str,
@@ -430,7 +426,7 @@ impl<'sess> OnDiskCache<'sess> {
     // Session that don't occur in the current one. For these, the mapping
     // maps to None.
     fn compute_cnum_map(
-        tcx: TyCtxt<'_, '_>,
+        tcx: TyCtxt<'_>,
         prev_cnums: &[(u32, String, CrateDisambiguator)],
     ) -> IndexVec<CrateNum, Option<CrateNum>> {
         tcx.dep_graph.with_ignore(|| {
@@ -464,7 +460,7 @@ impl<'sess> OnDiskCache<'sess> {
 /// we use for crate metadata decoding in that it can rebase spans and
 /// eventually will also handle things that contain `Ty` instances.
 struct CacheDecoder<'a, 'tcx> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     opaque: opaque::Decoder<'a>,
     source_map: &'a SourceMap,
     cnum_map: &'a IndexVec<CrateNum, Option<CrateNum>>,
@@ -532,7 +528,7 @@ fn decode_tagged<'a, 'tcx, D, T, V>(decoder: &mut D,
 
 impl<'a, 'tcx> ty_codec::TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     #[inline]
-    fn tcx(&self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -751,7 +747,7 @@ impl<'a, 'tcx, T: Decodable> SpecializedDecoder<mir::ClearCrossCrate<T>>
 //- ENCODING -------------------------------------------------------------------
 
 struct CacheEncoder<'a, 'tcx, E: ty_codec::TyEncoder> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     encoder: &'a mut E,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
@@ -1080,7 +1076,7 @@ impl<'a> SpecializedDecoder<IntEncodedWithFixedSize> for opaque::Decoder<'a> {
 }
 
 fn encode_query_results<'a, 'tcx, Q, E>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     encoder: &mut CacheEncoder<'a, 'tcx, E>,
     query_result_index: &mut EncodedQueryResultIndex,
 ) -> Result<(), E::Error>

@@ -9,16 +9,16 @@ use syntax::source_map::CompilerDesugaringKind;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 
-struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+struct FindLocalByTypeVisitor<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
     target_ty: Ty<'tcx>,
-    hir_map: &'a hir::map::Map<'gcx>,
-    found_local_pattern: Option<&'gcx Pat>,
-    found_arg_pattern: Option<&'gcx Pat>,
+    hir_map: &'a hir::map::Map<'tcx>,
+    found_local_pattern: Option<&'tcx Pat>,
+    found_arg_pattern: Option<&'tcx Pat>,
     found_ty: Option<Ty<'tcx>>,
 }
 
-impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
     fn node_matches_type(&mut self, hir_id: HirId) -> Option<Ty<'tcx>> {
         let ty_opt = self.infcx.in_progress_tables.and_then(|tables| {
             tables.borrow().node_type_opt(hir_id)
@@ -47,12 +47,12 @@ impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.hir_map)
     }
 
-    fn visit_local(&mut self, local: &'gcx Local) {
+    fn visit_local(&mut self, local: &'tcx Local) {
         if let (None, Some(ty)) = (self.found_local_pattern, self.node_matches_type(local.hir_id)) {
             self.found_local_pattern = Some(&*local.pat);
             self.found_ty = Some(ty);
@@ -60,7 +60,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
         intravisit::walk_local(self, local);
     }
 
-    fn visit_body(&mut self, body: &'gcx Body) {
+    fn visit_body(&mut self, body: &'tcx Body) {
         for argument in &body.arguments {
             if let (None, Some(ty)) = (
                 self.found_arg_pattern,
@@ -74,8 +74,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
     }
 }
 
-
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn extract_type_name(
         &self,
         ty: Ty<'tcx>,
@@ -102,8 +101,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &self,
         body_id: Option<hir::BodyId>,
         span: Span,
-        ty: Ty<'tcx>
-    ) -> DiagnosticBuilder<'gcx> {
+        ty: Ty<'tcx>,
+    ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty, None);
 
@@ -229,8 +228,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn need_type_info_err_in_generator(
         &self,
         span: Span,
-        ty: Ty<'tcx>
-    ) -> DiagnosticBuilder<'gcx> {
+        ty: Ty<'tcx>,
+    ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty, None);
 

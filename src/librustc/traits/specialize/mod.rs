@@ -69,12 +69,13 @@ pub struct OverlapError {
 /// through associated type projection. We deal with such cases by using
 /// *fulfillment* to relate the two impls, requiring that all projections are
 /// resolved.
-pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                        param_env: ty::ParamEnv<'tcx>,
-                                        source_impl: DefId,
-                                        source_substs: SubstsRef<'tcx>,
-                                        target_node: specialization_graph::Node)
-                                        -> SubstsRef<'tcx> {
+pub fn translate_substs<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    source_impl: DefId,
+    source_substs: SubstsRef<'tcx>,
+    target_node: specialization_graph::Node,
+) -> SubstsRef<'tcx> {
     debug!("translate_substs({:?}, {:?}, {:?}, {:?})",
            param_env, source_impl, source_substs, target_node);
     let source_trait_ref = infcx.tcx
@@ -110,7 +111,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 /// that impl, a less specialized impl, or the trait default,
 /// whichever applies.
 pub fn find_associated_item<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     item: &ty::AssocItem,
     substs: SubstsRef<'tcx>,
@@ -150,7 +151,7 @@ pub fn find_associated_item<'tcx>(
 /// `impl1` specializes `impl2` if it applies to a subset of the types `impl2` applies
 /// to.
 pub(super) fn specializes<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     (impl1_def_id, impl2_def_id): (DefId, DefId),
 ) -> bool {
     debug!("specializes({:?}, {:?})", impl1_def_id, impl2_def_id);
@@ -209,11 +210,12 @@ pub(super) fn specializes<'tcx>(
 /// generics of `target_impl`, including both those needed to unify with
 /// `source_trait_ref` and those whose identity is determined via a where
 /// clause in the impl.
-fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                       param_env: ty::ParamEnv<'tcx>,
-                                       source_trait_ref: ty::TraitRef<'tcx>,
-                                       target_impl: DefId)
-                                       -> Result<SubstsRef<'tcx>, ()> {
+fn fulfill_implication<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    source_trait_ref: ty::TraitRef<'tcx>,
+    target_impl: DefId,
+) -> Result<SubstsRef<'tcx>, ()> {
     debug!("fulfill_implication({:?}, trait_ref={:?} |- {:?} applies)",
            param_env, source_trait_ref, target_impl);
 
@@ -286,7 +288,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 
 // Query provider for `specialization_graph_of`.
 pub(super) fn specialization_graph_provider<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     trait_id: DefId,
 ) -> &'tcx specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
@@ -390,7 +392,7 @@ pub(super) fn specialization_graph_provider<'tcx>(
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a
 /// string.
-fn to_pretty_impl_header(tcx: TyCtxt<'_, '_>, impl_def_id: DefId) -> Option<String> {
+fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
 
     let trait_ref = if let Some(tr) = tcx.impl_trait_ref(impl_def_id) {

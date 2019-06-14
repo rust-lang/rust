@@ -25,7 +25,7 @@ use crate::dataflow::has_rustc_mir_with;
 pub struct SanityCheck;
 
 impl MirPass for SanityCheck {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx, 'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let def_id = src.def_id();
         if !tcx.has_attr(def_id, sym::rustc_mir) {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
@@ -84,7 +84,7 @@ impl MirPass for SanityCheck {
 /// expression form above, then that emits an error as well, but those
 /// errors are not intended to be used for unit tests.)
 pub fn sanity_check_via_rustc_peek<'tcx, O>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     def_id: DefId,
     _attributes: &[ast::Attribute],
@@ -103,7 +103,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, O>(
 }
 
 fn each_block<'tcx, O>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     results: &DataflowResults<'tcx, O>,
     bb: mir::BasicBlock,
@@ -218,7 +218,7 @@ fn each_block<'tcx, O>(
 }
 
 fn is_rustc_peek<'a, 'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     terminator: &'a Option<mir::Terminator<'tcx>>,
 ) -> Option<(&'a [mir::Operand<'tcx>], Span)> {
     if let Some(mir::Terminator { ref kind, source_info, .. }) = *terminator {

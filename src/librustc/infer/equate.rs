@@ -11,23 +11,24 @@ use crate::mir::interpret::ConstValue;
 use crate::infer::unify_key::replace_if_possible;
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
-pub struct Equate<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
-    fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+pub struct Equate<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
+    fields: &'combine mut CombineFields<'infcx, 'tcx>,
     a_is_expected: bool,
 }
 
-impl<'combine, 'infcx, 'gcx, 'tcx> Equate<'combine, 'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
-        -> Equate<'combine, 'infcx, 'gcx, 'tcx>
-    {
+impl<'combine, 'infcx, 'tcx> Equate<'combine, 'infcx, 'tcx> {
+    pub fn new(
+        fields: &'combine mut CombineFields<'infcx, 'tcx>,
+        a_is_expected: bool,
+    ) -> Equate<'combine, 'infcx, 'tcx> {
         Equate { fields: fields, a_is_expected: a_is_expected }
     }
 }
 
-impl TypeRelation<'gcx, 'tcx> for Equate<'combine, 'infcx, 'gcx, 'tcx> {
+impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
     fn tag(&self) -> &'static str { "Equate" }
 
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.a_is_expected }
 

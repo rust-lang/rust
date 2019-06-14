@@ -255,7 +255,7 @@ fn block<'tcx>(
 }
 
 pub fn dump_mir<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     pass_name: &str,
     source: MirSource<'tcx>,
     body: &Body<'tcx>,
@@ -272,7 +272,7 @@ pub fn dump_mir<'tcx>(
 }
 
 fn dump_matched_mir_node<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     pass_name: &str,
     node_path: &str,
     source: MirSource<'tcx>,
@@ -295,7 +295,7 @@ fn dump_matched_mir_node<'tcx>(
 }
 
 pub fn write_mir_fn<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     src: MirSource<'tcx>,
     body: &Body<'tcx>,
     w: &mut dyn Write,

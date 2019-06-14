@@ -12,19 +12,19 @@ use crate::ty::fold::{TypeFolder, TypeVisitor};
 /// been unified with (similar to `shallow_resolve`, but deep). This is
 /// useful for printing messages etc but also required at various
 /// points for correctness.
-pub struct OpportunisticVarResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub struct OpportunisticVarResolver<'a, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> OpportunisticVarResolver<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> OpportunisticVarResolver<'a, 'tcx> {
     #[inline]
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
         OpportunisticVarResolver { infcx }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticVarResolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -50,18 +50,18 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticVarResolver<'a, 'gc
 /// The opportunistic type and region resolver is similar to the
 /// opportunistic type resolver, but also opportunistically resolves
 /// regions. It is useful for canonicalization.
-pub struct OpportunisticTypeAndRegionResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub struct OpportunisticTypeAndRegionResolver<'a, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> OpportunisticTypeAndRegionResolver<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+impl<'a, 'tcx> OpportunisticTypeAndRegionResolver<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
         OpportunisticTypeAndRegionResolver { infcx }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticTypeAndRegionResolver<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -101,20 +101,20 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
 /// type variables that don't yet have a value. The first unresolved type is stored.
 /// It does not construct the fully resolved type (which might
 /// involve some hashing and so forth).
-pub struct UnresolvedTypeFinder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub struct UnresolvedTypeFinder<'a, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
 
     /// Used to find the type parameter name and location for error reporting.
-    pub first_unresolved: Option<(Ty<'tcx>,Option<Span>)>,
+    pub first_unresolved: Option<(Ty<'tcx>, Option<Span>)>,
 }
 
-impl<'a, 'gcx, 'tcx> UnresolvedTypeFinder<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+impl<'a, 'tcx> UnresolvedTypeFinder<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
         UnresolvedTypeFinder { infcx, first_unresolved: None }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
         let t = self.infcx.shallow_resolve(t);
         if t.has_infer_types() {
@@ -157,9 +157,9 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'gcx, 'tcx> 
 /// Full type resolution replaces all type and region variables with
 /// their concrete results. If any variable cannot be replaced (never unified, etc)
 /// then an `Err` result is returned.
-pub fn fully_resolve<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                        value: &T) -> FixupResult<'tcx, T>
-    where T : TypeFoldable<'tcx>
+pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>, value: &T) -> FixupResult<'tcx, T>
+where
+    T: TypeFoldable<'tcx>,
 {
     let mut full_resolver = FullTypeResolver { infcx: infcx, err: None };
     let result = value.fold_with(&mut full_resolver);
@@ -171,13 +171,13 @@ pub fn fully_resolve<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 
 // N.B. This type is not public because the protocol around checking the
 // `err` field is not enforcable otherwise.
-struct FullTypeResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+struct FullTypeResolver<'a, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
     err: Option<FixupError<'tcx>>,
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

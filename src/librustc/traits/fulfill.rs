@@ -68,7 +68,7 @@ pub struct PendingPredicateObligation<'tcx> {
     pub stalled_on: Vec<Ty<'tcx>>,
 }
 
-impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
+impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     pub fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
@@ -95,8 +95,10 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
     }
 
     /// Attempts to select obligations using `selcx`.
-    fn select(&mut self, selcx: &mut SelectionContext<'a, 'gcx, 'tcx>)
-              -> Result<(), Vec<FulfillmentError<'tcx>>> {
+    fn select(
+        &mut self,
+        selcx: &mut SelectionContext<'a, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         debug!("select(obligation-forest-size={})", self.predicates.len());
 
         let mut errors = Vec::new();
@@ -143,13 +145,13 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     /// `SomeTrait` or a where-clause that lets us unify `$0` with
     /// something concrete. If this fails, we'll unify `$0` with
     /// `projection_ty` again.
-    fn normalize_projection_type<'a, 'gcx>(&mut self,
-                                 infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                 param_env: ty::ParamEnv<'tcx>,
-                                 projection_ty: ty::ProjectionTy<'tcx>,
-                                 cause: ObligationCause<'tcx>)
-                                 -> Ty<'tcx>
-    {
+    fn normalize_projection_type(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        projection_ty: ty::ProjectionTy<'tcx>,
+        cause: ObligationCause<'tcx>,
+    ) -> Ty<'tcx> {
         debug!("normalize_projection_type(projection_ty={:?})",
                projection_ty);
 
@@ -172,10 +174,11 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         normalized_ty
     }
 
-    fn register_predicate_obligation<'a, 'gcx>(&mut self,
-                                     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                     obligation: PredicateObligation<'tcx>)
-    {
+    fn register_predicate_obligation(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        obligation: PredicateObligation<'tcx>,
+    ) {
         // this helps to reduce duplicate errors, as well as making
         // debug output much nicer to read and so on.
         let obligation = infcx.resolve_vars_if_possible(&obligation);
@@ -190,11 +193,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         });
     }
 
-    fn select_all_or_error<'a, 'gcx>(
+    fn select_all_or_error(
         &mut self,
-        infcx: &InferCtxt<'a, 'gcx, 'tcx>
-    ) -> Result<(),Vec<FulfillmentError<'tcx>>>
-    {
+        infcx: &InferCtxt<'_, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         self.select_where_possible(infcx)?;
 
         let errors: Vec<_> =
@@ -209,10 +211,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         }
     }
 
-    fn select_where_possible<'a, 'gcx>(&mut self,
-                             infcx: &InferCtxt<'a, 'gcx, 'tcx>)
-                             -> Result<(),Vec<FulfillmentError<'tcx>>>
-    {
+    fn select_where_possible(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         let mut selcx = SelectionContext::new(infcx);
         self.select(&mut selcx)
     }
@@ -222,9 +224,9 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 }
 
-struct FulfillProcessor<'a, 'b: 'a, 'gcx: 'tcx, 'tcx: 'b> {
-    selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
-    register_region_obligations: bool
+struct FulfillProcessor<'a, 'b: 'a, 'tcx: 'b> {
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    register_region_obligations: bool,
 }
 
 fn mk_pending(os: Vec<PredicateObligation<'tcx>>) -> Vec<PendingPredicateObligation<'tcx>> {
@@ -234,7 +236,7 @@ fn mk_pending(os: Vec<PredicateObligation<'tcx>>) -> Vec<PendingPredicateObligat
     }).collect()
 }
 
-impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 'tcx> {
+impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     type Obligation = PendingPredicateObligation<'tcx>;
     type Error = FulfillmentErrorCode<'tcx>;
 
@@ -514,9 +516,10 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
 }
 
 /// Returns the set of type variables contained in a trait ref
-fn trait_ref_type_vars<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
-                                       t: ty::PolyTraitRef<'tcx>) -> Vec<Ty<'tcx>>
-{
+fn trait_ref_type_vars<'a, 'tcx>(
+    selcx: &mut SelectionContext<'a, 'tcx>,
+    t: ty::PolyTraitRef<'tcx>,
+) -> Vec<Ty<'tcx>> {
     t.skip_binder() // ok b/c this check doesn't care about regions
      .input_types()
      .map(|t| selcx.infcx().resolve_vars_if_possible(&t))

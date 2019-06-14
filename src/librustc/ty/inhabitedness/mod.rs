@@ -51,7 +51,7 @@ mod def_id_forest;
 // This code should only compile in modules where the uninhabitedness of Foo is
 // visible.
 
-impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Checks whether a type is visibly uninhabited from a particular module.
     /// # Example
     /// ```rust
@@ -106,9 +106,9 @@ impl<'gcx, 'tcx> TyCtxt<'gcx, 'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> AdtDef {
+impl<'tcx> AdtDef {
     /// Calculate the forest of DefIds from which this adt is visibly uninhabited.
-    fn uninhabited_from(&self, tcx: TyCtxt<'gcx, 'tcx>, substs: SubstsRef<'tcx>) -> DefIdForest {
+    fn uninhabited_from(&self, tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>) -> DefIdForest {
         // Non-exhaustive ADTs from other crates are always considered inhabited.
         if self.is_variant_list_non_exhaustive() && !self.did.is_local() {
             DefIdForest::empty()
@@ -120,11 +120,11 @@ impl<'gcx, 'tcx> AdtDef {
     }
 }
 
-impl<'gcx, 'tcx> VariantDef {
+impl<'tcx> VariantDef {
     /// Calculate the forest of DefIds from which this variant is visibly uninhabited.
     pub fn uninhabited_from(
         &self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
         adt_kind: AdtKind,
     ) -> DefIdForest {
@@ -146,11 +146,11 @@ impl<'gcx, 'tcx> VariantDef {
     }
 }
 
-impl<'gcx, 'tcx> FieldDef {
+impl<'tcx> FieldDef {
     /// Calculate the forest of DefIds from which this field is visibly uninhabited.
     fn uninhabited_from(
         &self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
         is_enum: bool,
     ) -> DefIdForest {
@@ -176,9 +176,9 @@ impl<'gcx, 'tcx> FieldDef {
     }
 }
 
-impl<'gcx, 'tcx> TyS<'tcx> {
+impl<'tcx> TyS<'tcx> {
     /// Calculate the forest of DefIds from which this type is visibly uninhabited.
-    fn uninhabited_from(&self, tcx: TyCtxt<'gcx, 'tcx>) -> DefIdForest {
+    fn uninhabited_from(&self, tcx: TyCtxt<'tcx>) -> DefIdForest {
         match self.sty {
             Adt(def, substs) => def.uninhabited_from(tcx, substs),
 

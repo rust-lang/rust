@@ -29,8 +29,8 @@ impl FulfillmentContext<'tcx> {
 }
 
 fn in_environment(
-    infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    obligation: PredicateObligation<'tcx>
+    infcx: &InferCtxt<'_, 'tcx>,
+    obligation: PredicateObligation<'tcx>,
 ) -> InEnvironment<'tcx, PredicateObligation<'tcx>> {
     assert!(!infcx.is_in_snapshot());
     let obligation = infcx.resolve_vars_if_possible(&obligation);
@@ -52,7 +52,7 @@ fn in_environment(
 impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     fn normalize_projection_type(
         &mut self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         _param_env: ty::ParamEnv<'tcx>,
         projection_ty: ty::ProjectionTy<'tcx>,
         _cause: ObligationCause<'tcx>,
@@ -62,7 +62,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
     fn register_predicate_obligation(
         &mut self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         obligation: PredicateObligation<'tcx>,
     ) {
         self.obligations.insert(in_environment(infcx, obligation));
@@ -70,7 +70,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
     fn select_all_or_error(
         &mut self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         self.select_where_possible(infcx)?;
 
@@ -89,7 +89,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
     fn select_where_possible(
         &mut self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         let mut errors = Vec::new();
         let mut next_round = FxHashSet::default();

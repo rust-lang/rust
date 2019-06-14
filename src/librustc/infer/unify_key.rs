@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use std::cell::RefMut;
 
 pub trait ToType {
-    fn to_type<'gcx, 'tcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Ty<'tcx>;
+    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
 }
 
 impl UnifyKey for ty::IntVid {
@@ -52,7 +52,7 @@ impl UnifyKey for ty::RegionVid {
 }
 
 impl ToType for IntVarValue {
-    fn to_type<'gcx, 'tcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Ty<'tcx> {
+    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             ty::IntType(i) => tcx.mk_mach_int(i),
             ty::UintType(i) => tcx.mk_mach_uint(i),
@@ -72,7 +72,7 @@ impl UnifyKey for ty::FloatVid {
 impl EqUnifyValue for FloatVarValue {}
 
 impl ToType for FloatVarValue {
-    fn to_type<'gcx, 'tcx>(&self, tcx: TyCtxt<'gcx, 'tcx>) -> Ty<'tcx> {
+    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.mk_mach_float(self.0)
     }
 }

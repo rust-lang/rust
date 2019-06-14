@@ -62,8 +62,8 @@ pub enum PassWhere {
 ///   or `typeck` appears in the name.
 /// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
 ///   or `typeck` and `bar` both appear in the name.
-pub fn dump_mir<'gcx, 'tcx, F>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn dump_mir<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
@@ -93,11 +93,7 @@ pub fn dump_mir<'gcx, 'tcx, F>(
     );
 }
 
-pub fn dump_enabled<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
-    pass_name: &str,
-    source: MirSource<'tcx>,
-) -> bool {
+pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, source: MirSource<'tcx>) -> bool {
     let filters = match tcx.sess.opts.debugging_opts.dump_mir {
         None => return false,
         Some(ref filters) => filters,
@@ -117,8 +113,8 @@ pub fn dump_enabled<'gcx, 'tcx>(
 // `def_path_str()` would otherwise trigger `type_of`, and this can
 // run while we are already attempting to evaluate `type_of`.
 
-fn dump_matched_mir_node<'gcx, 'tcx, F>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+fn dump_matched_mir_node<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     node_path: &str,
@@ -158,7 +154,7 @@ fn dump_matched_mir_node<'gcx, 'tcx, F>(
 /// Also used by other bits of code (e.g., NLL inference) that dump
 /// graphviz data or other things.
 fn dump_path(
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     extension: &str,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
@@ -225,7 +221,7 @@ fn dump_path(
 /// bits of code (e.g., NLL inference) that dump graphviz data or
 /// other things, and hence takes the extension as an argument.
 pub(crate) fn create_dump_file(
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     extension: &str,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
@@ -240,8 +236,8 @@ pub(crate) fn create_dump_file(
 }
 
 /// Write out a human-readable textual representation for the given MIR.
-pub fn write_mir_pretty<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn write_mir_pretty<'tcx>(
+    tcx: TyCtxt<'tcx>,
     single: Option<DefId>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
@@ -279,8 +275,8 @@ pub fn write_mir_pretty<'gcx, 'tcx>(
     Ok(())
 }
 
-pub fn write_mir_fn<'gcx, 'tcx, F>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn write_mir_fn<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
     src: MirSource<'tcx>,
     body: &Body<'tcx>,
     extra_data: &mut F,
@@ -303,8 +299,8 @@ where
 }
 
 /// Write out a human-readable textual representation for the given basic block.
-pub fn write_basic_block<'gcx, 'tcx, F>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn write_basic_block<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
     block: BasicBlock,
     body: &Body<'tcx>,
     extra_data: &mut F,
@@ -370,13 +366,9 @@ where
 /// After we print the main statement, we sometimes dump extra
 /// information. There's often a lot of little things "nuzzled up" in
 /// a statement.
-fn write_extra<'gcx, 'tcx, F>(
-    tcx: TyCtxt<'gcx, 'tcx>,
-    write: &mut dyn Write,
-    mut visit_op: F,
-) -> io::Result<()>
+fn write_extra<'tcx, F>(tcx: TyCtxt<'tcx>, write: &mut dyn Write, mut visit_op: F) -> io::Result<()>
 where
-    F: FnMut(&mut ExtraComments<'gcx, 'tcx>),
+    F: FnMut(&mut ExtraComments<'tcx>),
 {
     let mut extra_comments = ExtraComments {
         _tcx: tcx,
@@ -389,12 +381,12 @@ where
     Ok(())
 }
 
-struct ExtraComments<'gcx, 'tcx> {
-    _tcx: TyCtxt<'gcx, 'tcx>, // don't need it now, but bet we will soon
+struct ExtraComments<'tcx> {
+    _tcx: TyCtxt<'tcx>, // don't need it now, but bet we will soon
     comments: Vec<String>,
 }
 
-impl ExtraComments<'gcx, 'tcx> {
+impl ExtraComments<'tcx> {
     fn push(&mut self, lines: &str) {
         for line in lines.split('\n') {
             self.comments.push(line.to_string());
@@ -402,7 +394,7 @@ impl ExtraComments<'gcx, 'tcx> {
     }
 }
 
-impl Visitor<'tcx> for ExtraComments<'gcx, 'tcx> {
+impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Constant { span, ty, user_ty, literal } = constant;
@@ -453,7 +445,7 @@ impl Visitor<'tcx> for ExtraComments<'gcx, 'tcx> {
     }
 }
 
-fn comment(tcx: TyCtxt<'_, '_>, SourceInfo { span, scope }: SourceInfo) -> String {
+fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
     format!(
         "scope {} at {}",
         scope.index(),
@@ -463,7 +455,7 @@ fn comment(tcx: TyCtxt<'_, '_>, SourceInfo { span, scope }: SourceInfo) -> Strin
 
 /// Prints local variables in a scope tree.
 fn write_scope_tree(
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     body: &Body<'_>,
     scope_tree: &FxHashMap<SourceScope, Vec<SourceScope>>,
     w: &mut dyn Write,
@@ -538,8 +530,8 @@ fn write_scope_tree(
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-pub fn write_mir_intro<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub fn write_mir_intro<'tcx>(
+    tcx: TyCtxt<'tcx>,
     src: MirSource<'tcx>,
     body: &Body<'_>,
     w: &mut dyn Write,
@@ -570,7 +562,7 @@ pub fn write_mir_intro<'gcx, 'tcx>(
 }
 
 fn write_mir_sig(
-    tcx: TyCtxt<'_, '_>,
+    tcx: TyCtxt<'_>,
     src: MirSource<'tcx>,
     body: &Body<'_>,
     w: &mut dyn Write,
@@ -642,7 +634,7 @@ fn write_user_type_annotations(body: &Body<'_>, w: &mut dyn Write) -> io::Result
     Ok(())
 }
 
-pub fn dump_mir_def_ids(tcx: TyCtxt<'_, '_>, single: Option<DefId>) -> Vec<DefId> {
+pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
     if let Some(i) = single {
         vec![i]
     } else {

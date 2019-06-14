@@ -17,7 +17,7 @@ use rustc::ty::{self, Ty};
 /// N.B., the type `a` is permitted to have unresolved inference
 /// variables, but not the type `b`.
 pub(super) fn relate_types<'tcx>(
-    infcx: &InferCtxt<'_, '_, 'tcx>,
+    infcx: &InferCtxt<'_, 'tcx>,
     a: Ty<'tcx>,
     v: ty::Variance,
     b: Ty<'tcx>,
@@ -34,8 +34,8 @@ pub(super) fn relate_types<'tcx>(
     Ok(())
 }
 
-struct NllTypeRelatingDelegate<'me, 'bccx: 'me, 'gcx: 'tcx, 'tcx: 'bccx> {
-    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+struct NllTypeRelatingDelegate<'me, 'bccx: 'me, 'tcx: 'bccx> {
+    infcx: &'me InferCtxt<'me, 'tcx>,
     borrowck_context: Option<&'me mut BorrowCheckContext<'bccx, 'tcx>>,
 
     /// Where (and why) is this relation taking place?
@@ -45,9 +45,9 @@ struct NllTypeRelatingDelegate<'me, 'bccx: 'me, 'gcx: 'tcx, 'tcx: 'bccx> {
     category: ConstraintCategory,
 }
 
-impl NllTypeRelatingDelegate<'me, 'bccx, 'gcx, 'tcx> {
+impl NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     fn new(
-        infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+        infcx: &'me InferCtxt<'me, 'tcx>,
         borrowck_context: Option<&'me mut BorrowCheckContext<'bccx, 'tcx>>,
         locations: Locations,
         category: ConstraintCategory,
@@ -61,7 +61,7 @@ impl NllTypeRelatingDelegate<'me, 'bccx, 'gcx, 'tcx> {
     }
 }
 
-impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
+impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
         self.infcx.create_next_universe()
     }

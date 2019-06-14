@@ -45,19 +45,19 @@ use std::marker::PhantomData;
 use self::unify::*;
 
 #[derive(Copy, Clone, Debug)]
-crate struct ChalkArenas<'gcx> {
-    _phantom: PhantomData<&'gcx ()>,
+crate struct ChalkArenas<'tcx> {
+    _phantom: PhantomData<&'tcx ()>,
 }
 
 #[derive(Copy, Clone)]
-crate struct ChalkContext<'gcx> {
-    _arenas: ChalkArenas<'gcx>,
-    tcx: TyCtxt<'gcx, 'gcx>,
+crate struct ChalkContext<'tcx> {
+    _arenas: ChalkArenas<'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 #[derive(Copy, Clone)]
-crate struct ChalkInferenceContext<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+crate struct ChalkInferenceContext<'cx, 'tcx: 'cx> {
+    infcx: &'cx InferCtxt<'cx, 'tcx>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -126,12 +126,12 @@ impl context::Context for ChalkArenas<'tcx> {
     }
 }
 
-impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'gcx> {
+impl context::AggregateOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
     fn make_solution(
         &self,
-        root_goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-        mut simplified_answers: impl context::AnswerStream<ChalkArenas<'gcx>>,
-    ) -> Option<Canonical<'gcx, QueryResponse<'gcx, ()>>> {
+        root_goal: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>,
+        mut simplified_answers: impl context::AnswerStream<ChalkArenas<'tcx>>,
+    ) -> Option<Canonical<'tcx, QueryResponse<'tcx, ()>>> {
         use chalk_engine::SimplifiedAnswer;
 
         debug!("make_solution(root_goal = {:?})", root_goal);
@@ -176,13 +176,10 @@ impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'gcx> {
     }
 }
 
-impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'gcx> {
+impl context::ContextOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
     /// Returns `true` if this is a coinductive goal: basically proving that an auto trait
     /// is implemented or proving that a trait reference is well-formed.
-    fn is_coinductive(
-        &self,
-        goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>
-    ) -> bool {
+    fn is_coinductive(&self, goal: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>) -> bool {
         use rustc::traits::{WellFormed, WhereClause};
 
         let mut goal = goal.value.goal;
@@ -216,8 +213,8 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'gcx> {
     /// - the environment and goal found by substitution `S` into `arg`.
     fn instantiate_ucanonical_goal<R>(
         &self,
-        arg: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-        op: impl context::WithInstantiatedUCanonicalGoal<ChalkArenas<'gcx>, Output = R>,
+        arg: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>,
+        op: impl context::WithInstantiatedUCanonicalGoal<ChalkArenas<'tcx>, Output = R>,
     ) -> R {
         self.tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, arg, |ref infcx, arg, subst| {
             let chalk_infcx = &mut ChalkInferenceContext {
@@ -230,8 +227,8 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'gcx> {
     fn instantiate_ex_clause<R>(
         &self,
         _num_universes: usize,
-        arg: &Canonical<'gcx, ChalkExClause<'gcx>>,
-        op: impl context::WithInstantiatedExClause<ChalkArenas<'gcx>, Output = R>,
+        arg: &Canonical<'tcx, ChalkExClause<'tcx>>,
+        op: impl context::WithInstantiatedExClause<ChalkArenas<'tcx>, Output = R>,
     ) -> R {
         self.tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &arg.upcast(), |ref infcx, arg, _| {
             let chalk_infcx = &mut ChalkInferenceContext {
@@ -242,31 +239,31 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'gcx> {
     }
 
     /// Returns `true` if this solution has no region constraints.
-    fn empty_constraints(ccs: &Canonical<'gcx, ConstrainedSubst<'gcx>>) -> bool {
+    fn empty_constraints(ccs: &Canonical<'tcx, ConstrainedSubst<'tcx>>) -> bool {
         ccs.value.constraints.is_empty()
     }
 
     fn inference_normalized_subst_from_ex_clause(
-        canon_ex_clause: &'a Canonical<'gcx, ChalkExClause<'gcx>>,
-    ) -> &'a CanonicalVarValues<'gcx> {
+        canon_ex_clause: &'a Canonical<'tcx, ChalkExClause<'tcx>>,
+    ) -> &'a CanonicalVarValues<'tcx> {
         &canon_ex_clause.value.subst
     }
 
     fn inference_normalized_subst_from_subst(
-        canon_subst: &'a Canonical<'gcx, ConstrainedSubst<'gcx>>,
-    ) -> &'a CanonicalVarValues<'gcx> {
+        canon_subst: &'a Canonical<'tcx, ConstrainedSubst<'tcx>>,
+    ) -> &'a CanonicalVarValues<'tcx> {
         &canon_subst.value.subst
     }
 
     fn canonical(
-        u_canon: &'a Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-    ) -> &'a Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>> {
+        u_canon: &'a Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>,
+    ) -> &'a Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>> {
         u_canon
     }
 
     fn is_trivial_substitution(
-        u_canon: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-        canonical_subst: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
+        u_canon: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>,
+        canonical_subst: &Canonical<'tcx, ConstrainedSubst<'tcx>>,
     ) -> bool {
         let subst = &canonical_subst.value.subst;
         assert_eq!(u_canon.variables.len(), subst.var_values.len());
@@ -297,7 +294,7 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'gcx> {
             })
     }
 
-    fn num_universes(canon: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>) -> usize {
+    fn num_universes(canon: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>) -> usize {
         canon.max_universe.index() + 1
     }
 
@@ -306,21 +303,21 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'gcx> {
     /// but for the universes of universally quantified names.
     fn map_goal_from_canonical(
         _map: &UniverseMap,
-        value: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-    ) -> Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>> {
+        value: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>,
+    ) -> Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>> {
         *value // FIXME universe maps not implemented yet
     }
 
     fn map_subst_from_canonical(
         _map: &UniverseMap,
-        value: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
-    ) -> Canonical<'gcx, ConstrainedSubst<'gcx>> {
+        value: &Canonical<'tcx, ConstrainedSubst<'tcx>>,
+    ) -> Canonical<'tcx, ConstrainedSubst<'tcx>> {
         value.clone() // FIXME universe maps not implemented yet
     }
 }
 
-impl context::InferenceTable<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
-    for ChalkInferenceContext<'cx, 'gcx, 'tcx>
+impl context::InferenceTable<ChalkArenas<'tcx>, ChalkArenas<'tcx>>
+    for ChalkInferenceContext<'cx, 'tcx>
 {
     fn into_goal(&self, domain_goal: DomainGoal<'tcx>) -> Goal<'tcx> {
         self.infcx.tcx.mk_goal(GoalKind::DomainGoal(domain_goal))
@@ -363,8 +360,8 @@ impl context::InferenceTable<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     }
 }
 
-impl context::TruncateOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
-    for ChalkInferenceContext<'cx, 'gcx, 'tcx>
+impl context::TruncateOps<ChalkArenas<'tcx>, ChalkArenas<'tcx>>
+    for ChalkInferenceContext<'cx, 'tcx>
 {
     fn truncate_goal(
         &mut self,
@@ -381,8 +378,8 @@ impl context::TruncateOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     }
 }
 
-impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
-    for ChalkInferenceContext<'cx, 'gcx, 'tcx>
+impl context::UnificationOps<ChalkArenas<'tcx>, ChalkArenas<'tcx>>
+    for ChalkInferenceContext<'cx, 'tcx>
 {
     fn program_clauses(
         &self,
@@ -418,7 +415,7 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     fn canonicalize_goal(
         &mut self,
         value: &InEnvironment<'tcx, Goal<'tcx>>,
-    ) -> Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>> {
+    ) -> Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>> {
         let mut _orig_values = OriginalQueryValues::default();
         self.infcx.canonicalize_query(value, &mut _orig_values)
     }
@@ -426,7 +423,7 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     fn canonicalize_ex_clause(
         &mut self,
         value: &ChalkExClause<'tcx>,
-    ) -> Canonical<'gcx, ChalkExClause<'gcx>> {
+    ) -> Canonical<'tcx, ChalkExClause<'tcx>> {
         self.infcx.canonicalize_response(value)
     }
 
@@ -434,19 +431,16 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         &mut self,
         subst: CanonicalVarValues<'tcx>,
         constraints: Vec<RegionConstraint<'tcx>>,
-    ) -> Canonical<'gcx, ConstrainedSubst<'gcx>> {
+    ) -> Canonical<'tcx, ConstrainedSubst<'tcx>> {
         self.infcx.canonicalize_response(&ConstrainedSubst { subst, constraints })
     }
 
     fn u_canonicalize_goal(
         &mut self,
-        value: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-    ) -> (
-        Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-        UniverseMap,
-    ) {
+        value: &Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>,
+    ) -> (Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>, UniverseMap) {
         (value.clone(), UniverseMap)
-    }
+}
 
     fn invert_goal(
         &mut self,
@@ -470,7 +464,7 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
 
     fn sink_answer_subset(
         &self,
-        value: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
+        value: &Canonical<'tcx, ConstrainedSubst<'tcx>>,
     ) -> Canonical<'tcx, ConstrainedSubst<'tcx>> {
         value.clone()
     }
@@ -478,7 +472,7 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     fn lift_delayed_literal(
         &self,
         value: DelayedLiteral<ChalkArenas<'tcx>>,
-    ) -> DelayedLiteral<ChalkArenas<'gcx>> {
+    ) -> DelayedLiteral<ChalkArenas<'tcx>> {
         match self.infcx.tcx.lift_to_global(&value) {
             Some(literal) => literal,
             None => bug!("cannot lift {:?}", value),
@@ -508,13 +502,13 @@ type ChalkHhGoal<'tcx> = HhGoal<ChalkArenas<'tcx>>;
 
 type ChalkExClause<'tcx> = ExClause<ChalkArenas<'tcx>>;
 
-impl Debug for ChalkContext<'gcx> {
+impl Debug for ChalkContext<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ChalkContext")
     }
 }
 
-impl Debug for ChalkInferenceContext<'cx, 'gcx, 'tcx> {
+impl Debug for ChalkInferenceContext<'cx, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ChalkInferenceContext")
     }
@@ -527,7 +521,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_ex_clause_to_tcx(
         ex_clause: &ChalkExClause<'a>,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
     ) -> Option<Self::LiftedExClause> {
         Some(ChalkExClause {
             subst: tcx.lift(&ex_clause.subst)?,
@@ -539,7 +533,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_delayed_literal_to_tcx(
         literal: &DelayedLiteral<ChalkArenas<'a>>,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
     ) -> Option<Self::LiftedDelayedLiteral> {
         Some(match literal {
             DelayedLiteral::CannotProve(()) => DelayedLiteral::CannotProve(()),
@@ -553,7 +547,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 
     fn lift_literal_to_tcx(
         literal: &Literal<ChalkArenas<'a>>,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
     ) -> Option<Self::LiftedLiteral> {
         Some(match literal {
             Literal::Negative(goal) => Literal::Negative(tcx.lift(goal)?),
@@ -563,7 +557,7 @@ impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
 }
 
 impl ExClauseFold<'tcx> for ChalkArenas<'tcx> {
-    fn fold_ex_clause_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(
+    fn fold_ex_clause_with<F: TypeFolder<'tcx>>(
         ex_clause: &ChalkExClause<'tcx>,
         folder: &mut F,
     ) -> ChalkExClause<'tcx> {
@@ -600,13 +594,13 @@ BraceStructLiftImpl! {
     }
 }
 
-trait Upcast<'tcx, 'gcx: 'tcx>: 'gcx {
+trait Upcast<'tcx>: 'tcx {
     type Upcasted: 'tcx;
 
     fn upcast(&self) -> Self::Upcasted;
 }
 
-impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for DelayedLiteral<ChalkArenas<'gcx>> {
+impl<'tcx> Upcast<'tcx> for DelayedLiteral<ChalkArenas<'tcx>> {
     type Upcasted = DelayedLiteral<ChalkArenas<'tcx>>;
 
     fn upcast(&self) -> Self::Upcasted {
@@ -621,7 +615,7 @@ impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for DelayedLiteral<ChalkArenas<'gcx>> 
     }
 }
 
-impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for Literal<ChalkArenas<'gcx>> {
+impl<'tcx> Upcast<'tcx> for Literal<ChalkArenas<'tcx>> {
     type Upcasted = Literal<ChalkArenas<'tcx>>;
 
     fn upcast(&self) -> Self::Upcasted {
@@ -632,7 +626,7 @@ impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for Literal<ChalkArenas<'gcx>> {
     }
 }
 
-impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for ExClause<ChalkArenas<'gcx>> {
+impl<'tcx> Upcast<'tcx> for ExClause<ChalkArenas<'tcx>> {
     type Upcasted = ExClause<ChalkArenas<'tcx>>;
 
     fn upcast(&self) -> Self::Upcasted {
@@ -651,8 +645,9 @@ impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for ExClause<ChalkArenas<'gcx>> {
     }
 }
 
-impl<'tcx, 'gcx: 'tcx, T> Upcast<'tcx, 'gcx> for Canonical<'gcx, T>
-    where T: Upcast<'tcx, 'gcx>
+impl<'tcx, T> Upcast<'tcx> for Canonical<'tcx, T>
+where
+    T: Upcast<'tcx>,
 {
     type Upcasted = Canonical<'tcx, T::Upcasted>;
 
@@ -673,7 +668,7 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 crate fn evaluate_goal<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     goal: ChalkCanonicalGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, traits::query::NoSolution> {
     use crate::lowering::Lower;

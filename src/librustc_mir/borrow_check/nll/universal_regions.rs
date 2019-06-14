@@ -106,7 +106,7 @@ impl<'tcx> DefiningTy<'tcx> {
     /// not a closure or generator, there are no upvars, and hence it
     /// will be an empty list. The order of types in this list will
     /// match up with the upvar order in the HIR, typesystem, and MIR.
-    pub fn upvar_tys(self, tcx: TyCtxt<'_, 'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
+    pub fn upvar_tys(self, tcx: TyCtxt<'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         match self {
             DefiningTy::Closure(def_id, substs) => Either::Left(substs.upvar_tys(def_id, tcx)),
             DefiningTy::Generator(def_id, substs, _) => {
@@ -194,7 +194,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// signature. This will also compute the relationships that are
     /// known between those regions.
     pub fn new(
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         mir_def_id: DefId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
@@ -218,7 +218,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// `'1: '2`, then the caller would impose the constraint that
     /// `V[1]: V[2]`.
     pub fn closure_mapping(
-        tcx: TyCtxt<'_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         closure_substs: SubstsRef<'tcx>,
         expected_num_vars: usize,
         closure_base_def_id: DefId,
@@ -305,7 +305,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// that this region imposes on others. The methods in this file
     /// handle the part about dumping the inference context internal
     /// state.
-    crate fn annotate(&self, tcx: TyCtxt<'_, 'tcx>, err: &mut DiagnosticBuilder<'_>) {
+    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut DiagnosticBuilder<'_>) {
         match self.defining_ty {
             DefiningTy::Closure(def_id, substs) => {
                 err.note(&format!(
@@ -363,8 +363,8 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 }
 
-struct UniversalRegionsBuilder<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+struct UniversalRegionsBuilder<'cx, 'tcx: 'cx> {
+    infcx: &'cx InferCtxt<'cx, 'tcx>,
     mir_def_id: DefId,
     mir_hir_id: HirId,
     param_env: ty::ParamEnv<'tcx>,
@@ -372,7 +372,7 @@ struct UniversalRegionsBuilder<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 
 const FR: NLLRegionVariableOrigin = NLLRegionVariableOrigin::FreeRegion;
 
-impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
         debug!("build(mir_def_id={:?})", self.mir_def_id);
 
@@ -639,7 +639,7 @@ trait InferCtxtExt<'tcx> {
     );
 }
 
-impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
         origin: NLLRegionVariableOrigin,
@@ -744,7 +744,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
 
     /// Replaces all free regions in `value` with region vids, as
     /// returned by `to_region_vid`.
-    pub fn fold_to_region_vids<T>(&self, tcx: TyCtxt<'_, 'tcx>, value: &T) -> T
+    pub fn fold_to_region_vids<T>(&self, tcx: TyCtxt<'tcx>, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -757,7 +757,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
 /// Iterates over the late-bound regions defined on fn_def_id and
 /// invokes `f` with the liberated form of each one.
 fn for_each_late_bound_region_defined_on<'tcx>(
-    tcx: TyCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     fn_def_id: DefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {

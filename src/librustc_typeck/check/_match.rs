@@ -22,7 +22,7 @@ use std::cmp;
 
 use super::report_unexpected_variant_res;
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// `discrim_span` argument having a `Span` indicates that this pattern is part of a match
     /// expression arm guard, and it points to the match discriminant to add context in type errors.
     /// In the following example, `discrim_span` corresponds to the `a + b` expression:
@@ -41,7 +41,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// ```
     pub fn check_pat_walk(
         &self,
-        pat: &'gcx hir::Pat,
+        pat: &'tcx hir::Pat,
         mut expected: Ty<'tcx>,
         mut def_bm: ty::BindingMode,
         discrim_span: Option<Span>,
@@ -613,9 +613,9 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
     pub fn check_match(
         &self,
-        expr: &'gcx hir::Expr,
-        discrim: &'gcx hir::Expr,
-        arms: &'gcx [hir::Arm],
+        expr: &'tcx hir::Expr,
+        discrim: &'tcx hir::Expr,
+        arms: &'tcx [hir::Arm],
         expected: Expectation<'tcx>,
         match_src: hir::MatchSource,
     ) -> Ty<'tcx> {
@@ -769,7 +769,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
     /// When the previously checked expression (the scrutinee) diverges,
     /// warn the user about the match arms being unreachable.
-    fn warn_arms_when_scrutinee_diverges(&self, arms: &'gcx [hir::Arm], source_if: bool) {
+    fn warn_arms_when_scrutinee_diverges(&self, arms: &'tcx [hir::Arm], source_if: bool) {
         if self.diverges.get().always() {
             let msg = if source_if { "block in `if` expression" } else { "arm" };
             for arm in arms {
@@ -782,8 +782,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
     fn if_fallback_coercion(
         &self,
         span: Span,
-        then_expr: &'gcx hir::Expr,
-        coercion: &mut CoerceMany<'gcx, 'tcx, '_, rustc::hir::Arm>,
+        then_expr: &'tcx hir::Expr,
+        coercion: &mut CoerceMany<'tcx, '_, rustc::hir::Arm>,
     ) {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
@@ -839,8 +839,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
     fn if_cause(
         &self,
         span: Span,
-        then_expr: &'gcx hir::Expr,
-        else_expr: &'gcx hir::Expr,
+        then_expr: &'tcx hir::Expr,
+        else_expr: &'tcx hir::Expr,
         then_ty: Ty<'tcx>,
         else_ty: Ty<'tcx>,
     ) -> ObligationCause<'tcx> {
@@ -941,8 +941,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
     fn demand_discriminant_type(
         &self,
-        arms: &'gcx [hir::Arm],
-        discrim: &'gcx hir::Expr,
+        arms: &'tcx [hir::Arm],
+        discrim: &'tcx hir::Expr,
     ) -> Ty<'tcx> {
         // Not entirely obvious: if matches may create ref bindings, we want to
         // use the *precise* type of the discriminant, *not* some supertype, as
@@ -1020,15 +1020,14 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
     fn check_pat_struct(
         &self,
-        pat: &'gcx hir::Pat,
+        pat: &'tcx hir::Pat,
         qpath: &hir::QPath,
-        fields: &'gcx [Spanned<hir::FieldPat>],
+        fields: &'tcx [Spanned<hir::FieldPat>],
         etc: bool,
         expected: Ty<'tcx>,
         def_bm: ty::BindingMode,
         discrim_span: Option<Span>,
-    ) -> Ty<'tcx>
-    {
+    ) -> Ty<'tcx> {
         // Resolve the path and check the definition for errors.
         let (variant, pat_ty) = if let Some(variant_ty) = self.check_struct_path(qpath, pat.hir_id)
         {
@@ -1088,7 +1087,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         &self,
         pat: &hir::Pat,
         qpath: &hir::QPath,
-        subpats: &'gcx [P<hir::Pat>],
+        subpats: &'tcx [P<hir::Pat>],
         ddpos: Option<usize>,
         expected: Ty<'tcx>,
         def_bm: ty::BindingMode,
@@ -1192,7 +1191,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         pat_id: hir::HirId,
         span: Span,
         variant: &'tcx ty::VariantDef,
-        fields: &'gcx [Spanned<hir::FieldPat>],
+        fields: &'tcx [Spanned<hir::FieldPat>],
         etc: bool,
         def_bm: ty::BindingMode,
     ) -> bool {

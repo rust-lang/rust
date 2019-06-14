@@ -23,7 +23,7 @@ pub mod subtype;
 /// "Type ops" are used in NLL to perform some particular action and
 /// extract out the resulting region constraints (or an error if it
 /// cannot be completed).
-pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
+pub trait TypeOp<'tcx>: Sized + fmt::Debug {
     type Output;
 
     /// Processes the operation and all resulting obligations,
@@ -31,7 +31,7 @@ pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     /// (they will be given over to the NLL region solver).
     fn fully_perform(
         self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
     ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)>;
 }
 
@@ -44,16 +44,14 @@ pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
 /// which produces the resulting query region constraints.
 ///
 /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
-pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
-    fmt::Debug + Sized + TypeFoldable<'tcx> + Lift<'gcx>
-{
-    type QueryResponse: TypeFoldable<'tcx> + Lift<'gcx>;
+pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + Lift<'tcx> {
+    type QueryResponse: TypeFoldable<'tcx> + Lift<'tcx>;
 
     /// Give query the option for a simple fast path that never
     /// actually hits the tcx cache lookup etc. Return `Some(r)` with
     /// a final result or `None` to do the full path.
     fn try_fast_path(
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse>;
 
@@ -64,29 +62,29 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
     /// bad, because it would create subregion relationships that are
     /// not captured in the return value.
     fn perform_query(
-        tcx: TyCtxt<'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResponse<'gcx, Self::QueryResponse>>;
+        tcx: TyCtxt<'tcx>,
+        canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
+    ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self::QueryResponse>>;
 
     /// Casts a lifted query result (which is in the gcx lifetime)
     /// into the tcx lifetime. This is always just an identity cast,
     /// but the generic code doesn't realize it -- put another way, in
-    /// the generic code, we have a `Lifted<'gcx, Self::QueryResponse>`
+    /// the generic code, we have a `Lifted<'tcx, Self::QueryResponse>`
     /// and we want to convert that to a `Self::QueryResponse`. This is
     /// not a priori valid, so we can't do it -- but in practice, it
     /// is always a no-op (e.g., the lifted form of a type,
-    /// `Ty<'gcx>`, is a subtype of `Ty<'tcx>`). So we have to push
+    /// `Ty<'tcx>`, is a subtype of `Ty<'tcx>`). So we have to push
     /// the operation into the impls that know more specifically what
     /// `QueryResponse` is. This operation would (maybe) be nicer with
     /// something like HKTs or GATs, since then we could make
-    /// `QueryResponse` parametric and `'gcx` and `'tcx` etc.
+    /// `QueryResponse` parametric and `'tcx` and `'tcx` etc.
     fn shrink_to_tcx_lifetime(
-        lifted_query_result: &'a CanonicalizedQueryResponse<'gcx, Self::QueryResponse>,
+        lifted_query_result: &'a CanonicalizedQueryResponse<'tcx, Self::QueryResponse>,
     ) -> &'a Canonical<'tcx, QueryResponse<'tcx, Self::QueryResponse>>;
 
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         output_query_region_constraints: &mut Vec<QueryRegionConstraint<'tcx>>,
     ) -> Fallible<Self::QueryResponse> {
         if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key) {
@@ -133,15 +131,15 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
     }
 }
 
-impl<'gcx: 'tcx, 'tcx, Q> TypeOp<'gcx, 'tcx> for ParamEnvAnd<'tcx, Q>
+impl<'tcx, Q> TypeOp<'tcx> for ParamEnvAnd<'tcx, Q>
 where
-    Q: QueryTypeOp<'gcx, 'tcx>,
+    Q: QueryTypeOp<'tcx>,
 {
     type Output = Q::QueryResponse;
 
     fn fully_perform(
         self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
     ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
         let mut qrc = vec![];
         let r = Q::fully_perform_into(self, infcx, &mut qrc)?;

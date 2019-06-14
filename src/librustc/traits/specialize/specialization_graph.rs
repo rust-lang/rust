@@ -81,9 +81,9 @@ enum Inserted {
     ShouldRecurseOn(DefId),
 }
 
-impl<'gcx, 'tcx> Children {
+impl<'tcx> Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
-    fn insert_blindly(&mut self, tcx: TyCtxt<'gcx, 'tcx>, impl_def_id: DefId) {
+    fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         if let Some(sty) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
             debug!("insert_blindly: impl_def_id={:?} sty={:?}", impl_def_id, sty);
@@ -97,7 +97,7 @@ impl<'gcx, 'tcx> Children {
     /// Removes an impl from this set of children. Used when replacing
     /// an impl with a parent. The impl must be present in the list of
     /// children already.
-    fn remove_existing(&mut self, tcx: TyCtxt<'gcx, 'tcx>, impl_def_id: DefId) {
+    fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let vec: &mut Vec<DefId>;
         if let Some(sty) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
@@ -116,7 +116,7 @@ impl<'gcx, 'tcx> Children {
     /// specialization relationships.
     fn insert(
         &mut self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
     ) -> Result<Inserted, OverlapError> {
@@ -278,7 +278,7 @@ impl<I, J> Iterator for PotentialSiblings<I, J>
     }
 }
 
-impl<'gcx, 'tcx> Graph {
+impl<'tcx> Graph {
     pub fn new() -> Graph {
         Graph {
             parent: Default::default(),
@@ -291,7 +291,7 @@ impl<'gcx, 'tcx> Graph {
     /// information about the area of overlap is returned in the `Err`.
     pub fn insert(
         &mut self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
     ) -> Result<Option<FutureCompatOverlapError>, OverlapError> {
         assert!(impl_def_id.is_local());
@@ -383,12 +383,7 @@ impl<'gcx, 'tcx> Graph {
     }
 
     /// Insert cached metadata mapping from a child impl back to its parent.
-    pub fn record_impl_from_cstore(
-        &mut self,
-        tcx: TyCtxt<'gcx, 'tcx>,
-        parent: DefId,
-        child: DefId,
-    ) {
+    pub fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'tcx>, parent: DefId, child: DefId) {
         if self.parent.insert(child, parent).is_some() {
             bug!("When recording an impl from the crate store, information about its parent \
                   was already present.");
@@ -413,7 +408,7 @@ pub enum Node {
     Trait(DefId),
 }
 
-impl<'gcx, 'tcx> Node {
+impl<'tcx> Node {
     pub fn is_from_trait(&self) -> bool {
         match *self {
             Node::Trait(..) => true,
@@ -422,7 +417,7 @@ impl<'gcx, 'tcx> Node {
     }
 
     /// Iterate over the items defined directly by the given (impl or trait) node.
-    pub fn items(&self, tcx: TyCtxt<'gcx, 'tcx>) -> ty::AssocItemsIterator<'gcx, 'tcx> {
+    pub fn items(&self, tcx: TyCtxt<'tcx>) -> ty::AssocItemsIterator<'tcx> {
         tcx.associated_items(self.def_id())
     }
 
@@ -471,18 +466,18 @@ impl<T> NodeItem<T> {
     }
 }
 
-impl<'gcx, 'tcx> Ancestors<'gcx> {
+impl<'tcx> Ancestors<'tcx> {
     /// Search the items from the given ancestors, returning each definition
     /// with the given name and the given kind.
     // FIXME(#35870): avoid closures being unexported due to `impl Trait`.
     #[inline]
     pub fn defs(
         self,
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         trait_item_name: Ident,
         trait_item_kind: ty::AssocKind,
         trait_def_id: DefId,
-    ) -> impl Iterator<Item = NodeItem<ty::AssocItem>> + Captures<'gcx> + 'tcx {
+    ) -> impl Iterator<Item = NodeItem<ty::AssocItem>> + Captures<'tcx> + 'tcx {
         self.flat_map(move |node| {
             use crate::ty::AssocKind::*;
             node.items(tcx).filter(move |impl_item| match (trait_item_kind, impl_item.kind) {
@@ -505,7 +500,7 @@ impl<'gcx, 'tcx> Ancestors<'gcx> {
 /// Walk up the specialization ancestors of a given impl, starting with that
 /// impl itself.
 pub fn ancestors(
-    tcx: TyCtxt<'tcx, '_>,
+    tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     start_from_impl: DefId,
 ) -> Ancestors<'tcx> {

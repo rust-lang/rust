@@ -75,9 +75,9 @@ impl<'tcx> QueryJob<'tcx> {
 
     /// Awaits for the query job to complete.
     #[cfg(parallel_compiler)]
-    pub(super) fn r#await<'lcx>(
+    pub(super) fn r#await(
         &self,
-        tcx: TyCtxt<'tcx, 'lcx>,
+        tcx: TyCtxt<'tcx>,
         span: Span,
     ) -> Result<(), CycleError<'tcx>> {
         tls::with_related_context(tcx, move |icx| {
@@ -100,11 +100,7 @@ impl<'tcx> QueryJob<'tcx> {
     }
 
     #[cfg(not(parallel_compiler))]
-    pub(super) fn find_cycle_in_stack<'lcx>(
-        &self,
-        tcx: TyCtxt<'tcx, 'lcx>,
-        span: Span,
-    ) -> CycleError<'tcx> {
+    pub(super) fn find_cycle_in_stack(&self, tcx: TyCtxt<'tcx>, span: Span) -> CycleError<'tcx> {
         // Get the current executing query (waiter) and find the waitee amongst its parents
         let mut current_job = tls::with_related_context(tcx, |icx| icx.query.clone());
         let mut cycle = Vec::new();
@@ -338,7 +334,7 @@ fn connected_to_root<'tcx>(
 // Deterministically pick an query from a list
 #[cfg(parallel_compiler)]
 fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
-    tcx: TyCtxt<'tcx, '_>,
+    tcx: TyCtxt<'tcx>,
     queries: &'a [T],
     f: F,
 ) -> &'a T {
@@ -366,7 +362,7 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
 fn remove_cycle<'tcx>(
     jobs: &mut Vec<Lrc<QueryJob<'tcx>>>,
     wakelist: &mut Vec<Lrc<QueryWaiter<'tcx>>>,
-    tcx: TyCtxt<'tcx, '_>,
+    tcx: TyCtxt<'tcx>,
 ) -> bool {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
@@ -505,7 +501,7 @@ pub unsafe fn handle_deadlock() {
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
 #[cfg(parallel_compiler)]
-fn deadlock(tcx: TyCtxt<'_, '_>, registry: &rayon_core::Registry) {
+fn deadlock(tcx: TyCtxt<'_>, registry: &rayon_core::Registry) {
     let on_panic = OnDrop(|| {
         eprintln!("deadlock handler panicked, aborting process");
         process::abort();

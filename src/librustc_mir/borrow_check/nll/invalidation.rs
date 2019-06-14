@@ -17,8 +17,8 @@ use rustc::mir::TerminatorKind;
 use rustc::mir::{Operand, BorrowKind};
 use rustc_data_structures::graph::dominators::Dominators;
 
-pub(super) fn generate_invalidates<'gcx, 'tcx>(
-    tcx: TyCtxt<'gcx, 'tcx>,
+pub(super) fn generate_invalidates<'tcx>(
+    tcx: TyCtxt<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     body: &Body<'tcx>,
@@ -43,8 +43,8 @@ pub(super) fn generate_invalidates<'gcx, 'tcx>(
     }
 }
 
-struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
-    tcx: TyCtxt<'gcx, 'tcx>,
+struct InvalidationGenerator<'cx, 'tcx: 'cx> {
+    tcx: TyCtxt<'tcx>,
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
     body: &'cx Body<'tcx>,
@@ -54,7 +54,7 @@ struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
 
 /// Visits the whole MIR and generates `invalidates()` facts.
 /// Most of the code implementing this was stolen from `borrow_check/mod.rs`.
-impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
+impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
     fn visit_statement(
         &mut self,
         statement: &Statement<'tcx>,
@@ -258,7 +258,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
     }
 }
 
-impl<'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
+impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     /// Simulates mutation of a place.
     fn mutate_place(
         &mut self,
