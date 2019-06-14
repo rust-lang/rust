@@ -881,7 +881,6 @@ All notable changes to this project will be documented in this file.
 [`cmp_owned`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_owned
 [`cognitive_complexity`]: https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity
 [`collapsible_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
-[`const_static_lifetime`]: https://rust-lang.github.io/rust-clippy/master/index.html#const_static_lifetime
 [`copy_iterator`]: https://rust-lang.github.io/rust-clippy/master/index.html#copy_iterator
 [`crosspointer_transmute`]: https://rust-lang.github.io/rust-clippy/master/index.html#crosspointer_transmute
 [`dbg_macro`]: https://rust-lang.github.io/rust-clippy/master/index.html#dbg_macro
@@ -1068,6 +1067,7 @@ All notable changes to this project will be documented in this file.
 [`redundant_field_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names
 [`redundant_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_pattern
 [`redundant_pattern_matching`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_pattern_matching
+[`redundant_static_lifetimes`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_static_lifetimes
 [`ref_in_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#ref_in_deref
 [`regex_macro`]: https://rust-lang.github.io/rust-clippy/master/index.html#regex_macro
 [`replace_consts`]: https://rust-lang.github.io/rust-clippy/master/index.html#replace_consts

@@ -157,7 +157,6 @@ pub mod cargo_common_metadata;
 pub mod checked_conversions;
 pub mod cognitive_complexity;
 pub mod collapsible_if;
-pub mod const_static_lifetime;
 pub mod copies;
 pub mod copy_iterator;
 pub mod dbg_macro;
@@ -249,6 +248,7 @@ pub mod ranges;
 pub mod redundant_clone;
 pub mod redundant_field_names;
 pub mod redundant_pattern_matching;
+pub mod redundant_static_lifetimes;
 pub mod reference;
 pub mod regex;
 pub mod replace_consts;
@@ -553,7 +553,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box invalid_ref::InvalidRef);
     reg.register_late_lint_pass(box identity_conversion::IdentityConversion::default());
     reg.register_late_lint_pass(box types::ImplicitHasher);
-    reg.register_early_lint_pass(box const_static_lifetime::StaticConst);
+    reg.register_early_lint_pass(box redundant_static_lifetimes::RedundantStaticLifetimes);
     reg.register_late_lint_pass(box fallible_impl_from::FallibleImplFrom);
     reg.register_late_lint_pass(box replace_consts::ReplaceConsts);
     reg.register_late_lint_pass(box types::UnitArg);
@@ -686,7 +686,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         bytecount::NAIVE_BYTECOUNT,
         cognitive_complexity::COGNITIVE_COMPLEXITY,
         collapsible_if::COLLAPSIBLE_IF,
-        const_static_lifetime::CONST_STATIC_LIFETIME,
         copies::IFS_SAME_COND,
         copies::IF_SAME_THEN_ELSE,
         derive::DERIVE_HASH_XOR_EQ,
@@ -834,6 +833,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         ranges::RANGE_ZIP_WITH_LEN,
         redundant_field_names::REDUNDANT_FIELD_NAMES,
         redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING,
+        redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
         reference::DEREF_ADDROF,
         reference::REF_IN_DEREF,
         regex::INVALID_REGEX,
@@ -901,7 +901,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
-        const_static_lifetime::CONST_STATIC_LIFETIME,
         enum_variants::ENUM_VARIANT_NAMES,
         enum_variants::MODULE_INCEPTION,
         eq_op::OP_REF,
@@ -957,6 +956,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         question_mark::QUESTION_MARK,
         redundant_field_names::REDUNDANT_FIELD_NAMES,
         redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING,
+        redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
         regex::REGEX_MACRO,
         regex::TRIVIAL_REGEX,
         returns::LET_AND_RETURN,
@@ -1153,6 +1153,7 @@ pub fn register_renamed(ls: &mut rustc::lint::LintStore) {
     ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
     ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
+    ls.register_renamed("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes");
 }
 
 // only exists to let the dogfood integration test works.
