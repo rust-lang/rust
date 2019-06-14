@@ -1,0 +1,9 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-61124-anon-lifetime-in-struct-declaration.rs:8:19
+   |
+LL | struct Heartbreak(Betrayal);
+   |                   ^^^^^^^^ expected lifetime parameter
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0106`.

@@ -274,6 +274,8 @@ pub fn lower_crate(
 enum ParamMode {
     /// Any path in a type context.
     Explicit,
+    /// Path in a type definition, where the anonymous lifetime `'_` is not allowed.
+    ExplicitNamed,
     /// The `module::Type` in `module::Type::method` in an expression.
     Optional,
 }
@@ -1489,6 +1491,23 @@ impl<'a> LoweringContext<'a> {
         P(self.lower_ty_direct(t, itctx))
     }
 
+    fn lower_path_ty(
+        &mut self,
+        t: &Ty,
+        qself: &Option<QSelf>,
+        path: &Path,
+        param_mode: ParamMode,
+        itctx: ImplTraitContext<'_>
+    ) -> hir::Ty {
+        let id = self.lower_node_id(t.id);
+        let qpath = self.lower_qpath(t.id, qself, path, param_mode, itctx);
+        let ty = self.ty_path(id, t.span, qpath);
+        if let hir::TyKind::TraitObject(..) = ty.node {
+            self.maybe_lint_bare_trait(t.span, t.id, qself.is_none() && path.is_global());
+        }
+        ty
+    }
+
     fn lower_ty_direct(&mut self, t: &Ty, mut itctx: ImplTraitContext<'_>) -> hir::Ty {
         let kind = match t.node {
             TyKind::Infer => hir::TyKind::Infer,
@@ -1534,13 +1553,7 @@ impl<'a> LoweringContext<'a> {
                 return self.lower_ty_direct(ty, itctx);
             }
             TyKind::Path(ref qself, ref path) => {
-                let id = self.lower_node_id(t.id);
-                let qpath = self.lower_qpath(t.id, qself, path, ParamMode::Explicit, itctx);
-                let ty = self.ty_path(id, t.span, qpath);
-                if let hir::TyKind::TraitObject(..) = ty.node {
-                    self.maybe_lint_bare_trait(t.span, t.id, qself.is_none() && path.is_global());
-                }
-                return ty;
+                return self.lower_path_ty(t, qself, path, ParamMode::Explicit, itctx);
             }
             TyKind::ImplicitSelf => {
                 let res = self.expect_full_res(t.id);
@@ -3086,6 +3099,18 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_struct_field(&mut self, (index, f): (usize, &StructField)) -> hir::StructField {
+        let ty = if let TyKind::Path(ref qself, ref path) = f.ty.node {
+            let t = self.lower_path_ty(
+                &f.ty,
+                qself,
+                path,
+                ParamMode::ExplicitNamed, // no `'_` in declarations (Issue #61124)
+                ImplTraitContext::disallowed()
+            );
+            P(t)
+        } else {
+            self.lower_ty(&f.ty, ImplTraitContext::disallowed())
+        };
         hir::StructField {
             span: f.span,
             hir_id: self.lower_node_id(f.id),
@@ -3095,7 +3120,7 @@ impl<'a> LoweringContext<'a> {
                 None => Ident::new(sym::integer(index), f.span),
             },
             vis: self.lower_visibility(&f.vis, None),
-            ty: self.lower_ty(&f.ty, ImplTraitContext::disallowed()),
+            ty,
             attrs: self.lower_attrs(&f.attrs),
         }
     }
