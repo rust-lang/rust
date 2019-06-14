@@ -364,10 +364,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_free_region_map(&mut self) {
-        let free_region_map = self.tcx()
-            .lift_to_global(&self.fcx.tables.borrow().free_region_map);
-        let free_region_map = free_region_map.expect("all regions in free-region-map are global");
-        self.tables.free_region_map = free_region_map;
+        self.tables.free_region_map = self.fcx.tables.borrow().free_region_map.clone();
     }
 
     fn visit_user_provided_tys(&mut self) {
@@ -380,16 +377,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let hir_id = hir::HirId {
                 owner: common_local_id_root.index,
                 local_id,
-            };
-
-            let c_ty = if let Some(c_ty) = self.tcx().lift_to_global(c_ty) {
-                c_ty
-            } else {
-                span_bug!(
-                    hir_id.to_span(self.fcx.tcx),
-                    "writeback: `{:?}` missing from the global type context",
-                    c_ty
-                );
             };
 
             self.tables
@@ -424,16 +411,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
 
         for (&def_id, c_sig) in fcx_tables.user_provided_sigs.iter() {
-            let c_sig = if let Some(c_sig) = self.tcx().lift_to_global(c_sig) {
-                c_sig
-            } else {
-                span_bug!(
-                    self.fcx.tcx.hir().span_if_local(def_id).unwrap(),
-                    "writeback: `{:?}` missing from the global type context",
-                    c_sig
-                );
-            };
-
             self.tables
                 .user_provided_sigs
                 .insert(def_id, c_sig.clone());
@@ -593,33 +570,26 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
 
-            if let Some(substs) = self.tcx().lift_to_global(&opaque_defn.substs) {
-                let new = ty::ResolvedOpaqueTy {
-                    concrete_type: definition_ty,
-                    substs,
-                };
+            let new = ty::ResolvedOpaqueTy {
+                concrete_type: definition_ty,
+                substs: opaque_defn.substs,
+            };
 
-                let old = self.tables
-                    .concrete_existential_types
-                    .insert(def_id, new);
-                if let Some(old) = old {
-                    if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
-                        span_bug!(
-                            span,
-                            "visit_opaque_types tried to write \
-                            different types for the same existential type: {:?}, {:?}, {:?}, {:?}",
-                            def_id,
-                            definition_ty,
-                            opaque_defn,
-                            old,
-                        );
-                    }
+            let old = self.tables
+                .concrete_existential_types
+                .insert(def_id, new);
+            if let Some(old) = old {
+                if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
+                    span_bug!(
+                        span,
+                        "visit_opaque_types tried to write \
+                        different types for the same existential type: {:?}, {:?}, {:?}, {:?}",
+                        def_id,
+                        definition_ty,
+                        opaque_defn,
+                        old,
+                    );
                 }
-            } else {
-                self.tcx().sess.delay_span_bug(
-                    span,
-                    "cannot lift `opaque_defn` substs to global type context",
-                );
             }
         }
     }
@@ -744,20 +714,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn resolve<T>(&self, x: &T, span: &dyn Locatable) -> T::Lifted
+    fn resolve<T>(&self, x: &T, span: &dyn Locatable) -> T
     where
-        T: TypeFoldable<'tcx> + ty::Lift<'tcx>,
+        T: TypeFoldable<'tcx>,
     {
-        let x = x.fold_with(&mut Resolver::new(self.fcx, span, self.body));
-        if let Some(lifted) = self.tcx().lift_to_global(&x) {
-            lifted
-        } else {
-            span_bug!(
-                span.to_span(self.fcx.tcx),
-                "writeback: `{:?}` missing from the global type context",
-                x
-            );
-        }
+        x.fold_with(&mut Resolver::new(self.fcx, span, self.body))
     }
 }
 
