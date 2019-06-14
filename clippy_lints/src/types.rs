@@ -860,7 +860,7 @@ declare_clippy_lint! {
 
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
-fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_, '_>) -> u64 {
+fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_>) -> u64 {
     match typ.sty {
         ty::Int(i) => match i {
             IntTy::Isize => tcx.data_layout.pointer_size.bits(),

@@ -911,7 +911,7 @@ pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
     }
 }
 
-pub fn int_bits(tcx: TyCtxt<'_, '_>, ity: ast::IntTy) -> u64 {
+pub fn int_bits(tcx: TyCtxt<'_>, ity: ast::IntTy) -> u64 {
     layout::Integer::from_attr(&tcx, attr::IntType::SignedInt(ity))
         .size()
         .bits()
@@ -919,20 +919,20 @@ pub fn int_bits(tcx: TyCtxt<'_, '_>, ity: ast::IntTy) -> u64 {
 
 #[allow(clippy::cast_possible_wrap)]
 /// Turn a constant int byte representation into an i128
-pub fn sext(tcx: TyCtxt<'_, '_>, u: u128, ity: ast::IntTy) -> i128 {
+pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: ast::IntTy) -> i128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as i128) << amt) >> amt
 }
 
 #[allow(clippy::cast_sign_loss)]
 /// clip unused bytes
-pub fn unsext(tcx: TyCtxt<'_, '_>, u: i128, ity: ast::IntTy) -> u128 {
+pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: ast::IntTy) -> u128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as u128) << amt) >> amt
 }
 
 /// clip unused bytes
-pub fn clip(tcx: TyCtxt<'_, '_>, u: u128, ity: ast::UintTy) -> u128 {
+pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: ast::UintTy) -> u128 {
     let bits = layout::Integer::from_attr(&tcx, attr::IntType::UnsignedInt(ity))
         .size()
         .bits();
@@ -973,7 +973,7 @@ pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
     without
 }
 
-pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_, '_>, node: HirId) -> bool {
+pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool {
     let map = &tcx.hir();
     let mut prev_enclosing_node = None;
     let mut enclosing_node = node;
