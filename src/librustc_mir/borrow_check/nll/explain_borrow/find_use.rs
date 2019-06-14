@@ -27,7 +27,7 @@ crate fn find<'tcx>(
     uf.find()
 }
 
-struct UseFinder<'cx, 'tcx: 'cx> {
+struct UseFinder<'cx, 'tcx> {
     body: &'cx Body<'tcx>,
     regioncx: &'cx Rc<RegionInferenceContext<'tcx>>,
     tcx: TyCtxt<'tcx>,
@@ -99,7 +99,7 @@ impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
     }
 }
 
-struct DefUseVisitor<'cx, 'tcx: 'cx> {
+struct DefUseVisitor<'cx, 'tcx> {
     body: &'cx Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,

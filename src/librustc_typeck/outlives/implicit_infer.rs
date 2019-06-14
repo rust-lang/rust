@@ -43,7 +43,7 @@ pub fn infer_predicates<'tcx>(
     global_inferred_outlives
 }
 
-pub struct InferVisitor<'cx, 'tcx: 'cx> {
+pub struct InferVisitor<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     global_inferred_outlives: &'cx mut FxHashMap<DefId, RequiredPredicates<'tcx>>,
     predicates_added: &'cx mut bool,

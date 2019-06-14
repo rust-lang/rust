@@ -65,7 +65,7 @@ fn method_might_be_inlined<'tcx>(
 }
 
 // Information needed while computing reachability.
-struct ReachableContext<'a, 'tcx: 'a> {
+struct ReachableContext<'a, 'tcx> {
     // The type context.
     tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
@@ -334,13 +334,13 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 // items of non-exported traits (or maybe all local traits?) unless their respective
 // trait items are used from inlinable code through method call syntax or UFCS, or their
 // trait is a lang item.
-struct CollectPrivateImplItemsVisitor<'a, 'tcx: 'a> {
+struct CollectPrivateImplItemsVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     access_levels: &'a privacy::AccessLevels,
     worklist: &'a mut Vec<hir::HirId>,
 }
 
-impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         // Anything which has custom linkage gets thrown on the worklist no
         // matter where it is in the crate, along with "special std symbols"

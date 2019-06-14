@@ -122,7 +122,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for MPlaceTy<'tcx,
 macro_rules! make_value_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {
         // How to traverse a value and what to do when we are at the leaves.
-        pub trait $visitor_trait_name<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
+        pub trait $visitor_trait_name<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
             type V: Value<'mir, 'tcx, M>;
 
             /// The visitor must have an `InterpretCx` in it.

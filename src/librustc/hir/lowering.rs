@@ -415,7 +415,7 @@ impl<'a> LoweringContext<'a> {
         /// needed from arbitrary locations in the crate,
         /// e.g., the number of lifetime generic parameters
         /// declared for every type and trait definition.
-        struct MiscCollector<'tcx, 'interner: 'tcx> {
+        struct MiscCollector<'tcx, 'interner> {
             lctx: &'tcx mut LoweringContext<'interner>,
             hir_id_owner: Option<NodeId>,
         }
@@ -561,7 +561,7 @@ impl<'a> LoweringContext<'a> {
             }
         }
 
-        struct ItemLowerer<'tcx, 'interner: 'tcx> {
+        struct ItemLowerer<'tcx, 'interner> {
             lctx: &'tcx mut LoweringContext<'interner>,
         }
 
@@ -1788,7 +1788,7 @@ impl<'a> LoweringContext<'a> {
         // This visitor walks over `impl Trait` bounds and creates defs for all lifetimes that
         // appear in the bounds, excluding lifetimes that are created within the bounds.
         // E.g., `'a`, `'b`, but not `'c` in `impl for<'c> SomeTrait<'a, 'b, 'c>`.
-        struct ImplTraitLifetimeCollector<'r, 'a: 'r> {
+        struct ImplTraitLifetimeCollector<'r, 'a> {
             context: &'r mut LoweringContext<'a>,
             parent: DefIndex,
             exist_ty_id: NodeId,
@@ -1799,7 +1799,7 @@ impl<'a> LoweringContext<'a> {
             output_lifetime_params: Vec<hir::GenericParam>,
         }
 
-        impl<'r, 'a: 'r, 'v> hir::intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a> {
+        impl<'r, 'a, 'v> hir::intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a> {
             fn nested_visit_map<'this>(
                 &'this mut self,
             ) -> hir::intravisit::NestedVisitorMap<'this, 'v> {

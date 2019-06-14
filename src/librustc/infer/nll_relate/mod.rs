@@ -38,7 +38,7 @@ pub enum NormalizationStrategy {
     Eager,
 }
 
-pub struct TypeRelating<'me, 'tcx: 'me, D>
+pub struct TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
@@ -741,7 +741,7 @@ where
 /// binder depth, and finds late-bound regions targeting the
 /// `for<..`>.  For each of those, it creates an entry in
 /// `bound_region_scope`.
-struct ScopeInstantiator<'me, 'tcx: 'me> {
+struct ScopeInstantiator<'me, 'tcx> {
     next_region: &'me mut dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
     // The debruijn index of the scope we are instantiating.
     target_index: ty::DebruijnIndex,
@@ -798,7 +798,7 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
 /// scopes.
 ///
 /// [blog post]: https://is.gd/0hKvIr
-struct TypeGeneralizer<'me, 'tcx: 'me, D>
+struct TypeGeneralizer<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx> + 'me,
 {

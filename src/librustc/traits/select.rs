@@ -50,7 +50,7 @@ use std::iter;
 use std::rc::Rc;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
-pub struct SelectionContext<'cx, 'tcx: 'cx> {
+pub struct SelectionContext<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
 
     /// Freshener used specifically for entries on the obligation
@@ -144,7 +144,7 @@ impl IntercrateAmbiguityCause {
 }
 
 // A stack that walks back up the stack frame.
-struct TraitObligationStack<'prev, 'tcx: 'prev> {
+struct TraitObligationStack<'prev, 'tcx> {
     obligation: &'prev TraitObligation<'tcx>,
 
     /// Trait ref from `obligation` but "freshened" with the
@@ -697,7 +697,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError>
     where
         I: IntoIterator<Item = PredicateObligation<'tcx>>,
-        'tcx: 'a,
+        'tcx,
     {
         let mut result = EvaluatedToOk;
         for obligation in predicates {
@@ -3789,7 +3789,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         matcher.relate(previous, current).is_ok()
     }
 
-    fn push_stack<'o, 's: 'o>(
+    fn push_stack<'o, 's>(
         &mut self,
         previous_stack: TraitObligationStackList<'s, 'tcx>,
         obligation: &'o TraitObligation<'tcx>,
@@ -4252,7 +4252,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
 }
 
 #[derive(Copy, Clone)]
-struct TraitObligationStackList<'o, 'tcx: 'o> {
+struct TraitObligationStackList<'o, 'tcx> {
     cache: &'o ProvisionalEvaluationCache<'tcx>,
     head: Option<&'o TraitObligationStack<'o, 'tcx>>,
 }

@@ -217,7 +217,7 @@ impl_stable_hash_for!(struct crate::middle::resolve_lifetime::ResolveLifetimes {
     object_lifetime_defaults
 });
 
-struct LifetimeContext<'a, 'tcx: 'a> {
+struct LifetimeContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
@@ -1160,7 +1160,7 @@ fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: ast::Name, orig: Original, sh
 // Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning
 // if one of the label shadows a lifetime or another label.
 fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
-    struct GatherLabels<'a, 'tcx: 'a> {
+    struct GatherLabels<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         scope: ScopeRef<'a>,
         labels_in_fn: &'a mut Vec<ast::Ident>,

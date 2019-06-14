@@ -8,7 +8,7 @@ use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Least upper bound" (common supertype)
-pub struct Lub<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
+pub struct Lub<'combine, 'infcx, 'tcx> {
     fields: &'combine mut CombineFields<'infcx, 'tcx>,
     a_is_expected: bool,
 }

@@ -49,7 +49,7 @@ pub struct InterpretCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 
 /// A stack frame.
 #[derive(Clone)]
-pub struct Frame<'mir, 'tcx: 'mir, Tag=(), Extra=()> {
+pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +195,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpretCx<'mir, 'tcx, M>
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>, machine: M) -> Self {
         InterpretCx {
             machine,

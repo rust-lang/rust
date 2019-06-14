@@ -132,7 +132,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn resolve_dollar_crates(&mut self, fragment: &AstFragment) {
-        struct ResolveDollarCrates<'a, 'b: 'a> {
+        struct ResolveDollarCrates<'a, 'b> {
             resolver: &'a mut Resolver<'b>
         }
         impl<'a> Visitor<'a> for ResolveDollarCrates<'a, '_> {

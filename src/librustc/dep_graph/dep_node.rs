@@ -207,8 +207,8 @@ macro_rules! define_dep_nodes {
             pub fn new<'a, 'tcx>(tcx: TyCtxt<'tcx>,
                                        dep: DepConstructor<'tcx>)
                                        -> DepNode
-                where 'tcx: 'a,
-                      'tcx: 'a
+                where 'tcx,
+                      'tcx
             {
                 match dep {
                     $(

@@ -53,7 +53,7 @@ impl<V: CodegenObject> fmt::Debug for OperandRef<'tcx, V> {
     }
 }
 
-impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
+impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     pub fn new_zst<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>
@@ -266,7 +266,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
     }
 }
 
-impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
+impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
     pub fn store<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,
@@ -376,7 +376,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
     }
 }
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn maybe_codegen_consume_direct(
         &mut self,
         bx: &mut Bx,

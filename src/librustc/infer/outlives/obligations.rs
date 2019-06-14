@@ -226,7 +226,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 /// via a "delegate" of type `D` -- this is usually the `infcx`, which
 /// accrues them into the `region_obligations` code, but for NLL we
 /// use something else.
-pub struct TypeOutlives<'cx, 'tcx: 'cx, D>
+pub struct TypeOutlives<'cx, 'tcx, D>
 where
     D: TypeOutlivesDelegate<'tcx>,
 {

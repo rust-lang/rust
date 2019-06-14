@@ -219,7 +219,7 @@ impl UniversalRegionRelations<'tcx> {
     }
 }
 
-struct UniversalRegionRelationsBuilder<'this, 'tcx: 'this> {
+struct UniversalRegionRelationsBuilder<'this, 'tcx> {
     infcx: &'this InferCtxt<'this, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     universal_regions: Rc<UniversalRegions<'tcx>>,

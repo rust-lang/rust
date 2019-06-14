@@ -769,7 +769,7 @@ fn numbered_codegen_unit_name(
 fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'tcx>, label: &str, cgus: I)
 where
     I: Iterator<Item = &'b CodegenUnit<'tcx>>,
-    'tcx: 'a + 'b,
+    'tcx,
 {
     if cfg!(debug_assertions) {
         debug!("{}", label);
@@ -794,7 +794,7 @@ where
 }
 
 #[inline(never)] // give this a place in the profiler
-fn assert_symbols_are_distinct<'a, 'tcx: 'a, I>(tcx: TyCtxt<'tcx>, mono_items: I)
+fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I)
 where
     I: Iterator<Item = &'a MonoItem<'tcx>>,
 {

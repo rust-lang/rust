@@ -7,7 +7,7 @@ use crate::common::IntPredicate;
 use crate::meth;
 use crate::traits::*;
 
-pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     t: Ty<'tcx>,
     info: Option<Bx::Value>

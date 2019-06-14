@@ -56,7 +56,7 @@ crate struct ChalkContext<'tcx> {
 }
 
 #[derive(Copy, Clone)]
-crate struct ChalkInferenceContext<'cx, 'tcx: 'cx> {
+crate struct ChalkInferenceContext<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
 }
 

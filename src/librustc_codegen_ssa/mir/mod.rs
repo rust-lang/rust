@@ -23,7 +23,7 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
+pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
     mir: &'a mir::Body<'tcx>,
@@ -87,7 +87,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
     va_list_ref: Option<PlaceRef<'tcx, Bx::Value>>,
 }
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
@@ -167,7 +167,7 @@ enum LocalRef<'tcx, V> {
     Operand(Option<OperandRef<'tcx, V>>),
 }
 
-impl<'a, 'tcx: 'a, V: CodegenObject> LocalRef<'tcx, V> {
+impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
     fn new_operand<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
@@ -185,7 +185,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> LocalRef<'tcx, V> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     llfn: Bx::Value,
     mir: &'a Body<'tcx>,
@@ -351,7 +351,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     mir: &'a Body<'tcx>,
     bx: &mut Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
@@ -420,7 +420,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 /// Produces, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
-fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     fx: &FunctionCx<'a, 'tcx, Bx>,
     memory_locals: &BitSet<mir::Local>,

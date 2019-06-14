@@ -7,7 +7,7 @@ use crate::ty::{self, TyCtxt};
 use crate::hir::{self, PatKind};
 use crate::hir::def_id::DefId;
 
-struct CFGBuilder<'a, 'tcx: 'a> {
+struct CFGBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     owner_def_id: DefId,
     tables: &'a ty::TypeckTables<'tcx>,

@@ -31,7 +31,7 @@ enum Position {
     Named(Symbol),
 }
 
-struct Context<'a, 'b: 'a> {
+struct Context<'a, 'b> {
     ecx: &'a mut ExtCtxt<'b>,
     /// The macro's call site. References to unstable formatting internals must
     /// use this span to pass the stability checker.

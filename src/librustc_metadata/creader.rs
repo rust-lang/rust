@@ -295,7 +295,7 @@ impl<'a> CrateLoader<'a> {
         path_kind: PathKind,
     ) -> Option<(LoadResult, Option<Library>)>
     where
-        'a: 'b
+        'a
     {
         // Use a new locator Context so trying to load a proc macro doesn't affect the error
         // message we emit

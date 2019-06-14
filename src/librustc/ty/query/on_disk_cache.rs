@@ -511,7 +511,7 @@ fn decode_tagged<'a, 'tcx, D, T, V>(decoder: &mut D,
     where T: Decodable + Eq + ::std::fmt::Debug,
           V: Decodable,
           D: DecoderWithPosition,
-          'tcx: 'a,
+          'tcx,
 {
     let start_pos = decoder.position();
 

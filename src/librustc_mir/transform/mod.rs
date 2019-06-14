@@ -66,7 +66,7 @@ fn mir_keys<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum) -> &'tcx DefIdSet {
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
-    struct GatherCtors<'a, 'tcx: 'a> {
+    struct GatherCtors<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         set: &'a mut DefIdSet,
     }

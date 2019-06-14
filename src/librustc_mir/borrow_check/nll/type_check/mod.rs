@@ -251,7 +251,7 @@ enum FieldAccessError {
 /// The sanitize_XYZ methods here take an MIR object and compute its
 /// type, calling `span_mirbug` and returning an error type if there
 /// is a problem.
-struct TypeVerifier<'a, 'b: 'a, 'tcx: 'b> {
+struct TypeVerifier<'a, 'b, 'tcx> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
     body: &'b Body<'tcx>,
     last_span: Span,
@@ -830,7 +830,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 /// constraints needed for it to be valid and well-typed. Along the
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
-struct TypeChecker<'a, 'tcx: 'a> {
+struct TypeChecker<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
@@ -845,7 +845,7 @@ struct TypeChecker<'a, 'tcx: 'a> {
     universal_region_relations: &'a UniversalRegionRelations<'tcx>,
 }
 
-struct BorrowCheckContext<'a, 'tcx: 'a> {
+struct BorrowCheckContext<'a, 'tcx> {
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a LocationTable,
     all_facts: &'a mut Option<AllFacts>,

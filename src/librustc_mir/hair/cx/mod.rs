@@ -21,7 +21,7 @@ use rustc::hir;
 use crate::hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
-pub struct Cx<'a, 'tcx: 'a> {
+pub struct Cx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
 

@@ -12,7 +12,7 @@ use syntax_pos::Span;
 use super::FnCtxt;
 use crate::util::nodemap::FxHashMap;
 
-struct InteriorVisitor<'a, 'tcx: 'a> {
+struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     types: FxHashMap<Ty<'tcx>, usize>,
     region_scope_tree: &'tcx region::ScopeTree,

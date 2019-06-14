@@ -787,7 +787,7 @@ fn compute_all_traits<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<DefId> {
 
     // Crate-local:
 
-    struct Visitor<'a, 'tcx: 'a> {
+    struct Visitor<'a, 'tcx> {
         map: &'a hir_map::Map<'tcx>,
         traits: &'a mut Vec<DefId>,
     }

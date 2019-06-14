@@ -241,7 +241,7 @@ impl BlockFrame {
 #[derive(Debug)]
 struct BlockContext(Vec<BlockFrame>);
 
-struct Builder<'a, 'tcx: 'a> {
+struct Builder<'a, 'tcx> {
     hir: Cx<'a, 'tcx>,
     cfg: CFG<'tcx>,
 

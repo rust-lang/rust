@@ -2104,7 +2104,7 @@ impl<'tcx> Place<'tcx> {
 /// N.B., this particular impl strategy is not the most obvious. It was
 /// chosen because it makes a measurable difference to NLL
 /// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
-pub enum Projections<'p, 'tcx: 'p> {
+pub enum Projections<'p, 'tcx> {
     Empty,
 
     List {
@@ -2143,7 +2143,7 @@ impl<'p, 'tcx> IntoIterator for &'p Projections<'p, 'tcx> {
 /// N.B., this is not a *true* Rust iterator -- the code above just
 /// manually invokes `next`. This is because we (sometimes) want to
 /// keep executing even after `None` has been returned.
-pub struct ProjectionsIter<'p, 'tcx: 'p> {
+pub struct ProjectionsIter<'p, 'tcx> {
     pub value: &'p Projections<'p, 'tcx>,
 }
 

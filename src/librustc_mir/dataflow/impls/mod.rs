@@ -63,7 +63,7 @@ pub(super) mod borrows;
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeUninitializedPlaces` yields the set of
 /// places that would require a dynamic drop-flag at that statement.
-pub struct MaybeInitializedPlaces<'a, 'tcx: 'a> {
+pub struct MaybeInitializedPlaces<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
@@ -114,7 +114,7 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeInitializedPlaces` yields the set of
 /// places that would require a dynamic drop-flag at that statement.
-pub struct MaybeUninitializedPlaces<'a, 'tcx: 'a> {
+pub struct MaybeUninitializedPlaces<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
@@ -164,19 +164,19 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'tcx> {
 /// Similarly, at a given `drop` statement, the set-difference between
 /// this data and `MaybeInitializedPlaces` yields the set of places
 /// that would require a dynamic drop-flag at that statement.
-pub struct DefinitelyInitializedPlaces<'a, 'tcx: 'a> {
+pub struct DefinitelyInitializedPlaces<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
-impl<'a, 'tcx: 'a> DefinitelyInitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         DefinitelyInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }
 }
 
-impl<'a, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -209,13 +209,13 @@ impl<'a, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
 ///     c = S;                                 // {a, b, c, d }
 /// }
 /// ```
-pub struct EverInitializedPlaces<'a, 'tcx: 'a> {
+pub struct EverInitializedPlaces<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
-impl<'a, 'tcx: 'a> EverInitializedPlaces<'a, 'tcx> {
+impl<'a, 'tcx> EverInitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
         EverInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
     }

@@ -346,7 +346,7 @@ fn find_type_parameters(ty: &ast::Ty,
                         -> Vec<P<ast::Ty>> {
     use syntax::visit;
 
-    struct Visitor<'a, 'b: 'a> {
+    struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
         span: Span,
         ty_param_names: &'a [ast::Name],

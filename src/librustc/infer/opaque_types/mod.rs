@@ -723,7 +723,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
     }
 }
 
-struct Instantiator<'a, 'tcx: 'a> {
+struct Instantiator<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     parent_def_id: DefId,
     body_id: hir::HirId,

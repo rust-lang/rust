@@ -35,7 +35,7 @@ use syntax::ext::hygiene::Mark;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
 use log::debug;
 
-pub struct DecodeContext<'a, 'tcx: 'a> {
+pub struct DecodeContext<'a, 'tcx> {
     opaque: opaque::Decoder<'a>,
     cdata: Option<&'a CrateMetadata>,
     sess: Option<&'a Session>,
@@ -128,7 +128,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'tcx>) {
     }
 }
 
-impl<'a, 'tcx: 'a, T: Decodable> Lazy<T> {
+impl<'a, 'tcx, T: Decodable> Lazy<T> {
     pub fn decode<M: Metadata<'a, 'tcx>>(self, meta: M) -> T {
         let mut dcx = meta.decoder(self.position);
         dcx.lazy_state = LazyState::NodeStart(self.position);
@@ -136,7 +136,7 @@ impl<'a, 'tcx: 'a, T: Decodable> Lazy<T> {
     }
 }
 
-impl<'a, 'tcx: 'a, T: Decodable> LazySeq<T> {
+impl<'a, 'tcx, T: Decodable> LazySeq<T> {
     pub fn decode<M: Metadata<'a, 'tcx>>(
         self,
         meta: M,

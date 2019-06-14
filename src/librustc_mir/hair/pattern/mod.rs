@@ -326,7 +326,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
     }
 }
 
-pub struct PatternContext<'a, 'tcx: 'a> {
+pub struct PatternContext<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub tables: &'a ty::TypeckTables<'tcx>,

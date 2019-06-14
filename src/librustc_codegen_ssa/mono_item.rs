@@ -6,7 +6,7 @@ use crate::traits::*;
 
 use rustc::mir::mono::MonoItem;
 
-pub trait MonoItemExt<'a, 'tcx: 'a> {
+pub trait MonoItemExt<'a, 'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx);
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
@@ -17,7 +17,7 @@ pub trait MonoItemExt<'a, 'tcx: 'a> {
     fn to_raw_string(&self) -> String;
 }
 
-impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
+impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
                self.to_string(cx.tcx(), true),

@@ -37,7 +37,7 @@ pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 // Private
 
-struct RestrictionsContext<'a, 'tcx: 'a> {
+struct RestrictionsContext<'a, 'tcx> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
     span: Span,
     loan_region: ty::Region<'tcx>,

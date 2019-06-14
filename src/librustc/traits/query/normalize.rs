@@ -73,7 +73,7 @@ pub struct NormalizationResult<'tcx> {
     pub normalized_ty: Ty<'tcx>,
 }
 
-struct QueryNormalizer<'cx, 'tcx: 'cx> {
+struct QueryNormalizer<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     cause: &'cx ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,

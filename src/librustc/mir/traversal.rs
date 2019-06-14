@@ -20,7 +20,7 @@ use super::*;
 ///
 /// A preorder traversal of this graph is either `A B D C` or `A C D B`
 #[derive(Clone)]
-pub struct Preorder<'a, 'tcx: 'a> {
+pub struct Preorder<'a, 'tcx> {
     body: &'a Body<'tcx>,
     visited: BitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
@@ -98,7 +98,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 /// ```
 ///
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
-pub struct Postorder<'a, 'tcx: 'a> {
+pub struct Postorder<'a, 'tcx> {
     body: &'a Body<'tcx>,
     visited: BitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>,
@@ -251,7 +251,7 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 /// constructed as few times as possible. Use the `reset` method to be able
 /// to re-use the traversal
 #[derive(Clone)]
-pub struct ReversePostorder<'a, 'tcx: 'a> {
+pub struct ReversePostorder<'a, 'tcx> {
     body: &'a Body<'tcx>,
     blocks: Vec<BasicBlock>,
     idx: usize

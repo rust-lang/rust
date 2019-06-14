@@ -275,7 +275,7 @@ impl CanonicalizeRegionMode for CanonicalizeFreeRegionsOtherThanStatic {
     }
 }
 
-struct Canonicalizer<'cx, 'tcx: 'cx> {
+struct Canonicalizer<'cx, 'tcx> {
     infcx: Option<&'cx InferCtxt<'cx, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     variables: SmallVec<[CanonicalVarInfo; 8]>,

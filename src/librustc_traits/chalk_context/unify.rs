@@ -42,7 +42,7 @@ crate fn unify<'me, 'tcx, T: Relate<'tcx>>(
     })
 }
 
-struct ChalkTypeRelatingDelegate<'me, 'tcx: 'me> {
+struct ChalkTypeRelatingDelegate<'me, 'tcx> {
     infcx: &'me InferCtxt<'me, 'tcx>,
     environment: Environment<'tcx>,
     goals: Vec<InEnvironment<'tcx, Goal<'tcx>>>,

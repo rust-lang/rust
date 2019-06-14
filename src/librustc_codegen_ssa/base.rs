@@ -88,7 +88,7 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> RealPredicate {
     }
 }
 
-pub fn compare_simd_types<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs: Bx::Value,
     rhs: Bx::Value,
@@ -152,7 +152,7 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
 }
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
-pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
     src_ty: Ty<'tcx>,
@@ -207,7 +207,7 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: PlaceRef<'tcx, Bx::Value>,
     dst: PlaceRef<'tcx, Bx::Value>
@@ -266,7 +266,7 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-pub fn cast_shift_expr_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     op: hir::BinOpKind,
     lhs: Bx::Value,
@@ -275,7 +275,7 @@ pub fn cast_shift_expr_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     cast_shift_rhs(bx, op, lhs, rhs)
 }
 
-fn cast_shift_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+fn cast_shift_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     op: hir::BinOpKind,
     lhs: Bx::Value,
@@ -316,7 +316,7 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn from_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn from_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value
 ) -> Bx::Value {
@@ -327,7 +327,7 @@ pub fn from_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-pub fn to_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn to_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value,
     layout: layout::TyLayout<'_>,
@@ -338,7 +338,7 @@ pub fn to_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     val
 }
 
-pub fn to_immediate_scalar<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn to_immediate_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value,
     scalar: &layout::Scalar,
@@ -349,7 +349,7 @@ pub fn to_immediate_scalar<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     val
 }
 
-pub fn memcpy_ty<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     dst: Bx::Value,
     dst_align: Align,
@@ -366,7 +366,7 @@ pub fn memcpy_ty<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx.memcpy(dst, dst_align, src, src_align, bx.cx().const_usize(size), flags);
 }
 
-pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn codegen_instance<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {
@@ -387,7 +387,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
 /// Creates the `main` function which will initialize the rust runtime and call
 /// users main function.
-pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx
 ) {
     let (main_def_id, span) = match cx.tcx().entry_fn(LOCAL_CRATE) {
@@ -412,7 +412,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         None => {}    // Do nothing.
     }
 
-    fn create_entry_fn<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
         sp: Span,
         rust_main: Bx::Value,

@@ -47,7 +47,7 @@ fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> Diagn
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
-struct MatchVisitor<'a, 'tcx: 'a> {
+struct MatchVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body_owner: DefId,
     tables: &'a ty::TypeckTables<'tcx>,
@@ -439,7 +439,7 @@ fn check_arms<'a, 'tcx>(
     }
 }
 
-fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(
+fn check_exhaustive<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     scrut_ty: Ty<'tcx>,
     sp: Span,
@@ -642,7 +642,7 @@ fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard) {
     };
 }
 
-struct MutationChecker<'a, 'tcx: 'a> {
+struct MutationChecker<'a, 'tcx> {
     cx: &'a MatchVisitor<'a, 'tcx>,
 }
 
@@ -691,7 +691,7 @@ fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pa
     AtBindingPatternVisitor { cx: cx, bindings_allowed: true }.visit_pat(pat);
 }
 
-struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
+struct AtBindingPatternVisitor<'a, 'b, 'tcx> {
     cx: &'a MatchVisitor<'b, 'tcx>,
     bindings_allowed: bool
 }

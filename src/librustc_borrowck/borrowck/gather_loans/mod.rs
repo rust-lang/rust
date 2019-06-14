@@ -56,7 +56,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     (all_loans, move_data)
 }
 
-struct GatherLoanCtxt<'a, 'tcx: 'a> {
+struct GatherLoanCtxt<'a, 'tcx> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
     move_data: move_data::MoveData<'tcx>,
     move_error_collector: move_error::MoveErrorCollector<'tcx>,

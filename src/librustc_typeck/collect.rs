@@ -1786,7 +1786,7 @@ fn impl_polarity<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> hir::ImplPolarity {
 /// the lifetimes that are declared. For fns or methods, we have to
 /// screen out those that do not appear in any where-clauses etc using
 /// `resolve_lifetime::early_bound_lifetimes`.
-fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
+fn early_bound_lifetimes_from_generics<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     generics: &'a hir::Generics,
 ) -> impl Iterator<Item = &'a hir::GenericParam> + Captures<'tcx> {

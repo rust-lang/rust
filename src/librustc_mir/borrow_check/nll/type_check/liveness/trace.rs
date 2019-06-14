@@ -60,9 +60,9 @@ pub(super) fn trace(
 /// Contextual state for the type-liveness generator.
 struct LivenessContext<'me, 'typeck, 'flow, 'tcx>
 where
-    'typeck: 'me,
-    'flow: 'me,
-    'tcx: 'typeck + 'flow,
+    'typeck,
+    'flow,
+    'tcx,
 {
     /// Current type-checker, giving us our inference context etc.
     typeck: &'me mut TypeChecker<'typeck, 'tcx>,
@@ -98,9 +98,9 @@ struct DropData<'tcx> {
 
 struct LivenessResults<'me, 'typeck, 'flow, 'tcx>
 where
-    'typeck: 'me,
-    'flow: 'me,
-    'tcx: 'typeck + 'flow,
+    'typeck,
+    'flow,
+    'tcx,
 {
     cx: LivenessContext<'me, 'typeck, 'flow, 'tcx>,
 

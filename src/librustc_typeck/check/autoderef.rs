@@ -20,7 +20,7 @@ enum AutoderefKind {
     Overloaded,
 }
 
-pub struct Autoderef<'a, 'tcx: 'a> {
+pub struct Autoderef<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,

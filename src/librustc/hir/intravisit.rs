@@ -74,7 +74,7 @@ impl<'a> FnKind<'a> {
 ///
 /// See the comments on `ItemLikeVisitor` for more details on the overall
 /// visit strategy.
-pub enum NestedVisitorMap<'this, 'tcx: 'this> {
+pub enum NestedVisitorMap<'this, 'tcx> {
     /// Do not visit any nested things. When you add a new
     /// "non-nested" thing, you will want to audit such uses to see if
     /// they remain valid.

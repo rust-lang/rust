@@ -26,7 +26,7 @@ pub struct PlaceRef<'tcx, V> {
     pub align: Align,
 }
 
-impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
+impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(
         llval: V,
         layout: TyLayout<'tcx>,
@@ -98,7 +98,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
 
 }
 
-impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
+impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     /// Access a field, at a point when the value's case is known.
     pub fn project_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self, bx: &mut Bx,
@@ -386,7 +386,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 }
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_place(
         &mut self,
         bx: &mut Bx,

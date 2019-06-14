@@ -363,7 +363,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 }
 
-struct UniversalRegionsBuilder<'cx, 'tcx: 'cx> {
+struct UniversalRegionsBuilder<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     mir_def_id: DefId,
     mir_hir_id: HirId,

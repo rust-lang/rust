@@ -137,7 +137,7 @@ pub fn langcall(tcx: TyCtxt<'_>, span: Option<Span>, msg: &str, li: LangItem) ->
 // all shifts). For 32- and 64-bit types, this matches the semantics
 // of Java. (See related discussion on #1877 and #10183.)
 
-pub fn build_unchecked_lshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn build_unchecked_lshift<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs: Bx::Value,
     rhs: Bx::Value
@@ -148,7 +148,7 @@ pub fn build_unchecked_lshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx.shl(lhs, rhs)
 }
 
-pub fn build_unchecked_rshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn build_unchecked_rshift<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs_t: Ty<'tcx>,
     lhs: Bx::Value,
@@ -165,7 +165,7 @@ pub fn build_unchecked_rshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-fn shift_mask_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+fn shift_mask_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     rhs: Bx::Value
 ) -> Bx::Value {
@@ -174,7 +174,7 @@ fn shift_mask_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx.and(rhs, shift_val)
 }
 
-pub fn shift_mask_val<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     llty: Bx::Type,
     mask_llty: Bx::Type,

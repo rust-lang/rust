@@ -30,7 +30,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     }
 }
 
-pub struct NiceRegionError<'cx, 'tcx: 'cx> {
+pub struct NiceRegionError<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     error: Option<RegionResolutionError<'tcx>>,
     regions: Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)>,

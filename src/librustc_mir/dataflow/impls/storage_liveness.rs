@@ -4,11 +4,11 @@ use rustc::mir::*;
 use crate::dataflow::BitDenotation;
 
 #[derive(Copy, Clone)]
-pub struct MaybeStorageLive<'a, 'tcx: 'a> {
+pub struct MaybeStorageLive<'a, 'tcx> {
     body: &'a Body<'tcx>,
 }
 
-impl<'a, 'tcx: 'a> MaybeStorageLive<'a, 'tcx> {
+impl<'a, 'tcx> MaybeStorageLive<'a, 'tcx> {
     pub fn new(body: &'a Body<'tcx>)
                -> Self {
         MaybeStorageLive { body }

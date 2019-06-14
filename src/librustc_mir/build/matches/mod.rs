@@ -661,7 +661,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 #[derive(Debug)]
-pub struct Candidate<'pat, 'tcx: 'pat> {
+pub struct Candidate<'pat, 'tcx> {
     // span of the original pattern that gave rise to this candidate
     span: Span,
 
@@ -705,7 +705,7 @@ struct Ascription<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct MatchPair<'pat, 'tcx: 'pat> {
+pub struct MatchPair<'pat, 'tcx> {
     // this place...
     place: Place<'tcx>,
 
@@ -1691,7 +1691,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         block: BasicBlock,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
-    ) where 'tcx: 'b {
+    ) where 'tcx {
         debug!("bind_matched_candidate_for_arm_body(block={:?})", block);
 
         let re_erased = self.hir.tcx().lifetimes.re_erased;

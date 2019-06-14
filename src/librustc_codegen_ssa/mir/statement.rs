@@ -6,7 +6,7 @@ use super::LocalRef;
 use super::OperandValue;
 use crate::traits::*;
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_statement(
         &mut self,
         mut bx: Bx,

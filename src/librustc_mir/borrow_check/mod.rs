@@ -423,7 +423,7 @@ fn downgrade_if_error(diag: &mut Diagnostic) {
     }
 }
 
-pub struct MirBorrowckCtxt<'cx, 'tcx: 'cx> {
+pub struct MirBorrowckCtxt<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     body: &'cx Body<'tcx>,
     mir_def_id: DefId,
@@ -891,7 +891,7 @@ enum InitializationRequiringAction {
     PartialAssignment,
 }
 
-struct RootPlace<'d, 'tcx: 'd> {
+struct RootPlace<'d, 'tcx> {
     place: &'d Place<'tcx>,
     is_local_mutation_allowed: LocalMutationIsAllowed,
 }
@@ -1693,7 +1693,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn move_path_closest_to<'a>(
         &mut self,
         place: &'a Place<'tcx>,
-    ) -> Result<(&'a Place<'tcx>, MovePathIndex), NoMovePathFound> where 'cx: 'a {
+    ) -> Result<(&'a Place<'tcx>, MovePathIndex), NoMovePathFound> where 'cx {
         let mut last_prefix = place;
         for prefix in self.prefixes(place, PrefixSet::All) {
             if let Some(mpi) = self.move_path_for_place(prefix) {

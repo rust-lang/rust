@@ -507,7 +507,7 @@ impl LintStore {
 }
 
 /// Context for lint checking after type checking.
-pub struct LateContext<'a, 'tcx: 'a> {
+pub struct LateContext<'a, 'tcx> {
     /// Type context we're checking in.
     pub tcx: TyCtxt<'tcx>,
 
@@ -533,7 +533,7 @@ pub struct LateContext<'a, 'tcx: 'a> {
     only_module: bool,
 }
 
-pub struct LateContextAndPass<'a, 'tcx: 'a, T: LateLintPass<'a, 'tcx>> {
+pub struct LateContextAndPass<'a, 'tcx, T: LateLintPass<'a, 'tcx>> {
     context: LateContext<'a, 'tcx>,
     pass: T,
 }

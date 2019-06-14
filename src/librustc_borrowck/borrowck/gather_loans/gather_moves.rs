@@ -16,7 +16,7 @@ use rustc::hir::*;
 use rustc::hir::Node;
 use log::debug;
 
-struct GatherMoveInfo<'c, 'tcx: 'c> {
+struct GatherMoveInfo<'c, 'tcx> {
     id: hir::ItemLocalId,
     kind: MoveKind,
     cmt: &'c mc::cmt_<'tcx>,
@@ -91,7 +91,7 @@ pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     gather_move(bccx, move_data, move_error_collector, move_info);
 }
 
-pub fn gather_move_from_pat<'a, 'c, 'tcx: 'c>(bccx: &BorrowckCtxt<'a, 'tcx>,
+pub fn gather_move_from_pat<'a, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                               move_data: &MoveData<'tcx>,
                                               move_error_collector: &mut MoveErrorCollector<'tcx>,
                                               move_pat: &hir::Pat,
@@ -121,7 +121,7 @@ pub fn gather_move_from_pat<'a, 'c, 'tcx: 'c>(bccx: &BorrowckCtxt<'a, 'tcx>,
     gather_move(bccx, move_data, move_error_collector, move_info);
 }
 
-fn gather_move<'a, 'c, 'tcx: 'c>(bccx: &BorrowckCtxt<'a, 'tcx>,
+fn gather_move<'a, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                          move_data: &MoveData<'tcx>,
                          move_error_collector: &mut MoveErrorCollector<'tcx>,
                          move_info: GatherMoveInfo<'c, 'tcx>) {

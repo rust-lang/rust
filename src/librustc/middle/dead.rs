@@ -38,7 +38,7 @@ fn should_explore<'tcx>(tcx: TyCtxt<'tcx>, hir_id: hir::HirId) -> bool {
     }
 }
 
-struct MarkSymbolVisitor<'a, 'tcx: 'a> {
+struct MarkSymbolVisitor<'a, 'tcx> {
     worklist: Vec<hir::HirId>,
     tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
@@ -351,7 +351,7 @@ fn has_allow_dead_code_or_lang_attr(
 //   or
 //   2) We are not sure to be live or not
 //     * Implementation of a trait method
-struct LifeSeeder<'k, 'tcx: 'k> {
+struct LifeSeeder<'k, 'tcx> {
     worklist: Vec<hir::HirId>,
     krate: &'k hir::Crate,
     tcx: TyCtxt<'tcx>,

@@ -70,7 +70,7 @@ impl Unwind {
     }
 }
 
-pub trait DropElaborator<'a, 'tcx: 'a>: fmt::Debug {
+pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
     type Path : Copy + fmt::Debug;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
@@ -90,7 +90,7 @@ pub trait DropElaborator<'a, 'tcx: 'a>: fmt::Debug {
 }
 
 #[derive(Debug)]
-struct DropCtxt<'l, 'b: 'l, 'tcx: 'b, D>
+struct DropCtxt<'l, 'b, 'tcx, D>
     where D : DropElaborator<'b, 'tcx> + 'l
 {
     elaborator: &'l mut D,

@@ -505,7 +505,7 @@ declare_lint! {
 
 declare_lint_pass!(ImproperCTypes => [IMPROPER_CTYPES]);
 
-struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
+struct ImproperCTypesVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
 }
 

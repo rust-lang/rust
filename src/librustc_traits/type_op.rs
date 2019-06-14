@@ -56,7 +56,7 @@ fn type_op_ascribe_user_type<'tcx>(
         })
 }
 
-struct AscribeUserTypeCx<'me, 'tcx: 'me> {
+struct AscribeUserTypeCx<'me, 'tcx> {
     infcx: &'me InferCtxt<'me, 'tcx>,
     param_env: ParamEnv<'tcx>,
     fulfill_cx: &'me mut dyn TraitEngine<'tcx>,

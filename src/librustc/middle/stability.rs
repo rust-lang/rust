@@ -105,7 +105,7 @@ impl_stable_hash_for!(struct self::Index<'tcx> {
 });
 
 // A private tree-walker for producing an Index.
-struct Annotator<'a, 'tcx: 'a> {
+struct Annotator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     index: &'a mut Index<'tcx>,
     parent_stab: Option<&'tcx Stability>,
@@ -113,7 +113,7 @@ struct Annotator<'a, 'tcx: 'a> {
     in_trait_impl: bool,
 }
 
-impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
+impl<'a, 'tcx> Annotator<'a, 'tcx> {
     // Determine the stability for a node based on its attributes and inherited
     // stability. The stability is recorded in the index and used as the parent.
     fn annotate<F>(&mut self, hir_id: HirId, attrs: &[Attribute],
@@ -316,12 +316,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 }
 
-struct MissingStabilityAnnotations<'a, 'tcx: 'a> {
+struct MissingStabilityAnnotations<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     access_levels: &'a AccessLevels,
 }
 
-impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
+impl<'a, 'tcx> MissingStabilityAnnotations<'a, 'tcx> {
     fn check_missing_stability(&self, hir_id: HirId, span: Span, name: &str) {
         let stab = self.tcx.stability().local_stability(hir_id);
         let is_error = !self.tcx.sess.opts.test &&
