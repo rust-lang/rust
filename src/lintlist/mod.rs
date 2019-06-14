@@ -5,7 +5,8 @@ pub use lint::Level;
 pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
-pub const ALL_LINTS: [Lint; 304] = [
+// begin lint list, do not remove this comment, it’s used in `update_lints`
+pub const ALL_LINTS: [Lint; 305] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -250,13 +251,6 @@ pub const ALL_LINTS: [Lint; 304] = [
         desc: "`if`s that can be collapsed (e.g., `if x { if y { ... } }` and `else { if x { ... } }`)",
         deprecation: None,
         module: "collapsible_if",
-    },
-    Lint {
-        name: "const_static_lifetime",
-        group: "style",
-        desc: "Using explicit `\'static` lifetime for constants when elision rules would allow omitting them.",
-        deprecation: None,
-        module: "const_static_lifetime",
     },
     Lint {
         name: "copy_iterator",
@@ -761,6 +755,13 @@ pub const ALL_LINTS: [Lint; 304] = [
         desc: "any integer arithmetic statement",
         deprecation: None,
         module: "arithmetic",
+    },
+    Lint {
+        name: "integer_division",
+        group: "pedantic",
+        desc: "integer division may cause loss of precision",
+        deprecation: None,
+        module: "integer_division",
     },
     Lint {
         name: "into_iter_on_array",
@@ -1526,6 +1527,13 @@ pub const ALL_LINTS: [Lint; 304] = [
         module: "redundant_pattern_matching",
     },
     Lint {
+        name: "redundant_static_lifetimes",
+        group: "style",
+        desc: "Using explicit `\'static` lifetime for constants or statics when elision rules would allow omitting them.",
+        deprecation: None,
+        module: "redundant_static_lifetimes",
+    },
+    Lint {
         name: "ref_in_deref",
         group: "complexity",
         desc: "Use of reference in auto dereference expression.",
@@ -2135,3 +2143,4 @@ pub const ALL_LINTS: [Lint; 304] = [
         module: "unicode",
     },
 ];
+// end lint list, do not remove this comment, it’s used in `update_lints`
