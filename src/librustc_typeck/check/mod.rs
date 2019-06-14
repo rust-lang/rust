@@ -4741,7 +4741,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Resolves associated value path into a base type and associated constant or method
+    /// Resolves an associated value path into a base type and associated constant, or method
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
     pub fn resolve_ty_and_res_ufcs<'b>(&self,
                                        qpath: &'b QPath,
