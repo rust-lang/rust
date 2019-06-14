@@ -2,7 +2,8 @@ use crate::ty::query::Providers;
 use crate::hir::def_id::DefId;
 use crate::hir;
 use crate::ty::TyCtxt;
-use syntax_pos::symbol::Symbol;
+use syntax_pos::symbol::{sym, Symbol};
+use rustc_target::spec::abi::Abi;
 use crate::hir::map::blocks::FnLikeNode;
 use syntax::attr;
 
@@ -63,13 +64,76 @@ impl<'tcx> TyCtxt<'tcx> {
 
 
 pub fn provide(providers: &mut Providers<'_>) {
-    /// only checks whether the function has a `const` modifier
+    /// Const evaluability whitelist is here to check evaluability at the
+    /// top level beforehand.
+    fn is_const_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> Option<bool> {
+        match tcx.fn_sig(def_id).abi() {
+            Abi::RustIntrinsic |
+            Abi::PlatformIntrinsic => {
+                match tcx.item_name(def_id) {
+                    // Keep this list in the same order as the match patterns in
+                    // `librustc_mir/interpret/intrinsics.rs`
+                    | sym::caller_location
+
+                    | sym::min_align_of
+                    | sym::pref_align_of
+                    | sym::needs_drop
+                    | sym::size_of
+                    | sym::type_id
+                    | sym::type_name
+
+                    | sym::ctpop
+                    | sym::cttz
+                    | sym::cttz_nonzero
+                    | sym::ctlz
+                    | sym::ctlz_nonzero
+                    | sym::bswap
+                    | sym::bitreverse
+
+                    | sym::wrapping_add
+                    | sym::wrapping_sub
+                    | sym::wrapping_mul
+                    | sym::add_with_overflow
+                    | sym::sub_with_overflow
+                    | sym::mul_with_overflow
+
+                    | sym::saturating_add
+                    | sym::saturating_sub
+
+                    | sym::unchecked_shl
+                    | sym::unchecked_shr
+
+                    | sym::rotate_left
+                    | sym::rotate_right
+
+                    | sym::ptr_offset_from
+
+                    | sym::transmute
+
+                    | sym::simd_insert
+
+                    | sym::simd_extract
+
+                    => Some(true),
+
+                    _ => Some(false)
+                }
+            }
+            _ => None
+        }
+    }
+
+    /// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
+    /// said intrinsic is on the whitelist for being const callable.
     fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         let hir_id = tcx.hir().as_local_hir_id(def_id)
                               .expect("Non-local call to local provider is_const_fn");
 
         let node = tcx.hir().get(hir_id);
-        if let Some(fn_like) = FnLikeNode::from_node(node) {
+
+        if let Some(whitelisted) = is_const_intrinsic(tcx, def_id) {
+            whitelisted
+        } else if let Some(fn_like) = FnLikeNode::from_node(node) {
             fn_like.constness() == hir::Constness::Const
         } else if let hir::Node::Ctor(_) = node {
             true

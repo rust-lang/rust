@@ -415,28 +415,28 @@ fn check_terminator(
 ///
 /// Adding more intrinsics requires sign-off from @rust-lang/lang.
 fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    match &*tcx.item_name(def_id).as_str() {
-        | "size_of"
-        | "min_align_of"
-        | "needs_drop"
+    match tcx.item_name(def_id) {
+        | sym::size_of
+        | sym::min_align_of
+        | sym::needs_drop
         // Arithmetic:
-        | "add_with_overflow" // ~> .overflowing_add
-        | "sub_with_overflow" // ~> .overflowing_sub
-        | "mul_with_overflow" // ~> .overflowing_mul
-        | "wrapping_add" // ~> .wrapping_add
-        | "wrapping_sub" // ~> .wrapping_sub
-        | "wrapping_mul" // ~> .wrapping_mul
-        | "saturating_add" // ~> .saturating_add
-        | "saturating_sub" // ~> .saturating_sub
-        | "unchecked_shl" // ~> .wrapping_shl
-        | "unchecked_shr" // ~> .wrapping_shr
-        | "rotate_left" // ~> .rotate_left
-        | "rotate_right" // ~> .rotate_right
-        | "ctpop" // ~> .count_ones
-        | "ctlz" // ~> .leading_zeros
-        | "cttz" // ~> .trailing_zeros
-        | "bswap" // ~> .swap_bytes
-        | "bitreverse" // ~> .reverse_bits
+        | sym::add_with_overflow // ~> .overflowing_add
+        | sym::sub_with_overflow // ~> .overflowing_sub
+        | sym::mul_with_overflow // ~> .overflowing_mul
+        | sym::wrapping_add // ~> .wrapping_add
+        | sym::wrapping_sub // ~> .wrapping_sub
+        | sym::wrapping_mul // ~> .wrapping_mul
+        | sym::saturating_add // ~> .saturating_add
+        | sym::saturating_sub // ~> .saturating_sub
+        | sym::unchecked_shl // ~> .wrapping_shl
+        | sym::unchecked_shr // ~> .wrapping_shr
+        | sym::rotate_left // ~> .rotate_left
+        | sym::rotate_right // ~> .rotate_right
+        | sym::ctpop // ~> .count_ones
+        | sym::ctlz // ~> .leading_zeros
+        | sym::cttz // ~> .trailing_zeros
+        | sym::bswap // ~> .swap_bytes
+        | sym::bitreverse // ~> .reverse_bits
         => true,
         _ => false,
     }

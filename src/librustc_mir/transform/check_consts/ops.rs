@@ -327,22 +327,6 @@ impl NonConstOp for ThreadLocalAccess {
 }
 
 #[derive(Debug)]
-pub struct Transmute;
-impl NonConstOp for Transmute {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_transmute)
-    }
-
-    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        feature_err(
-            &item.tcx.sess.parse_sess, sym::const_transmute, span,
-            &format!("The use of std::mem::transmute() is gated in {}s", item.const_kind())
-        )
-        .emit();
-    }
-}
-
-#[derive(Debug)]
 pub struct UnionAccess;
 impl NonConstOp for UnionAccess {
     fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {

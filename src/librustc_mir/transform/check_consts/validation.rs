@@ -8,7 +8,6 @@ use rustc::traits::{self, TraitEngine};
 use rustc::ty::cast::CastTy;
 use rustc::ty::{self, TyCtxt};
 use rustc_index::bit_set::BitSet;
-use rustc_target::spec::abi::Abi;
 use rustc_error_codes::*;
 use syntax::symbol::sym;
 use syntax_pos::Span;
@@ -564,23 +563,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 };
 
                 // At this point, we are calling a function whose `DefId` is known...
-
-                if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = self.tcx.fn_sig(def_id).abi() {
-                    assert!(!self.tcx.is_const_fn(def_id));
-
-                    if self.tcx.item_name(def_id) == sym::transmute {
-                        self.check_op(ops::Transmute);
-                        return;
-                    }
-
-                    // To preserve the current semantics, we return early, allowing all
-                    // intrinsics (except `transmute`) to pass unchecked to miri.
-                    //
-                    // FIXME: We should keep a whitelist of allowed intrinsics (or at least a
-                    // blacklist of unimplemented ones) and fail here instead.
-                    return;
-                }
-
                 if self.tcx.is_const_fn(def_id) {
                     return;
                 }
