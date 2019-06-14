@@ -1691,7 +1691,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         block: BasicBlock,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
-    ) where 'tcx {
+    ) {
         debug!("bind_matched_candidate_for_arm_body(block={:?})", block);
 
         let re_erased = self.hir.tcx().lifetimes.re_erased;

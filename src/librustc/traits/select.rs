@@ -697,7 +697,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError>
     where
         I: IntoIterator<Item = PredicateObligation<'tcx>>,
-        'tcx,
     {
         let mut result = EvaluatedToOk;
         for obligation in predicates {

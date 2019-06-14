@@ -48,7 +48,6 @@ pub fn super_lattice_tys<'a, 'tcx, L>(
 ) -> RelateResult<'tcx, Ty<'tcx>>
 where
     L: LatticeDir<'a, 'tcx>,
-    'tcx,
 {
     debug!("{}.lattice_tys({:?}, {:?})",
            this.tag(),

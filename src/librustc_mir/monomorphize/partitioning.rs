@@ -769,7 +769,6 @@ fn numbered_codegen_unit_name(
 fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'tcx>, label: &str, cgus: I)
 where
     I: Iterator<Item = &'b CodegenUnit<'tcx>>,
-    'tcx,
 {
     if cfg!(debug_assertions) {
         debug!("{}", label);

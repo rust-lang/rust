@@ -293,10 +293,7 @@ impl<'a> CrateLoader<'a> {
         &mut self,
         locate_ctxt: &mut locator::Context<'b>,
         path_kind: PathKind,
-    ) -> Option<(LoadResult, Option<Library>)>
-    where
-        'a
-    {
+    ) -> Option<(LoadResult, Option<Library>)> {
         // Use a new locator Context so trying to load a proc macro doesn't affect the error
         // message we emit
         let mut proc_macro_locator = locate_ctxt.clone();

@@ -392,9 +392,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pattern<'tcx>) -> bool
-        where 'a
-    {
+    fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pattern<'tcx>) -> bool {
         match *pattern.kind {
             PatternKind::Variant { adt_def, variant_index, .. } => {
                 let ref variant = adt_def.variants[variant_index];
