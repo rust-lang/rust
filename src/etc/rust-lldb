@@ -31,7 +31,7 @@ category_definition="type summary add --no-value --python-function lldb_rust_for
 category_enable="type category enable Rust"
 
 # Call LLDB with the commands added to the argument list
-exec "$lldb" --one-line-before-file="$script_import" \
-    --one-line-before-file="$category_definition" \
-    --one-line-before-file="$category_enable" \
+exec "$lldb" --one-line-before-file "$script_import" \
+    --one-line-before-file "$category_definition" \
+    --one-line-before-file "$category_enable" \
     "$@"
