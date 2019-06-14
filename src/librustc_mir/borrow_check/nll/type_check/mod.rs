@@ -1864,7 +1864,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
         let gcx = tcx.global_tcx();
-        let erased_ty = gcx.lift(&tcx.erase_regions(&ty)).unwrap();
+        let erased_ty = tcx.erase_regions(&ty);
         if !erased_ty.is_sized(gcx.at(span), self.param_env) {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return
@@ -2650,7 +2650,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
     where
-        T: type_op::normalize::Normalizable<'tcx> + Copy,
+        T: type_op::normalize::Normalizable<'tcx> + Copy + 'tcx,
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
         let param_env = self.param_env;

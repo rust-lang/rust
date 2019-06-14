@@ -190,12 +190,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     }
 
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
-        let (ty, param_env) = self.tcx.lift_to_global(&(ty, self.param_env)).unwrap_or_else(|| {
-            bug!("MIR: Cx::needs_drop({:?}, {:?}) got \
-                  type with inference types/regions",
-                 ty, self.param_env);
-        });
-        ty.needs_drop(self.tcx.global_tcx(), param_env)
+        ty.needs_drop(self.tcx.global_tcx(), self.param_env)
     }
 
     pub fn tcx(&self) -> TyCtxt<'tcx> {
