@@ -62,88 +62,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_binop_assign(expr, op, lhs, rhs)
             }
             ExprKind::Unary(unop, ref oprnd) => {
-                let expected_inner = match unop {
-                    hir::UnNot | hir::UnNeg => {
-                        expected
-                    }
-                    hir::UnDeref => {
-                        NoExpectation
-                    }
-                };
-                let needs = match unop {
-                    hir::UnDeref => needs,
-                    _ => Needs::None
-                };
-                let mut oprnd_t = self.check_expr_with_expectation_and_needs(&oprnd,
-                                                                             expected_inner,
-                                                                             needs);
-
-                if !oprnd_t.references_error() {
-                    oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
-                    match unop {
-                        hir::UnDeref => {
-                            if let Some(mt) = oprnd_t.builtin_deref(true) {
-                                oprnd_t = mt.ty;
-                            } else if let Some(ok) = self.try_overloaded_deref(
-                                    expr.span, oprnd_t, needs) {
-                                let method = self.register_infer_ok_obligations(ok);
-                                if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].sty {
-                                    let mutbl = match mutbl {
-                                        hir::MutImmutable => AutoBorrowMutability::Immutable,
-                                        hir::MutMutable => AutoBorrowMutability::Mutable {
-                                            // (It shouldn't actually matter for unary ops whether
-                                            // we enable two-phase borrows or not, since a unary
-                                            // op has no additional operands.)
-                                            allow_two_phase_borrow: AllowTwoPhase::No,
-                                        }
-                                    };
-                                    self.apply_adjustments(oprnd, vec![Adjustment {
-                                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
-                                        target: method.sig.inputs()[0]
-                                    }]);
-                                }
-                                oprnd_t = self.make_overloaded_place_return_type(method).ty;
-                                self.write_method_call(expr.hir_id, method);
-                            } else {
-                                let mut err = type_error_struct!(
-                                    tcx.sess,
-                                    expr.span,
-                                    oprnd_t,
-                                    E0614,
-                                    "type `{}` cannot be dereferenced",
-                                    oprnd_t,
-                                );
-                                let sp = tcx.sess.source_map().start_point(expr.span);
-                                if let Some(sp) = tcx.sess.parse_sess.ambiguous_block_expr_parse
-                                    .borrow().get(&sp)
-                                {
-                                    tcx.sess.parse_sess.expr_parentheses_needed(
-                                        &mut err,
-                                        *sp,
-                                        None,
-                                    );
-                                }
-                                err.emit();
-                                oprnd_t = tcx.types.err;
-                            }
-                        }
-                        hir::UnNot => {
-                            let result = self.check_user_unop(expr, oprnd_t, unop);
-                            // If it's builtin, we can reuse the type, this helps inference.
-                            if !(oprnd_t.is_integral() || oprnd_t.sty == ty::Bool) {
-                                oprnd_t = result;
-                            }
-                        }
-                        hir::UnNeg => {
-                            let result = self.check_user_unop(expr, oprnd_t, unop);
-                            // If it's builtin, we can reuse the type, this helps inference.
-                            if !oprnd_t.is_numeric() {
-                                oprnd_t = result;
-                            }
-                        }
-                    }
-                }
-                oprnd_t
+                self.check_expr_unary(unop, oprnd, expected, needs, expr)
             }
             ExprKind::AddrOf(mutbl, ref oprnd) => {
                 let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
@@ -705,5 +624,92 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let referent_ty = self.check_expr_with_expectation(expr, expected_inner);
         self.tcx.mk_box(referent_ty)
+    }
+
+    fn check_expr_unary(
+        &self,
+        unop: hir::UnOp,
+        oprnd: &'tcx hir::Expr,
+        expected: Expectation<'tcx>,
+        needs: Needs,
+        expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
+        let tcx = self.tcx;
+        let expected_inner = match unop {
+            hir::UnNot | hir::UnNeg => expected,
+            hir::UnDeref => NoExpectation,
+        };
+        let needs = match unop {
+            hir::UnDeref => needs,
+            _ => Needs::None
+        };
+        let mut oprnd_t = self.check_expr_with_expectation_and_needs(&oprnd, expected_inner, needs);
+
+        if !oprnd_t.references_error() {
+            oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
+            match unop {
+                hir::UnDeref => {
+                    if let Some(mt) = oprnd_t.builtin_deref(true) {
+                        oprnd_t = mt.ty;
+                    } else if let Some(ok) = self.try_overloaded_deref(
+                            expr.span, oprnd_t, needs) {
+                        let method = self.register_infer_ok_obligations(ok);
+                        if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].sty {
+                            let mutbl = match mutbl {
+                                hir::MutImmutable => AutoBorrowMutability::Immutable,
+                                hir::MutMutable => AutoBorrowMutability::Mutable {
+                                    // (It shouldn't actually matter for unary ops whether
+                                    // we enable two-phase borrows or not, since a unary
+                                    // op has no additional operands.)
+                                    allow_two_phase_borrow: AllowTwoPhase::No,
+                                }
+                            };
+                            self.apply_adjustments(oprnd, vec![Adjustment {
+                                kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                                target: method.sig.inputs()[0]
+                            }]);
+                        }
+                        oprnd_t = self.make_overloaded_place_return_type(method).ty;
+                        self.write_method_call(expr.hir_id, method);
+                    } else {
+                        let mut err = type_error_struct!(
+                            tcx.sess,
+                            expr.span,
+                            oprnd_t,
+                            E0614,
+                            "type `{}` cannot be dereferenced",
+                            oprnd_t,
+                        );
+                        let sp = tcx.sess.source_map().start_point(expr.span);
+                        if let Some(sp) = tcx.sess.parse_sess.ambiguous_block_expr_parse
+                            .borrow().get(&sp)
+                        {
+                            tcx.sess.parse_sess.expr_parentheses_needed(
+                                &mut err,
+                                *sp,
+                                None,
+                            );
+                        }
+                        err.emit();
+                        oprnd_t = tcx.types.err;
+                    }
+                }
+                hir::UnNot => {
+                    let result = self.check_user_unop(expr, oprnd_t, unop);
+                    // If it's builtin, we can reuse the type, this helps inference.
+                    if !(oprnd_t.is_integral() || oprnd_t.sty == ty::Bool) {
+                        oprnd_t = result;
+                    }
+                }
+                hir::UnNeg => {
+                    let result = self.check_user_unop(expr, oprnd_t, unop);
+                    // If it's builtin, we can reuse the type, this helps inference.
+                    if !oprnd_t.is_numeric() {
+                        oprnd_t = result;
+                    }
+                }
+            }
+        }
+        oprnd_t
     }
 }
