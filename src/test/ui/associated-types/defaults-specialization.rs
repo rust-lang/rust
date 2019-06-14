@@ -1,3 +1,5 @@
+//! Tests the interaction of associated type defaults and specialization.
+
 // compile-fail
 
 #![feature(associated_type_defaults, specialization)]
@@ -16,6 +18,13 @@ default impl<T> Tr for A<T> {
     //~^ ERROR method `make` has an incompatible type for trait
 }
 
+struct A2<T>(T);
+// ...same, but in the method body
+default impl<T> Tr for A2<T> {
+    fn make() -> Self::Ty { 0u8 }
+    //~^ ERROR mismatched types
+}
+
 struct B<T>(T);
 // Explicitly defaulting the type does the same.
 impl<T> Tr for B<T> {
@@ -23,6 +32,15 @@ impl<T> Tr for B<T> {
 
     fn make() -> bool { true }
     //~^ ERROR method `make` has an incompatible type for trait
+}
+
+struct B2<T>(T);
+// ...same, but in the method body
+impl<T> Tr for B2<T> {
+    default type Ty = bool;
+
+    fn make() -> Self::Ty { true }
+    //~^ ERROR mismatched types
 }
 
 struct C<T>(T);
