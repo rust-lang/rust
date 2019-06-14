@@ -570,7 +570,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "cbrtf" => f.cbrt(),
                     "coshf" => f.cosh(),
                     "sinhf" => f.sinh(),
-                        "tanf" => f.tan(),
+                    "tanf" => f.tan(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
