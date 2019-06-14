@@ -2157,6 +2157,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Returns the `DefId` of the constant parameter that the provided expression is a path to.
     pub fn const_param_def_id(&self, expr: &hir::Expr) -> Option<DefId> {
+        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+        let expr = match &expr.node {
+            ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() =>
+                block.expr.as_ref().unwrap(),
+            _ => expr,
+        };
+
         match &expr.node {
             ExprKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
                 Res::Def(DefKind::ConstParam, did) => Some(did),
@@ -2184,18 +2192,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty,
         };
 
-        let mut expr = &tcx.hir().body(ast_const.body).value;
-
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        if let ExprKind::Block(block, _) = &expr.node {
-            if block.stmts.is_empty() {
-                if let Some(trailing) = &block.expr {
-                    expr = &trailing;
-                }
-            }
-        }
-
+        let expr = &tcx.hir().body(ast_const.body).value;
         if let Some(def_id) = self.const_param_def_id(expr) {
             // Find the name and index of the const parameter by indexing the generics of the
             // parent item and construct a `ParamConst`.
