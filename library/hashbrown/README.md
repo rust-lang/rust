@@ -67,7 +67,7 @@ hashbrown = "0.5"
 
 Then:
 
-```rs
+```rust
 use hashbrown::HashMap;
 let mut map = HashMap::new();
 ```
