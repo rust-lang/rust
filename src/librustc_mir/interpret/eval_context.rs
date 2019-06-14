@@ -319,7 +319,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         t: T,
     ) -> InterpResult<'tcx, T> {
         match self.stack.last() {
-            Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)),
+            Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)?),
             None => if t.needs_subst() {
                 err!(TooGeneric).into()
             } else {
@@ -332,11 +332,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         &self,
         t: T,
         substs: SubstsRef<'tcx>
-    ) -> T {
+    ) -> InterpResult<'tcx, T> {
         // miri doesn't care about lifetimes, and will choke on some crazy ones
         // let's simply get rid of them
         let substituted = t.subst(*self.tcx, substs);
-        self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted)
+
+        if substituted.needs_subst() {
+            return err!(TooGeneric);
+        }
+
+        Ok(self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted))
     }
 
     pub fn layout_of_local(
@@ -349,7 +354,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             None => {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
-                    let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
+                    let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs)?;
                     self.layout_of(local_ty)
                 })?;
                 // Layouts of locals are requested a lot, so we cache them.
