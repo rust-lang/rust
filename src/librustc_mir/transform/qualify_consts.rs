@@ -489,49 +489,12 @@ impl Qualif for IsNotPromotable {
         let fn_ty = callee.ty(cx.body, cx.tcx);
         match fn_ty.sty {
             ty::FnDef(def_id, _) => {
-                match cx.tcx.fn_sig(def_id).abi() {
-                    Abi::RustIntrinsic |
-                    Abi::PlatformIntrinsic => {
-                        assert!(!cx.tcx.is_const_fn(def_id));
-                        match &cx.tcx.item_name(def_id).as_str()[..] {
-                            | "size_of"
-                            | "min_align_of"
-                            | "needs_drop"
-                            | "type_id"
-                            | "bswap"
-                            | "bitreverse"
-                            | "ctpop"
-                            | "cttz"
-                            | "cttz_nonzero"
-                            | "ctlz"
-                            | "ctlz_nonzero"
-                            | "overflowing_add"
-                            | "overflowing_sub"
-                            | "overflowing_mul"
-                            | "unchecked_shl"
-                            | "unchecked_shr"
-                            | "rotate_left"
-                            | "rotate_right"
-                            | "add_with_overflow"
-                            | "sub_with_overflow"
-                            | "mul_with_overflow"
-                            | "saturating_add"
-                            | "saturating_sub"
-                            | "transmute"
-                            => return true,
-
-                            _ => {}
-                        }
-                    }
-                    _ => {
-                        let is_const_fn =
-                            cx.tcx.is_const_fn(def_id) ||
-                            cx.tcx.is_unstable_const_fn(def_id).is_some() ||
-                            cx.is_const_panic_fn(def_id);
-                        if !is_const_fn {
-                            return true;
-                        }
-                    }
+                let is_const_fn =
+                    cx.tcx.is_const_fn(def_id) ||
+                    cx.tcx.is_unstable_const_fn(def_id).is_some() ||
+                    cx.is_const_panic_fn(def_id);
+                if !is_const_fn {
+                    return true;
                 }
             }
             _ => return true,
@@ -1251,21 +1214,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         Abi::PlatformIntrinsic => {
                             assert!(!self.tcx.is_const_fn(def_id));
                             match &self.tcx.item_name(def_id).as_str()[..] {
-                                // special intrinsic that can be called diretly without an intrinsic
-                                // feature gate needs a language feature gate
-                                "transmute" => {
-                                    if self.mode.requires_const_checking() {
-                                        // const eval transmute calls only with the feature gate
-                                        if !self.tcx.features().const_transmute {
-                                            emit_feature_err(
-                                                &self.tcx.sess.parse_sess, sym::const_transmute,
-                                                self.span, GateIssue::Language,
-                                                &format!("The use of std::mem::transmute() \
-                                                is gated in {}s", self.mode));
-                                        }
-                                    }
-                                }
-
                                 name if name.starts_with("simd_shuffle") => {
                                     is_shuffle = true;
                                 }
@@ -1276,8 +1224,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                             }
                         }
                         _ => {
-                            // In normal functions no calls are feature-gated.
-                            if self.mode.requires_const_checking() {
+                            // Apply normal functions' rules which are not feature-gated.
+                            if self.mode != Mode::Fn {
                                 let unleash_miri = self
                                     .tcx
                                     .sess

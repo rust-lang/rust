@@ -489,9 +489,6 @@ declare_features! (
     // This will likely be removed prior to stabilization of async/await.
     (active, await_macro, "1.28.0", Some(50547), None),
 
-    // Allows reinterpretation of the bits of a value of one type as another type during const eval.
-    (active, const_transmute, "1.29.0", Some(53605), None),
-
     // Allows using `try {...}` expressions.
     (active, try_blocks, "1.29.0", Some(31436), None),
 
