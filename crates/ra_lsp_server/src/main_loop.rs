@@ -2,11 +2,9 @@ mod handlers;
 mod subscriptions;
 pub(crate) mod pending_requests;
 
-use std::{fmt, path::PathBuf, sync::Arc, time::Instant};
+use std::{fmt, path::PathBuf, sync::Arc, time::Instant, error::Error};
 
 use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
-use failure::{bail, format_err};
-use failure_derive::Fail;
 use gen_lsp_server::{
     handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
 };
@@ -32,8 +30,7 @@ use crate::{
 const THREADPOOL_SIZE: usize = 8;
 const MAX_IN_FLIGHT_LIBS: usize = THREADPOOL_SIZE - 3;
 
-#[derive(Debug, Fail)]
-#[fail(display = "Language Server request failed with {}. ({})", code, message)]
+#[derive(Debug)]
 pub struct LspError {
     pub code: i32,
     pub message: String,
@@ -44,6 +41,14 @@ impl LspError {
         LspError { code, message }
     }
 }
+
+impl fmt::Display for LspError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Language Server request failed with {}. ({})", self.code, self.message)
+    }
+}
+
+impl Error for LspError {}
 
 pub fn main_loop(
     ws_roots: Vec<PathBuf>,
@@ -177,12 +182,12 @@ fn main_loop_inner(
         let event = select! {
             recv(msg_receiver) -> msg => match msg {
                 Ok(msg) => Event::Msg(msg),
-                Err(RecvError) => bail!("client exited without shutdown"),
+                Err(RecvError) => Err("client exited without shutdown")?,
             },
             recv(task_receiver) -> task => Event::Task(task.unwrap()),
             recv(state.vfs.read().task_receiver()) -> task => match task {
                 Ok(task) => Event::Vfs(task),
-                Err(RecvError) => bail!("vfs died"),
+                Err(RecvError) => Err("vfs died")?,
             },
             recv(libdata_receiver) -> data => Event::Lib(data.unwrap())
         };
@@ -380,7 +385,7 @@ fn on_notification(
     let not = match not.cast::<req::DidOpenTextDocument>() {
         Ok(params) => {
             let uri = params.text_document.uri;
-            let path = uri.to_file_path().map_err(|()| format_err!("invalid uri: {}", uri))?;
+            let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
             if let Some(file_id) =
                 state.vfs.write().add_file_overlay(&path, params.text_document.text)
             {
@@ -393,9 +398,9 @@ fn on_notification(
     let not = match not.cast::<req::DidChangeTextDocument>() {
         Ok(mut params) => {
             let uri = params.text_document.uri;
-            let path = uri.to_file_path().map_err(|()| format_err!("invalid uri: {}", uri))?;
+            let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
             let text =
-                params.content_changes.pop().ok_or_else(|| format_err!("empty changes"))?.text;
+                params.content_changes.pop().ok_or_else(|| format!("empty changes"))?.text;
             state.vfs.write().change_file_overlay(path.as_path(), text);
             return Ok(());
         }
@@ -404,7 +409,7 @@ fn on_notification(
     let not = match not.cast::<req::DidCloseTextDocument>() {
         Ok(params) => {
             let uri = params.text_document.uri;
-            let path = uri.to_file_path().map_err(|()| format_err!("invalid uri: {}", uri))?;
+            let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
             if let Some(file_id) = state.vfs.write().remove_file_overlay(path.as_path()) {
                 subs.remove_sub(FileId(file_id.0));
             }
@@ -546,7 +551,7 @@ where
                     RawResponse::err(
                         id,
                         ErrorCode::InternalError as i32,
-                        format!("{}\n{}", e, e.backtrace()),
+                        e.to_string()
                     )
                 }
             }
@@ -599,6 +604,6 @@ fn show_message(typ: req::MessageType, message: impl Into<String>, sender: &Send
     sender.send(not.into()).unwrap();
 }
 
-fn is_canceled(e: &failure::Error) -> bool {
+fn is_canceled(e: &Box<dyn std::error::Error + Send + Sync>) -> bool {
     e.downcast_ref::<Canceled>().is_some()
 }

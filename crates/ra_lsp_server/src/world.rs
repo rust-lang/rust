@@ -11,7 +11,6 @@ use ra_ide_api::{
 use ra_vfs::{Vfs, VfsChange, VfsFile, VfsRoot};
 use relative_path::RelativePathBuf;
 use parking_lot::RwLock;
-use failure::{Error, format_err};
 use gen_lsp_server::ErrorCode;
 
 use crate::{
@@ -169,13 +168,13 @@ impl WorldSnapshot {
     }
 
     pub fn uri_to_file_id(&self, uri: &Url) -> Result<FileId> {
-        let path = uri.to_file_path().map_err(|()| format_err!("invalid uri: {}", uri))?;
+        let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
         let file = self.vfs.read().path2file(&path).ok_or_else(|| {
             // Show warning as this file is outside current workspace
-            Error::from(LspError {
+            LspError {
                 code: ErrorCode::InvalidRequest as i32,
                 message: "Rust file outside current workspace is not supported yet.".to_string(),
-            })
+            }
         })?;
         Ok(FileId(file.0))
     }
@@ -183,7 +182,7 @@ impl WorldSnapshot {
     pub fn file_id_to_uri(&self, id: FileId) -> Result<Url> {
         let path = self.vfs.read().file2path(VfsFile(id.0));
         let url = Url::from_file_path(&path)
-            .map_err(|_| format_err!("can't convert path to url: {}", path.display()))?;
+            .map_err(|_| format!("can't convert path to url: {}", path.display()))?;
         Ok(url)
     }
 
@@ -191,7 +190,7 @@ impl WorldSnapshot {
         let base = self.vfs.read().root2path(VfsRoot(root.0));
         let path = path.to_path(base);
         let url = Url::from_file_path(&path)
-            .map_err(|_| format_err!("can't convert path to url: {}", path.display()))?;
+            .map_err(|_| format!("can't convert path to url: {}", path.display()))?;
         Ok(url)
     }
 

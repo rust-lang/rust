@@ -1128,8 +1128,6 @@ name = "ra_lsp_server"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "flexi_logger 0.11.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "gen_lsp_server 0.2.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1187,7 +1185,6 @@ name = "ra_project_model"
 version = "0.1.0"
 dependencies = [
  "cargo_metadata 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_arena 0.1.0",
  "ra_db 0.1.0",
