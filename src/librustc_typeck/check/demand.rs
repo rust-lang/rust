@@ -425,19 +425,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 }
                             }
                         }
-                        // If this expression had a clone call, when suggesting borrowing, we
-                        // want to suggest removing it
-                        let sugg_expr = sugg_expr.trim_end_matches(".clone()");
+
+                        let mut sugg = sugg_expr.as_str();
+                        if let hir::ExprKind::MethodCall(_segment, _sp, _args) = &expr.node {
+                            let clone_path = "std::clone::Clone::clone";
+                            if let Some(true) = self.tables.borrow()
+                                .type_dependent_def_id(expr.hir_id)
+                                .map(|did| self.tcx.def_path_str(did).as_str() == clone_path)
+                            {
+                                // If this expression had a clone call when suggesting borrowing
+                                // we want to suggest removing it because it'd now be unecessary.
+                                sugg = sugg_expr.trim_end_matches(".clone()");
+                            }
+                        }
                         return Some(match mutability {
                             hir::Mutability::MutMutable => (
                                 sp,
                                 "consider mutably borrowing here",
-                                format!("{}&mut {}", field_name, sugg_expr),
+                                format!("{}&mut {}", field_name, sugg),
                             ),
                             hir::Mutability::MutImmutable => (
                                 sp,
                                 "consider borrowing here",
-                                format!("{}&{}", field_name, sugg_expr),
+                                format!("{}&{}", field_name, sugg),
                             ),
                         });
                     }
