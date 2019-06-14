@@ -141,8 +141,7 @@ to the compiler.
 - `cx` tends to be short for "context" and is often used as a suffix. For
   example, `tcx` is a common name for the [Typing Context][tcx].
 
-- [`'tcx` and `'gcx`][tcx] are used as the lifetime names for the Typing
-  Context.
+- [`'tcx`][tcx] is used as the lifetim names for the Typing Context.
 
 - Because `crate` is a keyword, if you need a variable to represent something
   crate-related, often the spelling is changed to `krate`.

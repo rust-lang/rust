@@ -25,7 +25,6 @@ early-bound lifetime    |  a lifetime region that is substituted at its definiti
 empty type              |  see "uninhabited type".
 Fat pointer             |  a two word value carrying the address of some value, along with some further information necessary to put the value to use. Rust includes two kinds of "fat pointers": references to slices, and trait objects. A reference to a slice carries the starting address of the slice and its length. A trait object carries a value's address and a pointer to the trait's implementation appropriate to that value. "Fat pointers" are also known as "wide pointers", and "double pointers".
 free variable           |  a "free variable" is one that is not bound within an expression or term; see [the background chapter for more](./background.html#free-vs-bound)
-'gcx                    |  the lifetime of the global arena ([see more](../ty.html))
 generics                |  the set of generic type parameters defined on a type or item
 HIR                     |  the High-level IR, created by lowering and desugaring the AST ([see more](../hir.html))
 HirId                   |  identifies a particular node in the HIR by combining a def-id with an "intra-definition offset".

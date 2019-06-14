@@ -48,7 +48,7 @@ stack backtrace:
 
 If you want line numbers for the stack trace, you can enable `debug = true` in
 your config.toml and rebuild the compiler (`debuginfo-level = 1` will also add
-line numbers, but `debug = true` gives full debuginfo). Then the backtrace will 
+line numbers, but `debug = true` gives full debuginfo). Then the backtrace will
 look like this:
 
 ```text
@@ -129,11 +129,11 @@ note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose
 backtrace.
 stack backtrace:
   (~~~ IRRELEVANT PART OF BACKTRACE REMOVED BY ME ~~~)
-   7: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'gcx,
-             'tcx>>::report_selection_error
+   7: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'tcx>>
+             ::report_selection_error
              at /home/user/rust/src/librustc/traits/error_reporting.rs:823
-   8: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'gcx,
-             'tcx>>::report_fulfillment_errors
+   8: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'tcx>>
+             ::report_fulfillment_errors
              at /home/user/rust/src/librustc/traits/error_reporting.rs:160
              at /home/user/rust/src/librustc/traits/error_reporting.rs:112
    9: rustc_typeck::check::FnCtxt::select_obligations_where_possible

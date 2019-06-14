@@ -15,7 +15,7 @@ state you will need while processing MIR:
 
 ```rust,ignore
 struct MyVisitor<...> {
-    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     ...
 }
 ```

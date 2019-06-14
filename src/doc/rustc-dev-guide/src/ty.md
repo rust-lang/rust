@@ -11,62 +11,18 @@ compiler. It is the context that you use to perform all manner of
 queries. The struct `TyCtxt` defines a reference to this shared context:
 
 ```rust,ignore
-tcx: TyCtxt<'a, 'gcx, 'tcx>
-//          --  ----  ----
-//          |   |     |
-//          |   |     innermost arena lifetime (if any)
-//          |   "global arena" lifetime
-//          lifetime of this reference
+tcx: TyCtxt<'tcx>
+//          ----
+//          |
+//          arena lifetime
 ```
 
-As you can see, the `TyCtxt` type takes three lifetime parameters.
-These lifetimes are perhaps the most complex thing to understand about
-the tcx. During Rust compilation, we allocate most of our memory in
+As you can see, the `TyCtxt` type takes a lifetime parameter.
+During Rust compilation, we allocate most of our memory in
 **arenas**, which are basically pools of memory that get freed all at
-once. When you see a reference with a lifetime like `'tcx` or `'gcx`,
+once. When you see a reference with a lifetime like `'tcx`,
 you know that it refers to arena-allocated data (or data that lives as
 long as the arenas, anyhow).
-
-We use two distinct levels of arenas. The outer level is the "global
-arena". This arena lasts for the entire compilation: so anything you
-allocate in there is only freed once compilation is basically over
-(actually, when we shift to executing LLVM).
-
-To reduce peak memory usage, when we do type inference, we also use an
-inner level of arena. These arenas get thrown away once type inference
-is over. This is done because type inference generates a lot of
-"throw-away" types that are not particularly interesting after type
-inference completes, so keeping around those allocations would be
-wasteful.
-
-Often, we wish to write code that explicitly asserts that it is not
-taking place during inference. In that case, there is no "local"
-arena, and all the types that you can access are allocated in the
-global arena.  To express this, the idea is to use the same lifetime
-for the `'gcx` and `'tcx` parameters of `TyCtxt`. Just to be a touch
-confusing, we tend to use the name `'tcx` in such contexts. Here is an
-example:
-
-```rust,ignore
-fn not_in_inference<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    //                                        ----  ----
-    //                                        Using the same lifetime here asserts
-    //                                        that the innermost arena accessible through
-    //                                        this reference *is* the global arena.
-}
-```
-
-In contrast, if we want to code that can be usable during type inference, then
-you need to declare a distinct `'gcx` and `'tcx` lifetime parameter:
-
-```rust,ignore
-fn maybe_in_inference<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId) {
-    //                                                ----  ----
-    //                                        Using different lifetimes here means that
-    //                                        the innermost arena *may* be distinct
-    //                                        from the global arena (but doesn't have to be).
-}
-```
 
 ### Allocating and working with types
 

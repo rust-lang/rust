@@ -50,9 +50,8 @@ function and disposed of after it returns.
 
 [ty-ch]: ty.html
 
-Within the closure, `infcx` has the type `InferCtxt<'cx, 'gcx, 'tcx>`
-for some fresh `'cx` and `'tcx` – the latter corresponds to the lifetime of
-this temporary arena, and the `'cx` is the lifetime of the `InferCtxt` itself.
+Within the closure, `infcx` has the type `InferCtxt<'cx, 'tcx>` for some
+fresh `'cx`, while `'tcx` is the same as outside the inference context.
 (Again, see the [`ty` chapter][ty-ch] for more details on this setup.)
 
 The `tcx.infer_ctxt` method actually returns a builder, which means

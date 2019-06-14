@@ -82,17 +82,15 @@ on how that works).
 Providers always have the same signature:
 
 ```rust,ignore
-fn provider<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx, 'tcx>,
-                       key: QUERY_KEY)
-                       -> QUERY_RESULT
-{
+fn provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: QUERY_KEY,
+) -> QUERY_RESULT {
     ...
 }
 ```
 
-Providers take two arguments: the `tcx` and the query key. Note also
-that they take the *global* tcx (i.e. they use the `'tcx` lifetime
-twice), rather than taking a tcx with some active inference context.
+Providers take two arguments: the `tcx` and the query key.
 They return the result of the query.
 
 ####  How providers are setup
@@ -103,7 +101,7 @@ is basically a big list of function pointers:
 
 ```rust,ignore
 struct Providers {
-    type_of: for<'cx, 'tcx> fn(TyCtxt<'cx, 'tcx, 'tcx>, DefId) -> Ty<'tcx>,
+    type_of: for<'tcx> fn(TyCtxt<'tcx>, DefId) -> Ty<'tcx>,
     ...
 }
 ```
@@ -144,7 +142,7 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn fubar<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx>, key: DefId) -> Fubar<'tcx> { ... }
+fn fubar<'tcx>(tcx: TyCtxt<'tcx>, key: DefId) -> Fubar<'tcx> { ... }
 ```
 
 N.B. Most of the `rustc_*` crates only provide **local
