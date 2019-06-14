@@ -94,25 +94,26 @@ fn update_lints(update_mode: &UpdateMode) {
     let mut sorted_usable_lints = usable_lints.clone();
     sorted_usable_lints.sort_by_key(|lint| lint.name.clone());
 
-    std::fs::write(
-        "../src/lintlist/mod.rs",
-        &format!(
-            "\
-//! This file is managed by `util/dev update_lints`. Do not edit.
-
-pub mod lint;
-pub use lint::Level;
-pub use lint::Lint;
-pub use lint::LINT_LEVELS;
-
-pub const ALL_LINTS: [Lint; {}] = {:#?};\n",
-            sorted_usable_lints.len(),
-            sorted_usable_lints
-        ),
-    )
-    .expect("can write to file");
-
     let mut file_change = replace_region_in_file(
+        "../src/lintlist/mod.rs",
+        "begin lint list",
+        "end lint list",
+        false,
+        update_mode == &UpdateMode::Change,
+        || {
+            format!(
+                "pub const ALL_LINTS: [Lint; {}] = {:#?};",
+                sorted_usable_lints.len(),
+                sorted_usable_lints
+            )
+            .lines()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+        },
+    )
+    .changed;
+
+    file_change |= replace_region_in_file(
         "../README.md",
         r#"\[There are \d+ lints included in this crate!\]\(https://rust-lang.github.io/rust-clippy/master/index.html\)"#,
         "",
