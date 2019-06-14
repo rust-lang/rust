@@ -50,17 +50,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let id = expr.hir_id;
         match expr.node {
             ExprKind::Box(ref subexpr) => {
-                let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
-                    match ty.sty {
-                        ty::Adt(def, _) if def.is_box()
-                            => Expectation::rvalue_hint(self, ty.boxed_ty()),
-                        _ => NoExpectation
-                    }
-                });
-                let referent_ty = self.check_expr_with_expectation(subexpr, expected_inner);
-                tcx.mk_box(referent_ty)
+                self.check_expr_box(subexpr, expected)
             }
-
             ExprKind::Lit(ref lit) => {
                 self.check_lit(&lit, expected)
             }
@@ -702,5 +693,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.types.err
             }
         }
+    }
+
+    fn check_expr_box(&self, expr: &'tcx hir::Expr, expected: Expectation<'tcx>) -> Ty<'tcx> {
+        let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
+            match ty.sty {
+                ty::Adt(def, _) if def.is_box()
+                    => Expectation::rvalue_hint(self, ty.boxed_ty()),
+                _ => NoExpectation
+            }
+        });
+        let referent_ty = self.check_expr_with_expectation(expr, expected_inner);
+        self.tcx.mk_box(referent_ty)
     }
 }
