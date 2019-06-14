@@ -102,21 +102,26 @@ fn init_late_loggers() {
 
 /// Returns the "default sysroot" that Miri will use if no `--sysroot` flag is set.
 /// Should be a compile-time constant.
-fn compile_time_sysroot() -> String {
+fn compile_time_sysroot() -> Option<String> {
+    if option_env!("RUSTC_STAGE").is_some() {
+        // This is being built as part of rustc, and gets shipped with rustup.
+        // We can rely on the sysroot computation in librustc.
+        return None;
+    }
+    // For builds outside rustc, we need to ensure that we got a sysroot
+    // that gets used as a default.  The sysroot computation in librustc would
+    // end up somewhere in the build dir.
     // Taken from PR <https://github.com/Manishearth/rust-clippy/pull/911>.
     let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-    match (home, toolchain) {
+    Some(match (home, toolchain) {
         (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
         _ => {
             option_env!("RUST_SYSROOT")
-                .expect(
-                    "could not find sysroot. Either set `MIRI_SYSROOT` at run-time, or at \
-                     build-time specify `RUST_SYSROOT` env var or use rustup or multirust",
-                )
+                .expect("To build Miri without rustup, set the `RUST_SYSROOT` env var at build time")
                 .to_owned()
         }
-    }
+    })
 }
 
 fn main() {
@@ -165,14 +170,17 @@ fn main() {
         }
     }
 
-    // Determine sysroot.
-    let sysroot_flag = "--sysroot".to_string();
-    if !rustc_args.contains(&sysroot_flag) {
-        // We need to *always* set a --sysroot, as the "default" rustc uses is
-        // somewhere in the directory miri was built in.
-        // If no --sysroot is given, fall back to env vars that are read at *compile-time*.
-        rustc_args.push(sysroot_flag);
-        rustc_args.push(compile_time_sysroot());
+    // Determine sysroot if needed.  Make sure we always call `compile_time_sysroot`
+    // as that also does some sanity-checks of the environment we were built in.
+    // FIXME: Ideally we'd turn a bad build env into a compile-time error, but
+    // CTFE does not seem powerful enough for that yet.
+    if let Some(sysroot) = compile_time_sysroot() {
+        let sysroot_flag = "--sysroot".to_string();
+        if !rustc_args.contains(&sysroot_flag) {
+            // We need to overwrite the default that librustc would compute.
+            rustc_args.push(sysroot_flag);
+            rustc_args.push(sysroot);
+        }
     }
 
     // Finally, add the default flags all the way in the beginning, but after the binary name.
