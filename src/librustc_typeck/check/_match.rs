@@ -50,6 +50,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("check_pat_walk(pat={:?},expected={:?},def_bm={:?})", pat, expected, def_bm);
 
+        let mut path_resolution = None;
         let is_non_ref_pat = match pat.node {
             PatKind::Struct(..) |
             PatKind::TupleStruct(..) |
@@ -65,8 +66,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             PatKind::Path(ref qpath) => {
-                let (def, _, _) = self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span);
-                match def {
+                let resolution = self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span);
+                path_resolution = Some(resolution);
+                match resolution.0 {
                     Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => false,
                     _ => true,
                 }
@@ -294,7 +296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             }
             PatKind::Path(ref qpath) => {
-                self.check_pat_path(pat, qpath, expected)
+                self.check_pat_path(pat, path_resolution.unwrap(), qpath, expected)
             }
             PatKind::Struct(ref qpath, ref fields, etc) => {
                 self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, discrim_span)
@@ -1054,13 +1056,14 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
     fn check_pat_path(
         &self,
         pat: &hir::Pat,
+        path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment]),
         qpath: &hir::QPath,
         expected: Ty<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
-        // Resolve the path and check the definition for errors.
-        let (res, opt_ty, segments) = self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span);
+        // We have already resolved the path.
+        let (res, opt_ty, segments) = path_resolution;
         match res {
             Res::Err => {
                 self.set_tainted_by_errors();
