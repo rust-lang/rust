@@ -1224,7 +1224,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                             }
                         }
                         _ => {
-                            // Apply normal functions' rules which are not feature-gated.
+                            // Only in non-const functions it is perfectly fine to call any function,
+                            // even ones whose constness is unstable. Everywhere else we need to
+                            // check the appropriate feature gates.
                             if self.mode != Mode::Fn {
                                 let unleash_miri = self
                                     .tcx
