@@ -3793,6 +3793,28 @@ details.
 [issue #33685]: https://github.com/rust-lang/rust/issues/33685
 "##,
 
+E0592: r##"
+This error occurs when you defined methods or associated functions with same
+name.
+
+For example, in the following code:
+
+```compile_fail,E0592
+struct Foo;
+
+impl Foo {
+    fn bar() {}
+}
+
+impl Foo {
+    fn bar() {}
+}
+```
+
+A similar error is E0201. The difference is whether there is one declaration
+block or not. To avoid this error, you have to give them one name each.
+"##,
+
 E0599: r##"
 This error occurs when a method is used on a type which doesn't implement it:
 
@@ -4771,7 +4793,6 @@ register_diagnostics! {
            // but `{}` was found in the type `{}`
     E0587, // type has conflicting packed and align representation hints
     E0588, // packed type cannot transitively contain a `[repr(align)]` type
-    E0592, // duplicate definitions with name `{}`
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
