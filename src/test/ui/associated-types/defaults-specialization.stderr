@@ -1,0 +1,27 @@
+error[E0053]: method `make` has an incompatible type for trait
+  --> $DIR/defaults-specialization.rs:15:18
+   |
+LL |     fn make() -> Self::Ty;
+   |                  -------- type in trait
+...
+LL |     fn make() -> u8 { 0 }
+   |                  ^^ expected associated type, found u8
+   |
+   = note: expected type `fn() -> <A<T> as Tr>::Ty`
+              found type `fn() -> u8`
+
+error[E0053]: method `make` has an incompatible type for trait
+  --> $DIR/defaults-specialization.rs:24:18
+   |
+LL |     fn make() -> Self::Ty;
+   |                  -------- type in trait
+...
+LL |     fn make() -> bool { true }
+   |                  ^^^^ expected associated type, found bool
+   |
+   = note: expected type `fn() -> <B<T> as Tr>::Ty`
+              found type `fn() -> bool`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0053`.
