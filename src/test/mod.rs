@@ -66,7 +66,11 @@ where
     P: AsRef<Path>,
 {
     (0..path.components().count())
-        .map(|i| path.components().take(i))
+        .map(|i| {
+            path.components()
+                .skip(i)
+                .take(subpath.as_ref().components().count())
+        })
         .any(|c| c.zip(subpath.as_ref().components()).all(|(a, b)| a == b))
 }
 
