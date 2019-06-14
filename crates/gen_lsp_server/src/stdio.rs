@@ -4,7 +4,6 @@ use std::{
 };
 
 use crossbeam_channel::{bounded, Receiver, Sender};
-use failure::bail;
 use lsp_types::notification::Exit;
 
 use crate::{RawMessage, Result};
@@ -48,11 +47,11 @@ impl Threads {
     pub fn join(self) -> Result<()> {
         match self.reader.join() {
             Ok(r) => r?,
-            Err(_) => bail!("reader panicked"),
+            Err(_) => Err("reader panicked")?,
         }
         match self.writer.join() {
             Ok(r) => r,
-            Err(_) => bail!("writer panicked"),
+            Err(_) => Err("writer panicked")?,
         }
     }
 }

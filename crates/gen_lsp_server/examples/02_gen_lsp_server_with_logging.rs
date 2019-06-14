@@ -42,6 +42,8 @@
 //! {"jsonrpc": "2.0", "method": "exit", "params": null}
 //! ```
 
+use std::error::Error;
+
 use crossbeam_channel::{Sender, Receiver};
 use lsp_types::{
     ServerCapabilities, InitializeParams,
@@ -52,7 +54,7 @@ use gen_lsp_server::{
     run_server, stdio_transport, handle_shutdown, RawMessage, RawResponse, RawRequest,
 };
 
-fn main() -> Result<(), failure::Error> {
+fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     // Set up logging. Because `stdio_transport` gets a lock on stdout and stdin, we must have
     // our logging only write out to stderr.
     flexi_logger::Logger::with_str("info").start().unwrap();
@@ -75,7 +77,7 @@ fn main_loop(
     _params: InitializeParams,
     receiver: &Receiver<RawMessage>,
     sender: &Sender<RawMessage>,
-) -> Result<(), failure::Error> {
+) -> Result<(), Box<dyn Error + Sync + Send>> {
     info!("starting example main loop");
     for msg in receiver {
         info!("got msg: {:?}", msg);

@@ -54,7 +54,7 @@
 //! }
 //! ```
 
-use failure::{bail, format_err};
+use std::error::Error;
 
 mod msg;
 mod stdio;
@@ -66,7 +66,7 @@ use lsp_types::{
     InitializeParams, InitializeResult, ServerCapabilities,
 };
 
-pub type Result<T> = ::std::result::Result<T, failure::Error>;
+pub type Result<T> = ::std::result::Result<T, Box<dyn Error + Send + Sync>>;
 pub use crate::{
     msg::{ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse, RawResponseError},
     stdio::{stdio_transport, Threads},
@@ -92,8 +92,8 @@ pub fn run_server(
     match receiver.recv() {
         Ok(RawMessage::Notification(n)) => n
             .cast::<Exit>()
-            .map_err(|n| format_err!("unexpected notification during shutdown: {:?}", n))?,
-        m => bail!("unexpected message during shutdown: {:?}", m),
+            .map_err(|n| format!("unexpected notification during shutdown: {:?}", n))?,
+        m => Err(format!("unexpected message during shutdown: {:?}", m))?,
     }
     log::info!("lsp server shutdown complete");
     Ok(())
@@ -118,19 +118,19 @@ fn initialize(
 ) -> Result<InitializeParams> {
     let (id, params) = match receiver.recv() {
         Ok(RawMessage::Request(req)) => match req.cast::<Initialize>() {
-            Err(req) => bail!("expected initialize request, got {:?}", req),
+            Err(req) => Err(format!("expected initialize request, got {:?}", req))?,
             Ok(req) => req,
         },
-        msg => bail!("expected initialize request, got {:?}", msg),
+        msg => Err(format!("expected initialize request, got {:?}", msg))?,
     };
     let resp = RawResponse::ok::<Initialize>(id, &InitializeResult { capabilities: caps });
     sender.send(RawMessage::Response(resp)).unwrap();
     match receiver.recv() {
         Ok(RawMessage::Notification(n)) => {
             n.cast::<Initialized>()
-                .map_err(|_| format_err!("expected initialized notification"))?;
+                .map_err(|_| "expected initialized notification")?;
         }
-        _ => bail!("expected initialized notification"),
+        _ => Err(format!("expected initialized notification"))?,
     }
     Ok(params)
 }

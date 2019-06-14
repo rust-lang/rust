@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use crossbeam_channel::{Sender, Receiver};
 use lsp_types::{
     ServerCapabilities, InitializeParams,
@@ -5,7 +7,7 @@ use lsp_types::{
 };
 use gen_lsp_server::{run_server, stdio_transport, handle_shutdown, RawMessage, RawResponse};
 
-fn main() -> Result<(), failure::Error> {
+fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     let (receiver, sender, io_threads) = stdio_transport();
     run_server(ServerCapabilities::default(), receiver, sender, main_loop)?;
     io_threads.join()?;
@@ -16,7 +18,7 @@ fn main_loop(
     _params: InitializeParams,
     receiver: &Receiver<RawMessage>,
     sender: &Sender<RawMessage>,
-) -> Result<(), failure::Error> {
+) -> Result<(), Box<dyn Error + Sync + Send>> {
     for msg in receiver {
         match msg {
             RawMessage::Request(req) => {

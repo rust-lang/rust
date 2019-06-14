@@ -490,7 +490,6 @@ name = "gen_lsp_server"
 version = "0.2.0"
 dependencies = [
  "crossbeam-channel 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "flexi_logger 0.11.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types 0.57.2 (registry+https://github.com/rust-lang/crates.io-index)",
