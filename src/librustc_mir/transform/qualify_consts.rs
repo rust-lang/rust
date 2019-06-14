@@ -1227,7 +1227,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                             // Only in non-const functions it is perfectly fine to call any
                             // function, even ones whose constness is unstable. Everywhere else
                             // we need to check the appropriate feature gates.
-                            if self.mode != Mode::Fn {
+                            if self.mode.requires_const_checking() {
                                 let unleash_miri = self
                                     .tcx
                                     .sess

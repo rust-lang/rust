@@ -69,8 +69,8 @@ impl<'tcx> TyCtxt<'tcx, 'tcx> {
 
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
-    fn is_intrinsic_promotable(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
-        // Intrinsics promotion whitelist is here to check const context at the
+    fn is_const_evaluatable(tcx: TyCtxt<'tcx, 'tcx>, def_id: DefId) -> bool {
+        // Intrinsics promotion whitelist is here to check const evaluability at the
         // top level beforehand.
         match tcx.fn_sig(def_id).abi() {
             Abi::RustIntrinsic |
@@ -114,8 +114,11 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         let hir_id = tcx.hir().as_local_hir_id(def_id)
                               .expect("Non-local call to local provider is_const_fn");
 
-        if let Some(fn_like) = FnLikeNode::from_node(tcx.hir().get_by_hir_id(hir_id)) {
-            (fn_like.constness() == hir::Constness::Const) || is_intrinsic_promotable(tcx, def_id)
+        let node = tcx.hir().get_by_hir_id(hir_id);
+        if let Some(fn_like) = FnLikeNode::from_node(node) {
+            (fn_like.constness() == hir::Constness::Const) || is_const_evaluatable(tcx, def_id)
+        } else if let hir::Node::Ctor(_) = node {
+            true
         } else {
             false
         }
