@@ -47,7 +47,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let tcx = self.tcx;
-        let id = expr.hir_id;
         match expr.node {
             ExprKind::Box(ref subexpr) => {
                 self.check_expr_box(subexpr, expected)
@@ -68,63 +67,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_addr_of(mutbl, oprnd, expected, expr)
             }
             ExprKind::Path(ref qpath) => {
-                let (res, opt_ty, segs) = self.resolve_ty_and_res_ufcs(qpath, expr.hir_id,
-                    expr.span);
-                let ty = match res {
-                    Res::Err => {
-                        self.set_tainted_by_errors();
-                        tcx.types.err
-                    }
-                    Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
-                        report_unexpected_variant_res(tcx, res, expr.span, qpath);
-                        tcx.types.err
-                    }
-                    _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, id).0,
-                };
-
-                if let ty::FnDef(..) = ty.sty {
-                    let fn_sig = ty.fn_sig(tcx);
-                    if !tcx.features().unsized_locals {
-                        // We want to remove some Sized bounds from std functions,
-                        // but don't want to expose the removal to stable Rust.
-                        // i.e., we don't want to allow
-                        //
-                        // ```rust
-                        // drop as fn(str);
-                        // ```
-                        //
-                        // to work in stable even if the Sized bound on `drop` is relaxed.
-                        for i in 0..fn_sig.inputs().skip_binder().len() {
-                            // We just want to check sizedness, so instead of introducing
-                            // placeholder lifetimes with probing, we just replace higher lifetimes
-                            // with fresh vars.
-                            let input = self.replace_bound_vars_with_fresh_vars(
-                                expr.span,
-                                infer::LateBoundRegionConversionTime::FnCall,
-                                &fn_sig.input(i)).0;
-                            self.require_type_is_sized_deferred(input, expr.span,
-                                                                traits::SizedArgumentType);
-                        }
-                    }
-                    // Here we want to prevent struct constructors from returning unsized types.
-                    // There were two cases this happened: fn pointer coercion in stable
-                    // and usual function call in presense of unsized_locals.
-                    // Also, as we just want to check sizedness, instead of introducing
-                    // placeholder lifetimes with probing, we just replace higher lifetimes
-                    // with fresh vars.
-                    let output = self.replace_bound_vars_with_fresh_vars(
-                        expr.span,
-                        infer::LateBoundRegionConversionTime::FnCall,
-                        &fn_sig.output()).0;
-                    self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
-                }
-
-                // We always require that the type provided as the value for
-                // a type parameter outlives the moment of instantiation.
-                let substs = self.tables.borrow().node_substs(expr.hir_id);
-                self.add_wf_bounds(substs, expr);
-
-                ty
+                self.check_expr_path(qpath, expr)
             }
             ExprKind::InlineAsm(_, ref outputs, ref inputs) => {
                 for expr in outputs.iter().chain(inputs.iter()) {
@@ -721,5 +664,65 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let region = self.next_region_var(infer::AddrOfRegion(expr.span));
             self.tcx.mk_ref(region, tm)
         }
+    }
+
+    fn check_expr_path(&self, qpath: &hir::QPath, expr: &'tcx hir::Expr) -> Ty<'tcx> {
+        let tcx = self.tcx;
+        let (res, opt_ty, segs) = self.resolve_ty_and_res_ufcs(qpath, expr.hir_id, expr.span);
+        let ty = match res {
+            Res::Err => {
+                self.set_tainted_by_errors();
+                tcx.types.err
+            }
+            Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
+                report_unexpected_variant_res(tcx, res, expr.span, qpath);
+                tcx.types.err
+            }
+            _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
+        };
+
+        if let ty::FnDef(..) = ty.sty {
+            let fn_sig = ty.fn_sig(tcx);
+            if !tcx.features().unsized_locals {
+                // We want to remove some Sized bounds from std functions,
+                // but don't want to expose the removal to stable Rust.
+                // i.e., we don't want to allow
+                //
+                // ```rust
+                // drop as fn(str);
+                // ```
+                //
+                // to work in stable even if the Sized bound on `drop` is relaxed.
+                for i in 0..fn_sig.inputs().skip_binder().len() {
+                    // We just want to check sizedness, so instead of introducing
+                    // placeholder lifetimes with probing, we just replace higher lifetimes
+                    // with fresh vars.
+                    let input = self.replace_bound_vars_with_fresh_vars(
+                        expr.span,
+                        infer::LateBoundRegionConversionTime::FnCall,
+                        &fn_sig.input(i)).0;
+                    self.require_type_is_sized_deferred(input, expr.span,
+                                                        traits::SizedArgumentType);
+                }
+            }
+            // Here we want to prevent struct constructors from returning unsized types.
+            // There were two cases this happened: fn pointer coercion in stable
+            // and usual function call in presense of unsized_locals.
+            // Also, as we just want to check sizedness, instead of introducing
+            // placeholder lifetimes with probing, we just replace higher lifetimes
+            // with fresh vars.
+            let output = self.replace_bound_vars_with_fresh_vars(
+                expr.span,
+                infer::LateBoundRegionConversionTime::FnCall,
+                &fn_sig.output()).0;
+            self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
+        }
+
+        // We always require that the type provided as the value for
+        // a type parameter outlives the moment of instantiation.
+        let substs = self.tables.borrow().node_substs(expr.hir_id);
+        self.add_wf_bounds(substs, expr);
+
+        ty
     }
 }
