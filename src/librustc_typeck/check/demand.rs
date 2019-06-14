@@ -380,12 +380,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
                 if self.can_coerce(ref_ty, expected) {
                     let mut sugg_sp = sp;
-                    if let hir::ExprKind::MethodCall(_segment, _sp, args) = &expr.node {
-                        let clone_path = "std::clone::Clone::clone";
-                        if let ([arg], Some(true)) = (&args[..], self.tables.borrow()
-                            .type_dependent_def_id(expr.hir_id)
-                            .map(|did| self.tcx.def_path_str(did).as_str() == clone_path))
-                        {
+                    if let hir::ExprKind::MethodCall(segment, _sp, args) = &expr.node {
+                        let clone_trait = self.tcx.lang_items().clone_trait().unwrap();
+                        if let ([arg], Some(true), "clone") = (
+                            &args[..],
+                            self.tables.borrow().type_dependent_def_id(expr.hir_id).map(|did| {
+                                let ai = self.tcx.associated_item(did);
+                                ai.container == ty::TraitContainer(clone_trait)
+                            }),
+                            &segment.ident.as_str()[..],
+                        ) {
                             // If this expression had a clone call when suggesting borrowing
                             // we want to suggest removing it because it'd now be unecessary.
                             sugg_sp = arg.span;
