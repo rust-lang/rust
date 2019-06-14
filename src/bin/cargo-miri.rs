@@ -133,11 +133,12 @@ fn test_sysroot_consistency() {
     fn get_sysroot(mut cmd: Command) -> PathBuf {
         let out = cmd.arg("--print").arg("sysroot")
             .output().expect("Failed to run rustc to get sysroot info");
-        assert!(out.status.success(), "Bad status code when getting sysroot info");
-        let sysroot = out.stdout.lines().nth(0)
-            .expect("didn't get at least one line for the sysroot").unwrap();
-        PathBuf::from(sysroot).canonicalize()
-            .expect("Failed to canonicalize sysroot")
+        let stdout = String::from_utf8(out.stdout).expect("stdout is not valid UTF-8");
+        let stderr = String::from_utf8(out.stderr).expect("stderr is not valid UTF-8");
+        let stdout = stdout.trim();
+        assert!(out.status.success(), "Bad status code when getting sysroot info.\nstdout:\n{}\nstderr:\n{}", stdout, stderr);
+        PathBuf::from(stdout).canonicalize()
+            .unwrap_or_else(|_| panic!("Failed to canonicalize sysroot: {}", stdout))
     }
 
     let rustc_sysroot = get_sysroot(Command::new("rustc"));
