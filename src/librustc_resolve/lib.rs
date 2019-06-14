@@ -1519,37 +1519,32 @@ impl<'a> NameBinding<'a> {
 ///
 /// All other types are defined somewhere and possibly imported, but the primitive ones need
 /// special handling, since they have no place of origin.
-#[derive(Default)]
 struct PrimitiveTypeTable {
     primitive_types: FxHashMap<Name, PrimTy>,
 }
 
 impl PrimitiveTypeTable {
     fn new() -> PrimitiveTypeTable {
-        let mut table = PrimitiveTypeTable::default();
+        let mut table = FxHashMap::default();
 
-        table.intern("bool", Bool);
-        table.intern("char", Char);
-        table.intern("f32", Float(FloatTy::F32));
-        table.intern("f64", Float(FloatTy::F64));
-        table.intern("isize", Int(IntTy::Isize));
-        table.intern("i8", Int(IntTy::I8));
-        table.intern("i16", Int(IntTy::I16));
-        table.intern("i32", Int(IntTy::I32));
-        table.intern("i64", Int(IntTy::I64));
-        table.intern("i128", Int(IntTy::I128));
-        table.intern("str", Str);
-        table.intern("usize", Uint(UintTy::Usize));
-        table.intern("u8", Uint(UintTy::U8));
-        table.intern("u16", Uint(UintTy::U16));
-        table.intern("u32", Uint(UintTy::U32));
-        table.intern("u64", Uint(UintTy::U64));
-        table.intern("u128", Uint(UintTy::U128));
-        table
-    }
-
-    fn intern(&mut self, string: &str, primitive_type: PrimTy) {
-        self.primitive_types.insert(Symbol::intern(string), primitive_type);
+        table.insert(sym::bool, Bool);
+        table.insert(sym::char, Char);
+        table.insert(sym::f32, Float(FloatTy::F32));
+        table.insert(sym::f64, Float(FloatTy::F64));
+        table.insert(sym::isize, Int(IntTy::Isize));
+        table.insert(sym::i8, Int(IntTy::I8));
+        table.insert(sym::i16, Int(IntTy::I16));
+        table.insert(sym::i32, Int(IntTy::I32));
+        table.insert(sym::i64, Int(IntTy::I64));
+        table.insert(sym::i128, Int(IntTy::I128));
+        table.insert(sym::str, Str);
+        table.insert(sym::usize, Uint(UintTy::Usize));
+        table.insert(sym::u8, Uint(UintTy::U8));
+        table.insert(sym::u16, Uint(UintTy::U16));
+        table.insert(sym::u32, Uint(UintTy::U32));
+        table.insert(sym::u64, Uint(UintTy::U64));
+        table.insert(sym::u128, Uint(UintTy::U128));
+        Self { primitive_types: table }
     }
 }
 
