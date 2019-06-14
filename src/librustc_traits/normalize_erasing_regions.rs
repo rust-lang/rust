@@ -37,8 +37,7 @@ fn normalize_ty_after_erasing_regions<'tcx>(
                 );
 
                 let normalized_value = infcx.resolve_vars_if_possible(&normalized_value);
-                let normalized_value = infcx.tcx.erase_regions(&normalized_value);
-                tcx.lift_to_global(&normalized_value).unwrap()
+                infcx.tcx.erase_regions(&normalized_value)
             }
             Err(NoSolution) => bug!("could not fully normalize `{:?}`", value),
         }

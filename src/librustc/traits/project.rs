@@ -409,7 +409,6 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                             promoted: None
                         };
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                            let substs = tcx.lift_to_global(&substs).unwrap();
                             let evaluated = evaluated.subst(tcx, substs);
                             return evaluated;
                         }

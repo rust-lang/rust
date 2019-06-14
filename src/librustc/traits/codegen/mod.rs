@@ -141,9 +141,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         fulfill_cx: &mut FulfillmentContext<'tcx>,
         result: &T,
-    ) -> T::Lifted
+    ) -> T
     where
-        T: TypeFoldable<'tcx> + ty::Lift<'tcx>,
+        T: TypeFoldable<'tcx>,
     {
         debug!("drain_fulfillment_cx_or_panic()");
 
@@ -155,10 +155,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         let result = self.resolve_vars_if_possible(result);
-        let result = self.tcx.erase_regions(&result);
-
-        self.tcx.lift_to_global(&result).unwrap_or_else(||
-            bug!("Uninferred types/regions/consts in `{:?}`", result)
-        )
+        self.tcx.erase_regions(&result)
     }
 }

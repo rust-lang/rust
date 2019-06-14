@@ -8,7 +8,7 @@ use std::rc::Rc;
 use crate::traits::query::Fallible;
 use crate::traits::ObligationCause;
 use crate::ty::fold::TypeFoldable;
-use crate::ty::{Lift, ParamEnvAnd, TyCtxt};
+use crate::ty::{ParamEnvAnd, TyCtxt};
 
 pub mod ascribe_user_type;
 pub mod custom;
@@ -44,8 +44,8 @@ pub trait TypeOp<'tcx>: Sized + fmt::Debug {
 /// which produces the resulting query region constraints.
 ///
 /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
-pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + Lift<'tcx> {
-    type QueryResponse: TypeFoldable<'tcx> + Lift<'tcx>;
+pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + 'tcx {
+    type QueryResponse: TypeFoldable<'tcx>;
 
     /// Give query the option for a simple fast path that never
     /// actually hits the tcx cache lookup etc. Return `Some(r)` with
