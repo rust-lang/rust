@@ -65,44 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_unary(unop, oprnd, expected, needs, expr)
             }
             ExprKind::AddrOf(mutbl, ref oprnd) => {
-                let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
-                    match ty.sty {
-                        ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                            if oprnd.is_place_expr() {
-                                // Places may legitimately have unsized types.
-                                // For example, dereferences of a fat pointer and
-                                // the last field of a struct can be unsized.
-                                ExpectHasType(ty)
-                            } else {
-                                Expectation::rvalue_hint(self, ty)
-                            }
-                        }
-                        _ => NoExpectation
-                    }
-                });
-                let needs = Needs::maybe_mut_place(mutbl);
-                let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
-
-                let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
-                if tm.ty.references_error() {
-                    tcx.types.err
-                } else {
-                    // Note: at this point, we cannot say what the best lifetime
-                    // is to use for resulting pointer.  We want to use the
-                    // shortest lifetime possible so as to avoid spurious borrowck
-                    // errors.  Moreover, the longest lifetime will depend on the
-                    // precise details of the value whose address is being taken
-                    // (and how long it is valid), which we don't know yet until type
-                    // inference is complete.
-                    //
-                    // Therefore, here we simply generate a region variable.  The
-                    // region inferencer will then select the ultimate value.
-                    // Finally, borrowck is charged with guaranteeing that the
-                    // value whose address was taken can actually be made to live
-                    // as long as it needs to live.
-                    let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-                    tcx.mk_ref(region, tm)
-                }
+                self.check_expr_addr_of(mutbl, oprnd, expected, expr)
             }
             ExprKind::Path(ref qpath) => {
                 let (res, opt_ty, segs) = self.resolve_ty_and_res_ufcs(qpath, expr.hir_id,
@@ -711,5 +674,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         oprnd_t
+    }
+
+    fn check_expr_addr_of(
+        &self,
+        mutbl: hir::Mutability,
+        oprnd: &'tcx hir::Expr,
+        expected: Expectation<'tcx>,
+        expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
+        let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
+            match ty.sty {
+                ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
+                    if oprnd.is_place_expr() {
+                        // Places may legitimately have unsized types.
+                        // For example, dereferences of a fat pointer and
+                        // the last field of a struct can be unsized.
+                        ExpectHasType(ty)
+                    } else {
+                        Expectation::rvalue_hint(self, ty)
+                    }
+                }
+                _ => NoExpectation
+            }
+        });
+        let needs = Needs::maybe_mut_place(mutbl);
+        let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
+
+        let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
+        if tm.ty.references_error() {
+            self.tcx.types.err
+        } else {
+            // Note: at this point, we cannot say what the best lifetime
+            // is to use for resulting pointer.  We want to use the
+            // shortest lifetime possible so as to avoid spurious borrowck
+            // errors.  Moreover, the longest lifetime will depend on the
+            // precise details of the value whose address is being taken
+            // (and how long it is valid), which we don't know yet until type
+            // inference is complete.
+            //
+            // Therefore, here we simply generate a region variable.  The
+            // region inferencer will then select the ultimate value.
+            // Finally, borrowck is charged with guaranteeing that the
+            // value whose address was taken can actually be made to live
+            // as long as it needs to live.
+            let region = self.next_region_var(infer::AddrOfRegion(expr.span));
+            self.tcx.mk_ref(region, tm)
+        }
     }
 }
