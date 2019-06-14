@@ -99,7 +99,7 @@ fn op_to_const<'tcx>(
         Ok(mplace) => {
             let ptr = mplace.ptr.to_ptr().unwrap();
             let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-            ConstValue::ByRef(ptr, alloc)
+            ConstValue::ByRef(ptr, mplace.align, alloc)
         },
         // see comment on `let try_as_immediate` above
         Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
@@ -113,7 +113,7 @@ fn op_to_const<'tcx>(
                 let mplace = op.to_mem_place();
                 let ptr = mplace.ptr.to_ptr().unwrap();
                 let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                ConstValue::ByRef(ptr, alloc)
+                ConstValue::ByRef(ptr, mplace.align, alloc)
             },
         },
         Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
@@ -482,10 +482,7 @@ pub fn const_field<'tcx>(
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     // get the operand again
-    let mut op = ecx.eval_const_to_op(value, None).unwrap();
-    // Ignore the alignment when accessing the field, since it may be a field of a
-    // packed struct and thus end up causing an alignment error if we read from it.
-    op.force_unaligned_access();
+    let op = ecx.eval_const_to_op(value, None).unwrap();
     // downcast
     let down = match variant {
         None => op,
@@ -544,7 +541,11 @@ fn validate_and_turn_into_const<'tcx>(
         if tcx.is_static(def_id) || cid.promoted.is_some() {
             let ptr = mplace.ptr.to_ptr()?;
             Ok(tcx.mk_const(ty::Const {
-                val: ConstValue::ByRef(ptr, ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id)),
+                val: ConstValue::ByRef(
+                    ptr,
+                    mplace.align,
+                    ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                ),
                 ty: mplace.layout.ty,
             }))
         } else {

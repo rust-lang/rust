@@ -5,7 +5,7 @@ use std::convert::TryInto;
 
 use rustc::{mir, ty};
 use rustc::ty::layout::{
-    self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx, Align,
+    self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx,
 };
 
 use rustc::mir::interpret::{
@@ -175,19 +175,6 @@ impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
         OpTy {
             op: Operand::Immediate(val.imm),
             layout: val.layout
-        }
-    }
-}
-
-impl<'tcx, Tag> OpTy<'tcx, Tag> {
-    /// This function exists solely for pattern matching. If we pattern match a packed struct with
-    /// an ADT field, the constant representing that field will have lost the information about the
-    /// packedness. We could clone the allocation and adjust the alignment, but that seems wasteful,
-    /// since the alignment is already encoded in the allocation. We know it is alright, because
-    /// validation checked everything before the initial constant entered match checking.
-    pub(crate) fn force_unaligned_access(&mut self) {
-        if let Operand::Indirect(mplace) = &mut self.op {
-            mplace.align = Align::from_bytes(1).unwrap();
         }
     }
 }
@@ -551,11 +538,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             self.layout_of(self.monomorphize(val.ty)?)
         })?;
         let op = match val.val {
-            ConstValue::ByRef(ptr, _alloc) => {
+            ConstValue::ByRef(ptr, align, _alloc) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
                 let ptr = self.tag_static_base_pointer(ptr);
-                Operand::Indirect(MemPlace::from_ptr(ptr, layout.align.abi))
+                Operand::Indirect(MemPlace::from_ptr(ptr, align))
             },
             ConstValue::Scalar(x) =>
                 Operand::Immediate(Immediate::Scalar(tag_scalar(x).into())),
