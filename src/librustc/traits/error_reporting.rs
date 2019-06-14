@@ -1096,7 +1096,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             Node::Ctor(ref variant_data) => {
                 let span = variant_data.ctor_hir_id()
-                    .map(|hir_id| self.tcx.hir().span_by_hir_id(hir_id))
+                    .map(|hir_id| self.tcx.hir().span(hir_id))
                     .unwrap_or(DUMMY_SP);
                 let span = self.tcx.sess.source_map().def_span(span);
 

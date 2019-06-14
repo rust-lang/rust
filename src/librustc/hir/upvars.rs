@@ -15,7 +15,7 @@ pub fn provide(providers: &mut Providers<'_>) {
         }
 
         let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-        let body = tcx.hir().body(tcx.hir().maybe_body_owned_by_by_hir_id(hir_id)?);
+        let body = tcx.hir().body(tcx.hir().maybe_body_owned_by(hir_id)?);
 
         let mut local_collector = LocalCollector::default();
         local_collector.visit_body(body);

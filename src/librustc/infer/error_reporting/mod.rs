@@ -191,7 +191,7 @@ impl<'tcx> TyCtxt<'tcx> {
         };
         let (prefix, span) = match *region {
             ty::ReEarlyBound(ref br) => {
-                let mut sp = cm.def_span(self.hir().span_by_hir_id(node));
+                let mut sp = cm.def_span(self.hir().span(node));
                 if let Some(param) = self.hir()
                     .get_generics(scope)
                     .and_then(|generics| generics.get_named(br.name))
@@ -204,7 +204,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 bound_region: ty::BoundRegion::BrNamed(_, name),
                 ..
             }) => {
-                let mut sp = cm.def_span(self.hir().span_by_hir_id(node));
+                let mut sp = cm.def_span(self.hir().span(node));
                 if let Some(param) = self.hir()
                     .get_generics(scope)
                     .and_then(|generics| generics.get_named(name))
@@ -216,11 +216,11 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::ReFree(ref fr) => match fr.bound_region {
                 ty::BrAnon(idx) => (
                     format!("the anonymous lifetime #{} defined on", idx + 1),
-                    self.hir().span_by_hir_id(node),
+                    self.hir().span(node),
                 ),
                 _ => (
                     format!("the lifetime {} as defined on", region),
-                    cm.def_span(self.hir().span_by_hir_id(node)),
+                    cm.def_span(self.hir().span(node)),
                 ),
             },
             _ => bug!(),
@@ -1338,7 +1338,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             if let Node::GenericParam(ref param) = hir.get_by_hir_id(id) {
                                 has_bounds = !param.bounds.is_empty();
                             }
-                            let sp = hir.span_by_hir_id(id);
+                            let sp = hir.span(id);
                             // `sp` only covers `T`, change it so that it covers
                             // `T:` when appropriate
                             let is_impl_trait = bound_kind.to_string().starts_with("impl ");

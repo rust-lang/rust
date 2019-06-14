@@ -1399,7 +1399,7 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 
     // Visit the crate attributes
     if hir_id == hir::CRATE_HIR_ID {
-        walk_list!(cx, visit_attribute, tcx.hir().attrs_by_hir_id(hir::CRATE_HIR_ID));
+        walk_list!(cx, visit_attribute, tcx.hir().attrs(hir::CRATE_HIR_ID));
     }
 }
 

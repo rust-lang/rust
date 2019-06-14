@@ -625,7 +625,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // `abstract type MyAnonTy<'b>: MyTrait<'b>;`
                 //                          ^            ^ this gets resolved in the scope of
                 //                                         the exist_ty generics
-                let (generics, bounds) = match self.tcx.hir().expect_item_by_hir_id(item_id.id).node
+                let (generics, bounds) = match self.tcx.hir().expect_item(item_id.id).node
                 {
                     // named existential types are reached via TyKind::Path
                     // this arm is for `impl Trait` in the types of statics, constants and locals
@@ -1236,7 +1236,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
                         signal_shadowing_problem(
                             tcx,
                             label.name,
-                            original_lifetime(tcx.hir().span_by_hir_id(hir_id)),
+                            original_lifetime(tcx.hir().span(hir_id)),
                             shadower_label(label.span),
                         );
                         return;
@@ -1590,7 +1590,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             if let Some(parent_hir_id) = self.tcx.hir()
                                 .as_local_hir_id(parent_def_id) {
                                     // lifetimes in `derive` expansions don't count (Issue #53738)
-                                    if self.tcx.hir().attrs_by_hir_id(parent_hir_id).iter()
+                                    if self.tcx.hir().attrs(parent_hir_id).iter()
                                         .any(|attr| attr.check_name(sym::automatically_derived)) {
                                             continue;
                                         }
@@ -1690,7 +1690,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // Find the start of nested early scopes, e.g., in methods.
         let mut index = 0;
         if let Some(parent_id) = parent_id {
-            let parent = self.tcx.hir().expect_item_by_hir_id(parent_id);
+            let parent = self.tcx.hir().expect_item(parent_id);
             if sub_items_have_self_param(&parent.node) {
                 index += 1; // Self comes before lifetimes
             }
@@ -2065,7 +2065,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }) => {
                 if let hir::ItemKind::Trait(.., ref trait_items) = self.tcx
                     .hir()
-                    .expect_item_by_hir_id(self.tcx.hir().get_parent_item(parent))
+                    .expect_item(self.tcx.hir().get_parent_item(parent))
                     .node
                 {
                     assoc_item_kind = trait_items
@@ -2085,7 +2085,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }) => {
                 if let hir::ItemKind::Impl(.., ref self_ty, ref impl_items) = self.tcx
                     .hir()
-                    .expect_item_by_hir_id(self.tcx.hir().get_parent_item(parent))
+                    .expect_item(self.tcx.hir().get_parent_item(parent))
                     .node
                 {
                     impl_self = Some(self_ty);
@@ -2629,7 +2629,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         signal_shadowing_problem(
                             self.tcx,
                             param.name.ident().name,
-                            original_lifetime(self.tcx.hir().span_by_hir_id(hir_id)),
+                            original_lifetime(self.tcx.hir().span(hir_id)),
                             shadower_lifetime(&param),
                         );
                         return;

@@ -699,7 +699,7 @@ impl BorrowckCtxt<'_, 'tcx> {
             }
 
             move_data::MoveExpr |
-            move_data::MovePat => (self.tcx.hir().span_by_hir_id(hir_id), ""),
+            move_data::MovePat => (self.tcx.hir().span(hir_id), ""),
 
             move_data::Captured =>
                 (match self.tcx.hir().expect_expr_by_hir_id(hir_id).node {
@@ -828,7 +828,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                         let mut db = self.cannot_assign(error_span, &descr, Origin::Ast);
                         if let mc::NoteClosureEnv(upvar_id) = err.cmt.note {
                             let hir_id = upvar_id.var_path.hir_id;
-                            let sp = self.tcx.hir().span_by_hir_id(hir_id);
+                            let sp = self.tcx.hir().span(hir_id);
                             let fn_closure_msg = "`Fn` closures cannot capture their enclosing \
                                                   environment for modifications";
                             match (self.tcx.sess.source_map().span_to_snippet(sp), &err.cmt.cat) {
@@ -1117,7 +1117,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                     "consider changing this closure to take self by mutable reference"
                 };
                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(id);
-                let help_span = self.tcx.hir().span_by_hir_id(hir_id);
+                let help_span = self.tcx.hir().span(hir_id);
                 self.cannot_act_on_capture_in_sharable_fn(span,
                                                           prefix,
                                                           (help_span, help_msg),
@@ -1223,7 +1223,7 @@ impl BorrowckCtxt<'_, 'tcx> {
             Some(ImmutabilityBlame::LocalDeref(hir_id)) => {
                 match self.local_binding_mode(hir_id) {
                     ty::BindByReference(..) => {
-                        let let_span = self.tcx.hir().span_by_hir_id(hir_id);
+                        let let_span = self.tcx.hir().span(hir_id);
                         let suggestion = suggest_ref_mut(self.tcx, let_span);
                         if let Some(replace_str) = suggestion {
                             db.span_suggestion(
@@ -1271,7 +1271,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                             db: &mut DiagnosticBuilder<'_>,
                             borrowed_hir_id: hir::HirId,
                             binding_hir_id: hir::HirId) {
-        let let_span = self.tcx.hir().span_by_hir_id(binding_hir_id);
+        let let_span = self.tcx.hir().span(binding_hir_id);
         if let ty::BindByValue(..) = self.local_binding_mode(binding_hir_id) {
             if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(let_span) {
                 let (ty, is_implicit_self) = self.local_ty(binding_hir_id);
@@ -1289,7 +1289,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                 {
                     let borrow_expr_id = self.tcx.hir().get_parent_node_by_hir_id(borrowed_hir_id);
                     db.span_suggestion(
-                        self.tcx.hir().span_by_hir_id(borrow_expr_id),
+                        self.tcx.hir().span(borrow_expr_id),
                         "consider removing the `&mut`, as it is an \
                         immutable binding to a mutable reference",
                         snippet,
@@ -1360,7 +1360,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                 if *kind == ty::ClosureKind::Fn {
                     let closure_hir_id =
                         self.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id);
-                    db.span_help(self.tcx.hir().span_by_hir_id(closure_hir_id),
+                    db.span_help(self.tcx.hir().span(closure_hir_id),
                                  "consider changing this closure to take \
                                   self by mutable reference");
                 }
@@ -1369,7 +1369,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                 if let Categorization::Deref(..) = err.cmt.cat {
                     db.span_label(*error_span, "cannot borrow as mutable");
                 } else if let Categorization::Local(local_id) = err.cmt.cat {
-                    let span = self.tcx.hir().span_by_hir_id(local_id);
+                    let span = self.tcx.hir().span(local_id);
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                         if snippet.starts_with("ref mut ") || snippet.starts_with("&mut ") {
                             db.span_label(*error_span, "cannot reborrow mutably");

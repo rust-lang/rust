@@ -188,7 +188,7 @@ impl Scope {
         if hir_id == hir::DUMMY_HIR_ID {
             return DUMMY_SP;
         }
-        let span = tcx.hir().span_by_hir_id(hir_id);
+        let span = tcx.hir().span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
             if let Node::Block(ref blk) = tcx.hir().get_by_hir_id(hir_id) {
                 // Want span for scope starting after the
@@ -649,7 +649,7 @@ impl<'tcx> ScopeTree {
         let param_owner = tcx.parent(br.def_id).unwrap();
 
         let param_owner_id = tcx.hir().as_local_hir_id(param_owner).unwrap();
-        let scope = tcx.hir().maybe_body_owned_by_by_hir_id(param_owner_id).map(|body_id| {
+        let scope = tcx.hir().maybe_body_owned_by(param_owner_id).map(|body_id| {
             tcx.hir().body(body_id).value.hir_id.local_id
         }).unwrap_or_else(|| {
             // The lifetime was defined on node that doesn't own a body,
@@ -1277,7 +1277,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
-        if self.tcx.hir().body_owner_kind_by_hir_id(owner_id).is_fn_or_closure() {
+        if self.tcx.hir().body_owner_kind(owner_id).is_fn_or_closure() {
             self.visit_expr(&body.value)
         } else {
             // Only functions have an outer terminating (drop) scope, while
@@ -1336,7 +1336,7 @@ fn region_scope_tree<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ScopeTree 
     }
 
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by_by_hir_id(id) {
+    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(id) {
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),

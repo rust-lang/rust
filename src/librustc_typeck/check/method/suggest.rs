@@ -264,7 +264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // local binding
                                 if let &QPath::Resolved(_, ref path) = &qpath {
                                     if let hir::def::Res::Local(hir_id) = path.res {
-                                        let span = tcx.hir().span_by_hir_id(hir_id);
+                                        let span = tcx.hir().span(hir_id);
                                         let snippet = tcx.sess.source_map().span_to_snippet(span);
                                         let filename = tcx.sess.source_map().span_to_filename(span);
 
@@ -370,7 +370,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         });
 
                     if let Some((field, field_ty)) = field_receiver {
-                        let scope = self.tcx.hir().get_module_parent_by_hir_id(self.body_id);
+                        let scope = self.tcx.hir().get_module_parent(self.body_id);
                         let is_accessible = field.vis.is_accessible_from(scope, self.tcx);
 
                         if is_accessible {
@@ -564,7 +564,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                               err: &mut DiagnosticBuilder<'_>,
                               mut msg: String,
                               candidates: Vec<DefId>) {
-        let module_did = self.tcx.hir().get_module_parent_by_hir_id(self.body_id);
+        let module_did = self.tcx.hir().get_module_parent(self.body_id);
         let module_id = self.tcx.hir().as_local_hir_id(module_did).unwrap();
         let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
@@ -897,7 +897,7 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         }
         // Find a `use` statement.
         for item_id in &module.item_ids {
-            let item = self.tcx.hir().expect_item_by_hir_id(item_id.id);
+            let item = self.tcx.hir().expect_item(item_id.id);
             match item.node {
                 hir::ItemKind::Use(..) => {
                     // Don't suggest placing a `use` before the prelude

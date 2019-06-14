@@ -354,7 +354,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let def_span = match def {
                         Res::Err => None,
                         Res::Local(id) => {
-                            Some(self.tcx.hir().span_by_hir_id(id))
+                            Some(self.tcx.hir().span(id))
                         },
                         _ => def
                             .opt_def_id()

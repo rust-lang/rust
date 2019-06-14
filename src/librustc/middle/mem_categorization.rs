@@ -358,7 +358,7 @@ impl MutabilityCategory {
                 }
                 _ => span_bug!(p.span, "expected identifier pattern")
             },
-            _ => span_bug!(tcx.hir().span_by_hir_id(id), "expected identifier pattern")
+            _ => span_bug!(tcx.hir().span(id), "expected identifier pattern")
         };
         debug!("MutabilityCategory::{}(tcx, id={:?}) => {:?}",
                "from_local", id, ret);

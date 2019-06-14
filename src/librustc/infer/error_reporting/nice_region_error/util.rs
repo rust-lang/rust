@@ -52,7 +52,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         let hir = &self.tcx().hir();
         if let Some(hir_id) = hir.as_local_hir_id(id) {
-            if let Some(body_id) = hir.maybe_body_owned_by_by_hir_id(hir_id) {
+            if let Some(body_id) = hir.maybe_body_owned_by(hir_id) {
                 let body = hir.body(body_id);
                 let owner_id = hir.body_owner(body_id);
                 let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
@@ -63,7 +63,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         .filter_map(|(index, arg)| {
                             // May return None; sometimes the tables are not yet populated.
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let arg_ty_span = hir.span_by_hir_id(ty_hir_id);
+                            let arg_ty_span = hir.span(ty_hir_id);
                             let ty = tables.node_type_opt(arg.hir_id)?;
                             let mut found_anon_region = false;
                             let new_arg_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {

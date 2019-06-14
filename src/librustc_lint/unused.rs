@@ -136,7 +136,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             descr_post_path: &str,
         ) -> bool {
             if ty.is_unit() || cx.tcx.is_ty_uninhabited_from(
-                cx.tcx.hir().get_module_parent_by_hir_id(expr.hir_id), ty)
+                cx.tcx.hir().get_module_parent(expr.hir_id), ty)
             {
                 return true;
             }

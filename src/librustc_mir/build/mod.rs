@@ -55,10 +55,10 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
             (*body_id, ty.span)
         }
         Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => {
-            (*body, tcx.hir().span_by_hir_id(*hir_id))
+            (*body, tcx.hir().span(*hir_id))
         }
 
-        _ => span_bug!(tcx.hir().span_by_hir_id(id), "can't build MIR for {:?}", def_id),
+        _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def_id),
     };
 
     tcx.infer_ctxt().enter(|infcx| {
@@ -103,7 +103,7 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
                         let self_arg;
                         if let Some(ref fn_decl) = tcx.hir().fn_decl_by_hir_id(owner_id) {
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let ty_span = tcx.hir().span_by_hir_id(ty_hir_id);
+                            let ty_span = tcx.hir().span(ty_hir_id);
                             opt_ty_info = Some(ty_span);
                             self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
                                 match fn_decl.implicit_self {
@@ -131,7 +131,7 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
                     ty::Generator(gen_def_id, gen_substs, ..) =>
                         gen_substs.sig(gen_def_id, tcx),
                     _ =>
-                        span_bug!(tcx.hir().span_by_hir_id(id),
+                        span_bug!(tcx.hir().span(id),
                                   "generator w/o generator type: {:?}", ty),
                 };
                 (Some(gen_sig.yield_ty), gen_sig.return_ty)
@@ -535,7 +535,7 @@ where
 
     let tcx = hir.tcx();
     let tcx_hir = tcx.hir();
-    let span = tcx_hir.span_by_hir_id(fn_id);
+    let span = tcx_hir.span(fn_id);
 
     let hir_tables = hir.tables();
     let fn_def_id = tcx_hir.local_def_id_from_hir_id(fn_id);
@@ -650,7 +650,7 @@ fn construct_const<'a, 'tcx>(
 ) -> Body<'tcx> {
     let tcx = hir.tcx();
     let owner_id = tcx.hir().body_owner(body_id);
-    let span = tcx.hir().span_by_hir_id(owner_id);
+    let span = tcx.hir().span(owner_id);
     let mut builder = Builder::new(
         hir,
         span,
@@ -689,7 +689,7 @@ fn construct_error<'a, 'tcx>(
     body_id: hir::BodyId
 ) -> Body<'tcx> {
     let owner_id = hir.tcx().hir().body_owner(body_id);
-    let span = hir.tcx().hir().span_by_hir_id(owner_id);
+    let span = hir.tcx().hir().span(owner_id);
     let ty = hir.tcx().types.err;
     let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, vec![], vec![], false);
     let source_info = builder.source_info(span);

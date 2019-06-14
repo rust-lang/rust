@@ -622,7 +622,7 @@ impl Inherited<'a, 'tcx> {
     fn new(infcx: InferCtxt<'a, 'tcx>, def_id: DefId) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().as_local_hir_id(def_id);
-        let body_id = item_id.and_then(|id| tcx.hir().maybe_body_owned_by_by_hir_id(id));
+        let body_id = item_id.and_then(|id| tcx.hir().maybe_body_owned_by(id));
         let implicit_region_bound = body_id.map(|body_id| {
             let body = tcx.hir().body(body_id);
             tcx.mk_region(ty::ReScope(region::Scope {
@@ -821,7 +821,7 @@ fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::TypeckT
     }
 
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let span = tcx.hir().span_by_hir_id(id);
+    let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
     let (body_id, fn_decl) = primary_body_of(tcx, id).unwrap_or_else(|| {
@@ -1193,7 +1193,7 @@ fn check_fn<'a, 'tcx>(
                 }
 
                 let inputs = fn_sig.inputs();
-                let span = fcx.tcx.hir().span_by_hir_id(fn_id);
+                let span = fcx.tcx.hir().span(fn_id);
                 if inputs.len() == 1 {
                     let arg_is_panic_info = match inputs[0].sty {
                         ty::Ref(region, ty, mutbl) => match ty.sty {
@@ -1246,7 +1246,7 @@ fn check_fn<'a, 'tcx>(
                 }
 
                 let inputs = fn_sig.inputs();
-                let span = fcx.tcx.hir().span_by_hir_id(fn_id);
+                let span = fcx.tcx.hir().span(fn_id);
                 if inputs.len() == 1 {
                     let arg_is_alloc_layout = match inputs[0].sty {
                         ty::Adt(ref adt, _) => {
@@ -1909,11 +1909,11 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
             let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did).unwrap();
             let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
             let i_span = match variant_i.node.disr_expr {
-                Some(ref expr) => tcx.hir().span_by_hir_id(expr.hir_id),
-                None => tcx.hir().span_by_hir_id(variant_i_hir_id)
+                Some(ref expr) => tcx.hir().span(expr.hir_id),
+                None => tcx.hir().span(variant_i_hir_id)
             };
             let span = match v.node.disr_expr {
-                Some(ref expr) => tcx.hir().span_by_hir_id(expr.hir_id),
+                Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => v.span
             };
             struct_span_err!(tcx.sess, span, E0081,
@@ -4363,7 +4363,7 @@ pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, t
     for (&used, param) in types_used.iter().zip(types) {
         if !used {
             let id = tcx.hir().as_local_hir_id(param.def_id).unwrap();
-            let span = tcx.hir().span_by_hir_id(id);
+            let span = tcx.hir().span(id);
             struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name)
                 .span_label(span, "unused type parameter")
                 .emit();

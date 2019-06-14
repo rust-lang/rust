@@ -248,7 +248,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();
         for i in &m.item_ids {
-            let item = self.cx.tcx.hir().expect_item_by_hir_id(i.id);
+            let item = self.cx.tcx.hir().expect_item(i.id);
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
@@ -275,7 +275,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: hir::HirId) -> bool {
             while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
                 node = id;
-                if cx.tcx.hir().attrs_by_hir_id(node)
+                if cx.tcx.hir().attrs(node)
                     .lists(sym::doc).has_word(sym::hidden) {
                     return true;
                 }
@@ -295,7 +295,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         };
 
-        let use_attrs = tcx.hir().attrs_by_hir_id(id);
+        let use_attrs = tcx.hir().attrs(id);
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
         let is_no_inline = use_attrs.lists(sym::doc).has_word(sym::no_inline) ||
                            use_attrs.lists(sym::doc).has_word(sym::hidden);
@@ -346,7 +346,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Node::Item(&hir::Item { node: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for i in &m.item_ids {
-                    let i = self.cx.tcx.hir().expect_item_by_hir_id(i.id);
+                    let i = self.cx.tcx.hir().expect_item(i.id);
                     self.visit_item(i, None, om);
                 }
                 self.inlining = prev;
@@ -361,7 +361,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Node::ForeignItem(it) if !glob => {
                 // Generate a fresh `extern {}` block if we want to inline a foreign item.
                 om.foreigns.push(hir::ForeignMod {
-                    abi: tcx.hir().get_foreign_abi_by_hir_id(it.hir_id),
+                    abi: tcx.hir().get_foreign_abi(it.hir_id),
                     items: vec![hir::ForeignItem {
                         ident: renamed.unwrap_or(it.ident),
                         .. it.clone()

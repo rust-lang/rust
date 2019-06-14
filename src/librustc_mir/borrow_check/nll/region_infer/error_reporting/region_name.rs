@@ -310,7 +310,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let scope = error_region.free_region_binding_scope(tcx);
         let node = tcx.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
 
-        let span = tcx.sess.source_map().def_span(tcx.hir().span_by_hir_id(node));
+        let span = tcx.sess.source_map().def_span(tcx.hir().span(node));
         if let Some(param) = tcx.hir()
             .get_generics(scope)
             .and_then(|generics| generics.get_named(name))

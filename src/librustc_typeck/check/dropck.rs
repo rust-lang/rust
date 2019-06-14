@@ -213,7 +213,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         // repeated `contains` calls.
 
         if !assumptions_in_impl_context.contains(&predicate) {
-            let item_span = tcx.hir().span_by_hir_id(self_type_hir_id);
+            let item_span = tcx.hir().span(self_type_hir_id);
             struct_span_err!(
                 tcx.sess,
                 drop_impl_span,
