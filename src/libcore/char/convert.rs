@@ -123,7 +123,7 @@ impl From<char> for u32 {
     }
 }
 
-/// Maps a byte in 0x00...0xFF to a `char` whose code point has the same value, in U+0000 to U+00FF.
+/// Maps a byte in 0x00..=0xFF to a `char` whose code point has the same value, in U+0000..=U+00FF.
 ///
 /// Unicode is designed such that this effectively decodes bytes
 /// with the character encoding that IANA calls ISO-8859-1.

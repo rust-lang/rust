@@ -1181,7 +1181,7 @@ pub enum ExprKind {
     Field(P<Expr>, Ident),
     /// An indexing operation (e.g., `foo[2]`).
     Index(P<Expr>, P<Expr>),
-    /// A range (e.g., `1..2`, `1..`, `..2`, `1...2`, `1...`, `...2`).
+    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`).
     Range(Option<P<Expr>>, Option<P<Expr>>, RangeLimits),
 
     /// Variable reference, possibly containing `::` and/or type
