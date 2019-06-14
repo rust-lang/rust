@@ -1,4 +1,11 @@
-#![allow(stutter)]
+//! Test for Clippy lint renames.
+
+// allow the new lint name here, to test if the new name works
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::cognitive_complexity)]
+#![allow(clippy::redundant_static_lifetimes)]
+// warn for the old lint name here, to test if the renaming worked
 #![warn(clippy::cyclomatic_complexity)]
 
 #[warn(clippy::stutter)]
