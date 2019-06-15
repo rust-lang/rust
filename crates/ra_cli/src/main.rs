@@ -1,6 +1,6 @@
 mod analysis_stats;
 
-use std::io::Read;
+use std::{io::Read, error::Error};
 
 use clap::{App, Arg, SubCommand};
 use ra_ide_api::{file_structure, Analysis};
@@ -8,7 +8,7 @@ use ra_syntax::{SourceFile, TreeArc, AstNode};
 use flexi_logger::Logger;
 use ra_prof::profile;
 
-type Result<T> = ::std::result::Result<T, failure::Error>;
+type Result<T> = ::std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn main() -> Result<()> {
     Logger::with_env().start()?;

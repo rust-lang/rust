@@ -66,7 +66,7 @@ use lsp_types::{
     InitializeParams, InitializeResult, ServerCapabilities,
 };
 
-pub type Result<T> = ::std::result::Result<T, Box<dyn Error + Send + Sync>>;
+pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 pub use crate::{
     msg::{ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse, RawResponseError},
     stdio::{stdio_transport, Threads},

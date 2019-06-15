@@ -8,8 +8,6 @@ authors = ["rust-analyzer developers"]
 log = "0.4.5"
 rustc-hash = "1.0"
 
-failure = "0.1.4"
-
 ra_vfs = "0.2.0"
 ra_syntax = { path = "../ra_syntax" }
 ra_db = { path = "../ra_db" }
