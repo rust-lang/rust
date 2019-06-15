@@ -25,7 +25,7 @@ fn main() -> Result<()> {
         }
         Err(_) => {
             log::error!("server panicked");
-            failure::bail!("server panicked")
+            Err("server panicked")?
         }
     }
 }

@@ -1,8 +1,6 @@
 mod vfs_filter;
 
-use std::sync::Arc;
-use std::path::Path;
-use std::collections::HashSet;
+use std::{sync::Arc, path::Path, collections::HashSet, error::Error};
 
 use rustc_hash::FxHashMap;
 
@@ -14,7 +12,7 @@ use ra_project_model::ProjectWorkspace;
 use ra_vfs::{Vfs, VfsChange};
 use vfs_filter::IncludeRustFiles;
 
-type Result<T> = std::result::Result<T, failure::Error>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[salsa::database(
     ra_db::SourceDatabaseStorage,

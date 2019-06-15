@@ -6,9 +6,9 @@ use std::{
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
+    error::Error
 };
 
-use failure::bail;
 use rustc_hash::FxHashMap;
 
 use ra_db::{CrateGraph, FileId, Edition};
@@ -24,7 +24,7 @@ pub use crate::{
 };
 
 // FIXME use proper error enum
-pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
+pub type Result<T> = ::std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Debug, Clone)]
 pub enum ProjectWorkspace {
@@ -298,5 +298,5 @@ fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
         }
         curr = path.parent();
     }
-    bail!("can't find Cargo.toml at {}", path.display())
+    Err(format!("can't find Cargo.toml at {}", path.display()))?
 }

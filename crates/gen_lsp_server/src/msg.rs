@@ -3,7 +3,6 @@ use std::io::{BufRead, Write};
 use lsp_types::{notification::Notification, request::Request};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, from_value, to_string, to_value, Value};
-use failure::{bail, format_err};
 
 use crate::Result;
 
@@ -175,7 +174,7 @@ fn read_msg_text(inp: &mut impl BufRead) -> Result<Option<String>> {
             return Ok(None);
         }
         if !buf.ends_with("\r\n") {
-            bail!("malformed header: {:?}", buf);
+            Err(format!("malformed header: {:?}", buf))?;
         }
         let buf = &buf[..buf.len() - 2];
         if buf.is_empty() {
@@ -183,13 +182,12 @@ fn read_msg_text(inp: &mut impl BufRead) -> Result<Option<String>> {
         }
         let mut parts = buf.splitn(2, ": ");
         let header_name = parts.next().unwrap();
-        let header_value =
-            parts.next().ok_or_else(|| format_err!("malformed header: {:?}", buf))?;
+        let header_value = parts.next().ok_or_else(|| format!("malformed header: {:?}", buf))?;
         if header_name == "Content-Length" {
             size = Some(header_value.parse::<usize>()?);
         }
     }
-    let size = size.ok_or_else(|| format_err!("no Content-Length"))?;
+    let size = size.ok_or("no Content-Length")?;
     let mut buf = buf.into_bytes();
     buf.resize(size, 0);
     inp.read_exact(&mut buf)?;
