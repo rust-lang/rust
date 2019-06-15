@@ -1,4 +1,4 @@
-use crate::build::scope::BreakableScope;
+use crate::build::scope::BreakableTarget;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
 use rustc::middle::region;
@@ -98,70 +98,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             ExprKind::Continue { label } => {
-                let BreakableScope {
-                    continue_block,
-                    region_scope,
-                    ..
-                } = *this.find_breakable_scope(expr_span, label);
-                let continue_block = continue_block
-                    .expect("Attempted to continue in non-continuable breakable block");
-                this.exit_scope(
-                    expr_span,
-                    (region_scope, source_info),
-                    block,
-                    continue_block,
-                );
-                this.cfg.start_new_block().unit()
+                this.break_scope(block, None, BreakableTarget::Continue(label), source_info)
             }
             ExprKind::Break { label, value } => {
-                let (break_block, region_scope, destination) = {
-                    let BreakableScope {
-                        break_block,
-                        region_scope,
-                        ref break_destination,
-                        ..
-                    } = *this.find_breakable_scope(expr_span, label);
-                    (break_block, region_scope, break_destination.clone())
-                };
-                if let Some(value) = value {
-                    debug!("stmt_expr Break val block_context.push(SubExpr) : {:?}", expr2);
-                    this.block_context.push(BlockFrame::SubExpr);
-                    unpack!(block = this.into(&destination, block, value));
-                    this.block_context.pop();
-                } else {
-                    this.cfg.push_assign_unit(block, source_info, &destination)
-                }
-                this.exit_scope(expr_span, (region_scope, source_info), block, break_block);
-                this.cfg.start_new_block().unit()
+                this.break_scope(block, value, BreakableTarget::Break(label), source_info)
             }
             ExprKind::Return { value } => {
-                block = match value {
-                    Some(value) => {
-                        debug!("stmt_expr Return val block_context.push(SubExpr) : {:?}", expr2);
-                        this.block_context.push(BlockFrame::SubExpr);
-                        let result = unpack!(
-                            this.into(
-                                &Place::RETURN_PLACE,
-                                block,
-                                value
-                            )
-                        );
-                        this.block_context.pop();
-                        result
-                    }
-                    None => {
-                        this.cfg.push_assign_unit(
-                            block,
-                            source_info,
-                            &Place::RETURN_PLACE,
-                        );
-                        block
-                    }
-                };
-                let region_scope = this.region_scope_of_return_scope();
-                let return_block = this.return_block();
-                this.exit_scope(expr_span, (region_scope, source_info), block, return_block);
-                this.cfg.start_new_block().unit()
+                this.break_scope(block, value, BreakableTarget::Return, source_info)
             }
             ExprKind::InlineAsm {
                 asm,
