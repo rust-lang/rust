@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub INTEGER_DIVISION,
-    pedantic,
+    restriction,
     "integer division may cause loss of precision"
 }
 

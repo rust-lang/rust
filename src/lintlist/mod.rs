@@ -758,7 +758,7 @@ pub const ALL_LINTS: [Lint; 305] = [
     },
     Lint {
         name: "integer_division",
-        group: "pedantic",
+        group: "restriction",
         desc: "integer division may cause loss of precision",
         deprecation: None,
         module: "integer_division",
