@@ -3864,66 +3864,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_struct(
-        &self,
-        expr: &hir::Expr,
-        expected: Expectation<'tcx>,
-        qpath: &QPath,
-        fields: &'tcx [hir::Field],
-        base_expr: &'tcx Option<P<hir::Expr>>,
-    ) -> Ty<'tcx> {
-        // Find the relevant variant
-        let (variant, adt_ty) =
-            if let Some(variant_ty) = self.check_struct_path(qpath, expr.hir_id) {
-                variant_ty
-            } else {
-                self.check_struct_fields_on_error(fields, base_expr);
-                return self.tcx.types.err;
-            };
-
-        let path_span = match *qpath {
-            QPath::Resolved(_, ref path) => path.span,
-            QPath::TypeRelative(ref qself, _) => qself.span
-        };
-
-        // Prohibit struct expressions when non-exhaustive flag is set.
-        let adt = adt_ty.ty_adt_def().expect("`check_struct_path` returned non-ADT type");
-        if !adt.did.is_local() && variant.is_field_list_non_exhaustive() {
-            span_err!(self.tcx.sess, expr.span, E0639,
-                      "cannot create non-exhaustive {} using struct expression",
-                      adt.variant_descr());
-        }
-
-        let error_happened = self.check_expr_struct_fields(adt_ty, expected, expr.hir_id, path_span,
-                                                           variant, fields, base_expr.is_none());
-        if let &Some(ref base_expr) = base_expr {
-            // If check_expr_struct_fields hit an error, do not attempt to populate
-            // the fields with the base_expr. This could cause us to hit errors later
-            // when certain fields are assumed to exist that in fact do not.
-            if !error_happened {
-                self.check_expr_has_type_or_error(base_expr, adt_ty);
-                match adt_ty.sty {
-                    ty::Adt(adt, substs) if adt.is_struct() => {
-                        let fru_field_types = adt.non_enum_variant().fields.iter().map(|f| {
-                            self.normalize_associated_types_in(expr.span, &f.ty(self.tcx, substs))
-                        }).collect();
-
-                        self.tables
-                            .borrow_mut()
-                            .fru_field_types_mut()
-                            .insert(expr.hir_id, fru_field_types);
-                    }
-                    _ => {
-                        span_err!(self.tcx.sess, base_expr.span, E0436,
-                                  "functional record update syntax requires a struct");
-                    }
-                }
-            }
-        }
-        self.require_type_is_sized(adt_ty, expr.span, traits::StructInitializerSized);
-        adt_ty
-    }
-
     /// Invariant:
     /// If an expression has any sub-expressions that result in a type error,
     /// inspecting that expression's type with `ty.references_error()` will return
