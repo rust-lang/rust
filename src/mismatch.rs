@@ -24,9 +24,9 @@ use std::collections::{HashMap, HashSet, VecDeque};
 /// This allows to match up some items that aren't exported, and which possibly even differ in
 /// their names across versions.
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_name_repetitions))]
-pub struct MismatchRelation<'a, 'gcx: 'tcx, 'tcx> {
+pub struct MismatchRelation<'a, 'tcx> {
     /// The type context used.
-    tcx: TyCtxt<'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     /// The queue of found item pairings to be processed.
     item_queue: VecDeque<(Res, Res)>,
     /// The id mapping to use.
@@ -37,9 +37,9 @@ pub struct MismatchRelation<'a, 'gcx: 'tcx, 'tcx> {
     current_new_types: HashSet<Ty<'tcx>>,
 }
 
-impl<'a, 'gcx: 'tcx, 'tcx> MismatchRelation<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> MismatchRelation<'a, 'tcx> {
     /// Construct a new mismtach type relation.
-    pub fn new(tcx: TyCtxt<'gcx, 'tcx>, id_mapping: &'a mut IdMapping) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, id_mapping: &'a mut IdMapping) -> Self {
         Self {
             tcx,
             item_queue: id_mapping.toplevel_queue(),
@@ -100,8 +100,8 @@ impl<'a, 'gcx: 'tcx, 'tcx> MismatchRelation<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeRelation<'gcx, 'tcx> for MismatchRelation<'a, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

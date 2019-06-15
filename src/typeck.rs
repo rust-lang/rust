@@ -22,18 +22,18 @@ use rustc::{
 };
 
 /// The context in which bounds analysis happens.
-pub struct BoundContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+pub struct BoundContext<'a, 'tcx: 'a> {
     /// The inference context to use.
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'tcx>,
     /// The fulfillment context to use.
     fulfill_cx: FulfillmentContext<'tcx>,
     /// The param env to be assumed.
     given_param_env: ParamEnv<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> BoundContext<'a, 'tcx> {
     /// Construct a new bound context.
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, given_param_env: ParamEnv<'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>, given_param_env: ParamEnv<'tcx>) -> Self {
         BoundContext {
             infcx,
             fulfill_cx: FulfillmentContext::new(),
@@ -91,25 +91,25 @@ impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
 }
 
 /// The context in which types and their bounds can be compared.
-pub struct TypeComparisonContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+pub struct TypeComparisonContext<'a, 'tcx: 'a> {
     /// The inference context to use.
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'tcx>,
     /// The index mapping to use.
     id_mapping: &'a IdMapping,
     /// The folder to clean up found errors of inference artifacts.
-    folder: InferenceCleanupFolder<'a, 'gcx, 'tcx>,
+    folder: InferenceCleanupFolder<'a, 'tcx>,
     /// The translation context translating from original to target items.
-    pub forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+    pub forward_trans: TranslationContext<'a, 'tcx>,
     /// The translation context translating from target to original items.
-    pub backward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+    pub backward_trans: TranslationContext<'a, 'tcx>,
     /// Whether we are checking a trait definition.
     checking_trait_def: bool,
 }
 
-impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> TypeComparisonContext<'a, 'tcx> {
     /// Construct a new context where the original item is old.
     pub fn target_new(
-        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        infcx: &'a InferCtxt<'a, 'tcx>,
         id_mapping: &'a IdMapping,
         checking_trait_def: bool,
     ) -> Self {
@@ -126,7 +126,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
 
     /// Construct a new context where the original item is new.
     pub fn target_old(
-        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        infcx: &'a InferCtxt<'a, 'tcx>,
         id_mapping: &'a IdMapping,
         checking_trait_def: bool,
     ) -> Self {
@@ -143,10 +143,10 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
 
     /// Construct a new context given a pair of translation contexts.
     fn from_trans(
-        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        infcx: &'a InferCtxt<'a, 'tcx>,
         id_mapping: &'a IdMapping,
-        forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
-        backward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+        forward_trans: TranslationContext<'a, 'tcx>,
+        backward_trans: TranslationContext<'a, 'tcx>,
         checking_trait_def: bool,
     ) -> Self {
         TypeComparisonContext {
@@ -203,7 +203,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     /// Check for type mismatches in a pair of items.
     pub fn check_type_error<'tcx2>(
         &self,
-        lift_tcx: TyCtxt<'tcx2, 'tcx2>,
+        lift_tcx: TyCtxt<'tcx2>,
         target_def_id: DefId,
         target_param_env: ParamEnv<'tcx>,
         orig: Ty<'tcx>,
@@ -260,7 +260,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     /// Check for trait bound mismatches in a pair of items.
     pub fn check_bounds_error<'tcx2>(
         &self,
-        lift_tcx: TyCtxt<'tcx2, 'tcx2>,
+        lift_tcx: TyCtxt<'tcx2>,
         orig_param_env: ParamEnv<'tcx>,
         target_def_id: DefId,
         target_substs: SubstsRef<'tcx>,
@@ -292,7 +292,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     pub fn check_bounds_bidirectional<'tcx2>(
         &self,
         changes: &mut ChangeSet<'tcx2>,
-        lift_tcx: TyCtxt<'tcx2, 'tcx2>,
+        lift_tcx: TyCtxt<'tcx2>,
         orig_def_id: DefId,
         target_def_id: DefId,
         orig_substs: SubstsRef<'tcx>,

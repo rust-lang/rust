@@ -282,11 +282,7 @@ mod cli {
             "Space-separated list of features to activate",
             "FEATURES",
         );
-        opts.optflag(
-            "",
-            "all-features",
-            "Activate all available features",
-        );
+        opts.optflag("", "all-features", "Activate all available features");
         opts.optflag(
             "",
             "no-default-features",

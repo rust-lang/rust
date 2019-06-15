@@ -15,9 +15,9 @@ use rustc::{
 use std::collections::HashMap;
 
 /// The context in which `DefId` translation happens.
-pub struct TranslationContext<'a, 'gcx: 'tcx, 'tcx> {
+pub struct TranslationContext<'a, 'tcx> {
     /// The type context to use.
-    tcx: TyCtxt<'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     /// The id mapping to use.
     id_mapping: &'a IdMapping,
     /// Whether to translate type and region parameters.
@@ -28,13 +28,13 @@ pub struct TranslationContext<'a, 'gcx: 'tcx, 'tcx> {
     translate_orig: fn(&IdMapping, DefId) -> Option<DefId>,
 }
 
-impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
     /// Construct a translation context translating to the new crate's `DefId`s.
     pub fn target_new(
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         id_mapping: &'a IdMapping,
         translate_params: bool,
-    ) -> TranslationContext<'a, 'gcx, 'tcx> {
+    ) -> TranslationContext<'a, 'tcx> {
         TranslationContext {
             tcx,
             id_mapping,
@@ -46,10 +46,10 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
 
     /// Construct a translation context translating to the old crate's `DefId`s.
     pub fn target_old(
-        tcx: TyCtxt<'gcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         id_mapping: &'a IdMapping,
         translate_params: bool,
-    ) -> TranslationContext<'a, 'gcx, 'tcx> {
+    ) -> TranslationContext<'a, 'tcx> {
         TranslationContext {
             tcx,
             id_mapping,
@@ -520,20 +520,20 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
 ///
 /// Used to lift type errors and predicates to wrap them in an error type.
 #[derive(Clone)]
-pub struct InferenceCleanupFolder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+pub struct InferenceCleanupFolder<'a, 'tcx: 'a> {
     /// The inference context used.
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> InferenceCleanupFolder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferenceCleanupFolder<'a, 'tcx> {
     /// Construct a new folder.
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
         InferenceCleanupFolder { infcx }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceCleanupFolder<'a, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for InferenceCleanupFolder<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

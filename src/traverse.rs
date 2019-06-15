@@ -35,7 +35,7 @@ use std::collections::{BTreeMap, HashSet, VecDeque};
 /// The main entry point to our analysis passes.
 ///
 /// Set up the necessary data structures and run the analysis passes and call the actual passes.
-pub fn run_analysis<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, old: DefId, new: DefId) -> ChangeSet<'tcx> {
+pub fn run_analysis<'tcx>(tcx: TyCtxt<'tcx>, old: DefId, new: DefId) -> ChangeSet<'tcx> {
     let mut changes = ChangeSet::default();
     let mut id_mapping = IdMapping::new(old.krate, new.krate);
 
@@ -74,7 +74,7 @@ fn get_vis(outer_vis: Visibility, def: Export<HirId>) -> Visibility {
     }
 }
 
-pub fn run_traversal<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, new: DefId) {
+pub fn run_traversal<'tcx>(tcx: TyCtxt<'tcx>, new: DefId) {
     use rustc::hir::def::DefKind::*;
     let mut visited = HashSet::new();
     let mut mod_queue = VecDeque::new();
@@ -124,7 +124,7 @@ pub fn run_traversal<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, new: DefId) {
 fn diff_structure<'tcx>(
     changes: &mut ChangeSet,
     id_mapping: &mut IdMapping,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     old: DefId,
     new: DefId,
 ) {
@@ -358,7 +358,7 @@ fn diff_structure<'tcx>(
 }
 
 /// Given two fn items, perform structural checks.
-fn diff_fn<'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'tcx, 'tcx>, old: Res, new: Res) {
+fn diff_fn<'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'tcx>, old: Res, new: Res) {
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
 
@@ -377,12 +377,7 @@ fn diff_fn<'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'tcx, 'tcx>, old: Res, new
 }
 
 /// Given two method items, perform structural checks.
-fn diff_method<'tcx>(
-    changes: &mut ChangeSet,
-    tcx: TyCtxt<'tcx, 'tcx>,
-    old: AssocItem,
-    new: AssocItem,
-) {
+fn diff_method<'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'tcx>, old: AssocItem, new: AssocItem) {
     if old.method_has_self_argument != new.method_has_self_argument {
         changes.add_change(
             ChangeType::MethodSelfChanged {
@@ -561,7 +556,7 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
 fn diff_traits<'tcx>(
     changes: &mut ChangeSet,
     id_mapping: &mut IdMapping,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     old: DefId,
     new: DefId,
     output: bool,
@@ -832,7 +827,7 @@ fn diff_generics(
 fn diff_types<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     old: Res,
     new: Res,
 ) {
@@ -901,7 +896,7 @@ fn diff_types<'tcx>(
 fn cmp_types<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     orig_def_id: DefId,
     target_def_id: DefId,
     orig: Ty<'tcx>,
@@ -954,7 +949,7 @@ fn cmp_types<'tcx>(
 fn cmp_bounds<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     orig_def_id: DefId,
     target_def_id: DefId,
 ) {
@@ -987,7 +982,7 @@ fn cmp_bounds<'tcx>(
 fn diff_inherent_impls<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) {
     debug!("diffing inherent impls");
 
@@ -1067,8 +1062,8 @@ fn diff_inherent_impls<'tcx>(
 // from perfect and will cause false positives in some cases (see comment in the inner function).
 #[allow(clippy::let_and_return)]
 #[allow(clippy::match_same_arms)]
-fn is_impl_trait_public<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, impl_def_id: DefId) -> bool {
-    fn type_visibility<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, ty: Ty) -> Visibility {
+fn is_impl_trait_public<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) -> bool {
+    fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty) -> Visibility {
         match ty.sty {
             TyKind::Adt(def, _) => tcx.visibility(def.did),
 
@@ -1111,7 +1106,7 @@ fn is_impl_trait_public<'tcx>(tcx: TyCtxt<'tcx, 'tcx>, impl_def_id: DefId) -> bo
 fn diff_trait_impls<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) {
     debug!("diffing trait impls");
 
@@ -1164,7 +1159,7 @@ fn diff_trait_impls<'tcx>(
 fn match_inherent_impl<'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     orig_impl_def_id: DefId,
     target_impl_def_id: DefId,
     orig_item: AssocItem,
@@ -1290,8 +1285,8 @@ fn match_inherent_impl<'tcx>(
 /// Compare two implementations and indicate whether the target one is compatible with the
 /// original one.
 fn match_trait_impl<'a, 'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    trans: &TranslationContext<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    trans: &TranslationContext<'a, 'tcx>,
     orig_def_id: DefId,
 ) -> bool {
     debug!("matching: {:?}", orig_def_id);
