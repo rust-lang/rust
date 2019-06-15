@@ -45,7 +45,7 @@ fn main() {
         eprintln!("ERROR: could not initialize logger");
     }
 
-    let config = match cargo::Config::default() {
+    let mut config = match cargo::Config::default() {
         Ok(cfg) => cfg,
         Err(e) => panic!("can't obtain cargo config: {:?}", e),
     };
@@ -67,13 +67,28 @@ fn main() {
         return;
     }
 
-    if matches.opt_present("q") {
-        config
-            .shell()
-            .set_verbosity(cargo::core::shell::Verbosity::Quiet);
+    if let Err(e) = cli::validate_args(&matches) {
+        cli::exit_with_error(&config, e);
     }
 
-    if let Err(e) = cli::validate_args(&matches) {
+    let quiet = if matches.opt_present("q") {
+        Some(true)
+    } else {
+        None
+    };
+
+    let config_res = config.configure(
+        0, // verbose
+        quiet,
+        &None, // color
+        false, // frozen
+        false, // locked
+        // matches.opt_present("offline"),
+        &None, // target_dir
+        &[],   // unstable_flags
+    );
+
+    if let Err(e) = config_res {
         cli::exit_with_error(&config, e);
     }
 
@@ -317,6 +332,7 @@ mod cli {
             "use a `name:version` string as current/new crate",
             "NAME:VERSION",
         );
+        opts.optflag("", "offline", "Run without accessing the network.");
         opts.optopt("", "target", "Build for the target triple", "<TRIPLE>");
         opts
     }
@@ -471,7 +487,7 @@ impl<'a> WorkInfo<'a> {
         );
 
         let mut outdir = env::temp_dir();
-        // The filename is randomized to avoid clashes when multiple cargo semver are running.
+        // The filename is randomized to avoid clashes when multiple cargo-semver instances are running.
         outdir.push(&format!(
             "cargo_semver_{}_{}_{}",
             name,
