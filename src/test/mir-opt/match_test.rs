@@ -75,6 +75,7 @@ fn main() {
 //        goto -> bb14;
 //    }
 //    bb14: {
+//        StorageDead(_3);
 //        _0 = ();
 //        StorageDead(_2);
 //        StorageDead(_1);

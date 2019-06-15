@@ -25,6 +25,7 @@ fn main() {
 //         falseUnwind -> [real: bb3, cleanup: bb1];
 //     }
 //     bb3: {
+//         StorageLive(_3);
 //         StorageLive(_4);
 //         _4 = _1;
 //         FakeRead(ForMatchedPlace, _4);
@@ -34,6 +35,7 @@ fn main() {
 //     bb5: {
 //         _3 = ();
 //         StorageDead(_4);
+//         StorageDead(_3);
 //         _1 = const true;
 //         _2 = ();
 //         goto -> bb2;
@@ -41,6 +43,7 @@ fn main() {
 //     bb6: {
 //         _0 = ();
 //         StorageDead(_4);
+//         StorageDead(_3);
 //         StorageDead(_1);
 //         return;
 //     }

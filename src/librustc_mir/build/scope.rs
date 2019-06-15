@@ -806,27 +806,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Utility function for *non*-scope code to build their own drops
-    pub fn build_drop(&mut self,
-                      block: BasicBlock,
-                      span: Span,
-                      location: Place<'tcx>,
-                      ty: Ty<'tcx>) -> BlockAnd<()> {
-        if !self.hir.needs_drop(ty) {
-            return block.unit();
-        }
-        let source_info = self.source_info(span);
-        let next_target = self.cfg.start_new_block();
-        let diverge_target = self.diverge_cleanup();
-        self.cfg.terminate(block, source_info,
-                           TerminatorKind::Drop {
-                               location,
-                               target: next_target,
-                               unwind: Some(diverge_target),
-                           });
-        next_target.unit()
-    }
-
-    /// Utility function for *non*-scope code to build their own drops
     pub fn build_drop_and_replace(&mut self,
                                   block: BasicBlock,
                                   span: Span,
