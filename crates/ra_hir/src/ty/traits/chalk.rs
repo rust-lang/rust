@@ -273,8 +273,9 @@ where
             id,
             name: lalrpop_intern::intern(&type_alias.name(self.db).to_string()),
             parameter_kinds,
-            bounds: vec![],        // FIXME
-            where_clauses: vec![], // FIXME
+            // FIXME add bounds and where clauses
+            bounds: vec![],
+            where_clauses: vec![],
         };
         Arc::new(datum)
     }
@@ -429,13 +430,12 @@ where
             .filter_map(|t| {
                 let assoc_ty = trait_.associated_type_by_name(self.db, t.name(self.db))?;
                 let ty = self.db.type_for_def(t.into(), crate::Namespace::Types).subst(&bound_vars);
-                debug!("ty = {}", ty.display(self.db));
                 Some(chalk_rust_ir::AssociatedTyValue {
                     impl_id,
                     associated_ty_id: assoc_ty.to_chalk(self.db),
                     value: chalk_ir::Binders {
                         value: chalk_rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(self.db) },
-                        binders: vec![], // FIXME add generic params (generic associated types)
+                        binders: vec![], // we don't support GATs yet
                     },
                 })
             })
