@@ -141,56 +141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_field(expr, needs, &base, field)
             }
             ExprKind::Index(ref base, ref idx) => {
-                let base_t = self.check_expr_with_needs(&base, needs);
-                let idx_t = self.check_expr(&idx);
-
-                if base_t.references_error() {
-                    base_t
-                } else if idx_t.references_error() {
-                    idx_t
-                } else {
-                    let base_t = self.structurally_resolved_type(base.span, base_t);
-                    match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
-                        Some((index_ty, element_ty)) => {
-                            // two-phase not needed because index_ty is never mutable
-                            self.demand_coerce(idx, idx_t, index_ty, AllowTwoPhase::No);
-                            element_ty
-                        }
-                        None => {
-                            let mut err =
-                                type_error_struct!(tcx.sess, expr.span, base_t, E0608,
-                                                   "cannot index into a value of type `{}`",
-                                                   base_t);
-                            // Try to give some advice about indexing tuples.
-                            if let ty::Tuple(..) = base_t.sty {
-                                let mut needs_note = true;
-                                // If the index is an integer, we can show the actual
-                                // fixed expression:
-                                if let ExprKind::Lit(ref lit) = idx.node {
-                                    if let ast::LitKind::Int(i,
-                                            ast::LitIntType::Unsuffixed) = lit.node {
-                                        let snip = tcx.sess.source_map().span_to_snippet(base.span);
-                                        if let Ok(snip) = snip {
-                                            err.span_suggestion(
-                                                expr.span,
-                                                "to access tuple elements, use",
-                                                format!("{}.{}", snip, i),
-                                                Applicability::MachineApplicable,
-                                            );
-                                            needs_note = false;
-                                        }
-                                    }
-                                }
-                                if needs_note {
-                                    err.help("to access tuple elements, use tuple indexing \
-                                              syntax (e.g., `tuple.0`)");
-                                }
-                            }
-                            err.emit();
-                            self.tcx.types.err
-                        }
-                    }
-                }
+                self.check_expr_index(base, idx, needs, expr)
             }
             ExprKind::Yield(ref value) => {
                 match self.yield_ty {
@@ -904,5 +855,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         self.require_type_is_sized(adt_ty, expr.span, traits::StructInitializerSized);
         adt_ty
+    }
+
+    fn check_expr_index(
+        &self,
+        base: &'tcx hir::Expr,
+        idx: &'tcx hir::Expr,
+        needs: Needs,
+        expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
+        let base_t = self.check_expr_with_needs(&base, needs);
+        let idx_t = self.check_expr(&idx);
+
+        if base_t.references_error() {
+            base_t
+        } else if idx_t.references_error() {
+            idx_t
+        } else {
+            let base_t = self.structurally_resolved_type(base.span, base_t);
+            match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
+                Some((index_ty, element_ty)) => {
+                    // two-phase not needed because index_ty is never mutable
+                    self.demand_coerce(idx, idx_t, index_ty, AllowTwoPhase::No);
+                    element_ty
+                }
+                None => {
+                    let mut err =
+                        type_error_struct!(self.tcx.sess, expr.span, base_t, E0608,
+                                            "cannot index into a value of type `{}`",
+                                            base_t);
+                    // Try to give some advice about indexing tuples.
+                    if let ty::Tuple(..) = base_t.sty {
+                        let mut needs_note = true;
+                        // If the index is an integer, we can show the actual
+                        // fixed expression:
+                        if let ExprKind::Lit(ref lit) = idx.node {
+                            if let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node {
+                                let snip = self.tcx.sess.source_map().span_to_snippet(base.span);
+                                if let Ok(snip) = snip {
+                                    err.span_suggestion(
+                                        expr.span,
+                                        "to access tuple elements, use",
+                                        format!("{}.{}", snip, i),
+                                        Applicability::MachineApplicable,
+                                    );
+                                    needs_note = false;
+                                }
+                            }
+                        }
+                        if needs_note {
+                            err.help("to access tuple elements, use tuple indexing \
+                                        syntax (e.g., `tuple.0`)");
+                        }
+                    }
+                    err.emit();
+                    self.tcx.types.err
+                }
+            }
+        }
     }
 }
