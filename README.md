@@ -4,11 +4,8 @@
 [![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/qktm3ndv6cnbj01m?svg=true)](https://ci.appveyor.com/project/ibabushkin/rust-semverver)
 [![Current Version](https://meritbadge.herokuapp.com/semverver)](https://crates.io/crates/semverver)
 
-This repository is hosting a proof-of-concept implementation of an automatic tool checking
-rust library crates for semantic versioning adherence, developed during the Google Summer
-of Code 2017. The goal is to provide an automated command akin to `cargo clippy` that
-analyzes the current crate's source code for changes compared to the most recent version
-on `crates.io`.
+`rust-semverver` is a tool to check semver-compliance in Rust library crates. The core of
+the tool has been developed as a student project during the Google Summer of Code 2017.
 
 Details on the work done during GSoC 2017 can be found
 [here](https://github.com/rust-dev-tools/rust-semverver/blob/master/doc/gsoc.md).
@@ -38,7 +35,7 @@ $ rustup update nightly
 $ cargo +nightly install semverver
 ```
 
-You'd also need `cmake` for some dependencies, and a few common libraries (if I you hit
+You'd also need `cmake` for some dependencies, and a few common libraries (if you hit
 build failures because of missing system-wide dependencies, please open an issue, so they
 can be added here).
 
@@ -89,13 +86,27 @@ the cargo plugin:
 
 ```sh
 $ cargo semver -h
-usage: cargo semver [options] [-- cargo options]
+usage: cargo semver [options]
 
 Options:
     -h, --help          print this message and exit
     -V, --version       print version information and exit
     -e, --explain       print detailed error explanations
+    -q, --quiet         surpress regular cargo output, print only important
+                        messages
+        --show-public   print the public types in the current crate given by
+                        -c or -C and exit
     -d, --debug         print command to debug and exit
+    -a, --api-guidelines
+                        report only changes that are breaking according to the
+                        API-guidelines
+        --features FEATURES
+                        Space-separated list of features to activate
+        --all-features  Activate all available features
+        --no-default-features
+                        Do not activate the `default` feature
+        --compact       Only output the suggested version on stdout for
+                        further processing
     -s, --stable-path PATH
                         use local path as stable/old crate
     -c, --current-path PATH
@@ -104,6 +115,8 @@ Options:
                         use a `name:version` string as stable/old crate
     -C, --current-pkg NAME:VERSION
                         use a `name:version` string as current/new crate
+        --target <TRIPLE>
+                        Build for the target triple
 ```
 
 This means that you can compare any two crates' specified versions, as long as they are
@@ -159,5 +172,16 @@ correctly:
 * additions and removals of inherent impls or methods contained therein
 * additions and removals of trait impls
 
-Yet, the results presented to the user are merely an approximation of the required
-versioning policy, especially at such an early stage of development.
+Keep in mind however that the results presented to the user are merely an approximation of
+the required versioning policy.
+
+## Contributing
+
+Please see
+[CONTRIBUTING.md](https://github.com/rust-dev-tools/rust-semverver/blob/master/CONTRIBUTING.md).
+
+## License
+
+`rust-semverver` is distributed under the terms of the 3-clause BSD license.
+
+See LICENSE for details.
