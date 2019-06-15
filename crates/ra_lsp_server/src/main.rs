@@ -6,8 +6,7 @@ use ra_lsp_server::{Result, InitializationOptions};
 use ra_prof;
 
 fn main() -> Result<()> {
-    // re-enable and verify on windows after #1400
-    // std::env::set_var("RUST_BACKTRACE", "short");
+    std::env::set_var("RUST_BACKTRACE", "short");
     let logger = Logger::with_env_or_str("error").duplicate_to_stderr(Duplicate::All);
     match std::env::var("RA_LOG_DIR") {
         Ok(ref v) if v == "1" => logger.log_to_file().directory("log").start()?,
