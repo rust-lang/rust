@@ -42,7 +42,9 @@ debug = true
 ```
 
 If you have already built `rustc`, then you may have to execute `rm -rf build` for subsequent
-configuration changes to take effect.
+configuration changes to take effect. Note that `./x.py clean` will not cause a
+rebuild of LLVM, so if your configuration change affects LLVM, you will need to
+manually `rm -rf build/` before rebuilding.
 
 ### What is `x.py`?
 
