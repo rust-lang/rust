@@ -114,29 +114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_method_call(expr, segment, span, args, expected, needs)
             }
             ExprKind::Cast(ref e, ref t) => {
-                // Find the type of `e`. Supply hints based on the type we are casting to,
-                // if appropriate.
-                let t_cast = self.to_ty_saving_user_provided_ty(t);
-                let t_cast = self.resolve_vars_if_possible(&t_cast);
-                let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
-                let t_cast = self.resolve_vars_if_possible(&t_cast);
-
-                // Eagerly check for some obvious errors.
-                if t_expr.references_error() || t_cast.references_error() {
-                    tcx.types.err
-                } else {
-                    // Defer other checks until we're done type checking.
-                    let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-                    match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
-                        Ok(cast_check) => {
-                            deferred_cast_checks.push(cast_check);
-                            t_cast
-                        }
-                        Err(ErrorReported) => {
-                            tcx.types.err
-                        }
-                    }
-                }
+                self.check_expr_cast(e, t, expr)
             }
             ExprKind::Type(ref e, ref t) => {
                 let ty = self.to_ty_saving_user_provided_ty(&t);
@@ -805,5 +783,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
         }
         ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.mk_unit())
+    }
+
+    fn check_expr_cast(
+        &self,
+        e: &'tcx hir::Expr,
+        t: &'tcx hir::Ty,
+        expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
+        // Find the type of `e`. Supply hints based on the type we are casting to,
+        // if appropriate.
+        let t_cast = self.to_ty_saving_user_provided_ty(t);
+        let t_cast = self.resolve_vars_if_possible(&t_cast);
+        let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
+        let t_cast = self.resolve_vars_if_possible(&t_cast);
+
+        // Eagerly check for some obvious errors.
+        if t_expr.references_error() || t_cast.references_error() {
+            self.tcx.types.err
+        } else {
+            // Defer other checks until we're done type checking.
+            let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
+            match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
+                Ok(cast_check) => {
+                    deferred_cast_checks.push(cast_check);
+                    t_cast
+                }
+                Err(ErrorReported) => {
+                    self.tcx.types.err
+                }
+            }
+        }
     }
 }
