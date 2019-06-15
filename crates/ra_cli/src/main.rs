@@ -8,7 +8,7 @@ use ra_syntax::{SourceFile, TreeArc, AstNode};
 use flexi_logger::Logger;
 use ra_prof::profile;
 
-type Result<T> = ::std::result::Result<T, Box<dyn Error + Send + Sync>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn main() -> Result<()> {
     Logger::with_env().start()?;
