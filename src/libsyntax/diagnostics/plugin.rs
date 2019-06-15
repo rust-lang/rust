@@ -120,19 +120,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt<'_>,
         }
     });
 
-    let span = span.apply_mark(ecx.current_expansion.mark);
-
-    let name = Ident::from_str_and_span(&format!("__register_diagnostic_{}", code), span).gensym();
-
-    MacEager::items(smallvec![
-        ecx.item_mod(
-            span,
-            span,
-            name,
-            vec![],
-            vec![],
-        )
-    ])
+    MacEager::items(smallvec![])
 }
 
 #[allow(deprecated)]
