@@ -18,4 +18,11 @@ enum Bar<'f> {
 
 trait Baz<'f> { }
 
+// `Derive`d impls shouldn't trigger a warning, either (Issue #53738).
+
+#[derive(Debug)]
+struct Quux<'a> {
+    priors: &'a u32,
+}
+
 fn main() { }
