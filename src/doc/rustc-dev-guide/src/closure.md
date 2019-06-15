@@ -115,9 +115,9 @@ Let's start with defining a term that we will be using quite a bit in the rest o
 *upvar*. An **upvar** is a variable that is local to the function where the closure is defined. So,
 in the above examples, **x** will be an upvar to the closure. They are also sometimes referred to as
 the *free variables* meaning they are not bound to the context of the closure.
-[`src/librustc/ty/query/mod.rs`][freevars] defines a query called *freevars* for this purpose.
+[`src/librustc/ty/query/mod.rs`][upvars] defines a query called *upvars* for this purpose.
 
-[freevars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/query/queries/struct.freevars.html
+[upvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/query/queries/struct.upvars.html
 
 Other than lazy invocation, one other thing that the distinguishes a closure from a
 normal function is that it can use the upvars. It borrows these upvars from its surrounding
@@ -167,7 +167,7 @@ invokes a callbackfor each upvar that is borrowed, mutated, or moved.
 
 ```rust
 fn main() {
-    let x = vec![21];
+    let mut x = vec![21];
     let _cl = || {
         let y = x[0];  // 1.
         x[0] += 1;  // 2.

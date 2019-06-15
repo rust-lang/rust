@@ -15,7 +15,7 @@ two-phase borrow are:
 
 To give some examples:
 
-```rust
+```rust2018
 // In the source code
 
 // Case 1:
