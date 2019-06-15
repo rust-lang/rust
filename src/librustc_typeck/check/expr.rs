@@ -76,89 +76,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.mk_unit()
             }
             ExprKind::Break(destination, ref expr_opt) => {
-                if let Ok(target_id) = destination.target_id {
-                    let (e_ty, cause);
-                    if let Some(ref e) = *expr_opt {
-                        // If this is a break with a value, we need to type-check
-                        // the expression. Get an expected type from the loop context.
-                        let opt_coerce_to = {
-                            let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                            enclosing_breakables.find_breakable(target_id)
-                                                .coerce
-                                                .as_ref()
-                                                .map(|coerce| coerce.expected_ty())
-                        };
-
-                        // If the loop context is not a `loop { }`, then break with
-                        // a value is illegal, and `opt_coerce_to` will be `None`.
-                        // Just set expectation to error in that case.
-                        let coerce_to = opt_coerce_to.unwrap_or(tcx.types.err);
-
-                        // Recurse without `enclosing_breakables` borrowed.
-                        e_ty = self.check_expr_with_hint(e, coerce_to);
-                        cause = self.misc(e.span);
-                    } else {
-                        // Otherwise, this is a break *without* a value. That's
-                        // always legal, and is equivalent to `break ()`.
-                        e_ty = tcx.mk_unit();
-                        cause = self.misc(expr.span);
-                    }
-
-                    // Now that we have type-checked `expr_opt`, borrow
-                    // the `enclosing_loops` field and let's coerce the
-                    // type of `expr_opt` into what is expected.
-                    let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                    let ctxt = enclosing_breakables.find_breakable(target_id);
-                    if let Some(ref mut coerce) = ctxt.coerce {
-                        if let Some(ref e) = *expr_opt {
-                            coerce.coerce(self, &cause, e, e_ty);
-                        } else {
-                            assert!(e_ty.is_unit());
-                            coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
-                        }
-                    } else {
-                        // If `ctxt.coerce` is `None`, we can just ignore
-                        // the type of the expresison.  This is because
-                        // either this was a break *without* a value, in
-                        // which case it is always a legal type (`()`), or
-                        // else an error would have been flagged by the
-                        // `loops` pass for using break with an expression
-                        // where you are not supposed to.
-                        assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
-                    }
-
-                    ctxt.may_break = true;
-
-                    // the type of a `break` is always `!`, since it diverges
-                    tcx.types.never
-                } else {
-                    // Otherwise, we failed to find the enclosing loop;
-                    // this can only happen if the `break` was not
-                    // inside a loop at all, which is caught by the
-                    // loop-checking pass.
-                    if self.tcx.sess.err_count() == 0 {
-                        self.tcx.sess.delay_span_bug(expr.span,
-                            "break was outside loop, but no error was emitted");
-                    }
-
-                    // We still need to assign a type to the inner expression to
-                    // prevent the ICE in #43162.
-                    if let Some(ref e) = *expr_opt {
-                        self.check_expr_with_hint(e, tcx.types.err);
-
-                        // ... except when we try to 'break rust;'.
-                        // ICE this expression in particular (see #43162).
-                        if let ExprKind::Path(QPath::Resolved(_, ref path)) = e.node {
-                            if path.segments.len() == 1 &&
-                               path.segments[0].ident.name == sym::rust {
-                                fatally_break_rust(self.tcx.sess);
-                            }
-                        }
-                    }
-                    // There was an error; make type-check fail.
-                    tcx.types.err
-                }
-
+                self.check_expr_break(destination, expr_opt.deref(), expr)
             }
             ExprKind::Continue(destination) => {
                 if destination.target_id.is_ok() {
@@ -724,5 +642,96 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.add_wf_bounds(substs, expr);
 
         ty
+    }
+
+    fn check_expr_break(
+        &self,
+        destination: hir::Destination,
+        expr_opt: Option<&'tcx hir::Expr>,
+        expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
+        let tcx = self.tcx;
+        if let Ok(target_id) = destination.target_id {
+            let (e_ty, cause);
+            if let Some(ref e) = expr_opt {
+                // If this is a break with a value, we need to type-check
+                // the expression. Get an expected type from the loop context.
+                let opt_coerce_to = {
+                    let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                    enclosing_breakables.find_breakable(target_id)
+                                        .coerce
+                                        .as_ref()
+                                        .map(|coerce| coerce.expected_ty())
+                };
+
+                // If the loop context is not a `loop { }`, then break with
+                // a value is illegal, and `opt_coerce_to` will be `None`.
+                // Just set expectation to error in that case.
+                let coerce_to = opt_coerce_to.unwrap_or(tcx.types.err);
+
+                // Recurse without `enclosing_breakables` borrowed.
+                e_ty = self.check_expr_with_hint(e, coerce_to);
+                cause = self.misc(e.span);
+            } else {
+                // Otherwise, this is a break *without* a value. That's
+                // always legal, and is equivalent to `break ()`.
+                e_ty = tcx.mk_unit();
+                cause = self.misc(expr.span);
+            }
+
+            // Now that we have type-checked `expr_opt`, borrow
+            // the `enclosing_loops` field and let's coerce the
+            // type of `expr_opt` into what is expected.
+            let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+            let ctxt = enclosing_breakables.find_breakable(target_id);
+            if let Some(ref mut coerce) = ctxt.coerce {
+                if let Some(ref e) = expr_opt {
+                    coerce.coerce(self, &cause, e, e_ty);
+                } else {
+                    assert!(e_ty.is_unit());
+                    coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                }
+            } else {
+                // If `ctxt.coerce` is `None`, we can just ignore
+                // the type of the expresison.  This is because
+                // either this was a break *without* a value, in
+                // which case it is always a legal type (`()`), or
+                // else an error would have been flagged by the
+                // `loops` pass for using break with an expression
+                // where you are not supposed to.
+                assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
+            }
+
+            ctxt.may_break = true;
+
+            // the type of a `break` is always `!`, since it diverges
+            tcx.types.never
+        } else {
+            // Otherwise, we failed to find the enclosing loop;
+            // this can only happen if the `break` was not
+            // inside a loop at all, which is caught by the
+            // loop-checking pass.
+            if self.tcx.sess.err_count() == 0 {
+                self.tcx.sess.delay_span_bug(expr.span,
+                    "break was outside loop, but no error was emitted");
+            }
+
+            // We still need to assign a type to the inner expression to
+            // prevent the ICE in #43162.
+            if let Some(ref e) = expr_opt {
+                self.check_expr_with_hint(e, tcx.types.err);
+
+                // ... except when we try to 'break rust;'.
+                // ICE this expression in particular (see #43162).
+                if let ExprKind::Path(QPath::Resolved(_, ref path)) = e.node {
+                    if path.segments.len() == 1 &&
+                        path.segments[0].ident.name == sym::rust {
+                        fatally_break_rust(self.tcx.sess);
+                    }
+                }
+            }
+            // There was an error; make type-check fail.
+            tcx.types.err
+        }
     }
 }

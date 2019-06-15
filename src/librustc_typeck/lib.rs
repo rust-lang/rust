@@ -68,6 +68,7 @@ This API is completely unstable and subject to change.
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(never_type)]
+#![feature(inner_deref)]
 
 #![recursion_limit="256"]
 
