@@ -1652,11 +1652,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // denotes *R.
             let ref_for_guard =
                 self.storage_live_binding(block, binding.var_id, binding.span, RefWithinGuard);
-            // Question: Why schedule drops if bindings are all
-            // shared-&'s?
-            // Answer: Because schedule_drop_for_binding also emits
-            // StorageDead's for those locals.
-            self.schedule_drop_for_binding(binding.var_id, binding.span, RefWithinGuard);
             match binding.binding_mode {
                 BindingMode::ByValue => {
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source.clone());
@@ -1666,11 +1661,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 BindingMode::ByRef(borrow_kind) => {
                     let value_for_arm = self.storage_live_binding(
                         block,
-                        binding.var_id,
-                        binding.span,
-                        OutsideGuard,
-                    );
-                    self.schedule_drop_for_binding(
                         binding.var_id,
                         binding.span,
                         OutsideGuard,
