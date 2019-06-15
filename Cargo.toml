@@ -27,7 +27,7 @@ name = "rust-semver-public"
 path = "src/bin/rust_semver_public.rs"
 
 [dependencies]
-cargo = "0.36"
+cargo = { git = "https://github.com/rust-lang/cargo", branch = "master" }
 crates-io = "0.24"
 curl = "0.4.21"
 env_logger = "0.6"

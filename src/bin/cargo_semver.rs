@@ -83,7 +83,7 @@ fn main() {
         &None, // color
         false, // frozen
         false, // locked
-        // matches.opt_present("offline"),
+        matches.opt_present("offline"),
         &None, // target_dir
         &[],   // unstable_flags
     );
@@ -441,7 +441,10 @@ impl<'a> WorkInfo<'a> {
 
             debug!("source id loaded: {:?}", source_id);
 
-            source.update()?;
+            if !config.offline() {
+                let _lock = config.acquire_package_cache_lock()?;
+                source.update()?;
+            }
 
             Box::new(source)
         };
