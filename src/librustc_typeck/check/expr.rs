@@ -128,68 +128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_array(args, expected, expr)
             }
             ExprKind::Repeat(ref element, ref count) => {
-                let count_def_id = tcx.hir().local_def_id_from_hir_id(count.hir_id);
-                let count = if self.const_param_def_id(count).is_some() {
-                    Ok(self.to_const(count, self.tcx.type_of(count_def_id)))
-                } else {
-                    let param_env = ty::ParamEnv::empty();
-                    let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), count_def_id);
-                    let instance = ty::Instance::resolve(
-                        tcx.global_tcx(),
-                        param_env,
-                        count_def_id,
-                        substs,
-                    ).unwrap();
-                    let global_id = GlobalId {
-                        instance,
-                        promoted: None
-                    };
-
-                    tcx.const_eval(param_env.and(global_id))
-                };
-
-                let uty = match expected {
-                    ExpectHasType(uty) => {
-                        match uty.sty {
-                            ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
-                            _ => None
-                        }
-                    }
-                    _ => None
-                };
-
-                let (element_ty, t) = match uty {
-                    Some(uty) => {
-                        self.check_expr_coercable_to_type(&element, uty);
-                        (uty, uty)
-                    }
-                    None => {
-                        let ty = self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::MiscVariable,
-                            span: element.span,
-                        });
-                        let element_ty = self.check_expr_has_type_or_error(&element, ty);
-                        (element_ty, ty)
-                    }
-                };
-
-                if let Ok(count) = count {
-                    let zero_or_one = count.assert_usize(tcx).map_or(false, |count| count <= 1);
-                    if !zero_or_one {
-                        // For [foo, ..n] where n > 1, `foo` must have
-                        // Copy type:
-                        let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
-                        self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
-                    }
-                }
-
-                if element_ty.references_error() {
-                    tcx.types.err
-                } else if let Ok(count) = count {
-                    tcx.mk_ty(ty::Array(t, count))
-                } else {
-                    tcx.types.err
-                }
+                self.check_expr_repeat(element, count, expected, expr)
             }
             ExprKind::Tup(ref elts) => {
                 let flds = expected.only_has_type(self).and_then(|ty| {
@@ -823,5 +762,77 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
         };
         self.tcx.mk_array(element_ty, args.len() as u64)
+    }
+
+    fn check_expr_repeat(
+        &self,
+        element: &'tcx hir::Expr,
+        count: &'tcx hir::AnonConst,
+        expected: Expectation<'tcx>,
+        expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
+        let tcx = self.tcx;
+        let count_def_id = tcx.hir().local_def_id_from_hir_id(count.hir_id);
+        let count = if self.const_param_def_id(count).is_some() {
+            Ok(self.to_const(count, tcx.type_of(count_def_id)))
+        } else {
+            let param_env = ty::ParamEnv::empty();
+            let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), count_def_id);
+            let instance = ty::Instance::resolve(
+                tcx.global_tcx(),
+                param_env,
+                count_def_id,
+                substs,
+            ).unwrap();
+            let global_id = GlobalId {
+                instance,
+                promoted: None
+            };
+
+            tcx.const_eval(param_env.and(global_id))
+        };
+
+        let uty = match expected {
+            ExpectHasType(uty) => {
+                match uty.sty {
+                    ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
+                    _ => None
+                }
+            }
+            _ => None
+        };
+
+        let (element_ty, t) = match uty {
+            Some(uty) => {
+                self.check_expr_coercable_to_type(&element, uty);
+                (uty, uty)
+            }
+            None => {
+                let ty = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: element.span,
+                });
+                let element_ty = self.check_expr_has_type_or_error(&element, ty);
+                (element_ty, ty)
+            }
+        };
+
+        if let Ok(count) = count {
+            let zero_or_one = count.assert_usize(tcx).map_or(false, |count| count <= 1);
+            if !zero_or_one {
+                // For [foo, ..n] where n > 1, `foo` must have
+                // Copy type:
+                let lang_item = tcx.require_lang_item(lang_items::CopyTraitLangItem);
+                self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
+            }
+        }
+
+        if element_ty.references_error() {
+            tcx.types.err
+        } else if let Ok(count) = count {
+            tcx.mk_ty(ty::Array(t, count))
+        } else {
+            tcx.types.err
+        }
     }
 }
