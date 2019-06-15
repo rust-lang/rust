@@ -60,7 +60,7 @@ pub trait D {
 }
 
 /// dox
-pub trait E {
+pub trait E: Sized {
     type AssociatedType; //~ ERROR: missing documentation for an associated type
     type AssociatedTypeDef = Self; //~ ERROR: missing documentation for an associated type
 
