@@ -3983,51 +3983,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    /// Type check assignment expression `expr` of form `lhs = rhs`.
-    /// The expected type is `()` and is passsed to the function for the purposes of diagnostics.
-    fn check_assign(
-        &self,
-        expr: &'tcx hir::Expr,
-        expected: Expectation<'tcx>,
-        lhs: &'tcx hir::Expr,
-        rhs: &'tcx hir::Expr,
-    ) -> Ty<'tcx> {
-        let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
-        let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
-
-        let expected_ty = expected.coercion_target_type(self, expr.span);
-        if expected_ty == self.tcx.types.bool {
-            // The expected type is `bool` but this will result in `()` so we can reasonably
-            // say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
-            // The likely cause of this is `if foo = bar { .. }`.
-            let actual_ty = self.tcx.mk_unit();
-            let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap();
-            let msg = "try comparing for equality";
-            let left = self.tcx.sess.source_map().span_to_snippet(lhs.span);
-            let right = self.tcx.sess.source_map().span_to_snippet(rhs.span);
-            if let (Ok(left), Ok(right)) = (left, right) {
-                let help = format!("{} == {}", left, right);
-                err.span_suggestion(expr.span, msg, help, Applicability::MaybeIncorrect);
-            } else {
-                err.help(msg);
-            }
-            err.emit();
-        } else if !lhs.is_place_expr() {
-            struct_span_err!(self.tcx.sess, expr.span, E0070,
-                                "invalid left-hand side expression")
-                .span_label(expr.span, "left-hand of expression not valid")
-                .emit();
-        }
-
-        self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
-
-        if lhs_ty.references_error() || rhs_ty.references_error() {
-            self.tcx.types.err
-        } else {
-            self.tcx.mk_unit()
-        }
-    }
-
     // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
     // The newly resolved definition is written into `type_dependent_defs`.
     fn finish_resolving_struct_path(&self,
