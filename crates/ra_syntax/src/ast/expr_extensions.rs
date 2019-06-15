@@ -229,7 +229,8 @@ pub enum LiteralKind {
 
 impl ast::Literal {
     pub fn token(&self) -> SyntaxToken {
-        let elem = self.syntax()
+        let elem = self
+            .syntax()
             .children_with_tokens()
             .find(|e| e.kind() != ATTR && !e.kind().is_trivia());
         match elem {
@@ -274,12 +275,7 @@ impl ast::Literal {
 #[test]
 fn test_literal_with_attr() {
     let parse = ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#);
-    let lit = parse
-        .tree
-        .syntax()
-        .descendants()
-        .find_map(ast::Literal::cast)
-        .unwrap();
+    let lit = parse.tree.syntax().descendants().find_map(ast::Literal::cast).unwrap();
     assert_eq!(lit.token().text(), r#""Hello""#);
 }
 
