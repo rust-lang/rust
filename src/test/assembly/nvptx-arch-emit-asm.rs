@@ -1,6 +1,7 @@
 // assembly-output: emit-asm
 // compile-flags: --crate-type rlib
 // only-nvptx64
+// ignore-nvptx64
 
 #![no_std]
 
