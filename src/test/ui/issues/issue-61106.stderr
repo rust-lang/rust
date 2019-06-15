@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-61106.rs:3:9
+   |
+LL |     foo(x.clone());
+   |         ^^^^^^^^^
+   |         |
+   |         expected &str, found struct `std::string::String`
+   |         help: consider borrowing here: `&x`
+   |
+   = note: expected type `&str`
+              found type `std::string::String`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
