@@ -234,7 +234,7 @@ pub const PREC_RESET: i8 = -100;
 pub const PREC_CLOSURE: i8 = -40;
 pub const PREC_JUMP: i8 = -30;
 pub const PREC_RANGE: i8 = -10;
-// The range 2 ... 14 is reserved for AssocOp binary operator precedences.
+// The range 2..=14 is reserved for AssocOp binary operator precedences.
 pub const PREC_PREFIX: i8 = 50;
 pub const PREC_POSTFIX: i8 = 60;
 pub const PREC_PAREN: i8 = 99;
