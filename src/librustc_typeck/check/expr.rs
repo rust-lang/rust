@@ -87,40 +87,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => {
-                if self.ret_coercion.is_none() {
-                    struct_span_err!(self.tcx.sess, expr.span, E0572,
-                                     "return statement outside of function body").emit();
-                } else if let Some(ref e) = *expr_opt {
-                    if self.ret_coercion_span.borrow().is_none() {
-                        *self.ret_coercion_span.borrow_mut() = Some(e.span);
-                    }
-                    self.check_return_expr(e);
-                } else {
-                    let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
-                    if self.ret_coercion_span.borrow().is_none() {
-                        *self.ret_coercion_span.borrow_mut() = Some(expr.span);
-                    }
-                    let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
-                    if let Some((fn_decl, _)) = self.get_fn_decl(expr.hir_id) {
-                        coercion.coerce_forced_unit(
-                            self,
-                            &cause,
-                            &mut |db| {
-                                db.span_label(
-                                    fn_decl.output.span(),
-                                    format!(
-                                        "expected `{}` because of this return type",
-                                        fn_decl.output,
-                                    ),
-                                );
-                            },
-                            true,
-                        );
-                    } else {
-                        coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
-                    }
-                }
-                tcx.types.never
+                self.check_expr_return(expr_opt.deref(), expr)
             }
             ExprKind::Assign(ref lhs, ref rhs) => {
                 self.check_assign(expr, expected, lhs, rhs)
@@ -733,5 +700,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // There was an error; make type-check fail.
             tcx.types.err
         }
+    }
+
+    fn check_expr_return(
+        &self,
+        expr_opt: Option<&'tcx hir::Expr>,
+        expr: &'tcx hir::Expr
+    ) -> Ty<'tcx> {
+        if self.ret_coercion.is_none() {
+            struct_span_err!(self.tcx.sess, expr.span, E0572,
+                                "return statement outside of function body").emit();
+        } else if let Some(ref e) = expr_opt {
+            if self.ret_coercion_span.borrow().is_none() {
+                *self.ret_coercion_span.borrow_mut() = Some(e.span);
+            }
+            self.check_return_expr(e);
+        } else {
+            let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
+            if self.ret_coercion_span.borrow().is_none() {
+                *self.ret_coercion_span.borrow_mut() = Some(expr.span);
+            }
+            let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
+            if let Some((fn_decl, _)) = self.get_fn_decl(expr.hir_id) {
+                coercion.coerce_forced_unit(
+                    self,
+                    &cause,
+                    &mut |db| {
+                        db.span_label(
+                            fn_decl.output.span(),
+                            format!(
+                                "expected `{}` because of this return type",
+                                fn_decl.output,
+                            ),
+                        );
+                    },
+                    true,
+                );
+            } else {
+                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
+            }
+        }
+        self.tcx.types.never
     }
 }
