@@ -65,7 +65,7 @@ soundness               |  soundness is a technical term in type theory. Roughly
 span                    |  a location in the user's source code, used for error reporting primarily. These are like a file-name/line-number/column tuple on steroids: they carry a start/end point, and also track macro expansions and compiler desugaring. All while being packed into a few bytes (really, it's an index into a table). See the Span datatype for more.
 substs                  |  the substitutions for a given generic type or item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`)
 tcx                     |  the "typing context", main data structure of the compiler ([see more](../ty.html))
-'tcx                    |  the lifetime of the currently active inference context ([see more](../ty.html))
+'tcx                    |  the lifetime of the allocation arena ([see more](../ty.html))
 trait reference         |  the name of a trait along with a suitable set of input type/lifetimes ([see more](../traits/goals-and-clauses.html#trait-ref))
 token                   |  the smallest unit of parsing. Tokens are produced after lexing ([see more](../the-parser.html)).
 [TLS]                   |  Thread-Local Storage. Variables may be defined so that each thread has its own copy (rather than all threads sharing the variable). This has some interactions with LLVM. Not all platforms support TLS.
