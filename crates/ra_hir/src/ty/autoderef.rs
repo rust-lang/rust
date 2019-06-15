@@ -7,7 +7,7 @@ use std::iter::successors;
 
 use log::{info, warn};
 
-use crate::{HirDatabase, Name, Resolver};
+use crate::{HirDatabase, Name, Resolver, HasGenericParams};
 use super::{traits::Solution, Ty, Canonical};
 
 pub(crate) fn autoderef<'a>(
@@ -42,7 +42,12 @@ fn deref_by_trait(
     };
     let target = deref_trait.associated_type_by_name(db, Name::target())?;
 
-    // FIXME we should check that Deref has no type parameters, because we assume it below
+    if target.generic_params(db).count_params_including_parent() != 1 {
+        // the Target type + Deref trait should only have one generic parameter,
+        // namely Deref's Self type
+        return None;
+    }
+
     // FIXME make the Canonical handling nicer
 
     let projection = super::traits::ProjectionPredicate {
