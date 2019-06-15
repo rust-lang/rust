@@ -633,6 +633,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.types.never
     }
 
+    pub(super) fn check_return_expr(&self, return_expr: &'tcx hir::Expr) {
+        let ret_coercion =
+            self.ret_coercion
+                .as_ref()
+                .unwrap_or_else(|| span_bug!(return_expr.span,
+                                             "check_return_expr called outside fn body"));
+
+        let ret_ty = ret_coercion.borrow().expected_ty();
+        let return_expr_ty = self.check_expr_with_hint(return_expr, ret_ty.clone());
+        ret_coercion.borrow_mut()
+                    .coerce(self,
+                            &self.cause(return_expr.span,
+                                        ObligationCauseCode::ReturnType(return_expr.hir_id)),
+                            return_expr,
+                            return_expr_ty);
+    }
+
     /// Type check assignment expression `expr` of form `lhs = rhs`.
     /// The expected type is `()` and is passsed to the function for the purposes of diagnostics.
     fn check_expr_assign(
