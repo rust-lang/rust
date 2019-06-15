@@ -134,7 +134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // }
             // ```
             //
-            // cc #46688
+            // See issue #46688.
             def_bm = ty::BindByValue(hir::MutImmutable);
         }
 
@@ -152,7 +152,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = self.node_ty(lt.hir_id);
 
                 // Byte string patterns behave the same way as array patterns
-                // They can denote both statically and dynamically sized byte arrays
+                // They can denote both statically and dynamically-sized byte arrays.
                 let mut pat_ty = ty;
                 if let hir::ExprKind::Lit(ref lt) = lt.node {
                     if let ast::LitKind::ByteStr(_) = lt.node {
@@ -166,7 +166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                // somewhat surprising: in this case, the subtyping
+                // Somewhat surprising: in this case, the subtyping
                 // relation goes the opposite way as the other
                 // cases. Actually what we really want is not a subtyping
                 // relation at all but rather that there exists a LUB (so
@@ -177,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //
                 //     &'static str <: expected
                 //
-                // that's equivalent to there existing a LUB.
+                // then that's equivalent to there existing a LUB.
                 if let Some(mut err) = self.demand_suptype_diag(pat.span, expected, pat_ty) {
                     err.emit_unless(discrim_span
                         .filter(|&s| s.is_compiler_desugaring(CompilerDesugaringKind::IfTemporary))
@@ -230,7 +230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // it to type the entire expression.
                 let common_type = self.resolve_vars_if_possible(&lhs_ty);
 
-                // subtyping doesn't matter here, as the value is some kind of scalar
+                // Subtyping doesn't matter here, as the value is some kind of scalar.
                 self.demand_eqtype_pat(pat.span, expected, lhs_ty, discrim_span);
                 self.demand_eqtype_pat(pat.span, expected, rhs_ty, discrim_span);
                 common_type
@@ -250,8 +250,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let local_ty = self.local_ty(pat.span, pat.hir_id).decl_ty;
                 match bm {
                     ty::BindByReference(mutbl) => {
-                        // if the binding is like
-                        //    ref x | ref const x | ref mut x
+                        // If the binding is like
+                        //     ref x | ref const x | ref mut x
                         // then `x` is assigned a value of type `&M T` where M is the mutability
                         // and T is the expected type.
                         let region_var = self.next_region_var(infer::PatternRegion(pat.span));
@@ -263,16 +263,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // an explanation.
                         self.demand_eqtype_pat(pat.span, region_ty, local_ty, discrim_span);
                     }
-                    // otherwise the type of x is the expected type T
+                    // Otherwise, the type of x is the expected type `T`.
                     ty::BindByValue(_) => {
-                        // As above, `T <: typeof(x)` is required but we
+                        // As above, `T <: typeof(x)` is required, but we
                         // use equality, see (*) below.
                         self.demand_eqtype_pat(pat.span, expected, local_ty, discrim_span);
                     }
                 }
 
-                // if there are multiple arms, make sure they all agree on
-                // what the type of the binding `x` ought to be
+                // If there are multiple arms, make sure they all agree on
+                // what the type of the binding `x` ought to be.
                 if var_id != pat.hir_id {
                     let vt = self.local_ty(pat.span, var_id).decl_ty;
                     self.demand_eqtype_pat(pat.span, vt, local_ty, discrim_span);
@@ -880,7 +880,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 // possibly incorrect trailing `;` in the else arm
                 remove_semicolon = self.could_remove_semicolon(block, then_ty);
                 stmt.span
-            } else {  // empty block, point at its entirety
+            } else { // empty block; point at its entirety
                 // Avoid overlapping spans that aren't as readable:
                 // ```
                 // 2 |        let x = if true {
@@ -917,7 +917,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             else_expr.span
         };
 
-        // Compute `Span` of `then` part of `if`-expression:
+        // Compute `Span` of `then` part of `if`-expression.
         let then_sp = if let ExprKind::Block(block, _) = &then_expr.node {
             if let Some(expr) = &block.expr {
                 expr.span
@@ -925,11 +925,11 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 // possibly incorrect trailing `;` in the else arm
                 remove_semicolon = remove_semicolon.or(self.could_remove_semicolon(block, else_ty));
                 stmt.span
-            } else {  // empty block, point at its entirety
-                outer_sp = None;  // same as in `error_sp`, cleanup output
+            } else { // empty block; point at its entirety
+                outer_sp = None;  // same as in `error_sp`; cleanup output
                 then_expr.span
             }
-        } else {  // shouldn't happen unless the parser has done something weird
+        } else { // shouldn't happen unless the parser has done something weird
             then_expr.span
         };
 
