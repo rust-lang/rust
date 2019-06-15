@@ -34,7 +34,66 @@ use rustc::ty::subst::InternalSubsts;
 use rustc::traits::{self, ObligationCauseCode};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(super) fn check_expr_kind(
+    /// Invariant:
+    /// If an expression has any sub-expressions that result in a type error,
+    /// inspecting that expression's type with `ty.references_error()` will return
+    /// true. Likewise, if an expression is known to diverge, inspecting its
+    /// type with `ty::type_is_bot` will return true (n.b.: since Rust is
+    /// strict, _|_ can appear in the type of an expression that does not,
+    /// itself, diverge: for example, fn() -> _|_.)
+    /// Note that inspecting a type's structure *directly* may expose the fact
+    /// that there are actually multiple representations for `Error`, so avoid
+    /// that when err needs to be handled differently.
+    pub(super) fn check_expr_with_expectation_and_needs(
+        &self,
+        expr: &'tcx hir::Expr,
+        expected: Expectation<'tcx>,
+        needs: Needs,
+    ) -> Ty<'tcx> {
+        debug!(">> type-checking: expr={:?} expected={:?}",
+               expr, expected);
+
+        // Warn for expressions after diverging siblings.
+        self.warn_if_unreachable(expr.hir_id, expr.span, "expression");
+
+        // Hide the outer diverging and has_errors flags.
+        let old_diverges = self.diverges.get();
+        let old_has_errors = self.has_errors.get();
+        self.diverges.set(Diverges::Maybe);
+        self.has_errors.set(false);
+
+        let ty = self.check_expr_kind(expr, expected, needs);
+
+        // Warn for non-block expressions with diverging children.
+        match expr.node {
+            ExprKind::Block(..) |
+            ExprKind::Loop(..) | ExprKind::While(..) |
+            ExprKind::Match(..) => {}
+
+            _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression")
+        }
+
+        // Any expression that produces a value of type `!` must have diverged
+        if ty.is_never() {
+            self.diverges.set(self.diverges.get() | Diverges::Always);
+        }
+
+        // Record the type, which applies it effects.
+        // We need to do this after the warning above, so that
+        // we don't warn for the diverging expression itself.
+        self.write_ty(expr.hir_id, ty);
+
+        // Combine the diverging and has_error flags.
+        self.diverges.set(self.diverges.get() | old_diverges);
+        self.has_errors.set(self.has_errors.get() | old_has_errors);
+
+        debug!("type of {} is...", self.tcx.hir().hir_to_string(expr.hir_id));
+        debug!("... {:?}, expected is {:?}", ty, expected);
+
+        ty
+    }
+
+    fn check_expr_kind(
         &self,
         expr: &'tcx hir::Expr,
         expected: Expectation<'tcx>,
