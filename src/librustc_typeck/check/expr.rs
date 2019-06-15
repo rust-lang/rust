@@ -125,35 +125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_with_expectation(e, expected)
             }
             ExprKind::Array(ref args) => {
-                let uty = expected.to_option(self).and_then(|uty| {
-                    match uty.sty {
-                        ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
-                        _ => None
-                    }
-                });
-
-                let element_ty = if !args.is_empty() {
-                    let coerce_to = uty.unwrap_or_else(|| {
-                        self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
-                            span: expr.span,
-                        })
-                    });
-                    let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
-                    assert_eq!(self.diverges.get(), Diverges::Maybe);
-                    for e in args {
-                        let e_ty = self.check_expr_with_hint(e, coerce_to);
-                        let cause = self.misc(e.span);
-                        coerce.coerce(self, &cause, e, e_ty);
-                    }
-                    coerce.complete(self)
-                } else {
-                    self.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::TypeInference,
-                        span: expr.span,
-                    })
-                };
-                tcx.mk_array(element_ty, args.len() as u64)
+                self.check_expr_array(args, expected, expr)
             }
             ExprKind::Repeat(ref element, ref count) => {
                 let count_def_id = tcx.hir().local_def_id_from_hir_id(count.hir_id);
@@ -814,5 +786,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    fn check_expr_array(
+        &self,
+        args: &'tcx [hir::Expr],
+        expected: Expectation<'tcx>,
+        expr: &'tcx hir::Expr
+    ) -> Ty<'tcx> {
+        let uty = expected.to_option(self).and_then(|uty| {
+            match uty.sty {
+                ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
+                _ => None
+            }
+        });
+
+        let element_ty = if !args.is_empty() {
+            let coerce_to = uty.unwrap_or_else(|| {
+                self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span: expr.span,
+                })
+            });
+            let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
+            assert_eq!(self.diverges.get(), Diverges::Maybe);
+            for e in args {
+                let e_ty = self.check_expr_with_hint(e, coerce_to);
+                let cause = self.misc(e.span);
+                coerce.coerce(self, &cause, e, e_ty);
+            }
+            coerce.complete(self)
+        } else {
+            self.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::TypeInference,
+                span: expr.span,
+            })
+        };
+        self.tcx.mk_array(element_ty, args.len() as u64)
     }
 }
