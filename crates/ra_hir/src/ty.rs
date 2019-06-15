@@ -474,6 +474,17 @@ impl Ty {
             _ => None,
         }
     }
+
+    /// Shifts up `Ty::Bound` vars by `n`.
+    pub fn shift_bound_vars(self, n: i32) -> Ty {
+        self.fold(&mut |ty| match ty {
+            Ty::Bound(idx) => {
+                assert!(idx as i32 >= -n);
+                Ty::Bound((idx as i32 + n) as u32)
+            }
+            ty => ty,
+        })
+    }
 }
 
 impl HirDisplay for &Ty {

@@ -2766,6 +2766,37 @@ fn test(s: Arc<S>) {
     assert_eq!(t, "(S, u128)");
 }
 
+#[test]
+fn deref_trait_with_inference_var() {
+    // std::env::set_var("RUST_BACKTRACE", "1");
+    let t = type_at(
+        r#"
+//- /main.rs
+#[lang = "deref"]
+trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct Arc<T>;
+fn new_arc<T>() -> Arc<T> {}
+impl<T> Deref for Arc<T> {
+    type Target = T;
+}
+
+struct S;
+fn foo(a: Arc<S>) {}
+
+fn test() {
+    let a = new_arc();
+    let b = (*a)<|>;
+    foo(a);
+}
+"#,
+    );
+    assert_eq!(t, "S");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();

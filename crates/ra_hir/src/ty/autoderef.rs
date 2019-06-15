@@ -5,7 +5,7 @@
 
 use std::iter::successors;
 
-use log::info;
+use log::{info, warn};
 
 use crate::{HirDatabase, Name, Resolver};
 use super::{traits::Solution, Ty, Canonical};
@@ -43,15 +43,13 @@ fn deref_by_trait(
     let target = deref_trait.associated_type_by_name(db, Name::target())?;
 
     // FIXME we should check that Deref has no type parameters, because we assume it below
-
     // FIXME make the Canonical handling nicer
-    // TODO shift inference variables in ty
 
     let projection = super::traits::ProjectionPredicate {
         ty: Ty::Bound(0),
         projection_ty: super::ProjectionTy {
             associated_ty: target,
-            parameters: vec![ty.value.clone()].into(),
+            parameters: vec![ty.value.clone().shift_bound_vars(1)].into(),
         },
     };
 
@@ -61,10 +59,26 @@ fn deref_by_trait(
 
     match &solution {
         Solution::Unique(vars) => {
+            // FIXME: vars may contain solutions for any inference variables
+            // that happened to be inside ty. To correctly handle these, we
+            // would have to pass the solution up to the inference context, but
+            // that requires a larger refactoring (especially if the deref
+            // happens during method resolution). So for the moment, we just
+            // check that we're not in the situation we're we would actually
+            // need to handle the values of the additional variables, i.e.
+            // they're just being 'passed through'. In the 'standard' case where
+            // we have `impl<T> Deref for Foo<T> { Target = T }`, that should be
+            // the case.
+            for i in 1..vars.0.num_vars {
+                if vars.0.value[i] != Ty::Bound((i - 1) as u32) {
+                    warn!("complex solution for derefing {:?}: {:?}, ignoring", ty, solution);
+                    return None;
+                }
+            }
             Some(Canonical { value: vars.0.value[0].clone(), num_vars: vars.0.num_vars })
         }
         Solution::Ambig(_) => {
-            info!("Ambiguous solution for deref: {:?}", solution);
+            info!("Ambiguous solution for derefing {:?}: {:?}", ty, solution);
             None
         }
     }
