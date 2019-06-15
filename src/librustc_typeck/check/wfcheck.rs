@@ -425,80 +425,87 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
 
     for_item(tcx, item).with_fcx(|fcx, _| {
         check_where_clauses(tcx, fcx, item.span, trait_def_id, None);
-
-        // Type-check associated type defaults (if there are any):
-        // Assuming the defaults are used, check that all predicates (bounds on
-        // the assoc type and where clauses on the trait) hold.
-
-        let substs = InternalSubsts::identity_for_item(tcx, trait_def_id);
-
-        // For all assoc. types with defaults, build a map from
-        // `<Self as Trait<...>>::Assoc` to the default type.
-        let map = tcx.associated_items(trait_def_id)
-            .filter_map(|item| {
-                if item.kind == ty::AssocKind::Type && item.defaultness.has_value() {
-                    // `<Self as Trait<...>>::Assoc`
-                    let proj = ty::ProjectionTy {
-                        substs,
-                        item_def_id: item.def_id,
-                    };
-                    let default_ty = tcx.type_of(item.def_id);
-                    debug!("assoc. type default mapping: {} -> {}", proj, default_ty);
-                    Some((proj, default_ty))
-                } else {
-                    None
-                }
-            })
-            .collect::<FxHashMap<_, _>>();
-
-        struct DefaultNormalizer<'tcx> {
-            tcx: TyCtxt<'tcx>,
-            map: FxHashMap<ty::ProjectionTy<'tcx>, Ty<'tcx>>,
-        }
-
-        impl<'tcx> ty::fold::TypeFolder<'tcx> for DefaultNormalizer<'tcx> {
-            fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
-                self.tcx
-            }
-
-            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-                match t.sty {
-                    ty::Projection(proj_ty) => {
-                        if let Some(default) = self.map.get(&proj_ty) {
-                            default
-                        } else {
-                            t.super_fold_with(self)
-                        }
-                    }
-                    _ => t.super_fold_with(self),
-                }
-            }
-        }
-
-        // Now take all predicates defined on the trait, replace any mention of
-        // the assoc. types with their default, and prove them.
-        // We only consider predicates that directly mention the assoc. type.
-        let mut norm = DefaultNormalizer { tcx, map };
-        let predicates = fcx.tcx.predicates_of(trait_def_id);
-        for &(orig_pred, span) in predicates.predicates.iter() {
-            let pred = orig_pred.fold_with(&mut norm);
-            if pred != orig_pred {
-                // Mentions one of the defaulted assoc. types
-                debug!("default suitability check: proving predicate: {} -> {}", orig_pred, pred);
-                let pred = fcx.normalize_associated_types_in(span, &pred);
-                let cause = traits::ObligationCause::new(
-                    span,
-                    fcx.body_id,
-                    traits::ItemObligation(trait_def_id),
-                );
-                let obligation = traits::Obligation::new(cause, fcx.param_env, pred);
-
-                fcx.register_predicate(obligation);
-            }
-        }
+        check_associated_type_defaults(fcx, trait_def_id);
 
         vec![]
     });
+}
+
+/// Checks all associated type defaults of trait `trait_def_id`.
+///
+/// Assuming the defaults are used, check that all predicates (bounds on the
+/// assoc type and where clauses on the trait) hold.
+fn check_associated_type_defaults(
+    fcx: &FnCtxt<'_, '_>,
+    trait_def_id: DefId,
+) {
+    let tcx = fcx.tcx;
+    let substs = InternalSubsts::identity_for_item(tcx, trait_def_id);
+
+    // For all assoc. types with defaults, build a map from
+    // `<Self as Trait<...>>::Assoc` to the default type.
+    let map = tcx.associated_items(trait_def_id)
+        .filter_map(|item| {
+            if item.kind == ty::AssocKind::Type && item.defaultness.has_value() {
+                // `<Self as Trait<...>>::Assoc`
+                let proj = ty::ProjectionTy {
+                    substs,
+                    item_def_id: item.def_id,
+                };
+                let default_ty = tcx.type_of(item.def_id);
+                debug!("assoc. type default mapping: {} -> {}", proj, default_ty);
+                Some((proj, default_ty))
+            } else {
+                None
+            }
+        })
+        .collect::<FxHashMap<_, _>>();
+
+    struct DefaultNormalizer<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        map: FxHashMap<ty::ProjectionTy<'tcx>, Ty<'tcx>>,
+    }
+
+    impl<'tcx> ty::fold::TypeFolder<'tcx> for DefaultNormalizer<'tcx> {
+        fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+            match t.sty {
+                ty::Projection(proj_ty) => {
+                    if let Some(default) = self.map.get(&proj_ty) {
+                        default
+                    } else {
+                        t.super_fold_with(self)
+                    }
+                }
+                _ => t.super_fold_with(self),
+            }
+        }
+    }
+
+    // Now take all predicates defined on the trait, replace any mention of
+    // the assoc. types with their default, and prove them.
+    // We only consider predicates that directly mention the assoc. type.
+    let mut norm = DefaultNormalizer { tcx, map };
+    let predicates = fcx.tcx.predicates_of(trait_def_id);
+    for &(orig_pred, span) in predicates.predicates.iter() {
+        let pred = orig_pred.fold_with(&mut norm);
+        if pred != orig_pred {
+            // Mentions one of the defaulted assoc. types
+            debug!("default suitability check: proving predicate: {} -> {}", orig_pred, pred);
+            let pred = fcx.normalize_associated_types_in(span, &pred);
+            let cause = traits::ObligationCause::new(
+                span,
+                fcx.body_id,
+                traits::ItemObligation(trait_def_id),
+            );
+            let obligation = traits::Obligation::new(cause, fcx.param_env, pred);
+
+            fcx.register_predicate(obligation);
+        }
+    }
 }
 
 fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
