@@ -298,7 +298,6 @@
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
 #![feature(thread_local)]
-#![feature(todo_macro)]
 #![feature(toowned_clone_into)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
