@@ -103,10 +103,6 @@ fn main() {
 // bb10: {                              // `else` block - first time
 //     _9 = (*_6);
 //     StorageDead(_10);
-//     FakeRead(ForMatchGuard, _3);
-//     FakeRead(ForMatchGuard, _4);
-//     FakeRead(ForGuardBinding, _6);
-//     FakeRead(ForGuardBinding, _8);
 //     switchInt(move _9) -> [false: bb16, otherwise: bb15];
 // }
 // bb11: {                              // `return 3` - first time
@@ -128,6 +124,10 @@ fn main() {
 // }
 // bb15: {
 //     StorageDead(_9);
+//     FakeRead(ForMatchGuard, _3);
+//     FakeRead(ForMatchGuard, _4);
+//     FakeRead(ForGuardBinding, _6);
+//     FakeRead(ForGuardBinding, _8);
 //     StorageLive(_5);
 //     _5 = (_2.1: bool);
 //     StorageLive(_7);
@@ -159,10 +159,6 @@ fn main() {
 // bb19: {                              // `else` block - second time
 //     _12 = (*_6);
 //     StorageDead(_13);
-//     FakeRead(ForMatchGuard, _3);
-//     FakeRead(ForMatchGuard, _4);
-//     FakeRead(ForGuardBinding, _6);
-//     FakeRead(ForGuardBinding, _8);
 //     switchInt(move _12) -> [false: bb22, otherwise: bb21];
 // }
 // bb20: {
@@ -175,6 +171,10 @@ fn main() {
 // }
 // bb21: {                              // bindings for arm 1
 //     StorageDead(_12);
+//     FakeRead(ForMatchGuard, _3);
+//     FakeRead(ForMatchGuard, _4);
+//     FakeRead(ForGuardBinding, _6);
+//     FakeRead(ForGuardBinding, _8);
 //     StorageLive(_5);
 //     _5 = (_2.0: bool);
 //     StorageLive(_7);

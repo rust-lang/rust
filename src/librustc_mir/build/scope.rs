@@ -83,7 +83,7 @@ should go to.
 */
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use crate::hair::{ExprRef, LintLevel};
+use crate::hair::{Expr, ExprRef, LintLevel};
 use rustc::middle::region;
 use rustc::ty::Ty;
 use rustc::hir;
@@ -829,6 +829,78 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Other
     // =====
+    /// Branch based on a boolean condition.
+    ///
+    /// This is a special case because the temporary for the condition needs to
+    /// be dropped on both the true and the false arm.
+    pub fn test_bool(
+        &mut self,
+        mut block: BasicBlock,
+        condition: Expr<'tcx>,
+        source_info: SourceInfo,
+    ) -> (BasicBlock, BasicBlock) {
+        let cond = unpack!(block = self.as_local_operand(block, condition));
+        let true_block = self.cfg.start_new_block();
+        let false_block = self.cfg.start_new_block();
+        let term = TerminatorKind::if_(
+            self.hir.tcx(),
+            cond.clone(),
+            true_block,
+            false_block,
+        );
+        self.cfg.terminate(block, source_info, term);
+
+        match cond {
+            // Don't try to drop a constant
+            Operand::Constant(_) => (),
+            // If constants and statics, we don't generate StorageLive for this
+            // temporary, so don't try to generate StorageDead for it either.
+            _ if self.local_scope().is_none() => (),
+            Operand::Copy(Place::Base(PlaceBase::Local(cond_temp)))
+            | Operand::Move(Place::Base(PlaceBase::Local(cond_temp))) => {
+                // Manually drop the condition on both branches.
+                let top_scope = self.scopes.scopes.last_mut().unwrap();
+                let top_drop_data = top_scope.drops.pop().unwrap();
+
+                match top_drop_data.kind {
+                    DropKind::Value { .. } => {
+                        bug!("Drop scheduled on top of condition variable")
+                    }
+                    DropKind::Storage => {
+                        // Drop the storage for both value and storage drops.
+                        // Only temps and vars need their storage dead.
+                        match top_drop_data.location {
+                            Place::Base(PlaceBase::Local(index)) => {
+                                let source_info = top_scope.source_info(top_drop_data.span);
+                                assert_eq!(index, cond_temp, "Drop scheduled on top of condition");
+                                self.cfg.push(
+                                    true_block,
+                                    Statement {
+                                        source_info,
+                                        kind: StatementKind::StorageDead(index)
+                                    },
+                                );
+                                self.cfg.push(
+                                    false_block,
+                                    Statement {
+                                        source_info,
+                                        kind: StatementKind::StorageDead(index)
+                                    },
+                                );
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+                }
+
+                top_scope.invalidate_cache(true, self.is_generator, true);
+            }
+            _ => bug!("Expected as_local_operand to produce a temporary"),
+        }
+
+        (true_block, false_block)
+    }
+
     /// Creates a path that performs all required cleanup for unwinding.
     ///
     /// This path terminates in Resume. Returns the start of the path.
@@ -941,57 +1013,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         top_scope.drops.clear();
         top_scope.invalidate_cache(false, self.is_generator, true);
-    }
-
-    /// Drops the single variable provided
-    ///
-    /// * The scope must be the top scope.
-    /// * The variable must be in that scope.
-    /// * The variable must be at the top of that scope: it's the next thing
-    ///   scheduled to drop.
-    /// * The drop must be of `DropKind::Storage`.
-    ///
-    /// This is used for the boolean holding the result of the match guard. We
-    /// do this because:
-    ///
-    /// * The boolean is different for each pattern
-    /// * There is only one exit for the arm scope
-    /// * The guard expression scope is too short, it ends just before the
-    ///   boolean is tested.
-    pub(crate) fn pop_variable(
-        &mut self,
-        block: BasicBlock,
-        region_scope: region::Scope,
-        variable: Local,
-    ) {
-        let top_scope = self.scopes.scopes.last_mut().unwrap();
-
-        assert_eq!(top_scope.region_scope, region_scope);
-
-        let top_drop_data = top_scope.drops.pop().unwrap();
-
-        match top_drop_data.kind {
-            DropKind::Value { .. } => {
-                bug!("Should not be calling pop_top_variable on non-copy type!")
-            }
-            DropKind::Storage => {
-                // Drop the storage for both value and storage drops.
-                // Only temps and vars need their storage dead.
-                match top_drop_data.location {
-                    Place::Base(PlaceBase::Local(index)) => {
-                        let source_info = top_scope.source_info(top_drop_data.span);
-                        assert_eq!(index, variable);
-                        self.cfg.push(block, Statement {
-                            source_info,
-                            kind: StatementKind::StorageDead(index)
-                        });
-                    }
-                    _ => unreachable!(),
-                }
-            }
-        }
-
-        top_scope.invalidate_cache(true, self.is_generator, true);
     }
 }
 
