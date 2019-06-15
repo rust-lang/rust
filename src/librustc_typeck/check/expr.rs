@@ -131,34 +131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_repeat(element, count, expected, expr)
             }
             ExprKind::Tup(ref elts) => {
-                let flds = expected.only_has_type(self).and_then(|ty| {
-                    let ty = self.resolve_type_vars_with_obligations(ty);
-                    match ty.sty {
-                        ty::Tuple(ref flds) => Some(&flds[..]),
-                        _ => None
-                    }
-                });
-
-                let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| {
-                    let t = match flds {
-                        Some(ref fs) if i < fs.len() => {
-                            let ety = fs[i].expect_ty();
-                            self.check_expr_coercable_to_type(&e, ety);
-                            ety
-                        }
-                        _ => {
-                            self.check_expr_with_expectation(&e, NoExpectation)
-                        }
-                    };
-                    t
-                });
-                let tuple = tcx.mk_tup(elt_ts_iter);
-                if tuple.references_error() {
-                    tcx.types.err
-                } else {
-                    self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
-                    tuple
-                }
+                self.check_expr_tuple(elts, expected, expr)
             }
             ExprKind::Struct(ref qpath, ref fields, ref base_expr) => {
                 self.check_expr_struct(expr, expected, qpath, fields, base_expr)
@@ -833,6 +806,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tcx.mk_ty(ty::Array(t, count))
         } else {
             tcx.types.err
+        }
+    }
+
+    fn check_expr_tuple(
+        &self,
+        elts: &'tcx [hir::Expr],
+        expected: Expectation<'tcx>,
+        expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
+        let flds = expected.only_has_type(self).and_then(|ty| {
+            let ty = self.resolve_type_vars_with_obligations(ty);
+            match ty.sty {
+                ty::Tuple(ref flds) => Some(&flds[..]),
+                _ => None
+            }
+        });
+
+        let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| {
+            let t = match flds {
+                Some(ref fs) if i < fs.len() => {
+                    let ety = fs[i].expect_ty();
+                    self.check_expr_coercable_to_type(&e, ety);
+                    ety
+                }
+                _ => {
+                    self.check_expr_with_expectation(&e, NoExpectation)
+                }
+            };
+            t
+        });
+        let tuple = self.tcx.mk_tup(elt_ts_iter);
+        if tuple.references_error() {
+            self.tcx.types.err
+        } else {
+            self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
+            tuple
         }
     }
 }
