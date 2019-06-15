@@ -94,7 +94,7 @@ use std::collections::hash_map::Entry;
 use std::mem;
 
 #[derive(Debug)]
-struct Scope<'tcx> {
+struct Scope {
     /// The source scope this scope was created in.
     source_scope: SourceScope,
 
@@ -121,7 +121,7 @@ struct Scope<'tcx> {
     /// out empty but grows as variables are declared during the
     /// building process. This is a stack, so we always drop from the
     /// end of the vector (top of the stack) first.
-    drops: Vec<DropData<'tcx>>,
+    drops: Vec<DropData>,
 
     /// The cache for drop chain on “normal” exit into a particular BasicBlock.
     cached_exits: FxHashMap<(BasicBlock, region::Scope), BasicBlock>,
@@ -135,18 +135,18 @@ struct Scope<'tcx> {
 
 #[derive(Debug, Default)]
 pub struct Scopes<'tcx> {
-    scopes: Vec<Scope<'tcx>>,
+    scopes: Vec<Scope>,
     /// The current set of breakable scopes. See module comment for more details.
     breakable_scopes: Vec<BreakableScope<'tcx>>,
 }
 
 #[derive(Debug)]
-struct DropData<'tcx> {
+struct DropData {
     /// span where drop obligation was incurred (typically where place was declared)
     span: Span,
 
-    /// place to drop
-    location: Place<'tcx>,
+    /// local to drop
+    local: Local,
 
     /// Whether this is a value Drop or a StorageDead.
     kind: DropKind,
@@ -223,7 +223,7 @@ impl CachedBlock {
     }
 }
 
-impl<'tcx> Scope<'tcx> {
+impl Scope {
     /// Invalidates all the cached blocks in the scope.
     ///
     /// Should always be run for all inner scopes when a drop is pushed into some scope enclosing a
@@ -285,7 +285,7 @@ impl<'tcx> Scopes<'tcx> {
     fn pop_scope(
         &mut self,
         region_scope: (region::Scope, SourceInfo),
-    ) -> (Scope<'tcx>, Option<BasicBlock>) {
+    ) -> (Scope, Option<BasicBlock>) {
         let scope = self.scopes.pop().unwrap();
         assert_eq!(scope.region_scope, region_scope.0);
         let unwind_to = self.scopes.last()
@@ -343,11 +343,11 @@ impl<'tcx> Scopes<'tcx> {
         scope_count
     }
 
-    fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item=&mut Scope<'tcx>> + '_ {
+    fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item=&mut Scope> + '_ {
         self.scopes.iter_mut().rev()
     }
 
-    fn top_scopes(&mut self, count: usize) -> impl DoubleEndedIterator<Item=&mut Scope<'tcx>> + '_ {
+    fn top_scopes(&mut self, count: usize) -> impl DoubleEndedIterator<Item=&mut Scope> + '_ {
         let len = self.len();
         self.scopes[len - count..].iter_mut()
     }
@@ -717,11 +717,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         span: Span,
         region_scope: region::Scope,
-        place: &Place<'tcx>,
+        local: Local,
         place_ty: Ty<'tcx>,
     ) {
-        self.schedule_drop(span, region_scope, place, place_ty, DropKind::Storage);
-        self.schedule_drop(span, region_scope, place, place_ty, DropKind::Value);
+        self.schedule_drop(span, region_scope, local, place_ty, DropKind::Storage);
+        self.schedule_drop(span, region_scope, local, place_ty, DropKind::Value);
     }
 
     /// Indicates that `place` should be dropped on exit from
@@ -733,7 +733,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         span: Span,
         region_scope: region::Scope,
-        place: &Place<'tcx>,
+        local: Local,
         place_ty: Ty<'tcx>,
         drop_kind: DropKind,
     ) {
@@ -741,17 +741,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match drop_kind {
             DropKind::Value => if !needs_drop { return },
             DropKind::Storage => {
-                match *place {
-                    Place::Base(PlaceBase::Local(index)) => if index.index() <= self.arg_count {
-                        span_bug!(
-                            span, "`schedule_drop` called with index {} and arg_count {}",
-                            index.index(),
-                            self.arg_count,
-                        )
-                    },
-                    _ => span_bug!(
-                        span, "`schedule_drop` called with non-`Local` place {:?}", place
-                    ),
+                if local.index() <= self.arg_count {
+                    span_bug!(
+                        span, "`schedule_drop` called with local {:?} and arg_count {}",
+                        local,
+                        self.arg_count,
+                    )
                 }
             }
         }
@@ -817,14 +812,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 scope.drops.push(DropData {
                     span: scope_end,
-                    location: place.clone(),
+                    local,
                     kind: drop_kind,
                     cached_block: CachedBlock::default(),
                 });
                 return;
             }
         }
-        span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, place);
+        span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, local);
     }
 
     // Other
@@ -867,29 +862,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         bug!("Drop scheduled on top of condition variable")
                     }
                     DropKind::Storage => {
-                        // Drop the storage for both value and storage drops.
-                        // Only temps and vars need their storage dead.
-                        match top_drop_data.location {
-                            Place::Base(PlaceBase::Local(index)) => {
-                                let source_info = top_scope.source_info(top_drop_data.span);
-                                assert_eq!(index, cond_temp, "Drop scheduled on top of condition");
-                                self.cfg.push(
-                                    true_block,
-                                    Statement {
-                                        source_info,
-                                        kind: StatementKind::StorageDead(index)
-                                    },
-                                );
-                                self.cfg.push(
-                                    false_block,
-                                    Statement {
-                                        source_info,
-                                        kind: StatementKind::StorageDead(index)
-                                    },
-                                );
-                            }
-                            _ => unreachable!(),
-                        }
+                        let source_info = top_scope.source_info(top_drop_data.span);
+                        let local = top_drop_data.local;
+                        assert_eq!(local, cond_temp, "Drop scheduled on top of condition");
+                        self.cfg.push(
+                            true_block,
+                            Statement {
+                                source_info,
+                                kind: StatementKind::StorageDead(local)
+                            },
+                        );
+                        self.cfg.push(
+                            false_block,
+                            Statement {
+                                source_info,
+                                kind: StatementKind::StorageDead(local)
+                            },
+                        );
                     }
                 }
 
@@ -1020,7 +1009,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 fn build_scope_drops<'tcx>(
     cfg: &mut CFG<'tcx>,
     is_generator: bool,
-    scope: &Scope<'tcx>,
+    scope: &Scope,
     mut block: BasicBlock,
     last_unwind_to: BasicBlock,
     arg_count: usize,
@@ -1050,6 +1039,7 @@ fn build_scope_drops<'tcx>(
     for drop_idx in (0..scope.drops.len()).rev() {
         let drop_data = &scope.drops[drop_idx];
         let source_info = scope.source_info(drop_data.span);
+        let local = drop_data.local;
         match drop_data.kind {
             DropKind::Value => {
                 let unwind_to = get_unwind_to(scope, is_generator, drop_idx, generator_drop)
@@ -1057,32 +1047,27 @@ fn build_scope_drops<'tcx>(
 
                 let next = cfg.start_new_block();
                 cfg.terminate(block, source_info, TerminatorKind::Drop {
-                    location: drop_data.location.clone(),
+                    location: local.into(),
                     target: next,
                     unwind: Some(unwind_to)
                 });
                 block = next;
             }
             DropKind::Storage => {
-                // Drop the storage for both value and storage drops.
                 // Only temps and vars need their storage dead.
-                match drop_data.location {
-                    Place::Base(PlaceBase::Local(index)) if index.index() > arg_count => {
-                        cfg.push(block, Statement {
-                            source_info,
-                            kind: StatementKind::StorageDead(index)
-                        });
-                    }
-                    _ => unreachable!(),
-                }
+                assert!(local.index() > arg_count);
+                cfg.push(block, Statement {
+                    source_info,
+                    kind: StatementKind::StorageDead(local)
+                });
             }
         }
     }
     block.unit()
 }
 
-fn get_unwind_to<'tcx>(
-    scope: &Scope<'tcx>,
+fn get_unwind_to(
+    scope: &Scope,
     is_generator: bool,
     unwind_from: usize,
     generator_drop: bool,
@@ -1108,7 +1093,7 @@ fn get_unwind_to<'tcx>(
 
 fn build_diverge_scope<'tcx>(cfg: &mut CFG<'tcx>,
                              span: Span,
-                             scope: &mut Scope<'tcx>,
+                             scope: &mut Scope,
                              mut target: BasicBlock,
                              generator_drop: bool,
                              is_generator: bool)
@@ -1152,26 +1137,20 @@ fn build_diverge_scope<'tcx>(cfg: &mut CFG<'tcx>,
         // this is not what clang does.
         match drop_data.kind {
             DropKind::Storage if is_generator => {
-                // Only temps and vars need their storage dead.
-                match drop_data.location {
-                    Place::Base(PlaceBase::Local(index)) => {
-                        storage_deads.push(Statement {
-                            source_info: source_info(drop_data.span),
-                            kind: StatementKind::StorageDead(index)
-                        });
-                        if !target_built_by_us {
-                            // We cannot add statements to an existing block, so we create a new
-                            // block for our StorageDead statements.
-                            let block = cfg.start_new_cleanup_block();
-                            let source_info = SourceInfo { span: DUMMY_SP, scope: source_scope };
-                            cfg.terminate(block, source_info,
-                                          TerminatorKind::Goto { target: target });
-                            target = block;
-                            target_built_by_us = true;
-                        }
-                    }
-                    _ => unreachable!(),
-                };
+                storage_deads.push(Statement {
+                    source_info: source_info(drop_data.span),
+                    kind: StatementKind::StorageDead(drop_data.local)
+                });
+                if !target_built_by_us {
+                    // We cannot add statements to an existing block, so we create a new
+                    // block for our StorageDead statements.
+                    let block = cfg.start_new_cleanup_block();
+                    let source_info = SourceInfo { span: DUMMY_SP, scope: source_scope };
+                    cfg.terminate(block, source_info,
+                                    TerminatorKind::Goto { target: target });
+                    target = block;
+                    target_built_by_us = true;
+                }
                 *drop_data.cached_block.ref_mut(generator_drop) = Some(target);
             }
             DropKind::Storage => {}
@@ -1184,12 +1163,15 @@ fn build_diverge_scope<'tcx>(cfg: &mut CFG<'tcx>,
                 } else {
                     push_storage_deads(cfg, target, &mut storage_deads);
                     let block = cfg.start_new_cleanup_block();
-                    cfg.terminate(block, source_info(drop_data.span),
-                                  TerminatorKind::Drop {
-                                      location: drop_data.location.clone(),
-                                      target,
-                                      unwind: None
-                                  });
+                    cfg.terminate(
+                        block,
+                        source_info(drop_data.span),
+                        TerminatorKind::Drop {
+                            location: drop_data.local.into(),
+                            target,
+                            unwind: None
+                        },
+                    );
                     *cached_block = Some(block);
                     target_built_by_us = true;
                     block

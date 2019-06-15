@@ -809,7 +809,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
                 pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                argument_scope, &place, ty, DropKind::Value,
+                argument_scope, local, ty, DropKind::Value,
             );
 
             if let Some(pattern) = pattern {

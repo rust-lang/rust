@@ -531,11 +531,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 kind: StatementKind::StorageLive(local_id),
             },
         );
-        let place = Place::from(local_id);
         let var_ty = self.local_decls[local_id].ty;
         let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
-        self.schedule_drop(span, region_scope, &place, var_ty, DropKind::Storage);
-        place
+        self.schedule_drop(span, region_scope, local_id, var_ty, DropKind::Storage);
+        Place::Base(PlaceBase::Local(local_id))
     }
 
     pub fn schedule_drop_for_binding(&mut self, var: HirId, span: Span, for_guard: ForGuard) {
@@ -545,7 +544,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.schedule_drop(
             span,
             region_scope,
-            &Place::from(local_id),
+            local_id,
             var_ty,
             DropKind::Value,
         );

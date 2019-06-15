@@ -127,7 +127,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.schedule_drop_storage_and_value(
                         expr_span,
                         scope,
-                        &Place::from(result),
+                        result,
                         value.ty,
                     );
                 }
@@ -559,7 +559,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             this.schedule_drop_storage_and_value(
                 upvar_span,
                 temp_lifetime,
-                &Place::from(temp),
+                temp,
                 upvar_ty,
             );
         }
