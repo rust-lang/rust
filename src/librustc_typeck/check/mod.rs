@@ -3266,52 +3266,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expect_args
     }
 
-    // Checks a method call.
-    fn check_method_call(
-        &self,
-        expr: &'tcx hir::Expr,
-        segment: &hir::PathSegment,
-        span: Span,
-        args: &'tcx [hir::Expr],
-        expected: Expectation<'tcx>,
-        needs: Needs,
-    ) -> Ty<'tcx> {
-        let rcvr = &args[0];
-        let rcvr_t = self.check_expr_with_needs(&rcvr, needs);
-        // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
-
-        let method = match self.lookup_method(rcvr_t,
-                                              segment,
-                                              span,
-                                              expr,
-                                              rcvr) {
-            Ok(method) => {
-                self.write_method_call(expr.hir_id, method);
-                Ok(method)
-            }
-            Err(error) => {
-                if segment.ident.name != kw::Invalid {
-                    self.report_method_error(span,
-                                             rcvr_t,
-                                             segment.ident,
-                                             SelfSource::MethodCall(rcvr),
-                                             error,
-                                             Some(args));
-                }
-                Err(())
-            }
-        };
-
-        // Call the generic checker.
-        self.check_method_argument_types(span,
-                                         expr.span,
-                                         method,
-                                         &args[1..],
-                                         DontTupleArguments,
-                                         expected)
-    }
-
     // Check field access expressions
     fn check_field(
         &self,
