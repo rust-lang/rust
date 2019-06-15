@@ -17,7 +17,7 @@ fn main() -> Result<()> {
         Err(_) => ra_prof::Filter::disabled(),
     });
     log::info!("lifecycle: server started");
-    match ::std::panic::catch_unwind(main_inner) {
+    match std::panic::catch_unwind(main_inner) {
         Ok(res) => {
             log::info!("lifecycle: terminating process with {:?}", res);
             res

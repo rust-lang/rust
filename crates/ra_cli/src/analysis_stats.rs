@@ -1,7 +1,6 @@
 use std::{collections::HashSet, time::Instant, fmt::Write};
 
 use ra_db::SourceDatabase;
-use ra_batch::BatchDatabase;
 use ra_hir::{Crate, ModuleDef, Ty, ImplItem, HasSource};
 use ra_syntax::AstNode;
 
@@ -9,16 +8,17 @@ use crate::Result;
 
 pub fn run(verbose: bool, path: &str, only: Option<&str>) -> Result<()> {
     let db_load_time = Instant::now();
-    let (db, roots) = BatchDatabase::load_cargo(path)?;
+    let (host, roots) = ra_batch::load_cargo(path.as_ref())?;
+    let db = host.raw_database();
     println!("Database loaded, {} roots, {:?}", roots.len(), db_load_time.elapsed());
     let analysis_time = Instant::now();
     let mut num_crates = 0;
     let mut visited_modules = HashSet::new();
     let mut visit_queue = Vec::new();
     for root in roots {
-        for krate in Crate::source_root_crates(&db, root) {
+        for krate in Crate::source_root_crates(db, root) {
             num_crates += 1;
-            let module = krate.root_module(&db).expect("crate in source root without root module");
+            let module = krate.root_module(db).expect("crate in source root without root module");
             visit_queue.push(module);
         }
     }
@@ -27,17 +27,17 @@ pub fn run(verbose: bool, path: &str, only: Option<&str>) -> Result<()> {
     let mut funcs = Vec::new();
     while let Some(module) = visit_queue.pop() {
         if visited_modules.insert(module) {
-            visit_queue.extend(module.children(&db));
+            visit_queue.extend(module.children(db));
 
-            for decl in module.declarations(&db) {
+            for decl in module.declarations(db) {
                 num_decls += 1;
                 if let ModuleDef::Function(f) = decl {
                     funcs.push(f);
                 }
             }
 
-            for impl_block in module.impl_blocks(&db) {
-                for item in impl_block.items(&db) {
+            for impl_block in module.impl_blocks(db) {
+                for item in impl_block.items(db) {
                     num_decls += 1;
                     if let ImplItem::Method(f) = item {
                         funcs.push(f);
@@ -61,11 +61,11 @@ pub fn run(verbose: bool, path: &str, only: Option<&str>) -> Result<()> {
     let mut num_exprs_unknown = 0;
     let mut num_exprs_partially_unknown = 0;
     for f in funcs {
-        let name = f.name(&db);
+        let name = f.name(db);
         let mut msg = format!("processing: {}", name);
         if verbose {
-            let src = f.source(&db);
-            let original_file = src.file_id.original_file(&db);
+            let src = f.source(db);
+            let original_file = src.file_id.original_file(db);
             let path = db.file_relative_path(original_file);
             let syntax_range = src.ast.syntax().range();
             write!(msg, " ({:?} {})", path, syntax_range).unwrap();
@@ -76,8 +76,8 @@ pub fn run(verbose: bool, path: &str, only: Option<&str>) -> Result<()> {
                 continue;
             }
         }
-        let body = f.body(&db);
-        let inference_result = f.infer(&db);
+        let body = f.body(db);
+        let inference_result = f.infer(db);
         for (expr_id, _) in body.exprs() {
             let ty = &inference_result[expr_id];
             num_exprs += 1;
