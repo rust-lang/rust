@@ -127,8 +127,7 @@ fn initialize(
     sender.send(RawMessage::Response(resp)).unwrap();
     match receiver.recv() {
         Ok(RawMessage::Notification(n)) => {
-            n.cast::<Initialized>()
-                .map_err(|_| "expected initialized notification")?;
+            n.cast::<Initialized>().map_err(|_| "expected initialized notification")?;
         }
         _ => Err(format!("expected initialized notification"))?,
     }

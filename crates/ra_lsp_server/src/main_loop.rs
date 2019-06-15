@@ -399,8 +399,7 @@ fn on_notification(
         Ok(mut params) => {
             let uri = params.text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
-            let text =
-                params.content_changes.pop().ok_or_else(|| format!("empty changes"))?.text;
+            let text = params.content_changes.pop().ok_or_else(|| format!("empty changes"))?.text;
             state.vfs.write().change_file_overlay(path.as_path(), text);
             return Ok(());
         }
@@ -548,11 +547,7 @@ where
                         error: None,
                     }
                 } else {
-                    RawResponse::err(
-                        id,
-                        ErrorCode::InternalError as i32,
-                        e.to_string()
-                    )
+                    RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string())
                 }
             }
         },

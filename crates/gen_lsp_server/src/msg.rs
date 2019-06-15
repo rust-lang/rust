@@ -182,8 +182,7 @@ fn read_msg_text(inp: &mut impl BufRead) -> Result<Option<String>> {
         }
         let mut parts = buf.splitn(2, ": ");
         let header_name = parts.next().unwrap();
-        let header_value =
-            parts.next().ok_or_else(|| format!("malformed header: {:?}", buf))?;
+        let header_value = parts.next().ok_or_else(|| format!("malformed header: {:?}", buf))?;
         if header_name == "Content-Length" {
             size = Some(header_value.parse::<usize>()?);
         }

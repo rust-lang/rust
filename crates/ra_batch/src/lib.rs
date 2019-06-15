@@ -2,7 +2,6 @@ mod vfs_filter;
 
 use std::{sync::Arc, path::Path, collections::HashSet, error::Error};
 
-
 use rustc_hash::FxHashMap;
 
 use ra_db::{
