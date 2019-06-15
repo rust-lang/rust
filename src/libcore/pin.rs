@@ -138,10 +138,11 @@
 //! To make this work, not just moving the data is restricted; deallocating, repurposing, or
 //! otherwise invalidating the memory used to store the data is restricted, too.
 //! Concretely, for pinned data you have to maintain the invariant
-//! that *its memory will not get invalidated from the moment it gets pinned until
+//! that *its memory will not get invalidated or repurposed from the moment it gets pinned until
 //! when `drop` is called*. Memory can be invalidated by deallocation, but also by
 //! replacing a [`Some(v)`] by [`None`], or calling [`Vec::set_len`] to "kill" some elements
-//! off of a vector.
+//! off of a vector. It can be repurposed by using [`ptr::write`] to overwrite it without
+//! calling the destructor first.
 //!
 //! This is exactly the kind of guarantee that the intrusive linked list from the previous
 //! section needs to function correctly.
@@ -194,7 +195,7 @@
 //! that turn `Pin<&mut Struct>` into a reference to the field, but what
 //! type should that reference have? Is it `Pin<&mut Field>` or `&mut Field`?
 //! The same question arises with the fields of an enum, and also when considering
-//! container/wrapper types such as `Vec<T>`, `Box<T>`, or `RefCell<T>`.
+//! container/wrapper types such as [`Vec<T>`], [`Box<T>`], or [`RefCell<T>`].
 //! Also, this question arises for both mutable and shared references, we just
 //! use the more common case of mutable references here for illustration.
 //!
@@ -267,8 +268,8 @@
 //! 3.  You must make sure that you uphold the [`Drop` guarantee][drop-guarantee]:
 //!     once your struct is pinned, the memory that contains the
 //!     content is not overwritten or deallocated without calling the content's destructors.
-//!     This can be tricky, as witnessed by `VecDeque<T>`: the destructor of `VecDeque<T>` can fail
-//!     to call `drop` on all elements if one of the destructors panics. This violates the
+//!     This can be tricky, as witnessed by [`VecDeque<T>`]: the destructor of `VecDeque<T>`
+//!     can fail to call `drop` on all elements if one of the destructors panics. This violates the
 //!     `Drop` guarantee, because it can lead to elements being deallocated without
 //!     their destructor being called. (`VecDeque` has no pinning projections, so this
 //!     does not cause unsoundness.)
@@ -279,7 +280,7 @@
 //!     that operation can be used to move a `T` out of a pinned `Struct<T>` -- which means
 //!     pinning cannot be structural for the field holding this data.
 //!
-//!     For a more complex example of moving data out of a pinned type, imagine if `RefCell<T>`
+//!     For a more complex example of moving data out of a pinned type, imagine if [`RefCell<T>`]
 //!     had a method `fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T>`.
 //!     Then we could do the following:
 //!     ```compile_fail
@@ -296,7 +297,7 @@
 //!
 //! ## Examples
 //!
-//! For a type like `Vec<T>`, both possibilites (structural pinning or not) make sense.
+//! For a type like [`Vec<T>`], both possibilites (structural pinning or not) make sense.
 //! A `Vec<T>` with structural pinning could have `get_pin`/`get_pin_mut` methods to get
 //! pinned references to elements. However, it could *not* allow calling
 //! `pop` on a pinned `Vec<T>` because that would move the (structurally pinned) contents!
@@ -315,7 +316,7 @@
 //! whether the content is pinned is entirely independent of whether the pointer is
 //! pinned, meaning pinning is *not* structural.
 //!
-//! When implementing a `Future` combinator, you will usually need structural pinning
+//! When implementing a [`Future`] combinator, you will usually need structural pinning
 //! for the nested futures, as you need to get pinned references to them to call `poll`.
 //! But if your combinator contains any other data that does not need to be pinned,
 //! you can make those fields not structural and hence freely access them with a
@@ -329,9 +330,14 @@
 //! [`mem::swap`]: ../../std/mem/fn.swap.html
 //! [`mem::forget`]: ../../std/mem/fn.forget.html
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
+//! [`Vec<T>`]: ../../std/vec/struct.Vec.html
 //! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len
+//! [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
+//! [`RefCell<T>`]: ../../std/cell/struct.RefCell.html
 //! [`None`]: ../../std/option/enum.Option.html#variant.None
 //! [`Some(v)`]: ../../std/option/enum.Option.html#variant.Some
+//! [`ptr::write`]: ../ptr/fn.write.html
+//! [`Future`]: ../../std/future/trait.Future.html
 //! [drop-impl]: #drop-implementation
 //! [drop-guarantee]: #drop-guarantee
 
