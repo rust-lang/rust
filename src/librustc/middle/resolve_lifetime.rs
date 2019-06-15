@@ -1586,6 +1586,17 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             continue;
                         }
 
+                        if let Some(parent_def_id) = self.tcx.parent(def_id) {
+                            if let Some(parent_hir_id) = self.tcx.hir()
+                                .as_local_hir_id(parent_def_id) {
+                                    // lifetimes in `derive` expansions don't count (Issue #53738)
+                                    if self.tcx.hir().attrs_by_hir_id(parent_hir_id).iter()
+                                        .any(|attr| attr.check_name(sym::automatically_derived)) {
+                                            continue;
+                                        }
+                                }
+                        }
+
                         let mut err = self.tcx.struct_span_lint_hir(
                             lint::builtin::SINGLE_USE_LIFETIMES,
                             id,

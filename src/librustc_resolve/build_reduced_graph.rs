@@ -305,7 +305,7 @@ impl<'a> Resolver<'a> {
                 }
 
                 // Empty groups `a::b::{}` are turned into synthetic `self` imports
-                // `a::b::c::{self as __dummy}`, so that their prefixes are correctly
+                // `a::b::c::{self as _}`, so that their prefixes are correctly
                 // resolved and checked for privacy/stability/etc.
                 if items.is_empty() && !empty_for_self(&prefix) {
                     let new_span = prefix[prefix.len() - 1].ident.span;
@@ -314,7 +314,7 @@ impl<'a> Resolver<'a> {
                             Ident::new(kw::SelfLower, new_span)
                         ),
                         kind: ast::UseTreeKind::Simple(
-                            Some(Ident::from_str_and_span("__dummy", new_span).gensym()),
+                            Some(Ident::new(kw::Underscore, new_span)),
                             ast::DUMMY_NODE_ID,
                             ast::DUMMY_NODE_ID,
                         ),
