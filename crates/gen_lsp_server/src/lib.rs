@@ -5,11 +5,12 @@
 //! Run with `RUST_LOG=gen_lsp_server=debug` to see all the messages.
 //!
 //! ```no_run
+//! use std::error::Error;
 //! use crossbeam_channel::{Sender, Receiver};
 //! use lsp_types::{ServerCapabilities, InitializeParams, request::{GotoDefinition, GotoDefinitionResponse}};
 //! use gen_lsp_server::{run_server, stdio_transport, handle_shutdown, RawMessage, RawResponse};
 //!
-//! fn main() -> Result<(), failure::Error> {
+//! fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
 //!     let (receiver, sender, io_threads) = stdio_transport();
 //!     run_server(
 //!         ServerCapabilities::default(),
@@ -25,7 +26,7 @@
 //!     _params: InitializeParams,
 //!     receiver: &Receiver<RawMessage>,
 //!     sender: &Sender<RawMessage>,
-//! ) -> Result<(), failure::Error> {
+//! ) -> Result<(), Box<dyn Error + Send + Sync>> {
 //!     for msg in receiver {
 //!         match msg {
 //!             RawMessage::Request(req) => {
