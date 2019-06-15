@@ -136,6 +136,10 @@ where
     pub fn as_dense(&self) -> &BitSet<BD::Idx> {
         &self.curr_state
     }
+
+    pub fn base_results(&self) -> &DataflowResults<'tcx, BD> {
+        &self.base_results
+    }
 }
 
 impl<'tcx, BD> FlowsAtLocation for FlowAtLocation<'tcx, BD>

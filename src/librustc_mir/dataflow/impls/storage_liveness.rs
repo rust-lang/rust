@@ -4,9 +4,10 @@ use rustc::mir::*;
 use rustc::mir::visit::{
     PlaceContext, Visitor, NonMutatingUseContext,
 };
+use std::cell::RefCell;
 use crate::dataflow::BitDenotation;
 use crate::dataflow::HaveBeenBorrowedLocals;
-use crate::dataflow::{DataflowResults, state_for_location};
+use crate::dataflow::DataflowResultsCursor;
 
 #[derive(Copy, Clone)]
 pub struct MaybeStorageLive<'a, 'tcx: 'a> {
@@ -80,18 +81,23 @@ impl<'a, 'tcx> InitialFlow for MaybeStorageLive<'a, 'tcx> {
 
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
+///
+/// In the case of a movable generator, borrowed_locals can be `None` and we
+/// will not consider borrows in this pass. This relies on the fact that we only
+/// use this pass at yield points for these generators.
 #[derive(Copy, Clone)]
-pub struct RequiresStorage<'a: 'b, 'b, 'tcx: 'a> {
-    body: &'a Body<'tcx>,
-    borrowed_locals: Option<&'b (HaveBeenBorrowedLocals<'a, 'tcx>,
-                                 DataflowResults<'tcx, HaveBeenBorrowedLocals<'a, 'tcx>>)>,
+pub struct RequiresStorage<'mir, 'tcx: 'mir, 'b> {
+    body: &'mir Body<'tcx>,
+    //borrowed_locals: Option<&'b (HaveBeenBorrowedLocals<'mir, 'tcx>,
+    //                             DataflowResults<'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>)>,
+    borrowed_locals:
+        Option<&'b RefCell<DataflowResultsCursor<'mir, 'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>>>,
 }
 
-impl<'a, 'b, 'tcx: 'a> RequiresStorage<'a, 'b, 'tcx> {
+impl<'mir, 'tcx: 'mir, 'b> RequiresStorage<'mir, 'tcx, 'b> {
     pub fn new(
-        body: &'a Body<'tcx>,
-        borrowed_locals: Option<&'b (HaveBeenBorrowedLocals<'a, 'tcx>,
-                                     DataflowResults<'tcx, HaveBeenBorrowedLocals<'a, 'tcx>>)>
+        body: &'mir Body<'tcx>,
+        borrowed_locals: Option<&'b RefCell<DataflowResultsCursor<'mir, 'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>>>,
     ) -> Self {
         RequiresStorage { body, borrowed_locals }
     }
@@ -101,7 +107,7 @@ impl<'a, 'b, 'tcx: 'a> RequiresStorage<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> BitDenotation<'tcx> for RequiresStorage<'a, 'b, 'tcx> {
+impl<'mir, 'tcx, 'b> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx, 'b> {
     type Idx = Local;
     fn name() -> &'static str { "requires_storage" }
     fn bits_per_block(&self) -> usize {
@@ -151,49 +157,48 @@ impl<'a, 'b, 'tcx> BitDenotation<'tcx> for RequiresStorage<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> RequiresStorage<'a, 'b, 'tcx> {
+impl<'mir, 'tcx, 'b> RequiresStorage<'mir, 'tcx, 'b> {
     /// Kill locals that are fully moved and have not been borrowed.
     fn check_for_move(&self, sets: &mut BlockSets<'_, Local>, body: &Body<'tcx>, loc: Location) {
-        // TODO avoid recomputing this every time.
-        let borrowed_locals = match self.borrowed_locals {
-            Some((ref analysis, ref results)) =>
-                Some(state_for_location(loc, analysis, results, self.body)),
-            None => None,
+        let mut visitor = MoveVisitor {
+            sets,
+            borrowed_locals: self.borrowed_locals,
         };
-        let mut visitor = MoveVisitor { sets, borrowed_locals };
         visitor.visit_location(body, loc);
     }
 }
 
-impl<'a, 'b, 'tcx> BitSetOperator for RequiresStorage<'a, 'b, 'tcx> {
+impl<'mir, 'tcx, 'b> BitSetOperator for RequiresStorage<'mir, 'tcx, 'b> {
     #[inline]
     fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
         inout_set.union(in_set) // "maybe" means we union effects of both preds
     }
 }
 
-impl<'a, 'b, 'tcx> InitialFlow for RequiresStorage<'a, 'b, 'tcx> {
+impl<'mir, 'tcx, 'b> InitialFlow for RequiresStorage<'mir, 'tcx, 'b> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = dead
     }
 }
 
-struct MoveVisitor<'a, 'b> {
+struct MoveVisitor<'a, 'b, 'mir: 'a, 'tcx: 'mir> {
     sets: &'a mut BlockSets<'b, Local>,
-    borrowed_locals: Option<BitSet<Local>>,
+    borrowed_locals: Option<&'a RefCell<DataflowResultsCursor<'mir, 'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>>>,
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for MoveVisitor<'a, 'b> {
+impl<'a, 'b, 'mir: 'a, 'tcx: 'mir> Visitor<'tcx> for MoveVisitor<'a, 'b, 'mir, 'tcx> {
     fn visit_local(&mut self, local: &Local, context: PlaceContext, loc: Location) {
         if let Some(ref borrowed_locals) = self.borrowed_locals {
+            let mut borrowed_locals = borrowed_locals.borrow_mut();
+            borrowed_locals.reconstruct_effect(loc);
             if borrowed_locals.contains(*local) {
                 return;
             }
+            // TODO check for newly borrowed locals and gen them
         }
         if PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) == context {
             self.sets.kill(*local);
         }
-        self.super_local(local, context, loc);
     }
 }

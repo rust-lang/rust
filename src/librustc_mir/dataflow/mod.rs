@@ -346,6 +346,70 @@ pub(crate) trait DataflowResultsConsumer<'a, 'tcx: 'a> {
     fn body(&self) -> &'a Body<'tcx>;
 }
 
+pub struct DataflowResultsCursor<'mir, 'tcx: 'mir, BD>
+where
+    BD: BitDenotation<'tcx>,
+{
+    flow_state: FlowAtLocation<'tcx, BD>,
+
+    // The statement (or terminator) whose effect has been reconstructed in
+    // flow_state.
+    curr_loc: Option<Location>,
+
+    body: &'mir Body<'tcx>,
+}
+
+impl<'mir, 'tcx: 'mir, BD> DataflowResultsCursor<'mir, 'tcx, BD>
+where
+    BD: BitDenotation<'tcx>,
+{
+    pub fn new(result: DataflowResults<'tcx, BD>, body: &'mir Body<'tcx>) -> Self {
+        DataflowResultsCursor {
+            flow_state: FlowAtLocation::new(result),
+            curr_loc: None,
+            body,
+        }
+    }
+
+    pub fn reconstruct_effect(&mut self, loc: Location) {
+        if self.curr_loc.map(|cur| loc == cur).unwrap_or(false) {
+            return;
+        }
+
+        let start_index;
+        if !self.curr_loc.map(|cur| loc.block == cur.block).unwrap_or(false) {
+            self.flow_state.reset_to_entry_of(loc.block);
+            start_index = 0;
+        } else {
+            start_index = self.curr_loc.unwrap().statement_index;
+        }
+
+        for stmt in start_index..loc.statement_index {
+            let mut stmt_loc = loc;
+            stmt_loc.statement_index = stmt;
+            self.flow_state.reconstruct_statement_effect(stmt_loc);
+            self.flow_state.apply_local_effect(stmt_loc);
+        }
+
+        if loc.statement_index == self.body[loc.block].statements.len() {
+            self.flow_state.reconstruct_terminator_effect(loc);
+            self.flow_state.apply_local_effect(loc);
+        } else {
+            self.flow_state.reconstruct_statement_effect(loc);
+            self.flow_state.apply_local_effect(loc);
+        }
+        self.curr_loc = Some(loc);
+    }
+
+    pub fn contains(&self, x: BD::Idx) -> bool {
+        self.flow_state.contains(x)
+    }
+
+    pub fn base_results(&self) -> &DataflowResults<'tcx, BD> {
+        self.flow_state.base_results()
+    }
+}
+
 pub fn state_for_location<'tcx, T: BitDenotation<'tcx>>(loc: Location,
                                                         analysis: &T,
                                                         result: &DataflowResults<'tcx, T>,

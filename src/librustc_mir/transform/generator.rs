@@ -61,12 +61,13 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::bit_set::{BitSet, BitMatrix};
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::iter;
 use std::mem;
 use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
-use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
+use crate::dataflow::{DataflowResults, DataflowResultsConsumer, DataflowResultsCursor, FlowAtLocation};
 use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
 use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals, RequiresStorage};
 use crate::util::dump_mir;
@@ -415,6 +416,7 @@ struct LivenessInfo {
     storage_liveness: FxHashMap<BasicBlock, liveness::LiveVarSet>,
 }
 
+#[allow(unreachable_code, unused)]
 fn locals_live_across_suspend_points(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     body: &Body<'tcx>,
@@ -439,19 +441,19 @@ fn locals_live_across_suspend_points(
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
     // This is only used for immovable generators.
-    let borrowed_locals = if !movable {
+    let (borrowed_locals_analysis, borrowed_locals_result) = if !movable {
         let analysis = HaveBeenBorrowedLocals::new(body);
         let result =
             do_dataflow(tcx, body, def_id, &[], &dead_unwinds, analysis,
                         |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
-        Some((analysis, result))
+        (Some(analysis), Some(RefCell::new(DataflowResultsCursor::new(result, body))))
     } else {
-        None
+        (None, None)
     };
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
-    let requires_storage_analysis = RequiresStorage::new(body, borrowed_locals.as_ref());
+    let requires_storage_analysis = RequiresStorage::new(body, borrowed_locals_result.as_ref());
     let requires_storage =
         do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
@@ -479,10 +481,11 @@ fn locals_live_across_suspend_points(
                 statement_index: data.statements.len(),
             };
 
-            if let Some((ref analysis, ref result)) = borrowed_locals {
+            if let Some(ref analysis) = borrowed_locals_analysis {
+                let cursor = borrowed_locals_result.as_ref().unwrap().borrow();
                 let borrowed_locals = state_for_location(loc,
                                                          analysis,
-                                                         result,
+                                                         cursor.base_results(),
                                                          body);
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
                 // This is correct for movable generators since borrows cannot live across
