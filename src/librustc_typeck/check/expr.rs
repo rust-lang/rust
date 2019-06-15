@@ -93,28 +93,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_assign(expr, expected, lhs, rhs)
             }
             ExprKind::While(ref cond, ref body, _) => {
-                let ctxt = BreakableCtxt {
-                    // cannot use break with a value from a while loop
-                    coerce: None,
-                    may_break: false,  // Will get updated if/when we find a `break`.
-                };
-
-                let (ctxt, ()) = self.with_breakable_ctxt(expr.hir_id, ctxt, || {
-                    self.check_expr_has_type_or_error(&cond, tcx.types.bool);
-                    let cond_diverging = self.diverges.get();
-                    self.check_block_no_value(&body);
-
-                    // We may never reach the body so it diverging means nothing.
-                    self.diverges.set(cond_diverging);
-                });
-
-                if ctxt.may_break {
-                    // No way to know whether it's diverging because
-                    // of a `break` or an outer `break` or `return`.
-                    self.diverges.set(Diverges::Maybe);
-                }
-
-                self.tcx.mk_unit()
+                self.check_expr_while(cond, body, expr)
             }
             ExprKind::Loop(ref body, _, source) => {
                 let coerce = match source {
@@ -786,5 +765,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.tcx.mk_unit()
         }
+    }
+
+    fn check_expr_while(
+        &self,
+        cond: &'tcx hir::Expr,
+        body: &'tcx hir::Block,
+        expr: &'tcx hir::Expr
+    ) -> Ty<'tcx> {
+        let ctxt = BreakableCtxt {
+            // Cannot use break with a value from a while loop.
+            coerce: None,
+            may_break: false, // Will get updated if/when we find a `break`.
+        };
+
+        let (ctxt, ()) = self.with_breakable_ctxt(expr.hir_id, ctxt, || {
+            self.check_expr_has_type_or_error(&cond, self.tcx.types.bool);
+            let cond_diverging = self.diverges.get();
+            self.check_block_no_value(&body);
+
+            // We may never reach the body so it diverging means nothing.
+            self.diverges.set(cond_diverging);
+        });
+
+        if ctxt.may_break {
+            // No way to know whether it's diverging because
+            // of a `break` or an outer `break` or `return`.
+            self.diverges.set(Diverges::Maybe);
+        }
+
+        self.tcx.mk_unit()
     }
 }
