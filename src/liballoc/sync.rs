@@ -1080,26 +1080,26 @@ impl<T> Weak<T> {
     /// ```
     /// #![feature(weak_into_raw)]
     ///
-    /// use std::sync::{Arc, Weak};
+    /// use std::sync::Arc;
     /// use std::ptr;
     ///
     /// let strong = Arc::new("hello".to_owned());
     /// let weak = Arc::downgrade(&strong);
     /// // Both point to the same object
-    /// assert!(ptr::eq(&*strong, Weak::as_raw(&weak)));
+    /// assert!(ptr::eq(&*strong, weak.as_raw()));
     /// // The strong here keeps it alive, so we can still access the object.
-    /// assert_eq!("hello", unsafe { &*Weak::as_raw(&weak) });
+    /// assert_eq!("hello", unsafe { &*weak.as_raw() });
     ///
     /// drop(strong);
-    /// // But not any more. We can do Weak::as_raw(&weak), but accessing the pointer would lead to
+    /// // But not any more. We can do weak.as_raw(), but accessing the pointer would lead to
     /// // undefined behaviour.
-    /// // assert_eq!("hello", unsafe { &*Weak::as_raw(&weak) });
+    /// // assert_eq!("hello", unsafe { &*weak.as_raw() });
     /// ```
     ///
     /// [`null`]: ../../std/ptr/fn.null.html
     #[unstable(feature = "weak_into_raw", issue = "60728")]
-    pub fn as_raw(this: &Self) -> *const T {
-        match this.inner() {
+    pub fn as_raw(&self) -> *const T {
+        match self.inner() {
             None => ptr::null(),
             Some(inner) => {
                 let offset = data_offset_sized::<T>();
@@ -1130,7 +1130,7 @@ impl<T> Weak<T> {
     ///
     /// let strong = Arc::new("hello".to_owned());
     /// let weak = Arc::downgrade(&strong);
-    /// let raw = Weak::into_raw(weak);
+    /// let raw = weak.into_raw();
     ///
     /// assert_eq!(1, Arc::weak_count(&strong));
     /// assert_eq!("hello", unsafe { &*raw });
@@ -1142,9 +1142,9 @@ impl<T> Weak<T> {
     /// [`from_raw`]: struct.Weak.html#method.from_raw
     /// [`as_raw`]: struct.Weak.html#method.as_raw
     #[unstable(feature = "weak_into_raw", issue = "60728")]
-    pub fn into_raw(this: Self) -> *const T {
-        let result = Self::as_raw(&this);
-        mem::forget(this);
+    pub fn into_raw(self) -> *const T {
+        let result = self.as_raw();
+        mem::forget(self);
         result
     }
 
@@ -1172,18 +1172,18 @@ impl<T> Weak<T> {
     ///
     /// let strong = Arc::new("hello".to_owned());
     ///
-    /// let raw_1 = Weak::into_raw(Arc::downgrade(&strong));
-    /// let raw_2 = Weak::into_raw(Arc::downgrade(&strong));
+    /// let raw_1 = Arc::downgrade(&strong).into_raw();
+    /// let raw_2 = Arc::downgrade(&strong).into_raw();
     ///
     /// assert_eq!(2, Arc::weak_count(&strong));
     ///
-    /// assert_eq!("hello", &*Weak::upgrade(&unsafe { Weak::from_raw(raw_1) }).unwrap());
+    /// assert_eq!("hello", &*unsafe { Weak::from_raw(raw_1) }.upgrade().unwrap());
     /// assert_eq!(1, Arc::weak_count(&strong));
     ///
     /// drop(strong);
     ///
     /// // Decrement the last weak count.
-    /// assert!(Weak::upgrade(&unsafe { Weak::from_raw(raw_2) }).is_none());
+    /// assert!(unsafe { Weak::from_raw(raw_2) }.upgrade().is_none());
     /// ```
     ///
     /// [`null`]: ../../std/ptr/fn.null.html
