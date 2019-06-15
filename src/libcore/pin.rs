@@ -196,8 +196,8 @@
 //! type should that reference have? Is it `Pin<&mut Field>` or `&mut Field`?
 //! The same question arises with the fields of an enum, and also when considering
 //! container/wrapper types such as [`Vec<T>`], [`Box<T>`], or [`RefCell<T>`].
-//! Also, this question arises for both mutable and shared references, we just
-//! use the more common case of mutable references here for illustration.
+//! (This question applies to both mutable and shared references, we just
+//! use the more common case of mutable references here for illustration.)
 //!
 //! It turns out that it is actually up to the author of the data structure
 //! to decide whether the pinned projection for a particular field turns
@@ -214,22 +214,22 @@
 //!
 //! ## Pinning *is not* structural for `field`
 //!
-//! It may seem counter-intuitive that the field of a pinned struct is not pinned,
+//! It may seem counter-intuitive that the field of a pinned struct might not be pinned,
 //! but that is actually the easiest choice: if a `Pin<&mut Field>` is never created,
 //! nothing can go wrong! So, if you decide that some field does not have structural pinning,
 //! all you have to ensure is that you never create a pinned reference to that field.
 //!
-//! Then you may add a projection method that turns `Pin<&mut Struct>` into `Pin<&mut Field>`:
+//! Then you may add a projection method that turns `Pin<&mut Struct>` into `&mut Field`:
 //! ```rust,ignore
 //! impl Struct {
-//!     fn get_field<'a>(self: Pin<&'a mut Self>) -> &'a mut Field {
+//!     fn pin_get_field<'a>(self: Pin<&'a mut Self>) -> &'a mut Field {
 //!         // This is okay because `field` is never considered pinned.
 //!         unsafe { &mut self.get_unchecked_mut().field }
 //!     }
 //! }
 //! ```
 //!
-//! You may also make make `Struct: Unpin` *even if* the type of `field`
+//! You may also `impl Unpin for Struct` *even if* the type of `field`
 //! is not `Unpin`.  What that type thinks about pinning is just not relevant
 //! when no `Pin<&mut Field>` is ever created.
 //!
@@ -242,7 +242,7 @@
 //! witnessing that the field is pinned:
 //! ```rust,ignore
 //! impl Struct {
-//!     fn get_field<'a>(self: Pin<&'a mut Self>) -> Pin<&'a mut Field> {
+//!     fn pin_get_field<'a>(self: Pin<&'a mut Self>) -> Pin<&'a mut Field> {
 //!         // This is okay because `field` is pinned when `self` is.
 //!         unsafe { self.map_unchecked_mut(|s| &mut s.field) }
 //!     }
@@ -252,8 +252,8 @@
 //! However, structural pinning comes with a few extra requirements:
 //!
 //! 1.  The struct must only be [`Unpin`] if all the structural fields are
-//!     `Unpin`. This is the default, but `Unpin` is a safe trait, so it is your
-//!     responsibility as the author of the struct *not* to add something like
+//!     `Unpin`. This is the default, but `Unpin` is a safe trait, so as the author of
+//!     the struct it is your responsibility *not* to add something like
 //!     `impl<T> Unpin for Struct<T>`. (Notice that adding a projection operation
 //!     requires unsafe code, so the fact that `Unpin` is a safe trait does not break
 //!     the principle that you only have to worry about any of this if you use `unsafe`.)
