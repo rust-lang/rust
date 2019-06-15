@@ -121,10 +121,6 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
             child.args(&["--target", &target]);
         }
 
-        if !matches.opt_present("no-default-features") {
-            child.args(&["--cfg", "feature=\"default\""]);
-        }
-
         let mut child = child
             .arg("-")
             .stdin(Stdio::piped())
@@ -207,10 +203,6 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
         child.args(&["--target", &target]);
     }
 
-    if !matches.opt_present("no-default-features") {
-        child.args(&["--cfg", "feature=\"default\""]);
-    }
-
     let child = child
         .arg("-")
         .stdin(Stdio::piped())
@@ -283,6 +275,17 @@ mod cli {
             "a",
             "api-guidelines",
             "report only changes that are breaking according to the API-guidelines",
+        );
+        opts.optopt(
+            "",
+            "features",
+            "Space-separated list of features to activate",
+            "FEATURES",
+        );
+        opts.optflag(
+            "",
+            "all-features",
+            "Activate all available features",
         );
         opts.optflag(
             "",
@@ -458,9 +461,13 @@ impl<'a> WorkInfo<'a> {
         if let Some(target) = matches.opt_str("target") {
             opts.build_config.requested_target = Some(target);
         }
-        opts.no_default_features = matches.opt_present("no-default-features");
 
-        // TODO: this is where we could insert feature flag builds (or using the CLI mechanisms)
+        if let Some(s) = matches.opt_str("features") {
+            opts.features = s.split(" ").map(str::to_owned).collect();
+        }
+
+        opts.all_features = matches.opt_present("all-features");
+        opts.no_default_features = matches.opt_present("no-default-features");
 
         env::set_var(
             "RUSTFLAGS",
