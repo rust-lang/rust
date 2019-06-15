@@ -767,7 +767,7 @@ impl<'a> Resolver<'a> {
         // condition.
         let index_match = def_id.index.index() < FIRST_FREE_DEF_INDEX + self.num_builtin_macros;
         let crate_match = def_id.is_local() ||
-                          def_id.krate != CrateNum::BuiltinMacros &&
+                          def_id.krate != CrateNum::LegacyProcMacros &&
                           !self.cstore.is_proc_macro_untracked(def_id);
         index_match && crate_match
     }
@@ -776,7 +776,7 @@ impl<'a> Resolver<'a> {
         let def_id = self.macro_defs[&expansion];
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
-        } else if self.is_builtin_macro(def_id) || def_id.krate == CrateNum::BuiltinMacros {
+        } else if self.is_builtin_macro(def_id) || def_id.krate == CrateNum::LegacyProcMacros {
             self.injected_crate.unwrap_or(self.graph_root)
         } else {
             let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();

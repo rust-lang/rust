@@ -13,10 +13,8 @@ newtype_index! {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CrateNum {
-    /// Virtual crate for builtin macros
-    // FIXME(jseyfried): this is also used for custom derives until proc-macro crates get
-    // `CrateNum`s.
-    BuiltinMacros,
+    /// Virtual crate for legacy proc macros registered with `#![plugin]`.
+    LegacyProcMacros,
     /// A special CrateNum that we use for the tcx.rcache when decoding from
     /// the incr. comp. cache.
     ReservedForIncrCompCache,
@@ -27,7 +25,7 @@ impl ::std::fmt::Debug for CrateNum {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
             CrateNum::Index(id) => write!(fmt, "crate{}", id.private),
-            CrateNum::BuiltinMacros => write!(fmt, "builtin macros crate"),
+            CrateNum::LegacyProcMacros => write!(fmt, "legacy proc macros crate"),
             CrateNum::ReservedForIncrCompCache => write!(fmt, "crate for decoding incr comp cache"),
         }
     }
@@ -87,7 +85,7 @@ impl fmt::Display for CrateNum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CrateNum::Index(id) => fmt::Display::fmt(&id.private, f),
-            CrateNum::BuiltinMacros => write!(f, "builtin macros crate"),
+            CrateNum::LegacyProcMacros => write!(f, "legacy proc macros crate"),
             CrateNum::ReservedForIncrCompCache => write!(f, "crate for decoding incr comp cache"),
         }
     }

@@ -1227,10 +1227,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.per_ns(|this, ns| if let Some(binding) = source_bindings[ns].get().ok() {
             let mut res = binding.res();
             if let Res::Def(DefKind::Macro(_), def_id) = res {
-                // `DefId`s from the "built-in macro crate" should not leak from resolve because
+                // `DefId`s from the "legacy proc macro crate" should not leak from resolve because
                 // later stages are not ready to deal with them and produce lots of ICEs. Replace
-                // them with `Res::Err` until some saner scheme is implemented for built-in macros.
-                if def_id.krate == CrateNum::BuiltinMacros {
+                // them with `Res::Err` until legacy proc macros are removed.
+                if def_id.krate == CrateNum::LegacyProcMacros {
                     this.session.span_err(directive.span, "cannot import a built-in macro");
                     res = Res::Err;
                 } else if this.is_builtin_macro(def_id) {
@@ -1409,7 +1409,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 let res = binding.res();
                 if res != Res::Err {
                     if let Some(def_id) = res.opt_def_id() {
-                        if !def_id.is_local() && def_id.krate != CrateNum::BuiltinMacros {
+                        if !def_id.is_local() && def_id.krate != CrateNum::LegacyProcMacros {
                             self.cstore.export_macros_untracked(def_id.krate);
                         }
                     }
