@@ -34,6 +34,90 @@ use rustc::ty::subst::InternalSubsts;
 use rustc::traits::{self, ObligationCauseCode};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    fn check_expr_eq_type(&self, expr: &'tcx hir::Expr, expected: Ty<'tcx>) {
+        let ty = self.check_expr_with_hint(expr, expected);
+        self.demand_eqtype(expr.span, expected, ty);
+    }
+
+    pub fn check_expr_has_type_or_error(
+        &self,
+        expr: &'tcx hir::Expr,
+        expected: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected))
+    }
+
+    fn check_expr_meets_expectation_or_error(
+        &self,
+        expr: &'tcx hir::Expr,
+        expected: Expectation<'tcx>,
+    ) -> Ty<'tcx> {
+        let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
+        let mut ty = self.check_expr_with_expectation(expr, expected);
+
+        // While we don't allow *arbitrary* coercions here, we *do* allow
+        // coercions from ! to `expected`.
+        if ty.is_never() {
+            assert!(!self.tables.borrow().adjustments().contains_key(expr.hir_id),
+                    "expression with never type wound up being adjusted");
+            let adj_ty = self.next_diverging_ty_var(
+                TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::AdjustmentType,
+                    span: expr.span,
+                },
+            );
+            self.apply_adjustments(expr, vec![Adjustment {
+                kind: Adjust::NeverToAny,
+                target: adj_ty
+            }]);
+            ty = adj_ty;
+        }
+
+        if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
+            let expr = match &expr.node {
+                ExprKind::DropTemps(expr) => expr,
+                _ => expr,
+            };
+            // Error possibly reported in `check_assign` so avoid emitting error again.
+            err.emit_unless(self.is_assign_to_bool(expr, expected_ty));
+        }
+        ty
+    }
+
+    pub(super) fn check_expr_coercable_to_type(
+        &self,
+        expr: &'tcx hir::Expr,
+        expected: Ty<'tcx>
+    ) -> Ty<'tcx> {
+        let ty = self.check_expr_with_hint(expr, expected);
+        // checks don't need two phase
+        self.demand_coerce(expr, ty, expected, AllowTwoPhase::No)
+    }
+
+    pub(super) fn check_expr_with_hint(
+        &self,
+        expr: &'tcx hir::Expr,
+        expected: Ty<'tcx>
+    ) -> Ty<'tcx> {
+        self.check_expr_with_expectation(expr, ExpectHasType(expected))
+    }
+
+    pub(super) fn check_expr_with_expectation(
+        &self,
+        expr: &'tcx hir::Expr,
+        expected: Expectation<'tcx>,
+    ) -> Ty<'tcx> {
+        self.check_expr_with_expectation_and_needs(expr, expected, Needs::None)
+    }
+
+    pub(super) fn check_expr(&self, expr: &'tcx hir::Expr) -> Ty<'tcx> {
+        self.check_expr_with_expectation(expr, NoExpectation)
+    }
+
+    pub(super) fn check_expr_with_needs(&self, expr: &'tcx hir::Expr, needs: Needs) -> Ty<'tcx> {
+        self.check_expr_with_expectation_and_needs(expr, NoExpectation, needs)
+    }
+
     /// Invariant:
     /// If an expression has any sub-expressions that result in a type error,
     /// inspecting that expression's type with `ty.references_error()` will return
@@ -44,7 +128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Note that inspecting a type's structure *directly* may expose the fact
     /// that there are actually multiple representations for `Error`, so avoid
     /// that when err needs to be handled differently.
-    pub(super) fn check_expr_with_expectation_and_needs(
+    fn check_expr_with_expectation_and_needs(
         &self,
         expr: &'tcx hir::Expr,
         expected: Expectation<'tcx>,
