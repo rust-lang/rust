@@ -381,6 +381,10 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
 }
 
 impl cstore::CStore {
+    pub fn is_proc_macro_untracked(&self, def_id: DefId) -> bool {
+        self.get_crate_data(def_id.krate).is_proc_macro(def_id.index)
+    }
+
     pub fn export_macros_untracked(&self, cnum: CrateNum) {
         let data = self.get_crate_data(cnum);
         let mut dep_kind = data.dep_kind.lock();

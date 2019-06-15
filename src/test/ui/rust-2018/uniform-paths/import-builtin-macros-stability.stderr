@@ -1,0 +1,21 @@
+error[E0658]: imports of built-in macros are unstable
+  --> $DIR/import-builtin-macros-stability.rs:7:5
+   |
+LL | use concat as stable;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/61875
+   = help: add #![feature(builtin_macro_imports)] to the crate attributes to enable
+
+error[E0658]: imports of built-in macros are unstable
+  --> $DIR/import-builtin-macros-stability.rs:8:5
+   |
+LL | use concat_idents as unstable;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/61875
+   = help: add #![feature(builtin_macro_imports)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

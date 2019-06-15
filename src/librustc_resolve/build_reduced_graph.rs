@@ -14,6 +14,7 @@ use crate::{resolve_error, resolve_struct_error, ResolutionError};
 use rustc::bug;
 use rustc::hir::def::{self, *};
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
+use rustc::hir::map::definitions::FIRST_FREE_DEF_INDEX;
 use rustc::ty;
 use rustc::middle::cstore::CrateStore;
 use rustc_metadata::cstore::LoadedMacro;
@@ -757,11 +758,25 @@ impl<'a> Resolver<'a> {
         module
     }
 
+    crate fn is_builtin_macro(&self, def_id: DefId) -> bool {
+        // Built-in macros are supposed to occupy a continuous range of `DefIndex`es immediately
+        // following `GlobalMetaData` entries. This is ensured by calling
+        // `syntax_ext::register_builtins` immediately after initializing `Definitions`.
+        // This range is identical in both the local crate and other crates in cstore.
+        // Proc-macro "views" of other crates in cstore don't have this range, thus the last
+        // condition.
+        let index_match = def_id.index.index() < FIRST_FREE_DEF_INDEX + self.num_builtin_macros;
+        let crate_match = def_id.is_local() ||
+                          def_id.krate != CrateNum::BuiltinMacros &&
+                          !self.cstore.is_proc_macro_untracked(def_id);
+        index_match && crate_match
+    }
+
     pub fn macro_def_scope(&mut self, expansion: Mark) -> Module<'a> {
         let def_id = self.macro_defs[&expansion];
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
-        } else if def_id.krate == CrateNum::BuiltinMacros {
+        } else if self.is_builtin_macro(def_id) || def_id.krate == CrateNum::BuiltinMacros {
             self.injected_crate.unwrap_or(self.graph_root)
         } else {
             let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
@@ -777,6 +792,15 @@ impl<'a> Resolver<'a> {
             }),
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
         };
+
+        // Built-in macro from another crate is the same as its local equivalent,
+        // which always can be found in the `macro_map`.
+        let def_id = if self.is_builtin_macro(def_id) {
+            DefId::local(def_id.index)
+        } else {
+            def_id
+        };
+
         if let Some(ext) = self.macro_map.get(&def_id) {
             return ext.clone();
         }

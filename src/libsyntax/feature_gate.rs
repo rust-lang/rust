@@ -570,6 +570,9 @@ declare_features! (
     // #[repr(transparent)] on unions.
     (active, transparent_unions, "1.37.0", Some(60405), None),
 
+    // `use builtin_macro`.
+    (active, builtin_macro_imports, "1.37.0", Some(61875), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

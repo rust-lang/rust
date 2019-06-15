@@ -470,7 +470,7 @@ crate fn proc_macro_def_path_table(crate_root: &CrateRoot<'_>,
 }
 
 impl<'a, 'tcx> CrateMetadata {
-    fn is_proc_macro(&self, id: DefIndex) -> bool {
+    crate fn is_proc_macro(&self, id: DefIndex) -> bool {
         self.proc_macros.is_some() && id != CRATE_DEF_INDEX
     }
 
@@ -665,7 +665,10 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn get_deprecation(&self, id: DefIndex) -> Option<attr::Deprecation> {
         match self.is_proc_macro(id) {
             true => None,
-            false => self.entry(id).deprecation.map(|depr| depr.decode(self)),
+            // Deprecation may be queried for built-in macro imports
+            // for which the entry doesn't exist.
+            false => self.maybe_entry(id).and_then(|e| e.decode(self).deprecation)
+                                         .map(|depr| depr.decode(self)),
         }
     }
 

@@ -29,6 +29,7 @@ use rustc::{bug, span_bug};
 use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
+use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::symbol::{kw, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{struct_span_err, unwrap_or};
@@ -1232,6 +1233,16 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 if def_id.krate == CrateNum::BuiltinMacros {
                     this.session.span_err(directive.span, "cannot import a built-in macro");
                     res = Res::Err;
+                } else if this.is_builtin_macro(def_id) {
+                    if !this.session.features_untracked().builtin_macro_imports {
+                        emit_feature_err(
+                            &this.session.parse_sess,
+                            sym::builtin_macro_imports,
+                            directive.span,
+                            GateIssue::Language,
+                            "imports of built-in macros are unstable",
+                        );
+                    }
                 }
             }
             this.import_res_map.entry(directive.id).or_default()[ns] = Some(res);

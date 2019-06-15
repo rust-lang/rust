@@ -394,7 +394,11 @@ impl Definitions {
     #[inline]
     pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> hir::HirId {
         let node_id = self.def_index_to_node[def_index.index()];
-        self.node_to_hir_id[node_id]
+        if unlikely!(node_id == ast::DUMMY_NODE_ID) {
+            hir::DUMMY_HIR_ID
+        } else {
+            self.node_to_hir_id[node_id]
+        }
     }
 
     #[inline]

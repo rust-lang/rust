@@ -674,7 +674,7 @@ pub trait Resolver {
     fn resolve_dollar_crates(&mut self, fragment: &AstFragment);
     fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
                                             derives: &[Mark]);
-    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
+    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>, is_user_ext: bool);
 
     fn resolve_imports(&mut self);
 

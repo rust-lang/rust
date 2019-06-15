@@ -1670,6 +1670,8 @@ pub struct Resolver<'a> {
     crate_loader: &'a mut CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
+    /// Number of built-in macros excluding user extensions from `#![plugin]`.
+    num_builtin_macros: usize,
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
     pub all_macros: FxHashMap<Name, Res>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
@@ -2016,6 +2018,7 @@ impl<'a> Resolver<'a> {
             crate_loader,
             macro_names: FxHashSet::default(),
             builtin_macros: FxHashMap::default(),
+            num_builtin_macros: 0,
             macro_use_prelude: FxHashMap::default(),
             all_macros: FxHashMap::default(),
             macro_map: FxHashMap::default(),

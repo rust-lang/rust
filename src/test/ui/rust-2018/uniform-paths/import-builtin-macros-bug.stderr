@@ -1,0 +1,22 @@
+error[E0659]: `my_concat` is ambiguous (glob import vs glob import in the same module)
+  --> $DIR/import-builtin-macros-bug.rs:18:5
+   |
+LL |     my_concat!("x");
+   |     ^^^^^^^^^ ambiguous name
+   |
+note: `my_concat` could refer to the macro imported here
+  --> $DIR/import-builtin-macros-bug.rs:12:5
+   |
+LL | use export_builtin_macros::*;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `my_concat` to disambiguate
+note: `my_concat` could also refer to the macro imported here
+  --> $DIR/import-builtin-macros-bug.rs:13:5
+   |
+LL | use local::*;
+   |     ^^^^^^^^
+   = help: consider adding an explicit import of `my_concat` to disambiguate
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

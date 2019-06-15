@@ -53,8 +53,11 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                          edition: Edition) {
     deriving::register_builtin_derives(resolver);
 
+    let mut register_user = |name, ext, is_user_ext| {
+        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext), is_user_ext);
+    };
     let mut register = |name, ext| {
-        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
+        register_user(name, ext, false);
     };
     macro_rules! register {
         ($( $name:ident: $f:expr, )*) => { $(
@@ -126,6 +129,6 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
              });
 
     for (name, ext) in user_exts {
-        register(name, ext);
+        register_user(name, ext, true);
     }
 }

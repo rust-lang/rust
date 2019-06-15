@@ -1,15 +1,9 @@
-error: cannot import a built-in macro
-  --> $DIR/prelude-fail.rs:4:5
-   |
-LL | use env as env_imported;
-   |     ^^^^^^^^^^^^^^^^^^^
-
 error[E0432]: unresolved import `rustfmt`
-  --> $DIR/prelude-fail.rs:7:5
+  --> $DIR/prelude-fail.rs:4:5
    |
 LL | use rustfmt::skip as imported_rustfmt_skip;
    |     ^^^^^^^ `rustfmt` is a tool module, not a module
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0432`.

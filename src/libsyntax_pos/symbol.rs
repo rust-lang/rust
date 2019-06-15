@@ -162,6 +162,7 @@ symbols! {
         box_patterns,
         box_syntax,
         braced_empty_structs,
+        builtin_macro_imports,
         C,
         cdylib,
         cfg,

@@ -8,7 +8,7 @@ use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
-use rustc::hir::map::{self, DefCollector};
+use rustc::hir::map::{self, DefCollector, DefPathData};
 use rustc::{ty, lint};
 use rustc::{bug, span_bug};
 use syntax::ast::{self, Ident};
@@ -169,10 +169,21 @@ impl<'a> base::Resolver for Resolver<'a> {
         invocation.output_legacy_scope.set(Some(visitor.current_legacy_scope));
     }
 
-    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>) {
-        let def_id = DefId {
-            krate: CrateNum::BuiltinMacros,
-            index: DefIndex::from(self.macro_map.len()),
+    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>, is_user_ext: bool) {
+        let def_id = if is_user_ext {
+            DefId {
+                krate: CrateNum::BuiltinMacros,
+                index: DefIndex::from(self.macro_map.len()),
+            }
+        } else {
+            self.num_builtin_macros += 1;
+            DefId::local(self.definitions.create_def_with_parent(
+                CRATE_DEF_INDEX,
+                ast::DUMMY_NODE_ID,
+                DefPathData::MacroNs(ident.as_interned_str()),
+                Mark::root(),
+                DUMMY_SP,
+            ))
         };
         let kind = ext.kind();
         self.macro_map.insert(def_id, ext);
