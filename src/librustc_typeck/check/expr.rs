@@ -96,44 +96,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_while(cond, body, expr)
             }
             ExprKind::Loop(ref body, _, source) => {
-                let coerce = match source {
-                    // you can only use break with a value from a normal `loop { }`
-                    hir::LoopSource::Loop => {
-                        let coerce_to = expected.coercion_target_type(self, body.span);
-                        Some(CoerceMany::new(coerce_to))
-                    }
-
-                    hir::LoopSource::WhileLet |
-                    hir::LoopSource::ForLoop => {
-                        None
-                    }
-                };
-
-                let ctxt = BreakableCtxt {
-                    coerce,
-                    may_break: false, // Will get updated if/when we find a `break`.
-                };
-
-                let (ctxt, ()) = self.with_breakable_ctxt(expr.hir_id, ctxt, || {
-                    self.check_block_no_value(&body);
-                });
-
-                if ctxt.may_break {
-                    // No way to know whether it's diverging because
-                    // of a `break` or an outer `break` or `return`.
-                    self.diverges.set(Diverges::Maybe);
-                }
-
-                // If we permit break with a value, then result type is
-                // the LUB of the breaks (possibly ! if none); else, it
-                // is nil. This makes sense because infinite loops
-                // (which would have type !) are only possible iff we
-                // permit break with a value [1].
-                if ctxt.coerce.is_none() && !ctxt.may_break {
-                    // [1]
-                    self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
-                }
-                ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.mk_unit())
+                self.check_expr_loop(body, source, expected, expr)
             }
             ExprKind::Match(ref discrim, ref arms, match_src) => {
                 self.check_match(expr, &discrim, arms, expected, match_src)
@@ -795,5 +758,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.tcx.mk_unit()
+    }
+
+    fn check_expr_loop(
+        &self,
+        body: &'tcx hir::Block,
+        source: hir::LoopSource,
+        expected: Expectation<'tcx>,
+        expr: &'tcx hir::Expr,
+    ) -> Ty<'tcx> {
+        let coerce = match source {
+            // you can only use break with a value from a normal `loop { }`
+            hir::LoopSource::Loop => {
+                let coerce_to = expected.coercion_target_type(self, body.span);
+                Some(CoerceMany::new(coerce_to))
+            }
+
+            hir::LoopSource::WhileLet |
+            hir::LoopSource::ForLoop => {
+                None
+            }
+        };
+
+        let ctxt = BreakableCtxt {
+            coerce,
+            may_break: false, // Will get updated if/when we find a `break`.
+        };
+
+        let (ctxt, ()) = self.with_breakable_ctxt(expr.hir_id, ctxt, || {
+            self.check_block_no_value(&body);
+        });
+
+        if ctxt.may_break {
+            // No way to know whether it's diverging because
+            // of a `break` or an outer `break` or `return`.
+            self.diverges.set(Diverges::Maybe);
+        }
+
+        // If we permit break with a value, then result type is
+        // the LUB of the breaks (possibly ! if none); else, it
+        // is nil. This makes sense because infinite loops
+        // (which would have type !) are only possible iff we
+        // permit break with a value [1].
+        if ctxt.coerce.is_none() && !ctxt.may_break {
+            // [1]
+            self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
+        }
+        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.mk_unit())
     }
 }
