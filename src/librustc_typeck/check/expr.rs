@@ -144,16 +144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_index(base, idx, needs, expr)
             }
             ExprKind::Yield(ref value) => {
-                match self.yield_ty {
-                    Some(ty) => {
-                        self.check_expr_coercable_to_type(&value, ty);
-                    }
-                    None => {
-                        struct_span_err!(self.tcx.sess, expr.span, E0627,
-                                         "yield statement outside of generator literal").emit();
-                    }
-                }
-                tcx.mk_unit()
+                self.check_expr_yield(value, expr)
             }
             hir::ExprKind::Err => {
                 tcx.types.err
@@ -913,5 +904,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    fn check_expr_yield(&self, value: &'tcx hir::Expr, expr: &'tcx hir::Expr) -> Ty<'tcx> {
+        match self.yield_ty {
+            Some(ty) => {
+                self.check_expr_coercable_to_type(&value, ty);
+            }
+            None => {
+                struct_span_err!(self.tcx.sess, expr.span, E0627,
+                                    "yield statement outside of generator literal").emit();
+            }
+        }
+        self.tcx.mk_unit()
     }
 }
