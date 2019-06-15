@@ -2,7 +2,7 @@ use super::debuginfo::{
     DIBuilder, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
     DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
     DIGlobalVariableExpression, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
-    DINameSpace, DIFlags, DISPFlags, DebugEmissionKind,
+    DINameSpace, DebugEmissionKind,
 };
 
 use libc::{c_uint, c_int, size_t, c_char};
@@ -564,9 +564,8 @@ pub mod debuginfo {
 
     // These values **must** match with LLVMRustDIFlags!!
     bitflags! {
-        #[repr(C)]
         #[derive(Default)]
-        pub struct DIFlags: ::libc::uint32_t {
+        pub struct DIFlags: u32 {
             const FlagZero                = 0;
             const FlagPrivate             = 1;
             const FlagProtected           = 2;
@@ -593,9 +592,8 @@ pub mod debuginfo {
 
     // These values **must** match with LLVMRustDISPFlags!!
     bitflags! {
-        #[repr(C)]
         #[derive(Default)]
-        pub struct DISPFlags: ::libc::uint32_t {
+        pub struct DISPFlags: u32 {
             const SPFlagZero              = 0;
             const SPFlagVirtual           = 1;
             const SPFlagPureVirtual       = 2;
@@ -1452,8 +1450,8 @@ extern "C" {
                                            LineNo: c_uint,
                                            Ty: &'a DIType,
                                            ScopeLine: c_uint,
-                                           Flags: DIFlags,
-                                           SPFlags: DISPFlags,
+                                           Flags: u32,
+                                           SPFlags: u32,
                                            Fn: &'a Value,
                                            TParam: &'a DIArray,
                                            Decl: Option<&'a DIDescriptor>)
@@ -1480,7 +1478,7 @@ extern "C" {
                                              LineNumber: c_uint,
                                              SizeInBits: u64,
                                              AlignInBits: u32,
-                                             Flags: DIFlags,
+                                             Flags: u32,
                                              DerivedFrom: Option<&'a DIType>,
                                              Elements: &'a DIArray,
                                              RunTimeLang: c_uint,
@@ -1496,7 +1494,7 @@ extern "C" {
                                              SizeInBits: u64,
                                              AlignInBits: u32,
                                              OffsetInBits: u64,
-                                             Flags: DIFlags,
+                                             Flags: u32,
                                              Ty: &'a DIType)
                                              -> &'a DIDerivedType;
 
@@ -1509,7 +1507,7 @@ extern "C" {
                                                     AlignInBits: u32,
                                                     OffsetInBits: u64,
                                                     Discriminant: Option<&'a Value>,
-                                                    Flags: DIFlags,
+                                                    Flags: u32,
                                                     Ty: &'a DIType)
                                                     -> &'a DIType;
 
@@ -1546,7 +1544,7 @@ extern "C" {
                                            LineNo: c_uint,
                                            Ty: &'a DIType,
                                            AlwaysPreserve: bool,
-                                           Flags: DIFlags,
+                                           Flags: u32,
                                            ArgNo: c_uint,
                                            AlignInBits: u32)
                                            -> &'a DIVariable;
@@ -1601,7 +1599,7 @@ extern "C" {
                                             LineNumber: c_uint,
                                             SizeInBits: u64,
                                             AlignInBits: u32,
-                                            Flags: DIFlags,
+                                            Flags: u32,
                                             Elements: Option<&'a DIArray>,
                                             RunTimeLang: c_uint,
                                             UniqueId: *const c_char)
@@ -1614,7 +1612,7 @@ extern "C" {
                                               LineNo: c_uint,
                                               SizeInBits: u64,
                                               AlignInBits: u32,
-                                              Flags: DIFlags,
+                                              Flags: u32,
                                               Discriminator: Option<&'a DIDerivedType>,
                                               Elements: &'a DIArray,
                                               UniqueId: *const c_char)

@@ -187,7 +187,7 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         loc.line as c_uint,
                         type_metadata,
                         cx.sess().opts.optimize != config::OptLevel::No,
-                        DIFlags::FlagZero,
+                        DIFlags::FlagZero.bits(),
                         argument_index,
                         align.bytes() as u32,
                     )
@@ -321,8 +321,8 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 loc.line as c_uint,
                 function_type_metadata,
                 scope_line as c_uint,
-                flags,
-                spflags,
+                flags.bits(),
+                spflags.bits(),
                 llfn,
                 template_parameters,
                 None)

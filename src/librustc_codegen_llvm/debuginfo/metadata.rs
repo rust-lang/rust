@@ -1039,7 +1039,7 @@ impl<'ll> MemberDescription<'ll> {
                     None => None,
                     Some(value) => Some(cx.const_u64(value)),
                 },
-                self.flags,
+                self.flags.bits(),
                 self.type_metadata)
         }
     }
@@ -1837,7 +1837,7 @@ fn prepare_enum_metadata(
                 UNKNOWN_LINE_NUMBER,
                 layout.size.bits(),
                 layout.align.abi.bits() as u32,
-                DIFlags::FlagZero,
+                DIFlags::FlagZero.bits(),
                 None,
                 0, // RuntimeLang
                 unique_type_id_str.as_ptr())
@@ -1896,7 +1896,7 @@ fn prepare_enum_metadata(
                     size.bits(),
                     align.abi.bits() as u32,
                     layout.fields.offset(discr_index).bits(),
-                    DIFlags::FlagArtificial,
+                    DIFlags::FlagArtificial.bits(),
                     discr_metadata))
             }
         },
@@ -1921,7 +1921,7 @@ fn prepare_enum_metadata(
                     size.bits(),
                     align.bits() as u32,
                     layout.fields.offset(discr_index).bits(),
-                    DIFlags::FlagArtificial,
+                    DIFlags::FlagArtificial.bits(),
                     discr_metadata))
             }
         },
@@ -1958,7 +1958,7 @@ fn prepare_enum_metadata(
             UNKNOWN_LINE_NUMBER,
             layout.size.bits(),
             layout.align.abi.bits() as u32,
-            DIFlags::FlagZero,
+            DIFlags::FlagZero.bits(),
             discriminator_metadata,
             empty_array,
             variant_part_unique_type_id_str.as_ptr())
@@ -1976,7 +1976,7 @@ fn prepare_enum_metadata(
             UNKNOWN_LINE_NUMBER,
             layout.size.bits(),
             layout.align.abi.bits() as u32,
-            DIFlags::FlagZero,
+            DIFlags::FlagZero.bits(),
             None,
             type_array,
             0,
@@ -2142,7 +2142,7 @@ fn create_struct_stub(
             UNKNOWN_LINE_NUMBER,
             struct_size.bits(),
             struct_align.bits() as u32,
-            DIFlags::FlagZero,
+            DIFlags::FlagZero.bits(),
             None,
             empty_array,
             0,
@@ -2180,7 +2180,7 @@ fn create_union_stub(
             UNKNOWN_LINE_NUMBER,
             union_size.bits(),
             union_align.bits() as u32,
-            DIFlags::FlagZero,
+            DIFlags::FlagZero.bits(),
             Some(empty_array),
             0, // RuntimeLang
             unique_type_id.as_ptr())
@@ -2283,7 +2283,7 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
             UNKNOWN_LINE_NUMBER,
             Size::ZERO.bits(),
             cx.tcx.data_layout.pointer_align.abi.bits() as u32,
-            DIFlags::FlagArtificial,
+            DIFlags::FlagArtificial.bits(),
             None,
             empty_array,
             0,
