@@ -557,11 +557,10 @@ declare_features! (
     // Allows the user of associated type bounds.
     (active, associated_type_bounds, "1.34.0", Some(52662), None),
 
-    // Attributes on formal function params
+    // Attributes on formal function params.
     (active, param_attrs, "1.36.0", Some(60406), None),
 
-    // Allows calling constructor functions in `const fn`
-    // FIXME Create issue
+    // Allows calling constructor functions in `const fn`.
     (active, const_constructor, "1.37.0", Some(61456), None),
 
     // #[repr(transparent)] on enums.
