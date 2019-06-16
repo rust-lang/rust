@@ -3,15 +3,15 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
-    io::{Error, ErrorKind}
+    io::{Error as IoError, ErrorKind},
+    error::Error
 };
 
-use failure::bail;
 use itertools::Itertools;
 
 pub use teraron::{Mode, Overwrite, Verify};
 
-pub type Result<T> = std::result::Result<T, failure::Error>;
+pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 pub const GRAMMAR: &str = "crates/ra_syntax/src/grammar.ron";
 const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
@@ -128,7 +128,7 @@ pub fn install_format_hook() -> Result<()> {
             fs::copy("./target/debug/pre-commit", result_path)?;
         }
     } else {
-        return Err(Error::new(ErrorKind::AlreadyExists, "Git hook already created").into());
+        Err(IoError::new(ErrorKind::AlreadyExists, "Git hook already created"))?;
     }
     Ok(())
 }
@@ -224,7 +224,7 @@ where
     f(cmd.args(args).current_dir(proj_dir).stderr(Stdio::inherit()));
     let output = cmd.output()?;
     if !output.status.success() {
-        bail!("`{}` exited with {}", cmdline, output.status);
+        Err(format!("`{}` exited with {}", cmdline, output.status))?;
     }
     Ok(output)
 }
@@ -256,11 +256,11 @@ fn tests_from_dir(dir: &Path) -> Result<Tests> {
         for (_, test) in collect_tests(&text) {
             if test.ok {
                 if let Some(old_test) = res.ok.insert(test.name.clone(), test) {
-                    bail!("Duplicate test: {}", old_test.name)
+                    Err(format!("Duplicate test: {}", old_test.name))?
                 }
             } else {
                 if let Some(old_test) = res.err.insert(test.name.clone(), test) {
-                    bail!("Duplicate test: {}", old_test.name)
+                    Err(format!("Duplicate test: {}", old_test.name))?
                 }
             }
         }

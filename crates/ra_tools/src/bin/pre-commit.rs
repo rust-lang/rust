@@ -1,7 +1,5 @@
 use std::process::Command;
 
-use failure::bail;
-
 use ra_tools::{Result, run_rustfmt, run, project_root, Overwrite};
 
 fn main() -> Result<()> {
@@ -19,7 +17,10 @@ fn update_staged() -> Result<()> {
         .current_dir(&root)
         .output()?;
     if !output.status.success() {
-        bail!("`git diff --diff-filter=MAR --name-only --cached` exited with {}", output.status);
+        Err(format!(
+            "`git diff --diff-filter=MAR --name-only --cached` exited with {}",
+            output.status
+        ))?;
     }
     for line in String::from_utf8(output.stdout)?.lines() {
         run(&format!("git update-index --add {}", root.join(line).to_string_lossy()), ".")?;

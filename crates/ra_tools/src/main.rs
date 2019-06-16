@@ -1,6 +1,5 @@
 use clap::{App, SubCommand};
 use core::str;
-use failure::bail;
 use ra_tools::{
     generate, gen_tests, install_format_hook, run, run_with_output, run_rustfmt,
     Overwrite, Result, run_fuzzer, run_clippy,
@@ -64,10 +63,8 @@ fn verify_installed_extensions() -> Result<()> {
         run_with_output(r"code --list-extensions", ".")?
     };
     if !str::from_utf8(&exts.stdout)?.contains("ra-lsp") {
-        bail!(
-            "Could not install the Visual Studio Code extension. Please make sure you \
-             have at least NodeJS 10.x installed and try again."
-        );
+        Err("Could not install the Visual Studio Code extension. Please make sure you \
+             have at least NodeJS 10.x installed and try again.")?;
     }
     Ok(())
 }
@@ -79,7 +76,7 @@ fn fix_path_for_mac() -> Result<()> {
         const ROOT_DIR: &str = "";
         let home_dir = match env::var("HOME") {
             Ok(home) => home,
-            Err(e) => bail!("Failed getting HOME from environment with error: {}.", e),
+            Err(e) => Err(format!("Failed getting HOME from environment with error: {}.", e))?,
         };
 
         [ROOT_DIR, &home_dir]
@@ -93,7 +90,7 @@ fn fix_path_for_mac() -> Result<()> {
     if !vscode_path.is_empty() {
         let vars = match env::var_os("PATH") {
             Some(path) => path,
-            None => bail!("Could not get PATH variable from env."),
+            None => Err("Could not get PATH variable from env.")?,
         };
 
         let mut paths = env::split_paths(&vars).collect::<Vec<_>>();
