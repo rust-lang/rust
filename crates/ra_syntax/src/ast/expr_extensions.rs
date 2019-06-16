@@ -229,8 +229,12 @@ pub enum LiteralKind {
 
 impl ast::Literal {
     pub fn token(&self) -> SyntaxToken {
-        match self.syntax().first_child_or_token().unwrap() {
-            SyntaxElement::Token(token) => token,
+        let elem = self
+            .syntax()
+            .children_with_tokens()
+            .find(|e| e.kind() != ATTR && !e.kind().is_trivia());
+        match elem {
+            Some(SyntaxElement::Token(token)) => token,
             _ => unreachable!(),
         }
     }
@@ -266,6 +270,13 @@ impl ast::Literal {
             _ => unreachable!(),
         }
     }
+}
+
+#[test]
+fn test_literal_with_attr() {
+    let parse = ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#);
+    let lit = parse.tree.syntax().descendants().find_map(ast::Literal::cast).unwrap();
+    assert_eq!(lit.token().text(), r#""Hello""#);
 }
 
 impl ast::NamedField {
