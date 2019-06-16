@@ -2028,6 +2028,15 @@ fn shape_from_rhs_tactic(
     }
 }
 
+/// Returns true if formatting next_line_rhs is better on a new line when compared to the
+/// original's line formatting.
+///
+/// It is considered better if:
+/// 1. the tactic is ForceNextLineWithoutIndent
+/// 2. next_line_rhs doesn't have newlines
+/// 3. the original line has more newlines than next_line_rhs
+/// 4. the original formatting of the first line ends with `(`, `{`, or `[` and next_line_rhs
+///    doesn't
 pub(crate) fn prefer_next_line(
     orig_rhs: &str,
     next_line_rhs: &str,

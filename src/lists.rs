@@ -10,7 +10,10 @@ use crate::config::lists::*;
 use crate::config::{Config, IndentStyle};
 use crate::rewrite::RewriteContext;
 use crate::shape::{Indent, Shape};
-use crate::utils::{count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline};
+use crate::utils::{
+    count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline,
+    unicode_str_width,
+};
 use crate::visitor::SnippetProvider;
 
 pub(crate) struct ListFormatting<'a> {
@@ -386,7 +389,7 @@ where
                         result.push('\n');
                         result.push_str(indent_str);
                         // This is the width of the item (without comments).
-                        line_len = item.item.as_ref().map_or(0, String::len);
+                        line_len = item.item.as_ref().map_or(0, |s| unicode_str_width(&s));
                     }
                 } else {
                     result.push(' ');
@@ -808,7 +811,7 @@ where
 pub(crate) fn total_item_width(item: &ListItem) -> usize {
     comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..]))
         + comment_len(item.post_comment.as_ref().map(|x| &(*x)[..]))
-        + item.item.as_ref().map_or(0, String::len)
+        + &item.item.as_ref().map_or(0, |s| unicode_str_width(&s))
 }
 
 fn comment_len(comment: Option<&str>) -> usize {
