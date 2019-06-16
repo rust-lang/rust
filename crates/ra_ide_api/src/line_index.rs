@@ -10,7 +10,9 @@ pub struct LineIndex {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct LineCol {
+    /// Zero-based
     pub line: u32,
+    /// Zero-based
     pub col_utf16: u32,
 }
 

@@ -276,7 +276,7 @@ impl AnalysisHost {
     pub fn collect_garbage(&mut self) {
         self.db.collect_garbage();
     }
-    pub fn raw_database(&self) -> &impl hir::db::HirDatabase {
+    pub fn raw_database(&self) -> &(impl hir::db::HirDatabase + salsa::Database) {
         &self.db
     }
 }

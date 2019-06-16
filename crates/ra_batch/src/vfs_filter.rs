@@ -40,13 +40,13 @@ impl Filter for IncludeRustFiles {
     }
 }
 
-impl std::convert::From<ProjectRoot> for IncludeRustFiles {
+impl From<ProjectRoot> for IncludeRustFiles {
     fn from(v: ProjectRoot) -> IncludeRustFiles {
         IncludeRustFiles { root: v }
     }
 }
 
-impl std::convert::From<IncludeRustFiles> for RootEntry {
+impl From<IncludeRustFiles> for RootEntry {
     fn from(v: IncludeRustFiles) -> RootEntry {
         let path = v.root.path().clone();
         RootEntry::new(path, Box::new(v))

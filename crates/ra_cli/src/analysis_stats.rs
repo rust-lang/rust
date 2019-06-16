@@ -1,4 +1,4 @@
-use std::{collections::HashSet, time::Instant, fmt::Write};
+use std::{collections::HashSet, time::Instant, fmt::Write, path::Path};
 
 use ra_db::SourceDatabase;
 use ra_hir::{Crate, ModuleDef, Ty, ImplItem, HasSource};
@@ -6,20 +6,23 @@ use ra_syntax::AstNode;
 
 use crate::Result;
 
-pub fn run(verbose: bool, path: &str, only: Option<&str>) -> Result<()> {
+pub fn run(verbose: bool, path: &Path, only: Option<&str>) -> Result<()> {
     let db_load_time = Instant::now();
-    let (host, roots) = ra_batch::load_cargo(path.as_ref())?;
+    let (host, roots) = ra_batch::load_cargo(path)?;
     let db = host.raw_database();
     println!("Database loaded, {} roots, {:?}", roots.len(), db_load_time.elapsed());
     let analysis_time = Instant::now();
     let mut num_crates = 0;
     let mut visited_modules = HashSet::new();
     let mut visit_queue = Vec::new();
-    for root in roots {
-        for krate in Crate::source_root_crates(db, root) {
-            num_crates += 1;
-            let module = krate.root_module(db).expect("crate in source root without root module");
-            visit_queue.push(module);
+    for (source_root_id, project_root) in roots {
+        if project_root.is_member() {
+            for krate in Crate::source_root_crates(db, source_root_id) {
+                num_crates += 1;
+                let module =
+                    krate.root_module(db).expect("crate in source root without root module");
+                visit_queue.push(module);
+            }
         }
     }
     println!("Crates in this dir: {}", num_crates);
