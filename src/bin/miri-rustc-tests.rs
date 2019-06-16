@@ -43,7 +43,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         compiler.session().abort_if_errors();
         compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             if std::env::args().any(|arg| arg == "--test") {
-                struct Visitor<'tcx>(TyCtxt<'tcx, 'tcx>);
+                struct Visitor<'tcx>(TyCtxt<'tcx>);
                 impl<'tcx, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'tcx> {
                     fn visit_item(&mut self, i: &'hir hir::Item) {
                         if let hir::ItemKind::Fn(.., body_id) = i.node {
