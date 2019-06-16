@@ -335,40 +335,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// Visits the `expr` and adjusts whether `let $pat = $expr` is allowed in decendants.
-    /// Returns whether we walked into `expr` or not.
-    /// If we did, walking should not happen again.
-    fn visit_expr_with_let_maybe_allowed(&mut self, expr: &'a Expr, let_allowed: bool) -> bool {
-        match &expr.node {
-            // Assuming the context permits, `($expr)` does not impose additional constraints.
-            ExprKind::Paren(_) => {
-                self.with_let_allowed(let_allowed, |this, _| visit::walk_expr(this, expr));
-            }
-            // Assuming the context permits,
-            // l && r` allows decendants in `l` and `r` to be `let` expressions.
-            ExprKind::Binary(op, ..) if op.node == BinOpKind::And => {
-                self.with_let_allowed(let_allowed, |this, _| visit::walk_expr(this, expr));
-            }
-            // However, we do allow it in the condition of the `if` expression.
-            // We do not allow `let` in `then` and `opt_else` directly.
-            ExprKind::If(cond, then, opt_else) => {
-                self.visit_block(then);
-                walk_list!(self, visit_expr, opt_else);
-                self.with_let_allowed(true, |this, _| this.visit_expr(cond));
-            }
-            // The same logic applies to `While`.
-            ExprKind::While(cond, then, opt_label) => {
-                walk_list!(self, visit_label, opt_label);
-                self.visit_block(then);
-                self.with_let_allowed(true, |this, _| this.visit_expr(cond));
-            }
-            // Don't walk into `expr` and defer further checks to the caller.
-            _ => return false,
-        }
-
-        true
-    }
-
     /// Emits an error banning the `let` expression provided.
     fn ban_let_expr(&self, expr: &'a Expr) {
         self.err_handler()
@@ -509,9 +475,31 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 ExprKind::Let(_, _) if !let_allowed => {
                     this.ban_let_expr(expr);
                 }
-                _ if this.visit_expr_with_let_maybe_allowed(&expr, let_allowed) => {
-                    // Prevent `walk_expr` to happen since we've already done that.
-                    return;
+                // Assuming the context permits, `($expr)` does not impose additional constraints.
+                ExprKind::Paren(_) => {
+                    this.with_let_allowed(let_allowed, |this, _| visit::walk_expr(this, expr));
+                    return; // We've already walked into `expr`.
+                }
+                // Assuming the context permits,
+                // l && r` allows decendants in `l` and `r` to be `let` expressions.
+                ExprKind::Binary(op, ..) if op.node == BinOpKind::And => {
+                    this.with_let_allowed(let_allowed, |this, _| visit::walk_expr(this, expr));
+                    return; // We've already walked into `expr`.
+                }
+                // However, we do allow it in the condition of the `if` expression.
+                // We do not allow `let` in `then` and `opt_else` directly.
+                ExprKind::If(cond, then, opt_else) => {
+                    this.visit_block(then);
+                    walk_list!(this, visit_expr, opt_else);
+                    this.with_let_allowed(true, |this, _| this.visit_expr(cond));
+                    return; // We've already walked into `expr`.
+                }
+                // The same logic applies to `While`.
+                ExprKind::While(cond, then, opt_label) => {
+                    walk_list!(this, visit_label, opt_label);
+                    this.visit_block(then);
+                    this.with_let_allowed(true, |this, _| this.visit_expr(cond));
+                    return; // We've already walked into `expr`.
                 }
                 ExprKind::Closure(_, _, _, fn_decl, _, _) => {
                     this.check_fn_decl(fn_decl);
