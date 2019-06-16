@@ -13,8 +13,8 @@ use cranelift_faerie::*;
 
 use crate::prelude::*;
 
-pub fn codegen_crate<'a, 'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+pub fn codegen_crate(
+    tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<dyn Any> {
@@ -45,7 +45,7 @@ pub fn codegen_crate<'a, 'tcx>(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn run_jit<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx, 'tcx>, log: &mut Option<File>) -> ! {
+fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
     use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
     let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new(
@@ -95,8 +95,8 @@ fn run_jit<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx, 'tcx>, log: &mut Option<File>) -> ! {
     std::process::exit(ret);
 }
 
-fn run_aot<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+fn run_aot(
+    tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
     log: &mut Option<File>,
@@ -224,8 +224,8 @@ fn run_aot<'a, 'tcx: 'a>(
     })
 }
 
-fn codegen_cgus<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+fn codegen_cgus<'tcx>(
+    tcx: TyCtxt<'tcx>,
     module: &mut Module<impl Backend + 'static>,
     debug: &mut Option<DebugContext<'tcx>>,
     log: &mut Option<File>,
@@ -242,8 +242,8 @@ fn codegen_cgus<'a, 'tcx: 'a>(
     crate::main_shim::maybe_create_entry_wrapper(tcx, module);
 }
 
-fn codegen_mono_items<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+fn codegen_mono_items<'tcx>(
+    tcx: TyCtxt<'tcx>,
     module: &mut Module<impl Backend + 'static>,
     debug_context: Option<&mut DebugContext<'tcx>>,
     log: &mut Option<File>,
@@ -262,7 +262,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     });
 }
 
-fn trans_mono_item<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
+fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
     cx: &mut crate::CodegenCx<'clif, 'tcx, B>,
     mono_item: MonoItem<'tcx>,
     linkage: Linkage,

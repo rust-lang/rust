@@ -113,7 +113,7 @@ pub struct Caches<'tcx> {
     pub vtables: HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
 }
 
-impl<'tcx> Default for Caches<'tcx> {
+impl Default for Caches<'_> {
     fn default() -> Self {
         Caches {
             context: Context::new(),
@@ -123,7 +123,7 @@ impl<'tcx> Default for Caches<'tcx> {
 }
 
 pub struct CodegenCx<'clif, 'tcx, B: Backend + 'static> {
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     module: &'clif mut Module<B>,
     ccx: ConstantCx,
     caches: Caches<'tcx>,
@@ -132,7 +132,7 @@ pub struct CodegenCx<'clif, 'tcx, B: Backend + 'static> {
 
 impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
     fn new(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         module: &'clif mut Module<B>,
         debug_context: Option<&'clif mut DebugContext<'tcx>>,
     ) -> Self {
@@ -193,9 +193,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
         rustc_codegen_ssa::back::symbol_export::provide_extern(providers);
     }
 
-    fn codegen_crate<'a, 'tcx>(
+    fn codegen_crate<'tcx>(
         &self,
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
         _rx: mpsc::Receiver<Box<dyn Any + Send>>,

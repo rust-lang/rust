@@ -92,7 +92,7 @@ pub struct DebugContext<'tcx> {
     _dummy: PhantomData<&'tcx ()>,
 }
 
-impl<'a, 'tcx: 'a> DebugContext<'tcx> {
+impl<'tcx> DebugContext<'tcx> {
     pub fn new(tcx: TyCtxt, address_size: u8) -> Self {
         let encoding = Encoding {
             format: Format::Dwarf32,
@@ -155,7 +155,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
         }
     }
 
-    fn emit_location(&mut self, tcx: TyCtxt<'tcx, 'tcx>, entry_id: UnitEntryId, span: Span) {
+    fn emit_location(&mut self, tcx: TyCtxt<'tcx>, entry_id: UnitEntryId, span: Span) {
         let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
 
         let file_id = line_program_add_file(
@@ -230,9 +230,9 @@ pub struct FunctionDebugContext<'a, 'tcx> {
     mir_span: Span,
 }
 
-impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
+impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     pub fn new(
-        tcx: TyCtxt<'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         debug_context: &'a mut DebugContext<'tcx>,
         mir: &Body,
         name: &str,

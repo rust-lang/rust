@@ -77,7 +77,7 @@ pub struct CommentWriter {
 }
 
 impl CommentWriter {
-    pub fn new<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx, 'tcx>, instance: Instance<'tcx>) -> Self {
+    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
         CommentWriter {
             global_comments: vec![
                 format!("symbol {}", tcx.symbol_name(instance).as_str()),
@@ -91,7 +91,7 @@ impl CommentWriter {
     }
 }
 
-impl<'a> FuncWriter for &'a CommentWriter {
+impl FuncWriter for &'_ CommentWriter {
     fn write_preamble(
         &mut self,
         w: &mut dyn fmt::Write,
@@ -193,8 +193,8 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
     }
 }
 
-pub fn write_clif_file<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+pub fn write_clif_file<'tcx>(
+    tcx: TyCtxt<'tcx>,
     postfix: &str,
     instance: Instance<'tcx>,
     func: &ir::Function,

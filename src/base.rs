@@ -18,7 +18,7 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         // Check sig for u128 and i128
         let fn_sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &instance.fn_sig(tcx));
 
-        struct UI128Visitor<'tcx>(TyCtxt<'tcx, 'tcx>, bool);
+        struct UI128Visitor<'tcx>(TyCtxt<'tcx>, bool);
 
         impl<'tcx> rustc::ty::fold::TypeVisitor<'tcx> for UI128Visitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {

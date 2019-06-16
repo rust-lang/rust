@@ -17,8 +17,8 @@ pub fn pointer_ty(tcx: TyCtxt) -> types::Type {
     }
 }
 
-pub fn clif_type_from_ty<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+pub fn clif_type_from_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<types::Type> {
     Some(match ty.sty {
@@ -95,7 +95,7 @@ pub fn clif_intcast<'a, 'tcx: 'a>(
 
 pub struct FunctionCx<'a, 'tcx: 'a, B: Backend> {
     // FIXME use a reference to `CodegenCx` instead of `tcx`, `module` and `constants` and `caches`
-    pub tcx: TyCtxt<'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx>,
     pub module: &'a mut Module<B>,
     pub pointer_type: Type, // Cached from module
 
@@ -123,7 +123,7 @@ impl<'a, 'tcx: 'a, B: Backend> LayoutOf for FunctionCx<'a, 'tcx, B> {
 }
 
 impl<'a, 'tcx, B: Backend + 'a> layout::HasTyCtxt<'tcx> for FunctionCx<'a, 'tcx, B> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }

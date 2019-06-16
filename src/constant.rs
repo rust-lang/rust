@@ -26,10 +26,10 @@ enum TodoItem {
 }
 
 impl ConstantCx {
-    pub fn finalize<'a, 'tcx: 'a, B: Backend>(
+    pub fn finalize(
         mut self,
-        tcx: TyCtxt<'tcx, 'tcx>,
-        module: &mut Module<B>,
+        tcx: TyCtxt<'_>,
+        module: &mut Module<impl Backend>,
     ) {
         //println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
@@ -38,7 +38,7 @@ impl ConstantCx {
     }
 }
 
-pub fn codegen_static<'a, 'tcx: 'a>(ccx: &mut ConstantCx, def_id: DefId) {
+pub fn codegen_static(ccx: &mut ConstantCx, def_id: DefId) {
     ccx.todo.insert(TodoItem::Static(def_id));
 }
 
@@ -177,15 +177,15 @@ fn trans_const_place<'a, 'tcx: 'a>(
     cplace_for_dataid(fx, const_.ty, data_id)
 }
 
-fn data_id_for_alloc_id<B: Backend>(module: &mut Module<B>, alloc_id: AllocId) -> DataId {
+fn data_id_for_alloc_id(module: &mut Module<impl Backend>, alloc_id: AllocId) -> DataId {
     module
         .declare_data(&format!("__alloc_{}", alloc_id.0), Linkage::Local, false, None)
         .unwrap()
 }
 
-fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    module: &mut Module<B>,
+fn data_id_for_static(
+    tcx: TyCtxt<'_>,
+    module: &mut Module<impl Backend>,
     def_id: DefId,
     linkage: Linkage,
 ) -> DataId {
@@ -237,9 +237,9 @@ fn cplace_for_dataid<'a, 'tcx: 'a>(
     CPlace::for_addr(global_ptr, layout)
 }
 
-fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
-    tcx: TyCtxt<'tcx, 'tcx>,
-    module: &mut Module<B>,
+fn define_all_allocs(
+    tcx: TyCtxt<'_>,
+    module: &mut Module<impl Backend>,
     cx: &mut ConstantCx,
 ) {
     let memory = Memory::<TransPlaceInterpreter>::new(tcx.at(DUMMY_SP));
@@ -374,7 +374,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
 
     fn find_foreign_static(
         _: DefId,
-        _: ::rustc::ty::query::TyCtxtAt<'tcx, 'tcx>,
+        _: ::rustc::ty::query::TyCtxtAt<'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
         panic!();
     }
