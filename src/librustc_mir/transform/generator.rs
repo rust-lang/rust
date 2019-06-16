@@ -625,7 +625,8 @@ struct StorageConflictVisitor<'body, 'tcx, 's> {
 }
 
 impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
-for StorageConflictVisitor<'body, 'tcx, 's> {
+    for StorageConflictVisitor<'body, 'tcx, 's>
+{
     type FlowState = FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>;
 
     fn body(&self) -> &'body Body<'tcx> {

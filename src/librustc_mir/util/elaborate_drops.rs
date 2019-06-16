@@ -91,7 +91,8 @@ pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
 
 #[derive(Debug)]
 struct DropCtxt<'l, 'b, 'tcx, D>
-    where D : DropElaborator<'b, 'tcx> + 'l
+where
+    D: DropElaborator<'b, 'tcx> + 'l,
 {
     elaborator: &'l mut D,
 
@@ -110,8 +111,9 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     path: D::Path,
     succ: BasicBlock,
     unwind: Unwind,
-    bb: BasicBlock)
-    where D: DropElaborator<'b, 'tcx>,
+    bb: BasicBlock,
+) where
+    D: DropElaborator<'b, 'tcx>,
     'tcx: 'b,
 {
     DropCtxt {

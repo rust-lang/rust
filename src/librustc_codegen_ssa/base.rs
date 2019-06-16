@@ -94,7 +94,7 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     rhs: Bx::Value,
     t: Ty<'tcx>,
     ret_ty: Bx::Type,
-    op: hir::BinOpKind
+    op: hir::BinOpKind,
 ) -> Bx::Value {
     let signed = match t.sty {
         ty::Float(_) => {
@@ -156,7 +156,7 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
     src_ty: Ty<'tcx>,
-    dst_ty: Ty<'tcx>
+    dst_ty: Ty<'tcx>,
 ) -> (Bx::Value, Bx::Value) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (&src_ty.sty, &dst_ty.sty) {
@@ -210,8 +210,8 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: PlaceRef<'tcx, Bx::Value>,
-    dst: PlaceRef<'tcx, Bx::Value>
-)  {
+    dst: PlaceRef<'tcx, Bx::Value>,
+) {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     let mut coerce_ptr = || {
@@ -270,7 +270,7 @@ pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     op: hir::BinOpKind,
     lhs: Bx::Value,
-    rhs: Bx::Value
+    rhs: Bx::Value,
 ) -> Bx::Value {
     cast_shift_rhs(bx, op, lhs, rhs)
 }
@@ -318,7 +318,7 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 
 pub fn from_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    val: Bx::Value
+    val: Bx::Value,
 ) -> Bx::Value {
     if bx.cx().val_ty(val) == bx.cx().type_i1() {
         bx.zext(val, bx.cx().type_i8())
@@ -387,9 +387,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
 /// Creates the `main` function which will initialize the rust runtime and call
 /// users main function.
-pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    cx: &'a Bx::CodegenCx
-) {
+pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'a Bx::CodegenCx) {
     let (main_def_id, span) = match cx.tcx().entry_fn(LOCAL_CRATE) {
         Some((def_id, _)) => { (def_id, cx.tcx().def_span(def_id)) },
         None => return,

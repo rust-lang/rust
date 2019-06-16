@@ -43,7 +43,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    personality_slot: Option<PlaceRef<'tcx, Bx::Value,>>,
+    personality_slot: Option<PlaceRef<'tcx, Bx::Value>>,
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: IndexVec<mir::BasicBlock, Bx::BasicBlock>,
@@ -355,10 +355,11 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     mir: &'a Body<'tcx>,
     bx: &mut Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
-    block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>)
-    -> (IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
-        IndexVec<mir::BasicBlock, Option<Bx::Funclet>>)
-{
+    block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>,
+) -> (
+    IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
+    IndexVec<mir::BasicBlock, Option<Bx::Funclet>>,
+) {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
             CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {}

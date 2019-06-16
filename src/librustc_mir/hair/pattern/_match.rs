@@ -632,10 +632,10 @@ impl<'tcx> Witness<'tcx> {
 ///
 /// We make sure to omit constructors that are statically impossible. E.g., for
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
-fn all_constructors<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                                  pcx: PatternContext<'tcx>)
-                                  -> Vec<Constructor<'tcx>>
-{
+fn all_constructors<'a, 'tcx>(
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    pcx: PatternContext<'tcx>,
+) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
     let ctors = match pcx.ty.sty {
         ty::Bool => {
@@ -706,11 +706,10 @@ fn all_constructors<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     ctors
 }
 
-fn max_slice_length<'p, 'a, 'tcx, I>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    patterns: I) -> u64
-    where I: Iterator<Item=&'p Pattern<'tcx>>,
-        'tcx: 'p,
+fn max_slice_length<'p, 'a, 'tcx, I>(cx: &mut MatchCheckCtxt<'a, 'tcx>, patterns: I) -> u64
+where
+    I: Iterator<Item = &'p Pattern<'tcx>>,
+    'tcx: 'p,
 {
     // The exhaustiveness-checking paper does not include any details on
     // checking variable-length slice patterns. However, they are matched
@@ -1056,11 +1055,12 @@ fn compute_missing_ctors<'tcx>(
 /// relation to preceding patterns, it is not reachable) and exhaustiveness
 /// checking (if a wildcard pattern is useful in relation to a matrix, the
 /// matrix isn't exhaustive).
-pub fn is_useful<'p, 'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                                       matrix: &Matrix<'p, 'tcx>,
-                                       v: &[&Pattern<'tcx>],
-                                       witness: WitnessPreference)
-                                       -> Usefulness<'tcx> {
+pub fn is_useful<'p, 'a, 'tcx>(
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    matrix: &Matrix<'p, 'tcx>,
+    v: &[&Pattern<'tcx>],
+    witness: WitnessPreference,
+) -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
@@ -1372,10 +1372,11 @@ fn constructor_arity(cx: &MatchCheckCtxt<'a, 'tcx>, ctor: &Constructor<'tcx>, ty
 /// expanded to.
 ///
 /// For instance, a tuple pattern (43u32, 'a') has sub pattern types [u32, char].
-fn constructor_sub_pattern_tys<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>,
-                                             ctor: &Constructor<'tcx>,
-                                             ty: Ty<'tcx>) -> Vec<Ty<'tcx>>
-{
+fn constructor_sub_pattern_tys<'a, 'tcx>(
+    cx: &MatchCheckCtxt<'a, 'tcx>,
+    ctor: &Constructor<'tcx>,
+    ty: Ty<'tcx>,
+) -> Vec<Ty<'tcx>> {
     debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
     match ty.sty {
         ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
