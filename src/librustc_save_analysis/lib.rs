@@ -960,8 +960,8 @@ impl<'l> PathCollector<'l> {
     }
 }
 
-impl<'l, 'a> Visitor<'a> for PathCollector<'l> {
-    fn visit_pat(&mut self, p: &'a ast::Pat) {
+impl<'l> Visitor<'l> for PathCollector<'l> {
+    fn visit_pat(&mut self, p: &'l ast::Pat) {
         match p.node {
             PatKind::Struct(ref path, ..) => {
                 self.collected_paths.push((p.id, path));

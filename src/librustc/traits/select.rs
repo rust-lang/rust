@@ -3788,9 +3788,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         matcher.relate(previous, current).is_ok()
     }
 
-    fn push_stack<'o, 's>(
+    fn push_stack<'o>(
         &mut self,
-        previous_stack: TraitObligationStackList<'s, 'tcx>,
+        previous_stack: TraitObligationStackList<'o, 'tcx>,
         obligation: &'o TraitObligation<'tcx>,
     ) -> TraitObligationStack<'o, 'tcx> {
         let fresh_trait_ref = obligation

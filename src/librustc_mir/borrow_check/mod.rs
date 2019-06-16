@@ -1693,7 +1693,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn move_path_closest_to<'a>(
         &mut self,
         place: &'a Place<'tcx>,
-    ) -> Result<(&'a Place<'tcx>, MovePathIndex), NoMovePathFound> {
+    ) -> Result<(&'a Place<'tcx>, MovePathIndex), NoMovePathFound> where 'cx: 'a {
         let mut last_prefix = place;
         for prefix in self.prefixes(place, PrefixSet::All) {
             if let Some(mpi) = self.move_path_for_place(prefix) {

@@ -366,7 +366,7 @@ pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx.memcpy(dst, dst_align, src, src_align, bx.cx().const_usize(size), flags);
 }
 
-pub fn codegen_instance<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {

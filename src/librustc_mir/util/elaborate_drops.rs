@@ -111,7 +111,8 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     succ: BasicBlock,
     unwind: Unwind,
     bb: BasicBlock)
-    where D: DropElaborator<'b, 'tcx>
+    where D: DropElaborator<'b, 'tcx>,
+    'tcx: 'b,
 {
     DropCtxt {
         elaborator, source_info, place, path, succ, unwind
@@ -121,6 +122,7 @@ pub fn elaborate_drop<'b, 'tcx, D>(
 impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 where
     D: DropElaborator<'b, 'tcx>,
+    'tcx: 'b,
 {
     fn place_ty(&self, place: &Place<'tcx>) -> Ty<'tcx> {
         place.ty(self.elaborator.body(), self.tcx()).ty

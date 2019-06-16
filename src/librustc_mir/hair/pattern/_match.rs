@@ -709,7 +709,8 @@ fn all_constructors<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 fn max_slice_length<'p, 'a, 'tcx, I>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     patterns: I) -> u64
-    where I: Iterator<Item=&'p Pattern<'tcx>>
+    where I: Iterator<Item=&'p Pattern<'tcx>>,
+        'tcx: 'p,
 {
     // The exhaustiveness-checking paper does not include any details on
     // checking variable-length slice patterns. However, they are matched
@@ -1709,7 +1710,7 @@ fn patterns_for_variant<'p, 'tcx>(
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize<'p, 'a, 'tcx>(
+fn specialize<'p, 'a: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     r: &[&'p Pattern<'tcx>],
     constructor: &Constructor<'tcx>,

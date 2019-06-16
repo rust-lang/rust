@@ -297,7 +297,7 @@ impl<'a, 'tcx, BD> DataflowBuilder<'a, 'tcx, BD> where BD: BitDenotation<'tcx>
 /// underlying flow analysis results, because it needs to handle cases
 /// where we are combining the results of *multiple* flow analyses
 /// (e.g., borrows + inits + uninits).
-pub(crate) trait DataflowResultsConsumer<'a, 'tcx> {
+pub(crate) trait DataflowResultsConsumer<'a, 'tcx: 'a> {
     type FlowState: FlowsAtLocation;
 
     // Observation Hooks: override (at least one of) these to get analysis feedback.

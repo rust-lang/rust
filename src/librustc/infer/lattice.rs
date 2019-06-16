@@ -41,7 +41,7 @@ pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()>;
 }
 
-pub fn super_lattice_tys<'a, 'tcx, L>(
+pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
     this: &mut L,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
