@@ -20,7 +20,7 @@ fn ignored_span(sp: Span, edition: Edition) -> Span {
         call_site: DUMMY_SP,
         def_site: None,
         format: MacroAttribute(Symbol::intern("std_inject")),
-        allow_internal_unstable: Some(vec![sym::prelude_import].into()),
+        allow_internal_unstable: Some([sym::prelude_import][..].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
         edition,

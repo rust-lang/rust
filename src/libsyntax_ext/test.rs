@@ -66,7 +66,7 @@ pub fn expand_test_or_bench(
             call_site: DUMMY_SP,
             def_site: None,
             format: MacroAttribute(sym::test),
-            allow_internal_unstable: Some(vec![sym::rustc_attrs, sym::test].into()),
+            allow_internal_unstable: Some([sym::rustc_attrs, sym::test][..].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: cx.parse_sess.edition,

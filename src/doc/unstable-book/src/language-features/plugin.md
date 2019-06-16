@@ -132,7 +132,7 @@ The advantages over a simple `fn(&str) -> u32` are:
 In addition to procedural macros, you can define new
 [`derive`](../../reference/attributes/derive.md)-like attributes and other kinds
 of extensions.  See `Registry::register_syntax_extension` and the
-`SyntaxExtension` enum.  For a more involved macro example, see
+`SyntaxExtension` struct.  For a more involved macro example, see
 [`regex_macros`](https://github.com/rust-lang/regex/blob/master/regex_macros/src/lib.rs).
 
 

@@ -15,7 +15,7 @@ use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
-use syntax::ext::base::{MacroKind, SyntaxExtension};
+use syntax::ext::base::{MacroKind, SyntaxExtension, SyntaxExtensionKind};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
@@ -174,7 +174,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             krate: CrateNum::BuiltinMacros,
             index: DefIndex::from(self.macro_map.len()),
         };
-        let kind = ext.kind();
+        let kind = ext.macro_kind();
         self.macro_map.insert(def_id, ext);
         let binding = self.arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Res(Res::Def(DefKind::Macro(kind), def_id), false),
@@ -211,7 +211,8 @@ impl<'a> base::Resolver for Resolver<'a> {
             Ok((res, ext)) => (res, ext),
             Err(Determinacy::Determined) if kind == MacroKind::Attr => {
                 // Replace unresolved attributes with used inert attributes for better recovery.
-                return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr { mark_used: true })));
+                let kind = SyntaxExtensionKind::NonMacroAttr { mark_used: true };
+                return Ok(Some(Lrc::new(SyntaxExtension::default(kind, self.session.edition()))));
             }
             Err(determinacy) => return Err(determinacy),
         };
@@ -226,7 +227,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
             self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.mark,
                                                             normal_module_def_id);
-            invoc.expansion_data.mark.set_default_transparency(ext.default_transparency());
+            invoc.expansion_data.mark.set_default_transparency(ext.default_transparency);
         }
 
         Ok(Some(ext))
@@ -241,11 +242,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn check_unused_macros(&self) {
         for did in self.unused_macros.iter() {
-            let id_span = match *self.macro_map[did] {
-                SyntaxExtension::LegacyBang { def_info, .. } => def_info,
-                _ => None,
-            };
-            if let Some((id, span)) = id_span {
+            if let Some((id, span)) = self.macro_map[did].def_info {
                 let lint = lint::builtin::UNUSED_MACROS;
                 let msg = "unused macro definition";
                 self.session.buffer_lint(lint, id, span, msg);
@@ -585,17 +582,12 @@ impl<'a> Resolver<'a> {
                         let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
                         match self.resolve_macro_to_res(derive, MacroKind::Derive,
                                                         &parent_scope, true, force) {
-                            Ok((_, ext)) => {
-                                if let SyntaxExtension::Derive(_, helpers, _) = &*ext {
-                                    if helpers.contains(&ident.name) {
-                                        let binding =
-                                            (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
-                                            ty::Visibility::Public, derive.span, Mark::root())
-                                            .to_name_binding(self.arenas);
-                                        result = Ok((binding, Flags::empty()));
-                                        break;
-                                    }
-                                }
+                            Ok((_, ext)) => if ext.helper_attrs.contains(&ident.name) {
+                                let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
+                                               ty::Visibility::Public, derive.span, Mark::root())
+                                               .to_name_binding(self.arenas);
+                                result = Ok((binding, Flags::empty()));
+                                break;
                             }
                             Err(Determinacy::Determined) => {}
                             Err(Determinacy::Undetermined) =>

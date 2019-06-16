@@ -351,10 +351,9 @@ fn mk_decls(
         call_site: DUMMY_SP,
         def_site: None,
         format: MacroAttribute(sym::proc_macro),
-        allow_internal_unstable: Some(vec![
-            sym::rustc_attrs,
-            Symbol::intern("proc_macro_internals"),
-        ].into()),
+        allow_internal_unstable: Some([
+            sym::rustc_attrs, Symbol::intern("proc_macro_internals")
+        ][..].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
         edition: cx.parse_sess.edition,

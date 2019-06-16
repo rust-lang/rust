@@ -2,7 +2,9 @@
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::{self, MetaItem};
-use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension, Resolver, MultiItemModifier};
+use syntax::edition::Edition;
+use syntax::ext::base::{Annotatable, ExtCtxt, Resolver, MultiItemModifier};
+use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use syntax::ext::build::AstBuilder;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ptr::P;
@@ -67,11 +69,24 @@ macro_rules! derive_traits {
             }
         }
 
-        pub fn register_builtin_derives(resolver: &mut dyn Resolver) {
+        pub fn register_builtin_derives(resolver: &mut dyn Resolver, edition: Edition) {
+            let allow_internal_unstable = Some([
+                sym::rustc_attrs,
+                Symbol::intern("derive_clone_copy"),
+                Symbol::intern("derive_eq"),
+                Symbol::intern("libstd_sys_internals"), // RustcDeserialize and RustcSerialize
+            ][..].into());
+
             $(
                 resolver.add_builtin(
                     ast::Ident::with_empty_ctxt(Symbol::intern($name)),
-                    Lrc::new(SyntaxExtension::LegacyDerive(Box::new(BuiltinDerive($func))))
+                    Lrc::new(SyntaxExtension {
+                        allow_internal_unstable: allow_internal_unstable.clone(),
+                        ..SyntaxExtension::default(
+                            SyntaxExtensionKind::LegacyDerive(Box::new(BuiltinDerive($func))),
+                            edition,
+                        )
+                    }),
                 );
             )*
         }

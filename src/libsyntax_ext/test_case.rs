@@ -41,7 +41,7 @@ pub fn expand(
             call_site: DUMMY_SP,
             def_site: None,
             format: MacroAttribute(sym::test_case),
-            allow_internal_unstable: Some(vec![sym::test, sym::rustc_attrs].into()),
+            allow_internal_unstable: Some([sym::test, sym::rustc_attrs][..].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition: ecx.parse_sess.edition,
