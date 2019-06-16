@@ -168,7 +168,9 @@
 //! you must treat Drop as implicitly taking `Pin<&mut Self>`.
 //!
 //! For example, you could implement `Drop` as follows:
-//! ```rust,ignore
+//! ```rust,no_run
+//! # use std::pin::Pin;
+//! # struct Type { }
 //! impl Drop for Type {
 //!     fn drop(&mut self) {
 //!         // `new_unchecked` is okay because we know this value is never used
@@ -220,7 +222,10 @@
 //! all you have to ensure is that you never create a pinned reference to that field.
 //!
 //! Then you may add a projection method that turns `Pin<&mut Struct>` into `&mut Field`:
-//! ```rust,ignore
+//! ```rust,no_run
+//! # use std::pin::Pin;
+//! # type Field = i32;
+//! # struct Struct { field: Field }
 //! impl Struct {
 //!     fn pin_get_field<'a>(self: Pin<&'a mut Self>) -> &'a mut Field {
 //!         // This is okay because `field` is never considered pinned.
@@ -240,7 +245,10 @@
 //!
 //! This allows writing a projection that creates a `Pin<&mut Field>`, thus
 //! witnessing that the field is pinned:
-//! ```rust,ignore
+//! ```rust,no_run
+//! # use std::pin::Pin;
+//! # type Field = i32;
+//! # struct Struct { field: Field }
 //! impl Struct {
 //!     fn pin_get_field<'a>(self: Pin<&'a mut Self>) -> Pin<&'a mut Field> {
 //!         // This is okay because `field` is pinned when `self` is.
