@@ -5300,52 +5300,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Some(original_span.with_lo(original_span.hi() - BytePos(1)))
     }
 
-    // Rewrite `SelfCtor` to `Ctor`
-    pub fn rewrite_self_ctor(
-        &self,
-        res: Res,
-        span: Span,
-    ) -> Result<Res, ErrorReported> {
-        let tcx = self.tcx;
-        if let Res::SelfCtor(impl_def_id) = res {
-            let ty = self.impl_self_ty(span, impl_def_id).ty;
-            let adt_def = ty.ty_adt_def();
-
-            match adt_def {
-                Some(adt_def) if adt_def.has_ctor() => {
-                    let variant = adt_def.non_enum_variant();
-                    let ctor_def_id = variant.ctor_def_id.unwrap();
-                    Ok(Res::Def(DefKind::Ctor(CtorOf::Struct, variant.ctor_kind), ctor_def_id))
-                }
-                _ => {
-                    let mut err = tcx.sess.struct_span_err(span,
-                        "the `Self` constructor can only be used with tuple or unit structs");
-                    if let Some(adt_def) = adt_def {
-                        match adt_def.adt_kind() {
-                            AdtKind::Enum => {
-                                err.help("did you mean to use one of the enum's variants?");
-                            },
-                            AdtKind::Struct |
-                            AdtKind::Union => {
-                                err.span_suggestion(
-                                    span,
-                                    "use curly brackets",
-                                    String::from("Self { /* fields */ }"),
-                                    Applicability::HasPlaceholders,
-                                );
-                            }
-                        }
-                    }
-                    err.emit();
-
-                    Err(ErrorReported)
-                }
-            }
-        } else {
-            Ok(res)
-        }
-    }
-
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
     pub fn instantiate_value_path(&self,
@@ -5365,12 +5319,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
 
-        let res = match self.rewrite_self_ctor(res, span) {
-            Ok(res) => res,
-            Err(ErrorReported) => return (tcx.types.err, res),
-        };
         let path_segs = match res {
-            Res::Local(_) => vec![],
+            Res::Local(_) | Res::SelfCtor(_) => vec![],
             Res::Def(kind, def_id) =>
                 AstConv::def_ids_for_value_path_segments(self, segments, self_ty, kind, def_id),
             _ => bug!("instantiate_value_path on {:?}", res),
@@ -5475,13 +5425,53 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tcx.generics_of(*def_id).has_self
         }).unwrap_or(false);
 
+        let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
+            let ty = self.impl_self_ty(span, impl_def_id).ty;
+            let adt_def = ty.ty_adt_def();
+
+            match ty.sty {
+                ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
+                    let variant = adt_def.non_enum_variant();
+                    let ctor_def_id = variant.ctor_def_id.unwrap();
+                    (
+                        Res::Def(DefKind::Ctor(CtorOf::Struct, variant.ctor_kind), ctor_def_id),
+                        Some(substs),
+                    )
+                }
+                _ => {
+                    let mut err = tcx.sess.struct_span_err(span,
+                        "the `Self` constructor can only be used with tuple or unit structs");
+                    if let Some(adt_def) = adt_def {
+                        match adt_def.adt_kind() {
+                            AdtKind::Enum => {
+                                err.help("did you mean to use one of the enum's variants?");
+                            },
+                            AdtKind::Struct |
+                            AdtKind::Union => {
+                                err.span_suggestion(
+                                    span,
+                                    "use curly brackets",
+                                    String::from("Self { /* fields */ }"),
+                                    Applicability::HasPlaceholders,
+                                );
+                            }
+                        }
+                    }
+                    err.emit();
+
+                    return (tcx.types.err, res)
+                }
+            }
+        } else {
+            (res, None)
+        };
         let def_id = res.def_id();
 
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
         let ty = tcx.type_of(def_id);
 
-        let substs = AstConv::create_substs_for_generic_args(
+        let substs = self_ctor_substs.unwrap_or_else(|| AstConv::create_substs_for_generic_args(
             tcx,
             def_id,
             &[][..],
@@ -5551,7 +5541,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             },
-        );
+        ));
         assert!(!substs.has_escaping_bound_vars());
         assert!(!ty.has_escaping_bound_vars());
 
