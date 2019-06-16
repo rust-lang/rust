@@ -485,8 +485,6 @@ type BindingMap = FxHashMap<Ident, BindingInfo>;
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum PatternSource {
     Match,
-    // FIXME(54883): Consider fusing with `Let` below once let-statements support or-patterns.
-    LetExpr,
     Let,
     For,
     FnParam,
@@ -496,7 +494,7 @@ impl PatternSource {
     fn descr(self) -> &'static str {
         match self {
             PatternSource::Match => "match binding",
-            PatternSource::Let | PatternSource::LetExpr => "let binding",
+            PatternSource::Let => "let binding",
             PatternSource::For => "for binding",
             PatternSource::FnParam => "function parameter",
         }
@@ -3153,7 +3151,7 @@ impl<'a> Resolver<'a> {
                 );
             }
             Some(..) if pat_src == PatternSource::Match ||
-                        pat_src == PatternSource::LetExpr => {
+                        pat_src == PatternSource::Let => {
                 // `Variant1(a) | Variant2(a)`, ok
                 // Reuse definition from the first `a`.
                 res = self.ribs[ValueNS].last_mut().unwrap().bindings[&ident];
@@ -4348,7 +4346,7 @@ impl<'a> Resolver<'a> {
 
             ExprKind::Let(ref pats, ref scrutinee) => {
                 self.visit_expr(scrutinee);
-                self.resolve_pats(pats, PatternSource::LetExpr);
+                self.resolve_pats(pats, PatternSource::Let);
             }
 
             ExprKind::If(ref cond, ref then, ref opt_else) => {
