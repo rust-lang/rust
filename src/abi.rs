@@ -679,7 +679,7 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
     }
 }
 
-pub fn codegen_call_inner<'a, 'tcx: 'a>(
+fn codegen_call_inner<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     func: Option<&Operand<'tcx>>,
     fn_ty: Ty<'tcx>,
@@ -811,22 +811,51 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
 pub fn codegen_drop<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     drop_place: CPlace<'tcx>,
-    drop_fn_ty: Ty<'tcx>,
 ) {
-    let (ptr, vtable) = drop_place.to_addr_maybe_unsized(fx);
-    let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
+    let ty = drop_place.layout().ty;
+    let drop_fn = Instance::resolve_drop_in_place(fx.tcx, ty);
 
-    let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &drop_fn_ty.fn_sig(fx.tcx));
+    if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
+        // we don't actually need to drop anything
+    } else {
+        let drop_fn_ty = drop_fn.ty(fx.tcx);
+        match ty.sty {
+            ty::Dynamic(..) => {
+                let (ptr, vtable) = drop_place.to_addr_maybe_unsized(fx);
+                let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
 
-    match get_pass_mode(fx.tcx, fx.layout_of(fn_sig.output())) {
-        PassMode::NoPass => {}
-        _ => unreachable!(),
-    };
+                let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &drop_fn_ty.fn_sig(fx.tcx));
 
-    let sig = fx
-        .bcx
-        .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig, true));
-    fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
+                assert_eq!(fn_sig.output(), fx.tcx.mk_unit());
+
+                let sig = fx
+                    .bcx
+                    .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig, true));
+                fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
+            }
+            _ => {
+                let arg_place = CPlace::new_stack_slot(
+                    fx,
+                    fx.tcx.mk_ref(
+                        &ty::RegionKind::ReErased,
+                        TypeAndMut {
+                            ty,
+                            mutbl: crate::rustc::hir::Mutability::MutMutable,
+                        },
+                    ),
+                );
+                drop_place.write_place_ref(fx, arg_place);
+                let arg_value = arg_place.to_cvalue(fx);
+                crate::abi::codegen_call_inner(
+                    fx,
+                    None,
+                    drop_fn_ty,
+                    vec![arg_value],
+                    None,
+                );
+            }
+        }
+    }
 }
 
 pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {

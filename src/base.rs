@@ -286,42 +286,8 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 target,
                 unwind: _,
             } => {
-                let ty = location.ty(fx.mir, fx.tcx).ty;
-                let ty = fx.monomorphize(&ty);
-                let drop_fn = Instance::resolve_drop_in_place(fx.tcx, ty);
-
-                if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
-                    // we don't actually need to drop anything
-                } else {
-                    let drop_place = trans_place(fx, location);
-                    let drop_fn_ty = drop_fn.ty(fx.tcx);
-                    match ty.sty {
-                        ty::Dynamic(..) => {
-                            crate::abi::codegen_drop(fx, drop_place, drop_fn_ty);
-                        }
-                        _ => {
-                            let arg_place = CPlace::new_stack_slot(
-                                fx,
-                                fx.tcx.mk_ref(
-                                    &ty::RegionKind::ReErased,
-                                    TypeAndMut {
-                                        ty,
-                                        mutbl: crate::rustc::hir::Mutability::MutMutable,
-                                    },
-                                ),
-                            );
-                            drop_place.write_place_ref(fx, arg_place);
-                            let arg_value = arg_place.to_cvalue(fx);
-                            crate::abi::codegen_call_inner(
-                                fx,
-                                None,
-                                drop_fn_ty,
-                                vec![arg_value],
-                                None,
-                            );
-                        }
-                    }
-                }
+                let drop_place = trans_place(fx, location);
+                crate::abi::codegen_drop(fx, drop_place);
 
                 let target_ebb = fx.get_ebb(*target);
                 fx.bcx.ins().jump(target_ebb, &[]);
