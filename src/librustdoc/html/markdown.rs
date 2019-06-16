@@ -43,25 +43,30 @@ fn opts() -> Options {
     Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES
 }
 
-/// A unit struct which has the `fmt::Display` trait implemented. When
-/// formatted, this struct will emit the HTML corresponding to the rendered
+/// A tuple struct that has the `fmt::Display` trait implemented.
+/// When formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
-///
-/// The second parameter is a list of link replacements.
-///
-/// The third is the current list of used header IDs.
-///
-/// The fourth is whether to allow the use of explicit error codes in doctest lang strings.
-///
-/// The fifth is what default edition to use when parsing doctests (to add a `fn main`).
 pub struct Markdown<'a>(
-    pub &'a str, pub &'a [(String, String)], pub RefCell<&'a mut IdMap>, pub ErrorCodes, pub Edition);
-/// A unit struct like `Markdown`, that renders the markdown with a
-/// table of contents.
-pub struct MarkdownWithToc<'a>(pub &'a str, pub RefCell<&'a mut IdMap>, pub ErrorCodes, pub Edition);
-/// A unit struct like `Markdown`, that renders the markdown escaping HTML tags.
+    pub &'a str,
+    /// A list of link replacements.
+    pub &'a [(String, String)],
+    /// The current list of used header IDs.
+    pub RefCell<&'a mut IdMap>,
+    /// Whether to allow the use of explicit error codes in doctest lang strings.
+    pub ErrorCodes,
+    /// Default edition to use when parsing doctests (to add a `fn main`).
+    pub Edition,
+);
+/// A tuple struct like `Markdown` that renders the markdown with a table of contents.
+pub struct MarkdownWithToc<'a>(
+    pub &'a str,
+    pub RefCell<&'a mut IdMap>,
+    pub ErrorCodes,
+    pub Edition,
+);
+/// A tuple struct like `Markdown` that renders the markdown escaping HTML tags.
 pub struct MarkdownHtml<'a>(pub &'a str, pub RefCell<&'a mut IdMap>, pub ErrorCodes, pub Edition);
-/// A unit struct like `Markdown`, that renders only the first paragraph.
+/// A tuple struct like `Markdown` that renders only the first paragraph.
 pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [(String, String)]);
 
 #[derive(Copy, Clone, PartialEq, Debug)]
