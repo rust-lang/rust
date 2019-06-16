@@ -9,15 +9,73 @@ use crate::prelude::*;
 enum PassMode {
     NoPass,
     ByVal(Type),
+    ByValPair(Type, Type),
     ByRef,
 }
 
-impl PassMode {
-    fn get_param_ty(self, fx: &FunctionCx<impl Backend>) -> Type {
+#[derive(Copy, Clone, Debug)]
+enum EmptySinglePair<T> {
+    Empty,
+    Single(T),
+    Pair(T, T),
+}
+
+impl<T> EmptySinglePair<T> {
+    fn into_iter(self) -> EmptySinglePairIter<T> {
+        EmptySinglePairIter(self)
+    }
+
+    fn map<U>(self, mut f: impl FnMut(T) -> U) -> EmptySinglePair<U> {
         match self {
-            PassMode::NoPass => unimplemented!("pass mode nopass"),
-            PassMode::ByVal(clif_type) => clif_type,
-            PassMode::ByRef => fx.pointer_type,
+            Empty => Empty,
+            Single(v) => Single(f(v)),
+            Pair(a, b) => Pair(f(a), f(b)),
+        }
+    }
+}
+
+struct EmptySinglePairIter<T>(EmptySinglePair<T>);
+
+impl<T> Iterator for EmptySinglePairIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        match std::mem::replace(&mut self.0, Empty) {
+            Empty => None,
+            Single(v) => Some(v),
+            Pair(a, b) => {
+                self.0 = Single(b);
+                Some(a)
+            }
+        }
+    }
+}
+
+impl<T: std::fmt::Debug> EmptySinglePair<T> {
+    fn assert_single(self) -> T {
+        match self {
+            Single(v) => v,
+            _ => panic!("Called assert_single on {:?}", self)
+        }
+    }
+
+    fn assert_pair(self) -> (T, T) {
+        match self {
+            Pair(a, b) => (a, b),
+            _ => panic!("Called assert_pair on {:?}", self)
+        }
+    }
+}
+
+use EmptySinglePair::*;
+
+impl PassMode {
+    fn get_param_ty(self, fx: &FunctionCx<impl Backend>) -> EmptySinglePair<Type> {
+        match self {
+            PassMode::NoPass => Empty,
+            PassMode::ByVal(clif_type) => Single(clif_type),
+            PassMode::ByValPair(a, b) => Pair(a, b),
+            PassMode::ByRef => Single(fx.pointer_type),
         }
     }
 }
@@ -41,9 +99,8 @@ pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
 
 fn get_pass_mode<'tcx>(
     tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
+    layout: TyLayout<'tcx>,
 ) -> PassMode {
-    let layout = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
     assert!(!layout.is_unsized());
 
     if layout.is_zst() {
@@ -55,9 +112,14 @@ fn get_pass_mode<'tcx>(
             layout::Abi::Scalar(scalar) => {
                 PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone()))
             }
+            layout::Abi::ScalarPair(a, b) => {
+                PassMode::ByValPair(
+                    scalar_to_clif_type(tcx, a.clone()),
+                    scalar_to_clif_type(tcx, b.clone()),
+                )
+            }
 
-            // FIXME implement ScalarPair and Vector Abi in a cg_llvm compatible way
-            layout::Abi::ScalarPair(_, _) => PassMode::ByRef,
+            // FIXME implement Vector Abi in a cg_llvm compatible way
             layout::Abi::Vector { .. } => PassMode::ByRef,
 
             layout::Abi::Aggregate { .. } => PassMode::ByRef,
@@ -68,15 +130,19 @@ fn get_pass_mode<'tcx>(
 fn adjust_arg_for_abi<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     arg: CValue<'tcx>,
-) -> Option<Value> {
-    match get_pass_mode(fx.tcx, arg.layout().ty) {
-        PassMode::NoPass => None,
-        PassMode::ByVal(_) => Some(arg.load_scalar(fx)),
-        PassMode::ByRef => Some(arg.force_stack(fx)),
+) -> EmptySinglePair<Value> {
+    match get_pass_mode(fx.tcx, arg.layout()) {
+        PassMode::NoPass => Empty,
+        PassMode::ByVal(_) => Single(arg.load_scalar(fx)),
+        PassMode::ByValPair(_, _) => {
+            let (a, b) = arg.load_scalar_pair(fx);
+            Pair(a, b)
+        }
+        PassMode::ByRef => Single(arg.force_stack(fx)),
     }
 }
 
-fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx>, sig: FnSig<'tcx>) -> Signature {
+fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx>, sig: FnSig<'tcx>, is_vtable_fn: bool) -> Signature {
     let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
         Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
@@ -97,17 +163,31 @@ fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx>, sig: FnSig<'tcx>) -> Signature 
 
     let inputs = inputs
         .into_iter()
-        .filter_map(|ty| match get_pass_mode(tcx, ty) {
-            PassMode::NoPass => None,
-            PassMode::ByVal(clif_ty) => Some(clif_ty),
-            PassMode::ByRef => Some(pointer_ty(tcx)),
-        });
+        .enumerate()
+        .map(|(i, ty)| {
+            let mut layout = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
+            if i == 0 && is_vtable_fn {
+                // Virtual calls turn their self param into a thin pointer.
+                // See https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc/ty/layout.rs.html#2519-2572 for more info
+                layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.mk_mut_ptr(tcx.mk_unit()))).unwrap();
+            }
+            match get_pass_mode(tcx, layout) {
+                PassMode::NoPass => Empty,
+                PassMode::ByVal(clif_ty) => Single(clif_ty),
+                PassMode::ByValPair(clif_ty_a, clif_ty_b) => Pair(clif_ty_a, clif_ty_b),
+                PassMode::ByRef => Single(pointer_ty(tcx)),
+            }.into_iter()
+        }).flatten();
 
-    let (params, returns) = match get_pass_mode(tcx, output) {
+    let (params, returns) = match get_pass_mode(tcx, tcx.layout_of(ParamEnv::reveal_all().and(output)).unwrap()) {
         PassMode::NoPass => (inputs.map(AbiParam::new).collect(), vec![]),
         PassMode::ByVal(ret_ty) => (
             inputs.map(AbiParam::new).collect(),
             vec![AbiParam::new(ret_ty)],
+        ),
+        PassMode::ByValPair(ret_ty_a, ret_ty_b) => (
+            inputs.map(AbiParam::new).collect(),
+            vec![AbiParam::new(ret_ty_a), AbiParam::new(ret_ty_b)],
         ),
         PassMode::ByRef => {
             (
@@ -138,7 +218,7 @@ pub fn get_function_name_and_sig<'tcx>(
     if fn_sig.c_variadic && !support_vararg {
         unimpl!("Variadic function definitions are not yet supported");
     }
-    let sig = clif_sig_from_fn_sig(tcx, fn_sig);
+    let sig = clif_sig_from_fn_sig(tcx, fn_sig, false);
     (tcx.symbol_name(inst).as_str().to_string(), sig)
 }
 
@@ -238,8 +318,8 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         self.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &self.instance.fn_sig(self.tcx))
     }
 
-    fn return_type(&self) -> Ty<'tcx> {
-        self.self_sig().output()
+    fn return_layout(&self) -> TyLayout<'tcx> {
+        self.layout_of(self.self_sig().output())
     }
 }
 
@@ -249,7 +329,7 @@ fn add_arg_comment<'a, 'tcx: 'a>(
     msg: &str,
     local: mir::Local,
     local_field: Option<usize>,
-    param: Option<Value>,
+    params: EmptySinglePair<Value>,
     pass_mode: PassMode,
     ssa: crate::analyze::Flags,
     ty: Ty<'tcx>,
@@ -259,18 +339,18 @@ fn add_arg_comment<'a, 'tcx: 'a>(
     } else {
         Cow::Borrowed("")
     };
-    let param = if let Some(param) = param {
-        Cow::Owned(format!("= {:?}", param))
-    } else {
-        Cow::Borrowed("-")
+    let params = match params {
+        Empty => Cow::Borrowed("-"),
+        Single(param) => Cow::Owned(format!("= {:?}", param)),
+        Pair(param_a, param_b) => Cow::Owned(format!("= {:?}, {:?}", param_a, param_b)),
     };
     let pass_mode = format!("{:?}", pass_mode);
     fx.add_global_comment(format!(
-        "{msg:5} {local:>3}{local_field:<5} {param:10} {pass_mode:20} {ssa:10} {ty:?}",
+        "{msg:5} {local:>3}{local_field:<5} {params:10} {pass_mode:20} {ssa:10} {ty:?}",
         msg = msg,
         local = format!("{:?}", local),
         local_field = local_field,
-        param = param,
+        params = params,
         pass_mode = pass_mode,
         ssa = format!("{:?}", ssa),
         ty = ty,
@@ -347,14 +427,14 @@ fn cvalue_for_param<'a, 'tcx: 'a>(
     ssa_flags: crate::analyze::Flags,
 ) -> Option<CValue<'tcx>> {
     let layout = fx.layout_of(arg_ty);
-    let pass_mode = get_pass_mode(fx.tcx, arg_ty);
+    let pass_mode = get_pass_mode(fx.tcx, fx.layout_of(arg_ty));
 
     if let PassMode::NoPass = pass_mode {
         return None;
     }
 
-    let clif_type = pass_mode.get_param_ty(fx);
-    let ebb_param = fx.bcx.append_ebb_param(start_ebb, clif_type);
+    let clif_types = pass_mode.get_param_ty(fx);
+    let ebb_params = clif_types.map(|t| fx.bcx.append_ebb_param(start_ebb, t));
 
     #[cfg(debug_assertions)]
     add_arg_comment(
@@ -362,7 +442,7 @@ fn cvalue_for_param<'a, 'tcx: 'a>(
         "arg",
         local,
         local_field,
-        Some(ebb_param),
+        ebb_params,
         pass_mode,
         ssa_flags,
         arg_ty,
@@ -370,8 +450,12 @@ fn cvalue_for_param<'a, 'tcx: 'a>(
 
     match pass_mode {
         PassMode::NoPass => unreachable!(),
-        PassMode::ByVal(_) => Some(CValue::by_val(ebb_param, layout)),
-        PassMode::ByRef => Some(CValue::by_ref(ebb_param, layout)),
+        PassMode::ByVal(_) => Some(CValue::by_val(ebb_params.assert_single(), layout)),
+        PassMode::ByValPair(_, _) => {
+            let (a, b) = ebb_params.assert_pair();
+            Some(CValue::by_val_pair(a, b, layout))
+        }
+        PassMode::ByRef => Some(CValue::by_ref(ebb_params.assert_single(), layout)),
     }
 }
 
@@ -384,17 +468,20 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     #[cfg(debug_assertions)]
     fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
 
-    let ret_layout = fx.layout_of(fx.return_type());
-    let output_pass_mode = get_pass_mode(fx.tcx, fx.return_type());
+    let ret_layout = fx.return_layout();
+    let output_pass_mode = get_pass_mode(fx.tcx, fx.return_layout());
     let ret_param = match output_pass_mode {
-        PassMode::NoPass => None,
-        PassMode::ByVal(_) => None,
+        PassMode::NoPass | PassMode::ByVal(_) | PassMode::ByValPair(_, _) => None,
         PassMode::ByRef => Some(fx.bcx.append_ebb_param(start_ebb, fx.pointer_type)),
     };
 
     #[cfg(debug_assertions)]
     {
         add_local_header_comment(fx);
+        let ret_param = match ret_param {
+            Some(param) => Single(param),
+            None => Empty,
+        };
         add_arg_comment(
             fx,
             "ret",
@@ -460,7 +547,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
             fx.local_map
                 .insert(RETURN_PLACE, CPlace::no_place(ret_layout));
         }
-        PassMode::ByVal(_) => {
+        PassMode::ByVal(_) | PassMode::ByValPair(_, _) => {
             let is_ssa = !ssa_analyzed
                 .get(&RETURN_PLACE)
                 .unwrap()
@@ -603,14 +690,14 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
 
     let ret_layout = fx.layout_of(fn_sig.output());
 
-    let output_pass_mode = get_pass_mode(fx.tcx, fn_sig.output());
+    let output_pass_mode = get_pass_mode(fx.tcx, fx.layout_of(fn_sig.output()));
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByRef => match ret_place {
             Some(ret_place) => Some(ret_place.to_addr(fx)),
             None => Some(fx.bcx.ins().iconst(fx.pointer_type, 43)),
         },
-        PassMode::ByVal(_) => None,
+        PassMode::ByVal(_) | PassMode::ByValPair(_, _) => None,
     };
 
     let instance = match fn_ty.sty {
@@ -620,46 +707,53 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         _ => None,
     };
 
-    //   | Indirect call target
-    //   v         v the first argument to be passed
-    let (func_ref, first_arg) = match instance {
+    //   | indirect call target
+    //   |         | the first argument to be passed
+    //   v         v          v virtual calls are special cased below
+    let (func_ref, first_arg, is_virtual_call) = match instance {
         // Trait object call
         Some(Instance {
             def: InstanceDef::Virtual(_, idx),
             ..
         }) => {
+            let nop_inst = fx.bcx.ins().nop();
+            fx.add_comment(nop_inst, format!("virtual call; self arg pass mode: {:?}", get_pass_mode(fx.tcx, args[0].layout())));
             let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0], idx);
-            (Some(method), Some(ptr))
+            (Some(method), Single(ptr), true)
         }
 
         // Normal call
-        Some(_) => (None, args.get(0).and_then(|arg| adjust_arg_for_abi(fx, *arg))),
+        Some(_) => (None, args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg)).unwrap_or(Empty), false),
 
         // Indirect call
         None => {
+            let nop_inst = fx.bcx.ins().nop();
+            fx.add_comment(nop_inst, "indirect call");
             let func = trans_operand(fx, func.expect("indirect call without func Operand"))
                 .load_scalar(fx);
             (
                 Some(func),
-                args.get(0).and_then(|arg| adjust_arg_for_abi(fx, *arg)),
+                args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg)).unwrap_or(Empty),
+                false,
             )
         }
     };
 
     let call_args: Vec<Value> = return_ptr
         .into_iter()
-        .chain(first_arg)
+        .chain(first_arg.into_iter())
         .chain(
             args.into_iter()
                 .skip(1)
-                .filter_map(|arg| adjust_arg_for_abi(fx, arg)),
+                .map(|arg| adjust_arg_for_abi(fx, arg).into_iter())
+                .flatten(),
         )
         .collect::<Vec<_>>();
 
     let call_inst = if let Some(func_ref) = func_ref {
         let sig = fx
             .bcx
-            .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig));
+            .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig, is_virtual_call));
         fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
     } else {
         let func_ref = fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
@@ -694,6 +788,13 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
                 ret_place.write_cvalue(fx, CValue::by_val(ret_val, ret_layout));
             }
         }
+        PassMode::ByValPair(_, _) => {
+            if let Some(ret_place) = ret_place {
+                let ret_val_a = fx.bcx.inst_results(call_inst)[0];
+                let ret_val_b = fx.bcx.inst_results(call_inst)[1];
+                ret_place.write_cvalue(fx, CValue::by_val_pair(ret_val_a, ret_val_b, ret_layout));
+            }
+        }
         PassMode::ByRef => {}
     }
 }
@@ -708,19 +809,19 @@ pub fn codegen_drop<'a, 'tcx: 'a>(
 
     let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &drop_fn_ty.fn_sig(fx.tcx));
 
-    match get_pass_mode(fx.tcx, fn_sig.output()) {
+    match get_pass_mode(fx.tcx, fx.layout_of(fn_sig.output())) {
         PassMode::NoPass => {}
         _ => unreachable!(),
     };
 
     let sig = fx
         .bcx
-        .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig));
+        .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig, true));
     fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
 }
 
 pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
-    match get_pass_mode(fx.tcx, fx.return_type()) {
+    match get_pass_mode(fx.tcx, fx.return_layout()) {
         PassMode::NoPass | PassMode::ByRef => {
             fx.bcx.ins().return_(&[]);
         }
@@ -728,6 +829,11 @@ pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
             let place = fx.get_local_place(RETURN_PLACE);
             let ret_val = place.to_cvalue(fx).load_scalar(fx);
             fx.bcx.ins().return_(&[ret_val]);
+        }
+        PassMode::ByValPair(_, _) => {
+            let place = fx.get_local_place(RETURN_PLACE);
+            let (ret_val_a, ret_val_b) = place.to_cvalue(fx).load_scalar_pair(fx);
+            fx.bcx.ins().return_(&[ret_val_a, ret_val_b]);
         }
     }
 }
