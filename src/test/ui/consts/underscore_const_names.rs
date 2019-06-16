@@ -1,9 +1,9 @@
 // compile-pass
 
-#![feature(underscore_const_names)]
+#![deny(unused)]
 
 trait Trt {}
-struct Str {}
+pub struct Str {}
 impl Trt for Str {}
 
 macro_rules! check_impl {
@@ -17,7 +17,6 @@ macro_rules! check_impl {
     }
 }
 
-#[deny(unused)]
 const _ : () = ();
 
 const _ : i32 = 42;

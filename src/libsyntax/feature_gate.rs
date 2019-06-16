@@ -25,7 +25,7 @@ use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
 use crate::parse::{token, ParseSess};
-use crate::symbol::{Symbol, kw, sym};
+use crate::symbol::{Symbol, sym};
 use crate::tokenstream::TokenTree;
 
 use errors::{Applicability, DiagnosticBuilder, Handler};
@@ -526,9 +526,6 @@ declare_features! (
     // Allows `impl Trait` in bindings (`let`, `const`, `static`).
     (active, impl_trait_in_bindings, "1.30.0", Some(34511), None),
 
-    // Allows `const _: TYPE = VALUE`.
-    (active, underscore_const_names, "1.31.0", Some(54912), None),
-
     // Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),
 
@@ -851,6 +848,8 @@ declare_features! (
     // Allows using `#[repr(align(X))]` on enums with equivalent semantics
     // to wrapping an enum in a wrapper struct with `#[repr(align(X))]`.
     (accepted, repr_align_enum, "1.37.0", Some(57996), None),
+    // Allows `const _: TYPE = VALUE`.
+    (accepted, underscore_const_names, "1.37.0", Some(54912), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
@@ -2000,13 +1999,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_item(&mut self, i: &'a ast::Item) {
         match i.node {
-            ast::ItemKind::Const(_,_) => {
-                if i.ident.name == kw::Underscore {
-                    gate_feature_post!(&self, underscore_const_names, i.span,
-                                        "naming constants with `_` is unstable");
-                }
-            }
-
             ast::ItemKind::ForeignMod(ref foreign_module) => {
                 self.check_abi(foreign_module.abi, i.span);
             }
