@@ -7,17 +7,19 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
         returns: vec![],
     }).unwrap();
     let puts = fx.module.declare_func_in_func(puts, &mut fx.bcx.func);
+    fx.add_entity_comment(puts, "puts");
 
     let symbol_name = fx.tcx.symbol_name(fx.instance);
-    let msg_bytes = format!("trap at {:?} ({}): {}\0", fx.instance, symbol_name, msg).into_bytes().into_boxed_slice();
+    let real_msg = format!("trap at {:?} ({}): {}\0", fx.instance, symbol_name, msg);
     let mut data_ctx = DataContext::new();
-    data_ctx.define(msg_bytes);
+    data_ctx.define(real_msg.as_bytes().to_vec().into_boxed_slice());
     let msg_id = fx.module.declare_data(&(symbol_name.as_str().to_string() + msg), Linkage::Local, false, None).unwrap();
 
     // Ignore DuplicateDefinition error, as the data will be the same
     let _ = fx.module.define_data(msg_id, &data_ctx);
 
     let local_msg_id = fx.module.declare_data_in_func(msg_id, fx.bcx.func);
+    fx.add_entity_comment(local_msg_id, msg);
     let msg_ptr = fx.bcx.ins().global_value(pointer_ty(fx.tcx), local_msg_id);
     fx.bcx.ins().call(puts, &[msg_ptr]);
 }
