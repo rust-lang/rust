@@ -23,6 +23,7 @@ use log::debug;
 use rustc_data_structures::fx::{FxHashMap};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
+use std::slice;
 
 use rustc_data_structures::sync::Lrc;
 use errors::Applicability;
@@ -359,10 +360,10 @@ pub fn compile(
 
     // don't abort iteration early, so that errors for multiple lhses can be reported
     for lhs in &lhses {
-        valid &= check_lhs_no_empty_seq(sess, &[lhs.clone()]);
+        valid &= check_lhs_no_empty_seq(sess, slice::from_ref(lhs));
         valid &= check_lhs_duplicate_matcher_bindings(
             sess,
-            &[lhs.clone()],
+            slice::from_ref(lhs),
             &mut FxHashMap::default(),
             def.id
         );

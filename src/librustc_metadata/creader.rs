@@ -236,7 +236,7 @@ impl<'a> CrateLoader<'a> {
                 let host_lib = host_lib.unwrap();
                 self.load_derive_macros(
                     &host_lib.metadata.get_root(),
-                    host_lib.dylib.clone().map(|p| p.0),
+                    host_lib.dylib.map(|p| p.0),
                     span
                 )
             } else {

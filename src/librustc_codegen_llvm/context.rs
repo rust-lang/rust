@@ -459,7 +459,7 @@ impl CodegenCx<'b, 'tcx> {
         };
         let f = self.declare_cfn(name, fn_ty);
         llvm::SetUnnamedAddr(f, false);
-        self.intrinsics.borrow_mut().insert(name, f.clone());
+        self.intrinsics.borrow_mut().insert(name, f);
         f
     }
 

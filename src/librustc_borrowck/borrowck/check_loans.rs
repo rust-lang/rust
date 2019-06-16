@@ -36,7 +36,7 @@ fn owned_ptr_base_path<'a, 'tcx>(loan_path: &'a LoanPath<'tcx>) -> &'a LoanPath<
 
     return match helper(loan_path) {
         Some(new_loan_path) => new_loan_path,
-        None => loan_path.clone()
+        None => loan_path,
     };
 
     fn helper<'a, 'tcx>(loan_path: &'a LoanPath<'tcx>) -> Option<&'a LoanPath<'tcx>> {

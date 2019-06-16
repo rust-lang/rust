@@ -279,7 +279,7 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             }
         }));
         serialized_modules.extend(cached_modules.into_iter().map(|(buffer, wp)| {
-            (buffer, CString::new(wp.cgu_name.clone()).unwrap())
+            (buffer, CString::new(wp.cgu_name).unwrap())
         }));
 
         // For all serialized bitcode files we parse them and link them in as we did
