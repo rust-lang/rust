@@ -1,6 +1,5 @@
 use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::{self, intravisit, HirId, ItemLocalId};
-use syntax::ast::NodeId;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{Lock, ParallelIterator, par_iter};
@@ -112,17 +111,6 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
 
                 trace!("missing hir id {:#?}", hir_id);
 
-                // We are already in ICE mode here, so doing a linear search
-                // should be fine.
-                let (node_id, _) = self.hir_map
-                                       .definitions()
-                                       .node_to_hir_id
-                                       .iter()
-                                       .enumerate()
-                                       .find(|&(_, &entry)| hir_id == entry)
-                                       .expect("no node_to_hir_id entry");
-                let node_id = NodeId::from_usize(node_id);
-                let hir_id = self.hir_map.node_to_hir_id(node_id);
                 missing_items.push(format!("[local_id: {}, node:{}]",
                                            local_id,
                                            self.hir_map.node_to_string(hir_id)));
