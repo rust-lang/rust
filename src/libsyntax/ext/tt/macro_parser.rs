@@ -825,7 +825,7 @@ fn may_begin_with(token: &Token, name: Name) -> bool {
     }
 
     match name {
-        sym::expr => token.can_begin_expr(),
+        sym::expr => token.can_begin_expr() && !token.is_keyword(kw::Let),
         sym::ty => token.can_begin_type(),
         sym::ident => get_macro_name(token).is_some(),
         sym::literal => token.can_begin_literal_or_bool(),
