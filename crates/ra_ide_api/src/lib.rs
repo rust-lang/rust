@@ -276,6 +276,9 @@ impl AnalysisHost {
     pub fn collect_garbage(&mut self) {
         self.db.collect_garbage();
     }
+    pub fn raw_database(&self) -> &impl hir::db::HirDatabase {
+        &self.db
+    }
 }
 
 /// Analysis is a snapshot of a world state at a moment in time. It is the main
