@@ -324,20 +324,20 @@
 //! `poll` implementation).
 //!
 //! [`Pin<P>`]: struct.Pin.html
-//! [`Unpin`]: ../../std/marker/trait.Unpin.html
-//! [`Deref`]: ../../std/ops/trait.Deref.html
-//! [`DerefMut`]: ../../std/ops/trait.DerefMut.html
-//! [`mem::swap`]: ../../std/mem/fn.swap.html
-//! [`mem::forget`]: ../../std/mem/fn.forget.html
+//! [`Unpin`]: ../marker/trait.Unpin.html
+//! [`Deref`]: ../ops/trait.Deref.html
+//! [`DerefMut`]: ../ops/trait.DerefMut.html
+//! [`mem::swap`]: ../mem/fn.swap.html
+//! [`mem::forget`]: ../mem/fn.forget.html
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [`Vec<T>`]: ../../std/vec/struct.Vec.html
 //! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len
 //! [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
-//! [`RefCell<T>`]: ../../std/cell/struct.RefCell.html
-//! [`None`]: ../../std/option/enum.Option.html#variant.None
-//! [`Some(v)`]: ../../std/option/enum.Option.html#variant.Some
+//! [`RefCell<T>`]: ../cell/struct.RefCell.html
+//! [`None`]: ../option/enum.Option.html#variant.None
+//! [`Some(v)`]: ../option/enum.Option.html#variant.Some
 //! [`ptr::write`]: ../ptr/fn.write.html
-//! [`Future`]: ../../std/future/trait.Future.html
+//! [`Future`]: ../future/trait.Future.html
 //! [drop-impl]: #drop-implementation
 //! [drop-guarantee]: #drop-guarantee
 
