@@ -168,7 +168,7 @@ fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx>, sig: FnSig<'tcx>, is_vtable_fn:
             let mut layout = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
             if i == 0 && is_vtable_fn {
                 // Virtual calls turn their self param into a thin pointer.
-                // See https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc/ty/layout.rs.html#2519-2572 for more info
+                // See https://github.com/rust-lang/rust/blob/37b6a5e5e82497caf5353d9d856e4eb5d14cbe06/src/librustc/ty/layout.rs#L2519-L2572 for more info
                 layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.mk_mut_ptr(tcx.mk_unit()))).unwrap();
             }
             match get_pass_mode(tcx, layout) {
