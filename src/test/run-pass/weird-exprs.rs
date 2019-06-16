@@ -149,6 +149,14 @@ fn i_yield() {
     };
 }
 
+fn match_nested_if() {
+    let val = match () {
+        () if if if if true {true} else {false} {true} else {false} {true} else {false} => true,
+        _ => false,
+    };
+    assert!(val);
+}
+
 pub fn main() {
     strange();
     funny();
@@ -166,4 +174,5 @@ pub fn main() {
     punch_card();
     r#match();
     i_yield();
+    match_nested_if();
 }
