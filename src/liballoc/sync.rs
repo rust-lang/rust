@@ -1349,18 +1349,18 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// ```
     /// #![feature(weak_ptr_eq)]
-    /// use std::sync::{Arc, Weak};
+    /// use std::sync::Arc;
     ///
     /// let first_rc = Arc::new(5);
     /// let first = Arc::downgrade(&first_rc);
     /// let second = Arc::downgrade(&first_rc);
     ///
-    /// assert!(Weak::ptr_eq(&first, &second));
+    /// assert!(first.ptr_eq(&second));
     ///
     /// let third_rc = Arc::new(5);
     /// let third = Arc::downgrade(&third_rc);
     ///
-    /// assert!(!Weak::ptr_eq(&first, &third));
+    /// assert!(!first.ptr_eq(&third));
     /// ```
     ///
     /// Comparing `Weak::new`.
@@ -1371,16 +1371,16 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// let first = Weak::new();
     /// let second = Weak::new();
-    /// assert!(Weak::ptr_eq(&first, &second));
+    /// assert!(first.ptr_eq(&second));
     ///
     /// let third_rc = Arc::new(());
     /// let third = Arc::downgrade(&third_rc);
-    /// assert!(!Weak::ptr_eq(&first, &third));
+    /// assert!(!first.ptr_eq(&third));
     /// ```
     #[inline]
     #[unstable(feature = "weak_ptr_eq", issue = "55981")]
-    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        this.ptr.as_ptr() == other.ptr.as_ptr()
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        self.ptr.as_ptr() == other.ptr.as_ptr()
     }
 }
 
