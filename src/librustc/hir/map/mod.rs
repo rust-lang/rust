@@ -35,7 +35,7 @@ mod def_collector;
 pub mod definitions;
 mod hir_id_validator;
 
-/// Represents an entry and its parent `NodeId`.
+/// Represents an entry and its parent `HirId`.
 #[derive(Copy, Clone, Debug)]
 pub struct Entry<'hir> {
     parent: HirId,
@@ -200,7 +200,7 @@ impl<'hir> Map<'hir> {
     /// "reveals" the content of a node to the caller (who might not
     /// otherwise have had access to those contents, and hence needs a
     /// read recorded). If the function just returns a DefId or
-    /// NodeId, no actual content was returned, so no read is needed.
+    /// HirId, no actual content was returned, so no read is needed.
     pub fn read(&self, hir_id: HirId) {
         if let Some(entry) = self.lookup(hir_id) {
             self.dep_graph.read_index(entry.dep_node);
@@ -681,7 +681,7 @@ impl<'hir> Map<'hir> {
 
     /// If there is some error when walking the parents (e.g., a node does not
     /// have a parent in the map or a node can't be found), then we return the
-    /// last good `NodeId` we found. Note that reaching the crate root (`id == 0`),
+    /// last good `HirId` we found. Note that reaching the crate root (`id == 0`),
     /// is not an error, since items in the crate module have the crate root as
     /// parent.
     fn walk_parent_nodes<F, F2>(&self,
@@ -717,7 +717,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Retrieves the `NodeId` for `id`'s enclosing method, unless there's a
+    /// Retrieves the `HirId` for `id`'s enclosing method, unless there's a
     /// `while` or `loop` before reaching it, as block tail returns are not
     /// available in them.
     ///
@@ -725,7 +725,7 @@ impl<'hir> Map<'hir> {
     /// fn foo(x: usize) -> bool {
     ///     if x == 1 {
     ///         true  // `get_return_block` gets passed the `id` corresponding
-    ///     } else {  // to this, it will return `foo`'s `NodeId`.
+    ///     } else {  // to this, it will return `foo`'s `HirId`.
     ///         false
     ///     }
     /// }
