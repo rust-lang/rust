@@ -272,7 +272,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let b = this.read_immediate(args[1])?;
                 // check x % y != 0
                 if this.binary_op(mir::BinOp::Rem, a, b)?.0.to_bits(dest.layout.size)? != 0 {
-                    return err!(ValidationFailure(format!("exact_div: {:?} cannot be divided by {:?}", a, b)));
+                    // Check if `b` is -1, which is the "min_value / -1" case.
+                    let minus1 = Scalar::from_int(-1, dest.layout.size);
+                    return if b.to_scalar().unwrap() == minus1 {
+                        err!(Intrinsic(format!("exact_div: result of dividing MIN by -1 cannot be represented")))
+                    } else {
+                        err!(Intrinsic(format!("exact_div: {:?} cannot be divided by {:?} without remainder", *a, *b)))
+                    };
                 }
                 this.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;
             },
