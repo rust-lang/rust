@@ -211,10 +211,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx>;
 
     fn int_to_ptr(
-        _int: u64,
+        int: u64,
         _extra: &Self::MemoryExtra,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
-        Err(InterpErrorInfo::from(InterpError::ReadBytesAsPointer))
+        if int == 0 {
+            Err(InterpErrorInfo::from(InterpError::InvalidNullPointerUsage))
+        } else {
+            Err(InterpErrorInfo::from(InterpError::ReadBytesAsPointer))
+        }
     }
 
     fn ptr_to_int(
