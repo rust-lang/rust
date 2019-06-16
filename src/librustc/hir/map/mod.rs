@@ -420,7 +420,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Returns the `NodeId` that corresponds to the definition of
+    /// Returns the `HirId` that corresponds to the definition of
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(&self, BodyId { hir_id }: BodyId) -> HirId {
