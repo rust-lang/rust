@@ -501,7 +501,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             None if self.is_tainted_by_errors() => Err(()),
             None => {
                 bug!("no type for node {}: {} in mem_categorization",
-                     id, self.tcx.hir().hir_to_string(id));
+                     id, self.tcx.hir().node_to_string(id));
             }
         }
     }

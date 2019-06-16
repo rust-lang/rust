@@ -2181,7 +2181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn local_ty(&self, span: Span, nid: hir::HirId) -> LocalTy<'tcx> {
         self.locals.borrow().get(&nid).cloned().unwrap_or_else(||
             span_bug!(span, "no type for local variable {}",
-                      self.tcx.hir().hir_to_string(nid))
+                      self.tcx.hir().node_to_string(nid))
         )
     }
 
@@ -2518,7 +2518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None if self.is_tainted_by_errors() => self.tcx.types.err,
             None => {
                 bug!("no type for node {}: {} in fcx {}",
-                     id, self.tcx.hir().hir_to_string(id),
+                     id, self.tcx.hir().node_to_string(id),
                      self.tag());
             }
         }

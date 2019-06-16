@@ -1508,12 +1508,12 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             LpVar(id) => {
-                write!(f, "$({})", ty::tls::with(|tcx| tcx.hir().hir_to_string(id)))
+                write!(f, "$({})", ty::tls::with(|tcx| tcx.hir().node_to_string(id)))
             }
 
             LpUpvar(ty::UpvarId{ var_path: ty::UpvarPath {hir_id: var_id}, closure_expr_id }) => {
                 let s = ty::tls::with(|tcx| {
-                    tcx.hir().hir_to_string(var_id)
+                    tcx.hir().node_to_string(var_id)
                 });
                 write!(f, "$({} captured by id={:?})", s, closure_expr_id)
             }
@@ -1547,7 +1547,7 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
 
             LpUpvar(ty::UpvarId{ var_path: ty::UpvarPath { hir_id }, closure_expr_id: _ }) => {
                 let s = ty::tls::with(|tcx| {
-                    tcx.hir().hir_to_string(hir_id)
+                    tcx.hir().node_to_string(hir_id)
                 });
                 write!(f, "$({} captured by closure)", s)
             }

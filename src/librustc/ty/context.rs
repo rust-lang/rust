@@ -252,7 +252,7 @@ fn validate_hir_id_for_typeck_tables(local_id_root: Option<DefId>,
                 ty::tls::with(|tcx| {
                     bug!("node {} with HirId::owner {:?} cannot be placed in \
                           TypeckTables with local_id_root {:?}",
-                         tcx.hir().hir_to_string(hir_id),
+                         tcx.hir().node_to_string(hir_id),
                          DefId::local(hir_id.owner),
                          local_id_root)
                 });
@@ -554,7 +554,7 @@ impl<'tcx> TypeckTables<'tcx> {
     pub fn node_type(&self, id: hir::HirId) -> Ty<'tcx> {
         self.node_type_opt(id).unwrap_or_else(||
             bug!("node_type: no type for node `{}`",
-                 tls::with(|tcx| tcx.hir().hir_to_string(id)))
+                 tls::with(|tcx| tcx.hir().node_to_string(id)))
         )
     }
 

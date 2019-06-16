@@ -26,7 +26,7 @@ impl<'a, 'tcx> LabelledCFG<'a, 'tcx> {
             owner: self.tcx.hir().def_index_to_hir_id(self.cfg.owner_def_id.index).owner,
             local_id
         };
-        let s = self.tcx.hir().hir_to_string(hir_id);
+        let s = self.tcx.hir().node_to_string(hir_id);
 
         // Replacing newlines with \\l causes each line to be left-aligned,
         // improving presentation of (long) pretty-printed expressions.

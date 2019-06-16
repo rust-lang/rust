@@ -318,7 +318,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",
-                    self.tcx.hir().hir_to_string(search_item),
+                    self.tcx.hir().node_to_string(search_item),
                     node,
                 );
             }

@@ -453,7 +453,7 @@ impl<'hir> Map<'hir> {
     pub fn body_owned_by(&self, id: HirId) -> BodyId {
         self.maybe_body_owned_by(id).unwrap_or_else(|| {
             span_bug!(self.span(id), "body_owned_by: {} has no associated body",
-                      self.hir_to_string(id));
+                      self.node_to_string(id));
         })
     }
 
@@ -486,7 +486,7 @@ impl<'hir> Map<'hir> {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
             Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => id,
             Node::GenericParam(_) => self.get_parent_node_by_hir_id(id),
-            _ => bug!("ty_param_owner: {} not a type parameter", self.hir_to_string(id))
+            _ => bug!("ty_param_owner: {} not a type parameter", self.node_to_string(id))
         }
     }
 
@@ -495,7 +495,7 @@ impl<'hir> Map<'hir> {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
             Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => kw::SelfUpper,
             Node::GenericParam(param) => param.name.ident().name,
-            _ => bug!("ty_param_name: {} not a type parameter", self.hir_to_string(id)),
+            _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
         }
     }
 
@@ -874,27 +874,27 @@ impl<'hir> Map<'hir> {
                 return nm.abi;
             }
         }
-        bug!("expected foreign mod or inlined parent, found {}", self.hir_to_string(parent))
+        bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
     }
 
     pub fn expect_item(&self, id: HirId) -> &'hir Item {
         match self.find_by_hir_id(id) { // read recorded by `find`
             Some(Node::Item(item)) => item,
-            _ => bug!("expected item, found {}", self.hir_to_string(id))
+            _ => bug!("expected item, found {}", self.node_to_string(id))
         }
     }
 
     pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem {
         match self.find_by_hir_id(id) {
             Some(Node::ImplItem(item)) => item,
-            _ => bug!("expected impl item, found {}", self.hir_to_string(id))
+            _ => bug!("expected impl item, found {}", self.node_to_string(id))
         }
     }
 
     pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem {
         match self.find_by_hir_id(id) {
             Some(Node::TraitItem(item)) => item,
-            _ => bug!("expected trait item, found {}", self.hir_to_string(id))
+            _ => bug!("expected trait item, found {}", self.node_to_string(id))
         }
     }
 
@@ -904,26 +904,26 @@ impl<'hir> Map<'hir> {
                 match i.node {
                     ItemKind::Struct(ref struct_def, _) |
                     ItemKind::Union(ref struct_def, _) => struct_def,
-                    _ => bug!("struct ID bound to non-struct {}", self.hir_to_string(id))
+                    _ => bug!("struct ID bound to non-struct {}", self.node_to_string(id))
                 }
             }
             Some(Node::Variant(variant)) => &variant.node.data,
             Some(Node::Ctor(data)) => data,
-            _ => bug!("expected struct or variant, found {}", self.hir_to_string(id))
+            _ => bug!("expected struct or variant, found {}", self.node_to_string(id))
         }
     }
 
     pub fn expect_variant(&self, id: HirId) -> &'hir Variant {
         match self.find_by_hir_id(id) {
             Some(Node::Variant(variant)) => variant,
-            _ => bug!("expected variant, found {}", self.hir_to_string(id)),
+            _ => bug!("expected variant, found {}", self.node_to_string(id)),
         }
     }
 
     pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem {
         match self.find_by_hir_id(id) {
             Some(Node::ForeignItem(item)) => item,
-            _ => bug!("expected foreign item, found {}", self.hir_to_string(id))
+            _ => bug!("expected foreign item, found {}", self.node_to_string(id))
         }
     }
 
@@ -936,7 +936,7 @@ impl<'hir> Map<'hir> {
     pub fn expect_expr_by_hir_id(&self, id: HirId) -> &'hir Expr {
         match self.find_by_hir_id(id) { // read recorded by find
             Some(Node::Expr(expr)) => expr,
-            _ => bug!("expected expr, found {}", self.hir_to_string(id))
+            _ => bug!("expected expr, found {}", self.node_to_string(id))
         }
     }
 
@@ -959,7 +959,7 @@ impl<'hir> Map<'hir> {
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { node: PatKind::Binding(_, _, l, _), .. }) => l.name,
             Node::Ctor(..) => self.name_by_hir_id(self.get_parent_item(id)),
-            _ => bug!("no name for {}", self.hir_to_string(id))
+            _ => bug!("no name for {}", self.node_to_string(id))
         }
     }
 
@@ -1071,7 +1071,7 @@ impl<'hir> Map<'hir> {
         self.as_local_hir_id(id).map(|id| self.span(id))
     }
 
-    pub fn hir_to_string(&self, id: HirId) -> String {
+    pub fn node_to_string(&self, id: HirId) -> String {
         hir_id_to_string(self, id, true)
     }
 
