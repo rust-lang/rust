@@ -147,3 +147,16 @@ RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more tha
 ```
 
 In particular, I have `export RA_PROFILE='*>10' in my shell profile.
+
+To measure time for from-scratch analysis, use something like this:
+
+```
+$ cargo run --release -p ra_cli -- analysis-stats ../chalk/
+```
+
+For measuring time of incremental analysis, use either of these:
+
+```
+$ cargo run --release -p ra_cli -- analysis-bench ../chalk/ --highlight ../chalk/chalk-engine/src/logic.rs
+$ cargo run --release -p ra_cli -- analysis-bench ../chalk/ --complete ../chalk/chalk-engine/src/logic.rs:94:0
+```

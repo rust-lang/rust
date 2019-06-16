@@ -1,4 +1,5 @@
 mod analysis_stats;
+mod analysis_bench;
 
 use std::{io::Read, error::Error};
 
@@ -26,6 +27,27 @@ fn main() -> Result<()> {
                 .arg(Arg::with_name("only").short("o").takes_value(true))
                 .arg(Arg::with_name("path")),
         )
+        .subcommand(
+            SubCommand::with_name("analysis-bench")
+                .arg(Arg::with_name("verbose").short("v").long("verbose"))
+                .arg(
+                    Arg::with_name("highlight")
+                        .long("highlight")
+                        .takes_value(true)
+                        .conflicts_with("complete")
+                        .value_name("PATH")
+                        .help("highlight this file"),
+                )
+                .arg(
+                    Arg::with_name("complete")
+                        .long("complete")
+                        .takes_value(true)
+                        .conflicts_with("highlight")
+                        .value_name("PATH:LINE:COLUMN")
+                        .help("compute completions at this location"),
+                )
+                .arg(Arg::with_name("path").value_name("PATH").help("project to analyze")),
+        )
         .get_matches();
     match matches.subcommand() {
         ("parse", Some(matches)) => {
@@ -51,7 +73,25 @@ fn main() -> Result<()> {
             let verbose = matches.is_present("verbose");
             let path = matches.value_of("path").unwrap_or("");
             let only = matches.value_of("only");
-            analysis_stats::run(verbose, path, only)?;
+            analysis_stats::run(verbose, path.as_ref(), only)?;
+        }
+        ("analysis-bench", Some(matches)) => {
+            let verbose = matches.is_present("verbose");
+            let path = matches.value_of("path").unwrap_or("");
+            let op = if let Some(path) = matches.value_of("highlight") {
+                analysis_bench::Op::Highlight { path: path.into() }
+            } else if let Some(path_line_col) = matches.value_of("complete") {
+                let (path_line, column) = rsplit_at_char(path_line_col, ':')?;
+                let (path, line) = rsplit_at_char(path_line, ':')?;
+                analysis_bench::Op::Complete {
+                    path: path.into(),
+                    line: line.parse()?,
+                    column: column.parse()?,
+                }
+            } else {
+                panic!("either --highlight or --complete must be set")
+            };
+            analysis_bench::run(verbose, path.as_ref(), op)?;
         }
         _ => unreachable!(),
     }
@@ -67,4 +107,9 @@ fn read_stdin() -> Result<String> {
     let mut buff = String::new();
     std::io::stdin().read_to_string(&mut buff)?;
     Ok(buff)
+}
+
+fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
+    let idx = s.rfind(":").ok_or_else(|| format!("no `{}` in {}", c, s))?;
+    Ok((&s[..idx], &s[idx + 1..]))
 }

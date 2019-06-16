@@ -8,7 +8,7 @@ use ra_db::{
     CrateGraph, FileId, SourceRootId,
 };
 use ra_ide_api::{AnalysisHost, AnalysisChange};
-use ra_project_model::ProjectWorkspace;
+use ra_project_model::{ProjectWorkspace, ProjectRoot};
 use ra_vfs::{Vfs, VfsChange};
 use vfs_filter::IncludeRustFiles;
 
@@ -21,13 +21,11 @@ fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
     SourceRootId(r.0)
 }
 
-pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, Vec<SourceRootId>)> {
+pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, ProjectRoot>)> {
     let root = std::env::current_dir()?.join(root);
     let ws = ProjectWorkspace::discover(root.as_ref())?;
-    let mut roots = Vec::new();
-    roots.push(IncludeRustFiles::member(root.clone()));
-    roots.extend(IncludeRustFiles::from_roots(ws.to_roots()));
-    let (mut vfs, roots) = Vfs::new(roots);
+    let project_roots = ws.to_roots();
+    let (mut vfs, roots) = Vfs::new(IncludeRustFiles::from_roots(project_roots.clone()).collect());
     let crate_graph = ws.to_crate_graph(&mut |path: &Path| {
         let vfs_file = vfs.load(path);
         log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
@@ -35,17 +33,27 @@ pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, Vec<SourceRootId>)> {
     });
     log::debug!("crate graph: {:?}", crate_graph);
 
-    let local_roots = roots
-        .into_iter()
-        .filter(|r| vfs.root2path(*r).starts_with(&root))
-        .map(vfs_root_to_id)
-        .collect();
-
-    let host = load(root.as_path(), crate_graph, &mut vfs);
-    Ok((host, local_roots))
+    let source_roots = roots
+        .iter()
+        .map(|&vfs_root| {
+            let source_root_id = vfs_root_to_id(vfs_root);
+            let project_root = project_roots
+                .iter()
+                .find(|it| it.path() == &vfs.root2path(vfs_root))
+                .unwrap()
+                .clone();
+            (source_root_id, project_root)
+        })
+        .collect::<FxHashMap<_, _>>();
+    let host = load(&source_roots, crate_graph, &mut vfs);
+    Ok((host, source_roots))
 }
 
-pub fn load(project_root: &Path, crate_graph: CrateGraph, vfs: &mut Vfs) -> AnalysisHost {
+pub fn load(
+    source_roots: &FxHashMap<SourceRootId, ProjectRoot>,
+    crate_graph: CrateGraph,
+    vfs: &mut Vfs,
+) -> AnalysisHost {
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
     let mut host = AnalysisHost::new(lru_cap);
     let mut analysis_change = AnalysisChange::new();
@@ -60,8 +68,8 @@ pub fn load(project_root: &Path, crate_graph: CrateGraph, vfs: &mut Vfs) -> Anal
         for change in vfs.commit_changes() {
             match change {
                 VfsChange::AddRoot { root, files } => {
-                    let is_local = vfs.root2path(root).starts_with(&project_root);
                     let source_root_id = vfs_root_to_id(root);
+                    let is_local = source_roots[&source_root_id].is_member();
                     log::debug!(
                         "loaded source root {:?} with path {:?}",
                         source_root_id,
@@ -106,7 +114,7 @@ mod tests {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
         let (host, roots) = load_cargo(path).unwrap();
         let mut n_crates = 0;
-        for root in roots {
+        for (root, _) in roots {
             for _krate in Crate::source_root_crates(host.raw_database(), root) {
                 n_crates += 1;
             }
