@@ -53,28 +53,10 @@ impl<'tcx> CValue<'tcx> {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(value) => value,
-            CValueInner::ByVal(value) => {
-                let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-                    kind: StackSlotKind::ExplicitSlot,
-                    size: layout.size.bytes() as u32,
-                    offset: None,
-                });
-                let addr = fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0);
-                fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
-                addr
-            }
-            CValueInner::ByValPair(value, extra) => {
-                let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-                    kind: StackSlotKind::ExplicitSlot,
-                    size: layout.size.bytes() as u32,
-                    offset: None,
-                });
-                let base = fx.bcx.ins().stack_addr(types::I64, stack_slot, 0);
-                let a_addr = codegen_field(fx, base, layout, mir::Field::new(0)).0;
-                let b_addr = codegen_field(fx, base, layout, mir::Field::new(1)).0;
-                fx.bcx.ins().store(MemFlags::new(), value, a_addr, 0);
-                fx.bcx.ins().store(MemFlags::new(), extra, b_addr, 0);
-                base
+            CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => {
+                let cplace = CPlace::new_stack_slot(fx, layout.ty);
+                cplace.write_cvalue(fx, self);
+                cplace.to_addr(fx)
             }
         }
     }
@@ -356,11 +338,22 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             CValueInner::ByVal(val) => {
                 fx.bcx.ins().store(MemFlags::new(), val, addr, 0);
             }
-            CValueInner::ByValPair(val1, val2) => {
-                let val1_offset = dst_layout.fields.offset(0).bytes() as i32;
-                let val2_offset = dst_layout.fields.offset(1).bytes() as i32;
-                fx.bcx.ins().store(MemFlags::new(), val1, addr, val1_offset);
-                fx.bcx.ins().store(MemFlags::new(), val2, addr, val2_offset);
+            CValueInner::ByValPair(value, extra) => {
+                match dst_layout.abi {
+                    Abi::ScalarPair(ref a, _) => {
+                        fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
+                        fx.bcx.ins().store(
+                            MemFlags::new(),
+                            extra,
+                            addr,
+                            a.value.size(&fx.tcx).bytes() as u32 as i32,
+                        );
+                    }
+                    _ => bug!(
+                        "Non ScalarPair abi {:?} for ByValPair CValue",
+                        dst_layout.abi
+                    ),
+                }
             }
             CValueInner::ByRef(from_addr) => {
                 let src_layout = from.1;
