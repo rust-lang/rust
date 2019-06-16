@@ -103,14 +103,15 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
     }
 
     // format_args uses `unstable` things internally.
+    let allow_internal_unstable = Some([sym::fmt_internals][..].into());
     register(Symbol::intern("format_args"), SyntaxExtension {
-        allow_internal_unstable: Some([sym::fmt_internals][..].into()),
+        allow_internal_unstable: allow_internal_unstable.clone(),
         ..SyntaxExtension::default(
             SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args)), edition
         )
     });
     register(sym::format_args_nl, SyntaxExtension {
-        allow_internal_unstable: Some([sym::fmt_internals][..].into()),
+        allow_internal_unstable,
         ..SyntaxExtension::default(
             SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args_nl)), edition
         )
