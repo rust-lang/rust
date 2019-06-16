@@ -716,8 +716,14 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
             def: InstanceDef::Virtual(_, idx),
             ..
         }) => {
-            let nop_inst = fx.bcx.ins().nop();
-            fx.add_comment(nop_inst, format!("virtual call; self arg pass mode: {:?}", get_pass_mode(fx.tcx, args[0].layout())));
+            #[cfg(debug_assertions)]
+            {
+                let nop_inst = fx.bcx.ins().nop();
+                fx.add_comment(
+                    nop_inst,
+                    format!("virtual call; self arg pass mode: {:?}", get_pass_mode(fx.tcx, args[0].layout())),
+                );
+            }
             let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0], idx);
             (Some(method), Single(ptr), true)
         }
@@ -727,8 +733,11 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
 
         // Indirect call
         None => {
-            let nop_inst = fx.bcx.ins().nop();
-            fx.add_comment(nop_inst, "indirect call");
+            #[cfg(debug_assertions)]
+            {
+                let nop_inst = fx.bcx.ins().nop();
+                fx.add_comment(nop_inst, "indirect call");
+            }
             let func = trans_operand(fx, func.expect("indirect call without func Operand"))
                 .load_scalar(fx);
             (
