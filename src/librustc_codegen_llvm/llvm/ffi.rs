@@ -564,7 +564,7 @@ pub mod debuginfo {
 
     // These values **must** match with LLVMRustDIFlags!!
     bitflags! {
-        #[repr(C)]
+        #[repr(transparent)]
         #[derive(Default)]
         pub struct DIFlags: ::libc::uint32_t {
             const FlagZero                = 0;
@@ -593,7 +593,7 @@ pub mod debuginfo {
 
     // These values **must** match with LLVMRustDISPFlags!!
     bitflags! {
-        #[repr(C)]
+        #[repr(transparent)]
         #[derive(Default)]
         pub struct DISPFlags: ::libc::uint32_t {
             const SPFlagZero              = 0;
