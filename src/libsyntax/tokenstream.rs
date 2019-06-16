@@ -65,9 +65,9 @@ where
 // bounds without them.
 // FIXME: Remove these impls when the compiler can compute the bounds quickly again.
 // See https://github.com/rust-lang/rust/issues/60846
-#[cfg(parallel_compiler)]
+#[cfg(all(bootstrap, parallel_compiler))]
 unsafe impl Send for TokenTree {}
-#[cfg(parallel_compiler)]
+#[cfg(all(bootstrap, parallel_compiler))]
 unsafe impl Sync for TokenTree {}
 
 impl TokenTree {

@@ -43,7 +43,7 @@ use crate::hir;
 use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::{self, Display};
 use std::iter;
@@ -151,12 +151,12 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     /// selection-context's freshener. Used to check for recursion.
     fresh_trait_ref: ty::PolyTraitRef<'tcx>,
 
-    /// Starts out as false -- if, during evaluation, we encounter a
-    /// cycle, then we will set this flag to true for all participants
-    /// in the cycle (apart from the "head" node). These participants
-    /// will then forego caching their results. This is not the most
-    /// efficient solution, but it addresses #60010. The problem we
-    /// are trying to prevent:
+    /// Starts out equal to `depth` -- if, during evaluation, we
+    /// encounter a cycle, then we will set this flag to the minimum
+    /// depth of that cycle for all participants in the cycle. These
+    /// participants will then forego caching their results. This is
+    /// not the most efficient solution, but it addresses #60010. The
+    /// problem we are trying to prevent:
     ///
     /// - If you have `A: AutoTrait` requires `B: AutoTrait` and `C: NonAutoTrait`
     /// - `B: AutoTrait` requires `A: AutoTrait` (coinductive cycle, ok)
@@ -179,9 +179,16 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     /// evaluate each member of a cycle up to N times, where N is the
     /// length of the cycle. This means the performance impact is
     /// bounded and we shouldn't have any terrible worst-cases.
-    in_cycle: Cell<bool>,
+    reached_depth: Cell<usize>,
 
     previous: TraitObligationStackList<'prev, 'tcx>,
+
+    /// Number of parent frames plus one -- so the topmost frame has depth 1.
+    depth: usize,
+
+    /// Depth-first number of this node in the search graph -- a
+    /// pre-order index.  Basically a freshly incremented counter.
+    dfn: usize,
 }
 
 #[derive(Clone, Default)]
@@ -600,7 +607,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("select({:?})", obligation);
         debug_assert!(!obligation.predicate.has_escaping_bound_vars());
 
-        let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
+        let pec = &ProvisionalEvaluationCache::default();
+        let stack = self.push_stack(TraitObligationStackList::empty(pec), obligation);
 
         let candidate = match self.candidate_from_obligation(&stack) {
             Err(SelectionError::Overflow) => {
@@ -646,20 +654,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // where we do not expect overflow to be propagated.
         assert!(self.query_mode == TraitQueryMode::Standard);
 
-        self.evaluate_obligation_recursively(obligation)
+        self.evaluate_root_obligation(obligation)
             .expect("Overflow should be caught earlier in standard query mode")
             .may_apply()
     }
 
-    /// Evaluates whether the obligation `obligation` can be satisfied and returns
-    /// an `EvaluationResult`.
-    pub fn evaluate_obligation_recursively(
+    /// Evaluates whether the obligation `obligation` can be satisfied
+    /// and returns an `EvaluationResult`. This is meant for the
+    /// *initial* call.
+    pub fn evaluate_root_obligation(
         &mut self,
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
-            this.evaluate_predicate_recursively(TraitObligationStackList::empty(),
-                obligation.clone())
+            this.evaluate_predicate_recursively(
+                TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
+                obligation.clone(),
+            )
         })
     }
 
@@ -865,21 +876,129 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(result);
         }
 
+        if let Some(result) = stack.cache().get_provisional(fresh_trait_ref) {
+            debug!("PROVISIONAL CACHE HIT: EVAL({:?})={:?}", fresh_trait_ref, result);
+            stack.update_reached_depth(stack.cache().current_reached_depth());
+            return Ok(result);
+        }
+
+        // Check if this is a match for something already on the
+        // stack. If so, we don't want to insert the result into the
+        // main cache (it is cycle dependent) nor the provisional
+        // cache (which is meant for things that have completed but
+        // for a "backedge" -- this result *is* the backedge).
+        if let Some(cycle_result) = self.check_evaluation_cycle(&stack) {
+            return Ok(cycle_result);
+        }
+
         let (result, dep_node) = self.in_task(|this| this.evaluate_stack(&stack));
         let result = result?;
 
-        if !stack.in_cycle.get() {
+        if !result.must_apply_modulo_regions() {
+            stack.cache().on_failure(stack.dfn);
+        }
+
+        let reached_depth = stack.reached_depth.get();
+        if reached_depth >= stack.depth {
             debug!("CACHE MISS: EVAL({:?})={:?}", fresh_trait_ref, result);
             self.insert_evaluation_cache(obligation.param_env, fresh_trait_ref, dep_node, result);
+
+            stack.cache().on_completion(stack.depth, |fresh_trait_ref, provisional_result| {
+                self.insert_evaluation_cache(
+                    obligation.param_env,
+                    fresh_trait_ref,
+                    dep_node,
+                    provisional_result.max(result),
+                );
+            });
         } else {
+            debug!("PROVISIONAL: {:?}={:?}", fresh_trait_ref, result);
             debug!(
-                "evaluate_trait_predicate_recursively: skipping cache because {:?} \
-                 is a cycle participant",
+                "evaluate_trait_predicate_recursively: caching provisionally because {:?} \
+                 is a cycle participant (at depth {}, reached depth {})",
                 fresh_trait_ref,
+                stack.depth,
+                reached_depth,
+            );
+
+            stack.cache().insert_provisional(
+                stack.dfn,
+                reached_depth,
+                fresh_trait_ref,
+                result,
             );
         }
 
+
         Ok(result)
+    }
+
+    /// If there is any previous entry on the stack that precisely
+    /// matches this obligation, then we can assume that the
+    /// obligation is satisfied for now (still all other conditions
+    /// must be met of course). One obvious case this comes up is
+    /// marker traits like `Send`. Think of a linked list:
+    ///
+    ///    struct List<T> { data: T, next: Option<Box<List<T>>> }
+    ///
+    /// `Box<List<T>>` will be `Send` if `T` is `Send` and
+    /// `Option<Box<List<T>>>` is `Send`, and in turn
+    /// `Option<Box<List<T>>>` is `Send` if `Box<List<T>>` is
+    /// `Send`.
+    ///
+    /// Note that we do this comparison using the `fresh_trait_ref`
+    /// fields. Because these have all been freshened using
+    /// `self.freshener`, we can be sure that (a) this will not
+    /// affect the inferencer state and (b) that if we see two
+    /// fresh regions with the same index, they refer to the same
+    /// unbound type variable.
+    fn check_evaluation_cycle(
+        &mut self,
+        stack: &TraitObligationStack<'_, 'tcx>,
+    ) -> Option<EvaluationResult> {
+        if let Some(cycle_depth) = stack.iter()
+            .skip(1) // skip top-most frame
+            .find(|prev| stack.obligation.param_env == prev.obligation.param_env &&
+                  stack.fresh_trait_ref == prev.fresh_trait_ref)
+            .map(|stack| stack.depth)
+        {
+            debug!(
+                "evaluate_stack({:?}) --> recursive at depth {}",
+                stack.fresh_trait_ref,
+                cycle_depth,
+            );
+
+            // If we have a stack like `A B C D E A`, where the top of
+            // the stack is the final `A`, then this will iterate over
+            // `A, E, D, C, B` -- i.e., all the participants apart
+            // from the cycle head. We mark them as participating in a
+            // cycle. This suppresses caching for those nodes. See
+            // `in_cycle` field for more details.
+            stack.update_reached_depth(cycle_depth);
+
+            // Subtle: when checking for a coinductive cycle, we do
+            // not compare using the "freshened trait refs" (which
+            // have erased regions) but rather the fully explicit
+            // trait refs. This is important because it's only a cycle
+            // if the regions match exactly.
+            let cycle = stack.iter().skip(1).take_while(|s| s.depth >= cycle_depth);
+            let cycle = cycle.map(|stack| ty::Predicate::Trait(stack.obligation.predicate));
+            if self.coinductive_match(cycle) {
+                debug!(
+                    "evaluate_stack({:?}) --> recursive, coinductive",
+                    stack.fresh_trait_ref
+                );
+                Some(EvaluatedToOk)
+            } else {
+                debug!(
+                    "evaluate_stack({:?}) --> recursive, inductive",
+                    stack.fresh_trait_ref
+                );
+                Some(EvaluatedToRecur)
+            }
+        } else {
+            None
+        }
     }
 
     fn evaluate_stack<'o>(
@@ -956,65 +1075,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 stack.fresh_trait_ref
             );
             return Ok(EvaluatedToUnknown);
-        }
-
-        // If there is any previous entry on the stack that precisely
-        // matches this obligation, then we can assume that the
-        // obligation is satisfied for now (still all other conditions
-        // must be met of course). One obvious case this comes up is
-        // marker traits like `Send`. Think of a linked list:
-        //
-        //    struct List<T> { data: T, next: Option<Box<List<T>>> }
-        //
-        // `Box<List<T>>` will be `Send` if `T` is `Send` and
-        // `Option<Box<List<T>>>` is `Send`, and in turn
-        // `Option<Box<List<T>>>` is `Send` if `Box<List<T>>` is
-        // `Send`.
-        //
-        // Note that we do this comparison using the `fresh_trait_ref`
-        // fields. Because these have all been freshened using
-        // `self.freshener`, we can be sure that (a) this will not
-        // affect the inferencer state and (b) that if we see two
-        // fresh regions with the same index, they refer to the same
-        // unbound type variable.
-        if let Some(rec_index) = stack.iter()
-                 .skip(1) // skip top-most frame
-                 .position(|prev| stack.obligation.param_env == prev.obligation.param_env &&
-                                  stack.fresh_trait_ref == prev.fresh_trait_ref)
-        {
-            debug!("evaluate_stack({:?}) --> recursive", stack.fresh_trait_ref);
-
-            // If we have a stack like `A B C D E A`, where the top of
-            // the stack is the final `A`, then this will iterate over
-            // `A, E, D, C, B` -- i.e., all the participants apart
-            // from the cycle head. We mark them as participating in a
-            // cycle. This suppresses caching for those nodes. See
-            // `in_cycle` field for more details.
-            for item in stack.iter().take(rec_index + 1) {
-                debug!("evaluate_stack: marking {:?} as cycle participant", item.fresh_trait_ref);
-                item.in_cycle.set(true);
-            }
-
-            // Subtle: when checking for a coinductive cycle, we do
-            // not compare using the "freshened trait refs" (which
-            // have erased regions) but rather the fully explicit
-            // trait refs. This is important because it's only a cycle
-            // if the regions match exactly.
-            let cycle = stack.iter().skip(1).take(rec_index + 1);
-            let cycle = cycle.map(|stack| ty::Predicate::Trait(stack.obligation.predicate));
-            if self.coinductive_match(cycle) {
-                debug!(
-                    "evaluate_stack({:?}) --> recursive, coinductive",
-                    stack.fresh_trait_ref
-                );
-                return Ok(EvaluatedToOk);
-            } else {
-                debug!(
-                    "evaluate_stack({:?}) --> recursive, inductive",
-                    stack.fresh_trait_ref
-                );
-                return Ok(EvaluatedToRecur);
-            }
         }
 
         match self.candidate_from_obligation(stack) {
@@ -1219,6 +1279,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // If no match, compute result and insert into cache.
+        //
+        // FIXME(nikomatsakis) -- this cache is not taking into
+        // account cycles that may have occurred in forming the
+        // candidate. I don't know of any specific problems that
+        // result but it seems awfully suspicious.
         let (candidate, dep_node) =
             self.in_task(|this| this.candidate_from_obligation_no_cache(stack));
 
@@ -3734,11 +3799,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .to_poly_trait_ref()
             .fold_with(&mut self.freshener);
 
+        let dfn = previous_stack.cache.next_dfn();
+        let depth = previous_stack.depth() + 1;
         TraitObligationStack {
             obligation,
             fresh_trait_ref,
-            in_cycle: Cell::new(false),
+            reached_depth: Cell::new(depth),
             previous: previous_stack,
+            dfn,
+            depth,
         }
     }
 
@@ -3931,27 +4000,282 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
         TraitObligationStackList::with(self)
     }
 
+    fn cache(&self) -> &'o ProvisionalEvaluationCache<'tcx> {
+        self.previous.cache
+    }
+
     fn iter(&'o self) -> TraitObligationStackList<'o, 'tcx> {
         self.list()
+    }
+
+    /// Indicates that attempting to evaluate this stack entry
+    /// required accessing something from the stack at depth `reached_depth`.
+    fn update_reached_depth(&self, reached_depth: usize) {
+        assert!(
+            self.depth > reached_depth,
+            "invoked `update_reached_depth` with something under this stack: \
+             self.depth={} reached_depth={}",
+            self.depth,
+            reached_depth,
+        );
+        debug!("update_reached_depth(reached_depth={})", reached_depth);
+        let mut p = self;
+        while reached_depth < p.depth {
+            debug!("update_reached_depth: marking {:?} as cycle participant", p.fresh_trait_ref);
+            p.reached_depth.set(p.reached_depth.get().min(reached_depth));
+            p = p.previous.head.unwrap();
+        }
+    }
+}
+
+/// The "provisional evaluation cache" is used to store intermediate cache results
+/// when solving auto traits. Auto traits are unusual in that they can support
+/// cycles. So, for example, a "proof tree" like this would be ok:
+///
+/// - `Foo<T>: Send` :-
+///   - `Bar<T>: Send` :-
+///     - `Foo<T>: Send` -- cycle, but ok
+///   - `Baz<T>: Send`
+///
+/// Here, to prove `Foo<T>: Send`, we have to prove `Bar<T>: Send` and
+/// `Baz<T>: Send`. Proving `Bar<T>: Send` in turn required `Foo<T>: Send`.
+/// For non-auto traits, this cycle would be an error, but for auto traits (because
+/// they are coinductive) it is considered ok.
+///
+/// However, there is a complication: at the point where we have
+/// "proven" `Bar<T>: Send`, we have in fact only proven it
+/// *provisionally*. In particular, we proved that `Bar<T>: Send`
+/// *under the assumption* that `Foo<T>: Send`. But what if we later
+/// find out this assumption is wrong?  Specifically, we could
+/// encounter some kind of error proving `Baz<T>: Send`. In that case,
+/// `Bar<T>: Send` didn't turn out to be true.
+///
+/// In Issue #60010, we found a bug in rustc where it would cache
+/// these intermediate results. This was fixed in #60444 by disabling
+/// *all* caching for things involved in a cycle -- in our example,
+/// that would mean we don't cache that `Bar<T>: Send`.  But this led
+/// to large slowdowns.
+///
+/// Specifically, imagine this scenario, where proving `Baz<T>: Send`
+/// first requires proving `Bar<T>: Send` (which is true:
+///
+/// - `Foo<T>: Send` :-
+///   - `Bar<T>: Send` :-
+///     - `Foo<T>: Send` -- cycle, but ok
+///   - `Baz<T>: Send`
+///     - `Bar<T>: Send` -- would be nice for this to be a cache hit!
+///     - `*const T: Send` -- but what if we later encounter an error?
+///
+/// The *provisional evaluation cache* resolves this issue. It stores
+/// cache results that we've proven but which were involved in a cycle
+/// in some way. We track the minimal stack depth (i.e., the
+/// farthest from the top of the stack) that we are dependent on.
+/// The idea is that the cache results within are all valid -- so long as
+/// none of the nodes in between the current node and the node at that minimum
+/// depth result in an error (in which case the cached results are just thrown away).
+///
+/// During evaluation, we consult this provisional cache and rely on
+/// it. Accessing a cached value is considered equivalent to accessing
+/// a result at `reached_depth`, so it marks the *current* solution as
+/// provisional as well. If an error is encountered, we toss out any
+/// provisional results added from the subtree that encountered the
+/// error.  When we pop the node at `reached_depth` from the stack, we
+/// can commit all the things that remain in the provisional cache.
+struct ProvisionalEvaluationCache<'tcx> {
+    /// next "depth first number" to issue -- just a counter
+    dfn: Cell<usize>,
+
+    /// Stores the "coldest" depth (bottom of stack) reached by any of
+    /// the evaluation entries. The idea here is that all things in the provisional
+    /// cache are always dependent on *something* that is colder in the stack:
+    /// therefore, if we add a new entry that is dependent on something *colder still*,
+    /// we have to modify the depth for all entries at once.
+    ///
+    /// Example:
+    ///
+    /// Imagine we have a stack `A B C D E` (with `E` being the top of
+    /// the stack).  We cache something with depth 2, which means that
+    /// it was dependent on C.  Then we pop E but go on and process a
+    /// new node F: A B C D F.  Now F adds something to the cache with
+    /// depth 1, meaning it is dependent on B.  Our original cache
+    /// entry is also dependent on B, because there is a path from E
+    /// to C and then from C to F and from F to B.
+    reached_depth: Cell<usize>,
+
+    /// Map from cache key to the provisionally evaluated thing.
+    /// The cache entries contain the result but also the DFN in which they
+    /// were added. The DFN is used to clear out values on failure.
+    ///
+    /// Imagine we have a stack like:
+    ///
+    /// - `A B C` and we add a cache for the result of C (DFN 2)
+    /// - Then we have a stack `A B D` where `D` has DFN 3
+    /// - We try to solve D by evaluating E: `A B D E` (DFN 4)
+    /// - `E` generates various cache entries which have cyclic dependices on `B`
+    ///   - `A B D E F` and so forth
+    ///   - the DFN of `F` for example would be 5
+    /// - then we determine that `E` is in error -- we will then clear
+    ///   all cache values whose DFN is >= 4 -- in this case, that
+    ///   means the cached value for `F`.
+    map: RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, ProvisionalEvaluation>>,
+}
+
+/// A cache value for the provisional cache: contains the depth-first
+/// number (DFN) and result.
+#[derive(Copy, Clone, Debug)]
+struct ProvisionalEvaluation {
+    from_dfn: usize,
+    result: EvaluationResult,
+}
+
+impl<'tcx> Default for ProvisionalEvaluationCache<'tcx> {
+    fn default() -> Self {
+        Self {
+            dfn: Cell::new(0),
+            reached_depth: Cell::new(std::usize::MAX),
+            map: Default::default(),
+        }
+    }
+}
+
+impl<'tcx> ProvisionalEvaluationCache<'tcx> {
+    /// Get the next DFN in sequence (basically a counter).
+    fn next_dfn(&self) -> usize {
+        let result = self.dfn.get();
+        self.dfn.set(result + 1);
+        result
+    }
+
+    /// Check the provisional cache for any result for
+    /// `fresh_trait_ref`. If there is a hit, then you must consider
+    /// it an access to the stack slots at depth
+    /// `self.current_reached_depth()` and above.
+    fn get_provisional(&self, fresh_trait_ref: ty::PolyTraitRef<'tcx>) -> Option<EvaluationResult> {
+        debug!(
+            "get_provisional(fresh_trait_ref={:?}) = {:#?} with reached-depth {}",
+            fresh_trait_ref,
+            self.map.borrow().get(&fresh_trait_ref),
+            self.reached_depth.get(),
+        );
+        Some(self.map.borrow().get(&fresh_trait_ref)?.result)
+    }
+
+    /// Current value of the `reached_depth` counter -- all the
+    /// provisional cache entries are dependent on the item at this
+    /// depth.
+    fn current_reached_depth(&self) -> usize {
+        self.reached_depth.get()
+    }
+
+    /// Insert a provisional result into the cache. The result came
+    /// from the node with the given DFN. It accessed a minimum depth
+    /// of `reached_depth` to compute. It evaluated `fresh_trait_ref`
+    /// and resulted in `result`.
+    fn insert_provisional(
+        &self,
+        from_dfn: usize,
+        reached_depth: usize,
+        fresh_trait_ref: ty::PolyTraitRef<'tcx>,
+        result: EvaluationResult,
+    ) {
+        debug!(
+            "insert_provisional(from_dfn={}, reached_depth={}, fresh_trait_ref={:?}, result={:?})",
+            from_dfn,
+            reached_depth,
+            fresh_trait_ref,
+            result,
+        );
+        let r_d = self.reached_depth.get();
+        self.reached_depth.set(r_d.min(reached_depth));
+
+        debug!("insert_provisional: reached_depth={:?}", self.reached_depth.get());
+
+        self.map.borrow_mut().insert(fresh_trait_ref, ProvisionalEvaluation { from_dfn, result });
+    }
+
+    /// Invoked when the node with dfn `dfn` does not get a successful
+    /// result.  This will clear out any provisional cache entries
+    /// that were added since `dfn` was created. This is because the
+    /// provisional entries are things which must assume that the
+    /// things on the stack at the time of their creation succeeded --
+    /// since the failing node is presently at the top of the stack,
+    /// these provisional entries must either depend on it or some
+    /// ancestor of it.
+    fn on_failure(&self, dfn: usize) {
+        debug!(
+            "on_failure(dfn={:?})",
+            dfn,
+        );
+        self.map.borrow_mut().retain(|key, eval| {
+            if !eval.from_dfn >= dfn {
+                debug!("on_failure: removing {:?}", key);
+                false
+            } else {
+                true
+            }
+        });
+    }
+
+    /// Invoked when the node at depth `depth` completed without
+    /// depending on anything higher in the stack (if that completion
+    /// was a failure, then `on_failure` should have been invoked
+    /// already). The callback `op` will be invoked for each
+    /// provisional entry that we can now confirm.
+    fn on_completion(
+        &self,
+        depth: usize,
+        mut op: impl FnMut(ty::PolyTraitRef<'tcx>, EvaluationResult),
+    ) {
+        debug!(
+            "on_completion(depth={}, reached_depth={})",
+            depth,
+            self.reached_depth.get(),
+        );
+
+        if self.reached_depth.get() < depth {
+            debug!("on_completion: did not yet reach depth to complete");
+            return;
+        }
+
+        for (fresh_trait_ref, eval) in self.map.borrow_mut().drain() {
+            debug!(
+                "on_completion: fresh_trait_ref={:?} eval={:?}",
+                fresh_trait_ref,
+                eval,
+            );
+
+            op(fresh_trait_ref, eval.result);
+        }
+
+        self.reached_depth.set(std::usize::MAX);
     }
 }
 
 #[derive(Copy, Clone)]
 struct TraitObligationStackList<'o, 'tcx: 'o> {
+    cache: &'o ProvisionalEvaluationCache<'tcx>,
     head: Option<&'o TraitObligationStack<'o, 'tcx>>,
 }
 
 impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
-    fn empty() -> TraitObligationStackList<'o, 'tcx> {
-        TraitObligationStackList { head: None }
+    fn empty(cache: &'o ProvisionalEvaluationCache<'tcx>) -> TraitObligationStackList<'o, 'tcx> {
+        TraitObligationStackList { cache, head: None }
     }
 
     fn with(r: &'o TraitObligationStack<'o, 'tcx>) -> TraitObligationStackList<'o, 'tcx> {
-        TraitObligationStackList { head: Some(r) }
+        TraitObligationStackList { cache: r.cache(), head: Some(r) }
     }
 
     fn head(&self) -> Option<&'o TraitObligationStack<'o, 'tcx>> {
         self.head
+    }
+
+    fn depth(&self) -> usize {
+        if let Some(head) = self.head {
+            head.depth
+        } else {
+            0
+        }
     }
 }
 
