@@ -922,7 +922,7 @@ fn receiver_is_valid<'fcx, 'tcx>(
         };
 
         let obligation = traits::Obligation::new(
-            cause.clone(),
+            cause,
             fcx.param_env,
             trait_ref.to_predicate()
         );

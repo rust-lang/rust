@@ -1609,7 +1609,7 @@ impl<'tcx> VariantInfo<'tcx> {
                 // with every variant, make each variant name be just the value
                 // of the discriminant. The struct name for the variant includes
                 // the actual variant description.
-                format!("{}", variant_index.as_usize()).to_string()
+                format!("{}", variant_index.as_usize())
             }
         }
     }

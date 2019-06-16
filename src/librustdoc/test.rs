@@ -740,7 +740,7 @@ impl Tester for Collector {
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
-                name: testing::DynTestName(name.clone()),
+                name: testing::DynTestName(name),
                 ignore: config.ignore,
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
