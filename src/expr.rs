@@ -33,7 +33,7 @@ use crate::types::{rewrite_path, PathContext};
 use crate::utils::{
     colon_spaces, contains_skip, count_newlines, first_line_ends_with, inner_attributes,
     last_line_extendable, last_line_width, mk_sp, outer_attributes, ptr_vec_to_ref_vec,
-    semicolon_for_expr, semicolon_for_stmt, unicode_str_width, wrap_str,
+    semicolon_for_expr, unicode_str_width, wrap_str,
 };
 use crate::vertical::rewrite_with_alignment;
 use crate::visitor::FmtVisitor;
@@ -566,28 +566,6 @@ fn rewrite_block(
     }
 
     result
-}
-
-impl Rewrite for ast::Stmt {
-    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        skip_out_of_file_lines_range!(context, self.span());
-
-        let result = match self.node {
-            ast::StmtKind::Local(ref local) => local.rewrite(context, shape),
-            ast::StmtKind::Expr(ref ex) | ast::StmtKind::Semi(ref ex) => {
-                let suffix = if semicolon_for_stmt(context, self) {
-                    ";"
-                } else {
-                    ""
-                };
-
-                let shape = shape.sub_width(suffix.len())?;
-                format_expr(ex, ExprType::Statement, context, shape).map(|s| s + suffix)
-            }
-            ast::StmtKind::Mac(..) | ast::StmtKind::Item(..) => None,
-        };
-        result.and_then(|res| recover_comment_removed(res, self.span(), context))
-    }
 }
 
 // Rewrite condition if the given expression has one.
@@ -1185,16 +1163,6 @@ pub(crate) fn is_empty_block(
 pub(crate) fn stmt_is_expr(stmt: &ast::Stmt) -> bool {
     match stmt.node {
         ast::StmtKind::Expr(..) => true,
-        _ => false,
-    }
-}
-
-pub(crate) fn stmt_is_if(stmt: &ast::Stmt) -> bool {
-    match stmt.node {
-        ast::StmtKind::Expr(ref e) => match e.node {
-            ast::ExprKind::If(..) => true,
-            _ => false,
-        },
         _ => false,
     }
 }

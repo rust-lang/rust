@@ -18,8 +18,7 @@ use crate::comment::{
 use crate::config::lists::*;
 use crate::config::{BraceStyle, Config, IndentStyle, Version};
 use crate::expr::{
-    format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
-    ExprType, RhsTactics,
+    is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with, RhsTactics,
 };
 use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use crate::macros::{rewrite_macro, MacroPosition};
@@ -28,6 +27,7 @@ use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
+use crate::stmt::Stmt;
 use crate::utils::*;
 use crate::vertical::rewrite_with_alignment;
 use crate::visitor::FmtVisitor;
@@ -394,20 +394,8 @@ impl<'a> FmtVisitor<'a> {
             return None;
         }
 
-        let stmt = block.stmts.first()?;
-        let res = match stmt_expr(stmt) {
-            Some(e) => {
-                let suffix = if semicolon_for_expr(&self.get_context(), e) {
-                    ";"
-                } else {
-                    ""
-                };
-
-                format_expr(e, ExprType::Statement, &self.get_context(), self.shape())
-                    .map(|s| s + suffix)?
-            }
-            None => stmt.rewrite(&self.get_context(), self.shape())?,
-        };
+        let res = Stmt::from_ast_node(block.stmts.first()?, true)
+            .rewrite(&self.get_context(), self.shape())?;
 
         let width = self.block_indent.width() + fn_str.len() + res.len() + 5;
         if !res.contains('\n') && width <= self.config.max_width() {

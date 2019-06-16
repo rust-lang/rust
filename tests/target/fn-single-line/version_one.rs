@@ -1,4 +1,5 @@
 // rustfmt-fn_single_line: true
+// rustfmt-version: One
 // Test single-line functions.
 
 fn foo_expr() { 1 }

@@ -72,6 +72,7 @@ mod shape;
 pub(crate) mod source_file;
 pub(crate) mod source_map;
 mod spanned;
+mod stmt;
 mod string;
 #[cfg(test)]
 mod test;
