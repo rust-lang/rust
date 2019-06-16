@@ -1617,7 +1617,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.ir.tcx.lint_hir_note(
                         lint::builtin::UNUSED_VARIABLES,
                         hir_id,
-                        spans.clone(),
+                        spans,
                         &format!("variable `{}` is assigned to, but never used", name),
                         &format!("consider using `_{}` instead", name),
                     );
