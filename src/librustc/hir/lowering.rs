@@ -4902,11 +4902,12 @@ impl<'a> LoweringContext<'a> {
 
                 let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
                 let body_expr = P(self.expr_block(body_block, ThinVec::new()));
+                let body_stmt = self.stmt(body.span, hir::StmtKind::Expr(body_expr));
 
                 let loop_block = P(self.block_all(
                     e.span,
-                    hir_vec![next_let, match_stmt, pat_let],
-                    Some(body_expr),
+                    hir_vec![next_let, match_stmt, pat_let, body_stmt],
+                    None,
                 ));
 
                 // `[opt_ident]: loop { ... }`
