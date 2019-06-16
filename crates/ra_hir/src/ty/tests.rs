@@ -2768,7 +2768,6 @@ fn test(s: Arc<S>) {
 
 #[test]
 fn deref_trait_with_inference_var() {
-    // std::env::set_var("RUST_BACKTRACE", "1");
     let t = type_at(
         r#"
 //- /main.rs

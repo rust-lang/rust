@@ -23,6 +23,7 @@ pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_s
 pub(crate) use infer::{infer_query, InferenceResult, InferTy};
 pub use lower::CallableDef;
 pub(crate) use autoderef::autoderef;
+pub(crate) use traits::ProjectionPredicate;
 
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or

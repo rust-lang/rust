@@ -1,10 +1,11 @@
 use std::sync::Arc;
 use rustc_hash::FxHashMap;
 
-use ra_syntax::{SmolStr, ast::AttrsOwner};
+use ra_syntax::{SmolStr, TreeArc, ast::AttrsOwner};
 
 use crate::{
-        Crate, DefDatabase, Enum, Function, HirDatabase, ImplBlock, Module, Static, Struct, Trait, ModuleDef, AstDatabase, HasSource
+    Crate, DefDatabase, Enum, Function, HirDatabase, ImplBlock, Module,
+    Static, Struct, Trait, ModuleDef, AstDatabase, HasSource
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -93,39 +94,15 @@ impl LangItems {
             }
         }
 
-        // FIXME make this nicer
         for def in module.declarations(db) {
             match def {
                 ModuleDef::Trait(trait_) => {
-                    let node = trait_.source(db).ast;
-                    if let Some(lang_item_name) = lang_item_name(&*node) {
-                        self.items.entry(lang_item_name).or_insert(LangItemTarget::Trait(trait_));
-                    }
+                    self.collect_lang_item(db, trait_, LangItemTarget::Trait)
                 }
-                ModuleDef::Enum(e) => {
-                    let node = e.source(db).ast;
-                    if let Some(lang_item_name) = lang_item_name(&*node) {
-                        self.items.entry(lang_item_name).or_insert(LangItemTarget::Enum(e));
-                    }
-                }
-                ModuleDef::Struct(s) => {
-                    let node = s.source(db).ast;
-                    if let Some(lang_item_name) = lang_item_name(&*node) {
-                        self.items.entry(lang_item_name).or_insert(LangItemTarget::Struct(s));
-                    }
-                }
-                ModuleDef::Function(f) => {
-                    let node = f.source(db).ast;
-                    if let Some(lang_item_name) = lang_item_name(&*node) {
-                        self.items.entry(lang_item_name).or_insert(LangItemTarget::Function(f));
-                    }
-                }
-                ModuleDef::Static(s) => {
-                    let node = s.source(db).ast;
-                    if let Some(lang_item_name) = lang_item_name(&*node) {
-                        self.items.entry(lang_item_name).or_insert(LangItemTarget::Static(s));
-                    }
-                }
+                ModuleDef::Enum(e) => self.collect_lang_item(db, e, LangItemTarget::Enum),
+                ModuleDef::Struct(s) => self.collect_lang_item(db, s, LangItemTarget::Struct),
+                ModuleDef::Function(f) => self.collect_lang_item(db, f, LangItemTarget::Function),
+                ModuleDef::Static(s) => self.collect_lang_item(db, s, LangItemTarget::Static),
                 _ => {}
             }
         }
@@ -133,6 +110,21 @@ impl LangItems {
         // Look for lang items in the children
         for child in module.children(db) {
             self.collect_lang_items_recursive(db, &child);
+        }
+    }
+
+    fn collect_lang_item<T, N>(
+        &mut self,
+        db: &(impl DefDatabase + AstDatabase),
+        item: T,
+        constructor: fn(T) -> LangItemTarget,
+    ) where
+        T: Copy + HasSource<Ast = TreeArc<N>>,
+        N: AttrsOwner,
+    {
+        let node = item.source(db).ast;
+        if let Some(lang_item_name) = lang_item_name(&*node) {
+            self.items.entry(lang_item_name).or_insert(constructor(item));
         }
     }
 }

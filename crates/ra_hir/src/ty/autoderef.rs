@@ -10,12 +10,14 @@ use log::{info, warn};
 use crate::{HirDatabase, Name, Resolver, HasGenericParams};
 use super::{traits::Solution, Ty, Canonical};
 
+const AUTODEREF_RECURSION_LIMIT: usize = 10;
+
 pub(crate) fn autoderef<'a>(
     db: &'a impl HirDatabase,
     resolver: &'a Resolver,
     ty: Canonical<Ty>,
 ) -> impl Iterator<Item = Canonical<Ty>> + 'a {
-    successors(Some(ty), move |ty| deref(db, resolver, ty))
+    successors(Some(ty), move |ty| deref(db, resolver, ty)).take(AUTODEREF_RECURSION_LIMIT)
 }
 
 pub(crate) fn deref(

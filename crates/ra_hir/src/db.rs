@@ -185,11 +185,11 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
         goal: crate::ty::Canonical<crate::ty::TraitRef>,
     ) -> Option<crate::ty::traits::Solution>;
 
-    #[salsa::invoke(crate::ty::traits::normalize)]
+    #[salsa::invoke(crate::ty::traits::normalize_query)]
     fn normalize(
         &self,
         krate: Crate,
-        goal: crate::ty::Canonical<crate::ty::traits::ProjectionPredicate>,
+        goal: crate::ty::Canonical<crate::ty::ProjectionPredicate>,
     ) -> Option<crate::ty::traits::Solution>;
 }
 

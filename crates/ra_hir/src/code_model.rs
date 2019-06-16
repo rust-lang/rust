@@ -788,8 +788,7 @@ impl Trait {
                 TraitItem::TypeAlias(t) => Some(*t),
                 _ => None,
             })
-            .filter(|t| t.name(db) == name)
-            .next()
+            .find(|t| t.name(db) == name)
     }
 
     pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {

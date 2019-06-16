@@ -105,7 +105,7 @@ pub(crate) fn implements_query(
     solution.map(|solution| solution_from_chalk(db, solution))
 }
 
-pub(crate) fn normalize(
+pub(crate) fn normalize_query(
     db: &impl HirDatabase,
     krate: Crate,
     projection: Canonical<ProjectionPredicate>,
