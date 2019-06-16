@@ -2796,6 +2796,31 @@ fn test() {
     assert_eq!(t, "S");
 }
 
+#[test]
+fn deref_trait_infinite_recursion() {
+    let t = type_at(
+        r#"
+//- /main.rs
+#[lang = "deref"]
+trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct S;
+
+impl Deref for S {
+    type Target = S;
+}
+
+fn test(s: S) {
+    s.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
