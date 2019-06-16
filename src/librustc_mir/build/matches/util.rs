@@ -65,6 +65,39 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                   })
         );
     }
+
+    /// Creates a false edge to `imaginary_target` and a real edge to
+    /// real_target. If `imaginary_target` is none, or is the same as the real
+    /// target, a Goto is generated instead to simplify the generated MIR.
+    pub fn false_edges(
+        &mut self,
+        from_block: BasicBlock,
+        real_target: BasicBlock,
+        imaginary_target: Option<BasicBlock>,
+        source_info: SourceInfo,
+    )  {
+        match imaginary_target {
+            Some(target) if target != real_target => {
+                self.cfg.terminate(
+                    from_block,
+                    source_info,
+                    TerminatorKind::FalseEdges {
+                        real_target,
+                        imaginary_target: target,
+                    },
+                );
+            }
+            _ => {
+                self.cfg.terminate(
+                    from_block,
+                    source_info,
+                    TerminatorKind::Goto {
+                        target: real_target
+                    }
+                );
+            }
+        }
+    }
 }
 
 impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {

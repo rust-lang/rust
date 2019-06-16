@@ -22,20 +22,21 @@ fn main() {
 //        resume;
 //    }
 //    ...
-//    bb6: { // Entry into the loop
+//    bb3: { // Entry into the loop
 //        _1 = ();
 //        StorageDead(_2);
-//        goto -> bb7;
+//        goto -> bb5;
 //    }
-//    bb7: { // The loop_block
-//        falseUnwind -> [real: bb8, cleanup: bb1];
+//    ...
+//    bb5: { // The loop_block
+//        falseUnwind -> [real: bb6, cleanup: bb1];
 //    }
-//    bb8: { // The loop body (body_block)
+//    bb6: { // The loop body (body_block)
 //        StorageLive(_6);
 //        _6 = const 1i32;
 //        FakeRead(ForLet, _6);
 //        StorageDead(_6);
-//        goto -> bb7;
+//        goto -> bb5;
 //    }
 //    ...
 // END rustc.main.SimplifyCfg-qualify-consts.after.mir

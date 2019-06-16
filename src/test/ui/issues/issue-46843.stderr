@@ -5,12 +5,18 @@ LL | pub const Q: i32 = match non_const() {
    |                          ^^^^^^^^^^^
 
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/issue-46843.rs:8:5
+  --> $DIR/issue-46843.rs:7:26
+   |
+LL | pub const Q: i32 = match non_const() {
+   |                          ^^^^^^^^^^^
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/issue-46843.rs:10:5
    |
 LL |     Thing::This => 1,
    |     ^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0015, E0019.
 For more information about an error, try `rustc --explain E0015`.

@@ -244,7 +244,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdges {
                 real_target: _,
-                imaginary_targets: _,
+                imaginary_target: _,
             }
             | TerminatorKind::FalseUnwind {
                 real_target: _,

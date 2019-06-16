@@ -802,11 +802,9 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation<'tcx>
                     self.propagate_bits_into_entry_set_for(in_out, dest_bb, dirty_list);
                 }
             }
-            mir::TerminatorKind::FalseEdges { real_target, ref imaginary_targets } => {
+            mir::TerminatorKind::FalseEdges { real_target, imaginary_target } => {
                 self.propagate_bits_into_entry_set_for(in_out, real_target, dirty_list);
-                for target in imaginary_targets {
-                    self.propagate_bits_into_entry_set_for(in_out, *target, dirty_list);
-                }
+                self.propagate_bits_into_entry_set_for(in_out, imaginary_target, dirty_list);
             }
             mir::TerminatorKind::FalseUnwind { real_target, unwind } => {
                 self.propagate_bits_into_entry_set_for(in_out, real_target, dirty_list);

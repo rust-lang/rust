@@ -1448,6 +1448,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             StatementKind::Assign(..) => {
                 self.super_statement(statement, location);
             }
+            StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
+                self.not_const();
+            }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |
             StatementKind::SetDiscriminant { .. } |

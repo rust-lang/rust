@@ -786,11 +786,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             }
             TerminatorKind::Abort => { }
             TerminatorKind::Unreachable => { }
-            TerminatorKind::FalseEdges { ref mut real_target, ref mut imaginary_targets } => {
+            TerminatorKind::FalseEdges { ref mut real_target, ref mut imaginary_target } => {
                 *real_target = self.update_target(*real_target);
-                for target in imaginary_targets {
-                    *target = self.update_target(*target);
-                }
+                *imaginary_target = self.update_target(*imaginary_target);
             }
             TerminatorKind::FalseUnwind { real_target: _ , unwind: _ } =>
                 // see the ordering of passes in the optimized_mir query.

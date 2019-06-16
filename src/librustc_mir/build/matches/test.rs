@@ -15,8 +15,9 @@ use rustc::ty::{self, Ty, adjustment::{PointerCast}};
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::layout::VariantIdx;
 use rustc::mir::*;
-use rustc::hir::{RangeEnd, Mutability};
-use syntax_pos::Span;
+use rustc::hir::RangeEnd;
+use syntax_pos::symbol::sym;
+
 use std::cmp::Ordering;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -162,43 +163,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    /// Generates the code to perform a test.
-    pub fn perform_test(&mut self,
-                        block: BasicBlock,
-                        place: &Place<'tcx>,
-                        test: &Test<'tcx>)
-                        -> Vec<BasicBlock> {
+    pub fn perform_test(
+        &mut self,
+        block: BasicBlock,
+        place: &Place<'tcx>,
+        test: &Test<'tcx>,
+        make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
+    ) {
         debug!("perform_test({:?}, {:?}: {:?}, {:?})",
                block,
                place,
                place.ty(&self.local_decls, self.hir.tcx()),
                test);
+
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
+                let target_blocks = make_target_blocks(self);
                 // Variants is a BitVec of indexes into adt_def.variants.
                 let num_enum_variants = adt_def.variants.len();
                 let used_variants = variants.count();
-                let mut otherwise_block = None;
-                let mut target_blocks = Vec::with_capacity(num_enum_variants);
+                debug_assert_eq!(target_blocks.len(), num_enum_variants + 1);
+                let otherwise_block = *target_blocks.last().unwrap();
                 let mut targets = Vec::with_capacity(used_variants + 1);
                 let mut values = Vec::with_capacity(used_variants);
                 let tcx = self.hir.tcx();
                 for (idx, discr) in adt_def.discriminants(tcx) {
-                    target_blocks.push(if variants.contains(idx) {
+                    if variants.contains(idx) {
+                        debug_assert_ne!(
+                            target_blocks[idx.index()],
+                            otherwise_block,
+                            "no canididates for tested discriminant: {:?}",
+                            discr,
+                        );
                         values.push(discr.val);
-                        let block = self.cfg.start_new_block();
-                        targets.push(block);
-                        block
+                        targets.push(target_blocks[idx.index()]);
                     } else {
-                        *otherwise_block
-                            .get_or_insert_with(|| self.cfg.start_new_block())
-                    });
+                        debug_assert_eq!(
+                            target_blocks[idx.index()],
+                            otherwise_block,
+                            "found canididates for untested discriminant: {:?}",
+                            discr,
+                        );
+                    }
                 }
-                targets.push(
-                    otherwise_block
-                        .unwrap_or_else(|| self.unreachable_block()),
-                );
+                targets.push(otherwise_block);
                 debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
                        num_enum_variants, values, variants);
                 let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
@@ -212,182 +221,97 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     values: From::from(values),
                     targets,
                 });
-                target_blocks
             }
 
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
-                let (ret, terminator) = if switch_ty.sty == ty::Bool {
+                let target_blocks = make_target_blocks(self);
+                let terminator = if switch_ty.sty == ty::Bool {
                     assert!(options.len() > 0 && options.len() <= 2);
-                    let (true_bb, false_bb) = (self.cfg.start_new_block(),
-                                               self.cfg.start_new_block());
-                    let ret = match options[0] {
-                        1 => vec![true_bb, false_bb],
-                        0 => vec![false_bb, true_bb],
-                        v => span_bug!(test.span, "expected boolean value but got {:?}", v)
-                    };
-                    (ret, TerminatorKind::if_(self.hir.tcx(), Operand::Copy(place.clone()),
-                                              true_bb, false_bb))
+                    if let [first_bb, second_bb] = *target_blocks {
+                        let (true_bb, false_bb) = match options[0] {
+                            1 => (first_bb, second_bb),
+                            0 => (second_bb, first_bb),
+                            v => span_bug!(test.span, "expected boolean value but got {:?}", v)
+                        };
+                        TerminatorKind::if_(
+                            self.hir.tcx(),
+                            Operand::Copy(place.clone()),
+                            true_bb,
+                            false_bb,
+                        )
+                    } else {
+                        bug!("`TestKind::SwitchInt` on `bool` should have two targets")
+                    }
                 } else {
-                    // The switch may be inexhaustive so we
-                    // add a catch all block
-                    let otherwise = self.cfg.start_new_block();
-                    let targets: Vec<_> =
-                        options.iter()
-                               .map(|_| self.cfg.start_new_block())
-                               .chain(Some(otherwise))
-                               .collect();
-                    (targets.clone(), TerminatorKind::SwitchInt {
+                    // The switch may be inexhaustive so we have a catch all block
+                    debug_assert_eq!(options.len() + 1, target_blocks.len());
+                    TerminatorKind::SwitchInt {
                         discr: Operand::Copy(place.clone()),
                         switch_ty,
                         values: options.clone().into(),
-                        targets,
-                    })
+                        targets: target_blocks,
+                    }
                 };
                 self.cfg.terminate(block, source_info, terminator);
-                ret
             }
 
-            TestKind::Eq { value, mut ty } => {
-                let val = Operand::Copy(place.clone());
-                let mut expect = self.literal_operand(test.span, ty, value);
-                // Use `PartialEq::eq` instead of `BinOp::Eq`
-                // (the binop can only handle primitives)
-                let fail = self.cfg.start_new_block();
+            TestKind::Eq { value, ty } => {
                 if !ty.is_scalar() {
-                    // If we're using `b"..."` as a pattern, we need to insert an
-                    // unsizing coercion, as the byte string has the type `&[u8; N]`.
-                    //
-                    // We want to do this even when the scrutinee is a reference to an
-                    // array, so we can call `<[u8]>::eq` rather than having to find an
-                    // `<[u8; N]>::eq`.
-                    let unsize = |ty: Ty<'tcx>| match ty.sty {
-                        ty::Ref(region, rty, _) => match rty.sty {
-                            ty::Array(inner_ty, n) => Some((region, inner_ty, n)),
-                            _ => None,
-                        },
-                        _ => None,
-                    };
-                    let opt_ref_ty = unsize(ty);
-                    let opt_ref_test_ty = unsize(value.ty);
-                    let mut place = place.clone();
-                    match (opt_ref_ty, opt_ref_test_ty) {
-                        // nothing to do, neither is an array
-                        (None, None) => {},
-                        (Some((region, elem_ty, _)), _) |
-                        (None, Some((region, elem_ty, _))) => {
-                            let tcx = self.hir.tcx();
-                            // make both a slice
-                            ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
-                            if opt_ref_ty.is_some() {
-                                place = self.temp(ty, test.span);
-                                self.cfg.push_assign(
-                                    block, source_info, &place, Rvalue::Cast(
-                                        CastKind::Pointer(PointerCast::Unsize), val, ty
-                                    )
-                                );
-                            }
-                            if opt_ref_test_ty.is_some() {
-                                let array = self.literal_operand(
-                                    test.span,
-                                    value.ty,
-                                    value,
-                                );
-
-                                let slice = self.temp(ty, test.span);
-                                self.cfg.push_assign(
-                                    block, source_info, &slice, Rvalue::Cast(
-                                        CastKind::Pointer(PointerCast::Unsize), array, ty
-                                    )
-                                );
-                                expect = Operand::Move(slice);
-                            }
-                        },
-                    }
-                    let eq_def_id = self.hir.tcx().lang_items().eq_trait().unwrap();
-                    let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
-
-                    let re_erased = self.hir.tcx().lifetimes.re_erased;
-                    // take the argument by reference
-                    let tam = ty::TypeAndMut {
+                    // Use `PartialEq::eq` instead of `BinOp::Eq`
+                    // (the binop can only handle primitives)
+                    self.non_scalar_compare(
+                        block,
+                        make_target_blocks,
+                        source_info,
+                        value,
+                        place,
                         ty,
-                        mutbl: Mutability::MutImmutable,
-                    };
-                    let ref_ty = self.hir.tcx().mk_ref(re_erased, tam);
-
-                    // let lhs_ref_place = &lhs;
-                    let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, place);
-                    let lhs_ref_place = self.temp(ref_ty, test.span);
-                    self.cfg.push_assign(block, source_info, &lhs_ref_place, ref_rvalue);
-                    let val = Operand::Move(lhs_ref_place);
-
-                    // let rhs_place = rhs;
-                    let rhs_place = self.temp(ty, test.span);
-                    self.cfg.push_assign(block, source_info, &rhs_place, Rvalue::Use(expect));
-
-                    // let rhs_ref_place = &rhs_place;
-                    let ref_rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, rhs_place);
-                    let rhs_ref_place = self.temp(ref_ty, test.span);
-                    self.cfg.push_assign(block, source_info, &rhs_ref_place, ref_rvalue);
-                    let expect = Operand::Move(rhs_ref_place);
-
-                    let bool_ty = self.hir.bool_ty();
-                    let eq_result = self.temp(bool_ty, test.span);
-                    let eq_block = self.cfg.start_new_block();
-                    let cleanup = self.diverge_cleanup();
-                    self.cfg.terminate(block, source_info, TerminatorKind::Call {
-                        func: Operand::Constant(box Constant {
-                            span: test.span,
-                            ty: mty,
-
-                            // FIXME(#54571): This constant comes from user
-                            // input (a constant in a pattern).  Are
-                            // there forms where users can add type
-                            // annotations here?  For example, an
-                            // associated constant? Need to
-                            // experiment.
-                            user_ty: None,
-
-                            literal: method,
-                        }),
-                        args: vec![val, expect],
-                        destination: Some((eq_result.clone(), eq_block)),
-                        cleanup: Some(cleanup),
-                        from_hir_call: false,
-                    });
-
-                    // check the result
-                    let block = self.cfg.start_new_block();
-                    self.cfg.terminate(eq_block, source_info,
-                                       TerminatorKind::if_(self.hir.tcx(),
-                                                           Operand::Move(eq_result),
-                                                           block, fail));
-                    vec![block, fail]
+                    );
                 } else {
-                    let block = self.compare(block, fail, test.span, BinOp::Eq, expect, val);
-                    vec![block, fail]
+                    if let [success, fail] = *make_target_blocks(self) {
+                        let val = Operand::Copy(place.clone());
+                        let expect = self.literal_operand(test.span, ty, value);
+                        self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
+                    } else {
+                        bug!("`TestKind::Eq` should have two target blocks");
+                    }
                 }
             }
 
             TestKind::Range(PatternRange { ref lo, ref hi, ty, ref end }) => {
+                let lower_bound_success = self.cfg.start_new_block();
+                let target_blocks = make_target_blocks(self);
+
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let lo = self.literal_operand(test.span, ty, lo);
                 let hi = self.literal_operand(test.span, ty, hi);
                 let val = Operand::Copy(place.clone());
 
-                let fail = self.cfg.start_new_block();
-                let block = self.compare(block, fail, test.span, BinOp::Le, lo, val.clone());
-                let block = match *end {
-                    RangeEnd::Included => self.compare(block, fail, test.span, BinOp::Le, val, hi),
-                    RangeEnd::Excluded => self.compare(block, fail, test.span, BinOp::Lt, val, hi),
-                };
-
-                vec![block, fail]
+                if let [success, fail] = *target_blocks {
+                    self.compare(
+                        block,
+                        lower_bound_success,
+                        fail,
+                        source_info,
+                        BinOp::Le,
+                        lo,
+                        val.clone(),
+                    );
+                    let op = match *end {
+                        RangeEnd::Included => BinOp::Le,
+                        RangeEnd::Excluded => BinOp::Lt,
+                    };
+                    self.compare(lower_bound_success, success, fail, source_info, op, val, hi);
+                } else {
+                    bug!("`TestKind::Range` should have two target blocks");
+                }
             }
 
             TestKind::Len { len, op } => {
-                let (usize_ty, bool_ty) = (self.hir.usize_ty(), self.hir.bool_ty());
-                let (actual, result) = (self.temp(usize_ty, test.span),
-                                        self.temp(bool_ty, test.span));
+                let target_blocks = make_target_blocks(self);
+
+                let usize_ty = self.hir.usize_ty();
+                let actual = self.temp(usize_ty, test.span);
 
                 // actual = len(place)
                 self.cfg.push_assign(block, source_info,
@@ -396,44 +320,165 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
 
-                // result = actual == expected OR result = actual < expected
-                self.cfg.push_assign(block, source_info, &result,
-                                     Rvalue::BinaryOp(op,
-                                                      Operand::Move(actual),
-                                                      Operand::Move(expected)));
-
-                // branch based on result
-                let (false_bb, true_bb) = (self.cfg.start_new_block(),
-                                           self.cfg.start_new_block());
-                self.cfg.terminate(block, source_info,
-                                   TerminatorKind::if_(self.hir.tcx(), Operand::Move(result),
-                                                       true_bb, false_bb));
-                vec![true_bb, false_bb]
+                if let [true_bb, false_bb] = *target_blocks {
+                    // result = actual == expected OR result = actual < expected
+                    // branch based on result
+                    self.compare(
+                        block,
+                        true_bb,
+                        false_bb,
+                        source_info,
+                        op,
+                        Operand::Move(actual),
+                        Operand::Move(expected),
+                    );
+                } else {
+                    bug!("`TestKind::Len` should have two target blocks");
+                }
             }
         }
     }
 
-    fn compare(&mut self,
-               block: BasicBlock,
-               fail_block: BasicBlock,
-               span: Span,
-               op: BinOp,
-               left: Operand<'tcx>,
-               right: Operand<'tcx>) -> BasicBlock {
+    /// Compare using the provided built-in comparison operator
+    fn compare(
+        &mut self,
+        block: BasicBlock,
+        success_block: BasicBlock,
+        fail_block: BasicBlock,
+        source_info: SourceInfo,
+        op: BinOp,
+        left: Operand<'tcx>,
+        right: Operand<'tcx>,
+    ) {
         let bool_ty = self.hir.bool_ty();
-        let result = self.temp(bool_ty, span);
+        let result = self.temp(bool_ty, source_info.span);
 
         // result = op(left, right)
-        let source_info = self.source_info(span);
-        self.cfg.push_assign(block, source_info, &result,
-                             Rvalue::BinaryOp(op, left, right));
+        self.cfg.push_assign(
+            block,
+            source_info,
+            &result,
+            Rvalue::BinaryOp(op, left, right),
+        );
 
         // branch based on result
-        let target_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, source_info,
-                           TerminatorKind::if_(self.hir.tcx(), Operand::Move(result),
-                                               target_block, fail_block));
-        target_block
+        self.cfg.terminate(
+            block,
+            source_info,
+            TerminatorKind::if_(
+                self.hir.tcx(),
+                Operand::Move(result),
+                success_block,
+                fail_block,
+            ),
+        );
+    }
+
+    /// Compare two `&T` values using `<T as std::compare::PartialEq>::eq`
+    fn non_scalar_compare(
+        &mut self,
+        block: BasicBlock,
+        make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
+        source_info: SourceInfo,
+        value: &'tcx ty::Const<'tcx>,
+        place: &Place<'tcx>,
+        mut ty: Ty<'tcx>,
+    ) {
+        use rustc::middle::lang_items::EqTraitLangItem;
+
+        let mut expect = self.literal_operand(source_info.span, value.ty, value);
+        let mut val = Operand::Copy(place.clone());
+
+        // If we're using `b"..."` as a pattern, we need to insert an
+        // unsizing coercion, as the byte string has the type `&[u8; N]`.
+        //
+        // We want to do this even when the scrutinee is a reference to an
+        // array, so we can call `<[u8]>::eq` rather than having to find an
+        // `<[u8; N]>::eq`.
+        let unsize = |ty: Ty<'tcx>| match ty.sty {
+            ty::Ref(region, rty, _) => match rty.sty {
+                ty::Array(inner_ty, n) => Some((region, inner_ty, n)),
+                _ => None,
+            },
+            _ => None,
+        };
+        let opt_ref_ty = unsize(ty);
+        let opt_ref_test_ty = unsize(value.ty);
+        match (opt_ref_ty, opt_ref_test_ty) {
+            // nothing to do, neither is an array
+            (None, None) => {},
+            (Some((region, elem_ty, _)), _) |
+            (None, Some((region, elem_ty, _))) => {
+                let tcx = self.hir.tcx();
+                // make both a slice
+                ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
+                if opt_ref_ty.is_some() {
+                    let temp = self.temp(ty, source_info.span);
+                    self.cfg.push_assign(
+                        block, source_info, &temp, Rvalue::Cast(
+                            CastKind::Pointer(PointerCast::Unsize), val, ty
+                        )
+                    );
+                    val = Operand::Move(temp);
+                }
+                if opt_ref_test_ty.is_some() {
+                    let slice = self.temp(ty, source_info.span);
+                    self.cfg.push_assign(
+                        block, source_info, &slice, Rvalue::Cast(
+                            CastKind::Pointer(PointerCast::Unsize), expect, ty
+                        )
+                    );
+                    expect = Operand::Move(slice);
+                }
+            },
+        }
+
+        let deref_ty = match ty.sty {
+            ty::Ref(_, deref_ty, _) => deref_ty,
+            _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
+        };
+
+        let eq_def_id = self.hir.tcx().require_lang_item(EqTraitLangItem);
+        let (mty, method) = self.hir.trait_method(eq_def_id, sym::eq, deref_ty, &[deref_ty.into()]);
+
+        let bool_ty = self.hir.bool_ty();
+        let eq_result = self.temp(bool_ty, source_info.span);
+        let eq_block = self.cfg.start_new_block();
+        let cleanup = self.diverge_cleanup();
+        self.cfg.terminate(block, source_info, TerminatorKind::Call {
+            func: Operand::Constant(box Constant {
+                span: source_info.span,
+                ty: mty,
+
+                // FIXME(#54571): This constant comes from user input (a
+                // constant in a pattern).  Are there forms where users can add
+                // type annotations here?  For example, an associated constant?
+                // Need to experiment.
+                user_ty: None,
+
+                literal: method,
+            }),
+            args: vec![val, expect],
+            destination: Some((eq_result.clone(), eq_block)),
+            cleanup: Some(cleanup),
+            from_hir_call: false,
+        });
+
+        if let [success_block, fail_block] = *make_target_blocks(self) {
+            // check the result
+            self.cfg.terminate(
+                eq_block,
+                source_info,
+                TerminatorKind::if_(
+                    self.hir.tcx(),
+                    Operand::Move(eq_result),
+                    success_block,
+                    fail_block,
+                ),
+            );
+        } else {
+            bug!("`TestKind::Eq` should have two target blocks")
+        }
     }
 
     /// Given that we are performing `test` against `test_place`, this job
@@ -752,6 +797,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         Some(true)
+    }
+}
+
+impl Test<'_> {
+    pub(super) fn targets(&self) -> usize {
+        match self.kind {
+            TestKind::Eq { .. } | TestKind::Range(_) | TestKind::Len { .. } => {
+                2
+            }
+            TestKind::Switch { adt_def, .. } => {
+                // While the switch that we generate doesn't test for all
+                // variants, we have a target for each variant and the
+                // otherwise case, and we make sure that all of the cases not
+                // specified have the same block.
+                adt_def.variants.len() + 1
+            }
+            TestKind::SwitchInt { switch_ty, ref options, .. } => {
+                if switch_ty.is_bool() {
+                    // `bool` is special cased in `perform_test` to always
+                    // branch to two blocks.
+                    2
+                } else {
+                    options.len() + 1
+                }
+            }
+        }
     }
 }
 

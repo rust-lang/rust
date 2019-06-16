@@ -249,6 +249,7 @@ symbols! {
         eh_personality,
         eh_unwind_resume,
         enable,
+        eq,
         err,
         Err,
         Equal,
