@@ -8,7 +8,7 @@ pub trait ToRef {
     fn to_ref(self) -> Self::Output;
 }
 
-impl<'a, 'tcx> ToRef for &'tcx hir::Expr {
+impl<'tcx> ToRef for &'tcx hir::Expr {
     type Output = ExprRef<'tcx>;
 
     fn to_ref(self) -> ExprRef<'tcx> {
@@ -16,7 +16,7 @@ impl<'a, 'tcx> ToRef for &'tcx hir::Expr {
     }
 }
 
-impl<'a, 'tcx> ToRef for &'tcx P<hir::Expr> {
+impl<'tcx> ToRef for &'tcx P<hir::Expr> {
     type Output = ExprRef<'tcx>;
 
     fn to_ref(self) -> ExprRef<'tcx> {
@@ -24,7 +24,7 @@ impl<'a, 'tcx> ToRef for &'tcx P<hir::Expr> {
     }
 }
 
-impl<'a, 'tcx> ToRef for Expr<'tcx> {
+impl<'tcx> ToRef for Expr<'tcx> {
     type Output = ExprRef<'tcx>;
 
     fn to_ref(self) -> ExprRef<'tcx> {
@@ -32,7 +32,7 @@ impl<'a, 'tcx> ToRef for Expr<'tcx> {
     }
 }
 
-impl<'a, 'tcx, T, U> ToRef for &'tcx Option<T>
+impl<'tcx, T, U> ToRef for &'tcx Option<T>
     where &'tcx T: ToRef<Output = U>
 {
     type Output = Option<U>;
@@ -42,7 +42,7 @@ impl<'a, 'tcx, T, U> ToRef for &'tcx Option<T>
     }
 }
 
-impl<'a, 'tcx, T, U> ToRef for &'tcx Vec<T>
+impl<'tcx, T, U> ToRef for &'tcx Vec<T>
     where &'tcx T: ToRef<Output = U>
 {
     type Output = Vec<U>;
@@ -52,7 +52,7 @@ impl<'a, 'tcx, T, U> ToRef for &'tcx Vec<T>
     }
 }
 
-impl<'a, 'tcx, T, U> ToRef for &'tcx P<[T]>
+impl<'tcx, T, U> ToRef for &'tcx P<[T]>
     where &'tcx T: ToRef<Output = U>
 {
     type Output = Vec<U>;

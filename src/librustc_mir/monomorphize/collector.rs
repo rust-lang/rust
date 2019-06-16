@@ -345,7 +345,7 @@ fn collect_roots<'tcx>(tcx: TyCtxt<'tcx>, mode: MonoItemCollectionMode) -> Vec<M
 }
 
 // Collect all monomorphized items reachable from `starting_point`
-fn collect_items_rec<'a, 'tcx>(
+fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_point: MonoItem<'tcx>,
     visited: MTRef<'_, MTLock<FxHashSet<MonoItem<'tcx>>>>,

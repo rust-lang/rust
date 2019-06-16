@@ -983,7 +983,7 @@ enum MissingCtors<'tcx> {
 // (The split logic gives a performance win, because we always need to know if
 // the set is empty, but we rarely need the full set, and it can be expensive
 // to compute the full set.)
-fn compute_missing_ctors<'a, 'tcx>(
+fn compute_missing_ctors<'tcx>(
     info: MissingCtorsInfo,
     tcx: TyCtxt<'tcx>,
     all_ctors: &Vec<Constructor<'tcx>>,
@@ -1518,7 +1518,7 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) 
 /// boundaries for each interval range, sort them, then create constructors for each new interval
 /// between every pair of boundary points. (This essentially sums up to performing the intuitive
 /// merging operation depicted above.)
-fn split_grouped_constructors<'p, 'a, 'tcx>(
+fn split_grouped_constructors<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     ctors: Vec<Constructor<'tcx>>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
@@ -1596,7 +1596,7 @@ fn split_grouped_constructors<'p, 'a, 'tcx>(
 }
 
 /// Checks whether there exists any shared value in either `ctor` or `pat` by intersecting them.
-fn constructor_intersects_pattern<'p, 'a, 'tcx>(
+fn constructor_intersects_pattern<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     ctor: &Constructor<'tcx>,
     pat: &'p Pattern<'tcx>,
@@ -1686,7 +1686,7 @@ fn constructor_covered_by_range<'tcx>(
     }
 }
 
-fn patterns_for_variant<'p, 'a, 'tcx>(
+fn patterns_for_variant<'p, 'tcx>(
     subpatterns: &'p [FieldPattern<'tcx>],
     wild_patterns: &[&'p Pattern<'tcx>])
     -> SmallVec<[&'p Pattern<'tcx>; 2]>

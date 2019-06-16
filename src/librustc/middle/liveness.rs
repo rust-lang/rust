@@ -352,7 +352,7 @@ impl IrMaps<'tcx> {
     }
 }
 
-fn visit_fn<'a, 'tcx>(
+fn visit_fn<'tcx>(
     ir: &mut IrMaps<'tcx>,
     fk: FnKind<'tcx>,
     decl: &'tcx hir::FnDecl,
