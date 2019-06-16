@@ -16,7 +16,7 @@ use crate::{
     generics::HasGenericParams,
     ty::primitive::{UncertainIntTy, UncertainFloatTy}
 };
-use super::{TraitRef, Canonical};
+use super::{TraitRef, Canonical, autoderef};
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -162,8 +162,7 @@ pub(crate) fn iterate_method_candidates<T>(
     // rustc does an autoderef and then autoref again).
 
     let krate = resolver.krate()?;
-    for derefed_ty in ty.value.clone().autoderef(db) {
-        let derefed_ty = Canonical { value: derefed_ty, num_vars: ty.num_vars };
+    for derefed_ty in autoderef::autoderef(db, resolver, ty.clone()) {
         if let Some(result) = iterate_inherent_methods(&derefed_ty, db, name, krate, &mut callback)
         {
             return Some(result);

@@ -460,7 +460,7 @@ fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {
     let resolver = t.resolver(db);
     let type_ref = t.type_ref(db);
     let substs = Substs::identity(&generics);
-    let inner = Ty::from_hir(db, &resolver, &type_ref);
+    let inner = Ty::from_hir(db, &resolver, &type_ref.unwrap_or(TypeRef::Error));
     inner.subst(&substs)
 }
 

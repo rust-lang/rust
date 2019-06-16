@@ -369,6 +369,17 @@ impl SourceAnalyzer {
         )
     }
 
+    pub fn autoderef<'a>(
+        &'a self,
+        db: &'a impl HirDatabase,
+        ty: Ty,
+    ) -> impl Iterator<Item = Ty> + 'a {
+        // There should be no inference vars in types passed here
+        // FIXME check that?
+        let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
+        crate::ty::autoderef(db, &self.resolver, canonical).map(|canonical| canonical.value)
+    }
+
     #[cfg(test)]
     pub(crate) fn body_source_map(&self) -> Arc<BodySourceMap> {
         self.body_source_map.clone().unwrap()

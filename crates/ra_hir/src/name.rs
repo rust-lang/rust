@@ -46,6 +46,11 @@ impl Name {
         Name::new(idx.to_string().into())
     }
 
+    // Needed for Deref
+    pub(crate) fn target() -> Name {
+        Name::new("Target".into())
+    }
+
     // There's should be no way to extract a string out of `Name`: `Name` in the
     // future, `Name` will include hygiene information, and you can't encode
     // hygiene into a String.

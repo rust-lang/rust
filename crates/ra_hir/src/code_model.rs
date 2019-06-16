@@ -779,6 +779,18 @@ impl Trait {
         self.trait_data(db).items().to_vec()
     }
 
+    pub fn associated_type_by_name(self, db: &impl DefDatabase, name: Name) -> Option<TypeAlias> {
+        let trait_data = self.trait_data(db);
+        trait_data
+            .items()
+            .iter()
+            .filter_map(|item| match item {
+                TraitItem::TypeAlias(t) => Some(*t),
+                _ => None,
+            })
+            .find(|t| t.name(db) == name)
+    }
+
     pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {
         db.trait_data(self)
     }
@@ -831,8 +843,12 @@ impl TypeAlias {
         }
     }
 
-    pub fn type_ref(self, db: &impl DefDatabase) -> Arc<TypeRef> {
-        db.type_alias_ref(self)
+    pub fn type_ref(self, db: &impl DefDatabase) -> Option<TypeRef> {
+        db.type_alias_data(self).type_ref.clone()
+    }
+
+    pub fn name(self, db: &impl DefDatabase) -> Name {
+        db.type_alias_data(self).name.clone()
     }
 
     /// Builds a resolver for the type references in this type alias.

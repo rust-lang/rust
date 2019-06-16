@@ -16,12 +16,14 @@ use std::sync::Arc;
 use std::ops::Deref;
 use std::{fmt, mem};
 
-use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait, GenericParams};
+use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait, GenericParams, TypeAlias};
 use display::{HirDisplay, HirFormatter};
 
 pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig, generic_predicates, generic_defaults};
 pub(crate) use infer::{infer_query, InferenceResult, InferTy};
 pub use lower::CallableDef;
+pub(crate) use autoderef::autoderef;
+pub(crate) use traits::ProjectionPredicate;
 
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or
@@ -97,6 +99,15 @@ pub enum TypeCtor {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ApplicationTy {
     pub ctor: TypeCtor,
+    pub parameters: Substs,
+}
+
+/// A "projection" type corresponds to an (unnormalized)
+/// projection like `<P0 as Trait<P1..Pn>>::Foo`. Note that the
+/// trait and all its parameters are fully known.
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct ProjectionTy {
+    pub associated_ty: TypeAlias,
     pub parameters: Substs,
 }
 
@@ -216,8 +227,8 @@ impl Deref for Substs {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TraitRef {
     /// FIXME name?
-    trait_: Trait,
-    substs: Substs,
+    pub trait_: Trait,
+    pub substs: Substs,
 }
 
 impl TraitRef {
@@ -463,6 +474,17 @@ impl Ty {
             Ty::Apply(ApplicationTy { parameters, .. }) => Some(parameters.clone()),
             _ => None,
         }
+    }
+
+    /// Shifts up `Ty::Bound` vars by `n`.
+    pub fn shift_bound_vars(self, n: i32) -> Ty {
+        self.fold(&mut |ty| match ty {
+            Ty::Bound(idx) => {
+                assert!(idx as i32 >= -n);
+                Ty::Bound((idx as i32 + n) as u32)
+            }
+            ty => ty,
+        })
     }
 }
 

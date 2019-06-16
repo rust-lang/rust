@@ -5,17 +5,88 @@
 
 use std::iter::successors;
 
-use crate::HirDatabase;
-use super::Ty;
+use log::{info, warn};
 
-impl Ty {
-    /// Iterates over the possible derefs of `ty`.
-    pub fn autoderef<'a>(self, db: &'a impl HirDatabase) -> impl Iterator<Item = Ty> + 'a {
-        successors(Some(self), move |ty| ty.autoderef_step(db))
+use crate::{HirDatabase, Name, Resolver, HasGenericParams};
+use super::{traits::Solution, Ty, Canonical};
+
+const AUTODEREF_RECURSION_LIMIT: usize = 10;
+
+pub(crate) fn autoderef<'a>(
+    db: &'a impl HirDatabase,
+    resolver: &'a Resolver,
+    ty: Canonical<Ty>,
+) -> impl Iterator<Item = Canonical<Ty>> + 'a {
+    successors(Some(ty), move |ty| deref(db, resolver, ty)).take(AUTODEREF_RECURSION_LIMIT)
+}
+
+pub(crate) fn deref(
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+    ty: &Canonical<Ty>,
+) -> Option<Canonical<Ty>> {
+    if let Some(derefed) = ty.value.builtin_deref() {
+        Some(Canonical { value: derefed, num_vars: ty.num_vars })
+    } else {
+        deref_by_trait(db, resolver, ty)
+    }
+}
+
+fn deref_by_trait(
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+    ty: &Canonical<Ty>,
+) -> Option<Canonical<Ty>> {
+    let krate = resolver.krate()?;
+    let deref_trait = match db.lang_item(krate, "deref".into())? {
+        crate::lang_item::LangItemTarget::Trait(t) => t,
+        _ => return None,
+    };
+    let target = deref_trait.associated_type_by_name(db, Name::target())?;
+
+    if target.generic_params(db).count_params_including_parent() != 1 {
+        // the Target type + Deref trait should only have one generic parameter,
+        // namely Deref's Self type
+        return None;
     }
 
-    fn autoderef_step(&self, _db: &impl HirDatabase) -> Option<Ty> {
-        // FIXME Deref::deref
-        self.builtin_deref()
+    // FIXME make the Canonical handling nicer
+
+    let projection = super::traits::ProjectionPredicate {
+        ty: Ty::Bound(0),
+        projection_ty: super::ProjectionTy {
+            associated_ty: target,
+            parameters: vec![ty.value.clone().shift_bound_vars(1)].into(),
+        },
+    };
+
+    let canonical = super::Canonical { num_vars: 1 + ty.num_vars, value: projection };
+
+    let solution = db.normalize(krate, canonical)?;
+
+    match &solution {
+        Solution::Unique(vars) => {
+            // FIXME: vars may contain solutions for any inference variables
+            // that happened to be inside ty. To correctly handle these, we
+            // would have to pass the solution up to the inference context, but
+            // that requires a larger refactoring (especially if the deref
+            // happens during method resolution). So for the moment, we just
+            // check that we're not in the situation we're we would actually
+            // need to handle the values of the additional variables, i.e.
+            // they're just being 'passed through'. In the 'standard' case where
+            // we have `impl<T> Deref for Foo<T> { Target = T }`, that should be
+            // the case.
+            for i in 1..vars.0.num_vars {
+                if vars.0.value[i] != Ty::Bound((i - 1) as u32) {
+                    warn!("complex solution for derefing {:?}: {:?}, ignoring", ty, solution);
+                    return None;
+                }
+            }
+            Some(Canonical { value: vars.0.value[0].clone(), num_vars: vars.0.num_vars })
+        }
+        Solution::Ambig(_) => {
+            info!("Ambiguous solution for derefing {:?}: {:?}", ty, solution);
+            None
+        }
     }
 }

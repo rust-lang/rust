@@ -8,7 +8,7 @@ use chalk_ir::cast::Cast;
 use ra_prof::profile;
 
 use crate::{Crate, Trait, db::HirDatabase, ImplBlock};
-use super::{TraitRef, Ty, Canonical};
+use super::{TraitRef, Ty, Canonical, ProjectionTy};
 
 use self::chalk::{ToChalk, from_chalk};
 
@@ -75,6 +75,13 @@ pub enum Obligation {
     /// Prove that a certain type implements a trait (the type is the `Self` type
     /// parameter to the `TraitRef`).
     Trait(TraitRef),
+    // Projection(ProjectionPredicate),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ProjectionPredicate {
+    pub projection_ty: ProjectionTy,
+    pub ty: Ty,
 }
 
 /// Check using Chalk whether trait is implemented for given parameters including `Self` type.
@@ -91,6 +98,30 @@ pub(crate) fn implements_query(
     let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
     let canonical =
         chalk_ir::Canonical { value: in_env, binders: vec![parameter; trait_ref.num_vars] };
+    // We currently don't deal with universes (I think / hope they're not yet
+    // relevant for our use cases?)
+    let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
+    let solution = solve(db, krate, &u_canonical);
+    solution.map(|solution| solution_from_chalk(db, solution))
+}
+
+pub(crate) fn normalize_query(
+    db: &impl HirDatabase,
+    krate: Crate,
+    projection: Canonical<ProjectionPredicate>,
+) -> Option<Solution> {
+    let goal: chalk_ir::Goal = chalk_ir::Normalize {
+        projection: projection.value.projection_ty.to_chalk(db),
+        ty: projection.value.ty.to_chalk(db),
+    }
+    .cast();
+    debug!("goal: {:?}", goal);
+    // FIXME unify with `implements`
+    let env = chalk_ir::Environment::new();
+    let in_env = chalk_ir::InEnvironment::new(&env, goal);
+    let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
+    let canonical =
+        chalk_ir::Canonical { value: in_env, binders: vec![parameter; projection.num_vars] };
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };

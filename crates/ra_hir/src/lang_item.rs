@@ -1,10 +1,11 @@
 use std::sync::Arc;
 use rustc_hash::FxHashMap;
 
-use ra_syntax::{SmolStr, ast::AttrsOwner};
+use ra_syntax::{SmolStr, TreeArc, ast::AttrsOwner};
 
 use crate::{
-    Crate, DefDatabase, Enum, Function, HirDatabase, ImplBlock, Module, Static, Struct, Trait, AstDatabase,
+    Crate, DefDatabase, Enum, Function, HirDatabase, ImplBlock, Module,
+    Static, Struct, Trait, ModuleDef, AstDatabase, HasSource
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -87,23 +88,51 @@ impl LangItems {
         let source = module.definition_source(db).ast;
         for (impl_id, _) in impl_blocks.impls.iter() {
             let impl_block = source_map.get(&source, impl_id);
-            let lang_item_name = impl_block
-                .attrs()
-                .filter_map(|a| a.as_key_value())
-                .filter(|(key, _)| key == "lang")
-                .map(|(_, val)| val)
-                .nth(0);
-            if let Some(lang_item_name) = lang_item_name {
+            if let Some(lang_item_name) = lang_item_name(&*impl_block) {
                 let imp = ImplBlock::from_id(*module, impl_id);
                 self.items.entry(lang_item_name).or_insert_with(|| LangItemTarget::ImplBlock(imp));
             }
         }
 
-        // FIXME we should look for the other lang item targets (traits, structs, ...)
+        for def in module.declarations(db) {
+            match def {
+                ModuleDef::Trait(trait_) => {
+                    self.collect_lang_item(db, trait_, LangItemTarget::Trait)
+                }
+                ModuleDef::Enum(e) => self.collect_lang_item(db, e, LangItemTarget::Enum),
+                ModuleDef::Struct(s) => self.collect_lang_item(db, s, LangItemTarget::Struct),
+                ModuleDef::Function(f) => self.collect_lang_item(db, f, LangItemTarget::Function),
+                ModuleDef::Static(s) => self.collect_lang_item(db, s, LangItemTarget::Static),
+                _ => {}
+            }
+        }
 
         // Look for lang items in the children
         for child in module.children(db) {
             self.collect_lang_items_recursive(db, &child);
         }
     }
+
+    fn collect_lang_item<T, N>(
+        &mut self,
+        db: &(impl DefDatabase + AstDatabase),
+        item: T,
+        constructor: fn(T) -> LangItemTarget,
+    ) where
+        T: Copy + HasSource<Ast = TreeArc<N>>,
+        N: AttrsOwner,
+    {
+        let node = item.source(db).ast;
+        if let Some(lang_item_name) = lang_item_name(&*node) {
+            self.items.entry(lang_item_name).or_insert(constructor(item));
+        }
+    }
+}
+
+fn lang_item_name<T: AttrsOwner>(node: &T) -> Option<SmolStr> {
+    node.attrs()
+        .filter_map(|a| a.as_key_value())
+        .filter(|(key, _)| key == "lang")
+        .map(|(_, val)| val)
+        .nth(0)
 }
