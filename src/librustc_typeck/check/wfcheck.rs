@@ -461,6 +461,27 @@ fn check_associated_type_defaults(
         })
         .collect::<FxHashMap<_, _>>();
 
+    /// Replaces projections of associated types with their default types.
+    ///
+    /// This does a "shallow substitution", meaning that defaults that refer to
+    /// other defaulted assoc. types will still refer to the projection
+    /// afterwards, not to the other default. For example:
+    ///
+    /// ```compile_fail
+    /// trait Tr {
+    ///     type A: Clone = Vec<Self::B>;
+    ///     type B = u8;
+    /// }
+    /// ```
+    ///
+    /// This will end up replacing the bound `Self::A: Clone` with
+    /// `Vec<Self::B>: Clone`, not with `Vec<u8>: Clone`. If we did a deep
+    /// substitution and ended up with the latter, the trait would be accepted.
+    /// If an `impl` then replaced `B` with something that isn't `Clone`,
+    /// suddenly the default for `A` is no longer valid. The shallow
+    /// substitution forces the trait to add a `B: Clone` bound to be accepted,
+    /// which means that an `impl` can replace any default without breaking
+    /// others.
     struct DefaultNormalizer<'tcx> {
         tcx: TyCtxt<'tcx>,
         map: FxHashMap<ty::ProjectionTy<'tcx>, Ty<'tcx>>,

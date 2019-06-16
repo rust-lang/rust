@@ -66,28 +66,43 @@ trait D where
     type Assoc = NotClone;
 }
 
-trait Foo2<T> where
-    <Self as Foo2<T>>::Bar: Clone,
+// Test behavior of the check when defaults refer to other defaults:
+
+// Shallow substitution rejects this trait since `Baz` isn't guaranteed to be
+// `Clone`.
+trait Foo2<T> {
+    type Bar: Clone = Vec<Self::Baz>;
     //~^ ERROR the trait bound `<Self as Foo2<T>>::Baz: std::clone::Clone` is not satisfied
-{
-    type Bar = Vec<Self::Baz>;
     type Baz = T;
 }
 
-trait Foo3<T: Clone> where
-    <Self as Foo3<T>>::Bar: Clone,
-    //~^ ERROR the trait bound `<Self as Foo3<T>>::Baz: std::clone::Clone` is not satisfied
-{
-    type Bar = Vec<Self::Baz>;
+// Adding a `T: Clone` bound doesn't help since the requirement doesn't see `T`
+// because of the shallow substitution. If we did a deep substitution instead,
+// this would be accepted.
+trait Foo25<T: Clone> {
+    type Bar: Clone = Vec<Self::Baz>;
+    //~^ ERROR the trait bound `<Self as Foo25<T>>::Baz: std::clone::Clone` is not satisfied
     type Baz = T;
 }
 
-trait Foo4<T> where
-    <Self as Foo4<T>>::Bar: Clone,
-{
-    type Bar = Vec<Self::Baz>;
-    type Baz: Clone = T;
+// Adding the `Baz: Clone` bound isn't enough since the default is type
+// parameter `T`, which also might not be `Clone`.
+trait Foo3<T> where
+    Self::Bar: Clone,
+    Self::Baz: Clone,
     //~^ ERROR the trait bound `T: std::clone::Clone` is not satisfied
+{
+    type Bar = Vec<Self::Baz>;
+    type Baz = T;
+}
+
+// This one finally works, with `Clone` bounds on all assoc. types and the type
+// parameter.
+trait Foo4<T> where
+    T: Clone,
+{
+    type Bar: Clone = Vec<Self::Baz>;
+    type Baz: Clone = T;
 }
 
 fn main() {}
