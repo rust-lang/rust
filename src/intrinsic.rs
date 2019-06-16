@@ -465,6 +465,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )?;
             }
 
+            "unchecked_add" | "unchecked_sub" | "unchecked_mul" => {
+                let l = this.read_immediate(args[0])?;
+                let r = this.read_immediate(args[1])?;
+                let op = match intrinsic_name.get() {
+                    "unchecked_add" => mir::BinOp::Add,
+                    "unchecked_sub" => mir::BinOp::Sub,
+                    "unchecked_mul" => mir::BinOp::Mul,
+                    _ => bug!(),
+                };
+                let (res, overflowed) = this.binary_op(op, l, r)?;
+                if overflowed {
+                    return err!(Intrinsic(format!("Overflowing arithmetic in {}", intrinsic_name.get())));
+                }
+                this.write_scalar(res, dest)?;
+            }
+
             "uninit" => {
                 // Check fast path: we don't want to force an allocation in case the destination is a simple value,
                 // but we also do not want to create a new allocation with 0s and then copy that over.
