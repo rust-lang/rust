@@ -804,6 +804,7 @@ fn copy_src_dirs(builder: &Builder<'_>, src_dirs: &[&str], exclude_dirs: &[&str]
 
         const LLVM_PROJECTS: &[&str] = &[
             "llvm-project/clang", "llvm-project\\clang",
+            "llvm-project/libunwind", "llvm-project\\libunwind",
             "llvm-project/lld", "llvm-project\\lld",
             "llvm-project/lldb", "llvm-project\\lldb",
             "llvm-project/llvm", "llvm-project\\llvm",
