@@ -172,6 +172,11 @@ fn system_tests() {
         // Display results.
         println!("Ran {} system tests.", count);
         assert_eq!(fails, 0, "{} system tests failed", fails);
+        assert!(
+            count >= 300,
+            "Expected a minimum of {} system tests to be executed",
+            300
+        )
     });
 }
 
@@ -292,6 +297,11 @@ fn idempotence_tests() {
         // Display results.
         println!("Ran {} idempotent tests.", count);
         assert_eq!(fails, 0, "{} idempotent tests failed", fails);
+        assert!(
+            count >= 400,
+            "Expected a minimum of {} idempotent tests to be executed",
+            400
+        )
     });
 }
 
