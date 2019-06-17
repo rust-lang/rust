@@ -27,7 +27,7 @@ error: strict comparison of f32 or f64 constant
   --> $DIR/float_cmp_const.rs:20:5
    |
 LL |     TWO != ONE;
-   |     ^^^^^^^^^^ help: consider comparing them within some error: `(TWO - ONE).abs() < error`
+   |     ^^^^^^^^^^ help: consider comparing them within some error: `(TWO - ONE).abs() > error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
   --> $DIR/float_cmp_const.rs:20:5
@@ -75,7 +75,7 @@ error: strict comparison of f32 or f64 constant
   --> $DIR/float_cmp_const.rs:27:5
    |
 LL |     v != ONE;
-   |     ^^^^^^^^ help: consider comparing them within some error: `(v - ONE).abs() < error`
+   |     ^^^^^^^^ help: consider comparing them within some error: `(v - ONE).abs() > error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
   --> $DIR/float_cmp_const.rs:27:5

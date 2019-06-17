@@ -387,7 +387,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                         db.span_suggestion(
                             expr.span,
                             "consider comparing them within some error",
-                            format!("({}).abs() < error", lhs - rhs),
+                            format!(
+                                "({}).abs() {} error",
+                                lhs - rhs,
+                                if op == BinOpKind::Eq { '<' } else { '>' }
+                            ),
                             Applicability::MachineApplicable, // snippet
                         );
                         db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");

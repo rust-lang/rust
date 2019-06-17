@@ -2,7 +2,7 @@ error: strict comparison of f32 or f64
   --> $DIR/float_cmp.rs:60:5
    |
 LL |     ONE as f64 != 2.0;
-   |     ^^^^^^^^^^^^^^^^^ help: consider comparing them within some error: `(ONE as f64 - 2.0).abs() < error`
+   |     ^^^^^^^^^^^^^^^^^ help: consider comparing them within some error: `(ONE as f64 - 2.0).abs() > error`
    |
    = note: `-D clippy::float-cmp` implied by `-D warnings`
 note: std::f32::EPSILON and std::f64::EPSILON are available.
@@ -27,7 +27,7 @@ error: strict comparison of f32 or f64
   --> $DIR/float_cmp.rs:68:5
    |
 LL |     twice(x) != twice(ONE as f64);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some error: `(twice(x) - twice(ONE as f64)).abs() < error`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some error: `(twice(x) - twice(ONE as f64)).abs() > error`
    |
 note: std::f32::EPSILON and std::f64::EPSILON are available.
   --> $DIR/float_cmp.rs:68:5
