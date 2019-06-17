@@ -859,6 +859,9 @@ impl ExternalSource {
     }
 }
 
+#[derive(Debug)]
+pub struct OffsetOverflowError;
+
 /// A single source in the `SourceMap`.
 #[derive(Clone)]
 pub struct SourceFile {
@@ -1040,7 +1043,7 @@ impl SourceFile {
                name_was_remapped: bool,
                unmapped_path: FileName,
                mut src: String,
-               start_pos: BytePos) -> SourceFile {
+               start_pos: BytePos) -> Result<SourceFile, OffsetOverflowError> {
         remove_bom(&mut src);
 
         let src_hash = {
@@ -1054,11 +1057,14 @@ impl SourceFile {
             hasher.finish()
         };
         let end_pos = start_pos.to_usize() + src.len();
+        if end_pos > u32::max_value() as usize {
+            return Err(OffsetOverflowError);
+        }
 
         let (lines, multibyte_chars, non_narrow_chars) =
             analyze_source_file::analyze_source_file(&src[..], start_pos);
 
-        SourceFile {
+        Ok(SourceFile {
             name,
             name_was_remapped,
             unmapped_path: Some(unmapped_path),
@@ -1072,7 +1078,7 @@ impl SourceFile {
             multibyte_chars,
             non_narrow_chars,
             name_hash,
-        }
+        })
     }
 
     /// Returns the `BytePos` of the beginning of the current line.
