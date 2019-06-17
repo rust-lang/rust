@@ -191,6 +191,18 @@ impl SourceMap {
     /// If a file already exists in the source_map with the same id, that file is returned
     /// unmodified
     pub fn new_source_file(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
+        self.try_new_source_file(filename, src)
+            .unwrap_or_else(|OffsetOverflowError| {
+                eprintln!("fatal error: rustc does not support files larger than 4GB");
+                errors::FatalError.raise()
+            })
+    }
+
+    fn try_new_source_file(
+        &self,
+        filename: FileName,
+        src: String
+    ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
         let start_pos = self.next_start_pos();
 
         // The path is used to determine the directory for loading submodules and
@@ -212,7 +224,7 @@ impl SourceMap {
                                                        was_remapped,
                                                        Some(&unmapped_path));
 
-        return match self.source_file_by_stable_id(file_id) {
+        let lrc_sf = match self.source_file_by_stable_id(file_id) {
             Some(lrc_sf) => lrc_sf,
             None => {
                 let source_file = Lrc::new(SourceFile::new(
@@ -221,7 +233,7 @@ impl SourceMap {
                     unmapped_path,
                     src,
                     Pos::from_usize(start_pos),
-                ));
+                )?);
 
                 let mut files = self.files.borrow_mut();
 
@@ -230,7 +242,8 @@ impl SourceMap {
 
                 source_file
             }
-        }
+        };
+        Ok(lrc_sf)
     }
 
     /// Allocates a new SourceFile representing a source file from an external
