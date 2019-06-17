@@ -1,5 +1,6 @@
 #![feature(proc_macro_hygiene)]
 #![deny(rust_2018_idioms)]
+#![allow(default_hash_types)]
 
 extern crate proc_macro;
 
