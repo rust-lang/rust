@@ -775,11 +775,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// The given trait-ref must actually be a trait.
     pub(super) fn instantiate_poly_trait_ref_inner(&self,
         trait_ref: &hir::TraitRef,
+        span: Span,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
-    ) -> (ty::PolyTraitRef<'tcx>, Option<Vec<Span>>)
-    {
+    ) -> Option<Vec<Span>> {
         let trait_def_id = trait_ref.trait_def_id();
 
         debug!("instantiate_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
@@ -793,6 +793,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_ref.path.segments.last().unwrap(),
         );
         let poly_trait_ref = ty::Binder::bind(ty::TraitRef::new(trait_def_id, substs));
+
+        bounds.trait_bounds.push((poly_trait_ref, span));
 
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {
@@ -811,7 +813,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("instantiate_poly_trait_ref({:?}, bounds={:?}) -> {:?}",
                trait_ref, bounds, poly_trait_ref);
-        (poly_trait_ref, potential_assoc_types)
+        potential_assoc_types
     }
 
     /// Given a trait bound like `Debug`, applies that trait bound the given self-type to construct
@@ -836,10 +838,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn instantiate_poly_trait_ref(&self,
         poly_trait_ref: &hir::PolyTraitRef,
         self_ty: Ty<'tcx>,
-        bounds: &mut Bounds<'tcx>
-    ) -> (ty::PolyTraitRef<'tcx>, Option<Vec<Span>>)
-    {
-        self.instantiate_poly_trait_ref_inner(&poly_trait_ref.trait_ref, self_ty, bounds, false)
+        bounds: &mut Bounds<'tcx>,
+    ) -> Option<Vec<Span>> {
+        self.instantiate_poly_trait_ref_inner(
+            &poly_trait_ref.trait_ref,
+            poly_trait_ref.span,
+            self_ty,
+            bounds,
+            false,
+        )
     }
 
     fn ast_path_to_mono_trait_ref(&self,
@@ -983,12 +990,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         for bound in trait_bounds {
-            let (poly_trait_ref, _) = self.instantiate_poly_trait_ref(
+            let _ = self.instantiate_poly_trait_ref(
                 bound,
                 param_ty,
                 bounds,
             );
-            bounds.trait_bounds.push((poly_trait_ref, bound.span))
         }
 
         bounds.region_bounds.extend(region_bounds
@@ -1172,11 +1178,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
                 // parameter to have a skipped binder.
                 let param_ty = tcx.mk_projection(assoc_ty.def_id, candidate.skip_binder().substs);
-                self.add_bounds(
-                    param_ty,
-                    ast_bounds,
-                    bounds,
-                );
+                self.add_bounds(param_ty, ast_bounds, bounds);
             }
         }
         Ok(())
@@ -1216,25 +1218,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut bounds = Bounds::default();
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
-        // FIXME: we want to avoid collecting into a `Vec` here, but simply cloning the iterator is
-        // not straightforward due to the borrow checker.
-        let bound_trait_refs: Vec<_> = trait_bounds
-            .iter()
-            .rev()
-            .map(|trait_bound| {
-                let (trait_ref, cur_potential_assoc_types) = self.instantiate_poly_trait_ref(
-                    trait_bound,
-                    dummy_self,
-                    &mut bounds,
-                );
-                potential_assoc_types.extend(cur_potential_assoc_types.into_iter().flatten());
-                (trait_ref, trait_bound.span)
-            })
-            .collect();
+        for trait_bound in trait_bounds.iter().rev() {
+            let cur_potential_assoc_types = self.instantiate_poly_trait_ref(
+                trait_bound,
+                dummy_self,
+                &mut bounds,
+            );
+            potential_assoc_types.extend(cur_potential_assoc_types.into_iter().flatten());
+        }
 
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
-        let expanded_traits = traits::expand_trait_aliases(tcx, bound_trait_refs.iter().cloned());
+        let expanded_traits =
+            traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().cloned());
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
@@ -1276,7 +1272,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Use a `BTreeSet` to keep output in a more consistent order.
         let mut associated_types = BTreeSet::default();
 
-        let regular_traits_refs = bound_trait_refs
+        let regular_traits_refs = bounds.trait_bounds
             .into_iter()
             .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()))
             .map(|(trait_ref, _)| trait_ref);

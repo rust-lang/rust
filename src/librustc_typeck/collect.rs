@@ -49,8 +49,6 @@ use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
 use errors::{Applicability, DiagnosticId};
 
-use std::iter;
-
 struct OnlySelfBounds(bool);
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2191,15 +2189,12 @@ fn explicit_predicates_of(
                     match bound {
                         &hir::GenericBound::Trait(ref poly_trait_ref, _) => {
                             let mut bounds = Bounds::default();
-
-                            let (trait_ref, _) = AstConv::instantiate_poly_trait_ref(
+                            let _ = AstConv::instantiate_poly_trait_ref(
                                 &icx,
                                 poly_trait_ref,
                                 ty,
                                 &mut bounds,
                             );
-
-                            predicates.push((trait_ref.to_predicate(), poly_trait_ref.span));
                             predicates.extend(bounds.predicates(tcx, ty));
                         }
 
@@ -2301,10 +2296,13 @@ fn predicates_from_bound<'tcx>(
     match *bound {
         hir::GenericBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
             let mut bounds = Bounds::default();
-            let (pred, _) = astconv.instantiate_poly_trait_ref(tr, param_ty, &mut bounds);
-            iter::once((pred.to_predicate(), tr.span))
-                .chain(bounds.predicates(astconv.tcx(), param_ty))
-                .collect()
+            let _ = astconv.instantiate_poly_trait_ref(
+                tr,
+                param_ty,
+                &mut bounds,
+                false,
+            );
+            bounds.predicates(astconv.tcx(), param_ty)
         }
         hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
