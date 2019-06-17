@@ -74,9 +74,6 @@ struct AstValidator<'a> {
     /// these booleans.
     warning_period_57979_didnt_record_next_impl_trait: bool,
     warning_period_57979_impl_trait_in_proj: bool,
-
-    /// Used to ban `let` expressions in inappropriate places.
-    is_let_allowed: bool,
 }
 
 /// With the `new` value in `store`,
@@ -112,12 +109,6 @@ impl<'a> AstValidator<'a> {
 
     fn with_impl_trait(&mut self, outer: Option<OuterImplTrait>, f: impl FnOnce(&mut Self)) {
         with(self, outer, |this| &mut this.outer_impl_trait, f)
-    }
-
-    fn with_let_allowed(&mut self, v: bool, f: impl FnOnce(&mut Self, bool)) {
-        let old = mem::replace(&mut self.is_let_allowed, v);
-        f(self, old);
-        self.is_let_allowed = old;
     }
 
     fn visit_assoc_ty_constraint_from_generic_args(&mut self, constraint: &'a AssocTyConstraint) {
@@ -335,15 +326,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// Emits an error banning the `let` expression provided.
-    fn ban_let_expr(&self, expr: &'a Expr) {
-        self.err_handler()
-            .struct_span_err(expr.span, "`let` expressions are not supported here")
-            .note("only supported directly in conditions of `if`- and `while`-expressions")
-            .note("as well as when nested within `&&` and parenthesis in those conditions")
-            .emit();
-    }
-
     fn check_fn_decl(&self, fn_decl: &FnDecl) {
         fn_decl
             .inputs
@@ -470,48 +452,17 @@ fn validate_generics_order<'a>(
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
-        self.with_let_allowed(false, |this, let_allowed| {
-            match &expr.node {
-                ExprKind::Let(_, _) if !let_allowed => {
-                    this.ban_let_expr(expr);
-                }
-                // Assuming the context permits, `($expr)` does not impose additional constraints.
-                ExprKind::Paren(_) => {
-                    this.with_let_allowed(let_allowed, |this, _| visit::walk_expr(this, expr));
-                    return; // We've already walked into `expr`.
-                }
-                // Assuming the context permits,
-                // l && r` allows decendants in `l` and `r` to be `let` expressions.
-                ExprKind::Binary(op, ..) if op.node == BinOpKind::And => {
-                    this.with_let_allowed(let_allowed, |this, _| visit::walk_expr(this, expr));
-                    return; // We've already walked into `expr`.
-                }
-                // However, we do allow it in the condition of the `if` expression.
-                // We do not allow `let` in `then` and `opt_else` directly.
-                ExprKind::If(cond, then, opt_else) => {
-                    this.visit_block(then);
-                    walk_list!(this, visit_expr, opt_else);
-                    this.with_let_allowed(true, |this, _| this.visit_expr(cond));
-                    return; // We've already walked into `expr`.
-                }
-                // The same logic applies to `While`.
-                ExprKind::While(cond, then, opt_label) => {
-                    walk_list!(this, visit_label, opt_label);
-                    this.visit_block(then);
-                    this.with_let_allowed(true, |this, _| this.visit_expr(cond));
-                    return; // We've already walked into `expr`.
-                }
-                ExprKind::Closure(_, _, _, fn_decl, _, _) => {
-                    this.check_fn_decl(fn_decl);
-                }
-                ExprKind::InlineAsm(..) if !this.session.target.target.options.allow_asm => {
-                    span_err!(this.session, expr.span, E0472, "asm! is unsupported on this target");
-                }
-                _ => {}
+        match &expr.node {
+            ExprKind::Closure(_, _, _, fn_decl, _, _) => {
+                self.check_fn_decl(fn_decl);
             }
+            ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
+                span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
+            }
+            _ => {}
+        }
 
-            visit::walk_expr(this, expr);
-        });
+        visit::walk_expr(self, expr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -923,7 +874,6 @@ pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
         is_assoc_ty_bound_banned: false,
         warning_period_57979_didnt_record_next_impl_trait: false,
         warning_period_57979_impl_trait_in_proj: false,
-        is_let_allowed: false,
     };
     visit::walk_crate(&mut validator, krate);
 

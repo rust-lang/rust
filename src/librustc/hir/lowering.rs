@@ -4344,12 +4344,39 @@ impl<'a> LoweringContext<'a> {
                 let ohs = P(self.lower_expr(ohs));
                 hir::ExprKind::AddrOf(m, ohs)
             }
-            ExprKind::Let(..) => {
-                // This should have been caught `ast_validation`!
-                self.sess.span_err(e.span, "`let` expressions only supported in `if`");
-                // ^-- FIXME(53667): Change to `delay_span_bug` when let_chains handled in lowering.
-                self.sess.abort_if_errors();
-                hir::ExprKind::Err
+            ExprKind::Let(ref pats, ref scrutinee) => {
+                // If we got here, the `let` expression is not allowed.
+                self.sess
+                    .struct_span_err(e.span, "`let` expressions are not supported here")
+                    .note("only supported directly in conditions of `if`- and `while`-expressions")
+                    .note("as well as when nested within `&&` and parenthesis in those conditions")
+                    .emit();
+
+                // For better recovery, we emit:
+                // ```
+                // match scrutinee { pats => true, _ => false }
+                // ```
+                // While this doesn't fully match the user's intent, it has key advantages:
+                // 1. We can avoid using `abort_if_errors`.
+                // 2. We can typeck both `pats` and `scrutinee`.
+                // 3. `pats` is allowed to be refutable.
+                // 4. The return type of the block is `bool` which seems like what the user wanted.
+                let scrutinee = self.lower_expr(scrutinee);
+                let then_arm = {
+                    let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
+                    let expr = self.expr_bool(e.span, true);
+                    self.arm(pats, P(expr))
+                };
+                let else_arm = {
+                    let pats = hir_vec![self.pat_wild(e.span)];
+                    let expr = self.expr_bool(e.span, false);
+                    self.arm(pats, P(expr))
+                };
+                hir::ExprKind::Match(
+                    P(scrutinee),
+                    vec![then_arm, else_arm].into(),
+                    hir::MatchSource::Normal,
+                )
             }
             // FIXME(#53667): handle lowering of && and parens.
             ExprKind::If(ref cond, ref then, ref else_opt) => {
@@ -5431,10 +5458,15 @@ impl<'a> LoweringContext<'a> {
         )
     }
 
+    /// Constructs a `true` or `false` literal expression.
+    fn expr_bool(&mut self, span: Span, val: bool) -> hir::Expr {
+        let lit = Spanned { span, node: LitKind::Bool(val) };
+        self.expr(span, hir::ExprKind::Lit(lit), ThinVec::new())
+    }
+
     /// Constructs a `true` or `false` literal pattern.
     fn pat_bool(&mut self, span: Span, val: bool) -> P<hir::Pat> {
-        let lit = Spanned { span, node: LitKind::Bool(val) };
-        let expr = self.expr(span, hir::ExprKind::Lit(lit), ThinVec::new());
+        let expr = self.expr_bool(span, val);
         self.pat(span, hir::PatKind::Lit(P(expr)))
     }
 
