@@ -896,7 +896,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                 // to implement two traits for "one operator" is not very intuitive for
                 // many programmers.
                 if err.cmt.note == mc::NoteIndex {
-                    let node =  self.tcx.hir().get_by_hir_id(err.cmt.hir_id);
+                    let node = self.tcx.hir().get_by_hir_id(err.cmt.hir_id);
 
                     // This pattern probably always matches.
                     if let Node::Expr(
