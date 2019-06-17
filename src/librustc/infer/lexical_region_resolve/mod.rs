@@ -197,26 +197,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
     }
 
-    /// Enforce constraints of the form:
-    ///
-    /// ```
-    /// 'r0 in ['o1...'oN]
-    /// ```
-    ///
-    /// such a constraint simply means that `'r0` must be equal to one
-    /// of the regions `'o1...'oN`. This is an annoying constraint to
-    /// integrate into our inference, which generally works by
-    /// iteratively growing regions until we find a match -- that's
-    /// not an option here.
-    ///
-    /// What we currently do:
-    ///
-    /// - Search forward in the graph from `'r0` to find each region `'b`
-    ///   where `'r0 <= 'b` must hold.
-    ///   - Try to rule out some of the `'o1..'oN` options:
-    ///     - if `'o[i] <= 'b` is false, then `'o[i]` is not an option
-    ///
-    /// Hopefully this narrows it down to just one option.
+    /// Enforce all pick constraints and return true if anything
+    /// changed. See `enforce_pick_constraint` for more details.
     fn enforce_pick_constraints(
         &self,
         graph: &RegionGraph<'tcx>,
@@ -237,15 +219,17 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     /// pick 'r from ['o...]
     /// ```
     ///
-    /// We look to see if there is a unique option `'o` from the list of options
-    /// that:
+    /// We look for all option regions from the list `'o...` that:
     ///
-    /// (a) is greater than the current value of `'r` (which is a lower bound)
+    /// (a) are greater than the current value of `'r` (which is a lower bound)
     ///
     /// and
     ///
-    /// (b) is compatible with the upper bounds of `'r` that we can
+    /// (b) are compatible with the upper bounds of `'r` that we can
     /// find by traversing the graph.
+    ///
+    /// From that list, we look for a *minimal* option `'o_min`. If we
+    /// find one, then we can enforce that `'r: 'o_min`.
     fn enforce_pick_constraint(
         &self,
         graph: &RegionGraph<'tcx>,

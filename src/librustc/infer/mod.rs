@@ -915,7 +915,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         region: ty::Region<'tcx>,
         in_regions: &Rc<Vec<ty::Region<'tcx>>>,
     ) {
-        debug!("sub_regions({:?} <: {:?})", region, in_regions);
+        debug!("pick_constraint({:?} <: {:?})", region, in_regions);
         self.borrow_region_constraints()
             .pick_constraint(opaque_type_def_id, definition_span, hidden_ty, region, in_regions);
     }

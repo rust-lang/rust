@@ -271,8 +271,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// is an inference variable). If we generated a constraint that
     /// `Tc: 'a`, then this would incorrectly require that `T: 'a` --
     /// but this is not necessary, because the existential type we
-    /// create will be allowed to reference `T`. So instead we just
-    /// generate a constraint that `'0: 'a`.
+    /// create will be allowed to reference `T`. So we only generate a
+    /// constraint that `'0: 'a`.
     ///
     /// # The `free_region_relations` parameter
     ///
@@ -563,8 +563,7 @@ pub fn unexpected_hidden_region_diagnostic(
         // ```
         //
         // Here the captured lifetime is the intersection of `'a` and
-        // `'b`, which we can't quite express. This prticulararticular
-        // is kind of an unfortunate error anyway.
+        // `'b`, which we can't quite express.
 
         if let Some(region_scope_tree) = region_scope_tree {
             // If the `region_scope_tree` is available, this is being

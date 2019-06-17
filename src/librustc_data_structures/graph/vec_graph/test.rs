@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 use super::*;
 
 fn create_graph() -> VecGraph<usize> {
