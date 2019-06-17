@@ -497,7 +497,7 @@ pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_group(
         sess,
         false,
-        "internal",
+        "rustc::internal",
         None,
         vec![
             LintId::of(DEFAULT_HASH_TYPES),

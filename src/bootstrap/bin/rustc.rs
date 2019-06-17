@@ -310,7 +310,9 @@ fn main() {
         let crate_name = crate_name[1].to_string_lossy();
         if crate_name.starts_with("rustc") || crate_name.starts_with("syntax") {
             cmd.arg("-Zunstable-options");
-            cmd.arg("-Winternal");
+            if stage != "0" {
+                cmd.arg("-Wrustc::internal");
+            }
         }
     }
 
