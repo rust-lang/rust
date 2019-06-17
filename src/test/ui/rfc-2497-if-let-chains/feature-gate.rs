@@ -83,7 +83,9 @@ fn _while() {
 
 fn _macros() {
     macro_rules! noop_expr { ($e:expr) => {}; }
+
     noop_expr!((let 0 = 1));
+    //~^ ERROR `let` expressions in this position are experimental [E0658]
 
     macro_rules! use_expr {
         ($e:expr) => {
@@ -95,7 +97,10 @@ fn _macros() {
     //~^ ERROR `let` expressions in this position are experimental [E0658]
     use_expr!((let 0 = 1));
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    // use_expr!(let 0 = 1);
+    #[cfg(FALSE)] (let 0 = 1);
+    //~^ ERROR `let` expressions in this position are experimental [E0658]
+    use_expr!(let 0 = 1);
+    //~^ ERROR no rules expected the token `let`
     // ^--- FIXME(53667): Consider whether `Let` can be added to `ident_can_begin_expr`.
 }
 
