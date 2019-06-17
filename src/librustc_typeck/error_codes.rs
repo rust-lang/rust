@@ -3812,7 +3812,7 @@ impl Foo {
 ```
 
 A similar error is E0201. The difference is whether there is one declaration
-block or not. To avoid this error, you have to give them one name each.
+block or not. To avoid this error, you must give each `fn` a unique name.
 
 ```
 struct Foo;
