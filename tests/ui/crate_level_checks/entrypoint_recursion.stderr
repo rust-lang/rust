@@ -1,8 +1,8 @@
-error: recursing into entrypoint `main`
-  --> $DIR/std_main_recursion.rs:5:5
+error: recursing into entrypoint `a`
+  --> $DIR/entrypoint_recursion.rs:11:5
    |
-LL |     main();
-   |     ^^^^
+LL |     a();
+   |     ^
    |
    = note: `-D clippy::main-recursion` implied by `-D warnings`
    = help: consider using another function for this recursion

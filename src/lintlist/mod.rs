@@ -918,6 +918,13 @@ pub const ALL_LINTS: [Lint; 309] = [
         module: "booleans",
     },
     Lint {
+        name: "main_recursion",
+        group: "style",
+        desc: "recursion using the entrypoint",
+        deprecation: None,
+        module: "main_recursion",
+    },
+    Lint {
         name: "manual_memcpy",
         group: "perf",
         desc: "manually copying items between slices",

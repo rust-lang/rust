@@ -1000,6 +1000,7 @@ Released 2018-09-13
 [`let_unit_value`]: https://rust-lang.github.io/rust-clippy/master/index.html#let_unit_value
 [`linkedlist`]: https://rust-lang.github.io/rust-clippy/master/index.html#linkedlist
 [`logic_bug`]: https://rust-lang.github.io/rust-clippy/master/index.html#logic_bug
+[`main_recursion`]: https://rust-lang.github.io/rust-clippy/master/index.html#main_recursion
 [`manual_memcpy`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_memcpy
 [`manual_swap`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_swap
 [`many_single_char_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#many_single_char_names

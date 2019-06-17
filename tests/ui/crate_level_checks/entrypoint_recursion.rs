@@ -1,6 +1,12 @@
+// ignore-macos
+// ignore-windows
+
+#![feature(main)]
+
 #[warn(clippy::main_recursion)]
 #[allow(unconditional_recursion)]
-fn main() {
+#[main]
+fn a() {
     println!("Hello, World!");
-    main();
+    a();
 }
