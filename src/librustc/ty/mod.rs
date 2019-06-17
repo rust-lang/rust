@@ -1649,7 +1649,7 @@ pub struct ParamEnv<'tcx> {
     /// `Obligation`s that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into `Obligation`s, and elaborated and normalized.
-    pub caller_bounds: &'tcx List<(ty::Predicate<'tcx>, Span)>,
+    pub caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
 
     /// Typically, this is `Reveal::UserFacing`, but during codegen we
     /// want `Reveal::All` -- note that this is always paired with an

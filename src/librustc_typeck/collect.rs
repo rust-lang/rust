@@ -322,9 +322,16 @@ fn type_param_predicates(
     let icx = ItemCtxt::new(tcx, item_def_id);
     let mut result = (*result).clone();
     result.predicates.extend(extend.into_iter());
-    result.predicates
-          .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty,
-                  OnlySelfBounds(true)));
+    result.predicates.extend(
+        icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty, OnlySelfBounds(true))
+            .into_iter()
+            .filter(|(predicate, _)| {
+                match predicate {
+                    ty::Predicate::Trait(ref data) => data.skip_binder().self_ty().is_param(index),
+                    _ => false,
+                }
+            })
+    );
     tcx.arena.alloc(result)
 }
 
@@ -2300,7 +2307,6 @@ fn predicates_from_bound<'tcx>(
                 tr,
                 param_ty,
                 &mut bounds,
-                false,
             );
             bounds.predicates(astconv.tcx(), param_ty)
         }

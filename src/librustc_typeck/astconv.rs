@@ -806,7 +806,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     binding,
                     bounds,
                     speculative,
-                    &mut dup_bindings
+                    &mut dup_bindings,
                 );
             // Okay to ignore `Err` because of `ErrorReported` (see above).
         }
