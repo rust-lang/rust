@@ -95,6 +95,7 @@ pub mod tiny_list;
 pub mod thin_vec;
 pub mod transitive_relation;
 pub use ena::unify;
+pub mod vec_map;
 pub mod vec_linked_list;
 pub mod work_queue;
 pub mod fingerprint;
