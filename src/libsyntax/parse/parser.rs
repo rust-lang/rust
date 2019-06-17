@@ -3157,8 +3157,7 @@ impl<'a> Parser<'a> {
     /// Parses an `if` expression (`if` token already eaten).
     fn parse_if_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
-        let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
-        self.ungate_prev_let_expr(&cond);
+        let cond = self.parse_cond_expr()?;
 
         // Verify that the parsed `if` condition makes sense as a condition. If it is a block, then
         // verify that the last statement is either an implicit return (no `;`) or an explicit
@@ -3188,12 +3187,17 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(lo.to(hi), ExprKind::If(cond, thn, els), attrs))
     }
 
-    /// Remove the last feature gating of a `let` expression that must the one provided.
-    fn ungate_prev_let_expr(&mut self, expr: &Expr) {
-        if let ExprKind::Let(..) = expr.node {
+    /// Parse the condition of a `if`- or `while`-expression
+    fn parse_cond_expr(&mut self) -> PResult<'a, P<Expr>> {
+        let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+
+        if let ExprKind::Let(..) = cond.node {
+            // Remove the last feature gating of a `let` expression since it's stable.
             let last = self.sess.let_chains_spans.borrow_mut().pop();
-            debug_assert_eq!(expr.span, last.unwrap());
+            debug_assert_eq!(cond.span, last.unwrap());
         }
+
+        Ok(cond)
     }
 
     /// Parses a `let $pats = $expr` pseudo-expression.
@@ -3295,12 +3299,11 @@ impl<'a> Parser<'a> {
     fn parse_while_expr(&mut self, opt_label: Option<Label>,
                             span_lo: Span,
                             mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
-        let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
-        self.ungate_prev_let_expr(&cond);
+        let cond = self.parse_cond_expr()?;
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
-        return Ok(self.mk_expr(span, ExprKind::While(cond, body, opt_label), attrs));
+        Ok(self.mk_expr(span, ExprKind::While(cond, body, opt_label), attrs))
     }
 
     // parse `loop {...}`, `loop` token already eaten
