@@ -42,7 +42,7 @@ pub fn construct<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body) -> CFG {
     let body_exit;
 
     // Find the tables for this body.
-    let owner_def_id = tcx.hir().local_def_id(tcx.hir().body_owner(body.id()));
+    let owner_def_id = tcx.hir().body_owner_def_id(body.id());
     let tables = tcx.typeck_tables_of(owner_def_id);
 
     let mut cfg_builder = CFGBuilder {
@@ -357,7 +357,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             args: I) -> CFGIndex {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        let m = self.tcx.hir().get_module_parent_by_hir_id(call_expr.hir_id);
+        let m = self.tcx.hir().get_module_parent(call_expr.hir_id);
         if self.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(call_expr)) {
             self.add_unreachable_node()
         } else {

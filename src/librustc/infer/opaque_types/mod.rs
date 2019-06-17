@@ -819,7 +819,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                             },
                             _ => bug!(
                                 "expected (impl) item, found {}",
-                                tcx.hir().hir_to_string(opaque_hir_id),
+                                tcx.hir().node_to_string(opaque_hir_id),
                             ),
                         };
                         if in_definition_scope {

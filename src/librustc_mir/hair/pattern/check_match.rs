@@ -161,7 +161,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        let module = self.tcx.hir().get_module_parent_by_hir_id(scrut.hir_id);
+        let module = self.tcx.hir().get_module_parent(scrut.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut have_errors = false;
 
@@ -193,7 +193,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
             let pat_ty = self.tables.node_type(scrut.hir_id);
-            let module = self.tcx.hir().get_module_parent_by_hir_id(scrut.hir_id);
+            let module = self.tcx.hir().get_module_parent(scrut.hir_id);
             let mut def_span = None;
             let mut missing_variants = vec![];
             if inlined_arms.is_empty() {
@@ -261,7 +261,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
-        let module = self.tcx.hir().get_module_parent_by_hir_id(pat.hir_id);
+        let module = self.tcx.hir().get_module_parent(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),

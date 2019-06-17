@@ -395,7 +395,7 @@ fn is_param<'tcx>(tcx: TyCtxt<'tcx>, ast_ty: &hir::Ty, param_id: hir::HirId) -> 
 }
 
 fn convert_item<'tcx>(tcx: TyCtxt<'tcx>, item_id: hir::HirId) {
-    let it = tcx.hir().expect_item_by_hir_id(item_id);
+    let it = tcx.hir().expect_item(item_id);
     debug!("convert: item {} with id {}", it.ident, it.hir_id);
     let def_id = tcx.hir().local_def_id_from_hir_id(item_id);
     match it.node {
@@ -742,7 +742,7 @@ fn super_predicates_of<'tcx>(
 
 fn trait_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::TraitDef {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let item = tcx.hir().expect_item_by_hir_id(hir_id);
+    let item = tcx.hir().expect_item(hir_id);
 
     let (is_auto, unsafety) = match item.node {
         hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
@@ -1177,7 +1177,7 @@ pub fn checked_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fail: bool) -> Op
             ImplItemKind::Const(ref ty, _) => icx.to_ty(ty),
             ImplItemKind::Existential(_) => {
                 if tcx
-                    .impl_trait_ref(tcx.hir().get_parent_did_by_hir_id(hir_id))
+                    .impl_trait_ref(tcx.hir().get_parent_did(hir_id))
                     .is_none()
                 {
                     report_assoc_ty_on_inherent_impl(tcx, item.span);
@@ -1187,7 +1187,7 @@ pub fn checked_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fail: bool) -> Op
             }
             ImplItemKind::Type(ref ty) => {
                 if tcx
-                    .impl_trait_ref(tcx.hir().get_parent_did_by_hir_id(hir_id))
+                    .impl_trait_ref(tcx.hir().get_parent_did(hir_id))
                     .is_none()
                 {
                     report_assoc_ty_on_inherent_impl(tcx, item.span);
@@ -1272,7 +1272,7 @@ pub fn checked_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fail: bool) -> Op
             ..
         }) => match *def {
             VariantData::Unit(..) | VariantData::Struct(..) => {
-                tcx.type_of(tcx.hir().get_parent_did_by_hir_id(hir_id))
+                tcx.type_of(tcx.hir().get_parent_did(hir_id))
             }
             VariantData::Tuple(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -1325,7 +1325,7 @@ pub fn checked_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fail: bool) -> Op
                     ..
                 }) if e.hir_id == hir_id =>
                 {
-                    tcx.adt_def(tcx.hir().get_parent_did_by_hir_id(hir_id))
+                    tcx.adt_def(tcx.hir().get_parent_did(hir_id))
                         .repr
                         .discr_type()
                         .to_ty(tcx)
@@ -1709,7 +1709,7 @@ fn fn_sig<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::PolyFnSig<'tcx> {
             node: ForeignItemKind::Fn(ref fn_decl, _, _),
             ..
         }) => {
-            let abi = tcx.hir().get_foreign_abi_by_hir_id(hir_id);
+            let abi = tcx.hir().get_foreign_abi(hir_id);
             compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi)
         }
 
@@ -1717,7 +1717,7 @@ fn fn_sig<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::PolyFnSig<'tcx> {
             node: hir::VariantKind { data, ..  },
             ..
         }) if data.ctor_hir_id().is_some() => {
-            let ty = tcx.type_of(tcx.hir().get_parent_did_by_hir_id(hir_id));
+            let ty = tcx.type_of(tcx.hir().get_parent_did(hir_id));
             let inputs = data.fields()
                 .iter()
                 .map(|f| tcx.type_of(tcx.hir().local_def_id_from_hir_id(f.hir_id)));
@@ -1762,7 +1762,7 @@ fn impl_trait_ref<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<ty::TraitRef
     let icx = ItemCtxt::new(tcx, def_id);
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    match tcx.hir().expect_item_by_hir_id(hir_id).node {
+    match tcx.hir().expect_item(hir_id).node {
         hir::ItemKind::Impl(.., ref opt_trait_ref, _, _) => {
             opt_trait_ref.as_ref().map(|ast_trait_ref| {
                 let selfty = tcx.type_of(def_id);
@@ -1775,7 +1775,7 @@ fn impl_trait_ref<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<ty::TraitRef
 
 fn impl_polarity<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> hir::ImplPolarity {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    match tcx.hir().expect_item_by_hir_id(hir_id).node {
+    match tcx.hir().expect_item(hir_id).node {
         hir::ItemKind::Impl(_, polarity, ..) => polarity,
         ref item => bug!("impl_polarity: {:?} not an impl", item),
     }

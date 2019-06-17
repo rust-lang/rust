@@ -70,7 +70,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
 /// the types first.
 pub fn check_item_well_formed<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let item = tcx.hir().expect_item_by_hir_id(hir_id);
+    let item = tcx.hir().expect_item(hir_id);
 
     debug!("check_item_well_formed(it.hir_id={:?}, it.name={})",
            item.hir_id,

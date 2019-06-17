@@ -193,7 +193,7 @@ pub trait MonoItemExt<'tcx>: fmt::Debug {
             MonoItem::GlobalAsm(hir_id) => {
                 Some(hir_id)
             }
-        }.map(|hir_id| tcx.hir().span_by_hir_id(hir_id))
+        }.map(|hir_id| tcx.hir().span(hir_id))
     }
 }
 

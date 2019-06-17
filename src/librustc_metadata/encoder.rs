@@ -579,7 +579,7 @@ impl EncodeContext<'tcx> {
         };
 
         let enum_id = tcx.hir().as_local_hir_id(enum_did).unwrap();
-        let enum_vis = &tcx.hir().expect_item_by_hir_id(enum_id).vis;
+        let enum_vis = &tcx.hir().expect_item(enum_id).vis;
 
         Entry {
             kind: EntryKind::Variant(self.lazy(&data)),
@@ -632,7 +632,7 @@ impl EncodeContext<'tcx> {
         // Variant constructors have the same visibility as the parent enums, unless marked as
         // non-exhaustive, in which case they are lowered to `pub(crate)`.
         let enum_id = tcx.hir().as_local_hir_id(enum_did).unwrap();
-        let enum_vis = &tcx.hir().expect_item_by_hir_id(enum_id).vis;
+        let enum_vis = &tcx.hir().expect_item(enum_id).vis;
         let mut ctor_vis = ty::Visibility::from_hir(enum_vis, enum_id, tcx);
         if variant.is_field_list_non_exhaustive() && ctor_vis == ty::Visibility::Public {
             ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
@@ -751,7 +751,7 @@ impl EncodeContext<'tcx> {
         };
 
         let struct_id = tcx.hir().as_local_hir_id(adt_def_id).unwrap();
-        let struct_vis = &tcx.hir().expect_item_by_hir_id(struct_id).vis;
+        let struct_vis = &tcx.hir().expect_item(struct_id).vis;
         let mut ctor_vis = ty::Visibility::from_hir(struct_vis, struct_id, tcx);
         for field in &variant.fields {
             if ctor_vis.is_at_least(field.vis, tcx) {

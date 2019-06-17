@@ -29,7 +29,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 cx.codegen_static(def_id, cx.tcx().is_mutable_static(def_id));
             }
             MonoItem::GlobalAsm(hir_id) => {
-                let item = cx.tcx().hir().expect_item_by_hir_id(hir_id);
+                let item = cx.tcx().hir().expect_item(hir_id);
                 if let hir::ItemKind::GlobalAsm(ref ga) = item.node {
                     cx.codegen_global_asm(ga);
                 } else {

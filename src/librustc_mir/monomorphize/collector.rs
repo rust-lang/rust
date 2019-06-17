@@ -455,7 +455,7 @@ fn check_recursion_limit<'tcx>(
         let error = format!("reached the recursion limit while instantiating `{}`",
                             instance);
         if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
-            tcx.sess.span_fatal(tcx.hir().span_by_hir_id(hir_id), &error);
+            tcx.sess.span_fatal(tcx.hir().span(hir_id), &error);
         } else {
             tcx.sess.fatal(&error);
         }

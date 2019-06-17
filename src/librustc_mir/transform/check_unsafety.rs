@@ -488,7 +488,7 @@ fn check_unused_unsafe<'a, 'tcx>(
 ) {
     let body_id =
         tcx.hir().as_local_hir_id(def_id).and_then(|hir_id| {
-            tcx.hir().maybe_body_owned_by_by_hir_id(hir_id)
+            tcx.hir().maybe_body_owned_by(hir_id)
         });
 
     let body_id = match body_id {
@@ -527,7 +527,7 @@ fn unsafety_check_result<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> UnsafetyChec
     let param_env = tcx.param_env(def_id);
 
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let (const_context, min_const_fn) = match tcx.hir().body_owner_kind_by_hir_id(id) {
+    let (const_context, min_const_fn) = match tcx.hir().body_owner_kind(id) {
         hir::BodyOwnerKind::Closure => (false, false),
         hir::BodyOwnerKind::Fn => (tcx.is_const_fn(def_id), tcx.is_min_const_fn(def_id)),
         hir::BodyOwnerKind::Const |
@@ -591,12 +591,12 @@ fn is_enclosed(
 }
 
 fn report_unused_unsafe(tcx: TyCtxt<'_>, used_unsafe: &FxHashSet<hir::HirId>, id: hir::HirId) {
-    let span = tcx.sess.source_map().def_span(tcx.hir().span_by_hir_id(id));
+    let span = tcx.sess.source_map().def_span(tcx.hir().span(id));
     let msg = "unnecessary `unsafe` block";
     let mut db = tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, msg);
     db.span_label(span, msg);
     if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
-        db.span_label(tcx.sess.source_map().def_span(tcx.hir().span_by_hir_id(id)),
+        db.span_label(tcx.sess.source_map().def_span(tcx.hir().span(id)),
                       format!("because it's nested under this `unsafe` {}", kind));
     }
     db.emit();

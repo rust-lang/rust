@@ -88,7 +88,7 @@ fn visit_implementation_of_copy<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
     debug!("visit_implementation_of_copy: self_type={:?} (bound)",
            self_type);
 
-    let span = tcx.hir().span_by_hir_id(impl_hir_id);
+    let span = tcx.hir().span(impl_hir_id);
     let param_env = tcx.param_env(impl_did);
     assert!(!self_type.has_escaping_bound_vars());
 
@@ -98,7 +98,7 @@ fn visit_implementation_of_copy<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
     match param_env.can_type_implement_copy(tcx, self_type) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
-            let item = tcx.hir().expect_item_by_hir_id(impl_hir_id);
+            let item = tcx.hir().expect_item(impl_hir_id);
             let span = if let ItemKind::Impl(.., Some(ref tr), _, _) = item.node {
                 tr.path.span
             } else {
@@ -115,7 +115,7 @@ fn visit_implementation_of_copy<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) {
             err.emit()
         }
         Err(CopyImplementationError::NotAnAdt) => {
-            let item = tcx.hir().expect_item_by_hir_id(impl_hir_id);
+            let item = tcx.hir().expect_item(impl_hir_id);
             let span = if let ItemKind::Impl(.., ref ty, _) = item.node {
                 ty.span
             } else {
@@ -161,7 +161,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
         let dispatch_from_dyn_trait = tcx.lang_items().dispatch_from_dyn_trait().unwrap();
 
         let impl_hir_id = tcx.hir().as_local_hir_id(impl_did).unwrap();
-        let span = tcx.hir().span_by_hir_id(impl_hir_id);
+        let span = tcx.hir().span(impl_hir_id);
 
         let source = tcx.type_of(impl_did);
         assert!(!source.has_escaping_bound_vars());
@@ -343,7 +343,7 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
            source,
            target);
 
-    let span = gcx.hir().span_by_hir_id(impl_hir_id);
+    let span = gcx.hir().span(impl_hir_id);
     let param_env = gcx.param_env(impl_did);
     assert!(!source.has_escaping_bound_vars());
 
@@ -480,11 +480,11 @@ pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                                being coerced, none found");
                     return err_info;
                 } else if diff_fields.len() > 1 {
-                    let item = gcx.hir().expect_item_by_hir_id(impl_hir_id);
+                    let item = gcx.hir().expect_item(impl_hir_id);
                     let span = if let ItemKind::Impl(.., Some(ref t), _, _) = item.node {
                         t.path.span
                     } else {
-                        gcx.hir().span_by_hir_id(impl_hir_id)
+                        gcx.hir().span(impl_hir_id)
                     };
 
                     let mut err = struct_span_err!(gcx.sess,

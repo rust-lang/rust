@@ -45,7 +45,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
 
         let item = match cx.tcx.hir().get_by_hir_id(id) {
             Node::Item(item) => item,
-            _ => cx.tcx.hir().expect_item_by_hir_id(cx.tcx.hir().get_parent_item(id)),
+            _ => cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(id)),
         };
 
         if !attr::contains_name(&item.attrs, Symbol::intern("whitelisted_attr")) {
