@@ -11,7 +11,7 @@ struct ThreadControlBlock {
 impl ThreadControlBlock {
     fn new() -> ThreadControlBlock {
         ThreadControlBlock {
-            keys: [0 as *mut u8; MAX_KEYS],
+            keys: [core::ptr::null_mut(); MAX_KEYS],
         }
     }
 

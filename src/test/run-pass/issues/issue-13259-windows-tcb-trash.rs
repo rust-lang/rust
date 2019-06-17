@@ -23,8 +23,8 @@ mod imp {
     pub fn test() {
         let mut buf: [u16; 50] = [0; 50];
         let ret = unsafe {
-            FormatMessageW(0x1000, 0 as *mut _, 1, 0x400,
-                           buf.as_mut_ptr(), buf.len() as u32, 0 as *const _)
+            FormatMessageW(0x1000, core::ptr::null_mut(), 1, 0x400,
+                           buf.as_mut_ptr(), buf.len() as u32, core::ptr::null())
         };
         // On some 32-bit Windowses (Win7-8 at least) this will panic with segmented
         // stacks taking control of pvArbitrary

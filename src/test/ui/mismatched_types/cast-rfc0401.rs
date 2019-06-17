@@ -21,9 +21,9 @@ enum E {
 fn main()
 {
     let f: f32 = 1.2;
-    let v = 0 as *const u8;
-    let fat_v : *const [u8] = unsafe { &*(0 as *const [u8; 1])};
-    let fat_sv : *const [i8] = unsafe { &*(0 as *const [i8; 1])};
+    let v = core::ptr::null::<u8>();
+    let fat_v : *const [u8] = unsafe { &*core::ptr::null::<[u8; 1]>()};
+    let fat_sv : *const [i8] = unsafe { &*core::ptr::null::<[i8; 1]>()};
     let foo: &dyn Foo = &f;
 
     let _ = v as &u8; //~ ERROR non-primitive cast

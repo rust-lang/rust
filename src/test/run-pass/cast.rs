@@ -15,5 +15,5 @@ pub fn main() {
     // Test that `_` is correctly inferred.
     let x = &"hello";
     let mut y = x as *const _;
-    y = 0 as *const _;
+    y = core::ptr::null_mut();
 }

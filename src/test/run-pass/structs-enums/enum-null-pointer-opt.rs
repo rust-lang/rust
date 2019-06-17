@@ -38,7 +38,7 @@ fn main() {
 
     // The optimization can't apply to raw pointers or unions with a ZST field.
     assert!(size_of::<Option<*const isize>>() != size_of::<*const isize>());
-    assert!(Some(0 as *const isize).is_some()); // Can't collapse None to null
+    assert!(Some(std::ptr::null::<isize>()).is_some()); // Can't collapse None to null
     assert_ne!(size_of::<fn(isize)>(), size_of::<Option<MaybeUninitUnion<fn(isize)>>>());
     assert_ne!(size_of::<&str>(), size_of::<Option<MaybeUninitUnion<&str>>>());
     assert_ne!(size_of::<NonNull<isize>>(), size_of::<Option<MaybeUninitUnion<NonNull<isize>>>>());
