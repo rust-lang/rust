@@ -51,8 +51,8 @@ fn load_scalar<'a, 'tcx: 'a>(
     offset: i32,
 ) -> Value {
     if clif_ty == types::I128 {
-        let a = fx.bcx.ins().load(clif_ty, MemFlags::new(), addr, offset);
-        let b = fx.bcx.ins().load(clif_ty, MemFlags::new(), addr, offset + 8);
+        let a = fx.bcx.ins().load(types::I64, MemFlags::new(), addr, offset);
+        let b = fx.bcx.ins().load(types::I64, MemFlags::new(), addr, offset + 8);
         fx.bcx.ins().iconcat(a, b)
     } else {
         fx.bcx.ins().load(clif_ty, MemFlags::new(), addr, offset)

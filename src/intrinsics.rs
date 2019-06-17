@@ -103,7 +103,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             // Insert non returning intrinsics here
             match intrinsic {
                 "abort" => {
-                    trap_panic(fx, "Called intrinisc::abort.");
+                    trap_panic(fx, "Called intrinsic::abort.");
                 }
                 "unreachable" => {
                     trap_unreachable(fx, "[corruption] Called intrinsic::unreachable.");
