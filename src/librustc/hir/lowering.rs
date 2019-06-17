@@ -62,14 +62,14 @@ use syntax::errors;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::source_map::{self, respan, CompilerDesugaringKind, Spanned};
+use syntax::source_map::{self, respan, ExpnInfo, CompilerDesugaringKind, Spanned};
 use syntax::source_map::CompilerDesugaringKind::IfTemporary;
 use syntax::std_inject;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::{self, Token};
 use syntax::visit::{self, Visitor};
-use syntax_pos::{DUMMY_SP, edition, Span};
+use syntax_pos::{DUMMY_SP, Span};
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
@@ -853,14 +853,10 @@ impl<'a> LoweringContext<'a> {
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
         let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(source_map::ExpnInfo {
-            call_site: span,
+        mark.set_expn_info(ExpnInfo {
             def_site: Some(span),
-            format: source_map::CompilerDesugaring(reason),
             allow_internal_unstable,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
-            edition: edition::Edition::from_session(),
+            ..ExpnInfo::default(source_map::CompilerDesugaring(reason), span, self.sess.edition())
         });
         span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     }

@@ -682,6 +682,29 @@ pub struct ExpnInfo {
     pub edition: Edition,
 }
 
+impl ExpnInfo {
+    /// Constructs an expansion info with default properties.
+    pub fn default(format: ExpnFormat, call_site: Span, edition: Edition) -> ExpnInfo {
+        ExpnInfo {
+            call_site,
+            def_site: None,
+            format,
+            allow_internal_unstable: None,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            edition,
+        }
+    }
+
+    pub fn with_unstable(format: ExpnFormat, call_site: Span, edition: Edition,
+                         allow_internal_unstable: &[Symbol]) -> ExpnInfo {
+        ExpnInfo {
+            allow_internal_unstable: Some(allow_internal_unstable.into()),
+            ..ExpnInfo::default(format, call_site, edition)
+        }
+    }
+}
+
 /// The source of expansion.
 #[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum ExpnFormat {
