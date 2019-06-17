@@ -88,6 +88,9 @@ pub fn clif_intcast<'a, 'tcx: 'a>(
         } else {
             fx.bcx.ins().uextend(to, val)
         }
+    } else if from == types::I128 {
+        let (lsb, msb) = fx.bcx.ins().isplit(val);
+        fx.bcx.ins().ireduce(to, lsb)
     } else {
         fx.bcx.ins().ireduce(to, val)
     }
