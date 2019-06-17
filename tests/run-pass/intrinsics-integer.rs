@@ -8,23 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(intrinsics)]
-
-mod rusti {
-    extern "rust-intrinsic" {
-        pub fn ctpop<T>(x: T) -> T;
-        pub fn ctlz<T>(x: T) -> T;
-        pub fn ctlz_nonzero<T>(x: T) -> T;
-        pub fn cttz<T>(x: T) -> T;
-        pub fn cttz_nonzero<T>(x: T) -> T;
-        pub fn bswap<T>(x: T) -> T;
-    }
-}
+#![feature(core_intrinsics)]
+use std::intrinsics::*;
 
 pub fn main() {
     unsafe {
-        use crate::rusti::*;
-
         assert_eq!(ctpop(0u8), 0); assert_eq!(ctpop(0i8), 0);
         assert_eq!(ctpop(0u16), 0); assert_eq!(ctpop(0i16), 0);
         assert_eq!(ctpop(0u32), 0); assert_eq!(ctpop(0i32), 0);
@@ -138,5 +126,29 @@ pub fn main() {
         assert_eq!(bswap(0x0ABBCC0Di32), 0x0DCCBB0A);
         assert_eq!(bswap(0x0122334455667708u64), 0x0877665544332201);
         assert_eq!(bswap(0x0122334455667708i64), 0x0877665544332201);
+
+        assert_eq!(exact_div(9*9u32, 3), 27);
+        assert_eq!(exact_div(-9*9i32, 3), -27);
+        assert_eq!(exact_div(9*9i8, -3), -27);
+        assert_eq!(exact_div(-9*9i64, -3), 27);
+
+        assert_eq!(unchecked_div(9*9u32, 2), 40);
+        assert_eq!(unchecked_div(-9*9i32, 2), -40);
+        assert_eq!(unchecked_div(9*9i8, -2), -40);
+        assert_eq!(unchecked_div(-9*9i64, -2), 40);
+
+        assert_eq!(unchecked_rem(9*9u32, 2), 1);
+        assert_eq!(unchecked_rem(-9*9i32, 2), -1);
+        assert_eq!(unchecked_rem(9*9i8, -2), 1);
+        assert_eq!(unchecked_rem(-9*9i64, -2), -1);
+
+        assert_eq!(unchecked_add(23u8, 19), 42);
+        assert_eq!(unchecked_add(5, -10), -5);
+
+        assert_eq!(unchecked_sub(23u8, 19), 4);
+        assert_eq!(unchecked_sub(-17, -27), 10);
+
+        assert_eq!(unchecked_mul(6u8, 7), 42);
+        assert_eq!(unchecked_mul(13, -5), -65);
     }
 }
