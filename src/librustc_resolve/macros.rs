@@ -15,7 +15,7 @@ use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
-use syntax::ext::base::{MacroKind, SyntaxExtension, SyntaxExtensionKind};
+use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
@@ -211,8 +211,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             Ok((res, ext)) => (res, ext),
             Err(Determinacy::Determined) if kind == MacroKind::Attr => {
                 // Replace unresolved attributes with used inert attributes for better recovery.
-                let kind = SyntaxExtensionKind::NonMacroAttr { mark_used: true };
-                return Ok(Some(Lrc::new(SyntaxExtension::default(kind, self.session.edition()))));
+                return Ok(Some(self.non_macro_attr(true)));
             }
             Err(determinacy) => return Err(determinacy),
         };

@@ -29,7 +29,7 @@ use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
-use syntax::ext::base::{MacroKind, SyntaxExtension, SyntaxExtensionKind};
+use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
@@ -772,12 +772,8 @@ impl<'a> Resolver<'a> {
     pub fn get_macro(&mut self, res: Res) -> Lrc<SyntaxExtension> {
         let def_id = match res {
             Res::Def(DefKind::Macro(..), def_id) => def_id,
-            Res::NonMacroAttr(attr_kind) => return Lrc::new(SyntaxExtension::default(
-                SyntaxExtensionKind::NonMacroAttr {
-                    mark_used: attr_kind == NonMacroAttrKind::Tool
-                },
-                self.session.edition(),
-            )),
+            Res::NonMacroAttr(attr_kind) =>
+                return self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool),
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
         };
         if let Some(ext) = self.macro_map.get(&def_id) {
