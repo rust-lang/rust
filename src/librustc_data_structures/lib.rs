@@ -72,6 +72,7 @@ macro_rules! unlikely {
 pub mod macros;
 pub mod svh;
 pub mod base_n;
+pub mod binary_search_util;
 pub mod bit_set;
 pub mod box_region;
 pub mod const_cstr;
@@ -95,7 +96,6 @@ pub mod tiny_list;
 pub mod thin_vec;
 pub mod transitive_relation;
 pub use ena::unify;
-pub mod vec_map;
 pub mod vec_linked_list;
 pub mod work_queue;
 pub mod fingerprint;
