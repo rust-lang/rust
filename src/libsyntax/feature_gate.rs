@@ -1940,27 +1940,6 @@ impl<'a> PostExpansionVisitor<'a> {
             Err(mut err) => err.emit(),
         }
     }
-
-    /// Recurse into all places where a `let` expression would be feature gated
-    /// and emit gate post errors for those.
-    fn find_and_gate_lets(&mut self, e: &'a ast::Expr) {
-        match &e.node {
-            ast::ExprKind::Paren(e) => {
-                self.find_and_gate_lets(e);
-            }
-            ast::ExprKind::Binary(op, lhs, rhs) if op.node == ast::BinOpKind::And => {
-                self.find_and_gate_lets(lhs);
-                self.find_and_gate_lets(rhs);
-            }
-            ast::ExprKind::Let(..) => {
-                gate_feature_post!(
-                    &self, let_chains, e.span,
-                    "`let` expressions in this position are experimental"
-                );
-            }
-            _ => {}
-        }
-    }
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
@@ -2158,10 +2137,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.node {
-            ast::ExprKind::If(ref e, ..) | ast::ExprKind::While(ref e, ..) => match e.node {
-                ast::ExprKind::Let(..) => {} // Stable!,
-                _ => self.find_and_gate_lets(e),
-            }
             ast::ExprKind::Box(_) => {
                 gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
             }
@@ -2544,6 +2519,17 @@ pub fn check_crate(krate: &ast::Crate,
             param_attrs,
             *span,
             "attributes on function parameters are unstable"
+        ));
+
+    sess
+        .let_chains_spans
+        .borrow()
+        .iter()
+        .for_each(|span| gate_feature!(
+            &ctx,
+            let_chains,
+            *span,
+            "`let` expressions in this position are experimental"
         ));
 
     let visitor = &mut PostExpansionVisitor {

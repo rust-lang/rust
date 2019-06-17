@@ -3158,6 +3158,7 @@ impl<'a> Parser<'a> {
     fn parse_if_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+        self.ungate_prev_let_expr(&cond);
 
         // Verify that the parsed `if` condition makes sense as a condition. If it is a block, then
         // verify that the last statement is either an implicit return (no `;`) or an explicit
@@ -3187,18 +3188,27 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(lo.to(hi), ExprKind::If(cond, thn, els), attrs))
     }
 
+    /// Remove the last feature gating of a `let` expression that must the one provided.
+    fn ungate_prev_let_expr(&mut self, expr: &Expr) {
+        if let ExprKind::Let(..) = expr.node {
+            let last = self.sess.let_chains_spans.borrow_mut().pop();
+            debug_assert_eq!(expr.span, last.unwrap());
+        }
+    }
+
     /// Parses a `let $pats = $expr` pseudo-expression.
     /// The `let` token has already been eaten.
     fn parse_let_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         let pats = self.parse_pats()?;
         self.expect(&token::Eq)?;
-
         let expr = self.with_res(
             Restrictions::NO_STRUCT_LITERAL,
             |this| this.parse_assoc_expr_with(1 + AssocOp::LAnd.precedence(), None.into())
         )?;
-        Ok(self.mk_expr(lo.to(expr.span), ExprKind::Let(pats, expr), attrs))
+        let span = lo.to(expr.span);
+        self.sess.let_chains_spans.borrow_mut().push(span);
+        Ok(self.mk_expr(span, ExprKind::Let(pats, expr), attrs))
     }
 
     /// Parses `move |args| expr`.
@@ -3286,6 +3296,7 @@ impl<'a> Parser<'a> {
                             span_lo: Span,
                             mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+        self.ungate_prev_let_expr(&cond);
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);

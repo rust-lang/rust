@@ -54,7 +54,9 @@ pub struct ParseSess {
     /// operation token that followed it, but that the parser cannot identify without further
     /// analysis.
     pub ambiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
-    pub param_attr_spans: Lock<Vec<Span>>
+    pub param_attr_spans: Lock<Vec<Span>>,
+    // Places where `let` exprs were used and should be feature gated according to `let_chains`.
+    pub let_chains_spans: Lock<Vec<Span>>,
 }
 
 impl ParseSess {
@@ -81,6 +83,7 @@ impl ParseSess {
             edition: Edition::from_session(),
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             param_attr_spans: Lock::new(Vec::new()),
+            let_chains_spans: Lock::new(Vec::new()),
         }
     }
 
