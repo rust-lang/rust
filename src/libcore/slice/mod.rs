@@ -25,7 +25,7 @@
 use crate::cmp::Ordering::{self, Less, Equal, Greater};
 use crate::cmp;
 use crate::fmt;
-use crate::intrinsics::assume;
+use crate::intrinsics::{assume, exact_div, unchecked_sub};
 use crate::isize;
 use crate::iter::*;
 use crate::ops::{FnMut, Try, self};
@@ -2998,14 +2998,27 @@ macro_rules! is_empty {
 // unexpected way. (Tested by `codegen/slice-position-bounds-check`.)
 macro_rules! len {
     ($self: ident) => {{
+        #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
+
         let start = $self.ptr;
-        let diff = ($self.end as usize).wrapping_sub(start as usize);
         let size = size_from_ptr(start);
         if size == 0 {
+            // This _cannot_ use `unchecked_sub` because we depend on wrapping
+            // to represent the length of long ZST slice iterators.
+            let diff = ($self.end as usize).wrapping_sub(start as usize);
             diff
         } else {
-            // Using division instead of `offset_from` helps LLVM remove bounds checks
-            diff / size
+            // We know that `start <= end`, so can do better than `offset_from`,
+            // which needs to deal in signed.  By setting appropriate flags here
+            // we can tell LLVM this, which helps it remove bounds checks.
+            // SAFETY: By the type invariant, `start <= end`
+            let diff = unsafe { unchecked_sub($self.end as usize, start as usize) };
+            // By also telling LLVM that the pointers are apart by an exact
+            // multiple of the type size, it can optimize `len() == 0` down to
+            // `start == end` instead of `(end - start) < size`.
+            // SAFETY: By the type invariant, the pointers are aligned so the
+            //         distance between them must be a multiple of pointee size
+            unsafe { exact_div(diff, size) }
         }
     }}
 }
