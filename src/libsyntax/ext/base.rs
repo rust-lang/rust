@@ -725,31 +725,6 @@ impl Determinacy {
     }
 }
 
-pub struct DummyResolver;
-
-impl Resolver for DummyResolver {
-    fn next_node_id(&mut self) -> ast::NodeId { ast::DUMMY_NODE_ID }
-
-    fn get_module_scope(&mut self, _id: ast::NodeId) -> Mark { Mark::root() }
-
-    fn resolve_dollar_crates(&mut self, _fragment: &AstFragment) {}
-    fn visit_ast_fragment_with_placeholders(&mut self, _invoc: Mark, _fragment: &AstFragment,
-                                            _derives: &[Mark]) {}
-    fn add_builtin(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
-
-    fn resolve_imports(&mut self) {}
-    fn resolve_macro_invocation(&mut self, _invoc: &Invocation, _invoc_id: Mark, _force: bool)
-                                -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
-        Err(Determinacy::Determined)
-    }
-    fn resolve_macro_path(&mut self, _path: &ast::Path, _kind: MacroKind, _invoc_id: Mark,
-                          _derives_in_scope: Vec<ast::Path>, _force: bool)
-                          -> Result<Lrc<SyntaxExtension>, Determinacy> {
-        Err(Determinacy::Determined)
-    }
-    fn check_unused_macros(&self) {}
-}
-
 #[derive(Clone)]
 pub struct ModuleData {
     pub mod_path: Vec<ast::Ident>,
