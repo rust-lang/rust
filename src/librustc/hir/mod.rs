@@ -2234,7 +2234,7 @@ pub enum UseKind {
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct TraitRef {
     pub path: P<Path>,
-    // Don't hash the ref_id. It is tracked via the thing it is used to access
+    // Don't hash the `ref_id`. It is tracked via the thing it is used to access.
     #[stable_hasher(ignore)]
     pub hir_ref_id: HirId,
 }

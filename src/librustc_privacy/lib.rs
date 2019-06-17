@@ -1056,8 +1056,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             }
             for (poly_predicate, _) in bounds.projection_bounds {
                 let tcx = self.tcx;
-                if self.visit(poly_predicate.skip_binder().ty) ||
-                   self.visit_trait(poly_predicate.skip_binder().projection_ty.trait_ref(tcx)) {
+                if self.visit(poly_predicate.skip_binder().ty)
+                    || self.visit_trait(poly_predicate.skip_binder().projection_ty.trait_ref(tcx))
+                {
                     return;
                 }
             }

@@ -226,7 +226,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
             self.tcx().mk_projection(item_def_id, trait_ref.substs)
         } else {
-            // no late-bound regions, we can just ignore the binder
+            // There are no late-bound regions; we can just ignore the binder.
             span_err!(
                 self.tcx().sess,
                 span,
@@ -239,17 +239,16 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn normalize_ty(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        // types in item signatures are not normalized, to avoid undue
-        // dependencies.
+        // Types in item signatures are not normalized to avoid undue dependencies.
         ty
     }
 
     fn set_tainted_by_errors(&self) {
-        // no obvious place to track this, so just let it go
+        // There's no obvious place to track this, so just let it go.
     }
 
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
-        // no place to record types from signatures?
+        // There's no place to record types from signatures?
     }
 }
 
@@ -260,8 +259,8 @@ fn type_param_predicates(
     use rustc::hir::*;
 
     // In the AST, bounds can derive from two places. Either
-    // written inline like `<T : Foo>` or in a where clause like
-    // `where T : Foo`.
+    // written inline like `<T: Foo>` or in a where-clause like
+    // `where T: Foo`.
 
     let param_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let param_owner = tcx.hir().ty_param_owner(param_id);
@@ -334,7 +333,7 @@ fn type_param_predicates(
 impl ItemCtxt<'tcx> {
     /// Finds bounds from `hir::Generics`. This requires scanning through the
     /// AST. We do this to avoid having to convert *all* the bounds, which
-    /// would create artificial cycles. Instead we can only convert the
+    /// would create artificial cycles. Instead, we can only convert the
     /// bounds for a type parameter `X` if `X::Foo` is used.
     fn type_parameter_bounds_in_generics(
         &self,
@@ -2292,7 +2291,7 @@ fn explicit_predicates_of(
 /// Converts a specific `GenericBound` from the AST into a set of
 /// predicates that apply to the self type. A vector is returned
 /// because this can be anywhere from zero predicates (`T: ?Sized` adds no
-/// predicates) to one (`T: Foo`) to many (`T: Bar<X=i32>` adds `T: Bar`
+/// predicates) to one (`T: Foo`) to many (`T: Bar<X = i32>` adds `T: Bar`
 /// and `<T as Bar>::X == i32`).
 fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx>,

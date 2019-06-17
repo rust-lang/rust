@@ -1515,7 +1515,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                    assoc_name: ast::Ident,
                                    span: Span)
         -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
-        where I: Iterator<Item=ty::PolyTraitRef<'tcx>>
+        where I: Iterator<Item = ty::PolyTraitRef<'tcx>>
     {
         let bound = match bounds.next() {
             Some(bound) => bound,
@@ -1524,8 +1524,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                  "associated type `{}` not found for `{}`",
                                  assoc_name,
                                  ty_param_name)
-                  .span_label(span, format!("associated type `{}` not found", assoc_name))
-                  .emit();
+                    .span_label(span, format!("associated type `{}` not found", assoc_name))
+                    .emit();
                 return Err(ErrorReported);
             }
         };
@@ -1544,7 +1544,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     item.kind == ty::AssocKind::Type &&
                         self.tcx().hygienic_eq(assoc_name, item.ident, bound.def_id())
                 })
-                .and_then(|item| self.tcx().hir().span_if_local(item.def_id));
+                    .and_then(|item| self.tcx().hir().span_if_local(item.def_id));
 
                 if let Some(span) = bound_span {
                     err.span_label(span, format!("ambiguous `{}` from `{}`",

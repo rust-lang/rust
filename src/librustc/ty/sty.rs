@@ -646,7 +646,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     ///
     /// A Rust trait object type consists (in addition to a lifetime bound)
     /// of a set of trait bounds, which are separated into any number
-    /// of auto-trait bounds, and at most 1 non-auto-trait bound. The
+    /// of auto-trait bounds, and at most one non-auto-trait bound. The
     /// non-auto-trait bound is called the "principal" of the trait
     /// object.
     ///
@@ -680,7 +680,8 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
     #[inline]
     pub fn projection_bounds<'a>(&'a self) ->
-        impl Iterator<Item=ExistentialProjection<'tcx>> + 'a {
+        impl Iterator<Item = ExistentialProjection<'tcx>> + 'a
+    {
         self.iter().filter_map(|predicate| {
             match *predicate {
                 ExistentialPredicate::Projection(p) => Some(p),
@@ -690,7 +691,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item=DefId> + 'a {
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
         self.iter().filter_map(|predicate| {
             match *predicate {
                 ExistentialPredicate::AutoTrait(d) => Some(d),
@@ -711,17 +712,17 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 
     #[inline]
     pub fn projection_bounds<'a>(&'a self) ->
-        impl Iterator<Item=PolyExistentialProjection<'tcx>> + 'a {
+        impl Iterator<Item = PolyExistentialProjection<'tcx>> + 'a {
         self.skip_binder().projection_bounds().map(Binder::bind)
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item=DefId> + 'a {
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
         self.skip_binder().auto_traits()
     }
 
     pub fn iter<'a>(&'a self)
-        -> impl DoubleEndedIterator<Item=Binder<ExistentialPredicate<'tcx>>> + 'tcx {
+        -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx {
         self.skip_binder().iter().cloned().map(Binder::bind)
     }
 }
