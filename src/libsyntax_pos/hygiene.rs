@@ -112,7 +112,7 @@ impl Mark {
 
     #[inline]
     pub fn expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| data.expn_info(self))
+        HygieneData::with(|data| data.expn_info(self).cloned())
     }
 
     #[inline]
@@ -204,8 +204,8 @@ impl HygieneData {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
 
-    fn expn_info(&self, mark: Mark) -> Option<ExpnInfo> {
-        self.marks[mark.0 as usize].expn_info.clone()
+    fn expn_info(&self, mark: Mark) -> Option<&ExpnInfo> {
+        self.marks[mark.0 as usize].expn_info.as_ref()
     }
 
     fn is_descendant_of(&self, mut mark: Mark, ancestor: Mark) -> bool {
@@ -598,7 +598,7 @@ impl SyntaxContext {
     /// `ctxt.outer().expn_info()`.
     #[inline]
     pub fn outer_expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| data.expn_info(data.outer(self)))
+        HygieneData::with(|data| data.expn_info(data.outer(self)).cloned())
     }
 
     /// `ctxt.outer_and_expn_info()` is equivalent to but faster than
@@ -607,7 +607,7 @@ impl SyntaxContext {
     pub fn outer_and_expn_info(self) -> (Mark, Option<ExpnInfo>) {
         HygieneData::with(|data| {
             let outer = data.outer(self);
-            (outer, data.expn_info(outer))
+            (outer, data.expn_info(outer).cloned())
         })
     }
 
