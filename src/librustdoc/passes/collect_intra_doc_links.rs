@@ -1,6 +1,6 @@
 use errors::Applicability;
 use rustc::hir::def::{Res, DefKind, Namespace::{self, *}, PerNS};
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::hir;
 use rustc::lint as lint;
 use rustc::ty;
@@ -388,11 +388,17 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 }
             };
 
-            if let Res::PrimTy(_) = res {
-                item.attrs.links.push((ori_link, None, fragment));
-            } else {
-                let id = register_res(cx, res);
-                item.attrs.links.push((ori_link, Some(id), fragment));
+            match res {
+                Res::PrimTy(_) => {
+                    item.attrs.links.push((ori_link, None, fragment));
+                }
+                Res::Def(DefKind::Macro(_), did) if did.krate == CrateNum::BuiltinMacros => {
+                    item.attrs.links.push((ori_link, Some(did), fragment));
+                }
+                res => {
+                    let id = register_res(cx, res);
+                    item.attrs.links.push((ori_link, Some(id), fragment));
+                }
             }
         }
 

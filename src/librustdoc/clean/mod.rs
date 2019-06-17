@@ -974,6 +974,23 @@ impl Attributes {
 
         self.links.iter().filter_map(|&(ref s, did, ref fragment)| {
             match did {
+                Some(DefId { krate: CrateNum::BuiltinMacros, .. }) => {
+                    // builtin macros need to be handled separately, they'll always link to std
+                    // though
+                    let cache = cache();
+                    let url = match cache.extern_locations.get(krate) {
+                        Some(&(_, ref src, ExternalLocation::Local)) =>
+                            src.to_str().expect("invalid file path"),
+                        Some(&(_, _, ExternalLocation::Remote(ref s))) => s,
+                        Some(&(_, _, ExternalLocation::Unknown)) | None =>
+                            "https://doc.rust-lang.org/nightly",
+                    };
+                    Some((s.clone(),
+                          format!("{}{}std/macro.{}.html",
+                                  url,
+                                  if !url.ends_with('/') { "/" } else { "" },
+                                  s)))
+                }
                 Some(did) => {
                     if let Some((mut href, ..)) = href(did) {
                         if let Some(ref fragment) = *fragment {
