@@ -1715,6 +1715,7 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Block(blk))
     }
 
+    /// Print a `let pats = scrutinee` expression.
     pub fn print_let(&mut self, pats: &[P<ast::Pat>], scrutinee: &ast::Expr) -> io::Result<()> {
         self.s.word("let ")?;
 
@@ -1722,7 +1723,11 @@ impl<'a> State<'a> {
         self.s.space()?;
 
         self.word_space("=")?;
-        self.print_expr_as_cond(scrutinee)
+        self.print_expr_cond_paren(
+            scrutinee,
+            Self::cond_needs_par(scrutinee)
+            || parser::needs_par_as_let_scrutinee(scrutinee.precedence().order())
+        )
     }
 
     fn print_else(&mut self, els: Option<&ast::Expr>) -> io::Result<()> {
@@ -1794,21 +1799,18 @@ impl<'a> State<'a> {
     }
 
     pub fn print_expr_maybe_paren(&mut self, expr: &ast::Expr, prec: i8) -> io::Result<()> {
-        let needs_par = expr.precedence().order() < prec;
-        if needs_par {
-            self.popen()?;
-        }
-        self.print_expr(expr)?;
-        if needs_par {
-            self.pclose()?;
-        }
-        Ok(())
+        self.print_expr_cond_paren(expr, expr.precedence().order() < prec)
     }
 
     /// Print an expr using syntax that's acceptable in a condition position, such as the `cond` in
     /// `if cond { ... }`.
     pub fn print_expr_as_cond(&mut self, expr: &ast::Expr) -> io::Result<()> {
-        let needs_par = match expr.node {
+        self.print_expr_cond_paren(expr, Self::cond_needs_par(expr))
+    }
+
+    /// Does `expr` need parenthesis when printed in a condition position?
+    fn cond_needs_par(expr: &ast::Expr) -> bool {
+        match expr.node {
             // These cases need parens due to the parse error observed in #26461: `if return {}`
             // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
             ast::ExprKind::Closure(..) |
@@ -1816,8 +1818,11 @@ impl<'a> State<'a> {
             ast::ExprKind::Break(..) => true,
 
             _ => parser::contains_exterior_struct_lit(expr),
-        };
+        }
+    }
 
+    /// Print `expr` or `(expr)` when `needs_par` holds.
+    fn print_expr_cond_paren(&mut self, expr: &ast::Expr, needs_par: bool) -> io::Result<()> {
         if needs_par {
             self.popen()?;
         }
@@ -1949,6 +1954,17 @@ impl<'a> State<'a> {
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
             (&ast::ExprKind::Cast { .. }, ast::BinOpKind::Lt) |
             (&ast::ExprKind::Cast { .. }, ast::BinOpKind::Shl) => parser::PREC_FORCE_PAREN,
+            // We are given `(let _ = a) OP b`.
+            //
+            // - When `OP <= LAnd` we should print `let _ = a OP b` to avoid redundant parens
+            //   as the parser will interpret this as `(let _ = a) OP b`.
+            //
+            // - Otherwise, e.g. when we have `(let a = b) < c` in AST,
+            //   parens are required since the parser would interpret `let a = b < c` as
+            //   `let a = (b < c)`. To achieve this, we force parens.
+            (&ast::ExprKind::Let { .. }, _) if !parser::needs_par_as_let_scrutinee(prec) => {
+                parser::PREC_FORCE_PAREN
+            }
             _ => left_prec,
         };
 

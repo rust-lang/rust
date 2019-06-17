@@ -41,7 +41,7 @@ use crate::parse::lexer::UnmatchedBrace;
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::token::{Token, TokenKind, DelimToken};
 use crate::parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
-use crate::util::parser::{AssocOp, Fixity};
+use crate::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
 use crate::print::pprust;
 use crate::ptr::P;
 use crate::parse::PResult;
@@ -3208,7 +3208,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::Eq)?;
         let expr = self.with_res(
             Restrictions::NO_STRUCT_LITERAL,
-            |this| this.parse_assoc_expr_with(1 + AssocOp::LAnd.precedence(), None.into())
+            |this| this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         )?;
         let span = lo.to(expr.span);
         self.sess.let_chains_spans.borrow_mut().push(span);
