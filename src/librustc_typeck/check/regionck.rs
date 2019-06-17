@@ -175,7 +175,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if self.err_count_since_creation() == 0 {
             // regionck assumes typeck succeeded
-            rcx.visit_fn_body(fn_id, body, self.tcx.hir().span_by_hir_id(fn_id));
+            rcx.visit_fn_body(fn_id, body, self.tcx.hir().span(fn_id));
         }
 
         rcx.resolve_regions_and_report_errors(SuppressRegionErrors::when_nll_is_enabled(self.tcx));

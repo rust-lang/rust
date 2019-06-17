@@ -22,11 +22,11 @@ pub struct LabelledCFG<'a, 'tcx: 'a> {
 impl<'a, 'tcx> LabelledCFG<'a, 'tcx> {
     fn local_id_to_string(&self, local_id: hir::ItemLocalId) -> String {
         assert!(self.cfg.owner_def_id.is_local());
-        let node_id = self.tcx.hir().hir_to_node_id(hir::HirId {
+        let hir_id = hir::HirId {
             owner: self.tcx.hir().def_index_to_hir_id(self.cfg.owner_def_id.index).owner,
             local_id
-        });
-        let s = self.tcx.hir().node_to_string(node_id);
+        };
+        let s = self.tcx.hir().node_to_string(hir_id);
 
         // Replacing newlines with \\l causes each line to be left-aligned,
         // improving presentation of (long) pretty-printed expressions.

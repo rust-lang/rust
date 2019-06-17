@@ -1,6 +1,5 @@
 use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::{self, intravisit, HirId, ItemLocalId};
-use syntax::ast::NodeId;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{Lock, ParallelIterator, par_iter};
@@ -112,19 +111,9 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
 
                 trace!("missing hir id {:#?}", hir_id);
 
-                // We are already in ICE mode here, so doing a linear search
-                // should be fine.
-                let (node_id, _) = self.hir_map
-                                       .definitions()
-                                       .node_to_hir_id
-                                       .iter()
-                                       .enumerate()
-                                       .find(|&(_, &entry)| hir_id == entry)
-                                       .expect("no node_to_hir_id entry");
-                let node_id = NodeId::from_usize(node_id);
                 missing_items.push(format!("[local_id: {}, node:{}]",
                                            local_id,
-                                           self.hir_map.node_to_string(node_id)));
+                                           self.hir_map.node_to_string(hir_id)));
             }
             self.error(|| format!(
                 "ItemLocalIds not assigned densely in {}. \
@@ -138,7 +127,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                         owner: owner_def_index,
                         local_id,
                     })
-                    .map(|h| format!("({:?} {})", h, self.hir_map.hir_to_string(h)))
+                    .map(|h| format!("({:?} {})", h, self.hir_map.node_to_string(h)))
                     .collect::<Vec<_>>()));
         }
     }
@@ -156,14 +145,14 @@ impl<'a, 'hir: 'a> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
 
         if hir_id == hir::DUMMY_HIR_ID {
             self.error(|| format!("HirIdValidator: HirId {:?} is invalid",
-                                  self.hir_map.hir_to_string(hir_id)));
+                                  self.hir_map.node_to_string(hir_id)));
             return;
         }
 
         if owner != hir_id.owner {
             self.error(|| format!(
                 "HirIdValidator: The recorded owner of {} is {} instead of {}",
-                self.hir_map.hir_to_string(hir_id),
+                self.hir_map.node_to_string(hir_id),
                 self.hir_map.def_path(DefId::local(hir_id.owner)).to_string_no_crate(),
                 self.hir_map.def_path(DefId::local(owner)).to_string_no_crate()));
         }

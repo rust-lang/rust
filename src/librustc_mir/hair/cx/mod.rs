@@ -56,7 +56,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;
         let src_def_id = tcx.hir().local_def_id_from_hir_id(src_id);
         let tables = tcx.typeck_tables_of(src_def_id);
-        let body_owner_kind = tcx.hir().body_owner_kind_by_hir_id(src_id);
+        let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {
             hir::BodyOwnerKind::Const |
@@ -65,7 +65,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             hir::BodyOwnerKind::Fn => hir::Constness::NotConst,
         };
 
-        let attrs = tcx.hir().attrs_by_hir_id(src_id);
+        let attrs = tcx.hir().attrs(src_id);
 
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on

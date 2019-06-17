@@ -46,7 +46,7 @@ fn variances_of<'tcx>(tcx: TyCtxt<'tcx>, item_def_id: DefId) -> &'tcx [ty::Varia
     let id = tcx.hir().as_local_hir_id(item_def_id).expect("expected local def-id");
     let unsupported = || {
         // Variance not relevant.
-        span_bug!(tcx.hir().span_by_hir_id(id), "asked to compute variance for wrong kind of item")
+        span_bug!(tcx.hir().span(id), "asked to compute variance for wrong kind of item")
     };
     match tcx.hir().get_by_hir_id(id) {
         Node::Item(item) => match item.node {

@@ -34,7 +34,7 @@ use syntax_pos::Span;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn resolve_type_vars_in_body(&self, body: &'tcx hir::Body) -> &'tcx ty::TypeckTables<'tcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
-        let item_def_id = self.tcx.hir().local_def_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is uSymbolfor unit tests.
@@ -47,8 +47,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Type only exists for constants and statics, not functions.
         match self.tcx.hir().body_owner_kind(item_id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => {
-                let item_hir_id = self.tcx.hir().node_to_hir_id(item_id);
-                wbcx.visit_node_id(body.value.span, item_hir_id);
+                wbcx.visit_node_id(body.value.span, item_id);
             }
             hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => (),
         }
@@ -399,7 +398,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
                 if self.rustc_dump_user_substs {
                     // This is a unit-testing mechanism.
-                    let span = self.tcx().hir().span_by_hir_id(hir_id);
+                    let span = self.tcx().hir().span(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
                     let err = self.tcx().sess.struct_span_err(
@@ -774,13 +773,13 @@ impl Locatable for Span {
 impl Locatable for DefIndex {
     fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
         let hir_id = tcx.hir().def_index_to_hir_id(*self);
-        tcx.hir().span_by_hir_id(hir_id)
+        tcx.hir().span(hir_id)
     }
 }
 
 impl Locatable for hir::HirId {
     fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
-        tcx.hir().span_by_hir_id(*self)
+        tcx.hir().span(*self)
     }
 }
 

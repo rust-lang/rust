@@ -342,9 +342,9 @@ impl MutabilityCategory {
     fn from_local(
         tcx: TyCtxt<'_>,
         tables: &ty::TypeckTables<'_>,
-        id: ast::NodeId,
+        id: hir::HirId,
     ) -> MutabilityCategory {
-        let ret = match tcx.hir().get(id) {
+        let ret = match tcx.hir().get_by_hir_id(id) {
             Node::Binding(p) => match p.node {
                 PatKind::Binding(..) => {
                     let bm = *tables.pat_binding_modes()
@@ -500,7 +500,6 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             // FIXME
             None if self.is_tainted_by_errors() => Err(()),
             None => {
-                let id = self.tcx.hir().hir_to_node_id(id);
                 bug!("no type for node {}: {} in mem_categorization",
                      id, self.tcx.hir().node_to_string(id));
             }
@@ -753,15 +752,14 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
 
             Res::Local(var_id) => {
-                let var_nid = self.tcx.hir().hir_to_node_id(var_id);
                 if self.upvars.map_or(false, |upvars| upvars.contains_key(&var_id)) {
-                    self.cat_upvar(hir_id, span, var_nid)
+                    self.cat_upvar(hir_id, span, var_id)
                 } else {
                     Ok(cmt_ {
                         hir_id,
                         span,
                         cat: Categorization::Local(var_id),
-                        mutbl: MutabilityCategory::from_local(self.tcx, self.tables, var_nid),
+                        mutbl: MutabilityCategory::from_local(self.tcx, self.tables, var_id),
                         ty: expr_ty,
                         note: NoteNone
                     })
@@ -778,7 +776,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         &self,
         hir_id: hir::HirId,
         span: Span,
-        var_id: ast::NodeId,
+        var_id: hir::HirId,
     ) -> McResult<cmt_<'tcx>> {
         // An upvar can have up to 3 components. We translate first to a
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
@@ -828,13 +826,12 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             _ => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", ty),
         };
 
-        let var_hir_id = self.tcx.hir().node_to_hir_id(var_id);
         let upvar_id = ty::UpvarId {
-            var_path: ty::UpvarPath { hir_id: var_hir_id },
+            var_path: ty::UpvarPath { hir_id: var_id },
             closure_expr_id: closure_expr_def_id.to_local(),
         };
 
-        let var_ty = self.node_ty(var_hir_id)?;
+        let var_ty = self.node_ty(var_id)?;
 
         // Mutability of original variable itself
         let var_mutbl = MutabilityCategory::from_local(self.tcx, self.tables, var_id);

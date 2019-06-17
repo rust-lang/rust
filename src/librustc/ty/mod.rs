@@ -277,7 +277,7 @@ impl Visibility {
                 def => Visibility::Restricted(def.def_id()),
             },
             hir::VisibilityKind::Inherited => {
-                Visibility::Restricted(tcx.hir().get_module_parent_by_hir_id(id))
+                Visibility::Restricted(tcx.hir().get_module_parent(id))
             }
         }
     }
@@ -3016,7 +3016,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Gets the attributes of a definition.
     pub fn get_attrs(self, did: DefId) -> Attributes<'tcx> {
         if let Some(id) = self.hir().as_local_hir_id(did) {
-            Attributes::Borrowed(self.hir().attrs_by_hir_id(id))
+            Attributes::Borrowed(self.hir().attrs(id))
         } else {
             Attributes::Owned(self.item_attrs(did))
         }
@@ -3068,7 +3068,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, Symbol> {
         if impl_did.is_local() {
             let hir_id = self.hir().as_local_hir_id(impl_did).unwrap();
-            Ok(self.hir().span_by_hir_id(hir_id))
+            Ok(self.hir().span(hir_id))
         } else {
             Err(self.crate_name(impl_did.krate))
         }
@@ -3103,7 +3103,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let scope = match ident.span.modernize_and_adjust(self.expansion_that_defined(scope)) {
             Some(actual_expansion) =>
                 self.hir().definitions().parent_module_of_macro_def(actual_expansion),
-            None => self.hir().get_module_parent_by_hir_id(block),
+            None => self.hir().get_module_parent(block),
         };
         (ident, scope)
     }
@@ -3129,7 +3129,7 @@ fn associated_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> AssocItem {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let parent_id = tcx.hir().get_parent_item(id);
     let parent_def_id = tcx.hir().local_def_id_from_hir_id(parent_id);
-    let parent_item = tcx.hir().expect_item_by_hir_id(parent_id);
+    let parent_item = tcx.hir().expect_item(parent_id);
     match parent_item.node {
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
             if let Some(impl_item_ref) = impl_item_refs.iter().find(|i| i.id.hir_id == id) {
@@ -3186,7 +3186,7 @@ fn adt_sized_constraint<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> AdtSizedConst
 
 fn associated_item_def_ids<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx [DefId] {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let item = tcx.hir().expect_item_by_hir_id(id);
+    let item = tcx.hir().expect_item(id);
     match item.node {
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
             tcx.arena.alloc_from_iter(
@@ -3266,7 +3266,7 @@ fn param_env<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ParamEnv<'tcx> {
     );
 
     let body_id = tcx.hir().as_local_hir_id(def_id).map_or(hir::DUMMY_HIR_ID, |id| {
-        tcx.hir().maybe_body_owned_by_by_hir_id(id).map_or(id, |body| body.hir_id)
+        tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
     });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)

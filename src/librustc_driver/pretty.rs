@@ -922,7 +922,8 @@ fn print_with_analysis<'tcx>(
                                             got {:?}",
                                             node);
 
-                    tcx.sess.span_fatal(tcx.hir().span(nodeid), &message)
+                    let hir_id = tcx.hir().node_to_hir_id(nodeid);
+                    tcx.sess.span_fatal(tcx.hir().span(hir_id), &message)
                 }
             }
         }

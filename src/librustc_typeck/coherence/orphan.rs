@@ -26,7 +26,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
         // "Trait" impl
         if let hir::ItemKind::Impl(.., Some(_), _, _) = item.node {
             debug!("coherence2::orphan check: trait impl {}",
-                   self.tcx.hir().hir_to_string(item.hir_id));
+                   self.tcx.hir().node_to_string(item.hir_id));
             let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
             let trait_def_id = trait_ref.def_id;
             let cm = self.tcx.sess.source_map();

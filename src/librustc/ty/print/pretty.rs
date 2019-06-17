@@ -589,7 +589,7 @@ pub trait PrettyPrinter<'tcx>:
 
                 // FIXME(eddyb) should use `def_span`.
                 if let Some(hir_id) = self.tcx().hir().as_local_hir_id(did) {
-                    p!(write("@{:?}", self.tcx().hir().span_by_hir_id(hir_id)));
+                    p!(write("@{:?}", self.tcx().hir().span(hir_id)));
                     let mut sep = " ";
                     for (&var_id, upvar_ty) in self.tcx().upvars(did)
                         .as_ref()
@@ -631,7 +631,7 @@ pub trait PrettyPrinter<'tcx>:
                     if self.tcx().sess.opts.debugging_opts.span_free_formats {
                         p!(write("@{:?}", hir_id));
                     } else {
-                        p!(write("@{:?}", self.tcx().hir().span_by_hir_id(hir_id)));
+                        p!(write("@{:?}", self.tcx().hir().span(hir_id)));
                     }
                     let mut sep = " ";
                     for (&var_id, upvar_ty) in self.tcx().upvars(did)

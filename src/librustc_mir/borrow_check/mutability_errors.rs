@@ -304,8 +304,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
 
                 let upvar_hir_id = self.upvars[upvar_index.index()].var_hir_id;
-                let upvar_node_id = self.infcx.tcx.hir().hir_to_node_id(upvar_hir_id);
-                if let Some(Node::Binding(pat)) = self.infcx.tcx.hir().find(upvar_node_id) {
+                if let Some(Node::Binding(pat)) = self.infcx.tcx.hir().find_by_hir_id(upvar_hir_id)
+                {
                     if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated,
                         _,

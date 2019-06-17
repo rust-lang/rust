@@ -233,7 +233,7 @@ fn def_id_visibility<'tcx>(
                 Node::Item(item) => &item.vis,
                 Node::ForeignItem(foreign_item) => &foreign_item.vis,
                 Node::TraitItem(..) | Node::Variant(..) => {
-                    return def_id_visibility(tcx, tcx.hir().get_parent_did_by_hir_id(hir_id));
+                    return def_id_visibility(tcx, tcx.hir().get_parent_did(hir_id));
                 }
                 Node::ImplItem(impl_item) => {
                     match tcx.hir().get_by_hir_id(tcx.hir().get_parent_item(hir_id)) {
@@ -255,7 +255,7 @@ fn def_id_visibility<'tcx>(
                                 tcx, parent_did,
                             );
 
-                            let adt_def = tcx.adt_def(tcx.hir().get_parent_did_by_hir_id(hir_id));
+                            let adt_def = tcx.adt_def(tcx.hir().get_parent_did(hir_id));
                             let ctor_did = tcx.hir().local_def_id_from_hir_id(
                                 vdata.ctor_hir_id().unwrap());
                             let variant = adt_def.variant_with_ctor_id(ctor_did);
@@ -294,7 +294,7 @@ fn def_id_visibility<'tcx>(
                             // visibility to within the crate.
                             if ctor_vis == ty::Visibility::Public {
                                 let adt_def =
-                                    tcx.adt_def(tcx.hir().get_parent_did_by_hir_id(hir_id));
+                                    tcx.adt_def(tcx.hir().get_parent_did(hir_id));
                                 if adt_def.non_enum_variant().is_field_list_non_exhaustive() {
                                     ctor_vis =
                                         ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
@@ -311,7 +311,7 @@ fn def_id_visibility<'tcx>(
                 }
                 Node::Expr(expr) => {
                     return (ty::Visibility::Restricted(
-                        tcx.hir().get_module_parent_by_hir_id(expr.hir_id)),
+                        tcx.hir().get_module_parent(expr.hir_id)),
                             expr.span, "private")
                 }
                 node => bug!("unexpected node kind: {:?}", node)
@@ -501,11 +501,11 @@ impl EmbargoVisitor<'tcx> {
             if let Some(item) = module.res
                 .and_then(|res| res.mod_def_id())
                 .and_then(|def_id| self.tcx.hir().as_local_hir_id(def_id))
-                .map(|module_hir_id| self.tcx.hir().expect_item_by_hir_id(module_hir_id))
+                .map(|module_hir_id| self.tcx.hir().expect_item(module_hir_id))
              {
                 if let hir::ItemKind::Mod(m) = &item.node {
                     for item_id in m.item_ids.as_ref() {
-                        let item = self.tcx.hir().expect_item_by_hir_id(item_id.id);
+                        let item = self.tcx.hir().expect_item(item_id.id);
                         let def_id = self.tcx.hir().local_def_id_from_hir_id(item_id.id);
                         if !self.tcx.hygienic_eq(segment.ident, item.ident, def_id) { continue; }
                         if let hir::ItemKind::Use(..) = item.node {
@@ -764,7 +764,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             let module = if module_id == hir::CRATE_HIR_ID {
                 &self.tcx.hir().krate().module
             } else if let hir::ItemKind::Mod(ref module) =
-                          self.tcx.hir().expect_item_by_hir_id(module_id).node {
+                          self.tcx.hir().expect_item(module_id).node {
                 module
             } else {
                 unreachable!()
@@ -1690,7 +1690,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
             tcx: self.tcx,
             item_id,
             item_def_id: self.tcx.hir().local_def_id_from_hir_id(item_id),
-            span: self.tcx.hir().span_by_hir_id(item_id),
+            span: self.tcx.hir().span(item_id),
             required_visibility,
             has_pub_restricted: self.has_pub_restricted,
             has_old_errors,

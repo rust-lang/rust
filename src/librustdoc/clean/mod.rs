@@ -276,7 +276,7 @@ impl Clean<ExternalCrate> for CrateNum {
         };
         let primitives = if root.is_local() {
             cx.tcx.hir().krate().module.item_ids.iter().filter_map(|&id| {
-                let item = cx.tcx.hir().expect_item_by_hir_id(id.id);
+                let item = cx.tcx.hir().expect_item(id.id);
                 match item.node {
                     hir::ItemKind::Mod(_) => {
                         as_primitive(Res::Def(
@@ -320,7 +320,7 @@ impl Clean<ExternalCrate> for CrateNum {
         };
         let keywords = if root.is_local() {
             cx.tcx.hir().krate().module.item_ids.iter().filter_map(|&id| {
-                let item = cx.tcx.hir().expect_item_by_hir_id(id.id);
+                let item = cx.tcx.hir().expect_item(id.id);
                 match item.node {
                     hir::ItemKind::Mod(_) => {
                         as_keyword(Res::Def(
@@ -2777,7 +2777,7 @@ impl Clean<Type> for hir::Ty {
             },
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
             TyKind::Def(item_id, _) => {
-                let item = cx.tcx.hir().expect_item_by_hir_id(item_id.id);
+                let item = cx.tcx.hir().expect_item(item_id.id);
                 if let hir::ItemKind::Existential(ref ty) = item.node {
                     ImplTrait(ty.bounds.clean(cx))
                 } else {
@@ -2799,7 +2799,7 @@ impl Clean<Type> for hir::Ty {
                     // Substitute private type aliases
                     if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
                         if !cx.renderinfo.borrow().access_levels.is_exported(def_id) {
-                            alias = Some(&cx.tcx.hir().expect_item_by_hir_id(hir_id).node);
+                            alias = Some(&cx.tcx.hir().expect_item(hir_id).node);
                         }
                     }
                 };
@@ -4441,7 +4441,7 @@ pub fn path_to_def_local(tcx: TyCtxt<'_>, path: &[Symbol]) -> Option<DefId> {
         let segment = path_it.next()?;
 
         for item_id in mem::replace(&mut items, HirVec::new()).iter() {
-            let item = tcx.hir().expect_item_by_hir_id(item_id.id);
+            let item = tcx.hir().expect_item(item_id.id);
             if item.ident.name == *segment {
                 if path_it.peek().is_none() {
                     return Some(tcx.hir().local_def_id_from_hir_id(item_id.id))

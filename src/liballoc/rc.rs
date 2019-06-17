@@ -1515,18 +1515,18 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// ```
     /// #![feature(weak_ptr_eq)]
-    /// use std::rc::{Rc, Weak};
+    /// use std::rc::Rc;
     ///
     /// let first_rc = Rc::new(5);
     /// let first = Rc::downgrade(&first_rc);
     /// let second = Rc::downgrade(&first_rc);
     ///
-    /// assert!(Weak::ptr_eq(&first, &second));
+    /// assert!(first.ptr_eq(&second));
     ///
     /// let third_rc = Rc::new(5);
     /// let third = Rc::downgrade(&third_rc);
     ///
-    /// assert!(!Weak::ptr_eq(&first, &third));
+    /// assert!(!first.ptr_eq(&third));
     /// ```
     ///
     /// Comparing `Weak::new`.
@@ -1537,16 +1537,16 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// let first = Weak::new();
     /// let second = Weak::new();
-    /// assert!(Weak::ptr_eq(&first, &second));
+    /// assert!(first.ptr_eq(&second));
     ///
     /// let third_rc = Rc::new(());
     /// let third = Rc::downgrade(&third_rc);
-    /// assert!(!Weak::ptr_eq(&first, &third));
+    /// assert!(!first.ptr_eq(&third));
     /// ```
     #[inline]
     #[unstable(feature = "weak_ptr_eq", issue = "55981")]
-    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        this.ptr.as_ptr() == other.ptr.as_ptr()
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        self.ptr.as_ptr() == other.ptr.as_ptr()
     }
 }
 
