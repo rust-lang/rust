@@ -11,7 +11,8 @@ use rustc::ty::{self, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
-    InterpretCx, PlaceTy, OpTy, ImmTy, MemoryKind,
+    InterpretCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer,
+    InterpErrorInfo, InterpError
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -208,4 +209,22 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpretCx<'mir, 'tcx, Self>,
         extra: Self::FrameExtra,
     ) -> InterpResult<'tcx>;
+
+    fn int_to_ptr(
+        int: u64,
+        _extra: &Self::MemoryExtra,
+    ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
+        if int == 0 {
+            Err(InterpErrorInfo::from(InterpError::InvalidNullPointerUsage))
+        } else {
+            Err(InterpErrorInfo::from(InterpError::ReadBytesAsPointer))
+        }
+    }
+
+    fn ptr_to_int(
+        _ptr: Pointer<Self::PointerTag>,
+        _extra: &Self::MemoryExtra,
+    ) -> InterpResult<'tcx, u64> {
+        Err(InterpErrorInfo::from(InterpError::ReadPointerAsBytes))
+    }
 }
