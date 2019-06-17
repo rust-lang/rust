@@ -226,7 +226,6 @@ impl<'a> base::Resolver for Resolver<'a> {
                 self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
             self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.mark,
                                                             normal_module_def_id);
-            invoc.expansion_data.mark.set_default_transparency(ext.default_transparency);
         }
 
         Ok(Some(ext))

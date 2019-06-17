@@ -680,8 +680,9 @@ impl SyntaxExtension {
     crate fn expn_info(&self, call_site: Span, format: &str) -> ExpnInfo {
         ExpnInfo {
             call_site,
-            def_site: self.def_info.map(|(_, span)| span),
             format: self.expn_format(Symbol::intern(format)),
+            def_site: self.def_info.map(|(_, span)| span),
+            default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),
             allow_internal_unsafe: self.allow_internal_unsafe,
             local_inner_macros: self.local_inner_macros,
