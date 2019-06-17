@@ -5,6 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use std::hash::Hash;
 use std::ops::Index;
+use syntax_pos::Span;
 
 /// Compactly stores a set of `pick R0 in [R1...Rn]` constraints,
 /// indexed by the region R0.
@@ -33,6 +34,9 @@ crate struct NllPickConstraint<'tcx> {
 
     /// The opaque type whose hidden type is being inferred. (Used in error reporting.)
     crate opaque_type_def_id: DefId,
+
+    /// The span where the hidden type was instantiated.
+    crate definition_span: Span,
 
     /// The hidden type in which R0 appears. (Used in error reporting.)
     crate hidden_ty: Ty<'tcx>,
@@ -79,6 +83,7 @@ impl<'tcx> PickConstraintSet<'tcx, ty::RegionVid> {
             next_constraint,
             pick_region_vid,
             opaque_type_def_id: p_c.opaque_type_def_id,
+            definition_span: p_c.definition_span,
             hidden_ty: p_c.hidden_ty,
             start_index,
             end_index,

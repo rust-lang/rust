@@ -856,7 +856,8 @@ fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::TypeckT
             let revealed_ty = if tcx.features().impl_trait_in_bindings {
                 fcx.instantiate_opaque_types_from_value(
                     id,
-                    &expected_type
+                    &expected_type,
+                    body.value.span,
                 )
             } else {
                 expected_type
@@ -962,7 +963,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 let revealed_ty = if self.fcx.tcx.features().impl_trait_in_bindings {
                     self.fcx.instantiate_opaque_types_from_value(
                         self.parent_id,
-                        &o_ty
+                        &o_ty,
+                        ty.span,
                     )
                 } else {
                     o_ty
@@ -1058,7 +1060,11 @@ fn check_fn<'a, 'tcx>(
 
     let declared_ret_ty = fn_sig.output();
     fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
-    let revealed_ret_ty = fcx.instantiate_opaque_types_from_value(fn_id, &declared_ret_ty);
+    let revealed_ret_ty = fcx.instantiate_opaque_types_from_value(
+        fn_id,
+        &declared_ret_ty,
+        decl.output.span(),
+    );
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
@@ -2445,6 +2451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         parent_id: hir::HirId,
         value: &T,
+        value_span: Span,
     ) -> T {
         let parent_def_id = self.tcx.hir().local_def_id_from_hir_id(parent_id);
         debug!("instantiate_opaque_types_from_value(parent_def_id={:?}, value={:?})",
@@ -2457,6 +2464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.body_id,
                 self.param_env,
                 value,
+                value_span,
             )
         );
 

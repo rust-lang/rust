@@ -910,13 +910,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn pick_constraint(
         &self,
         opaque_type_def_id: DefId,
+        definition_span: Span,
         hidden_ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
         in_regions: &Rc<Vec<ty::Region<'tcx>>>,
     ) {
         debug!("sub_regions({:?} <: {:?})", region, in_regions);
         self.borrow_region_constraints()
-            .pick_constraint(opaque_type_def_id, hidden_ty, region, in_regions);
+            .pick_constraint(opaque_type_def_id, definition_span, hidden_ty, region, in_regions);
     }
 
     pub fn subtype_predicate(

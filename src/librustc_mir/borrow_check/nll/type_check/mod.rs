@@ -836,6 +836,7 @@ struct TypeChecker<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
+    body: &'a Body<'tcx>,
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
@@ -996,6 +997,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             infcx,
             last_span: DUMMY_SP,
             mir_def_id,
+            body,
             user_type_annotations: &body.user_type_annotations,
             param_env,
             region_bound_pairs,
@@ -1233,6 +1235,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
         let param_env = self.param_env;
+        let body = self.body;
         debug!("eq_opaque_type_and_type: mir_def_id={:?}", self.mir_def_id);
         let opaque_type_map = self.fully_perform_op(
             locations,
@@ -1248,6 +1251,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             dummy_body_id,
                             param_env,
                             &anon_ty,
+                            locations.span(body),
                         ));
                     debug!(
                         "eq_opaque_type_and_type: \

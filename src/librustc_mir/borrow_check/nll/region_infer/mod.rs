@@ -3,7 +3,7 @@ use crate::borrow_check::nll::constraints::graph::NormalConstraintGraph;
 use crate::borrow_check::nll::constraints::{
     ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet,
 };
-use crate::borrow_check::nll::pick_constraints::PickConstraintSet;
+use crate::borrow_check::nll::pick_constraints::{PickConstraintSet, NllPickConstraintIndex};
 use crate::borrow_check::nll::region_infer::values::{
     PlaceholderIndices, RegionElement, ToElementIndex,
 };
@@ -21,9 +21,10 @@ use rustc::mir::{
 };
 use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
+use rustc_data_structures::binary_search_util;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use crate::rustc_data_structures::graph::WithSuccessors;
+use rustc_data_structures::graph::WithSuccessors;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -74,6 +75,12 @@ pub struct RegionInferenceContext<'tcx> {
     /// The "pick R0 from [R1..Rn]" constraints, indexed by SCC.
     pick_constraints: Rc<PickConstraintSet<'tcx, ConstraintSccIndex>>,
 
+    /// Records the pick-constraints that we applied to each scc.
+    /// This is useful for error reporting. Once constraint
+    /// propagation is done, this vector is sorted according to
+    /// `pick_region_scc`.
+    pick_constraints_applied: Vec<AppliedPickConstraint>,
+
     /// Map closure bounds to a `Span` that should be used for error reporting.
     closure_bounds_mapping:
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
@@ -107,6 +114,32 @@ pub struct RegionInferenceContext<'tcx> {
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
     universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+}
+
+/// Each time that `apply_pick_constraint` is successful, it appends
+/// one of these structs to the `pick_constraints_applied` field.
+/// This is used in error reporting to trace out what happened.
+///
+/// The way that `apply_pick_constraint` works is that it effectively
+/// adds a new lower bound to the SCC it is analyzing: so you wind up
+/// with `'R: 'O` where `'R` is the pick-region and `'O` is the
+/// minimal viable option.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+struct AppliedPickConstraint {
+    /// The SCC that was affected. (The "pick region".)
+    ///
+    /// The vector if `AppliedPickConstraint` elements is kept sorted
+    /// by this field.
+    pick_region_scc: ConstraintSccIndex,
+
+    /// The "best option" that `apply_pick_constraint` found -- this was
+    /// added as an "ad-hoc" lower-bound to `pick_region_scc`.
+    best_option: ty::RegionVid,
+
+    /// The "pick constraint index" -- we can find out details about
+    /// the constraint from
+    /// `set.pick_constraints[pick_constraint_index]`.
+    pick_constraint_index: NllPickConstraintIndex,
 }
 
 struct RegionDefinition<'tcx> {
@@ -243,6 +276,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraint_sccs,
             rev_constraint_graph: None,
             pick_constraints,
+            pick_constraints_applied: Vec::new(),
             closure_bounds_mapping,
             scc_universes,
             scc_representatives,
@@ -411,6 +445,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_universes[scc]
     }
 
+    /// Once region solving has completed, this function will return
+    /// the pick-constraints that were applied to the value of a given
+    /// region `r`. See `AppliedPickConstraint`.
+    fn applied_pick_constraints(&self, r: impl ToRegionVid) -> &[AppliedPickConstraint] {
+        let scc = self.constraint_sccs.scc(r.to_region_vid());
+        binary_search_util::binary_search_slice(
+            &self.pick_constraints_applied,
+            |applied| applied.pick_region_scc,
+            &scc,
+        )
+    }
+
     /// Performs region inference and report errors if we see any
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
@@ -501,6 +547,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for scc_index in self.constraint_sccs.all_sccs() {
             self.propagate_constraint_sccs_if_new(scc_index, visited);
         }
+
+        // Sort the applied pick constraints so we can binary search
+        // through them later.
+        self.pick_constraints_applied.sort_by_key(|applied| applied.pick_region_scc);
     }
 
     /// Computes the value of the SCC `scc_a` if it has not already
@@ -552,7 +602,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for p_c_i in pick_constraints.indices(scc_a) {
             self.apply_pick_constraint(
                 scc_a,
-                pick_constraints[p_c_i].opaque_type_def_id,
+                p_c_i,
                 pick_constraints.option_regions(p_c_i),
             );
         }
@@ -578,7 +628,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn apply_pick_constraint(
         &mut self,
         scc: ConstraintSccIndex,
-        opaque_type_def_id: DefId,
+        pick_constraint_index: NllPickConstraintIndex,
         option_regions: &[ty::RegionVid],
     ) -> bool {
         debug!("apply_pick_constraint(scc={:?}, option_regions={:#?})", scc, option_regions,);
@@ -593,7 +643,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             bug!(
                 "pick constraint for `{:?}` has an option region `{:?}` \
                  that is not a universal region",
-                opaque_type_def_id,
+                self.pick_constraints[pick_constraint_index].opaque_type_def_id,
                 uh_oh,
             );
         }
@@ -681,7 +731,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             best_option,
             best_option_scc,
         );
-        self.scc_values.add_region(scc, best_option_scc)
+        if self.scc_values.add_region(scc, best_option_scc) {
+            self.pick_constraints_applied.push(AppliedPickConstraint {
+                pick_region_scc: scc,
+                best_option,
+                pick_constraint_index,
+            });
+
+            true
+        } else {
+            false
+        }
     }
 
     /// Compute and return the reverse SCC-based constraint graph (lazilly).

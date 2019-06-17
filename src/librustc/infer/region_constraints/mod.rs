@@ -14,6 +14,7 @@ use crate::ty::ReStatic;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{ReLateBound, ReVar};
 use crate::ty::{Region, RegionVid};
+use syntax_pos::Span;
 
 use std::collections::BTreeMap;
 use std::{cmp, fmt, mem};
@@ -155,6 +156,9 @@ pub struct PickConstraint<'tcx> {
     /// the def-id of the opaque type causing this constraint: used for error reporting
     pub opaque_type_def_id: DefId,
 
+    /// the span where the hidden type was instantiated
+    pub definition_span: Span,
+
     /// the hidden type in which `pick_region` appears: used for error reporting
     pub hidden_ty: Ty<'tcx>,
 
@@ -167,14 +171,14 @@ pub struct PickConstraint<'tcx> {
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for PickConstraint<'tcx> {
-        opaque_type_def_id, hidden_ty, pick_region, option_regions
+        opaque_type_def_id, definition_span, hidden_ty, pick_region, option_regions
     }
 }
 
 BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for PickConstraint<'a> {
         type Lifted = PickConstraint<'tcx>;
-        opaque_type_def_id, hidden_ty, pick_region, option_regions
+        opaque_type_def_id, definition_span, hidden_ty, pick_region, option_regions
     }
 }
 
@@ -687,6 +691,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     pub fn pick_constraint(
         &mut self,
         opaque_type_def_id: DefId,
+        definition_span: Span,
         hidden_ty: Ty<'tcx>,
         pick_region: ty::Region<'tcx>,
         option_regions: &Rc<Vec<ty::Region<'tcx>>>,
@@ -699,6 +704,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
         self.data.pick_constraints.push(PickConstraint {
             opaque_type_def_id,
+            definition_span,
             hidden_ty,
             pick_region,
             option_regions: option_regions.clone()

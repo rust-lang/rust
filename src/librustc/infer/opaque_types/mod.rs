@@ -12,6 +12,7 @@ use crate::util::nodemap::DefIdMap;
 use errors::DiagnosticBuilder;
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
+use syntax_pos::Span;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
@@ -32,6 +33,20 @@ pub struct OpaqueTypeDecl<'tcx> {
     ///
     /// then `substs` would be `['a, T]`.
     pub substs: SubstsRef<'tcx>,
+
+    /// The span of this particular definition of the opaque type.  So
+    /// for example:
+    ///
+    /// ```
+    /// existential type Foo;
+    /// fn bar() -> Foo {
+    ///             ^^^ this is the span we are looking for!
+    /// ```
+    ///
+    /// In cases where the fn returns `(impl Trait, impl Trait)` or
+    /// other such combinations, the result is currently
+    /// over-approximated, but better than nothing.
+    pub definition_span: Span,
 
     /// The type variable that represents the value of the abstract type
     /// that we require. In other words, after we compile this function,
@@ -99,12 +114,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// - `param_env` -- the in-scope parameter environment to be used for
     ///   obligations
     /// - `value` -- the value within which we are instantiating opaque types
+    /// - `value_span` -- the span where the value came from, used in error reporting
     pub fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
         parent_def_id: DefId,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
+        value_span: Span,
     ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)> {
         debug!(
             "instantiate_opaque_types(value={:?}, parent_def_id={:?}, body_id={:?}, \
@@ -116,6 +133,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             parent_def_id,
             body_id,
             param_env,
+            value_span,
             opaque_types: Default::default(),
             obligations: vec![],
         };
@@ -427,6 +445,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             tcx: self.tcx,
             op: |r| self.pick_constraint(
                 opaque_type_def_id,
+                opaque_defn.definition_span,
                 concrete_ty,
                 r,
                 &option_regions,
@@ -807,6 +826,7 @@ struct Instantiator<'a, 'tcx> {
     parent_def_id: DefId,
     body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
+    value_span: Span,
     opaque_types: OpaqueTypeMap<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
 }
@@ -954,10 +974,18 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         debug!("instantiate_opaque_types: param_env={:#?}", self.param_env,);
         debug!("instantiate_opaque_types: generics={:#?}", tcx.generics_of(def_id),);
 
+        // Ideally, we'd get the span where *this specific `ty` came
+        // from*, but right now we just use the span from the overall
+        // value being folded. In simple cases like `-> impl Foo`,
+        // these are the same span, but not in cases like `-> (impl
+        // Foo, impl Bar)`.
+        let definition_span = self.value_span;
+
         self.opaque_types.insert(
             def_id,
             OpaqueTypeDecl {
                 substs,
+                definition_span,
                 concrete_ty: ty_var,
                 has_required_region_bounds: !required_region_bounds.is_empty(),
                 origin,
