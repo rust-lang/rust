@@ -15,6 +15,7 @@ use crate::mir::interpret;
 
 use std::fmt;
 use std::rc::Rc;
+use std::sync::Arc;
 
 impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -382,6 +383,13 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Rc<T> {
     type Lifted = Rc<T::Lifted>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&**self).map(Rc::new)
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Arc<T> {
+    type Lifted = Arc<T::Lifted>;
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&**self).map(Arc::new)
     }
 }
 
