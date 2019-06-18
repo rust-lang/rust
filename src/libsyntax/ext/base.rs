@@ -24,6 +24,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::default::Default;
 
+pub use syntax_pos::hygiene::MacroKind;
 
 #[derive(Debug,Clone)]
 pub enum Annotatable {
@@ -515,34 +516,6 @@ impl MacResult for DummyResult {
 
     fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
         Some(DummyResult::raw_ty(self.span, self.is_error))
-    }
-}
-
-/// Represents different kinds of macro invocations that can be resolved.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum MacroKind {
-    /// A bang macro - foo!()
-    Bang,
-    /// An attribute macro - #[foo]
-    Attr,
-    /// A derive attribute macro - #[derive(Foo)]
-    Derive,
-}
-
-impl MacroKind {
-    pub fn descr(self) -> &'static str {
-        match self {
-            MacroKind::Bang => "macro",
-            MacroKind::Attr => "attribute macro",
-            MacroKind::Derive => "derive macro",
-        }
-    }
-
-    pub fn article(self) -> &'static str {
-        match self {
-            MacroKind::Attr => "an",
-            _ => "a",
-        }
     }
 }
 

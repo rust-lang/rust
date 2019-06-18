@@ -723,6 +723,34 @@ impl ExpnFormat {
     }
 }
 
+/// The kind of macro invocation or definition.
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum MacroKind {
+    /// A bang macro `foo!()`.
+    Bang,
+    /// An attribute macro `#[foo]`.
+    Attr,
+    /// A derive macro `#[derive(Foo)]`
+    Derive,
+}
+
+impl MacroKind {
+    pub fn descr(self) -> &'static str {
+        match self {
+            MacroKind::Bang => "macro",
+            MacroKind::Attr => "attribute macro",
+            MacroKind::Derive => "derive macro",
+        }
+    }
+
+    pub fn article(self) -> &'static str {
+        match self {
+            MacroKind::Attr => "an",
+            _ => "a",
+        }
+    }
+}
+
 /// The kind of compiler desugaring.
 #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CompilerDesugaringKind {
