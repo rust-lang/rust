@@ -853,6 +853,16 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Rc<T> {
     }
 }
 
+impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Arc<T> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        Arc::new((**self).fold_with(folder))
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        (**self).visit_with(visitor)
+    }
+}
+
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Box<T> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         let content: T = (**self).fold_with(folder);
