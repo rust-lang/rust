@@ -66,7 +66,7 @@ use std::mem;
 use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
-use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
+use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation, FlowAtLocationOwned};
 use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
 use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
 use crate::util::dump_mir;
@@ -627,7 +627,7 @@ struct StorageConflictVisitor<'body, 'tcx, 's> {
 impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
     for StorageConflictVisitor<'body, 'tcx, 's>
 {
-    type FlowState = FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>;
+    type FlowState = FlowAtLocationOwned<'tcx, MaybeStorageLive<'body, 'tcx>>;
 
     fn body(&self) -> &'body Body<'tcx> {
         self.body
@@ -657,7 +657,7 @@ impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
 
 impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
     fn apply_state(&mut self,
-                   flow_state: &FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>,
+                   flow_state: &FlowAtLocationOwned<'tcx, MaybeStorageLive<'body, 'tcx>>,
                    loc: Location) {
         // Ignore unreachable blocks.
         match self.body.basic_blocks()[loc.block].terminator().kind {
