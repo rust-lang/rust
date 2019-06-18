@@ -194,10 +194,10 @@ pub struct QueryResponse<'tcx, R> {
     pub value: R,
 }
 
-pub type Canonicalized<'tcx, V> = Canonical<'tcx, <V as Lift<'tcx>>::Lifted>;
+pub type Canonicalized<'tcx, V> = Canonical<'tcx, V>;
 
 pub type CanonicalizedQueryResponse<'tcx, T> =
-    &'tcx Canonical<'tcx, QueryResponse<'tcx, <T as Lift<'tcx>>::Lifted>>;
+    &'tcx Canonical<'tcx, QueryResponse<'tcx, T>>;
 
 /// Indicates whether or not we were able to prove the query to be
 /// true.
