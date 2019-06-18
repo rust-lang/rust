@@ -11,7 +11,7 @@ use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use crate::util::nodemap::DefIdMap;
 use errors::DiagnosticBuilder;
 use rustc_data_structures::fx::FxHashMap;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax_pos::Span;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
@@ -428,7 +428,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // Create the set of option regions: each region in the hidden
         // type can be equal to any of the region parameters of the
         // opaque type definition.
-        let option_regions: Rc<Vec<ty::Region<'tcx>>> = Rc::new(
+        let option_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
             abstract_type_generics
                 .params
                 .iter()

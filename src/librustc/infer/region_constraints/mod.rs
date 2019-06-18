@@ -8,6 +8,7 @@ use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
 use crate::hir::def_id::DefId;
 use crate::ty::ReStatic;
@@ -19,7 +20,6 @@ use syntax_pos::Span;
 use std::collections::BTreeMap;
 use std::{cmp, fmt, mem};
 use std::ops::Range;
-use std::rc::Rc;
 
 mod leak_check;
 
@@ -166,7 +166,7 @@ pub struct PickConstraint<'tcx> {
     pub pick_region: Region<'tcx>,
 
     /// the options O1..On
-    pub option_regions: Rc<Vec<Region<'tcx>>>,
+    pub option_regions: Lrc<Vec<Region<'tcx>>>,
 }
 
 BraceStructTypeFoldableImpl! {
@@ -694,7 +694,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         pick_region: ty::Region<'tcx>,
-        option_regions: &Rc<Vec<ty::Region<'tcx>>>,
+        option_regions: &Lrc<Vec<ty::Region<'tcx>>>,
     ) {
         debug!("pick_constraint({:?} in {:#?})", pick_region, option_regions);
 

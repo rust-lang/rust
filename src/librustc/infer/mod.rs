@@ -26,11 +26,11 @@ use crate::ty::{FloatVid, IntVid, TyVid, ConstVid};
 use crate::util::nodemap::FxHashMap;
 
 use errors::DiagnosticBuilder;
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
-use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::symbol::InternedString;
 use syntax_pos::Span;
@@ -913,7 +913,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
-        in_regions: &Rc<Vec<ty::Region<'tcx>>>,
+        in_regions: &Lrc<Vec<ty::Region<'tcx>>>,
     ) {
         debug!("pick_constraint({:?} <: {:?})", region, in_regions);
         self.borrow_region_constraints()

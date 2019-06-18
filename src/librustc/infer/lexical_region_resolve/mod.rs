@@ -247,7 +247,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // The current value of `vid` is a lower bound LB -- i.e., we
         // know that `LB <= vid` must be true.
-        let pick_lower_bound = match var_values.value(pick_vid) {
+        let pick_lower_bound: ty::Region<'tcx> = match var_values.value(pick_vid) {
             VarValue::ErrorValue => return false,
             VarValue::Value(r) => r,
         };
@@ -270,12 +270,12 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // if there >1 option, we only make a choice if there is a
         // single *least* choice -- i.e., some available region that
         // is `<=` all the others.
-        let mut least_choice = match options.next() {
-            Some(r) => r,
+        let mut least_choice: ty::Region<'tcx> = match options.next() {
+            Some(&r) => r,
             None => return false,
         };
         debug!("enforce_pick_constraint: least_choice={:?}", least_choice);
-        for option in options {
+        for &option in options {
             debug!("enforce_pick_constraint: option={:?}", option);
             if !self.sub_concrete_regions(least_choice, option) {
                 if self.sub_concrete_regions(option, least_choice) {
