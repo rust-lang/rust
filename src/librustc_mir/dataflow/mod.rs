@@ -17,7 +17,7 @@ use std::io;
 use std::path::PathBuf;
 use std::usize;
 
-pub use self::impls::{MaybeStorageLive};
+pub use self::impls::{MaybeStorageLive, RequiresStorage};
 pub use self::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 pub use self::impls::DefinitelyInitializedPlaces;
 pub use self::impls::EverInitializedPlaces;

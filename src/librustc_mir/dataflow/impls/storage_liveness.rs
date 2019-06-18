@@ -1,7 +1,13 @@
 pub use super::*;
 
 use rustc::mir::*;
+use rustc::mir::visit::{
+    PlaceContext, Visitor, NonMutatingUseContext,
+};
+use std::cell::RefCell;
 use crate::dataflow::BitDenotation;
+use crate::dataflow::HaveBeenBorrowedLocals;
+use crate::dataflow::{DataflowResults, DataflowResultsCursor, DataflowResultsRefCursor};
 
 #[derive(Copy, Clone)]
 pub struct MaybeStorageLive<'a, 'tcx> {
@@ -62,4 +68,127 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
 impl<'a, 'tcx> BottomValue for MaybeStorageLive<'a, 'tcx> {
     /// bottom = dead
     const BOTTOM_VALUE: bool = false;
+}
+
+/// Dataflow analysis that determines whether each local requires storage at a
+/// given location; i.e. whether its storage can go away without being observed.
+///
+/// In the case of a movable generator, borrowed_locals can be `None` and we
+/// will not consider borrows in this pass. This relies on the fact that we only
+/// use this pass at yield points for these generators.
+#[derive(Clone)]
+pub struct RequiresStorage<'mir, 'tcx, 'b> {
+    body: &'mir Body<'tcx>,
+    borrowed_locals:
+        RefCell<DataflowResultsRefCursor<'mir, 'tcx, 'b, HaveBeenBorrowedLocals<'mir, 'tcx>>>,
+}
+
+impl<'mir, 'tcx: 'mir, 'b> RequiresStorage<'mir, 'tcx, 'b> {
+    pub fn new(
+        body: &'mir Body<'tcx>,
+        borrowed_locals: &'b DataflowResults<'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>,
+    ) -> Self {
+        RequiresStorage {
+            body,
+            borrowed_locals: RefCell::new(DataflowResultsCursor::new(borrowed_locals, body)),
+        }
+    }
+
+    pub fn body(&self) -> &Body<'tcx> {
+        self.body
+    }
+}
+
+impl<'mir, 'tcx, 'b> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx, 'b> {
+    type Idx = Local;
+    fn name() -> &'static str { "requires_storage" }
+    fn bits_per_block(&self) -> usize {
+        self.body.local_decls.len()
+    }
+
+    fn start_block_effect(&self, _sets: &mut BitSet<Local>) {
+        // Nothing is live on function entry
+    }
+
+    fn statement_effect(&self,
+                        sets: &mut GenKillSet<Local>,
+                        loc: Location) {
+        self.check_for_move(sets, loc);
+        self.check_for_borrow(sets, loc);
+
+        let stmt = &self.body[loc.block].statements[loc.statement_index];
+        match stmt.kind {
+            StatementKind::StorageLive(l) => sets.gen(l),
+            StatementKind::StorageDead(l) => sets.kill(l),
+            StatementKind::Assign(ref place, _)
+            | StatementKind::SetDiscriminant { ref place, .. } => {
+                place.base_local().map(|l| sets.gen(l));
+            }
+            StatementKind::InlineAsm(box InlineAsm { ref outputs, .. }) => {
+                for p in &**outputs {
+                    p.base_local().map(|l| sets.gen(l));
+                }
+            }
+            _ => (),
+        }
+    }
+
+    fn terminator_effect(&self,
+                         sets: &mut GenKillSet<Local>,
+                         loc: Location) {
+        self.check_for_move(sets, loc);
+        self.check_for_borrow(sets, loc);
+    }
+
+    fn propagate_call_return(
+        &self,
+        in_out: &mut BitSet<Local>,
+        _call_bb: mir::BasicBlock,
+        _dest_bb: mir::BasicBlock,
+        dest_place: &mir::Place<'tcx>,
+    ) {
+        dest_place.base_local().map(|l| in_out.insert(l));
+    }
+}
+
+impl<'mir, 'tcx, 'b> RequiresStorage<'mir, 'tcx, 'b> {
+    /// Kill locals that are fully moved and have not been borrowed.
+    fn check_for_move(&self, sets: &mut GenKillSet<Local>, loc: Location) {
+        let mut visitor = MoveVisitor {
+            sets,
+            borrowed_locals: &self.borrowed_locals,
+        };
+        visitor.visit_location(self.body, loc);
+    }
+
+    /// Gen locals that are newly borrowed. This includes borrowing any part of
+    /// a local (we rely on this behavior of `HaveBeenBorrowedLocals`).
+    fn check_for_borrow(&self, sets: &mut GenKillSet<Local>, loc: Location) {
+        let mut borrowed_locals = self.borrowed_locals.borrow_mut();
+        borrowed_locals.seek(loc);
+        borrowed_locals.each_gen_bit(|l| sets.gen(l));
+    }
+}
+
+impl<'mir, 'tcx, 'b> BottomValue for RequiresStorage<'mir, 'tcx, 'b> {
+    /// bottom = dead
+    const BOTTOM_VALUE: bool = false;
+}
+
+struct MoveVisitor<'a, 'b, 'mir, 'tcx> {
+    borrowed_locals:
+        &'a RefCell<DataflowResultsRefCursor<'mir, 'tcx, 'b, HaveBeenBorrowedLocals<'mir, 'tcx>>>,
+    sets: &'a mut GenKillSet<Local>,
+}
+
+impl<'a, 'b, 'mir: 'a, 'tcx> Visitor<'tcx> for MoveVisitor<'a, 'b, 'mir, 'tcx> {
+    fn visit_local(&mut self, local: &Local, context: PlaceContext, loc: Location) {
+        if PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) == context {
+            let mut borrowed_locals = self.borrowed_locals.borrow_mut();
+            borrowed_locals.seek(loc);
+            if !borrowed_locals.contains(*local) {
+                self.sets.kill(*local);
+            }
+        }
+    }
 }

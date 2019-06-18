@@ -61,6 +61,7 @@ pub trait FlowsAtLocation {
 /// (e.g., via `reconstruct_statement_effect` and
 /// `reconstruct_terminator_effect`; don't forget to call
 /// `apply_local_effect`).
+#[derive(Clone)]
 pub struct FlowAtLocation<'tcx, BD, DR = DataflowResults<'tcx, BD>>
 where
     BD: BitDenotation<'tcx>,

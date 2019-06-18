@@ -66,9 +66,9 @@ use std::mem;
 use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
-use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation, FlowAtLocationOwned};
+use crate::dataflow::{DataflowResults, DataflowResultsConsumer, FlowAtLocation};
 use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
-use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use crate::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals, RequiresStorage};
 use crate::util::dump_mir;
 use crate::util::liveness;
 
@@ -437,16 +437,17 @@ fn locals_live_across_suspend_points(
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    // This is only used for immovable generators.
-    let borrowed_locals = if !movable {
-        let analysis = HaveBeenBorrowedLocals::new(body);
-        let result =
-            do_dataflow(tcx, body, def_id, &[], &dead_unwinds, analysis,
-                        |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
-        Some((analysis, result))
-    } else {
-        None
-    };
+    let borrowed_locals_analysis = HaveBeenBorrowedLocals::new(body);
+    let borrowed_locals_result =
+        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, borrowed_locals_analysis,
+                    |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+
+    // Calculate the MIR locals that we actually need to keep storage around
+    // for.
+    let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_result);
+    let requires_storage =
+        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis.clone(),
+                    |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
@@ -471,10 +472,10 @@ fn locals_live_across_suspend_points(
                 statement_index: data.statements.len(),
             };
 
-            if let Some((ref analysis, ref result)) = borrowed_locals {
+            if !movable {
                 let borrowed_locals = state_for_location(loc,
-                                                         analysis,
-                                                         result,
+                                                         &borrowed_locals_analysis,
+                                                         &borrowed_locals_result,
                                                          body);
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
                 // This is correct for movable generators since borrows cannot live across
@@ -489,26 +490,33 @@ fn locals_live_across_suspend_points(
                 liveness.outs[block].union(&borrowed_locals);
             }
 
-            let mut storage_liveness = state_for_location(loc,
-                                                          &storage_live_analysis,
-                                                          &storage_live,
-                                                          body);
+            let storage_liveness = state_for_location(loc,
+                                                      &storage_live_analysis,
+                                                      &storage_live,
+                                                      body);
 
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point
             storage_liveness_map.insert(block, storage_liveness.clone());
 
-            // Mark locals without storage statements as always having live storage
-            storage_liveness.union(&ignored.0);
+            let mut storage_required = state_for_location(loc,
+                                                          &requires_storage_analysis,
+                                                          &requires_storage,
+                                                          body);
+
+            // Mark locals without storage statements as always requiring storage
+            storage_required.union(&ignored.0);
 
             // Locals live are live at this point only if they are used across
             // suspension points (the `liveness` variable)
-            // and their storage is live (the `storage_liveness` variable)
-            let mut live_locals_here = storage_liveness;
+            // and their storage is required (the `storage_required` variable)
+            let mut live_locals_here = storage_required;
             live_locals_here.intersect(&liveness.outs[block]);
 
             // The generator argument is ignored
             live_locals_here.remove(self_arg());
+
+            debug!("loc = {:?}, live_locals_here = {:?}", loc, live_locals_here);
 
             // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
@@ -517,6 +525,7 @@ fn locals_live_across_suspend_points(
             live_locals_at_suspension_points.push(live_locals_here);
         }
     }
+    debug!("live_locals = {:?}", live_locals);
 
     // Renumber our liveness_map bitsets to include only the locals we are
     // saving.
@@ -627,7 +636,7 @@ struct StorageConflictVisitor<'body, 'tcx, 's> {
 impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
     for StorageConflictVisitor<'body, 'tcx, 's>
 {
-    type FlowState = FlowAtLocationOwned<'tcx, MaybeStorageLive<'body, 'tcx>>;
+    type FlowState = FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>;
 
     fn body(&self) -> &'body Body<'tcx> {
         self.body
@@ -657,7 +666,7 @@ impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
 
 impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
     fn apply_state(&mut self,
-                   flow_state: &FlowAtLocationOwned<'tcx, MaybeStorageLive<'body, 'tcx>>,
+                   flow_state: &FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>,
                    loc: Location) {
         // Ignore unreachable blocks.
         match self.body.basic_blocks()[loc.block].terminator().kind {
