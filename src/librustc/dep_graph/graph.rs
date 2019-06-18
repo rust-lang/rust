@@ -663,9 +663,9 @@ impl DepGraph {
     }
 
     /// Try to force a dep node to execute and see if it's green
-    fn try_force_previous_green<'tcx>(
+    fn try_force_previous_green(
         &self,
-        tcx: TyCtxt<'_, 'tcx, 'tcx>,
+        tcx: TyCtxt<'_>,
         data: &DepGraphData,
         dep_node_index: DepNodeIndex,
     ) -> bool {
