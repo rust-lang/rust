@@ -978,7 +978,7 @@ pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool
     let mut prev_enclosing_node = None;
     let mut enclosing_node = node;
     while Some(enclosing_node) != prev_enclosing_node {
-        if is_automatically_derived(map.attrs_by_hir_id(enclosing_node)) {
+        if is_automatically_derived(map.attrs(enclosing_node)) {
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);

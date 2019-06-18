@@ -170,7 +170,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem) {
         if let ImplItemKind::Const(hir_ty, ..) = &impl_item.node {
             let item_hir_id = cx.tcx.hir().get_parent_node_by_hir_id(impl_item.hir_id);
-            let item = cx.tcx.hir().expect_item_by_hir_id(item_hir_id);
+            let item = cx.tcx.hir().expect_item(item_hir_id);
             // Ensure the impl is an inherent impl.
             if let ItemKind::Impl(_, _, _, _, None, _, _) = item.node {
                 let ty = hir_ty_to_ty(cx.tcx, hir_ty);

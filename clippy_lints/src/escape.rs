@@ -94,7 +94,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
             span_lint(
                 cx,
                 BOXED_LOCAL,
-                cx.tcx.hir().span_by_hir_id(node),
+                cx.tcx.hir().span(node),
                 "local variable doesn't need to be boxed here",
             );
         }

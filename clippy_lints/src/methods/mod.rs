@@ -947,7 +947,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         }
         let name = implitem.ident.name.as_str();
         let parent = cx.tcx.hir().get_parent_item(implitem.hir_id);
-        let item = cx.tcx.hir().expect_item_by_hir_id(parent);
+        let item = cx.tcx.hir().expect_item(parent);
         let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         let ty = cx.tcx.type_of(def_id);
         if_chain! {
@@ -1070,7 +1070,7 @@ fn lint_or_fun_call<'a, 'tcx: 'a>(
 
             if call_found {
                 // don't lint for constant values
-                let owner_def = self.cx.tcx.hir().get_parent_did_by_hir_id(expr.hir_id);
+                let owner_def = self.cx.tcx.hir().get_parent_did(expr.hir_id);
                 let promotable = self
                     .cx
                     .tcx

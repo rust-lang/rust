@@ -605,7 +605,7 @@ fn in_attributes_expansion(expr: &Expr) -> bool {
 /// Tests whether `res` is a variable defined outside a macro.
 fn non_macro_local(cx: &LateContext<'_, '_>, res: def::Res) -> bool {
     if let def::Res::Local(id) = res {
-        !in_macro_or_desugar(cx.tcx.hir().span_by_hir_id(id))
+        !in_macro_or_desugar(cx.tcx.hir().span(id))
     } else {
         false
     }
