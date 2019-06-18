@@ -546,7 +546,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_expr(&base);
             }
 
-            hir::ExprKind::Yield(ref value) => {
+            hir::ExprKind::Yield(ref value, _) => {
                 self.consume_expr(&value);
             }
         }

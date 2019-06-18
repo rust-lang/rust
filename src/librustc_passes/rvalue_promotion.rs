@@ -545,7 +545,7 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         // Generator expressions
-        hir::ExprKind::Yield(ref expr) => {
+        hir::ExprKind::Yield(ref expr, _) => {
             let _ = v.check_expr(&expr);
             NotPromotable
         }

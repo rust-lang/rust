@@ -763,7 +763,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         hir::ExprKind::Array(ref fields) => ExprKind::Array { fields: fields.to_ref() },
         hir::ExprKind::Tup(ref fields) => ExprKind::Tuple { fields: fields.to_ref() },
 
-        hir::ExprKind::Yield(ref v) => ExprKind::Yield { value: v.to_ref() },
+        hir::ExprKind::Yield(ref v, _) => ExprKind::Yield { value: v.to_ref() },
         hir::ExprKind::Err => unreachable!(),
     };
 

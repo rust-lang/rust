@@ -1089,7 +1089,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
                 visitor.visit_expr(expr)
             }
         }
-        ExprKind::Yield(ref subexpression) => {
+        ExprKind::Yield(ref subexpression, _) => {
             visitor.visit_expr(subexpression);
         }
         ExprKind::Lit(_) | ExprKind::Err => {}
