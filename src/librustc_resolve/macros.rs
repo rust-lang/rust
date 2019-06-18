@@ -114,6 +114,22 @@ fn sub_namespace_match(candidate: Option<MacroKind>, requirement: Option<MacroKi
     candidate.is_none() || requirement.is_none() || candidate == requirement
 }
 
+// We don't want to format a path using pretty-printing,
+// `format!("{}", path)`, because that tries to insert
+// line-breaks and is slow.
+fn fast_print_path(path: &ast::Path) -> String {
+    let mut path_str = String::with_capacity(64);
+    for (i, segment) in path.segments.iter().enumerate() {
+        if i != 0 {
+            path_str.push_str("::");
+        }
+        if segment.ident.name != kw::PathRoot {
+            path_str.push_str(&segment.ident.as_str())
+        }
+    }
+    path_str
+}
+
 impl<'a> base::Resolver for Resolver<'a> {
     fn next_node_id(&mut self) -> ast::NodeId {
         self.session.next_node_id()
@@ -174,7 +190,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             krate: CrateNum::BuiltinMacros,
             index: DefIndex::from(self.macro_map.len()),
         };
-        let kind = ext.kind();
+        let kind = ext.macro_kind();
         self.macro_map.insert(def_id, ext);
         let binding = self.arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Res(Res::Def(DefKind::Macro(kind), def_id), false),
@@ -209,14 +225,19 @@ impl<'a> base::Resolver for Resolver<'a> {
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
         let (res, ext) = match self.resolve_macro_to_res(path, kind, &parent_scope, true, force) {
             Ok((res, ext)) => (res, ext),
-            Err(Determinacy::Determined) if kind == MacroKind::Attr => {
-                // Replace unresolved attributes with used inert attributes for better recovery.
-                return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr { mark_used: true })));
-            }
+            // Replace unresolved attributes with used inert attributes for better recovery.
+            Err(Determinacy::Determined) if kind == MacroKind::Attr =>
+                (Res::Err, self.non_macro_attr(true)),
             Err(determinacy) => return Err(determinacy),
         };
 
-        if let Res::Def(DefKind::Macro(_), def_id) = res {
+        let format = match kind {
+            MacroKind::Derive => format!("derive({})", fast_print_path(path)),
+            _ => fast_print_path(path),
+        };
+        invoc.expansion_data.mark.set_expn_info(ext.expn_info(invoc.span(), &format));
+
+        if let Res::Def(_, def_id) = res {
             if after_derive {
                 self.session.span_err(invoc.span(),
                                       "macro attributes must be placed before `#[derive]`");
@@ -226,7 +247,6 @@ impl<'a> base::Resolver for Resolver<'a> {
                 self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
             self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.mark,
                                                             normal_module_def_id);
-            invoc.expansion_data.mark.set_default_transparency(ext.default_transparency());
         }
 
         Ok(Some(ext))
@@ -241,11 +261,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn check_unused_macros(&self) {
         for did in self.unused_macros.iter() {
-            let id_span = match *self.macro_map[did] {
-                SyntaxExtension::LegacyBang { def_info, .. } => def_info,
-                _ => None,
-            };
-            if let Some((id, span)) = id_span {
+            if let Some((id, span)) = self.macro_map[did].def_info {
                 let lint = lint::builtin::UNUSED_MACROS;
                 let msg = "unused macro definition";
                 self.session.buffer_lint(lint, id, span, msg);
@@ -585,17 +601,12 @@ impl<'a> Resolver<'a> {
                         let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
                         match self.resolve_macro_to_res(derive, MacroKind::Derive,
                                                         &parent_scope, true, force) {
-                            Ok((_, ext)) => {
-                                if let SyntaxExtension::Derive(_, helpers, _) = &*ext {
-                                    if helpers.contains(&ident.name) {
-                                        let binding =
-                                            (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
-                                            ty::Visibility::Public, derive.span, Mark::root())
-                                            .to_name_binding(self.arenas);
-                                        result = Ok((binding, Flags::empty()));
-                                        break;
-                                    }
-                                }
+                            Ok((_, ext)) => if ext.helper_attrs.contains(&ident.name) {
+                                let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
+                                               ty::Visibility::Public, derive.span, Mark::root())
+                                               .to_name_binding(self.arenas);
+                                result = Ok((binding, Flags::empty()));
+                                break;
                             }
                             Err(Determinacy::Determined) => {}
                             Err(Determinacy::Undetermined) =>

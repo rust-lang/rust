@@ -3,7 +3,7 @@
 use std::iter::once;
 
 use syntax::ast;
-use syntax::ext::base::{MacroKind, SyntaxExtension};
+use syntax::ext::base::MacroKind;
 use syntax::symbol::sym;
 use syntax_pos::Span;
 
@@ -470,18 +470,12 @@ fn build_macro(cx: &DocContext<'_>, did: DefId, name: ast::Name) -> clean::ItemE
             })
         }
         LoadedMacro::ProcMacro(ext) => {
-            let helpers = match &*ext {
-                &SyntaxExtension::Derive(_, ref syms, ..) => { syms.clean(cx) }
-                _ => Vec::new(),
-            };
-
             clean::ProcMacroItem(clean::ProcMacro {
-                kind: ext.kind(),
-                helpers,
+                kind: ext.macro_kind(),
+                helpers: ext.helper_attrs.clean(cx),
             })
         }
     }
-
 }
 
 /// A trait's generics clause actually contains all of the predicates for all of

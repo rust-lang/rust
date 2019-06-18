@@ -16,15 +16,9 @@ use syntax_pos::{DUMMY_SP, Span};
 /// The expanded code uses the unstable `#[prelude_import]` attribute.
 fn ignored_span(sp: Span, edition: Edition) -> Span {
     let mark = Mark::fresh(Mark::root());
-    mark.set_expn_info(ExpnInfo {
-        call_site: DUMMY_SP,
-        def_site: None,
-        format: MacroAttribute(Symbol::intern("std_inject")),
-        allow_internal_unstable: Some(vec![sym::prelude_import].into()),
-        allow_internal_unsafe: false,
-        local_inner_macros: false,
-        edition,
-    });
+    mark.set_expn_info(ExpnInfo::with_unstable(
+        MacroAttribute(Symbol::intern("std_inject")), sp, edition, &[sym::prelude_import]
+    ));
     sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
 }
 

@@ -391,10 +391,17 @@ impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
     NameValue(lit)
 });
 
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::Transparency {
+    Transparent,
+    SemiTransparent,
+    Opaque,
+});
+
 impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
     call_site,
-    def_site,
     format,
+    def_site,
+    default_transparency,
     allow_internal_unstable,
     allow_internal_unsafe,
     local_inner_macros,
