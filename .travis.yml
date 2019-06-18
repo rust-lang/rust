@@ -94,7 +94,7 @@ script:
       pr=$(echo $TRAVIS_COMMIT_MESSAGE | grep -o "#[0-9]*" | head -1 | sed 's/^#//g')
       output=$(curl -H "Authorization: token $GITHUB_API_TOKEN" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$pr" | \
         python -c "import sys, json; print(json.load(sys.stdin)['body'])" | \
-        grep "changelog: " | \
+        grep "^changelog: " | \
         sed "s/changelog: //g")
       if [ -z "$output" ]; then
         echo "ERROR: PR body must contain 'changelog: ...'"
