@@ -114,7 +114,7 @@ fn check_hash_peq<'a, 'tcx>(
                         cx, DERIVE_HASH_XOR_EQ, span,
                         mess,
                         |db| {
-                        if let Some(node_id) = cx.tcx.hir().as_local_node_id(impl_id) {
+                        if let Some(node_id) = cx.tcx.hir().as_local_hir_id(impl_id) {
                             db.span_note(
                                 cx.tcx.hir().span(node_id),
                                 "`PartialEq` implemented here"

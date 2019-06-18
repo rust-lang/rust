@@ -32,7 +32,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {
         let map = cx.tcx.hir();
         // only check top level `use` statements
         for item in &m.item_ids {
-            self.lint_item(cx, map.expect_item(map.hir_to_node_id(item.id)));
+            self.lint_item(cx, map.expect_item(item.id));
         }
     }
 }
