@@ -4,7 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased / In Rust Beta or Nightly
 
-[eb9f9b1...master](https://github.com/rust-lang/rust-clippy/compare/eb9f9b1...master)
+[01ab9fe6...master](https://github.com/rust-lang/rust-clippy/compare/01ab9fe6...master)
+
+
+## Rust 1.36 (beta)
+
+[eb9f9b1...71be6f62](https://github.com/rust-lang/rust-clippy/compare/eb9f9b1...71be6f62)
 
  * New lints: [`find_map`], [`filter_map_next`] [#4039](https://github.com/rust-lang/rust-clippy/pull/4039)
  * New lint: [`path_buf_push_overwrite`] [#3954](https://github.com/rust-lang/rust-clippy/pull/3954)
@@ -31,7 +36,8 @@ All notable changes to this project will be documented in this file.
  * Fix ICE in [`decimal_literal_representation`] [#3931](https://github.com/rust-lang/rust-clippy/pull/3931)
 
 
-## Rust 1.35 (beta)
+## Rust 1.35 (2019-05-20)
+
 [1fac380..37f5c1e](https://github.com/rust-lang/rust-clippy/compare/1fac380...37f5c1e)
 
  * New lint: [`drop_bounds`] to detect `T: Drop` bounds
