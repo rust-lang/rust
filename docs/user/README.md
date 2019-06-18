@@ -92,7 +92,13 @@ to load path and require it in `init.el`
 ## Vim and NeoVim
 
 * Install coc.nvim by following the instructions at [coc.nvim]
+  - You will need nodejs installed.
+  - You may want to include some of the sample vim configurations [from here][coc-vim-conf]
+  - Note that if you use a plugin manager other than `vim-plug`, you may need to manually
+    checkout the `release` branch wherever your plugin manager cloned it. Otherwise you will
+    get errors about a missing javascript file.
 * Add rust analyzer using: [coc.nvim wiki][coc-wiki]
+  - Use `:CocConfig` in command mode to edit the config file.
 
 ```jsonc
  "languageserver": {
@@ -101,11 +107,26 @@ to load path and require it in `init.el`
     "filetypes": ["rust"],
     "rootPatterns": ["Cargo.toml"]
   }
+ }
+```
+
+For those not familiar with js, the whole file should be enclosed in `{` and `}`, with all of your config options in between. So for example, if rust-analyzer was your only language server, you could do the following:
+
+```jsonc
+{
+ "languageserver": {
+  "rust": {
+    "command": "ra_lsp_server",
+    "filetypes": ["rust"],
+    "rootPatterns": ["Cargo.toml"]
+  }
+ }
 }
 ```
 
 [coc.nvim]: https://github.com/neoclide/coc.nvim
 [coc-wiki]: https://github.com/neoclide/coc.nvim/wiki/Language-servers#rust
+[coc-vim-conf]: https://github.com/neoclide/coc.nvim/#example-vim-configuration
 
 
 ## Sublime Text 3
