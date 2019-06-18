@@ -37,8 +37,8 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
 
 fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
     ctx.analyzer.iterate_method_candidates(ctx.db, receiver, None, |_ty, func| {
-        let sig = func.signature(ctx.db);
-        if sig.has_self_param() {
+        let data = func.data(ctx.db);
+        if data.has_self_param() {
             acc.add_function(ctx, func);
         }
         None::<()>

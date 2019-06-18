@@ -27,7 +27,7 @@ use ra_prof::profile;
 use test_utils::tested_by;
 
 use crate::{
-    Function, StructField, Path, Name, FnSignature, AdtDef, ConstSignature, HirDatabase,
+    Function, StructField, Path, Name, FnData, AdtDef, ConstData, HirDatabase,
     DefWithBody, ImplItem,
     type_ref::{TypeRef, Mutability},
     expr::{
@@ -59,9 +59,9 @@ pub fn infer_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResu
     let mut ctx = InferenceContext::new(db, body, resolver);
 
     match def {
-        DefWithBody::Const(ref c) => ctx.collect_const_signature(&c.signature(db)),
-        DefWithBody::Function(ref f) => ctx.collect_fn_signature(&f.signature(db)),
-        DefWithBody::Static(ref s) => ctx.collect_const_signature(&s.signature(db)),
+        DefWithBody::Const(ref c) => ctx.collect_const(&c.data(db)),
+        DefWithBody::Function(ref f) => ctx.collect_fn(&f.data(db)),
+        DefWithBody::Static(ref s) => ctx.collect_const(&s.data(db)),
     }
 
     ctx.infer_body();
@@ -509,8 +509,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let item: crate::ModuleDef = ty.iterate_impl_items(self.db, krate, |item| {
                 let matching_def: Option<crate::ModuleDef> = match item {
                     crate::ImplItem::Method(func) => {
-                        let sig = func.signature(self.db);
-                        if segment.name == *sig.name() {
+                        if segment.name == func.name(self.db) {
                             Some(func.into())
                         } else {
                             None
@@ -518,8 +517,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
 
                     crate::ImplItem::Const(konst) => {
-                        let sig = konst.signature(self.db);
-                        if segment.name == *sig.name() {
+                        let data = konst.data(self.db);
+                        if segment.name == *data.name() {
                             Some(konst.into())
                         } else {
                             None
@@ -1283,18 +1282,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty
     }
 
-    fn collect_const_signature(&mut self, signature: &ConstSignature) {
-        self.return_ty = self.make_ty(signature.type_ref());
+    fn collect_const(&mut self, data: &ConstData) {
+        self.return_ty = self.make_ty(data.type_ref());
     }
 
-    fn collect_fn_signature(&mut self, signature: &FnSignature) {
+    fn collect_fn(&mut self, data: &FnData) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        for (type_ref, pat) in signature.params().iter().zip(body.params()) {
+        for (type_ref, pat) in data.params().iter().zip(body.params()) {
             let ty = self.make_ty(type_ref);
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
-        self.return_ty = self.make_ty(signature.ret_type());
+        self.return_ty = self.make_ty(data.ret_type());
     }
 
     fn infer_body(&mut self) {

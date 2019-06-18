@@ -98,13 +98,13 @@ impl Completions {
         name: Option<String>,
         func: hir::Function,
     ) {
-        let sig = func.signature(ctx.db);
-        let name = name.unwrap_or_else(|| sig.name().to_string());
+        let data = func.data(ctx.db);
+        let name = name.unwrap_or_else(|| data.name().to_string());
         let ast_node = func.source(ctx.db).ast;
         let detail = function_label(&ast_node);
 
         let mut builder = CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name)
-            .kind(if sig.has_self_param() {
+            .kind(if data.has_self_param() {
                 CompletionItemKind::Method
             } else {
                 CompletionItemKind::Function
@@ -115,10 +115,10 @@ impl Completions {
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
             tested_by!(inserts_parens_for_function_calls);
             let snippet =
-                if sig.params().is_empty() || sig.has_self_param() && sig.params().len() == 1 {
-                    format!("{}()$0", sig.name())
+                if data.params().is_empty() || data.has_self_param() && data.params().len() == 1 {
+                    format!("{}()$0", data.name())
                 } else {
-                    format!("{}($0)", sig.name())
+                    format!("{}($0)", data.name())
                 };
             builder = builder.insert_snippet(snippet);
         }

@@ -353,11 +353,10 @@ pub(crate) fn generic_defaults(db: &impl HirDatabase, def: GenericDef) -> Substs
 }
 
 fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
-    let signature = def.signature(db);
+    let data = def.data(db);
     let resolver = def.resolver(db);
-    let params =
-        signature.params().iter().map(|tr| Ty::from_hir(db, &resolver, tr)).collect::<Vec<_>>();
-    let ret = Ty::from_hir(db, &resolver, signature.ret_type());
+    let params = data.params().iter().map(|tr| Ty::from_hir(db, &resolver, tr)).collect::<Vec<_>>();
+    let ret = Ty::from_hir(db, &resolver, data.ret_type());
     FnSig::from_params_and_return(params, ret)
 }
 
@@ -371,18 +370,18 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
 
 /// Build the declared type of a const.
 fn type_for_const(db: &impl HirDatabase, def: Const) -> Ty {
-    let signature = def.signature(db);
+    let data = def.data(db);
     let resolver = def.resolver(db);
 
-    Ty::from_hir(db, &resolver, signature.type_ref())
+    Ty::from_hir(db, &resolver, data.type_ref())
 }
 
 /// Build the declared type of a static.
 fn type_for_static(db: &impl HirDatabase, def: Static) -> Ty {
-    let signature = def.signature(db);
+    let data = def.data(db);
     let resolver = def.resolver(db);
 
-    Ty::from_hir(db, &resolver, signature.type_ref())
+    Ty::from_hir(db, &resolver, data.type_ref())
 }
 
 /// Build the declared type of a static.

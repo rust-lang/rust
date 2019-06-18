@@ -519,9 +519,8 @@ pub struct Function {
     pub(crate) id: FunctionId,
 }
 
-/// The declared signature of a function.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FnSignature {
+pub struct FnData {
     pub(crate) name: Name,
     pub(crate) params: Vec<TypeRef>,
     pub(crate) ret_type: TypeRef,
@@ -530,11 +529,11 @@ pub struct FnSignature {
     pub(crate) has_self_param: bool,
 }
 
-impl FnSignature {
-    pub(crate) fn fn_signature_query(
+impl FnData {
+    pub(crate) fn fn_data_query(
         db: &(impl DefDatabase + AstDatabase),
         func: Function,
-    ) -> Arc<FnSignature> {
+    ) -> Arc<FnData> {
         let src = func.source(db);
         let name = src.ast.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
         let mut params = Vec::new();
@@ -569,7 +568,7 @@ impl FnSignature {
             TypeRef::unit()
         };
 
-        let sig = FnSignature { name, params, ret_type, has_self_param };
+        let sig = FnData { name, params, ret_type, has_self_param };
         Arc::new(sig)
     }
     pub fn name(&self) -> &Name {
@@ -597,7 +596,7 @@ impl Function {
     }
 
     pub fn name(self, db: &impl HirDatabase) -> Name {
-        self.signature(db).name.clone()
+        self.data(db).name.clone()
     }
 
     pub(crate) fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
@@ -612,8 +611,8 @@ impl Function {
         db.type_for_def(self.into(), Namespace::Values)
     }
 
-    pub fn signature(self, db: &impl HirDatabase) -> Arc<FnSignature> {
-        db.fn_signature(self)
+    pub fn data(self, db: &impl HirDatabase) -> Arc<FnData> {
+        db.fn_data(self)
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
@@ -670,8 +669,8 @@ impl Const {
         self.id.module(db)
     }
 
-    pub fn signature(self, db: &impl HirDatabase) -> Arc<ConstSignature> {
-        db.const_signature(self)
+    pub fn data(self, db: &impl HirDatabase) -> Arc<ConstData> {
+        db.const_data(self)
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
@@ -696,14 +695,13 @@ impl Const {
     }
 }
 
-/// The declared signature of a const.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ConstSignature {
+pub struct ConstData {
     pub(crate) name: Name,
     pub(crate) type_ref: TypeRef,
 }
 
-impl ConstSignature {
+impl ConstData {
     pub fn name(&self) -> &Name {
         &self.name
     }
@@ -712,27 +710,27 @@ impl ConstSignature {
         &self.type_ref
     }
 
-    pub(crate) fn const_signature_query(
+    pub(crate) fn const_data_query(
         db: &(impl DefDatabase + AstDatabase),
         konst: Const,
-    ) -> Arc<ConstSignature> {
+    ) -> Arc<ConstData> {
         let node = konst.source(db).ast;
-        const_signature_for(&*node)
+        const_data_for(&*node)
     }
 
-    pub(crate) fn static_signature_query(
+    pub(crate) fn static_data_query(
         db: &(impl DefDatabase + AstDatabase),
         konst: Static,
-    ) -> Arc<ConstSignature> {
+    ) -> Arc<ConstData> {
         let node = konst.source(db).ast;
-        const_signature_for(&*node)
+        const_data_for(&*node)
     }
 }
 
-fn const_signature_for<N: NameOwner + TypeAscriptionOwner>(node: &N) -> Arc<ConstSignature> {
+fn const_data_for<N: NameOwner + TypeAscriptionOwner>(node: &N) -> Arc<ConstData> {
     let name = node.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
     let type_ref = TypeRef::from_ast_opt(node.ascribed_type());
-    let sig = ConstSignature { name, type_ref };
+    let sig = ConstData { name, type_ref };
     Arc::new(sig)
 }
 
@@ -746,8 +744,8 @@ impl Static {
         self.id.module(db)
     }
 
-    pub fn signature(self, db: &impl HirDatabase) -> Arc<ConstSignature> {
-        db.static_signature(self)
+    pub fn data(self, db: &impl HirDatabase) -> Arc<ConstData> {
+        db.static_data(self)
     }
 
     /// Builds a resolver for code inside this item.
