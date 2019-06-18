@@ -89,7 +89,6 @@ impl_stable_hash_for!(enum ::syntax::ext::base::MacroKind {
     Bang,
     Attr,
     Derive,
-    ProcMacroStub,
 });
 
 

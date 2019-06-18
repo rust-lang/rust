@@ -29,7 +29,7 @@ use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
-use syntax::ext::base::{MacroKind, SyntaxExtension};
+use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
@@ -45,6 +45,20 @@ use syntax_pos::{Span, DUMMY_SP};
 use log::debug;
 
 type Res = def::Res<NodeId>;
+
+fn proc_macro_stub(item: &Item) -> Option<(Ident, Span)> {
+    if attr::contains_name(&item.attrs, sym::proc_macro) ||
+       attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
+        return Some((item.ident, item.span));
+    } else if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
+        if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
+            if let Some(ident) = nested_meta.ident() {
+                return Some((ident, ident.span));
+            }
+        }
+    }
+    None
+}
 
 impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, Mark) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
@@ -456,22 +470,8 @@ impl<'a> Resolver<'a> {
 
                 // Functions introducing procedural macros reserve a slot
                 // in the macro namespace as well (see #52225).
-                if attr::contains_name(&item.attrs, sym::proc_macro) ||
-                   attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
-                    let res = Res::Def(DefKind::Macro(MacroKind::ProcMacroStub), res.def_id());
-                    self.define(parent, ident, MacroNS, (res, vis, sp, expansion));
-                }
-                if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
-                    if let Some(trait_attr) =
-                            attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
-                        if let Some(ident) = trait_attr.ident() {
-                            let res = Res::Def(
-                                DefKind::Macro(MacroKind::ProcMacroStub),
-                                res.def_id(),
-                            );
-                            self.define(parent, ident, MacroNS, (res, vis, ident.span, expansion));
-                        }
-                    }
+                if let Some((ident, span)) = proc_macro_stub(item) {
+                    self.define(parent, ident, MacroNS, (res, vis, span, expansion));
                 }
             }
 
@@ -778,8 +778,6 @@ impl<'a> Resolver<'a> {
 
     crate fn opt_get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         let def_id = match res {
-            Res::Def(DefKind::Macro(MacroKind::ProcMacroStub), _) =>
-                return Some(self.non_macro_attr(true)), // some dummy extension
             Res::Def(DefKind::Macro(..), def_id) => def_id,
             Res::NonMacroAttr(attr_kind) =>
                 return Some(self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool)),

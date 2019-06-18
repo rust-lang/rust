@@ -102,12 +102,11 @@ fn sub_namespace_match(candidate: Option<MacroKind>, requirement: Option<MacroKi
     #[derive(PartialEq)]
     enum SubNS { Bang, AttrLike }
     let sub_ns = |kind| match kind {
-        MacroKind::Bang => Some(SubNS::Bang),
-        MacroKind::Attr | MacroKind::Derive => Some(SubNS::AttrLike),
-        MacroKind::ProcMacroStub => None,
+        MacroKind::Bang => SubNS::Bang,
+        MacroKind::Attr | MacroKind::Derive => SubNS::AttrLike,
     };
-    let requirement = requirement.and_then(|kind| sub_ns(kind));
-    let candidate = candidate.and_then(|kind| sub_ns(kind));
+    let candidate = candidate.map(sub_ns);
+    let requirement = requirement.map(sub_ns);
     // "No specific sub-namespace" means "matches anything" for both requirements and candidates.
     candidate.is_none() || requirement.is_none() || candidate == requirement
 }
@@ -310,15 +309,15 @@ impl<'a> Resolver<'a> {
         let res = res?;
 
         match res {
-            Res::Def(DefKind::Macro(macro_kind), def_id) => {
+            Res::Def(DefKind::Macro(_), def_id) => {
                 if let Some(node_id) = self.definitions.as_local_node_id(def_id) {
                     self.unused_macros.remove(&node_id);
                 }
-                if macro_kind == MacroKind::ProcMacroStub {
-                    let msg = "can't use a procedural macro from the same crate that defines it";
-                    self.session.span_err(path.span, msg);
-                    return Err(Determinacy::Determined);
-                }
+            }
+            Res::Def(DefKind::Fn, _) => {
+                let msg = "can't use a procedural macro from the same crate that defines it";
+                self.session.span_err(path.span, msg);
+                return Err(Determinacy::Determined);
             }
             Res::NonMacroAttr(attr_kind) => {
                 if kind == MacroKind::Attr {

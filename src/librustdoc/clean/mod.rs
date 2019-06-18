@@ -4199,7 +4199,6 @@ pub fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
             MacroKind::Bang => (i, TypeKind::Macro),
             MacroKind::Attr => (i, TypeKind::Attr),
             MacroKind::Derive => (i, TypeKind::Derive),
-            MacroKind::ProcMacroStub => unreachable!(),
         },
         Res::Def(DefKind::TraitAlias, i) => (i, TypeKind::TraitAlias),
         Res::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
