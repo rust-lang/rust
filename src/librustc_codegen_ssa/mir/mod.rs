@@ -83,7 +83,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<Bx::DIScope>>,
 
     /// If this function is a C-variadic function, this contains the `PlaceRef` of the
-    /// "spoofed" `VaList`.
+    /// "spoofed" `VaListImpl`.
     va_list_ref: Option<PlaceRef<'tcx, Bx::Value>>,
 }
 
@@ -562,35 +562,24 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             indirect_operand.store(bx, tmp);
             tmp
         } else {
+            let tmp = PlaceRef::alloca(bx, arg.layout, &name);
             if fx.fn_ty.c_variadic && last_arg_idx.map(|idx| arg_index == idx).unwrap_or(false) {
-                let va_list_impl = match arg_decl.ty.ty_adt_def() {
-                    Some(adt) => adt.non_enum_variant(),
-                    None => bug!("`va_list` language item improperly constructed")
+                let va_list_did = match tcx.lang_items().va_list() {
+                    Some(did) => did,
+                    None => bug!("`va_list` lang item required for C-variadic functions"),
                 };
-                match tcx.type_of(va_list_impl.fields[0].did).sty {
-                    ty::Ref(_, ty, _) => {
-                        // If the underlying structure the `VaList` contains is a structure,
-                        // we need to allocate it (e.g., X86_64 on Linux).
-                        let tmp = PlaceRef::alloca(bx, arg.layout, &name);
-                        if let ty::Adt(..) = ty.sty {
-                            let layout = bx.layout_of(ty);
-                            // Create an unnamed allocation for the backing structure
-                            // and store it in the the spoofed `VaList`.
-                            let backing = PlaceRef::alloca(bx, layout, "");
-                            bx.store(backing.llval, tmp.llval, layout.align.abi);
-                        }
-                        // Call `va_start` on the spoofed `VaList`.
+                match arg_decl.ty.sty {
+                    ty::Adt(def, _) if def.did == va_list_did => {
+                        // Call `va_start` on the spoofed `VaListImpl`.
                         bx.va_start(tmp.llval);
                         *va_list_ref = Some(tmp);
-                        tmp
-                    }
-                    _ => bug!("improperly constructed `va_list` lang item"),
+                    },
+                    _ => bug!("last argument of variadic function is not a `va_list`")
                 }
             } else {
-                let tmp = PlaceRef::alloca(bx, arg.layout, &name);
                 bx.store_fn_arg(arg, &mut llarg_idx, tmp);
-                tmp
             }
+            tmp
         };
         let upvar_debuginfo = &mir.__upvar_debuginfo_codegen_only_do_not_use;
         arg_scope.map(|scope| {

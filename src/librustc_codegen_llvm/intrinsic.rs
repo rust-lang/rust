@@ -146,15 +146,8 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.va_end(args[0].immediate())
             }
             "va_copy" => {
-                let va_list = match (tcx.lang_items().va_list(), &result.layout.ty.sty) {
-                    (Some(did), ty::Adt(def, _)) if def.did == did => args[0].immediate(),
-                    (Some(_), _)  => self.load(args[0].immediate(),
-                                               tcx.data_layout.pointer_align.abi),
-                    (None, _) => bug!("`va_list` language item must be defined")
-                };
                 let intrinsic = self.cx().get_intrinsic(&("llvm.va_copy"));
-                self.call(intrinsic, &[llresult, va_list], None);
-                return;
+                self.call(intrinsic, &[args[0].immediate(), args[1].immediate()], None)
             }
             "va_arg" => {
                 match fn_ty.ret.layout.abi {
@@ -743,37 +736,12 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         self.call(expect, &[cond, self.const_bool(expected)], None)
     }
 
-    fn va_start(&mut self, list: &'ll Value) -> &'ll Value {
-        let target = &self.cx.tcx.sess.target.target;
-        let arch = &target.arch;
-        // A pointer to the architecture specific structure is passed to this
-        // function. For pointer variants (i686, RISC-V, Windows, etc), we
-        // should do do nothing, as the address to the pointer is needed. For
-        // architectures with a architecture specific structure (`Aarch64`,
-        // `X86_64`, etc), this function should load the structure from the
-        // address provided.
-        let va_list = match &**arch {
-            _ if target.options.is_like_windows => list,
-            "aarch64" if target.target_os == "ios" => list,
-            "aarch64" | "x86_64" | "powerpc" =>
-                self.load(list, self.tcx().data_layout.pointer_align.abi),
-            _ => list,
-        };
+    fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {
         let intrinsic = self.cx().get_intrinsic("llvm.va_start");
         self.call(intrinsic, &[va_list], None)
     }
 
-    fn va_end(&mut self, list: &'ll Value) -> &'ll Value {
-        let target = &self.cx.tcx.sess.target.target;
-        let arch = &target.arch;
-        // See the comment in `va_start` for the purpose of the following.
-        let va_list = match &**arch {
-            _ if target.options.is_like_windows => list,
-            "aarch64" if target.target_os == "ios" => list,
-            "aarch64" | "x86_64" | "powerpc" =>
-                self.load(list, self.tcx().data_layout.pointer_align.abi),
-            _ => list,
-        };
+    fn va_end(&mut self, va_list: &'ll Value) -> &'ll Value {
         let intrinsic = self.cx().get_intrinsic("llvm.va_end");
         self.call(intrinsic, &[va_list], None)
     }

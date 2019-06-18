@@ -83,12 +83,15 @@ pub fn check_intrinsic_type<'tcx>(tcx: TyCtxt<'tcx>, it: &hir::ForeignItem) {
     let param = |n| tcx.mk_ty_param(n, InternedString::intern(&format!("P{}", n)));
     let name = it.ident.as_str();
 
-    let mk_va_list_ty = || {
+    let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
             let region = tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0)));
             let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
             let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
-            tcx.mk_mut_ref(tcx.mk_region(env_region), va_list_ty)
+            (tcx.mk_ref(tcx.mk_region(env_region), ty::TypeAndMut {
+                ty: va_list_ty,
+                mutbl
+            }), va_list_ty)
         })
     };
 
@@ -340,42 +343,25 @@ pub fn check_intrinsic_type<'tcx>(tcx: TyCtxt<'tcx>, it: &hir::ForeignItem) {
             }
 
             "va_start" | "va_end" => {
-                match mk_va_list_ty() {
-                    Some(va_list_ty) => (0, vec![va_list_ty], tcx.mk_unit()),
+                match mk_va_list_ty(hir::MutMutable) {
+                    Some((va_list_ref_ty, _)) => (0, vec![va_list_ref_ty], tcx.mk_unit()),
                     None => bug!("`va_list` language item needed for C-variadic intrinsics")
                 }
             }
 
             "va_copy" => {
-                match tcx.lang_items().va_list() {
-                    Some(did) => {
-                        let region = tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0)));
-                        let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
-                        let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
-                        let ret_ty = match va_list_ty.sty {
-                            ty::Adt(def, _) if def.is_struct() => {
-                                let fields = &def.non_enum_variant().fields;
-                                match tcx.type_of(fields[0].did).subst(tcx, &[region.into()]).sty {
-                                    ty::Ref(_, element_ty, _) => match element_ty.sty {
-                                        ty::Adt(..) => element_ty,
-                                        _ => va_list_ty
-                                    }
-                                    _ => bug!("va_list structure is invalid")
-                                }
-                            }
-                            _ => {
-                                bug!("va_list structure is invalid")
-                            }
-                        };
-                        (0, vec![tcx.mk_imm_ref(tcx.mk_region(env_region), va_list_ty)], ret_ty)
+                match mk_va_list_ty(hir::MutImmutable) {
+                    Some((va_list_ref_ty, va_list_ty)) => {
+                        let va_list_ptr_ty = tcx.mk_mut_ptr(va_list_ty);
+                        (0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.mk_unit())
                     }
                     None => bug!("`va_list` language item needed for C-variadic intrinsics")
                 }
             }
 
             "va_arg" => {
-                match mk_va_list_ty() {
-                    Some(va_list_ty) => (1, vec![va_list_ty], param(0)),
+                match mk_va_list_ty(hir::MutMutable) {
+                    Some((va_list_ref_ty, _)) => (1, vec![va_list_ref_ty], param(0)),
                     None => bug!("`va_list` language item needed for C-variadic intrinsics")
                 }
             }
