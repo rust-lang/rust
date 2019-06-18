@@ -1,11 +1,8 @@
 error[E0658]: transparent unions are unstable
   --> $DIR/feature-gate-transparent_unions.rs:2:1
    |
-LL | / union OkButUnstableUnion {
-LL | |     field: u8,
-LL | |     zst: (),
-LL | | }
-   | |_^
+LL | union OkButUnstableUnion {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/60405
    = help: add #![feature(transparent_unions)] to the crate attributes to enable
