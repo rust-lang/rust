@@ -75,7 +75,7 @@ macro_rules! access_from_vis {
     };
 }
 
-pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput> {
+pub struct DumpVisitor<'l, 'tcx, 'll, O: DumpOutput> {
     save_ctxt: SaveContext<'l, 'tcx>,
     tcx: TyCtxt<'tcx>,
     dumper: &'ll mut JsonDumper<O>,
@@ -92,7 +92,7 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput> {
     // macro_calls: FxHashSet<Span>,
 }
 
-impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
+impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     pub fn new(
         save_ctxt: SaveContext<'l, 'tcx>,
         dumper: &'ll mut JsonDumper<O>,
@@ -1311,7 +1311,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     }
 }
 
-impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, O> {
+impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, O> {
     fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
         // Since we handle explicit modules ourselves in visit_item, this should
         // only get called for the root module of a crate.

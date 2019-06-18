@@ -160,7 +160,7 @@ impl<'tcx> BorrowSet<'tcx> {
     }
 }
 
-struct GatherBorrows<'a, 'tcx: 'a> {
+struct GatherBorrows<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,

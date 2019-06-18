@@ -35,7 +35,7 @@ pub(super) fn generate_constraints<'cx, 'tcx>(
 }
 
 /// 'cg = the duration of the constraint generation process itself.
-struct ConstraintGeneration<'cg, 'cx: 'cg, 'tcx: 'cx> {
+struct ConstraintGeneration<'cg, 'cx, 'tcx> {
     infcx: &'cg InferCtxt<'cx, 'tcx>,
     all_facts: &'cg mut Option<AllFacts>,
     location_table: &'cg LocationTable,

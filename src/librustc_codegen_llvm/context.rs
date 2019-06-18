@@ -34,7 +34,7 @@ use crate::abi::Abi;
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
-pub struct CodegenCx<'ll, 'tcx: 'll> {
+pub struct CodegenCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub check_overflow: bool,
     pub use_dll_storage_attrs: bool,

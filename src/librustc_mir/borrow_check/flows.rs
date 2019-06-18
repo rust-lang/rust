@@ -22,7 +22,7 @@ use std::fmt;
 use std::rc::Rc;
 
 // (forced to be `pub` due to its use as an associated type below.)
-crate struct Flows<'b, 'tcx: 'b> {
+crate struct Flows<'b, 'tcx> {
     borrows: FlowAtLocation<'tcx, Borrows<'b, 'tcx>>,
     pub uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'tcx>>,
     pub ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'tcx>>,

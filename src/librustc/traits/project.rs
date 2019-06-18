@@ -285,7 +285,7 @@ where
     }
 }
 
-struct AssocTypeNormalizer<'a, 'b: 'a, 'tcx: 'b> {
+struct AssocTypeNormalizer<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,

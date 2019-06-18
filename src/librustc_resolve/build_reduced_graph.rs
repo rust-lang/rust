@@ -930,7 +930,7 @@ impl<'a> Resolver<'a> {
     }
 }
 
-pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
+pub struct BuildReducedGraphVisitor<'a, 'b> {
     pub resolver: &'a mut Resolver<'b>,
     pub current_legacy_scope: LegacyScope<'b>,
     pub expansion: Mark,

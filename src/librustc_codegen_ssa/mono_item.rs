@@ -6,7 +6,7 @@ use crate::traits::*;
 
 use rustc::mir::mono::MonoItem;
 
-pub trait MonoItemExt<'a, 'tcx: 'a> {
+pub trait MonoItemExt<'a, 'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx);
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,

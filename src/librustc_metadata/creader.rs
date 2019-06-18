@@ -289,13 +289,13 @@ impl<'a> CrateLoader<'a> {
         (cnum, cmeta)
     }
 
-    fn load_proc_macro<'b> (
+    fn load_proc_macro<'b>(
         &mut self,
         locate_ctxt: &mut locator::Context<'b>,
         path_kind: PathKind,
     ) -> Option<(LoadResult, Option<Library>)>
     where
-        'a: 'b
+        'a: 'b,
     {
         // Use a new locator Context so trying to load a proc macro doesn't affect the error
         // message we emit

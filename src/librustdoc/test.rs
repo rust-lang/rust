@@ -878,7 +878,7 @@ impl Tester for Collector {
     }
 }
 
-struct HirCollector<'a, 'hir: 'a> {
+struct HirCollector<'a, 'hir> {
     sess: &'a session::Session,
     collector: &'a mut Collector,
     map: &'a hir::map::Map<'hir>,

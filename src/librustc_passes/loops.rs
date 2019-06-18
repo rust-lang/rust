@@ -39,7 +39,7 @@ enum Context {
 }
 
 #[derive(Copy, Clone)]
-struct CheckLoopVisitor<'a, 'hir: 'a> {
+struct CheckLoopVisitor<'a, 'hir> {
     sess: &'a Session,
     hir_map: &'a Map<'hir>,
     cx: Context,

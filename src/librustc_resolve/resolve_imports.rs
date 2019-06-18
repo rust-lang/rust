@@ -644,30 +644,30 @@ struct UnresolvedImportError {
     suggestion: Option<Suggestion>,
 }
 
-pub struct ImportResolver<'a, 'b: 'a> {
+pub struct ImportResolver<'a, 'b> {
     pub resolver: &'a mut Resolver<'b>,
 }
 
-impl<'a, 'b: 'a> std::ops::Deref for ImportResolver<'a, 'b> {
+impl<'a, 'b> std::ops::Deref for ImportResolver<'a, 'b> {
     type Target = Resolver<'b>;
     fn deref(&self) -> &Resolver<'b> {
         self.resolver
     }
 }
 
-impl<'a, 'b: 'a> std::ops::DerefMut for ImportResolver<'a, 'b> {
+impl<'a, 'b> std::ops::DerefMut for ImportResolver<'a, 'b> {
     fn deref_mut(&mut self) -> &mut Resolver<'b> {
         self.resolver
     }
 }
 
-impl<'a, 'b: 'a> ty::DefIdTree for &'a ImportResolver<'a, 'b> {
+impl<'a, 'b> ty::DefIdTree for &'a ImportResolver<'a, 'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
         self.resolver.parent(id)
     }
 }
 
-impl<'a, 'b:'a> ImportResolver<'a, 'b> {
+impl<'a, 'b> ImportResolver<'a, 'b> {
     // Import resolution
     //
     // This is a fixed-point algorithm. We resolve imports until our efforts

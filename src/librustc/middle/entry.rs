@@ -11,7 +11,7 @@ use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
 
-struct EntryContext<'a, 'tcx: 'a> {
+struct EntryContext<'a, 'tcx> {
     session: &'a Session,
 
     map: &'a hir_map::Map<'tcx>,

@@ -423,7 +423,7 @@ fn downgrade_if_error(diag: &mut Diagnostic) {
     }
 }
 
-pub struct MirBorrowckCtxt<'cx, 'tcx: 'cx> {
+pub struct MirBorrowckCtxt<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     body: &'cx Body<'tcx>,
     mir_def_id: DefId,
@@ -891,7 +891,7 @@ enum InitializationRequiringAction {
     PartialAssignment,
 }
 
-struct RootPlace<'d, 'tcx: 'd> {
+struct RootPlace<'d, 'tcx> {
     place: &'d Place<'tcx>,
     is_local_mutation_allowed: LocalMutationIsAllowed,
 }

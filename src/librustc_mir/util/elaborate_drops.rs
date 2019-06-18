@@ -70,7 +70,7 @@ impl Unwind {
     }
 }
 
-pub trait DropElaborator<'a, 'tcx: 'a>: fmt::Debug {
+pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
     type Path : Copy + fmt::Debug;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
@@ -90,8 +90,9 @@ pub trait DropElaborator<'a, 'tcx: 'a>: fmt::Debug {
 }
 
 #[derive(Debug)]
-struct DropCtxt<'l, 'b: 'l, 'tcx: 'b, D>
-    where D : DropElaborator<'b, 'tcx> + 'l
+struct DropCtxt<'l, 'b, 'tcx, D>
+where
+    D: DropElaborator<'b, 'tcx> + 'l,
 {
     elaborator: &'l mut D,
 
@@ -110,8 +111,10 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     path: D::Path,
     succ: BasicBlock,
     unwind: Unwind,
-    bb: BasicBlock)
-    where D: DropElaborator<'b, 'tcx>
+    bb: BasicBlock,
+) where
+    D: DropElaborator<'b, 'tcx>,
+    'tcx: 'b,
 {
     DropCtxt {
         elaborator, source_info, place, path, succ, unwind
@@ -121,6 +124,7 @@ pub fn elaborate_drop<'b, 'tcx, D>(
 impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 where
     D: DropElaborator<'b, 'tcx>,
+    'tcx: 'b,
 {
     fn place_ty(&self, place: &Place<'tcx>) -> Ty<'tcx> {
         place.ty(self.elaborator.body(), self.tcx()).ty

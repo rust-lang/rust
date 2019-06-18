@@ -8,7 +8,7 @@ use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Greatest lower bound" (common subtype)
-pub struct Glb<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
+pub struct Glb<'combine, 'infcx, 'tcx> {
     fields: &'combine mut CombineFields<'infcx, 'tcx>,
     a_is_expected: bool,
 }

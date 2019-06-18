@@ -44,7 +44,7 @@ use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Clone)]
-pub struct CombineFields<'infcx, 'tcx: 'infcx> {
+pub struct CombineFields<'infcx, 'tcx> {
     pub infcx: &'infcx InferCtxt<'infcx, 'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
@@ -355,7 +355,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     }
 }
 
-struct Generalizer<'cx, 'tcx: 'cx> {
+struct Generalizer<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
 
     /// The span, used when creating new type variables and things.

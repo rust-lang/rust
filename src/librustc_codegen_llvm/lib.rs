@@ -125,7 +125,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) {
         unsafe { allocator::codegen(tcx, mods, kind) }
     }
-    fn compile_codegen_unit<'a, 'tcx: 'a>(&self, tcx: TyCtxt<'tcx>, cgu_name: InternedString) {
+    fn compile_codegen_unit<'tcx>(&self, tcx: TyCtxt<'tcx>, cgu_name: InternedString) {
         base::compile_codegen_unit(tcx, cgu_name);
     }
     fn target_machine_factory(

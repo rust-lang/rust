@@ -30,13 +30,13 @@ use super::*;
 use crate::ty::Const;
 use crate::ty::relate::{Relate, TypeRelation};
 
-pub struct At<'a, 'tcx: 'a> {
+pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'a, 'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
-pub struct Trace<'a, 'tcx: 'a> {
+pub struct Trace<'a, 'tcx> {
     at: At<'a, 'tcx>,
     a_is_expected: bool,
     trace: TypeTrace<'tcx>,

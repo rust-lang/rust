@@ -26,19 +26,19 @@ pub fn check_crate<'hir>(hir_map: &hir::map::Map<'hir>) {
     }
 }
 
-struct HirIdValidator<'a, 'hir: 'a> {
+struct HirIdValidator<'a, 'hir> {
     hir_map: &'a hir::map::Map<'hir>,
     owner_def_index: Option<DefIndex>,
     hir_ids_seen: FxHashSet<ItemLocalId>,
     errors: &'a Lock<Vec<String>>,
 }
 
-struct OuterVisitor<'a, 'hir: 'a> {
+struct OuterVisitor<'a, 'hir> {
     hir_map: &'a hir::map::Map<'hir>,
     errors: &'a Lock<Vec<String>>,
 }
 
-impl<'a, 'hir: 'a> OuterVisitor<'a, 'hir> {
+impl<'a, 'hir> OuterVisitor<'a, 'hir> {
     fn new_inner_visitor(&self,
                          hir_map: &'a hir::map::Map<'hir>)
                          -> HirIdValidator<'a, 'hir> {
@@ -51,7 +51,7 @@ impl<'a, 'hir: 'a> OuterVisitor<'a, 'hir> {
     }
 }
 
-impl<'a, 'hir: 'a> ItemLikeVisitor<'hir> for OuterVisitor<'a, 'hir> {
+impl<'a, 'hir> ItemLikeVisitor<'hir> for OuterVisitor<'a, 'hir> {
     fn visit_item(&mut self, i: &'hir hir::Item) {
         let mut inner_visitor = self.new_inner_visitor(self.hir_map);
         inner_visitor.check(i.hir_id, |this| intravisit::walk_item(this, i));
@@ -68,7 +68,7 @@ impl<'a, 'hir: 'a> ItemLikeVisitor<'hir> for OuterVisitor<'a, 'hir> {
     }
 }
 
-impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
+impl<'a, 'hir> HirIdValidator<'a, 'hir> {
     #[cold]
     #[inline(never)]
     fn error(&self, f: impl FnOnce() -> String) {
@@ -133,7 +133,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
     }
 }
 
-impl<'a, 'hir: 'a> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
+impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
 
     fn nested_visit_map<'this>(&'this mut self)
                                -> intravisit::NestedVisitorMap<'this, 'hir> {

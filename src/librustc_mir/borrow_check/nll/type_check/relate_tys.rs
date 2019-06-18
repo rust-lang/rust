@@ -34,7 +34,7 @@ pub(super) fn relate_types<'tcx>(
     Ok(())
 }
 
-struct NllTypeRelatingDelegate<'me, 'bccx: 'me, 'tcx: 'bccx> {
+struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     infcx: &'me InferCtxt<'me, 'tcx>,
     borrowck_context: Option<&'me mut BorrowCheckContext<'bccx, 'tcx>>,
 

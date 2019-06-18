@@ -47,7 +47,7 @@ impl MirPass for UniformArrayMoveOut {
     }
 }
 
-struct UniformArrayMoveOutVisitor<'a, 'tcx: 'a> {
+struct UniformArrayMoveOutVisitor<'a, 'tcx> {
     body: &'a Body<'tcx>,
     patch: &'a mut MirPatch<'tcx>,
     tcx: TyCtxt<'tcx>,

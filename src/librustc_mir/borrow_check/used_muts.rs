@@ -46,7 +46,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
 /// MIR visitor for collecting used mutable variables.
 /// The 'visit lifetime represents the duration of the MIR walk.
-struct GatherUsedMutsVisitor<'visit, 'cx: 'visit, 'tcx: 'cx> {
+struct GatherUsedMutsVisitor<'visit, 'cx, 'tcx> {
     temporary_used_locals: FxHashSet<Local>,
     never_initialized_mut_locals: &'visit mut FxHashSet<Local>,
     mbcx: &'visit mut MirBorrowckCtxt<'cx, 'tcx>,

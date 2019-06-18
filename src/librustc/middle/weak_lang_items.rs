@@ -17,7 +17,7 @@ use crate::ty::TyCtxt;
 macro_rules! weak_lang_items {
     ($($name:ident, $item:ident, $sym:ident;)*) => (
 
-struct Context<'a, 'tcx: 'a> {
+struct Context<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     items: &'a mut lang_items::LanguageItems,
 }

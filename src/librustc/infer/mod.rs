@@ -585,7 +585,7 @@ impl<'tcx> InferOk<'tcx, ()> {
 }
 
 #[must_use = "once you start a snapshot, you should always consume it"]
-pub struct CombinedSnapshot<'a, 'tcx: 'a> {
+pub struct CombinedSnapshot<'a, 'tcx> {
     projection_cache_snapshot: traits::ProjectionCacheSnapshot,
     type_snapshot: type_variable::Snapshot<'tcx>,
     const_snapshot: ut::Snapshot<ut::InPlace<ty::ConstVid<'tcx>>>,

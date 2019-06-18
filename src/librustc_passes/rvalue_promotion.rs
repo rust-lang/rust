@@ -74,7 +74,7 @@ fn rvalue_promotable_map<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ItemLo
     tcx.arena.alloc(visitor.result)
 }
 
-struct CheckCrateVisitor<'a, 'tcx: 'a> {
+struct CheckCrateVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     in_fn: bool,
     in_static: bool,

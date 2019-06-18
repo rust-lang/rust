@@ -229,7 +229,7 @@ impl OverloadedCallType {
 // The ExprUseVisitor type
 //
 // This is the code that actually walks the tree.
-pub struct ExprUseVisitor<'a, 'tcx: 'a> {
+pub struct ExprUseVisitor<'a, 'tcx> {
     mc: mc::MemCategorizationContext<'a, 'tcx>,
     delegate: &'a mut dyn Delegate<'tcx>,
     param_env: ty::ParamEnv<'tcx>,

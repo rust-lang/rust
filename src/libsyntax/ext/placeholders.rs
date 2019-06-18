@@ -69,7 +69,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     }
 }
 
-pub struct PlaceholderExpander<'a, 'b: 'a> {
+pub struct PlaceholderExpander<'a, 'b> {
     expanded_fragments: FxHashMap<ast::NodeId, AstFragment>,
     cx: &'a mut ExtCtxt<'b>,
     monotonic: bool,

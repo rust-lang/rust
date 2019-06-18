@@ -242,7 +242,7 @@ impl Invocation {
     }
 }
 
-pub struct MacroExpander<'a, 'b:'a> {
+pub struct MacroExpander<'a, 'b> {
     pub cx: &'a mut ExtCtxt<'b>,
     monotonic: bool, // cf. `cx.monotonic_expander()`
 }
@@ -1031,7 +1031,7 @@ impl<'a> Parser<'a> {
     }
 }
 
-struct InvocationCollector<'a, 'b: 'a> {
+struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
     cfg: StripUnconfigured<'a>,
     invocations: Vec<Invocation>,

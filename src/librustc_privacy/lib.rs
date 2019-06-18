@@ -842,7 +842,7 @@ impl DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
 /// This pass performs remaining checks for fields in struct expressions and patterns.
 //////////////////////////////////////////////////////////////////////////////////////
 
-struct NamePrivacyVisitor<'a, 'tcx: 'a> {
+struct NamePrivacyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     current_item: hir::HirId,
@@ -969,7 +969,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
 /// Checks are performed on "semantic" types regardless of names and their hygiene.
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-struct TypePrivacyVisitor<'a, 'tcx: 'a> {
+struct TypePrivacyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     current_item: DefId,
@@ -1202,7 +1202,7 @@ impl DefIdVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 /// warnings instead of hard errors when the erroneous node is not in this old set.
 ///////////////////////////////////////////////////////////////////////////////
 
-struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
+struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     access_levels: &'a AccessLevels,
     in_variant: bool,
@@ -1210,7 +1210,7 @@ struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
     old_error_set: HirIdSet,
 }
 
-struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
+struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     inner: &'a ObsoleteVisiblePrivateTypesVisitor<'b, 'tcx>,
     /// Whether the type refers to private types.
     contains_private: bool,
@@ -1651,7 +1651,7 @@ impl DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
     }
 }
 
-struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
+struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     has_pub_restricted: bool,
     old_error_set: &'a HirIdSet,

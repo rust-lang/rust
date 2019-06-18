@@ -11,7 +11,7 @@ use crate::mir::interpret::ConstValue;
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
-pub struct Sub<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
+pub struct Sub<'combine, 'infcx, 'tcx> {
     fields: &'combine mut CombineFields<'infcx, 'tcx>,
     a_is_expected: bool,
 }

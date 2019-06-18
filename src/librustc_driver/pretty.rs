@@ -453,7 +453,7 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     }
 }
 
-struct TypedAnnotation<'a, 'tcx: 'a> {
+struct TypedAnnotation<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     tables: Cell<&'a ty::TypeckTables<'tcx>>,
 }

@@ -552,7 +552,7 @@ pub enum bckerr_code<'tcx> {
 // Combination of an error code and the categorization of the expression
 // that caused it
 #[derive(Debug, PartialEq)]
-pub struct BckError<'c, 'tcx: 'c> {
+pub struct BckError<'c, 'tcx> {
     span: Span,
     cause: AliasableViolationKind,
     cmt: &'c mc::cmt_<'tcx>,

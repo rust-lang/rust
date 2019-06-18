@@ -766,10 +766,10 @@ fn numbered_codegen_unit_name(
     name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(index))
 }
 
-fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'tcx>, label: &str, cgus: I)
+fn debug_dump<'a, 'tcx, I>(tcx: TyCtxt<'tcx>, label: &str, cgus: I)
 where
-    I: Iterator<Item = &'b CodegenUnit<'tcx>>,
-    'tcx: 'a + 'b,
+    I: Iterator<Item = &'a CodegenUnit<'tcx>>,
+    'tcx: 'a,
 {
     if cfg!(debug_assertions) {
         debug!("{}", label);
@@ -794,9 +794,10 @@ where
 }
 
 #[inline(never)] // give this a place in the profiler
-fn assert_symbols_are_distinct<'a, 'tcx: 'a, I>(tcx: TyCtxt<'tcx>, mono_items: I)
+fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'tcx>, mono_items: I)
 where
     I: Iterator<Item = &'a MonoItem<'tcx>>,
+    'tcx: 'a,
 {
     let mut symbols: Vec<_> = mono_items.map(|mono_item| {
         (mono_item, mono_item.symbol_name(tcx))

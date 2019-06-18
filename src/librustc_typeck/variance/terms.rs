@@ -47,7 +47,7 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
 
 // The first pass over the crate simply builds up the set of inferreds.
 
-pub struct TermsContext<'a, 'tcx: 'a> {
+pub struct TermsContext<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub arena: &'a TypedArena<VarianceTerm<'a>>,
 

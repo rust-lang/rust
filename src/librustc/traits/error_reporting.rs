@@ -1449,7 +1449,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         pred: ty::PolyTraitRef<'tcx>,
     ) -> bool {
-        struct ParamToVarFolder<'a, 'tcx: 'a> {
+        struct ParamToVarFolder<'a, 'tcx> {
             infcx: &'a InferCtxt<'a, 'tcx>,
             var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
         }

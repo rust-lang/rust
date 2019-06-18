@@ -304,7 +304,7 @@ impl_stable_hash_for!(enum crate::interpret::eval_context::StackPopCleanup {
 });
 
 #[derive(Eq, PartialEq)]
-struct FrameSnapshot<'a, 'tcx: 'a> {
+struct FrameSnapshot<'a, 'tcx> {
     instance: &'a ty::Instance<'tcx>,
     span: &'a Span,
     return_to_block: &'a StackPopCleanup,

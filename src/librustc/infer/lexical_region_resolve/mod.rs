@@ -93,7 +93,7 @@ struct RegionAndOrigin<'tcx> {
 
 type RegionGraph<'tcx> = Graph<(), Constraint<'tcx>>;
 
-struct LexicalResolver<'cx, 'tcx: 'cx> {
+struct LexicalResolver<'cx, 'tcx> {
     region_rels: &'cx RegionRelations<'cx, 'tcx>,
     var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,

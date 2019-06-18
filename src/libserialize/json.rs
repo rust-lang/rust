@@ -2502,7 +2502,7 @@ impl<A:ToJson> ToJson for Option<A> {
     }
 }
 
-struct FormatShim<'a, 'b: 'a> {
+struct FormatShim<'a, 'b> {
     inner: &'a mut fmt::Formatter<'b>,
 }
 

@@ -194,7 +194,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx>) {
     }
 }
 
-struct CollectExternCrateVisitor<'a, 'tcx: 'a> {
+struct CollectExternCrateVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     crates_to_lint: &'a mut Vec<ExternCrateToLint>,
 }

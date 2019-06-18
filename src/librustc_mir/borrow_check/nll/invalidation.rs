@@ -43,7 +43,7 @@ pub(super) fn generate_invalidates<'tcx>(
     }
 }
 
-struct InvalidationGenerator<'cx, 'tcx: 'cx> {
+struct InvalidationGenerator<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,

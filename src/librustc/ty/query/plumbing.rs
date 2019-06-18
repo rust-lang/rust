@@ -89,7 +89,7 @@ macro_rules! profq_query_msg {
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
+pub(super) struct JobOwner<'a, 'tcx, Q: QueryDescription<'tcx> + 'a> {
     cache: &'a Lock<QueryCache<'tcx, Q>>,
     key: Q::Key,
     job: Lrc<QueryJob<'tcx>>,
@@ -230,7 +230,7 @@ pub struct CycleError<'tcx> {
 }
 
 /// The result of `try_get_lock`
-pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
+pub(super) enum TryGetJob<'a, 'tcx, D: QueryDescription<'tcx> + 'a> {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
     NotYetStarted(JobOwner<'a, 'tcx, D>),
 

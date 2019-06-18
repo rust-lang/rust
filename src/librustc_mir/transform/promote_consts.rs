@@ -147,7 +147,7 @@ pub fn collect_temps(body: &Body<'_>,
     collector.temps
 }
 
-struct Promoter<'a, 'tcx: 'a> {
+struct Promoter<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     source: &'a mut Body<'tcx>,
     promoted: Body<'tcx>,

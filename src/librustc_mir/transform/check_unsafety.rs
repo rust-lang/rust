@@ -18,7 +18,7 @@ use std::ops::Bound;
 
 use crate::util;
 
-pub struct UnsafetyChecker<'a, 'tcx: 'a> {
+pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     const_context: bool,
     min_const_fn: bool,

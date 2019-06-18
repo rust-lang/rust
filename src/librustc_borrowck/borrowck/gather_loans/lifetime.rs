@@ -38,7 +38,7 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 // Private
 
-struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
+struct GuaranteeLifetimeContext<'a, 'tcx> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
 
     // the scope of the function body for the enclosing item

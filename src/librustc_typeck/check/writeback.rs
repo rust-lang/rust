@@ -96,7 +96,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 // there, it applies a few ad-hoc checks that were not convenient to
 // do elsewhere.
 
-struct WritebackCx<'cx, 'tcx: 'cx> {
+struct WritebackCx<'cx, 'tcx> {
     fcx: &'cx FnCtxt<'cx, 'tcx>,
 
     tables: ty::TypeckTables<'tcx>,
@@ -787,7 +787,7 @@ impl Locatable for hir::HirId {
 // The Resolver. This is the type folding engine that detects
 // unresolved types and so forth.
 
-struct Resolver<'cx, 'tcx: 'cx> {
+struct Resolver<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     span: &'cx dyn Locatable,

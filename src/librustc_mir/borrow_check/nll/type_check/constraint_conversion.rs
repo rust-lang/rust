@@ -13,7 +13,7 @@ use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, TyCtxt};
 use syntax_pos::DUMMY_SP;
 
-crate struct ConstraintConversion<'a, 'tcx: 'a> {
+crate struct ConstraintConversion<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,

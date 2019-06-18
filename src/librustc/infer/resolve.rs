@@ -12,7 +12,7 @@ use crate::ty::fold::{TypeFolder, TypeVisitor};
 /// been unified with (similar to `shallow_resolve`, but deep). This is
 /// useful for printing messages etc but also required at various
 /// points for correctness.
-pub struct OpportunisticVarResolver<'a, 'tcx: 'a> {
+pub struct OpportunisticVarResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
@@ -50,7 +50,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
 /// The opportunistic type and region resolver is similar to the
 /// opportunistic type resolver, but also opportunistically resolves
 /// regions. It is useful for canonicalization.
-pub struct OpportunisticTypeAndRegionResolver<'a, 'tcx: 'a> {
+pub struct OpportunisticTypeAndRegionResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
@@ -101,7 +101,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticTypeAndRegionResolver<'a, 'tcx>
 /// type variables that don't yet have a value. The first unresolved type is stored.
 /// It does not construct the fully resolved type (which might
 /// involve some hashing and so forth).
-pub struct UnresolvedTypeFinder<'a, 'tcx: 'a> {
+pub struct UnresolvedTypeFinder<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
 
     /// Used to find the type parameter name and location for error reporting.
@@ -171,7 +171,7 @@ where
 
 // N.B. This type is not public because the protocol around checking the
 // `err` field is not enforcable otherwise.
-struct FullTypeResolver<'a, 'tcx: 'a> {
+struct FullTypeResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     err: Option<FixupError<'tcx>>,
 }

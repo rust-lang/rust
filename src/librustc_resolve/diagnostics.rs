@@ -441,7 +441,7 @@ impl<'a> Resolver<'a> {
     }
 }
 
-impl<'a, 'b:'a> ImportResolver<'a, 'b> {
+impl<'a, 'b> ImportResolver<'a, 'b> {
     /// Adds suggestions for a path that cannot be resolved.
     pub(crate) fn make_path_suggestion(
         &mut self,

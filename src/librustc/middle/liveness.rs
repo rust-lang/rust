@@ -352,7 +352,7 @@ impl IrMaps<'tcx> {
     }
 }
 
-fn visit_fn<'a, 'tcx: 'a>(
+fn visit_fn<'tcx>(
     ir: &mut IrMaps<'tcx>,
     fk: FnKind<'tcx>,
     decl: &'tcx hir::FnDecl,
@@ -682,7 +682,7 @@ const ACC_READ: u32 = 1;
 const ACC_WRITE: u32 = 2;
 const ACC_USE: u32 = 4;
 
-struct Liveness<'a, 'tcx: 'a> {
+struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     s: Specials,

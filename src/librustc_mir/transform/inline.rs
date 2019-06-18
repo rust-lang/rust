@@ -643,7 +643,7 @@ fn type_size_of<'tcx>(
  * Updates block indices, references to locals and other control flow
  * stuff.
 */
-struct Integrator<'a, 'tcx: 'a> {
+struct Integrator<'a, 'tcx> {
     block_idx: usize,
     args: &'a [Local],
     local_map: IndexVec<Local, Local>,

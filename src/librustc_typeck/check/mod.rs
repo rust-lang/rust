@@ -160,7 +160,7 @@ pub struct LocalTy<'tcx> {
 
 /// A wrapper for `InferCtxt`'s `in_progress_tables` field.
 #[derive(Copy, Clone)]
-struct MaybeInProgressTables<'a, 'tcx: 'a> {
+struct MaybeInProgressTables<'a, 'tcx> {
     maybe_tables: Option<&'a RefCell<ty::TypeckTables<'tcx>>>,
 }
 
@@ -193,7 +193,7 @@ impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
 /// Here, the function `foo()` and the closure passed to
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
-pub struct Inherited<'a, 'tcx: 'a> {
+pub struct Inherited<'a, 'tcx> {
     infcx: InferCtxt<'a, 'tcx>,
 
     tables: MaybeInProgressTables<'a, 'tcx>,
@@ -512,7 +512,7 @@ impl<'tcx> EnclosingBreakables<'tcx> {
     }
 }
 
-pub struct FnCtxt<'a, 'tcx: 'a> {
+pub struct FnCtxt<'a, 'tcx> {
     body_id: hir::HirId,
 
     /// The parameter environment used for proving trait obligations
@@ -919,7 +919,7 @@ fn check_abi<'tcx>(tcx: TyCtxt<'tcx>, span: Span, abi: Abi) {
     }
 }
 
-struct GatherLocalsVisitor<'a, 'tcx: 'a> {
+struct GatherLocalsVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     parent_id: hir::HirId,
 }
