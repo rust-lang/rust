@@ -351,9 +351,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             })
         );
 
-        // ...also include the query pick constraints.
-        output_query_region_constraints.pick_constraints.extend(
-            query_response.value.region_constraints.pick_constraints.iter().map(|p_c| {
+        // ...also include the query member constraints.
+        output_query_region_constraints.member_constraints.extend(
+            query_response.value.region_constraints.member_constraints.iter().map(|p_c| {
                 substitute_value(self.tcx, &result_subst, p_c)
             })
         );
@@ -663,7 +663,7 @@ pub fn make_query_region_constraints<'tcx>(
         constraints,
         verifys,
         givens,
-        pick_constraints,
+        member_constraints,
     } = region_constraints;
 
     assert!(verifys.is_empty());
@@ -694,5 +694,5 @@ pub fn make_query_region_constraints<'tcx>(
         )
         .collect();
 
-    QueryRegionConstraints { outlives, pick_constraints: pick_constraints.clone() }
+    QueryRegionConstraints { outlives, member_constraints: member_constraints.clone() }
 }

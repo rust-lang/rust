@@ -377,12 +377,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         }
                     }
 
-                    RegionResolutionError::PickConstraintFailure {
+                    RegionResolutionError::MemberConstraintFailure {
                         opaque_type_def_id,
                         hidden_ty,
-                        pick_region,
+                        member_region,
                         span: _,
-                        option_regions: _,
+                        choice_regions: _,
                     } => {
                         let hidden_ty = self.resolve_vars_if_possible(&hidden_ty);
                         opaque_types::unexpected_hidden_region_diagnostic(
@@ -390,7 +390,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             Some(region_scope_tree),
                             opaque_type_def_id,
                             hidden_ty,
-                            pick_region,
+                            member_region,
                         ).emit();
                     }
                 }
@@ -430,7 +430,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             RegionResolutionError::GenericBoundFailure(..) => true,
             RegionResolutionError::ConcreteFailure(..)
                 | RegionResolutionError::SubSupConflict(..)
-                | RegionResolutionError::PickConstraintFailure { .. } => false,
+                | RegionResolutionError::MemberConstraintFailure { .. } => false,
         };
 
         let mut errors = if errors.iter().all(|e| is_bound_failure(e)) {
@@ -448,7 +448,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _) => rvo.span(),
-            RegionResolutionError::PickConstraintFailure { span, .. } => span,
+            RegionResolutionError::MemberConstraintFailure { span, .. } => span,
         });
         errors
     }

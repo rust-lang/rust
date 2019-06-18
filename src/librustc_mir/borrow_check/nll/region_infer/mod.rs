@@ -3,7 +3,7 @@ use crate::borrow_check::nll::constraints::graph::NormalConstraintGraph;
 use crate::borrow_check::nll::constraints::{
     ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet,
 };
-use crate::borrow_check::nll::pick_constraints::{PickConstraintSet, NllPickConstraintIndex};
+use crate::borrow_check::nll::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
 use crate::borrow_check::nll::region_infer::values::{
     PlaceholderIndices, RegionElement, ToElementIndex,
 };
@@ -72,14 +72,14 @@ pub struct RegionInferenceContext<'tcx> {
     /// exists if `B: A`. Computed lazilly.
     rev_constraint_graph: Option<Rc<VecGraph<ConstraintSccIndex>>>,
 
-    /// The "pick R0 from [R1..Rn]" constraints, indexed by SCC.
-    pick_constraints: Rc<PickConstraintSet<'tcx, ConstraintSccIndex>>,
+    /// The "R0 member of [R1..Rn]" constraints, indexed by SCC.
+    member_constraints: Rc<MemberConstraintSet<'tcx, ConstraintSccIndex>>,
 
     /// Records the pick-constraints that we applied to each scc.
     /// This is useful for error reporting. Once constraint
     /// propagation is done, this vector is sorted according to
-    /// `pick_region_scc`.
-    pick_constraints_applied: Vec<AppliedPickConstraint>,
+    /// `member_region_scc`.
+    member_constraints_applied: Vec<AppliedMemberConstraint>,
 
     /// Map closure bounds to a `Span` that should be used for error reporting.
     closure_bounds_mapping:
@@ -116,30 +116,30 @@ pub struct RegionInferenceContext<'tcx> {
     universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
 }
 
-/// Each time that `apply_pick_constraint` is successful, it appends
-/// one of these structs to the `pick_constraints_applied` field.
+/// Each time that `apply_member_constraint` is successful, it appends
+/// one of these structs to the `member_constraints_applied` field.
 /// This is used in error reporting to trace out what happened.
 ///
-/// The way that `apply_pick_constraint` works is that it effectively
+/// The way that `apply_member_constraint` works is that it effectively
 /// adds a new lower bound to the SCC it is analyzing: so you wind up
 /// with `'R: 'O` where `'R` is the pick-region and `'O` is the
 /// minimal viable option.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-struct AppliedPickConstraint {
-    /// The SCC that was affected. (The "pick region".)
+struct AppliedMemberConstraint {
+    /// The SCC that was affected. (The "member region".)
     ///
-    /// The vector if `AppliedPickConstraint` elements is kept sorted
+    /// The vector if `AppliedMemberConstraint` elements is kept sorted
     /// by this field.
-    pick_region_scc: ConstraintSccIndex,
+    member_region_scc: ConstraintSccIndex,
 
-    /// The "best option" that `apply_pick_constraint` found -- this was
-    /// added as an "ad-hoc" lower-bound to `pick_region_scc`.
-    best_option: ty::RegionVid,
+    /// The "best option" that `apply_member_constraint` found -- this was
+    /// added as an "ad-hoc" lower-bound to `member_region_scc`.
+    min_choice: ty::RegionVid,
 
-    /// The "pick constraint index" -- we can find out details about
+    /// The "member constraint index" -- we can find out details about
     /// the constraint from
-    /// `set.pick_constraints[pick_constraint_index]`.
-    pick_constraint_index: NllPickConstraintIndex,
+    /// `set.member_constraints[member_constraint_index]`.
+    member_constraint_index: NllMemberConstraintIndex,
 }
 
 struct RegionDefinition<'tcx> {
@@ -234,7 +234,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
         _body: &Body<'tcx>,
         outlives_constraints: OutlivesConstraintSet,
-        pick_constraints_in: PickConstraintSet<'tcx, RegionVid>,
+        member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         closure_bounds_mapping: FxHashMap<
             Location,
             FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
@@ -266,7 +266,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let scc_representatives = Self::compute_scc_representatives(&constraint_sccs, &definitions);
 
-        let pick_constraints = Rc::new(pick_constraints_in.into_mapped(|r| constraint_sccs.scc(r)));
+        let member_constraints =
+            Rc::new(member_constraints_in.into_mapped(|r| constraint_sccs.scc(r)));
 
         let mut result = Self {
             definitions,
@@ -275,8 +276,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraint_graph,
             constraint_sccs,
             rev_constraint_graph: None,
-            pick_constraints,
-            pick_constraints_applied: Vec::new(),
+            member_constraints,
+            member_constraints_applied: Vec::new(),
             closure_bounds_mapping,
             scc_universes,
             scc_representatives,
@@ -447,12 +448,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Once region solving has completed, this function will return
     /// the pick-constraints that were applied to the value of a given
-    /// region `r`. See `AppliedPickConstraint`.
-    fn applied_pick_constraints(&self, r: impl ToRegionVid) -> &[AppliedPickConstraint] {
+    /// region `r`. See `AppliedMemberConstraint`.
+    fn applied_member_constraints(&self, r: impl ToRegionVid) -> &[AppliedMemberConstraint] {
         let scc = self.constraint_sccs.scc(r.to_region_vid());
         binary_search_util::binary_search_slice(
-            &self.pick_constraints_applied,
-            |applied| applied.pick_region_scc,
+            &self.member_constraints_applied,
+            |applied| applied.member_region_scc,
             &scc,
         )
     }
@@ -511,7 +512,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             errors_buffer,
         );
 
-        self.check_pick_constraints(infcx, mir_def_id, errors_buffer);
+        self.check_member_constraints(infcx, mir_def_id, errors_buffer);
 
         let outlives_requirements = outlives_requirements.unwrap_or(vec![]);
 
@@ -548,9 +549,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.propagate_constraint_sccs_if_new(scc_index, visited);
         }
 
-        // Sort the applied pick constraints so we can binary search
+        // Sort the applied member constraints so we can binary search
         // through them later.
-        self.pick_constraints_applied.sort_by_key(|applied| applied.pick_region_scc);
+        self.member_constraints_applied.sort_by_key(|applied| applied.member_region_scc);
     }
 
     /// Computes the value of the SCC `scc_a` if it has not already
@@ -597,13 +598,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        // Now take pick constraints into account
-        let pick_constraints = self.pick_constraints.clone();
-        for p_c_i in pick_constraints.indices(scc_a) {
-            self.apply_pick_constraint(
+        // Now take member constraints into account
+        let member_constraints = self.member_constraints.clone();
+        for m_c_i in member_constraints.indices(scc_a) {
+            self.apply_member_constraint(
                 scc_a,
-                p_c_i,
-                pick_constraints.option_regions(p_c_i),
+                m_c_i,
+                member_constraints.choice_regions(m_c_i),
             );
         }
 
@@ -614,9 +615,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
     }
 
-    /// Invoked for each `pick R0 from [R1..Rn]` constraint.
+    /// Invoked for each `member R0 of [R1..Rn]` constraint.
     ///
-    /// `scc` is the SCC containing R0, and `option_regions` are the
+    /// `scc` is the SCC containing R0, and `choice_regions` are the
     /// `R1..Rn` regions -- they are always known to be universal
     /// regions (and if that's not true, we just don't attempt to
     /// enforce the constraint).
@@ -625,34 +626,34 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// is considered a *lower bound*.  If possible, we will modify
     /// the constraint to set it equal to one of the option regions.
     /// If we make any changes, returns true, else false.
-    fn apply_pick_constraint(
+    fn apply_member_constraint(
         &mut self,
         scc: ConstraintSccIndex,
-        pick_constraint_index: NllPickConstraintIndex,
-        option_regions: &[ty::RegionVid],
+        member_constraint_index: NllMemberConstraintIndex,
+        choice_regions: &[ty::RegionVid],
     ) -> bool {
-        debug!("apply_pick_constraint(scc={:?}, option_regions={:#?})", scc, option_regions,);
+        debug!("apply_member_constraint(scc={:?}, choice_regions={:#?})", scc, choice_regions,);
 
         if let Some(uh_oh) =
-            option_regions.iter().find(|&&r| !self.universal_regions.is_universal_region(r))
+            choice_regions.iter().find(|&&r| !self.universal_regions.is_universal_region(r))
         {
             // FIXME(#61773): This case can only occur with
             // `impl_trait_in_bindings`, I believe, and we are just
             // opting not to handle it for now. See #61773 for
             // details.
             bug!(
-                "pick constraint for `{:?}` has an option region `{:?}` \
+                "member constraint for `{:?}` has an option region `{:?}` \
                  that is not a universal region",
-                self.pick_constraints[pick_constraint_index].opaque_type_def_id,
+                self.member_constraints[member_constraint_index].opaque_type_def_id,
                 uh_oh,
             );
         }
 
         // Create a mutable vector of the options. We'll try to winnow
         // them down.
-        let mut option_regions: Vec<ty::RegionVid> = option_regions.to_vec();
+        let mut choice_regions: Vec<ty::RegionVid> = choice_regions.to_vec();
 
-        // The 'pick-region' in a pick-constraint is part of the
+        // The 'member region' in a member constraint is part of the
         // hidden type, which must be in the root universe. Therefore,
         // it cannot have any placeholders in its value.
         assert!(self.scc_universes[scc] == ty::UniverseIndex::ROOT);
@@ -665,35 +666,37 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // The existing value for `scc` is a lower-bound. This will
         // consist of some set {P} + {LB} of points {P} and
-        // lower-bound free regions {LB}. As each option region O is a
+        // lower-bound free regions {LB}. As each choice region O is a
         // free region, it will outlive the points. But we can only
         // consider the option O if O: LB.
-        option_regions.retain(|&o_r| {
+        choice_regions.retain(|&o_r| {
             self.scc_values
                 .universal_regions_outlived_by(scc)
                 .all(|lb| self.universal_region_relations.outlives(o_r, lb))
         });
-        debug!("apply_pick_constraint: after lb, option_regions={:?}", option_regions);
+        debug!("apply_member_constraint: after lb, choice_regions={:?}", choice_regions);
 
-        // Now find all the *upper bounds* -- that is, each UB is a free
-        // region that must outlive pick region R0 (`UB: R0`). Therefore,
-        // we need only keep an option O if `UB: O` for all UB.
-        if option_regions.len() > 1 {
+        // Now find all the *upper bounds* -- that is, each UB is a
+        // free region that must outlive the member region R0 (`UB:
+        // R0`). Therefore, we need only keep an option O if `UB: O`
+        // for all UB.
+        if choice_regions.len() > 1 {
             let universal_region_relations = self.universal_region_relations.clone();
             for ub in self.upper_bounds(scc) {
-                debug!("apply_pick_constraint: ub={:?}", ub);
-                option_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
+                debug!("apply_member_constraint: ub={:?}", ub);
+                choice_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
             }
-            debug!("apply_pick_constraint: after ub, option_regions={:?}", option_regions);
+            debug!("apply_member_constraint: after ub, choice_regions={:?}", choice_regions);
         }
 
         // If we ruled everything out, we're done.
-        if option_regions.is_empty() {
+        if choice_regions.is_empty() {
             return false;
         }
 
-        // Otherwise, we need to find the minimum option, if any, and take that.
-        debug!("apply_pick_constraint: option_regions remaining are {:#?}", option_regions);
+        // Otherwise, we need to find the minimum remaining choice, if
+        // any, and take that.
+        debug!("apply_member_constraint: choice_regions remaining are {:#?}", choice_regions);
         let min = |r1: ty::RegionVid, r2: ty::RegionVid| -> Option<ty::RegionVid> {
             let r1_outlives_r2 = self.universal_region_relations.outlives(r1, r2);
             let r2_outlives_r1 = self.universal_region_relations.outlives(r2, r1);
@@ -707,35 +710,35 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 None
             }
         };
-        let mut best_option = option_regions[0];
-        for &other_option in &option_regions[1..] {
+        let mut min_choice = choice_regions[0];
+        for &other_option in &choice_regions[1..] {
             debug!(
-                "apply_pick_constraint: best_option={:?} other_option={:?}",
-                best_option, other_option,
+                "apply_member_constraint: min_choice={:?} other_option={:?}",
+                min_choice, other_option,
             );
-            match min(best_option, other_option) {
-                Some(m) => best_option = m,
+            match min(min_choice, other_option) {
+                Some(m) => min_choice = m,
                 None => {
                     debug!(
-                        "apply_pick_constraint: {:?} and {:?} are incomparable --> no best choice",
-                        best_option, other_option,
+                        "apply_member_constraint: {:?} and {:?} are incomparable; no min choice",
+                        min_choice, other_option,
                     );
                     return false;
                 }
             }
         }
 
-        let best_option_scc = self.constraint_sccs.scc(best_option);
+        let min_choice_scc = self.constraint_sccs.scc(min_choice);
         debug!(
-            "apply_pick_constraint: best_choice={:?} best_option_scc={:?}",
-            best_option,
-            best_option_scc,
+            "apply_member_constraint: min_choice={:?} best_choice_scc={:?}",
+            min_choice,
+            min_choice_scc,
         );
-        if self.scc_values.add_region(scc, best_option_scc) {
-            self.pick_constraints_applied.push(AppliedPickConstraint {
-                pick_region_scc: scc,
-                best_option,
-                pick_constraint_index,
+        if self.scc_values.add_region(scc, min_choice_scc) {
+            self.member_constraints_applied.push(AppliedMemberConstraint {
+                member_region_scc: scc,
+                min_choice,
+                member_constraint_index,
             });
 
             true
@@ -1542,42 +1545,42 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         diag.emit();
     }
 
-    fn check_pick_constraints(
+    fn check_member_constraints(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         mir_def_id: DefId,
         errors_buffer: &mut Vec<Diagnostic>,
     ) {
-        let pick_constraints = self.pick_constraints.clone();
-        for p_c_i in pick_constraints.all_indices() {
-            debug!("check_pick_constraint(p_c_i={:?})", p_c_i);
-            let p_c = &pick_constraints[p_c_i];
-            let pick_region_vid = p_c.pick_region_vid;
+        let member_constraints = self.member_constraints.clone();
+        for m_c_i in member_constraints.all_indices() {
+            debug!("check_member_constraint(m_c_i={:?})", m_c_i);
+            let m_c = &member_constraints[m_c_i];
+            let member_region_vid = m_c.member_region_vid;
             debug!(
-                "check_pick_constraint: pick_region_vid={:?} with value {}",
-                pick_region_vid,
-                self.region_value_str(pick_region_vid),
+                "check_member_constraint: member_region_vid={:?} with value {}",
+                member_region_vid,
+                self.region_value_str(member_region_vid),
             );
-            let option_regions = pick_constraints.option_regions(p_c_i);
-            debug!("check_pick_constraint: option_regions={:?}", option_regions);
+            let choice_regions = member_constraints.choice_regions(m_c_i);
+            debug!("check_member_constraint: choice_regions={:?}", choice_regions);
 
             // did the pick-region wind up equal to any of the option regions?
-            if let Some(o) = option_regions.iter().find(|&&o_r| {
-                self.eval_equal(o_r, p_c.pick_region_vid)
+            if let Some(o) = choice_regions.iter().find(|&&o_r| {
+                self.eval_equal(o_r, m_c.member_region_vid)
             }) {
-                debug!("check_pick_constraint: evaluated as equal to {:?}", o);
+                debug!("check_member_constraint: evaluated as equal to {:?}", o);
                 continue;
             }
 
             // if not, report an error
             let region_scope_tree = &infcx.tcx.region_scope_tree(mir_def_id);
-            let pick_region = infcx.tcx.mk_region(ty::ReVar(pick_region_vid));
+            let member_region = infcx.tcx.mk_region(ty::ReVar(member_region_vid));
             opaque_types::unexpected_hidden_region_diagnostic(
                 infcx.tcx,
                 Some(region_scope_tree),
-                p_c.opaque_type_def_id,
-                p_c.hidden_ty,
-                pick_region,
+                m_c.opaque_type_def_id,
+                m_c.hidden_ty,
+                member_region,
             )
             .buffer(errors_buffer);
         }

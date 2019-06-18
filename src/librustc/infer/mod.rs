@@ -907,7 +907,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Require that the region `r` be equal to one of the regions in
     /// the set `regions`.
-    pub fn pick_constraint(
+    pub fn member_constraint(
         &self,
         opaque_type_def_id: DefId,
         definition_span: Span,
@@ -915,9 +915,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         region: ty::Region<'tcx>,
         in_regions: &Lrc<Vec<ty::Region<'tcx>>>,
     ) {
-        debug!("pick_constraint({:?} <: {:?})", region, in_regions);
+        debug!("member_constraint({:?} <: {:?})", region, in_regions);
         self.borrow_region_constraints()
-            .pick_constraint(opaque_type_def_id, definition_span, hidden_ty, region, in_regions);
+            .member_constraint(opaque_type_def_id, definition_span, hidden_ty, region, in_regions);
     }
 
     pub fn subtype_predicate(

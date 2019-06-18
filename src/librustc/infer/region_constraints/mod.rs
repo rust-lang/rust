@@ -81,10 +81,10 @@ pub struct RegionConstraintData<'tcx> {
     /// be a region variable (or neither, as it happens).
     pub constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
 
-    /// Constraints of the form `pick R0 from [R1, ..., Rn]`, meaning that
+    /// Constraints of the form `R0 member of [R1, ..., Rn]`, meaning that
     /// `R0` must be equal to one of the regions `R1..Rn`. These occur
     /// with `impl Trait` quite frequently.
-    pub pick_constraints: Vec<PickConstraint<'tcx>>,
+    pub member_constraints: Vec<MemberConstraint<'tcx>>,
 
     /// A "verify" is something that we need to verify after inference
     /// is done, but which does not directly affect inference in any
@@ -145,40 +145,40 @@ impl Constraint<'_> {
     }
 }
 
-/// Requires that `region` must be equal to one of the regions in `option_regions`.
+/// Requires that `region` must be equal to one of the regions in `choice_regions`.
 /// We often denote this using the syntax:
 ///
 /// ```
-/// pick R0 from [O1..On]
+/// R0 member of [O1..On]
 /// ```
 #[derive(Debug, Clone, HashStable)]
-pub struct PickConstraint<'tcx> {
+pub struct MemberConstraint<'tcx> {
     /// the def-id of the opaque type causing this constraint: used for error reporting
     pub opaque_type_def_id: DefId,
 
     /// the span where the hidden type was instantiated
     pub definition_span: Span,
 
-    /// the hidden type in which `pick_region` appears: used for error reporting
+    /// the hidden type in which `member_region` appears: used for error reporting
     pub hidden_ty: Ty<'tcx>,
 
     /// the region R0
-    pub pick_region: Region<'tcx>,
+    pub member_region: Region<'tcx>,
 
     /// the options O1..On
-    pub option_regions: Lrc<Vec<Region<'tcx>>>,
+    pub choice_regions: Lrc<Vec<Region<'tcx>>>,
 }
 
 BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for PickConstraint<'tcx> {
-        opaque_type_def_id, definition_span, hidden_ty, pick_region, option_regions
+    impl<'tcx> TypeFoldable<'tcx> for MemberConstraint<'tcx> {
+        opaque_type_def_id, definition_span, hidden_ty, member_region, choice_regions
     }
 }
 
 BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for PickConstraint<'a> {
-        type Lifted = PickConstraint<'tcx>;
-        opaque_type_def_id, definition_span, hidden_ty, pick_region, option_regions
+    impl<'a, 'tcx> Lift<'tcx> for MemberConstraint<'a> {
+        type Lifted = MemberConstraint<'tcx>;
+        opaque_type_def_id, definition_span, hidden_ty, member_region, choice_regions
     }
 }
 
@@ -688,26 +688,26 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn pick_constraint(
+    pub fn member_constraint(
         &mut self,
         opaque_type_def_id: DefId,
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
-        pick_region: ty::Region<'tcx>,
-        option_regions: &Lrc<Vec<ty::Region<'tcx>>>,
+        member_region: ty::Region<'tcx>,
+        choice_regions: &Lrc<Vec<ty::Region<'tcx>>>,
     ) {
-        debug!("pick_constraint({:?} in {:#?})", pick_region, option_regions);
+        debug!("member_constraint({:?} in {:#?})", member_region, choice_regions);
 
-        if option_regions.iter().any(|&r| r == pick_region) {
+        if choice_regions.iter().any(|&r| r == member_region) {
             return;
         }
 
-        self.data.pick_constraints.push(PickConstraint {
+        self.data.member_constraints.push(MemberConstraint {
             opaque_type_def_id,
             definition_span,
             hidden_ty,
-            pick_region,
-            option_regions: option_regions.clone()
+            member_region,
+            choice_regions: choice_regions.clone()
         });
 
     }
@@ -975,12 +975,12 @@ impl<'tcx> RegionConstraintData<'tcx> {
     pub fn is_empty(&self) -> bool {
         let RegionConstraintData {
             constraints,
-            pick_constraints,
+            member_constraints,
             verifys,
             givens,
         } = self;
         constraints.is_empty() &&
-            pick_constraints.is_empty() &&
+            member_constraints.is_empty() &&
             verifys.is_empty() &&
             givens.is_empty()
     }

@@ -3,7 +3,7 @@
 use crate::hir::def_id::DefId;
 use crate::infer::region_constraints::Constraint;
 use crate::infer::region_constraints::GenericKind;
-use crate::infer::region_constraints::PickConstraint;
+use crate::infer::region_constraints::MemberConstraint;
 use crate::infer::region_constraints::RegionConstraintData;
 use crate::infer::region_constraints::VarInfos;
 use crate::infer::region_constraints::VerifyBound;
@@ -84,15 +84,15 @@ pub enum RegionResolutionError<'tcx> {
         Region<'tcx>,
     ),
 
-    /// Indicates a failure of a `PickConstraint`. These arise during
+    /// Indicates a failure of a `MemberConstraint`. These arise during
     /// impl trait processing explicitly -- basically, the impl trait's hidden type
     /// included some region that it was not supposed to.
-    PickConstraintFailure {
+    MemberConstraintFailure {
         span: Span,
         opaque_type_def_id: DefId,
         hidden_ty: Ty<'tcx>,
-        pick_region: Region<'tcx>,
-        option_regions: Vec<Region<'tcx>>,
+        member_region: Region<'tcx>,
+        choice_regions: Vec<Region<'tcx>>,
     },
 }
 
@@ -133,7 +133,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         self.expand_givens(&graph);
         loop {
             self.expansion(&mut var_data);
-            if !self.enforce_pick_constraints(&graph, &mut var_data) {
+            if !self.enforce_member_constraints(&graph, &mut var_data) {
                 break;
             }
         }
@@ -197,16 +197,16 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
     }
 
-    /// Enforce all pick constraints and return true if anything
-    /// changed. See `enforce_pick_constraint` for more details.
-    fn enforce_pick_constraints(
+    /// Enforce all member constraints and return true if anything
+    /// changed. See `enforce_member_constraint` for more details.
+    fn enforce_member_constraints(
         &self,
         graph: &RegionGraph<'tcx>,
         var_values: &mut LexicalRegionResolutions<'tcx>,
     ) -> bool {
         let mut any_changed = false;
-        for pick_constraint in &self.data.pick_constraints {
-            if self.enforce_pick_constraint(graph, pick_constraint, var_values) {
+        for member_constraint in &self.data.member_constraints {
+            if self.enforce_member_constraint(graph, member_constraint, var_values) {
                 any_changed = true;
             }
         }
@@ -230,39 +230,44 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ///
     /// From that list, we look for a *minimal* option `'o_min`. If we
     /// find one, then we can enforce that `'r: 'o_min`.
-    fn enforce_pick_constraint(
+    fn enforce_member_constraint(
         &self,
         graph: &RegionGraph<'tcx>,
-        pick_constraint: &PickConstraint<'tcx>,
+        member_constraint: &MemberConstraint<'tcx>,
         var_values: &mut LexicalRegionResolutions<'tcx>,
     ) -> bool {
-        debug!("enforce_pick_constraint(pick_constraint={:#?})", pick_constraint);
+        debug!("enforce_member_constraint(member_constraint={:#?})", member_constraint);
 
         // the constraint is some inference variable (`vid`) which
         // must be equal to one of the options
-        let pick_vid = match pick_constraint.pick_region {
+        let member_vid = match member_constraint.member_region {
             ty::ReVar(vid) => *vid,
             _ => return false,
         };
 
         // The current value of `vid` is a lower bound LB -- i.e., we
         // know that `LB <= vid` must be true.
-        let pick_lower_bound: ty::Region<'tcx> = match var_values.value(pick_vid) {
+        let member_lower_bound: ty::Region<'tcx> = match var_values.value(member_vid) {
             VarValue::ErrorValue => return false,
             VarValue::Value(r) => r,
         };
 
         // find all the "upper bounds" -- that is, each region `b` such that
         // `r0 <= b` must hold.
-        let (pick_upper_bounds, _) = self.collect_concrete_regions(graph, pick_vid, OUTGOING, None);
+        let (member_upper_bounds, _) = self.collect_concrete_regions(
+            graph,
+            member_vid,
+            OUTGOING,
+            None,
+        );
 
-        // get an iterator over the *available options* -- that is,
-        // each constraint regions `o` where `lb <= o` and `o <= ub` for all the
+        // get an iterator over the *available choice* -- that is,
+        // each choice region `c` where `lb <= c` and `c <= ub` for all the
         // upper bounds `ub`.
-        debug!("enforce_pick_constraint: upper_bounds={:#?}", pick_upper_bounds);
-        let mut options = pick_constraint.option_regions.iter().filter(|option| {
-            self.sub_concrete_regions(pick_lower_bound, option)
-                && pick_upper_bounds
+        debug!("enforce_member_constraint: upper_bounds={:#?}", member_upper_bounds);
+        let mut options = member_constraint.choice_regions.iter().filter(|option| {
+            self.sub_concrete_regions(member_lower_bound, option)
+                && member_upper_bounds
                     .iter()
                     .all(|upper_bound| self.sub_concrete_regions(option, upper_bound.region))
         });
@@ -274,23 +279,23 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             Some(&r) => r,
             None => return false,
         };
-        debug!("enforce_pick_constraint: least_choice={:?}", least_choice);
+        debug!("enforce_member_constraint: least_choice={:?}", least_choice);
         for &option in options {
-            debug!("enforce_pick_constraint: option={:?}", option);
+            debug!("enforce_member_constraint: option={:?}", option);
             if !self.sub_concrete_regions(least_choice, option) {
                 if self.sub_concrete_regions(option, least_choice) {
-                    debug!("enforce_pick_constraint: new least choice");
+                    debug!("enforce_member_constraint: new least choice");
                     least_choice = option;
                 } else {
-                    debug!("enforce_pick_constraint: no least choice");
+                    debug!("enforce_member_constraint: no least choice");
                     return false;
                 }
             }
         }
 
-        debug!("enforce_pick_constraint: final least choice = {:?}", least_choice);
-        if least_choice != pick_lower_bound {
-            *var_values.value_mut(pick_vid) = VarValue::Value(least_choice);
+        debug!("enforce_member_constraint: final least choice = {:?}", least_choice);
+        if least_choice != member_lower_bound {
+            *var_values.value_mut(member_vid) = VarValue::Value(least_choice);
             true
         } else {
             false
@@ -547,20 +552,20 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
         }
 
-        for pick_constraint in &self.data.pick_constraints {
-            let pick_region = var_data.normalize(self.tcx(), pick_constraint.pick_region);
-            let option_regions = pick_constraint
-                .option_regions
+        for member_constraint in &self.data.member_constraints {
+            let member_region = var_data.normalize(self.tcx(), member_constraint.member_region);
+            let choice_regions = member_constraint
+                .choice_regions
                 .iter()
-                .map(|&option_region| var_data.normalize(self.tcx(), option_region));
-            if !option_regions.clone().any(|option_region| pick_region == option_region) {
-                let span = self.tcx().def_span(pick_constraint.opaque_type_def_id);
-                errors.push(RegionResolutionError::PickConstraintFailure {
+                .map(|&choice_region| var_data.normalize(self.tcx(), choice_region));
+            if !choice_regions.clone().any(|choice_region| member_region == choice_region) {
+                let span = self.tcx().def_span(member_constraint.opaque_type_def_id);
+                errors.push(RegionResolutionError::MemberConstraintFailure {
                     span,
-                    opaque_type_def_id: pick_constraint.opaque_type_def_id,
-                    hidden_ty: pick_constraint.hidden_ty,
-                    pick_region,
-                    option_regions: option_regions.collect(),
+                    opaque_type_def_id: member_constraint.opaque_type_def_id,
+                    hidden_ty: member_constraint.hidden_ty,
+                    member_region,
+                    choice_regions: choice_regions.collect(),
                 });
             }
         }

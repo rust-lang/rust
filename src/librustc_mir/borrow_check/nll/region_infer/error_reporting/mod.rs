@@ -1,5 +1,5 @@
 use crate::borrow_check::nll::constraints::OutlivesConstraint;
-use crate::borrow_check::nll::region_infer::AppliedPickConstraint;
+use crate::borrow_check::nll::region_infer::AppliedMemberConstraint;
 use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use crate::borrow_check::nll::type_check::Locations;
 use crate::borrow_check::nll::universal_regions::DefiningTy;
@@ -224,13 +224,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // But pick-constraints can also give rise to `'r: 'x`
             // edges that were not part of the graph initially, so
             // watch out for those.
-            let outgoing_edges_from_picks = self.applied_pick_constraints(r)
+            let outgoing_edges_from_picks = self.applied_member_constraints(r)
                 .iter()
-                .map(|&AppliedPickConstraint { best_option, pick_constraint_index, .. }| {
-                    let p_c = &self.pick_constraints[pick_constraint_index];
+                .map(|&AppliedMemberConstraint { min_choice, member_constraint_index, .. }| {
+                    let p_c = &self.member_constraints[member_constraint_index];
                     OutlivesConstraint {
                         sup: r,
-                        sub: best_option,
+                        sub: min_choice,
                         locations: Locations::All(p_c.definition_span),
                         category: ConstraintCategory::OpaqueType,
                     }

@@ -349,7 +349,7 @@ impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>, C: Lift<'tcx>> Lift<'tcx> for (A, B, C)
         tcx.lift(&self.0).and_then(|a| {
             tcx.lift(&self.1).and_then(|b| tcx.lift(&self.2).map(|c| (a, b, c)))
         })
-    }
+   }
 }
 
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {

@@ -393,7 +393,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // we will create a "in bound" like `'r in
                         // ['a, 'b, 'c]`, where `'a..'c` are the
                         // regions that appear in the impl trait.
-                        return self.generate_pick_constraint(
+                        return self.generate_member_constraint(
                             concrete_ty,
                             abstract_type_generics,
                             opaque_defn,
@@ -418,17 +418,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// related, we would generate a constraint `'r in ['a, 'b,
     /// 'static]` for each region `'r` that appears in the hidden type
     /// (i.e., it must be equal to `'a`, `'b`, or `'static`).
-    fn generate_pick_constraint(
+    fn generate_member_constraint(
         &self,
         concrete_ty: Ty<'tcx>,
         abstract_type_generics: &ty::Generics,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
         opaque_type_def_id: DefId,
     ) {
-        // Create the set of option regions: each region in the hidden
+        // Create the set of choice regions: each region in the hidden
         // type can be equal to any of the region parameters of the
         // opaque type definition.
-        let option_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
+        let choice_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
             abstract_type_generics
                 .params
                 .iter()
@@ -443,12 +443,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
-            op: |r| self.pick_constraint(
+            op: |r| self.member_constraint(
                 opaque_type_def_id,
                 opaque_defn.definition_span,
                 concrete_ty,
                 r,
-                &option_regions,
+                &choice_regions,
             ),
         });
     }

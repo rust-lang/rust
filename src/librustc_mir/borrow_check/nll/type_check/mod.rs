@@ -5,7 +5,7 @@
 use crate::borrow_check::borrow_set::BorrowSet;
 use crate::borrow_check::location::LocationTable;
 use crate::borrow_check::nll::constraints::{OutlivesConstraintSet, OutlivesConstraint};
-use crate::borrow_check::nll::pick_constraints::PickConstraintSet;
+use crate::borrow_check::nll::member_constraints::MemberConstraintSet;
 use crate::borrow_check::nll::facts::AllFacts;
 use crate::borrow_check::nll::region_infer::values::LivenessValues;
 use crate::borrow_check::nll::region_infer::values::PlaceholderIndex;
@@ -129,7 +129,7 @@ pub(crate) fn type_check<'tcx>(
         placeholder_index_to_region: IndexVec::default(),
         liveness_constraints: LivenessValues::new(elements.clone()),
         outlives_constraints: OutlivesConstraintSet::default(),
-        pick_constraints: PickConstraintSet::default(),
+        member_constraints: MemberConstraintSet::default(),
         closure_bounds_mapping: Default::default(),
         type_tests: Vec::default(),
     };
@@ -889,7 +889,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
 
     crate outlives_constraints: OutlivesConstraintSet,
 
-    crate pick_constraints: PickConstraintSet<'tcx, RegionVid>,
+    crate member_constraints: MemberConstraintSet<'tcx, RegionVid>,
 
     crate closure_bounds_mapping:
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
@@ -2525,7 +2525,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // constraints only come from `-> impl Trait` and
                 // friends which don't appear (thus far...) in
                 // closures.
-                pick_constraints: vec![],
+                member_constraints: vec![],
             };
 
             let bounds_mapping = closure_constraints

@@ -53,20 +53,23 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
         debug!("convert_all(query_constraints={:#?})", query_constraints);
 
-        let QueryRegionConstraints { outlives, pick_constraints } = query_constraints;
+        let QueryRegionConstraints { outlives, member_constraints } = query_constraints;
 
         // Annoying: to invoke `self.to_region_vid`, we need access to
         // `self.constraints`, but we also want to be mutating
-        // `self.pick_constraints`. For now, just swap out the value
+        // `self.member_constraints`. For now, just swap out the value
         // we want and replace at the end.
-        let mut tmp = std::mem::replace(&mut self.constraints.pick_constraints, Default::default());
-        for pick_constraint in pick_constraints {
+        let mut tmp = std::mem::replace(
+            &mut self.constraints.member_constraints,
+            Default::default(),
+        );
+        for member_constraint in member_constraints {
             tmp.push_constraint(
-                pick_constraint,
+                member_constraint,
                 |r| self.to_region_vid(r),
             );
         }
-        self.constraints.pick_constraints = tmp;
+        self.constraints.member_constraints = tmp;
 
         for query_constraint in outlives {
             self.convert(query_constraint);
