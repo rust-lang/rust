@@ -347,18 +347,10 @@ fn mk_decls(
     custom_macros: &[ProcMacroDef],
 ) -> P<ast::Item> {
     let mark = Mark::fresh(Mark::root());
-    mark.set_expn_info(ExpnInfo {
-        call_site: DUMMY_SP,
-        def_site: None,
-        format: MacroAttribute(sym::proc_macro),
-        allow_internal_unstable: Some(vec![
-            sym::rustc_attrs,
-            Symbol::intern("proc_macro_internals"),
-        ].into()),
-        allow_internal_unsafe: false,
-        local_inner_macros: false,
-        edition: cx.parse_sess.edition,
-    });
+    mark.set_expn_info(ExpnInfo::with_unstable(
+        MacroAttribute(sym::proc_macro), DUMMY_SP, cx.parse_sess.edition,
+        &[sym::rustc_attrs, Symbol::intern("proc_macro_internals")],
+    ));
     let span = DUMMY_SP.apply_mark(mark);
 
     let hidden = cx.meta_list_item_word(span, sym::hidden);

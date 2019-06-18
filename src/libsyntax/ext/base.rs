@@ -15,6 +15,7 @@ use crate::tokenstream::{self, TokenStream};
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
+use syntax_pos::hygiene::{ExpnInfo, ExpnFormat};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
@@ -548,37 +549,19 @@ impl MacroKind {
     }
 }
 
-/// An enum representing the different kinds of syntax extensions.
-pub enum SyntaxExtension {
+/// A syntax extension kind.
+pub enum SyntaxExtensionKind {
     /// A token-based function-like macro.
-    Bang {
+    Bang(
         /// An expander with signature TokenStream -> TokenStream.
-        expander: Box<dyn ProcMacro + sync::Sync + sync::Send>,
-        /// Whitelist of unstable features that are treated as stable inside this macro.
-        allow_internal_unstable: Option<Lrc<[Symbol]>>,
-        /// Edition of the crate in which this macro is defined.
-        edition: Edition,
-    },
+        Box<dyn ProcMacro + sync::Sync + sync::Send>,
+    ),
 
     /// An AST-based function-like macro.
-    LegacyBang {
+    LegacyBang(
         /// An expander with signature TokenStream -> AST.
-        expander: Box<dyn TTMacroExpander + sync::Sync + sync::Send>,
-        /// Some info about the macro's definition point.
-        def_info: Option<(ast::NodeId, Span)>,
-        /// Hygienic properties of identifiers produced by this macro.
-        transparency: Transparency,
-        /// Whitelist of unstable features that are treated as stable inside this macro.
-        allow_internal_unstable: Option<Lrc<[Symbol]>>,
-        /// Suppresses the `unsafe_code` lint for code produced by this macro.
-        allow_internal_unsafe: bool,
-        /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
-        local_inner_macros: bool,
-        /// The macro's feature name and tracking issue number if it is unstable.
-        unstable_feature: Option<(Symbol, u32)>,
-        /// Edition of the crate in which this macro is defined.
-        edition: Edition,
-    },
+        Box<dyn TTMacroExpander + sync::Sync + sync::Send>,
+    ),
 
     /// A token-based attribute macro.
     Attr(
@@ -586,8 +569,6 @@ pub enum SyntaxExtension {
         /// The first TokenSteam is the attribute itself, the second is the annotated item.
         /// The produced TokenSteam replaces the input TokenSteam.
         Box<dyn AttrProcMacro + sync::Sync + sync::Send>,
-        /// Edition of the crate in which this macro is defined.
-        Edition,
     ),
 
     /// An AST-based attribute macro.
@@ -599,7 +580,8 @@ pub enum SyntaxExtension {
     ),
 
     /// A trivial attribute "macro" that does nothing,
-    /// only keeps the attribute and marks it as known.
+    /// only keeps the attribute and marks it as inert,
+    /// thus making it ineligible for further expansion.
     NonMacroAttr {
         /// Suppresses the `unused_attributes` lint for this attribute.
         mark_used: bool,
@@ -610,10 +592,6 @@ pub enum SyntaxExtension {
         /// An expander with signature TokenStream -> TokenStream (not yet).
         /// The produced TokenSteam is appended to the input TokenSteam.
         Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
-        /// Names of helper attributes registered by this macro.
-        Vec<Symbol>,
-        /// Edition of the crate in which this macro is defined.
-        Edition,
     ),
 
     /// An AST-based derive macro.
@@ -624,42 +602,91 @@ pub enum SyntaxExtension {
     ),
 }
 
+/// A struct representing a macro definition in "lowered" form ready for expansion.
+pub struct SyntaxExtension {
+    /// A syntax extension kind.
+    pub kind: SyntaxExtensionKind,
+    /// Some info about the macro's definition point.
+    pub def_info: Option<(ast::NodeId, Span)>,
+    /// Hygienic properties of spans produced by this macro by default.
+    pub default_transparency: Transparency,
+    /// Whitelist of unstable features that are treated as stable inside this macro.
+    pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    /// Suppresses the `unsafe_code` lint for code produced by this macro.
+    pub allow_internal_unsafe: bool,
+    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
+    pub local_inner_macros: bool,
+    /// The macro's feature name and tracking issue number if it is unstable.
+    pub unstable_feature: Option<(Symbol, u32)>,
+    /// Names of helper attributes registered by this macro.
+    pub helper_attrs: Vec<Symbol>,
+    /// Edition of the crate in which this macro is defined.
+    pub edition: Edition,
+}
+
+impl SyntaxExtensionKind {
+    /// When a syntax extension is constructed,
+    /// its transparency can often be inferred from its kind.
+    fn default_transparency(&self) -> Transparency {
+        match self {
+            SyntaxExtensionKind::Bang(..) |
+            SyntaxExtensionKind::Attr(..) |
+            SyntaxExtensionKind::Derive(..) |
+            SyntaxExtensionKind::NonMacroAttr { .. } => Transparency::Opaque,
+            SyntaxExtensionKind::LegacyBang(..) |
+            SyntaxExtensionKind::LegacyAttr(..) |
+            SyntaxExtensionKind::LegacyDerive(..) => Transparency::SemiTransparent,
+        }
+    }
+}
+
 impl SyntaxExtension {
     /// Returns which kind of macro calls this syntax extension.
-    pub fn kind(&self) -> MacroKind {
-        match *self {
-            SyntaxExtension::Bang { .. } |
-            SyntaxExtension::LegacyBang { .. } => MacroKind::Bang,
-            SyntaxExtension::Attr(..) |
-            SyntaxExtension::LegacyAttr(..) |
-            SyntaxExtension::NonMacroAttr { .. } => MacroKind::Attr,
-            SyntaxExtension::Derive(..) |
-            SyntaxExtension::LegacyDerive(..) => MacroKind::Derive,
+    pub fn macro_kind(&self) -> MacroKind {
+        match self.kind {
+            SyntaxExtensionKind::Bang(..) |
+            SyntaxExtensionKind::LegacyBang(..) => MacroKind::Bang,
+            SyntaxExtensionKind::Attr(..) |
+            SyntaxExtensionKind::LegacyAttr(..) |
+            SyntaxExtensionKind::NonMacroAttr { .. } => MacroKind::Attr,
+            SyntaxExtensionKind::Derive(..) |
+            SyntaxExtensionKind::LegacyDerive(..) => MacroKind::Derive,
         }
     }
 
-    pub fn default_transparency(&self) -> Transparency {
-        match *self {
-            SyntaxExtension::LegacyBang { transparency, .. } => transparency,
-            SyntaxExtension::Bang { .. } |
-            SyntaxExtension::Attr(..) |
-            SyntaxExtension::Derive(..) |
-            SyntaxExtension::NonMacroAttr { .. } => Transparency::Opaque,
-            SyntaxExtension::LegacyAttr(..) |
-            SyntaxExtension::LegacyDerive(..) => Transparency::SemiTransparent,
+    /// Constructs a syntax extension with default properties.
+    pub fn default(kind: SyntaxExtensionKind, edition: Edition) -> SyntaxExtension {
+        SyntaxExtension {
+            def_info: None,
+            default_transparency: kind.default_transparency(),
+            allow_internal_unstable: None,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            unstable_feature: None,
+            helper_attrs: Vec::new(),
+            edition,
+            kind,
         }
     }
 
-    pub fn edition(&self, default_edition: Edition) -> Edition {
-        match *self {
-            SyntaxExtension::Bang { edition, .. } |
-            SyntaxExtension::LegacyBang { edition, .. } |
-            SyntaxExtension::Attr(.., edition) |
-            SyntaxExtension::Derive(.., edition) => edition,
-            // Unstable legacy stuff
-            SyntaxExtension::NonMacroAttr { .. } |
-            SyntaxExtension::LegacyAttr(..) |
-            SyntaxExtension::LegacyDerive(..) => default_edition,
+    fn expn_format(&self, symbol: Symbol) -> ExpnFormat {
+        match self.kind {
+            SyntaxExtensionKind::Bang(..) |
+            SyntaxExtensionKind::LegacyBang(..) => ExpnFormat::MacroBang(symbol),
+            _ => ExpnFormat::MacroAttribute(symbol),
+        }
+    }
+
+    pub fn expn_info(&self, call_site: Span, format: &str) -> ExpnInfo {
+        ExpnInfo {
+            call_site,
+            format: self.expn_format(Symbol::intern(format)),
+            def_site: self.def_info.map(|(_, span)| span),
+            default_transparency: self.default_transparency,
+            allow_internal_unstable: self.allow_internal_unstable.clone(),
+            allow_internal_unsafe: self.allow_internal_unsafe,
+            local_inner_macros: self.local_inner_macros,
+            edition: self.edition,
         }
     }
 }
@@ -697,31 +724,6 @@ impl Determinacy {
     pub fn determined(determined: bool) -> Determinacy {
         if determined { Determinacy::Determined } else { Determinacy::Undetermined }
     }
-}
-
-pub struct DummyResolver;
-
-impl Resolver for DummyResolver {
-    fn next_node_id(&mut self) -> ast::NodeId { ast::DUMMY_NODE_ID }
-
-    fn get_module_scope(&mut self, _id: ast::NodeId) -> Mark { Mark::root() }
-
-    fn resolve_dollar_crates(&mut self, _fragment: &AstFragment) {}
-    fn visit_ast_fragment_with_placeholders(&mut self, _invoc: Mark, _fragment: &AstFragment,
-                                            _derives: &[Mark]) {}
-    fn add_builtin(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
-
-    fn resolve_imports(&mut self) {}
-    fn resolve_macro_invocation(&mut self, _invoc: &Invocation, _invoc_id: Mark, _force: bool)
-                                -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
-        Err(Determinacy::Determined)
-    }
-    fn resolve_macro_path(&mut self, _path: &ast::Path, _kind: MacroKind, _invoc_id: Mark,
-                          _derives_in_scope: Vec<ast::Path>, _force: bool)
-                          -> Result<Lrc<SyntaxExtension>, Determinacy> {
-        Err(Determinacy::Determined)
-    }
-    fn check_unused_macros(&self) {}
 }
 
 #[derive(Clone)]

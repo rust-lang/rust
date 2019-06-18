@@ -62,14 +62,14 @@ use syntax::errors;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::source_map::{self, respan, CompilerDesugaringKind, Spanned};
+use syntax::source_map::{self, respan, ExpnInfo, CompilerDesugaringKind, Spanned};
 use syntax::source_map::CompilerDesugaringKind::IfTemporary;
 use syntax::std_inject;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::{self, Token};
 use syntax::visit::{self, Visitor};
-use syntax_pos::{DUMMY_SP, edition, Span};
+use syntax_pos::{DUMMY_SP, Span};
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
@@ -142,6 +142,9 @@ pub struct LoweringContext<'a> {
     current_hir_id_owner: Vec<(DefIndex, u32)>,
     item_local_id_counters: NodeMap<u32>,
     node_id_to_hir_id: IndexVec<NodeId, hir::HirId>,
+
+    allow_try_trait: Option<Lrc<[Symbol]>>,
+    allow_gen_future: Option<Lrc<[Symbol]>>,
 }
 
 pub trait Resolver {
@@ -267,6 +270,8 @@ pub fn lower_crate(
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
         in_scope_lifetimes: Vec::new(),
+        allow_try_trait: Some([sym::try_trait][..].into()),
+        allow_gen_future: Some([sym::gen_future][..].into()),
     }.lower_crate(krate)
 }
 
@@ -848,14 +853,10 @@ impl<'a> LoweringContext<'a> {
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
         let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(source_map::ExpnInfo {
-            call_site: span,
+        mark.set_expn_info(ExpnInfo {
             def_site: Some(span),
-            format: source_map::CompilerDesugaring(reason),
             allow_internal_unstable,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
-            edition: edition::Edition::from_session(),
+            ..ExpnInfo::default(source_map::CompilerDesugaring(reason), span, self.sess.edition())
         });
         span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     }
@@ -1156,7 +1157,7 @@ impl<'a> LoweringContext<'a> {
         let unstable_span = self.mark_span_with_reason(
             CompilerDesugaringKind::Async,
             span,
-            Some(vec![sym::gen_future].into()),
+            self.allow_gen_future.clone(),
         );
         let gen_future = self.expr_std_path(
             unstable_span, &[sym::future, sym::from_generator], None, ThinVec::new());
@@ -4382,7 +4383,7 @@ impl<'a> LoweringContext<'a> {
                     let unstable_span = this.mark_span_with_reason(
                         CompilerDesugaringKind::TryBlock,
                         body.span,
-                        Some(vec![sym::try_trait].into()),
+                        this.allow_try_trait.clone(),
                     );
                     let mut block = this.lower_block(body, true).into_inner();
                     let tail = block.expr.take().map_or_else(
@@ -4968,13 +4969,13 @@ impl<'a> LoweringContext<'a> {
                 let unstable_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::QuestionMark,
                     e.span,
-                    Some(vec![sym::try_trait].into()),
+                    self.allow_try_trait.clone(),
                 );
                 let try_span = self.sess.source_map().end_point(e.span);
                 let try_span = self.mark_span_with_reason(
                     CompilerDesugaringKind::QuestionMark,
                     try_span,
-                    Some(vec![sym::try_trait].into()),
+                    self.allow_try_trait.clone(),
                 );
 
                 // `Try::into_result(<expr>)`
@@ -5776,7 +5777,7 @@ impl<'a> LoweringContext<'a> {
         let gen_future_span = self.mark_span_with_reason(
             CompilerDesugaringKind::Await,
             await_span,
-            Some(vec![sym::gen_future].into()),
+            self.allow_gen_future.clone(),
         );
 
         // let mut pinned = <expr>;

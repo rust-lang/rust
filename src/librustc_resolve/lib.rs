@@ -41,7 +41,7 @@ use rustc_metadata::cstore::CStore;
 use syntax::source_map::SourceMap;
 use syntax::ext::hygiene::{Mark, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
-use syntax::ext::base::SyntaxExtension;
+use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::base::MacroKind;
 use syntax::symbol::{Symbol, kw, sym};
@@ -1668,6 +1668,7 @@ pub struct Resolver<'a> {
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
     pub all_macros: FxHashMap<Name, Res>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
+    non_macro_attrs: [Lrc<SyntaxExtension>; 2],
     macro_defs: FxHashMap<Mark, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
 
@@ -1941,6 +1942,10 @@ impl<'a> Resolver<'a> {
         let mut macro_defs = FxHashMap::default();
         macro_defs.insert(Mark::root(), root_def_id);
 
+        let non_macro_attr = |mark_used| Lrc::new(SyntaxExtension::default(
+            SyntaxExtensionKind::NonMacroAttr { mark_used }, session.edition()
+        ));
+
         Resolver {
             session,
 
@@ -2014,6 +2019,7 @@ impl<'a> Resolver<'a> {
             macro_use_prelude: FxHashMap::default(),
             all_macros: FxHashMap::default(),
             macro_map: FxHashMap::default(),
+            non_macro_attrs: [non_macro_attr(false), non_macro_attr(true)],
             invocations,
             macro_defs,
             local_macro_def_scopes: FxHashMap::default(),
@@ -2028,6 +2034,10 @@ impl<'a> Resolver<'a> {
 
     pub fn arenas() -> ResolverArenas<'a> {
         Default::default()
+    }
+
+    fn non_macro_attr(&self, mark_used: bool) -> Lrc<SyntaxExtension> {
+        self.non_macro_attrs[mark_used as usize].clone()
     }
 
     /// Runs the function on each namespace.
