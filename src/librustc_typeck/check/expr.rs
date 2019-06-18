@@ -1218,17 +1218,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match variant.ctor_kind {
             CtorKind::Fn => {
                 err.span_label(field.ident.span, "field does not exist");
-                err.span_label(
-                    field.ident.span,
-                    format!("`{adt}` is a tuple {kind_name}, use the appropriate syntax: `{adt}(/* fields */)`", adt=ty, kind_name=kind_name)
-                );
+                err.span_label(field.ident.span, format!(
+                    "`{adt}` is a tuple {kind_name}, use the appropriate syntax: `{adt}(/* fields */)`",
+                    adt=ty,
+                    kind_name=kind_name
+                ));
             }
             _ => {
                 // prevent all specified fields from being suggested
                 let skip_fields = skip_fields.iter().map(|ref x| x.ident.as_str());
-                if let Some(field_name) = Self::suggest_field_name(variant,
-                                                                   &field.ident.as_str(),
-                                                                   skip_fields.collect()) {
+                if let Some(field_name) = Self::suggest_field_name(
+                    variant,
+                    &field.ident.as_str(),
+                    skip_fields.collect()
+                ) {
                     err.span_suggestion(
                         field.ident.span,
                         "a field with a similar name exists",
@@ -1239,12 +1242,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     match ty.sty {
                         ty::Adt(adt, ..) => {
                             if adt.is_enum() {
-                                err.span_label(field.ident.span,
-                                               format!("`{}::{}` does not have this field",
-                                                       ty, variant.ident));
+                                err.span_label(field.ident.span, format!(
+                                    "`{}::{}` does not have this field",
+                                    ty,
+                                    variant.ident
+                                ));
                             } else {
-                                err.span_label(field.ident.span,
-                                               format!("`{}` does not have this field", ty));
+                                err.span_label(field.ident.span, format!(
+                                    "`{}` does not have this field",
+                                    ty
+                                ));
                             }
                             let available_field_names = self.available_field_names(variant);
                             if !available_field_names.is_empty() {
