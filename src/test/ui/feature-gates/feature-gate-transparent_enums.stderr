@@ -1,10 +1,8 @@
 error[E0658]: transparent enums are unstable
   --> $DIR/feature-gate-transparent_enums.rs:2:1
    |
-LL | / enum OkButUnstableEnum {
-LL | |     Foo((), String, ()),
-LL | | }
-   | |_^
+LL | enum OkButUnstableEnum {
+   | ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/60405
    = help: add #![feature(transparent_enums)] to the crate attributes to enable
