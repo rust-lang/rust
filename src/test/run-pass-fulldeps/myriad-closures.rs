@@ -32,7 +32,7 @@ macro_rules! mk_fn {
 }
 
 fn main() {
-    // Make 2^12 functions, each containing 16 closures,
-    // resulting in 2^16 closures overall.
-    go_bacterial!(mk_fn 1 1 1 1  1 1 1 1  1 1 1 1);
+    // Make 2^8 functions, each containing 16 closures,
+    // resulting in 2^12 closures overall.
+    go_bacterial!(mk_fn 1 1 1 1  1 1 1 1);
 }
