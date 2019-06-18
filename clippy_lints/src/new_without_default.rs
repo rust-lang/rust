@@ -6,7 +6,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::util::nodemap::NodeSet;
+use rustc::util::nodemap::HirIdSet;
 use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
 use syntax::source_map::Span;
@@ -86,7 +86,7 @@ declare_clippy_lint! {
 
 #[derive(Clone, Default)]
 pub struct NewWithoutDefault {
-    impling_types: Option<NodeSet>,
+    impling_types: Option<HirIdSet>,
 }
 
 impl_lint_pass!(NewWithoutDefault => [NEW_WITHOUT_DEFAULT]);
@@ -128,11 +128,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                 if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
                                 then {
                                     if self.impling_types.is_none() {
-                                        let mut impls = NodeSet::default();
+                                        let mut impls = HirIdSet::default();
                                         cx.tcx.for_each_impl(default_trait_id, |d| {
                                             if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
-                                                if let Some(node_id) = cx.tcx.hir().as_local_node_id(ty_def.did) {
-                                                    impls.insert(node_id);
+                                                if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(ty_def.did) {
+                                                    impls.insert(hir_id);
                                                 }
                                             }
                                         });
@@ -147,8 +147,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                         if self_def.did.is_local();
                                         then {
                                             let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_def.did.to_local());
-                                            let node_id = cx.tcx.hir().hir_to_node_id(self_id);
-                                            if impling_types.contains(&node_id) {
+                                            if impling_types.contains(&self_id) {
                                                 return;
                                             }
                                         }
