@@ -7,7 +7,9 @@ All notable changes to this project will be documented in this file.
 [01ab9fe6...master](https://github.com/rust-lang/rust-clippy/compare/01ab9fe6...master)
 
 
-## Rust 1.36 (beta)
+## Rust 1.36 
+
+Current beta
 
 [eb9f9b1...71be6f62](https://github.com/rust-lang/rust-clippy/compare/eb9f9b1...71be6f62)
 
@@ -36,7 +38,9 @@ All notable changes to this project will be documented in this file.
  * Fix ICE in [`decimal_literal_representation`] [#3931](https://github.com/rust-lang/rust-clippy/pull/3931)
 
 
-## Rust 1.35 (2019-05-20)
+## Rust 1.35
+
+Current stable, released 2019-05-20
 
 [1fac380..37f5c1e](https://github.com/rust-lang/rust-clippy/compare/1fac380...37f5c1e)
 
@@ -62,7 +66,9 @@ All notable changes to this project will be documented in this file.
  * Avoid triggering [`redundant_closure`] in macros
  * ICE fixes: [#3805](https://github.com/rust-lang/rust-clippy/pull/3805), [#3772](https://github.com/rust-lang/rust-clippy/pull/3772), [#3741](https://github.com/rust-lang/rust-clippy/pull/3741)
 
-## Rust 1.34 (2019-04-10)
+## Rust 1.34
+
+Released 2019-04-10
 
 [1b89724...1fac380](https://github.com/rust-lang/rust-clippy/compare/1b89724...1fac380)
 
@@ -90,7 +96,9 @@ All notable changes to this project will be documented in this file.
   [#3665][pull3665] for more details.
 * We now have [improved documentation][adding_lints] on how to add new lints
 
-## Rust 1.33 (2019-02-26)
+## Rust 1.33
+
+Released 2019-02-26
 
 [b2601be...1b89724](https://github.com/rust-lang/rust-clippy/compare/b2601be...1b89724)
 
@@ -149,7 +157,8 @@ All notable changes to this project will be documented in this file.
 * Improve suggestion for `needless_range_loop`
 * Move `needless_pass_by_value` from `pedantic` group to `style`
 
-## Rust 1.31 (2018-12-06)
+## Rust 1.31
+Released 2018-12-06
 
 [125907ad..2e26fdc2](https://github.com/rust-lang/rust-clippy/compare/125907ad..2e26fdc2)
 
@@ -187,7 +196,9 @@ All notable changes to this project will be documented in this file.
 * Improve suggestions for `manual_memcpy`
 * Improve help message for `needless_lifetimes`
 
-## Rust 1.30 (2018-10-25)
+## Rust 1.30
+
+Released 2018-10-25
 
 [14207503...125907ad](https://github.com/rust-lang/rust-clippy/compare/14207503...125907ad)
 
@@ -216,7 +227,9 @@ All notable changes to this project will be documented in this file.
 * Move `shadow_unrelated` from `restriction` group to `pedantic`
 * Move `indexing_slicing` from `pedantic` group to `restriction`
 
-## Rust 1.29 (2018-09-13)
+## Rust 1.29
+
+Released 2018-09-13
 
 [v0.0.212...14207503](https://github.com/rust-lang/rust-clippy/compare/v0.0.212...14207503)
 
