@@ -17,7 +17,7 @@ fn copy_ex() {
 }
 
 fn main() {
-    let _f = 0 as *mut <Fuse<Cloned<Iter<u8>>> as Iterator>::Item;
+    let _f: *mut <Fuse<Cloned<Iter<u8>>> as Iterator>::Item = std::ptr::null_mut();
 
     copy_ex();
 }

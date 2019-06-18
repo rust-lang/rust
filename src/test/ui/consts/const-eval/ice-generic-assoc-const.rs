@@ -7,7 +7,7 @@ pub trait Nullable {
 }
 
 impl<T> Nullable for *const T {
-    const NULL: Self = 0 as *const T;
+    const NULL: Self = core::ptr::null::<T>();
 
     fn is_null(&self) -> bool {
         *self == Self::NULL

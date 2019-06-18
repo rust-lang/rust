@@ -15,11 +15,11 @@ fn mut_ref() -> &'static mut T {
 }
 
 fn mut_ptr() -> *mut T {
-    unsafe { 0 as *mut T }
+    unsafe { core::ptr::null_mut() }
 }
 
 fn const_ptr() -> *const T {
-    unsafe { 0 as *const T }
+    unsafe { core::ptr::null() }
 }
 
 pub fn main() {

@@ -32,6 +32,7 @@
 use std::env;
 use std::io;
 use std::mem;
+use std::ptr;
 use crate::Build;
 
 type HANDLE = *mut u8;
@@ -118,8 +119,8 @@ pub unsafe fn setup(build: &mut Build) {
     SetErrorMode(mode & !SEM_NOGPFAULTERRORBOX);
 
     // Create a new job object for us to use
-    let job = CreateJobObjectW(0 as *mut _, 0 as *const _);
-    assert!(job != 0 as *mut _, "{}", io::Error::last_os_error());
+    let job = CreateJobObjectW(ptr::null_mut(), ptr::null());
+    assert!(!job.is_null(), "{}", io::Error::last_os_error());
 
     // Indicate that when all handles to the job object are gone that all
     // process in the object should be killed. Note that this includes our
@@ -166,8 +167,8 @@ pub unsafe fn setup(build: &mut Build) {
     };
 
     let parent = OpenProcess(PROCESS_DUP_HANDLE, FALSE, pid.parse().unwrap());
-    assert!(parent != 0 as *mut _, "{}", io::Error::last_os_error());
-    let mut parent_handle = 0 as *mut _;
+    assert!(!parent.is_null(), "{}", io::Error::last_os_error());
+    let mut parent_handle = ptr::null_mut();
     let r = DuplicateHandle(GetCurrentProcess(), job,
                             parent, &mut parent_handle,
                             0, FALSE, DUPLICATE_SAME_ACCESS);

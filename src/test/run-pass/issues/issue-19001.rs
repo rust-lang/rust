@@ -7,5 +7,5 @@ struct Loopy {
 }
 
 fn main() {
-    let _t = Loopy { ptr: 0 as *mut _ };
+    let _t = Loopy { ptr: core::ptr::null_mut() };
 }
