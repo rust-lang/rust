@@ -151,7 +151,7 @@ pub(crate) fn on_all_drop_children_bits<'tcx, F>(
         debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, place, ty);
 
         let gcx = tcx.global_tcx();
-        let erased_ty = gcx.lift(&tcx.erase_regions(&ty)).unwrap();
+        let erased_ty = tcx.erase_regions(&ty);
         if erased_ty.needs_drop(gcx, ctxt.param_env) {
             each_child(child);
         } else {

@@ -26,7 +26,7 @@ use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::{Kind, UnpackedKind};
-use crate::ty::{self, BoundVar, InferConst, Lift, Ty, TyCtxt};
+use crate::ty::{self, BoundVar, InferConst, Ty, TyCtxt};
 use crate::util::captures::Captures;
 
 impl<'tcx> InferCtxtBuilder<'tcx> {
@@ -53,8 +53,8 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
-        R: Debug + Lift<'tcx> + TypeFoldable<'tcx>,
-        Canonical<'tcx, <QueryResponse<'tcx, R> as Lift<'tcx>>::Lifted>: ArenaAllocatable,
+        R: Debug + TypeFoldable<'tcx>,
+        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable,
     {
         self.enter_with_canonical(
             DUMMY_SP,
@@ -99,8 +99,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, T>>
     where
-        T: Debug + Lift<'tcx> + TypeFoldable<'tcx>,
-        Canonical<'tcx, <QueryResponse<'tcx, T> as Lift<'tcx>>::Lifted>: ArenaAllocatable,
+        T: Debug + TypeFoldable<'tcx>,
+        Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
         let canonical_result = self.canonicalize_response(&query_response);
@@ -126,9 +126,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
-    ) -> Canonical<'tcx, QueryResponse<'tcx, <T as Lift<'tcx>>::Lifted>>
+    ) -> Canonical<'tcx, QueryResponse<'tcx, T>>
     where
-        T: Debug + Lift<'tcx> + TypeFoldable<'tcx>,
+        T: Debug + TypeFoldable<'tcx>,
     {
         self.canonicalize_response(&QueryResponse {
             var_values: inference_vars,
@@ -147,7 +147,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
-        T: Debug + TypeFoldable<'tcx> + Lift<'tcx>,
+        T: Debug + TypeFoldable<'tcx>,
     {
         let tcx = self.tcx;
 

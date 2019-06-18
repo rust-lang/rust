@@ -863,8 +863,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         });
         debug!("try_promote_type_test_subject: folded ty = {:?}", ty);
 
-        // `lift` will only fail if we failed to promote some region.
-        let ty = gcx.lift(&ty)?;
+        // `lift_to_global` will only fail if we failed to promote some region.
+        gcx.lift_to_global(&ty)?;
 
         Some(ClosureOutlivesSubject::Ty(ty))
     }

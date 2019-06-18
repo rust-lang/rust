@@ -1310,7 +1310,7 @@ fn is_useful_specialized<'p, 'a, 'tcx>(
 /// Returns `None` in case of a catch-all, which can't be specialized.
 fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                           pat: &Pattern<'tcx>,
-                          pcx: PatternContext<'_>)
+                          pcx: PatternContext<'tcx>)
                           -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {

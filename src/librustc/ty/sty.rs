@@ -2262,7 +2262,6 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn from_bits(tcx: TyCtxt<'tcx>, bits: u128, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> &'tcx Self {
-        let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).unwrap_or_else(|e| {
             panic!("could not compute layout for {:?}: {:?}", ty, e)
         }).size;
@@ -2289,7 +2288,6 @@ impl<'tcx> Const<'tcx> {
         if self.ty != ty.value {
             return None;
         }
-        let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).ok()?.size;
         self.val.try_to_bits(size)
     }
@@ -2300,15 +2298,14 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn assert_bits(&self, tcx: TyCtxt<'_>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
+    pub fn assert_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
         assert_eq!(self.ty, ty.value);
-        let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).ok()?.size;
         self.val.try_to_bits(size)
     }
 
     #[inline]
-    pub fn assert_bool(&self, tcx: TyCtxt<'_>) -> Option<bool> {
+    pub fn assert_bool(&self, tcx: TyCtxt<'tcx>) -> Option<bool> {
         self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.bool)).and_then(|v| match v {
             0 => Some(false),
             1 => Some(true),
@@ -2317,18 +2314,18 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn assert_usize(&self, tcx: TyCtxt<'_>) -> Option<u64> {
+    pub fn assert_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
         self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.usize)).map(|v| v as u64)
     }
 
     #[inline]
-    pub fn unwrap_bits(&self, tcx: TyCtxt<'_>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> u128 {
+    pub fn unwrap_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> u128 {
         self.assert_bits(tcx, ty).unwrap_or_else(||
             bug!("expected bits of {}, got {:#?}", ty.value, self))
     }
 
     #[inline]
-    pub fn unwrap_usize(&self, tcx: TyCtxt<'_>) -> u64 {
+    pub fn unwrap_usize(&self, tcx: TyCtxt<'tcx>) -> u64 {
         self.assert_usize(tcx).unwrap_or_else(||
             bug!("expected constant usize, got {:#?}", self))
     }

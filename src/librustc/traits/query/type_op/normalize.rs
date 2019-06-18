@@ -20,7 +20,7 @@ where
 
 impl<'tcx, T> super::QueryTypeOp<'tcx> for Normalize<T>
 where
-    T: Normalizable<'tcx>,
+    T: Normalizable<'tcx> + 'tcx,
 {
     type QueryResponse = T;
 
