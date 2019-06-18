@@ -48,7 +48,7 @@ The MIR-based region analysis consists of two major functions:
 
 ## Universal regions
 
-The [`UnversalRegions`] type represents a collection of _universal_ regions
+The [`UniversalRegions`] type represents a collection of _universal_ regions
 corresponding to some MIR `DefId`. It is constructed in
 [`replace_regions_in_mir`] when we replace all regions with fresh inference
 variables. [`UniversalRegions`] contains indices for all the free regions in
