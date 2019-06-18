@@ -583,3 +583,8 @@ pub(crate) fn named_field_list(p: &mut Parser) {
     p.expect(T!['}']);
     m.complete(p, NAMED_FIELD_LIST);
 }
+
+// test box_syntax
+// fn foo() {
+//     let x = box 1i32;
+// }
