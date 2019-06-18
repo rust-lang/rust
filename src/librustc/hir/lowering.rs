@@ -95,8 +95,7 @@ pub struct LoweringContext<'a> {
 
     modules: BTreeMap<NodeId, hir::ModuleItems>,
 
-    is_generator: bool,
-    is_async_body: bool,
+    generator_kind: Option<hir::GeneratorKind>,
 
     /// Used to get the current `fn`'s def span to point to when using `await`
     /// outside of an `async fn`.
@@ -264,8 +263,7 @@ pub fn lower_crate(
         current_hir_id_owner: vec![(CRATE_DEF_INDEX, 0)],
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
-        is_generator: false,
-        is_async_body: false,
+        generator_kind: None,
         current_item: None,
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
@@ -795,18 +793,49 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn record_body(&mut self, arguments: HirVec<hir::Arg>, value: hir::Expr) -> hir::BodyId {
-        if self.is_generator && self.is_async_body {
-            span_err!(
-                self.sess,
-                value.span,
-                E0727,
-                "`async` generators are not yet supported",
-            );
-            self.sess.abort_if_errors();
+    fn generator_movability_for_fn(
+        &mut self,
+        decl: &ast::FnDecl,
+        fn_decl_span: Span,
+        generator_kind: Option<hir::GeneratorKind>,
+        movability: Movability,
+    ) -> Option<hir::GeneratorMovability> {
+        match generator_kind {
+            Some(hir::GeneratorKind::Gen) =>  {
+                if !decl.inputs.is_empty() {
+                    span_err!(
+                        self.sess,
+                        fn_decl_span,
+                        E0628,
+                        "generators cannot have explicit arguments"
+                    );
+                    self.sess.abort_if_errors();
+                }
+                Some(match movability {
+                    Movability::Movable => hir::GeneratorMovability::Movable,
+                    Movability::Static => hir::GeneratorMovability::Static,
+                })
+            },
+            Some(hir::GeneratorKind::Async) => {
+                bug!("non-`async` closure body turned `async` during lowering");
+            },
+            None => {
+                if movability == Movability::Static {
+                    span_err!(
+                        self.sess,
+                        fn_decl_span,
+                        E0697,
+                        "closures cannot be static"
+                    );
+                }
+                None
+            },
         }
+    }
+
+    fn record_body(&mut self, arguments: HirVec<hir::Arg>, value: hir::Expr) -> hir::BodyId {
         let body = hir::Body {
-            is_generator: self.is_generator || self.is_async_body,
+            generator_kind: self.generator_kind,
             arguments,
             value,
         };
@@ -1143,7 +1172,7 @@ impl<'a> LoweringContext<'a> {
         };
         let decl = self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None);
         let body_id = self.lower_fn_body(&ast_decl, |this| {
-            this.is_async_body = true;
+            this.generator_kind = Some(hir::GeneratorKind::Async);
             body(this)
         });
         let generator = hir::Expr {
@@ -1168,12 +1197,10 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         f: impl FnOnce(&mut LoweringContext<'_>) -> (HirVec<hir::Arg>, hir::Expr),
     ) -> hir::BodyId {
-        let prev_is_generator = mem::replace(&mut self.is_generator, false);
-        let prev_is_async_body = mem::replace(&mut self.is_async_body, false);
+        let prev_gen_kind = self.generator_kind.take();
         let (arguments, result) = f(self);
         let body_id = self.record_body(arguments, result);
-        self.is_generator = prev_is_generator;
-        self.is_async_body = prev_is_async_body;
+        self.generator_kind = prev_gen_kind;
         body_id
     }
 
@@ -4476,37 +4503,18 @@ impl<'a> LoweringContext<'a> {
 
                     self.with_new_scopes(|this| {
                         this.current_item = Some(fn_decl_span);
-                        let mut is_generator = false;
+                        let mut generator_kind = None;
                         let body_id = this.lower_fn_body(decl, |this| {
                             let e = this.lower_expr(body);
-                            is_generator = this.is_generator;
+                            generator_kind = this.generator_kind;
                             e
                         });
-                        let generator_option = if is_generator {
-                            if !decl.inputs.is_empty() {
-                                span_err!(
-                                    this.sess,
-                                    fn_decl_span,
-                                    E0628,
-                                    "generators cannot have explicit arguments"
-                                );
-                                this.sess.abort_if_errors();
-                            }
-                            Some(match movability {
-                                Movability::Movable => hir::GeneratorMovability::Movable,
-                                Movability::Static => hir::GeneratorMovability::Static,
-                            })
-                        } else {
-                            if movability == Movability::Static {
-                                span_err!(
-                                    this.sess,
-                                    fn_decl_span,
-                                    E0697,
-                                    "closures cannot be static"
-                                );
-                            }
-                            None
-                        };
+                        let generator_option = this.generator_movability_for_fn(
+                            &decl,
+                            fn_decl_span,
+                            generator_kind,
+                            movability,
+                        );
                         hir::ExprKind::Closure(
                             this.lower_capture_clause(capture_clause),
                             fn_decl,
@@ -4678,12 +4686,26 @@ impl<'a> LoweringContext<'a> {
             }
 
             ExprKind::Yield(ref opt_expr) => {
-                self.is_generator = true;
+                match self.generator_kind {
+                    Some(hir::GeneratorKind::Gen) => {},
+                    Some(hir::GeneratorKind::Async) => {
+                        span_err!(
+                            self.sess,
+                            e.span,
+                            E0727,
+                            "`async` generators are not yet supported",
+                        );
+                        self.sess.abort_if_errors();
+                    },
+                    None => {
+                        self.generator_kind = Some(hir::GeneratorKind::Gen);
+                    }
+                }
                 let expr = opt_expr
                     .as_ref()
                     .map(|x| self.lower_expr(x))
                     .unwrap_or_else(|| self.expr_unit(e.span));
-                hir::ExprKind::Yield(P(expr))
+                hir::ExprKind::Yield(P(expr), hir::YieldSource::Yield)
             }
 
             ExprKind::Err => hir::ExprKind::Err,
@@ -5755,19 +5777,23 @@ impl<'a> LoweringContext<'a> {
         //         yield ();
         //     }
         // }
-        if !self.is_async_body {
-            let mut err = struct_span_err!(
-                self.sess,
-                await_span,
-                E0728,
-                "`await` is only allowed inside `async` functions and blocks"
-            );
-            err.span_label(await_span, "only allowed inside `async` functions and blocks");
-            if let Some(item_sp) = self.current_item {
-                err.span_label(item_sp, "this is not `async`");
+        match self.generator_kind {
+            Some(hir::GeneratorKind::Async) => {},
+            Some(hir::GeneratorKind::Gen) |
+            None => {
+                let mut err = struct_span_err!(
+                    self.sess,
+                    await_span,
+                    E0728,
+                    "`await` is only allowed inside `async` functions and blocks"
+                );
+                err.span_label(await_span, "only allowed inside `async` functions and blocks");
+                if let Some(item_sp) = self.current_item {
+                    err.span_label(item_sp, "this is not `async`");
+                }
+                err.emit();
+                return hir::ExprKind::Err;
             }
-            err.emit();
-            return hir::ExprKind::Err;
         }
         let span = self.mark_span_with_reason(
             CompilerDesugaringKind::Await,
@@ -5865,7 +5891,7 @@ impl<'a> LoweringContext<'a> {
             let unit = self.expr_unit(span);
             let yield_expr = P(self.expr(
                 span,
-                hir::ExprKind::Yield(P(unit)),
+                hir::ExprKind::Yield(P(unit), hir::YieldSource::Await),
                 ThinVec::new(),
             ));
             self.stmt(span, hir::StmtKind::Expr(yield_expr))

@@ -335,15 +335,15 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Body {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::Body {
-            ref arguments,
-            ref value,
-            is_generator,
-        } = *self;
+            arguments,
+            value,
+            generator_kind,
+        } = self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::Ignore, |hcx| {
             arguments.hash_stable(hcx, hasher);
             value.hash_stable(hcx, hasher);
-            is_generator.hash_stable(hcx, hasher);
+            generator_kind.hash_stable(hcx, hasher);
         });
     }
 }

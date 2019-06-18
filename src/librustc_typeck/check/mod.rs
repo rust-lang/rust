@@ -217,7 +217,7 @@ pub struct Inherited<'a, 'tcx> {
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
 
-    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>)>>,
+    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
 
     // Opaque types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
@@ -1071,7 +1071,7 @@ fn check_fn<'a, 'tcx>(
 
     let span = body.value.span;
 
-    if body.is_generator && can_be_generator.is_some() {
+    if body.generator_kind.is_some() && can_be_generator.is_some() {
         let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::TypeInference,
             span,
@@ -1108,12 +1108,12 @@ fn check_fn<'a, 'tcx>(
     // We insert the deferred_generator_interiors entry after visiting the body.
     // This ensures that all nested generators appear before the entry of this generator.
     // resolve_generator_interiors relies on this property.
-    let gen_ty = if can_be_generator.is_some() && body.is_generator {
+    let gen_ty = if let (Some(_), Some(gen_kind)) = (can_be_generator, body.generator_kind) {
         let interior = fcx.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::MiscVariable,
             span,
         });
-        fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior));
+        fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior, gen_kind));
         Some(GeneratorTypes {
             yield_ty: fcx.yield_ty.unwrap(),
             interior,
@@ -2633,9 +2633,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
-        for (body_id, interior) in generators.drain(..) {
+        for (body_id, interior, kind) in generators.drain(..) {
             self.select_obligations_where_possible(false);
-            generator_interior::resolve_interior(self, def_id, body_id, interior);
+            generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
         }
     }
 

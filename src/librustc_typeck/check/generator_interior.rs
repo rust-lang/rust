@@ -6,7 +6,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind, Expr};
-use rustc::middle::region;
+use rustc::middle::region::{self, YieldData};
 use rustc::ty::{self, Ty};
 use syntax_pos::Span;
 use super::FnCtxt;
@@ -17,6 +17,7 @@ struct InteriorVisitor<'a, 'tcx> {
     types: FxHashMap<Ty<'tcx>, usize>,
     region_scope_tree: &'tcx region::ScopeTree,
     expr_count: usize,
+    kind: hir::GeneratorKind,
 }
 
 impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
@@ -27,8 +28,8 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
               source_span: Span) {
         use syntax_pos::DUMMY_SP;
 
-        let live_across_yield = scope.map_or(Some(DUMMY_SP), |s| {
-            self.region_scope_tree.yield_in_scope(s).and_then(|(yield_span, expr_count)| {
+        let live_across_yield = scope.map(|s| {
+            self.region_scope_tree.yield_in_scope(s).and_then(|yield_data| {
                 // If we are recording an expression that is the last yield
                 // in the scope, or that has a postorder CFG index larger
                 // than the one of all of the yields, then its value can't
@@ -37,31 +38,43 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 // See the mega-comment at `yield_in_scope` for a proof.
 
                 debug!("comparing counts yield: {} self: {}, source_span = {:?}",
-                       expr_count, self.expr_count, source_span);
+                       yield_data.expr_and_pat_count, self.expr_count, source_span);
 
-                if expr_count >= self.expr_count {
-                    Some(yield_span)
+                if yield_data.expr_and_pat_count >= self.expr_count {
+                    Some(yield_data)
                 } else {
                     None
                 }
             })
-        });
+        }).unwrap_or_else(|| Some(YieldData {
+            span: DUMMY_SP,
+            expr_and_pat_count: 0,
+            source: match self.kind { // Guess based on the kind of the current generator.
+                hir::GeneratorKind::Gen => hir::YieldSource::Yield,
+                hir::GeneratorKind::Async => hir::YieldSource::Await,
+            },
+        }));
 
-        if let Some(yield_span) = live_across_yield {
+        if let Some(yield_data) = live_across_yield {
             let ty = self.fcx.resolve_vars_if_possible(&ty);
 
             debug!("type in expr = {:?}, scope = {:?}, type = {:?}, count = {}, yield_span = {:?}",
-                   expr, scope, ty, self.expr_count, yield_span);
+                   expr, scope, ty, self.expr_count, yield_data.span);
 
             if let Some((unresolved_type, unresolved_type_span)) =
                 self.fcx.unresolved_type_vars(&ty)
             {
+                let note = format!("the type is part of the {} because of this {}",
+                                   self.kind,
+                                   yield_data.source);
+
                 // If unresolved type isn't a ty_var then unresolved_type_span is None
                 self.fcx.need_type_info_err_in_generator(
-                    unresolved_type_span.unwrap_or(yield_span),
-                    unresolved_type)
-                    .span_note(yield_span,
-                               "the type is part of the generator because of this `yield`")
+                    self.kind,
+                    unresolved_type_span.unwrap_or(yield_data.span),
+                    unresolved_type,
+                )
+                    .span_note(yield_data.span, &*note)
                     .emit();
             } else {
                 // Map the type to the number of types added before it
@@ -80,6 +93,7 @@ pub fn resolve_interior<'a, 'tcx>(
     def_id: DefId,
     body_id: hir::BodyId,
     interior: Ty<'tcx>,
+    kind: hir::GeneratorKind,
 ) {
     let body = fcx.tcx.hir().body(body_id);
     let mut visitor = InteriorVisitor {
@@ -87,6 +101,7 @@ pub fn resolve_interior<'a, 'tcx>(
         types: FxHashMap::default(),
         region_scope_tree: fcx.tcx.region_scope_tree(def_id),
         expr_count: 0,
+        kind,
     };
     intravisit::walk_body(&mut visitor, body);
 

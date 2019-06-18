@@ -126,7 +126,7 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
 
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
 
-            let (yield_ty, return_ty) = if body.is_generator {
+            let (yield_ty, return_ty) = if body.generator_kind.is_some() {
                 let gen_sig = match ty.sty {
                     ty::Generator(gen_def_id, gen_substs, ..) =>
                         gen_substs.sig(gen_def_id, tcx),
@@ -590,7 +590,7 @@ where
         return_ty_span,
         upvar_debuginfo,
         upvar_mutbls,
-        body.is_generator);
+        body.generator_kind.is_some());
 
     let call_site_scope = region::Scope {
         id: body.value.hir_id.local_id,

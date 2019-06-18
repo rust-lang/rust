@@ -1218,7 +1218,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Type(ref e, _) |
             hir::ExprKind::DropTemps(ref e) |
             hir::ExprKind::Unary(_, ref e) |
-            hir::ExprKind::Yield(ref e) |
+            hir::ExprKind::Yield(ref e, _) |
             hir::ExprKind::Repeat(ref e, _) => {
                 self.propagate_through_expr(&e, succ)
             }
