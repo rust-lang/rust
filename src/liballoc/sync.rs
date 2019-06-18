@@ -1785,6 +1785,13 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     }
 }
 
+#[stable(feature = "shared_from_iter", since = "1.37.0")]
+impl<T> core::iter::FromIterator<T> for Arc<[T]> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<T>>().into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::boxed::Box;

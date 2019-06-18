@@ -1213,6 +1213,13 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     }
 }
 
+#[stable(feature = "shared_from_iter", since = "1.37.0")]
+impl<T> core::iter::FromIterator<T> for Rc<[T]> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        iter.into_iter().collect::<Vec<T>>().into()
+    }
+}
+
 /// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
 /// managed value. The value is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an [`Option`]`<`[`Rc`]`<T>>`.
