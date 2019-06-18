@@ -60,6 +60,7 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let la1 = p.nth(1);
     if la0 == T![ref]
         || la0 == T![mut]
+        || la0 == T![box]
         || (la0 == IDENT && !(la1 == T![::] || la1 == T!['('] || la1 == T!['{'] || la1 == T![!]))
     {
         return Some(bind_pat(p, true));
@@ -260,9 +261,11 @@ fn pat_list(p: &mut Parser, ket: SyntaxKind) {
 //     let ref mut d = ();
 //     let e @ _ = ();
 //     let ref mut f @ g @ _ = ();
+//     let box i = Box::new(1i32);
 // }
 fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
     let m = p.start();
+    p.eat(T![box]);
     p.eat(T![ref]);
     p.eat(T![mut]);
     name(p);

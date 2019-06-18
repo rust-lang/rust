@@ -96,6 +96,7 @@ Grammar(
         "move",
         "return",
         "try",
+        "box",
     ],
     contextual_keywords: [
         "auto",
@@ -192,6 +193,7 @@ Grammar(
         "NAMED_FIELD_LIST",
         "NAMED_FIELD",
         "TRY_BLOCK_EXPR",
+        "BOX_EXPR",
 
         // postfix
         "CALL_EXPR",

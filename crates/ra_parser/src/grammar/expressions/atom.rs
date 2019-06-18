@@ -74,6 +74,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T![if] => if_expr(p),
 
         T![loop] => loop_expr(p, None),
+        T![box] => box_expr(p, None),
         T![for] => for_expr(p, None),
         T![while] => while_expr(p, None),
         T![try] => try_block_expr(p, None),
@@ -506,4 +507,18 @@ fn try_block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     p.bump();
     block(p);
     m.complete(p, TRY_EXPR)
+}
+
+// test box_expr
+// fn foo() {
+//     let x = box 1i32;
+// }
+fn box_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
+    assert!(p.at(T![box]));
+    let m = m.unwrap_or_else(|| p.start());
+    p.bump();
+    if p.at_ts(EXPR_FIRST) {
+        expr(p);
+    }
+    m.complete(p, BOX_EXPR)
 }
