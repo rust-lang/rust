@@ -188,22 +188,6 @@ impl AstFragmentKind {
     }
 }
 
-// We don't want to format a path using pretty-printing,
-// `format!("{}", path)`, because that tries to insert
-// line-breaks and is slow.
-fn fast_print_path(path: &ast::Path) -> String {
-    let mut path_str = String::with_capacity(64);
-    for (i, segment) in path.segments.iter().enumerate() {
-        if i != 0 {
-            path_str.push_str("::");
-        }
-        if segment.ident.name != kw::PathRoot {
-            path_str.push_str(&segment.ident.as_str())
-        }
-    }
-    path_str
-}
-
 pub struct Invocation {
     pub kind: InvocationKind,
     fragment_kind: AstFragmentKind,
@@ -546,9 +530,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             _ => unreachable!(),
         };
 
-        let expn_info = ext.expn_info(attr.span, &fast_print_path(&attr.path));
-        invoc.expansion_data.mark.set_expn_info(expn_info);
-
         match &ext.kind {
             SyntaxExtensionKind::NonMacroAttr { mark_used } => {
                 attr::mark_known(&attr);
@@ -682,7 +663,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                          invoc: Invocation,
                          ext: &SyntaxExtension)
                          -> Option<AstFragment> {
-        let (mark, kind) = (invoc.expansion_data.mark, invoc.fragment_kind);
+        let kind = invoc.fragment_kind;
         let (mac, ident, span) = match invoc.kind {
             InvocationKind::Bang { mac, ident, span } => (mac, ident, span),
             _ => unreachable!(),
@@ -690,7 +671,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let path = &mac.node.path;
 
         let ident = ident.unwrap_or_else(|| Ident::invalid());
-        let validate_and_set_expn_info = |this: &mut Self| {
+        let validate = |this: &mut Self| {
             // feature-gate the macro invocation
             if let Some((feature, issue)) = ext.unstable_feature {
                 let crate_span = this.cx.current_expansion.crate_span.unwrap();
@@ -715,13 +696,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 this.cx.trace_macros_diag();
                 return Err(kind.dummy(span));
             }
-            mark.set_expn_info(ext.expn_info(span, &fast_print_path(path)));
             Ok(())
         };
 
         let opt_expanded = match &ext.kind {
             SyntaxExtensionKind::LegacyBang(expander) => {
-                if let Err(dummy_span) = validate_and_set_expn_info(self) {
+                if let Err(dummy_span) = validate(self) {
                     dummy_span
                 } else {
                     kind.make_from(expander.expand(
@@ -757,8 +737,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     kind.dummy(span)
                 } else {
                     self.gate_proc_macro_expansion_kind(span, kind);
-                    let expn_info = ext.expn_info(span, &fast_print_path(path));
-                    invoc.expansion_data.mark.set_expn_info(expn_info);
                     let tok_result = expander.expand(self.cx, span, mac.node.stream());
                     let result = self.parse_ast_fragment(tok_result, kind, path, span);
                     self.gate_proc_macro_expansion(span, &result);
@@ -818,10 +796,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         match &ext.kind {
             SyntaxExtensionKind::Derive(expander) |
             SyntaxExtensionKind::LegacyDerive(expander) => {
-                let expn_info =
-                    ext.expn_info(path.span, &format!("derive({})", fast_print_path(&path)));
-                invoc.expansion_data.mark.set_expn_info(expn_info);
-
                 let meta = ast::MetaItem { node: ast::MetaItemKind::Word, span: path.span, path };
                 let span = meta.span.with_ctxt(self.cx.backtrace());
                 let items = expander.expand(self.cx, span, &meta, item);

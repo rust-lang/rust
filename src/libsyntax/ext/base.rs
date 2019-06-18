@@ -677,7 +677,7 @@ impl SyntaxExtension {
         }
     }
 
-    crate fn expn_info(&self, call_site: Span, format: &str) -> ExpnInfo {
+    pub fn expn_info(&self, call_site: Span, format: &str) -> ExpnInfo {
         ExpnInfo {
             call_site,
             format: self.expn_format(Symbol::intern(format)),

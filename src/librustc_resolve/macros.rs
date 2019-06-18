@@ -114,6 +114,22 @@ fn sub_namespace_match(candidate: Option<MacroKind>, requirement: Option<MacroKi
     candidate.is_none() || requirement.is_none() || candidate == requirement
 }
 
+// We don't want to format a path using pretty-printing,
+// `format!("{}", path)`, because that tries to insert
+// line-breaks and is slow.
+fn fast_print_path(path: &ast::Path) -> String {
+    let mut path_str = String::with_capacity(64);
+    for (i, segment) in path.segments.iter().enumerate() {
+        if i != 0 {
+            path_str.push_str("::");
+        }
+        if segment.ident.name != kw::PathRoot {
+            path_str.push_str(&segment.ident.as_str())
+        }
+    }
+    path_str
+}
+
 impl<'a> base::Resolver for Resolver<'a> {
     fn next_node_id(&mut self) -> ast::NodeId {
         self.session.next_node_id()
@@ -209,14 +225,19 @@ impl<'a> base::Resolver for Resolver<'a> {
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
         let (res, ext) = match self.resolve_macro_to_res(path, kind, &parent_scope, true, force) {
             Ok((res, ext)) => (res, ext),
-            Err(Determinacy::Determined) if kind == MacroKind::Attr => {
-                // Replace unresolved attributes with used inert attributes for better recovery.
-                return Ok(Some(self.non_macro_attr(true)));
-            }
+            // Replace unresolved attributes with used inert attributes for better recovery.
+            Err(Determinacy::Determined) if kind == MacroKind::Attr =>
+                (Res::Err, self.non_macro_attr(true)),
             Err(determinacy) => return Err(determinacy),
         };
 
-        if let Res::Def(DefKind::Macro(_), def_id) = res {
+        let format = match kind {
+            MacroKind::Derive => format!("derive({})", fast_print_path(path)),
+            _ => fast_print_path(path),
+        };
+        invoc.expansion_data.mark.set_expn_info(ext.expn_info(invoc.span(), &format));
+
+        if let Res::Def(_, def_id) = res {
             if after_derive {
                 self.session.span_err(invoc.span(),
                                       "macro attributes must be placed before `#[derive]`");
