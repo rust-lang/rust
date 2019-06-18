@@ -506,7 +506,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             let suggested_limit = self.cx.ecfg.recursion_limit * 2;
             let mut err = self.cx.struct_span_err(info.call_site,
                 &format!("recursion limit reached while expanding the macro `{}`",
-                         info.format.name()));
+                         info.kind.descr()));
             err.help(&format!(
                 "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
                 suggested_limit));

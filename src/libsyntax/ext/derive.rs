@@ -1,6 +1,6 @@
 use crate::attr::HasAttrs;
 use crate::ast;
-use crate::source_map::{ExpnInfo, ExpnFormat};
+use crate::source_map::{ExpnInfo, ExpnKind};
 use crate::ext::base::ExtCtxt;
 use crate::ext::build::AstBuilder;
 use crate::parse::parser::PathStyle;
@@ -57,7 +57,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::P
     pretty_name.push(')');
 
     cx.current_expansion.mark.set_expn_info(ExpnInfo::with_unstable(
-        ExpnFormat::MacroAttribute(Symbol::intern(&pretty_name)), span, cx.parse_sess.edition,
+        ExpnKind::MacroAttribute(Symbol::intern(&pretty_name)), span, cx.parse_sess.edition,
         &[sym::rustc_attrs, sym::structural_match],
     ));
 

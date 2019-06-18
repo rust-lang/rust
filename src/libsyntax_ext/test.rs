@@ -9,7 +9,7 @@ use syntax::ast;
 use syntax::print::pprust;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
-use syntax::source_map::{ExpnInfo, MacroAttribute};
+use syntax::source_map::{ExpnInfo, ExpnKind};
 use std::iter;
 
 pub fn expand_test(
@@ -63,7 +63,7 @@ pub fn expand_test_or_bench(
     let (sp, attr_sp) = {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(ExpnInfo::with_unstable(
-            MacroAttribute(sym::test), attr_sp, cx.parse_sess.edition,
+            ExpnKind::MacroAttribute(sym::test), attr_sp, cx.parse_sess.edition,
             &[sym::rustc_attrs, sym::test],
         ));
         (item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark)),

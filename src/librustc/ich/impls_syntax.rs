@@ -398,7 +398,7 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::Transparency {
 
 impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
     call_site,
-    format,
+    kind,
     def_site,
     default_transparency,
     allow_internal_unstable,
@@ -407,13 +407,13 @@ impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
     edition
 });
 
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnFormat {
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnKind {
     MacroAttribute(sym),
     MacroBang(sym),
-    CompilerDesugaring(kind)
+    Desugaring(kind)
 });
 
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::DesugaringKind {
     CondTemporary,
     Async,
     Await,

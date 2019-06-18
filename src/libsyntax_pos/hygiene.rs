@@ -162,7 +162,7 @@ impl Mark {
         HygieneData::with(|data| {
             if data.default_transparency(self) == Transparency::Opaque {
                 if let Some(expn_info) = &data.marks[self.0 as usize].expn_info {
-                    if let ExpnFormat::MacroAttribute(name) = expn_info.format {
+                    if let ExpnKind::MacroAttribute(name) = expn_info.kind {
                         if name.as_str().starts_with("derive(") {
                             return true;
                         }
@@ -654,7 +654,7 @@ pub struct ExpnInfo {
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
     /// The format with which the macro was invoked.
-    pub format: ExpnFormat,
+    pub kind: ExpnKind,
 
     // --- The part specific to the macro/desugaring definition.
     // --- FIXME: Share it between expansions with the same definition.
@@ -681,10 +681,10 @@ pub struct ExpnInfo {
 
 impl ExpnInfo {
     /// Constructs an expansion info with default properties.
-    pub fn default(format: ExpnFormat, call_site: Span, edition: Edition) -> ExpnInfo {
+    pub fn default(kind: ExpnKind, call_site: Span, edition: Edition) -> ExpnInfo {
         ExpnInfo {
             call_site,
-            format,
+            kind,
             def_site: None,
             default_transparency: Transparency::SemiTransparent,
             allow_internal_unstable: None,
@@ -694,31 +694,31 @@ impl ExpnInfo {
         }
     }
 
-    pub fn with_unstable(format: ExpnFormat, call_site: Span, edition: Edition,
+    pub fn with_unstable(kind: ExpnKind, call_site: Span, edition: Edition,
                          allow_internal_unstable: &[Symbol]) -> ExpnInfo {
         ExpnInfo {
             allow_internal_unstable: Some(allow_internal_unstable.into()),
-            ..ExpnInfo::default(format, call_site, edition)
+            ..ExpnInfo::default(kind, call_site, edition)
         }
     }
 }
 
 /// The source of expansion.
 #[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub enum ExpnFormat {
+pub enum ExpnKind {
     /// e.g., #[derive(...)] <item>
     MacroAttribute(Symbol),
     /// e.g., `format!()`
     MacroBang(Symbol),
     /// Desugaring done by the compiler during HIR lowering.
-    CompilerDesugaring(CompilerDesugaringKind)
+    Desugaring(DesugaringKind)
 }
 
-impl ExpnFormat {
-    pub fn name(&self) -> Symbol {
+impl ExpnKind {
+    pub fn descr(&self) -> Symbol {
         match *self {
-            ExpnFormat::MacroBang(name) | ExpnFormat::MacroAttribute(name) => name,
-            ExpnFormat::CompilerDesugaring(kind) => kind.name(),
+            ExpnKind::MacroBang(name) | ExpnKind::MacroAttribute(name) => name,
+            ExpnKind::Desugaring(kind) => kind.descr(),
         }
     }
 }
@@ -753,7 +753,7 @@ impl MacroKind {
 
 /// The kind of compiler desugaring.
 #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub enum CompilerDesugaringKind {
+pub enum DesugaringKind {
     /// We desugar `if c { i } else { e }` to `match $ExprKind::Use(c) { true => i, _ => e }`.
     /// However, we do not want to blame `c` for unreachability but rather say that `i`
     /// is unreachable. This desugaring kind allows us to avoid blaming `c`.
@@ -770,16 +770,16 @@ pub enum CompilerDesugaringKind {
     ForLoop,
 }
 
-impl CompilerDesugaringKind {
-    pub fn name(self) -> Symbol {
+impl DesugaringKind {
+    pub fn descr(self) -> Symbol {
         Symbol::intern(match self {
-            CompilerDesugaringKind::CondTemporary => "if and while condition",
-            CompilerDesugaringKind::Async => "async",
-            CompilerDesugaringKind::Await => "await",
-            CompilerDesugaringKind::QuestionMark => "?",
-            CompilerDesugaringKind::TryBlock => "try block",
-            CompilerDesugaringKind::ExistentialType => "existential type",
-            CompilerDesugaringKind::ForLoop => "for loop",
+            DesugaringKind::CondTemporary => "if and while condition",
+            DesugaringKind::Async => "async",
+            DesugaringKind::Await => "await",
+            DesugaringKind::QuestionMark => "?",
+            DesugaringKind::TryBlock => "try block",
+            DesugaringKind::ExistentialType => "existential type",
+            DesugaringKind::ForLoop => "for loop",
         })
     }
 }

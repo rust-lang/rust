@@ -15,7 +15,7 @@ use smallvec::{smallvec, SmallVec};
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, Span, SourceFile, BytePos};
 
 use crate::attr::{self, HasAttrs};
-use crate::source_map::{self, SourceMap, ExpnInfo, MacroAttribute, dummy_spanned, respan};
+use crate::source_map::{self, SourceMap, ExpnInfo, ExpnKind, dummy_spanned, respan};
 use crate::config;
 use crate::entry::{self, EntryPointType};
 use crate::ext::base::{ExtCtxt, Resolver};
@@ -280,7 +280,7 @@ fn generate_test_harness(sess: &ParseSess,
     };
 
     mark.set_expn_info(ExpnInfo::with_unstable(
-        MacroAttribute(sym::test_case), DUMMY_SP, sess.edition,
+        ExpnKind::MacroAttribute(sym::test_case), DUMMY_SP, sess.edition,
         &[sym::main, sym::test, sym::rustc_attrs],
     ));
 

@@ -4,7 +4,7 @@ use crate::deriving;
 
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::source_map::{ExpnInfo, MacroAttribute, respan};
+use syntax::source_map::{ExpnInfo, ExpnKind, respan};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
@@ -348,7 +348,7 @@ fn mk_decls(
 ) -> P<ast::Item> {
     let mark = Mark::fresh(Mark::root());
     mark.set_expn_info(ExpnInfo::with_unstable(
-        MacroAttribute(sym::proc_macro), DUMMY_SP, cx.parse_sess.edition,
+        ExpnKind::MacroAttribute(sym::proc_macro), DUMMY_SP, cx.parse_sess.edition,
         &[sym::rustc_attrs, Symbol::intern("proc_macro_internals")],
     ));
     let span = DUMMY_SP.apply_mark(mark);

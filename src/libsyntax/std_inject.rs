@@ -3,7 +3,7 @@ use crate::attr;
 use crate::edition::Edition;
 use crate::ext::hygiene::{Mark, SyntaxContext};
 use crate::symbol::{Ident, Symbol, kw, sym};
-use crate::source_map::{ExpnInfo, MacroAttribute, dummy_spanned, respan};
+use crate::source_map::{ExpnInfo, ExpnKind, dummy_spanned, respan};
 use crate::ptr::P;
 use crate::tokenstream::TokenStream;
 
@@ -17,7 +17,7 @@ use syntax_pos::{DUMMY_SP, Span};
 fn ignored_span(sp: Span, edition: Edition) -> Span {
     let mark = Mark::fresh(Mark::root());
     mark.set_expn_info(ExpnInfo::with_unstable(
-        MacroAttribute(Symbol::intern("std_inject")), sp, edition, &[sym::prelude_import]
+        ExpnKind::MacroAttribute(Symbol::intern("std_inject")), sp, edition, &[sym::prelude_import]
     ));
     sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
 }

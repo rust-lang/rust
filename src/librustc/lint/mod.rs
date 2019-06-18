@@ -35,7 +35,7 @@ use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use std::{hash, ptr};
 use syntax::ast;
-use syntax::source_map::{MultiSpan, ExpnFormat, CompilerDesugaringKind};
+use syntax::source_map::{MultiSpan, ExpnKind, DesugaringKind};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
 use syntax::symbol::{Symbol, sym};
@@ -883,11 +883,11 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
         None => return false,
     };
 
-    match info.format {
-        ExpnFormat::MacroAttribute(..) => true, // definitely a plugin
-        ExpnFormat::CompilerDesugaring(CompilerDesugaringKind::ForLoop) => false,
-        ExpnFormat::CompilerDesugaring(_) => true, // well, it's "external"
-        ExpnFormat::MacroBang(..) => {
+    match info.kind {
+        ExpnKind::MacroAttribute(..) => true, // definitely a plugin
+        ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
+        ExpnKind::Desugaring(_) => true, // well, it's "external"
+        ExpnKind::MacroBang(..) => {
             let def_site = match info.def_site {
                 Some(span) => span,
                 // no span for the def_site means it's an external macro
@@ -911,8 +911,8 @@ pub fn in_derive_expansion(span: Span) -> bool {
         None => return false,
     };
 
-    match info.format {
-        ExpnFormat::MacroAttribute(symbol) => symbol.as_str().starts_with("derive("),
+    match info.kind {
+        ExpnKind::MacroAttribute(symbol) => symbol.as_str().starts_with("derive("),
         _ => false,
     }
 }

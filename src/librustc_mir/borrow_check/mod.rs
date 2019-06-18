@@ -335,7 +335,7 @@ fn do_mir_borrowck<'a, 'tcx>(
             }
 
             let span = local_decl.source_info.span;
-            if span.compiler_desugaring_kind().is_some() {
+            if span.desugaring_kind().is_some() {
                 // If the `mut` arises as part of a desugaring, we should ignore it.
                 continue;
             }

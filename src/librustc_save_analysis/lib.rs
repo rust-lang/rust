@@ -37,7 +37,6 @@ use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{arg_to_string, ty_to_string};
-use syntax::source_map::MacroAttribute;
 use syntax_pos::*;
 
 use json_dumper::JsonDumper;
@@ -845,7 +844,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let callee_span = callee.def_site?;
 
         // Ignore attribute macros, their spans are usually mangled
-        if let MacroAttribute(_) = callee.format {
+        if let ExpnKind::MacroAttribute(_) = callee.kind {
             return None;
         }
 
@@ -870,7 +869,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let callee_span = self.span_from_span(callee_span);
         Some(MacroRef {
             span: callsite_span,
-            qualname: callee.format.name().to_string(), // FIXME: generate the real qualname
+            qualname: callee.kind.descr().to_string(), // FIXME: generate the real qualname
             callee_span,
         })
     }

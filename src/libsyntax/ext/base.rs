@@ -15,7 +15,7 @@ use crate::tokenstream::{self, TokenStream};
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
-use syntax_pos::hygiene::{ExpnInfo, ExpnFormat};
+use syntax_pos::hygiene::{ExpnInfo, ExpnKind};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
@@ -642,18 +642,18 @@ impl SyntaxExtension {
         }
     }
 
-    fn expn_format(&self, symbol: Symbol) -> ExpnFormat {
+    fn expn_kind(&self, descr: Symbol) -> ExpnKind {
         match self.kind {
             SyntaxExtensionKind::Bang(..) |
-            SyntaxExtensionKind::LegacyBang(..) => ExpnFormat::MacroBang(symbol),
-            _ => ExpnFormat::MacroAttribute(symbol),
+            SyntaxExtensionKind::LegacyBang(..) => ExpnKind::MacroBang(descr),
+            _ => ExpnKind::MacroAttribute(descr),
         }
     }
 
-    pub fn expn_info(&self, call_site: Span, format: &str) -> ExpnInfo {
+    pub fn expn_info(&self, call_site: Span, descr: &str) -> ExpnInfo {
         ExpnInfo {
             call_site,
-            format: self.expn_format(Symbol::intern(format)),
+            kind: self.expn_kind(Symbol::intern(descr)),
             def_site: Some(self.span),
             default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),
@@ -780,7 +780,7 @@ impl<'a> ExtCtxt<'a> {
         let mut last_macro = None;
         loop {
             if ctxt.outer_expn_info().map_or(None, |info| {
-                if info.format.name() == sym::include {
+                if info.kind.descr() == sym::include {
                     // Stop going up the backtrace once include! is encountered
                     return None;
                 }

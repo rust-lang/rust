@@ -36,7 +36,7 @@ use errors::{Applicability, DiagnosticBuilder};
 use std::fmt;
 use syntax::ast;
 use syntax::symbol::sym;
-use syntax_pos::{DUMMY_SP, Span, ExpnInfo, ExpnFormat};
+use syntax_pos::{DUMMY_SP, Span, ExpnInfo, ExpnKind};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(&self,
@@ -62,7 +62,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // if one is the result of a desugaring and the other is not.
             let mut span = error.obligation.cause.span;
             if let Some(ExpnInfo {
-                format: ExpnFormat::CompilerDesugaring(_),
+                kind: ExpnKind::Desugaring(_),
                 def_site: Some(def_span),
                 ..
             }) = span.ctxt().outer_expn_info() {
@@ -373,9 +373,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             flags.push((sym::parent_trait, Some(t)));
         }
 
-        if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
+        if let Some(k) = obligation.cause.span.desugaring_kind() {
             flags.push((sym::from_desugaring, None));
-            flags.push((sym::from_desugaring, Some(k.name().to_string())));
+            flags.push((sym::from_desugaring, Some(k.descr().to_string())));
         }
         let generics = self.tcx.generics_of(def_id);
         let self_ty = trait_ref.self_ty();
