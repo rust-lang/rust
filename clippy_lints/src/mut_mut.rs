@@ -37,7 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutMut {
     }
 }
 
-pub struct MutVisitor<'a, 'tcx: 'a> {
+pub struct MutVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
 }
 

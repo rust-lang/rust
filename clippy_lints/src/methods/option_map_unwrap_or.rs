@@ -77,12 +77,12 @@ pub(super) fn lint<'a, 'tcx>(
     }
 }
 
-struct UnwrapVisitor<'a, 'tcx: 'a> {
+struct UnwrapVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     identifiers: FxHashSet<Symbol>,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
         self.identifiers.insert(ident(path));
         walk_path(self, path);
@@ -93,13 +93,13 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
     }
 }
 
-struct MapExprVisitor<'a, 'tcx: 'a> {
+struct MapExprVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     identifiers: FxHashSet<Symbol>,
     found_identifier: bool,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
         if self.identifiers.contains(&ident(path)) {
             self.found_identifier = true;

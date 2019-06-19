@@ -135,7 +135,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
     }
 }
 
-struct UsedVisitor<'a, 'tcx: 'a> {
+struct UsedVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     id: hir::HirId,
     used: bool,
@@ -194,7 +194,7 @@ fn check_assign<'a, 'tcx>(
     None
 }
 
-fn used_in_expr<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, id: hir::HirId, expr: &'tcx hir::Expr) -> bool {
+fn used_in_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, id: hir::HirId, expr: &'tcx hir::Expr) -> bool {
     let mut v = UsedVisitor { cx, id, used: false };
     hir::intravisit::walk_expr(&mut v, expr);
     v.used

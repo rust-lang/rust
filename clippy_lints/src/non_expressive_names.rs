@@ -77,7 +77,7 @@ struct ExistingName {
     whitelist: &'static [&'static str],
 }
 
-struct SimilarNamesLocalVisitor<'a, 'tcx: 'a> {
+struct SimilarNamesLocalVisitor<'a, 'tcx> {
     names: Vec<ExistingName>,
     cx: &'a EarlyContext<'tcx>,
     lint: &'a NonExpressiveNames,
@@ -86,7 +86,7 @@ struct SimilarNamesLocalVisitor<'a, 'tcx: 'a> {
     single_char_names: Vec<Vec<Ident>>,
 }
 
-impl<'a, 'tcx: 'a> SimilarNamesLocalVisitor<'a, 'tcx> {
+impl<'a, 'tcx> SimilarNamesLocalVisitor<'a, 'tcx> {
     fn check_single_char_names(&self) {
         let num_single_char_names = self.single_char_names.iter().flatten().count();
         let threshold = self.lint.single_char_binding_names_threshold;
@@ -123,9 +123,9 @@ const WHITELIST: &[&[&str]] = &[
     &["lit", "lint"],
 ];
 
-struct SimilarNamesNameVisitor<'a: 'b, 'tcx: 'a, 'b>(&'b mut SimilarNamesLocalVisitor<'a, 'tcx>);
+struct SimilarNamesNameVisitor<'a, 'tcx, 'b>(&'b mut SimilarNamesLocalVisitor<'a, 'tcx>);
 
-impl<'a, 'tcx: 'a, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
+impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
     fn visit_pat(&mut self, pat: &'tcx Pat) {
         match pat.node {
             PatKind::Ident(_, ident, _) => self.check_ident(ident),

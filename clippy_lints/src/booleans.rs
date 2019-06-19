@@ -68,12 +68,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
     }
 }
 
-struct NonminimalBoolVisitor<'a, 'tcx: 'a> {
+struct NonminimalBoolVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
 }
 
 use quine_mc_cluskey::Bool;
-struct Hir2Qmm<'a, 'tcx: 'a, 'v> {
+struct Hir2Qmm<'a, 'tcx, 'v> {
     terminals: Vec<&'v Expr>,
     cx: &'a LateContext<'a, 'tcx>,
 }
@@ -155,7 +155,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     }
 }
 
-struct SuggestContext<'a, 'tcx: 'a, 'v> {
+struct SuggestContext<'a, 'tcx, 'v> {
     terminals: &'v [&'v Expr],
     cx: &'a LateContext<'a, 'tcx>,
     output: String,

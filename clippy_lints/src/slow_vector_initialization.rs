@@ -180,7 +180,7 @@ impl SlowVectorInit {
 
 /// `VectorInitializationVisitor` searches for unsafe or slow vector initializations for the given
 /// vector.
-struct VectorInitializationVisitor<'a, 'tcx: 'a> {
+struct VectorInitializationVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
 
     /// Contains the information.

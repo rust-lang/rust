@@ -68,7 +68,7 @@ fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
     );
 }
 
-struct TraitImplTyVisitor<'a, 'tcx: 'a> {
+struct TraitImplTyVisitor<'a, 'tcx> {
     item_type: Ty<'tcx>,
     cx: &'a LateContext<'a, 'tcx>,
     trait_type_walker: ty::walk::TypeWalker<'tcx>,
@@ -108,7 +108,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
     }
 }
 
-fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
+fn check_trait_method_impl_decl<'a, 'tcx>(
     cx: &'a LateContext<'a, 'tcx>,
     item_type: Ty<'tcx>,
     impl_item: &ImplItem,
@@ -213,7 +213,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
     }
 }
 
-struct UseSelfVisitor<'a, 'tcx: 'a> {
+struct UseSelfVisitor<'a, 'tcx> {
     item_path: &'a Path,
     cx: &'a LateContext<'a, 'tcx>,
 }

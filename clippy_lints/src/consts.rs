@@ -210,7 +210,7 @@ pub fn constant_context<'c, 'cc>(
     }
 }
 
-pub struct ConstEvalLateContext<'a, 'tcx: 'a> {
+pub struct ConstEvalLateContext<'a, 'tcx> {
     lcx: &'a LateContext<'a, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,

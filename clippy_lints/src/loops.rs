@@ -1723,13 +1723,13 @@ impl<'tcx> Visitor<'tcx> for UsedVisitor {
     }
 }
 
-struct LocalUsedVisitor<'a, 'tcx: 'a> {
+struct LocalUsedVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     local: HirId,
     used: bool,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for LocalUsedVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for LocalUsedVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if same_var(self.cx, expr, self.local) {
             self.used = true;
@@ -1743,7 +1743,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for LocalUsedVisitor<'a, 'tcx> {
     }
 }
 
-struct VarVisitor<'a, 'tcx: 'a> {
+struct VarVisitor<'a, 'tcx> {
     /// context reference
     cx: &'a LateContext<'a, 'tcx>,
     /// var name to look for as index
@@ -1914,7 +1914,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     }
 }
 
-fn is_used_inside<'a, 'tcx: 'a>(cx: &'a LateContext<'a, 'tcx>, expr: &'tcx Expr, container: &'tcx Expr) -> bool {
+fn is_used_inside<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, expr: &'tcx Expr, container: &'tcx Expr) -> bool {
     let def_id = match var_def_id(cx, expr) {
         Some(id) => id,
         None => return false,
@@ -1927,7 +1927,7 @@ fn is_used_inside<'a, 'tcx: 'a>(cx: &'a LateContext<'a, 'tcx>, expr: &'tcx Expr,
     false
 }
 
-fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, iter_expr: &'tcx Expr) -> bool {
+fn is_iterator_used_after_while_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, iter_expr: &'tcx Expr) -> bool {
     let def_id = match var_def_id(cx, iter_expr) {
         Some(id) => id,
         None => return false,
@@ -1945,7 +1945,7 @@ fn is_iterator_used_after_while_let<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, it
     visitor.var_used_after_while_let
 }
 
-struct VarUsedAfterLoopVisitor<'a, 'tcx: 'a> {
+struct VarUsedAfterLoopVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     def_id: HirId,
     iter_expr_id: HirId,
@@ -2051,7 +2051,7 @@ enum VarState {
 }
 
 /// Scan a for loop for variables that are incremented exactly once.
-struct IncrementVisitor<'a, 'tcx: 'a> {
+struct IncrementVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,      // context reference
     states: FxHashMap<HirId, VarState>, // incremented variables
     depth: u32,                         // depth of conditional expressions
@@ -2105,7 +2105,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
 }
 
 /// Checks whether a variable is initialized to zero at the start of a loop.
-struct InitializeVisitor<'a, 'tcx: 'a> {
+struct InitializeVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>, // context reference
     end_expr: &'tcx Expr,          // the for loop. Stop scanning here.
     var_id: HirId,
@@ -2374,7 +2374,7 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, e
 /// Stops analysis if a function call is found
 /// Note: In some cases such as `self`, there are no mutable annotation,
 /// All variables definition IDs are collected
-struct VarCollectorVisitor<'a, 'tcx: 'a> {
+struct VarCollectorVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     ids: FxHashSet<HirId>,
     def_ids: FxHashMap<def_id::DefId, bool>,

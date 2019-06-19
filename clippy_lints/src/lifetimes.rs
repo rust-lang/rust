@@ -147,7 +147,7 @@ fn check_fn_inner<'a, 'tcx>(
     report_extra_lifetimes(cx, decl, generics);
 }
 
-fn could_use_elision<'a, 'tcx: 'a>(
+fn could_use_elision<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     func: &'tcx FnDecl,
     body: Option<BodyId>,
@@ -264,7 +264,7 @@ fn unique_lifetimes(lts: &[RefLt]) -> usize {
 }
 
 /// A visitor usable for `rustc_front::visit::walk_ty()`.
-struct RefVisitor<'a, 'tcx: 'a> {
+struct RefVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     lts: Vec<RefLt>,
     abort: bool,
@@ -377,7 +377,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
 /// Are any lifetimes mentioned in the `where` clause? If so, we don't try to
 /// reason about elision.
-fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &'tcx WhereClause) -> bool {
+fn has_where_lifetimes<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, where_clause: &'tcx WhereClause) -> bool {
     for predicate in &where_clause.predicates {
         match *predicate {
             WherePredicate::RegionPredicate(..) => return true,
@@ -445,7 +445,7 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
     }
 }
 
-fn report_extra_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, func: &'tcx FnDecl, generics: &'tcx Generics) {
+fn report_extra_lifetimes<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, func: &'tcx FnDecl, generics: &'tcx Generics) {
     let hs = generics
         .params
         .iter()

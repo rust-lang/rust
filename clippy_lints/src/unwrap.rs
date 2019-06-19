@@ -57,7 +57,7 @@ declare_clippy_lint! {
 }
 
 /// Visitor that keeps track of which variables are unwrappable.
-struct UnwrappableVariablesVisitor<'a, 'tcx: 'a> {
+struct UnwrappableVariablesVisitor<'a, 'tcx> {
     unwrappables: Vec<UnwrapInfo<'tcx>>,
     cx: &'a LateContext<'a, 'tcx>,
 }
@@ -74,7 +74,7 @@ struct UnwrapInfo<'tcx> {
 
 /// Collects the information about unwrappable variables from an if condition
 /// The `invert` argument tells us whether the condition is negated.
-fn collect_unwrap_info<'a, 'tcx: 'a>(
+fn collect_unwrap_info<'a, 'tcx>(
     cx: &'a LateContext<'a, 'tcx>,
     expr: &'tcx Expr,
     invert: bool,
@@ -113,7 +113,7 @@ fn collect_unwrap_info<'a, 'tcx: 'a>(
     Vec::new()
 }
 
-impl<'a, 'tcx: 'a> UnwrappableVariablesVisitor<'a, 'tcx> {
+impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
     fn visit_branch(&mut self, cond: &'tcx Expr, branch: &'tcx Expr, else_branch: bool) {
         let prev_len = self.unwrappables.len();
         for unwrap_info in collect_unwrap_info(self.cx, cond, else_branch) {
@@ -130,7 +130,7 @@ impl<'a, 'tcx: 'a> UnwrappableVariablesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if let Some((cond, then, els)) = if_block(&expr) {
             walk_expr(self, cond);

@@ -183,7 +183,7 @@ struct BinaryExprVisitor {
     in_binary_expr: bool,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for BinaryExprVisitor {
+impl<'a, 'tcx> Visitor<'tcx> for BinaryExprVisitor {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprKind::Binary(..)

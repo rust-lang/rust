@@ -763,7 +763,7 @@ where
     T: Copy + Ord,
 {
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-    enum Kind<'a, T: 'a> {
+    enum Kind<'a, T> {
         Start(T, &'a SpannedRange<T>),
         End(Bound<T>, &'a SpannedRange<T>),
     }
