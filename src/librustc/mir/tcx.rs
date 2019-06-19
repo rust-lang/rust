@@ -122,13 +122,25 @@ impl<'tcx> Place<'tcx> {
     where
         D: HasLocalDecls<'tcx>,
     {
-        match *self {
-            Place::Base(PlaceBase::Local(index)) =>
-                PlaceTy::from_ty(local_decls.local_decls()[index].ty),
-            Place::Base(PlaceBase::Static(ref data)) =>
-                PlaceTy::from_ty(data.ty),
-            Place::Projection(ref proj) =>
-                proj.base.ty(local_decls, tcx).projection_ty(tcx, &proj.elem),
+        self.iterate(|place_base, place_projections| {
+            let mut place_ty = place_base.ty(local_decls);
+
+            for proj in place_projections {
+                place_ty = place_ty.projection_ty(tcx, &proj.elem);
+            }
+
+            place_ty
+        })
+    }
+}
+
+impl<'tcx> PlaceBase<'tcx> {
+    pub fn ty<D>(&self, local_decls: &D) -> PlaceTy<'tcx>
+        where D: HasLocalDecls<'tcx>
+    {
+        match self {
+            PlaceBase::Local(index) => PlaceTy::from_ty(local_decls.local_decls()[*index].ty),
+            PlaceBase::Static(data) => PlaceTy::from_ty(data.ty),
         }
     }
 }
