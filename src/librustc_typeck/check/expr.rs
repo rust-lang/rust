@@ -1221,7 +1221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(variant.ident.span, format!("`{adt}` defined here", adt=ty));
                 err.span_label(field.ident.span, "field does not exist");
                 err.span_label(ty_span, format!(
-                        "`{adt}` is a tuple {kind_name},\
+                        "`{adt}` is a tuple {kind_name}, \
                          use the appropriate syntax: `{adt}(/* fields */)`",
                     adt=ty,
                     kind_name=kind_name
@@ -1267,7 +1267,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             }
         }
-            err.emit();
+        err.emit();
     }
 
     // Return an hint about the closest match in field names
