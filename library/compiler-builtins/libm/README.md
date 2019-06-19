@@ -37,6 +37,12 @@ fn foo(x: f32) {
 
 The API documentation can be found [here](https://docs.rs/libm).
 
+## Benchmark
+[benchmark]: #benchmark
+Run `cargo +nightly bench`
+
+NOTE: remember to have nightly installed `rustup install nightly`
+
 ## Contributing
 
 Please check [CONTRIBUTING.md](CONTRIBUTING.md)

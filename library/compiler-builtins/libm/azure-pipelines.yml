@@ -71,3 +71,14 @@ jobs:
       - template: ci/azure-install-rust.yml
       - bash: cargo build -p cb
         displayName: "Check compiler-builtins still probably builds"
+
+  - job: benchmarks
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ci/azure-install-rust.yml
+      - bash: cargo bench
+        displayName: "Benchmarks"
+    variables:
+      TOOLCHAIN: nightly
+
