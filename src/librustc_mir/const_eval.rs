@@ -613,7 +613,7 @@ pub fn const_eval_provider<'tcx>(
             ty::FnDef(_, substs) => substs,
             _ => bug!("intrinsic with type {:?}", ty),
         };
-        return Ok(eval_intrinsic(tcx, def_id, substs));
+        return Ok(eval_intrinsic(tcx, key.param_env, def_id, substs));
     }
 
     tcx.const_eval_raw(key).and_then(|val| {
@@ -623,12 +623,15 @@ pub fn const_eval_provider<'tcx>(
 
 fn eval_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     def_id: DefId,
     substs: SubstsRef<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
-    match &*tcx.item_name(def_id).as_str() {
+    let tp_ty = substs.type_at(0);
+    let name = &*tcx.item_name(def_id).as_str();
+    match name {
         "type_name" => {
-            let alloc = alloc_type_name(tcx, substs.type_at(0));
+            let alloc = alloc_type_name(tcx, tp_ty);
             tcx.mk_const(ty::Const {
                 val: ConstValue::Slice {
                     data: alloc,
@@ -638,6 +641,24 @@ fn eval_intrinsic<'tcx>(
                 ty: tcx.mk_static_str(),
             })
         },
+        "needs_drop" => ty::Const::from_bool(tcx, tp_ty.needs_drop(tcx, param_env)),
+        "size_of" |
+        "min_align_of" |
+        "pref_align_of" => {
+            let layout = tcx.layout_of(param_env.and(tp_ty)).unwrap();
+            let n = match name {
+                "pref_align_of" => layout.align.pref.bytes(),
+                "min_align_of" => layout.align.abi.bytes(),
+                "size_of" => layout.size.bytes(),
+                _ => bug!(),
+            };
+            ty::Const::from_usize(tcx, n)
+        },
+        "type_id" => ty::Const::from_bits(
+            tcx,
+            tcx.type_id_hash(tp_ty).into(),
+            param_env.and(tcx.types.u64),
+        ),
         other => bug!("`{}` is not a zero arg intrinsic", other),
     }
 }

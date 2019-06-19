@@ -135,10 +135,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 let llfn = self.get_intrinsic(&("llvm.debugtrap"));
                 self.call(llfn, &[], None)
             }
-            "size_of" => {
-                let tp_ty = substs.type_at(0);
-                self.const_usize(self.size_of(tp_ty).bytes())
-            }
             "va_start" => {
                 self.va_start(args[0].immediate())
             }
@@ -190,10 +186,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     self.const_usize(self.size_of(tp_ty).bytes())
                 }
             }
-            "min_align_of" => {
-                let tp_ty = substs.type_at(0);
-                self.const_usize(self.align_of(tp_ty).bytes())
-            }
             "min_align_of_val" => {
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
@@ -203,10 +195,11 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     self.const_usize(self.align_of(tp_ty).bytes())
                 }
             }
-            "pref_align_of" => {
-                let tp_ty = substs.type_at(0);
-                self.const_usize(self.layout_of(tp_ty).align.pref.bytes())
-            }
+            "size_of" |
+            "pref_align_of" |
+            "min_align_of" |
+            "needs_drop" |
+            "type_id" |
             "type_name" => {
                 let gid = GlobalId {
                     instance,
@@ -214,9 +207,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 };
                 let ty_name = self.tcx.const_eval(ty::ParamEnv::reveal_all().and(gid)).unwrap();
                 OperandRef::from_const(self, ty_name).immediate_or_packed_pair(self)
-            }
-            "type_id" => {
-                self.const_u64(self.tcx.type_id_hash(substs.type_at(0)))
             }
             "init" => {
                 let ty = substs.type_at(0);
@@ -239,11 +229,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             // Effectively no-ops
             "uninit" | "forget" => {
                 return;
-            }
-            "needs_drop" => {
-                let tp_ty = substs.type_at(0);
-
-                self.const_bool(self.type_needs_drop(tp_ty))
             }
             "offset" => {
                 let ptr = args[0].immediate();
