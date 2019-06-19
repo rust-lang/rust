@@ -45,11 +45,12 @@ pub enum ConstValue<'tcx> {
 
     /// An value not represented/representable by `Scalar` or `Slice`
     ByRef {
-        /// The alignment exists to allow `const_field` to have `ByRef` access to nonprimitive fields
-        /// of `repr(packed)` structs. The alignment may be lower than the type of this constant.
-        /// This permits reads with lower alignment than what the type would normally require.
-        /// FIXME(RalfJ,oli-obk): The alignment checks are part of miri, but const eval doesn't really
-        /// need them. Disabling them may be too hard though.
+        /// The alignment exists to allow `const_field` to have `ByRef` access to nonprimitive
+        /// fields of `repr(packed)` structs. The alignment may be lower than the type of this
+        /// constant. This permits reads with lower alignment than what the type would normally
+        /// require.
+        /// FIXME(RalfJ,oli-obk): The alignment checks are part of miri, but const eval doesn't
+        /// really need them. Disabling them may be too hard though.
         align: Align,
         /// Offset into `alloc`
         offset: Size,
