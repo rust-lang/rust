@@ -182,7 +182,7 @@
 //!     }
 //! }
 //! ```
-//! `inner_drop` has the type that `drop` *should* have, so this makes sure that
+//! The function `inner_drop` has the type that `drop` *should* have, so this makes sure that
 //! you do not accidentally use `self`/`this` in a way that is in conflict with pinning.
 //!
 //! Moreover, if your type is `#[repr(packed)]`, the compiler will automatically
@@ -196,7 +196,7 @@
 //! The usual approach is to write helper methods (so called *projections*)
 //! that turn `Pin<&mut Struct>` into a reference to the field, but what
 //! type should that reference have? Is it `Pin<&mut Field>` or `&mut Field`?
-//! The same question arises with the fields of an enum, and also when considering
+//! The same question arises with the fields of an `enum`, and also when considering
 //! container/wrapper types such as [`Vec<T>`], [`Box<T>`], or [`RefCell<T>`].
 //! (This question applies to both mutable and shared references, we just
 //! use the more common case of mutable references here for illustration.)
@@ -209,7 +209,7 @@
 //! pinning removed as part of the projection. If both are done for the same field,
 //! that will likely be unsound!
 //!
-//! Basically, as the author of a data structure you get to decide for each field whether pinning
+//! As the author of a data structure you get to decide for each field whether pinning
 //! "propagates" to this field or not. Pinning that propagates is also called "structural",
 //! because it follows the structure of the type.
 //! In the following, we describe the considerations that have to be made for either choice.
@@ -235,7 +235,7 @@
 //! ```
 //!
 //! You may also `impl Unpin for Struct` *even if* the type of `field`
-//! is not `Unpin`.  What that type thinks about pinning is just not relevant
+//! is not `Unpin`. What that type thinks about pinning is not relevant
 //! when no `Pin<&mut Field>` is ever created.
 //!
 //! ## Pinning *is* structural for `field`
