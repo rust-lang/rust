@@ -49,8 +49,8 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 ty.iterate_impl_items(ctx.db, krate, |item| {
                     match item {
                         hir::ImplItem::Method(func) => {
-                            let sig = func.signature(ctx.db);
-                            if !sig.has_self_param() {
+                            let data = func.data(ctx.db);
+                            if !data.has_self_param() {
                                 acc.add_function(ctx, func);
                             }
                         }

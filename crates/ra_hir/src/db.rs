@@ -6,9 +6,9 @@ use ra_db::{SourceDatabase, salsa};
 
 use crate::{
     HirFileId, MacroDefId, AstIdMap, ErasedFileAstId, Crate, Module, MacroCallLoc,
-    Function, FnSignature, ExprScopes, TypeAlias,
+    Function, FnData, ExprScopes, TypeAlias,
     Struct, Enum, StructField,
-    Const, ConstSignature, Static,
+    Const, ConstData, Static,
     DefWithBody, Trait,
     ids,
     nameres::{Namespace, ImportSourceMap, RawItems, CrateDefMap},
@@ -109,17 +109,17 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(crate::generics::GenericParams::generic_params_query)]
     fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;
 
-    #[salsa::invoke(crate::FnSignature::fn_signature_query)]
-    fn fn_signature(&self, func: Function) -> Arc<FnSignature>;
+    #[salsa::invoke(crate::FnData::fn_data_query)]
+    fn fn_data(&self, func: Function) -> Arc<FnData>;
 
     #[salsa::invoke(crate::type_alias::type_alias_data_query)]
     fn type_alias_data(&self, typ: TypeAlias) -> Arc<TypeAliasData>;
 
-    #[salsa::invoke(crate::ConstSignature::const_signature_query)]
-    fn const_signature(&self, konst: Const) -> Arc<ConstSignature>;
+    #[salsa::invoke(crate::ConstData::const_data_query)]
+    fn const_data(&self, konst: Const) -> Arc<ConstData>;
 
-    #[salsa::invoke(crate::ConstSignature::static_signature_query)]
-    fn static_signature(&self, konst: Static) -> Arc<ConstSignature>;
+    #[salsa::invoke(crate::ConstData::static_data_query)]
+    fn static_data(&self, konst: Static) -> Arc<ConstData>;
 
     #[salsa::invoke(crate::lang_item::LangItems::lang_items_query)]
     fn lang_items(&self, krate: Crate) -> Arc<LangItems>;

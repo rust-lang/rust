@@ -35,7 +35,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
 
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters().len();
-    let has_self = function.signature(db).has_self_param();
+    let has_self = function.data(db).has_self_param();
 
     if num_params == 1 {
         if !has_self {
