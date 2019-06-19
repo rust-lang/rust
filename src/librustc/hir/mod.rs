@@ -592,8 +592,8 @@ impl Generics {
         Generics {
             params: HirVec::new(),
             where_clause: WhereClause {
-                hir_id: DUMMY_HIR_ID,
                 predicates: HirVec::new(),
+                span: DUMMY_SP,
             },
             span: DUMMY_SP,
         }
@@ -644,19 +644,18 @@ pub enum SyntheticTyParamKind {
 /// A where-clause in a definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct WhereClause {
-    pub hir_id: HirId,
     pub predicates: HirVec<WherePredicate>,
+    // Only valid if predicates isn't empty.
+    span: Span,
 }
 
 impl WhereClause {
     pub fn span(&self) -> Option<Span> {
-        self.predicates.iter().map(|predicate| predicate.span())
-            .fold(None, |acc, i| match (acc, i) {
-                (None, i) => Some(i),
-                (Some(acc), i) => {
-                    Some(acc.to(i))
-                }
-            })
+        if self.predicates.is_empty() {
+            None
+        } else {
+            Some(self.span)
+        }
     }
 }
 

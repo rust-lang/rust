@@ -2001,16 +2001,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let PathSeg(def_id, index) = path_segs.last().unwrap();
                 self.ast_path_to_ty(span, *def_id, &path.segments[*index])
             }
-            Res::Def(DefKind::TyParam, did) => {
+            Res::Def(DefKind::TyParam, def_id) => {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
 
-                let hir_id = tcx.hir().as_local_hir_id(did).unwrap();
+                let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
                 let item_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
                 let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[
-                    &tcx.hir().local_def_id_from_hir_id(hir_id)];
+                let index = generics.param_def_id_to_index[&def_id];
                 tcx.mk_ty_param(index, tcx.hir().name_by_hir_id(hir_id).as_interned_str())
             }
             Res::SelfTy(Some(_), None) => {

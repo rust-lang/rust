@@ -750,8 +750,7 @@ pub fn noop_visit_generics<T: MutVisitor>(generics: &mut Generics, vis: &mut T) 
 }
 
 pub fn noop_visit_where_clause<T: MutVisitor>(wc: &mut WhereClause, vis: &mut T) {
-    let WhereClause { id, predicates, span } = wc;
-    vis.visit_id(id);
+    let WhereClause { predicates, span } = wc;
     visit_vec(predicates, |predicate| vis.visit_where_predicate(predicate));
     vis.visit_span(span);
 }

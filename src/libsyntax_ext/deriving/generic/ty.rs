@@ -223,7 +223,6 @@ fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {
     Generics {
         params,
         where_clause: ast::WhereClause {
-            id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
             span,
         },

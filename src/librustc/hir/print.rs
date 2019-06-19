@@ -2202,8 +2202,8 @@ impl<'a> State<'a> {
         let generics = hir::Generics {
             params: hir::HirVec::new(),
             where_clause: hir::WhereClause {
-                hir_id: hir::DUMMY_HIR_ID,
                 predicates: hir::HirVec::new(),
+                span: syntax_pos::DUMMY_SP,
             },
             span: syntax_pos::DUMMY_SP,
         };

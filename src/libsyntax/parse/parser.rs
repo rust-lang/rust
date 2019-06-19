@@ -5075,7 +5075,6 @@ impl<'a> Parser<'a> {
         Ok(ast::Generics {
             params,
             where_clause: WhereClause {
-                id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),
                 span: DUMMY_SP,
             },
@@ -5334,7 +5333,6 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
         let mut where_clause = WhereClause {
-            id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
             span: self.prev_span.to(self.prev_span),
         };
