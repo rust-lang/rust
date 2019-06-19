@@ -1329,9 +1329,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
     }
 
-    fn visit_generic_param(&mut self, param: &mut ast::GenericParam) {
-        self.cfg.disallow_cfg_on_generic_param(&param);
-        noop_visit_generic_param(param, self)
+    fn visit_generic_params(&mut self, params: &mut Vec<ast::GenericParam>) {
+        self.cfg.configure_generic_params(params);
+        noop_visit_generic_params(params, self);
     }
 
     fn visit_attribute(&mut self, at: &mut ast::Attribute) {

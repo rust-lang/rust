@@ -240,6 +240,10 @@ impl<'a> StripUnconfigured<'a> {
         items.flat_map_in_place(|item| self.configure(item));
     }
 
+    pub fn configure_generic_params(&mut self, params: &mut Vec<ast::GenericParam>) {
+        params.flat_map_in_place(|param| self.configure(param));
+    }
+
     fn configure_variant_data(&mut self, vdata: &mut ast::VariantData) {
         match vdata {
             ast::VariantData::Struct(fields, ..) | ast::VariantData::Tuple(fields, _) =>
@@ -300,22 +304,6 @@ impl<'a> StripUnconfigured<'a> {
 
     pub fn configure_fn_decl(&mut self, fn_decl: &mut ast::FnDecl) {
         fn_decl.inputs.flat_map_in_place(|arg| self.configure(arg));
-    }
-
-    /// Denies `#[cfg]` on generic parameters until we decide what to do with it.
-    /// See issue #51279.
-    pub fn disallow_cfg_on_generic_param(&mut self, param: &ast::GenericParam) {
-        for attr in param.attrs() {
-            let offending_attr = if attr.check_name(sym::cfg) {
-                "cfg"
-            } else if attr.check_name(sym::cfg_attr) {
-                "cfg_attr"
-            } else {
-                continue;
-            };
-            let msg = format!("#[{}] cannot be applied on a generic parameter", offending_attr);
-            self.sess.span_diagnostic.span_err(attr.span, &msg);
-        }
     }
 }
 
