@@ -1218,9 +1218,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty);
         match variant.ctor_kind {
             CtorKind::Fn => {
+                err.span_label(variant.ident.span, format!("`{adt}` defined here", adt=ty));
                 err.span_label(field.ident.span, "field does not exist");
                 err.span_label(ty_span, format!(
-                    "`{adt}` is a tuple {kind_name}, use the appropriate syntax: `{adt}(/* fields */)`",
+                        "`{adt}` is a tuple {kind_name},\
+                         use the appropriate syntax: `{adt}(/* fields */)`",
                     adt=ty,
                     kind_name=kind_name
                 ));
