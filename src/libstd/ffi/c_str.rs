@@ -195,6 +195,12 @@ pub struct CString {
 /// [`from_ptr`]: #method.from_ptr
 #[derive(Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
+// FIXME:
+// `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
+// on `CStr` being layout-compatible with `[u8]`.
+// When attribute privacy is implemented, `CStr` should be annotated as `#[repr(transparent)]`.
+// Anyway, `CStr` representation and layout are considered implementation detail, are
+// not documented and must not be relied upon.
 pub struct CStr {
     // FIXME: this should not be represented with a DST slice but rather with
     //        just a raw `c_char` along with some form of marker to make

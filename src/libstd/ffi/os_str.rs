@@ -97,6 +97,12 @@ pub struct OsString {
 /// [`String`]: ../string/struct.String.html
 /// [conversions]: index.html#conversions
 #[stable(feature = "rust1", since = "1.0.0")]
+// FIXME:
+// `OsStr::from_inner` current implementation relies
+// on `OsStr` being layout-compatible with `Slice`.
+// When attribute privacy is implemented, `OsStr` should be annotated as `#[repr(transparent)]`.
+// Anyway, `OsStr` representation and layout are considered implementation detail, are
+// not documented and must not be relied upon.
 pub struct OsStr {
     inner: Slice
 }
