@@ -121,6 +121,9 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(crate::ConstData::static_data_query)]
     fn static_data(&self, konst: Static) -> Arc<ConstData>;
 
+    #[salsa::invoke(crate::lang_item::LangItems::module_lang_items_query)]
+    fn module_lang_items(&self, module: Module) -> Option<Arc<LangItems>>;
+
     #[salsa::invoke(crate::lang_item::LangItems::lang_items_query)]
     fn lang_items(&self, krate: Crate) -> Arc<LangItems>;
 
