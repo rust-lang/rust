@@ -2725,7 +2725,7 @@ impl<'a> LoweringContext<'a> {
 
         // ::std::future::Future<future_params>
         let future_path =
-            self.std_path(span, &[sym::future, sym::Future], Some(future_params), false);
+            P(self.std_path(span, &[sym::future, sym::Future], Some(future_params), false));
 
         hir::GenericBound::Trait(
             hir::PolyTraitRef {
@@ -3094,7 +3094,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_trait_ref(&mut self, p: &TraitRef, itctx: ImplTraitContext<'_>) -> hir::TraitRef {
         let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit, itctx) {
-            hir::QPath::Resolved(None, path) => path.and_then(|path| path),
+            hir::QPath::Resolved(None, path) => path,
             qpath => bug!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
         };
         hir::TraitRef {
@@ -5577,7 +5577,7 @@ impl<'a> LoweringContext<'a> {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: hir::HirVec::new(),
                             trait_ref: hir::TraitRef {
-                                path: path.and_then(|path| path),
+                                path,
                                 hir_ref_id: hir_id,
                             },
                             span,

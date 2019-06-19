@@ -1353,7 +1353,7 @@ pub fn checked_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fail: bool) -> Op
                                 None
                             }
                         }
-                        Node::TraitRef(&hir::TraitRef { ref path, .. }) => Some(path),
+                        Node::TraitRef(&hir::TraitRef { ref path, .. }) => Some(&**path),
                         _ => None,
                     };
 
