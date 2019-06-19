@@ -1,7 +1,7 @@
 environment:
   # This is required for at least an AArch64 compiler in one image, and is also
   # going to soon be required for compiling LLVM.
-  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017 Preview
+  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
 
   # By default schannel checks revocation of certificates unlike some other SSL
   # backends, but we've historically had problems on CI where a revocation
