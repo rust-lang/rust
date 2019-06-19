@@ -20,5 +20,5 @@ function cargo_install() {
   fi
 }
 
-cargo_install mdbook 0.2.3
-cargo_install mdbook-linkcheck 0.2.3
+cargo_install mdbook 0.3.0
+cargo_install mdbook-linkcheck 0.2.4
