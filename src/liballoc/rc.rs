@@ -286,6 +286,19 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
+impl<T: ?Sized> Rc<T> {
+    fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {
+        Self {
+            ptr,
+            phantom: PhantomData,
+        }
+    }
+
+    unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {
+        Self::from_inner(NonNull::new_unchecked(ptr))
+    }
+}
+
 impl<T> Rc<T> {
     /// Constructs a new `Rc<T>`.
     ///
@@ -298,18 +311,15 @@ impl<T> Rc<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
-        Rc {
-            // there is an implicit weak pointer owned by all the strong
-            // pointers, which ensures that the weak destructor never frees
-            // the allocation while the strong destructor is running, even
-            // if the weak pointer is stored inside the strong one.
-            ptr: Box::into_raw_non_null(box RcBox {
-                strong: Cell::new(1),
-                weak: Cell::new(1),
-                value,
-            }),
-            phantom: PhantomData,
-        }
+        // There is an implicit weak pointer owned by all the strong
+        // pointers, which ensures that the weak destructor never frees
+        // the allocation while the strong destructor is running, even
+        // if the weak pointer is stored inside the strong one.
+        Self::from_inner(Box::into_raw_non_null(box RcBox {
+            strong: Cell::new(1),
+            weak: Cell::new(1),
+            value,
+        }))
     }
 
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
@@ -422,10 +432,7 @@ impl<T: ?Sized> Rc<T> {
         let fake_ptr = ptr as *mut RcBox<T>;
         let rc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
 
-        Rc {
-            ptr: NonNull::new_unchecked(rc_ptr),
-            phantom: PhantomData,
-        }
+        Self::from_ptr(rc_ptr)
     }
 
     /// Consumes the `Rc`, returning the wrapped pointer as `NonNull<T>`.
@@ -683,7 +690,7 @@ impl Rc<dyn Any> {
         if (*self).is::<T>() {
             let ptr = self.ptr.cast::<RcBox<T>>();
             forget(self);
-            Ok(Rc { ptr, phantom: PhantomData })
+            Ok(Rc::from_inner(ptr))
         } else {
             Err(self)
         }
@@ -731,7 +738,7 @@ impl<T: ?Sized> Rc<T> {
             // Free the allocation without dropping its contents
             box_free(box_unique);
 
-            Rc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Self::from_ptr(ptr)
         }
     }
 }
@@ -758,7 +765,7 @@ impl<T> Rc<[T]> {
             &mut (*ptr).value as *mut [T] as *mut T,
             v.len());
 
-        Rc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+        Self::from_ptr(ptr)
     }
 }
 
@@ -800,7 +807,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             // Pointer to first element
             let elems = &mut (*ptr).value as *mut [T] as *mut T;
 
-            let mut guard = Guard{
+            let mut guard = Guard {
                 mem: NonNull::new_unchecked(mem),
                 elems: elems,
                 layout: layout,
@@ -815,7 +822,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             // All clear. Forget the guard so it doesn't free the new RcBox.
             forget(guard);
 
-            Rc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Self::from_ptr(ptr)
         }
     }
 }
@@ -907,7 +914,7 @@ impl<T: ?Sized> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
         self.inc_strong();
-        Rc { ptr: self.ptr, phantom: PhantomData }
+        Self::from_inner(self.ptr)
     }
 }
 
@@ -1463,7 +1470,7 @@ impl<T: ?Sized> Weak<T> {
             None
         } else {
             inner.inc_strong();
-            Some(Rc { ptr: self.ptr, phantom: PhantomData })
+            Some(Rc::from_inner(self.ptr))
         }
     }
 
