@@ -230,6 +230,53 @@ pub const fn null<T>() -> *const T { 0 as *const T }
 #[rustc_promotable]
 pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 
+#[repr(C)]
+pub(crate) union Repr<T> {
+    pub(crate) rust: *const [T],
+    rust_mut: *mut [T],
+    pub(crate) raw: FatPtr<T>,
+}
+
+#[repr(C)]
+pub(crate) struct FatPtr<T> {
+    data: *const T,
+    pub(crate) len: usize,
+}
+
+/// Forms a slice from a pointer and a length.
+///
+/// The `len` argument is the number of **elements**, not the number of bytes.
+///
+/// # Examples
+///
+/// ```rust
+/// #![feature(slice_from_raw_parts)]
+/// use std::ptr;
+///
+/// // create a slice pointer when starting out with a pointer to the first element
+/// let mut x = [5, 6, 7];
+/// let ptr = &mut x[0] as *mut _;
+/// let slice = ptr::slice_from_raw_parts_mut(ptr, 3);
+/// assert_eq!(unsafe { &*slice }[2], 7);
+/// ```
+#[inline]
+#[unstable(feature = "slice_from_raw_parts", reason = "recently added", issue = "36925")]
+pub fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
+    unsafe { Repr { raw: FatPtr { data, len } }.rust }
+}
+
+/// Performs the same functionality as [`from_raw_parts`], except that a
+/// mutable slice is returned.
+///
+/// See the documentation of [`from_raw_parts`] for more details.
+///
+/// [`from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
+#[inline]
+#[unstable(feature = "slice_from_raw_parts", reason = "recently added", issue = "36925")]
+pub fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
+    unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
+}
+
 /// Swaps the values at two mutable locations of the same type, without
 /// deinitializing either.
 ///
