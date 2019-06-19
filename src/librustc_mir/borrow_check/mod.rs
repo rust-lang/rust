@@ -130,7 +130,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 ty::UpvarCapture::ByRef(..) => true,
             };
             let mut upvar = Upvar {
-                name: tcx.hir().name_by_hir_id(var_hir_id),
+                name: tcx.hir().name(var_hir_id),
                 var_hir_id,
                 by_ref,
                 mutability: Mutability::Not,

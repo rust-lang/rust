@@ -31,7 +31,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                               "...so that reference does not outlive borrowed content");
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name_by_hir_id(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 err.span_note(span,
                               &format!("...so that closure can access `{}`", var_name));
             }
@@ -50,7 +50,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.span_note(span,
                               &format!("...so that captured variable `{}` does not outlive the \
                                         enclosing closure",
-                                       self.tcx.hir().name_by_hir_id(id)));
+                                       self.tcx.hir().name(id)));
             }
             infer::IndexSlice(span) => {
                 err.span_note(span, "...so that slice is not indexed outside the lifetime");
@@ -163,7 +163,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name_by_hir_id(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 let mut err = struct_span_err!(self.tcx.sess,
                                                span,
                                                E0313,
@@ -220,7 +220,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                E0474,
                                                "captured variable `{}` does not outlive the \
                                                 enclosing closure",
-                                               self.tcx.hir().name_by_hir_id(id));
+                                               self.tcx.hir().name(id));
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err,
                     "captured variable is valid for ", sup, "");
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err,

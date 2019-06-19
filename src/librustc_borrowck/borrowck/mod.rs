@@ -1394,10 +1394,10 @@ impl BorrowckCtxt<'_, 'tcx> {
                                       out: &mut String) {
         match loan_path.kind {
             LpUpvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id: id }, closure_expr_id: _ }) => {
-                out.push_str(&self.tcx.hir().name_by_hir_id(id).as_str());
+                out.push_str(&self.tcx.hir().name(id).as_str());
             }
             LpVar(id) => {
-                out.push_str(&self.tcx.hir().name_by_hir_id(id).as_str());
+                out.push_str(&self.tcx.hir().name(id).as_str());
             }
 
             LpDowncast(ref lp_base, variant_def_id) => {

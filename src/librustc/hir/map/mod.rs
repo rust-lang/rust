@@ -940,7 +940,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn name_by_hir_id(&self, id: HirId) -> Name {
+    pub fn name(&self, id: HirId) -> Name {
         match self.get_by_hir_id(id) {
             Node::Item(i) => i.ident.name,
             Node::ForeignItem(fi) => fi.ident.name,
@@ -951,7 +951,7 @@ impl<'hir> Map<'hir> {
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { node: PatKind::Binding(_, _, l, _), .. }) => l.name,
-            Node::Ctor(..) => self.name_by_hir_id(self.get_parent_item(id)),
+            Node::Ctor(..) => self.name(self.get_parent_item(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
     }
