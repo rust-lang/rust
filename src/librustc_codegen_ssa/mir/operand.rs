@@ -109,7 +109,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let b_llval = bx.const_usize((end - start) as u64);
                 OperandValue::Pair(a_llval, b_llval)
             },
-            ConstValue::ByRef(offset, align, alloc) => {
+            ConstValue::ByRef { offset, align, alloc } => {
                 return bx.load_operand(bx.from_const_alloc(layout, align, alloc, offset));
             },
         };

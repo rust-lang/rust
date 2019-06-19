@@ -260,7 +260,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ConstValue::Param(_) |
             ConstValue::Scalar(_) |
             ConstValue::Slice { .. } |
-            ConstValue::ByRef(..) |
+            ConstValue::ByRef { .. } |
             ConstValue::Unevaluated(..) => {}
         }
 

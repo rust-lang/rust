@@ -217,12 +217,12 @@ impl LiteralExpander<'tcx> {
             // the easy case, deref a reference
             (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => {
                 let alloc = self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id);
-                ConstValue::ByRef(
-                    p.offset,
+                ConstValue::ByRef {
+                    offset: p.offset,
                     // FIXME(oli-obk): this should be the type's layout
-                    alloc.align,
+                    align: alloc.align,
                     alloc,
-                )
+                }
             },
             // unsize array to slice if pattern is array but match value or other patterns are slice
             (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
@@ -1436,7 +1436,7 @@ fn slice_pat_covered_by_const<'tcx>(
     suffix: &[Pattern<'tcx>],
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
-        (ConstValue::ByRef(offset, _, alloc), ty::Array(t, n)) => {
+        (ConstValue::ByRef { offset, alloc, .. }, ty::Array(t, n)) => {
             assert_eq!(*t, tcx.types.u8);
             let n = n.assert_usize(tcx).unwrap();
             let ptr = Pointer::new(AllocId(0), offset);
@@ -1759,7 +1759,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                     let (alloc, offset, n, ty) = match value.ty.sty {
                         ty::Array(t, n) => {
                             match value.val {
-                                ConstValue::ByRef(offset, _, alloc) => (
+                                ConstValue::ByRef { offset, alloc, .. } => (
                                     alloc,
                                     offset,
                                     n.unwrap_usize(cx.tcx),
@@ -1779,7 +1779,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                                     (end - start) as u64,
                                     t,
                                 ),
-                                ConstValue::ByRef(..) => {
+                                ConstValue::ByRef { .. } => {
                                     // FIXME(oli-obk): implement `deref` for `ConstValue`
                                     return None;
                                 },

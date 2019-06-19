@@ -1262,7 +1262,7 @@ fn collect_const<'tcx>(
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
         ConstValue::Slice { data: alloc, start: _, end: _ } |
-        ConstValue::ByRef(_, _, alloc) => {
+        ConstValue::ByRef { alloc, .. } => {
             for &((), id) in alloc.relocations.values() {
                 collect_miri(tcx, id, output);
             }

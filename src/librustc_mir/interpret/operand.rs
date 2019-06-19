@@ -538,7 +538,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             self.layout_of(self.monomorphize(val.ty)?)
         })?;
         let op = match val.val {
-            ConstValue::ByRef(offset, align, alloc) => {
+            ConstValue::ByRef { offset, align, alloc } => {
                 let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.

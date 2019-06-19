@@ -594,7 +594,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                 ty: a.ty,
             }))
         }
-        (ConstValue::ByRef(..), _) => {
+        (ConstValue::ByRef { .. }, _) => {
             bug!(
                 "non-Scalar ConstValue encountered in super_relate_consts {:?} {:?}",
                 a,
