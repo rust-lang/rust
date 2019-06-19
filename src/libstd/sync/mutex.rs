@@ -4,7 +4,7 @@ use crate::mem;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
 use crate::sys_common::mutex as sys;
-use crate::sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
+use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
@@ -358,6 +358,35 @@ impl<T: ?Sized> Mutex<T> {
         let data = unsafe { &mut *self.data.get() };
         poison::map_result(self.poison.borrow(), |_| data )
     }
+
+    /// Invoke a function under a mutex.
+    ///
+    /// This takes the mutex and once held passes a mutable reference to the
+    /// contained value to a `FnOnce` closure. Once the closure returns, the
+    /// mutex is released.
+    ///
+    /// # Panics
+    ///
+    /// If another user of this mutex panicked while holding the mutex, then
+    /// this call will panic.
+    ///
+    /// # Example
+    /// ```
+    /// # #![feature(mutex_with)]
+    /// use std::sync::Mutex;
+    ///
+    /// let mutex = Mutex::new(0);
+    ///
+    /// // Atomically fetch the old value and increment it.
+    /// let old = mutex.with(|v| { let old = *v; *v += 1; old });
+    ///
+    /// assert_eq!(old, 0);
+    /// assert_eq!(*mutex.lock().unwrap(), 1);
+    /// ```
+    #[unstable(feature = "mutex_with", issue = "61974")]
+    pub fn with<U, F: FnOnce(&mut T) -> U>(&self, func: F) -> U {
+        self.lock().map(|mut v| func(&mut *v)).expect("Lock poisoned")
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -702,5 +731,15 @@ mod tests {
         }
         let comp: &[i32] = &[4, 2, 5];
         assert_eq!(&*mutex.lock().unwrap(), comp);
+    }
+
+    #[test]
+    fn test_mutex_with() {
+        let mx = Mutex::new(123);
+
+        let () = mx.with(|v| *v += 1);
+
+        let lk = mx.lock().unwrap();
+        assert_eq!(*lk, 124);
     }
 }
