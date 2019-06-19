@@ -45,19 +45,6 @@ pub mod memchr;
 mod rotate;
 mod sort;
 
-#[repr(C)]
-union Repr<'a, T: 'a> {
-    rust: &'a [T],
-    rust_mut: &'a mut [T],
-    raw: FatPtr<T>,
-}
-
-#[repr(C)]
-struct FatPtr<T> {
-    data: *const T,
-    len: usize,
-}
-
 //
 // Extension traits
 //
@@ -78,7 +65,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_slice_len")]
     pub const fn len(&self) -> usize {
         unsafe {
-            Repr { rust: self }.raw.len
+            crate::ptr::Repr { rust: self }.raw.len
         }
     }
 
@@ -5195,7 +5182,7 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
     debug_assert!(mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
                   "attempt to create slice covering half the address space");
-    Repr { raw: FatPtr { data, len } }.rust
+    &*ptr::slice_from_raw_parts(data, len)
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
@@ -5216,7 +5203,7 @@ pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T]
     debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
     debug_assert!(mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
                   "attempt to create slice covering half the address space");
-    Repr { raw: FatPtr { data, len } }.rust_mut
+    &mut *ptr::slice_from_raw_parts_mut(data, len)
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
