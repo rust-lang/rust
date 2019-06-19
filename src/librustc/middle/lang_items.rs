@@ -320,6 +320,7 @@ language_item_table! {
     FnMutTraitLangItem,          "fn_mut",             fn_mut_trait,            Target::Trait;
     FnOnceTraitLangItem,         "fn_once",            fn_once_trait,           Target::Trait;
 
+    FutureTraitLangItem,         "future_trait",       future_trait,            Target::Trait;
     GeneratorStateLangItem,      "generator_state",    gen_state,               Target::Enum;
     GeneratorTraitLangItem,      "generator",          gen_trait,               Target::Trait;
     UnpinTraitLangItem,          "unpin",              unpin_trait,             Target::Trait;

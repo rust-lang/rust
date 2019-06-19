@@ -25,6 +25,7 @@ use crate::task::{Context, Poll};
 #[doc(spotlight)]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[stable(feature = "futures_api", since = "1.36.0")]
+#[cfg_attr(not(bootstrap), lang = "future_trait")]
 pub trait Future {
     /// The type of value produced on completion.
     #[stable(feature = "futures_api", since = "1.36.0")]
