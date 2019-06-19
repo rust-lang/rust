@@ -2298,20 +2298,21 @@ impl<T: ?Sized> AsRef<T> for Arc<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Arc<T> { }
 
-/// Computes the offset of the data field within ArcInner.
+/// Computes the offset of the data field within `ArcInner`.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
-    // Align the unsized value to the end of the ArcInner.
-    // Because it is ?Sized, it will always be the last field in memory.
-    let align = align_of_val(&*ptr);
-    let layout = Layout::new::<ArcInner<()>>();
-    (layout.size() + layout.padding_needed_for(align)) as isize
+    // Align the unsized value to the end of the `ArcInner`.
+    // Because it is `?Sized`, it will always be the last field in memory.
+    data_offset_align(align_of_val(&*ptr))
 }
 
-/// Computes the offset of the data field within ArcInner.
+/// Computes the offset of the data field within `ArcInner`.
 ///
 /// Unlike [`data_offset`], this doesn't need the pointer, but it works only on `T: Sized`.
 fn data_offset_sized<T>() -> isize {
-    let align = align_of::<T>();
+    data_offset_align(align_of::<T>())
+}
+
+fn data_offset_align(align: usize) -> isize {
     let layout = Layout::new::<ArcInner<()>>();
     (layout.size() + layout.padding_needed_for(align)) as isize
 }
