@@ -224,7 +224,7 @@ for
 /// Figure out the mutability of the allocation.
 /// Mutable if it has interior mutability *anywhere* in the type.
 fn intern_mutability<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     span: Span,
