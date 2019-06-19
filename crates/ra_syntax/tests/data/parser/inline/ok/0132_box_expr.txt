@@ -1,0 +1,31 @@
+SOURCE_FILE@[0; 35)
+  FN_DEF@[0; 34)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 6)
+      IDENT@[3; 6) "foo"
+    PARAM_LIST@[6; 8)
+      L_PAREN@[6; 7) "("
+      R_PAREN@[7; 8) ")"
+    WHITESPACE@[8; 9) " "
+    BLOCK@[9; 34)
+      L_CURLY@[9; 10) "{"
+      WHITESPACE@[10; 15) "\n    "
+      LET_STMT@[15; 32)
+        LET_KW@[15; 18) "let"
+        WHITESPACE@[18; 19) " "
+        BIND_PAT@[19; 20)
+          NAME@[19; 20)
+            IDENT@[19; 20) "x"
+        WHITESPACE@[20; 21) " "
+        EQ@[21; 22) "="
+        WHITESPACE@[22; 23) " "
+        BOX_EXPR@[23; 31)
+          BOX_KW@[23; 26) "box"
+          WHITESPACE@[26; 27) " "
+          LITERAL@[27; 31)
+            INT_NUMBER@[27; 31) "1i32"
+        SEMI@[31; 32) ";"
+      WHITESPACE@[32; 33) "\n"
+      R_CURLY@[33; 34) "}"
+  WHITESPACE@[34; 35) "\n"

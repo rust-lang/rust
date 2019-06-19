@@ -104,6 +104,7 @@ pub enum SyntaxKind {
     MOVE_KW,
     RETURN_KW,
     TRY_KW,
+    BOX_KW,
     AUTO_KW,
     DEFAULT_KW,
     EXISTENTIAL_KW,
@@ -187,6 +188,7 @@ pub enum SyntaxKind {
     NAMED_FIELD_LIST,
     NAMED_FIELD,
     TRY_BLOCK_EXPR,
+    BOX_EXPR,
     CALL_EXPR,
     INDEX_EXPR,
     METHOD_CALL_EXPR,
@@ -335,6 +337,7 @@ macro_rules! T {
     (move) => { $crate::SyntaxKind::MOVE_KW };
     (return) => { $crate::SyntaxKind::RETURN_KW };
     (try) => { $crate::SyntaxKind::TRY_KW };
+    (box) => { $crate::SyntaxKind::BOX_KW };
     (auto) => { $crate::SyntaxKind::AUTO_KW };
     (default) => { $crate::SyntaxKind::DEFAULT_KW };
     (existential) => { $crate::SyntaxKind::EXISTENTIAL_KW };
@@ -394,6 +397,7 @@ impl SyntaxKind {
             | MOVE_KW
             | RETURN_KW
             | TRY_KW
+            | BOX_KW
             | AUTO_KW
             | DEFAULT_KW
             | EXISTENTIAL_KW
@@ -567,6 +571,7 @@ impl SyntaxKind {
             MOVE_KW => &SyntaxInfo { name: "MOVE_KW" },
             RETURN_KW => &SyntaxInfo { name: "RETURN_KW" },
             TRY_KW => &SyntaxInfo { name: "TRY_KW" },
+            BOX_KW => &SyntaxInfo { name: "BOX_KW" },
             AUTO_KW => &SyntaxInfo { name: "AUTO_KW" },
             DEFAULT_KW => &SyntaxInfo { name: "DEFAULT_KW" },
             EXISTENTIAL_KW => &SyntaxInfo { name: "EXISTENTIAL_KW" },
@@ -650,6 +655,7 @@ impl SyntaxKind {
             NAMED_FIELD_LIST => &SyntaxInfo { name: "NAMED_FIELD_LIST" },
             NAMED_FIELD => &SyntaxInfo { name: "NAMED_FIELD" },
             TRY_BLOCK_EXPR => &SyntaxInfo { name: "TRY_BLOCK_EXPR" },
+            BOX_EXPR => &SyntaxInfo { name: "BOX_EXPR" },
             CALL_EXPR => &SyntaxInfo { name: "CALL_EXPR" },
             INDEX_EXPR => &SyntaxInfo { name: "INDEX_EXPR" },
             METHOD_CALL_EXPR => &SyntaxInfo { name: "METHOD_CALL_EXPR" },
@@ -745,6 +751,7 @@ impl SyntaxKind {
             "move" => MOVE_KW,
             "return" => RETURN_KW,
             "try" => TRY_KW,
+            "box" => BOX_KW,
             _ => return None,
         };
         Some(kw)
