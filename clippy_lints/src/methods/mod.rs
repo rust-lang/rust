@@ -1773,7 +1773,7 @@ fn derefs_to_slice<'a, 'tcx>(
     expr: &'tcx hir::Expr,
     ty: Ty<'tcx>,
 ) -> Option<&'tcx hir::Expr> {
-    fn may_slice(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
+    fn may_slice<'a>(cx: &LateContext<'_, 'a>, ty: Ty<'a>) -> bool {
         match ty.sty {
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),

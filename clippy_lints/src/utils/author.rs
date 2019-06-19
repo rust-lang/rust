@@ -377,7 +377,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 println!("Closure(ref capture_clause, ref func, _, _, _) = {};", current);
                 println!("    // unimplemented: `ExprKind::Closure` is not further destructured at the moment");
             },
-            ExprKind::Yield(ref sub) => {
+            ExprKind::Yield(ref sub, _) => {
                 let sub_pat = self.next("sub");
                 println!("Yield(ref sub) = {};", current);
                 self.current = sub_pat;

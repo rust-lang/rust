@@ -436,7 +436,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(&*j);
                 }
             },
-            ExprKind::Box(ref e) | ExprKind::DropTemps(ref e) | ExprKind::Yield(ref e) => {
+            ExprKind::Box(ref e) | ExprKind::DropTemps(ref e) | ExprKind::Yield(ref e, _) => {
                 self.hash_expr(e);
             },
             ExprKind::Call(ref fun, ref args) => {

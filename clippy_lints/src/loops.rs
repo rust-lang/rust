@@ -736,7 +736,7 @@ fn never_loop_expr(expr: &Expr, main_loop_id: HirId) -> NeverLoopResult {
             }
         },
         ExprKind::Struct(_, _, None)
-        | ExprKind::Yield(_)
+        | ExprKind::Yield(_, _)
         | ExprKind::Closure(_, _, _, _, _)
         | ExprKind::InlineAsm(_, _, _)
         | ExprKind::Path(_)
@@ -1245,7 +1245,12 @@ fn is_len_call(expr: &Expr, var: Name) -> bool {
     false
 }
 
-fn is_end_eq_array_len(cx: &LateContext<'_, '_>, end: &Expr, limits: ast::RangeLimits, indexed_ty: Ty<'_>) -> bool {
+fn is_end_eq_array_len<'tcx>(
+    cx: &LateContext<'_, 'tcx>,
+    end: &Expr,
+    limits: ast::RangeLimits,
+    indexed_ty: Ty<'tcx>,
+) -> bool {
     if_chain! {
         if let ExprKind::Lit(ref lit) = end.node;
         if let ast::LitKind::Int(end_int, _) = lit.node;
@@ -1982,7 +1987,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
     match_type(cx, ty, &paths::BTREESET)
 }
 
-fn is_iterable_array(ty: Ty<'_>, cx: &LateContext<'_, '_>) -> bool {
+fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'_, 'tcx>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
         ty::Array(_, n) => (0..=32).contains(&n.assert_usize(cx.tcx).expect("array length")),
