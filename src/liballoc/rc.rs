@@ -238,12 +238,13 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
+use core::iter;
 use core::marker::{self, Unpin, Unsize, PhantomData};
 use core::mem::{self, align_of, align_of_val, forget, size_of_val};
 use core::ops::{Deref, Receiver, CoerceUnsized, DispatchFromDyn};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
-use core::slice::from_raw_parts_mut;
+use core::slice::{self, from_raw_parts_mut};
 use core::convert::From;
 use core::usize;
 
@@ -698,27 +699,44 @@ impl Rc<dyn Any> {
 }
 
 impl<T: ?Sized> Rc<T> {
-    // Allocates an `RcBox<T>` with sufficient space for an unsized value
-    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
-        // Calculate layout using the given value.
+    // Allocates an `RcBox<T>` with sufficient space for
+    // an unsized value where the value has the layout provided.
+    //
+    // The function `mem_to_rcbox` is called with the data pointer
+    // and must return back a (potentially fat)-pointer for the `RcBox<T>`.
+    unsafe fn allocate_for_unsized(
+        value_layout: Layout,
+        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>
+    ) -> *mut RcBox<T> {
+        // Calculate layout using the given value layout.
         // Previously, layout was calculated on the expression
         // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<RcBox<()>>()
-            .extend(Layout::for_value(&*ptr)).unwrap().0
+            .extend(value_layout).unwrap().0
             .pad_to_align().unwrap();
 
+        // Allocate for the layout.
         let mem = Global.alloc(layout)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the RcBox
-        let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut RcBox<T>;
+        let inner = mem_to_rcbox(mem.as_ptr());
         debug_assert_eq!(Layout::for_value(&*inner), layout);
 
         ptr::write(&mut (*inner).strong, Cell::new(1));
         ptr::write(&mut (*inner).weak, Cell::new(1));
 
         inner
+    }
+
+    // Allocates an `RcBox<T>` with sufficient space for an unsized value
+    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
+        // Allocate for the `RcBox<T>` using the given value.
+        Self::allocate_for_unsized(
+            Layout::for_value(&*ptr),
+            |mem| set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>,
+        )
     }
 
     fn from_box(v: Box<T>) -> Rc<T> {
@@ -743,6 +761,32 @@ impl<T: ?Sized> Rc<T> {
     }
 }
 
+impl<T> Rc<[T]> {
+    // Allocates an `RcBox<[T]>` with the given length.
+    unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
+        // FIXME(#60667): Deduplicate.
+        fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
+            #[repr(C)]
+            union Repr<T> {
+                rust_mut: *mut [T],
+                raw: FatPtr<T>,
+            }
+
+            #[repr(C)]
+            struct FatPtr<T> {
+                data: *const T,
+                len: usize,
+            }
+            unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
+        }
+
+        Self::allocate_for_unsized(
+            Layout::array::<T>(len).unwrap(),
+            |mem| slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>,
+        )
+    }
+}
+
 // Sets the data pointer of a `?Sized` raw pointer.
 //
 // For a slice/trait object, this sets the `data` field and leaves the rest
@@ -757,8 +801,7 @@ impl<T> Rc<[T]> {
     //
     // Unsafe because the caller must either take ownership or bind `T: Copy`
     unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
-        let v_ptr = v as *const [T];
-        let ptr = Self::allocate_for_ptr(v_ptr);
+        let ptr = Self::allocate_for_slice(v.len());
 
         ptr::copy_nonoverlapping(
             v.as_ptr(),
@@ -767,15 +810,11 @@ impl<T> Rc<[T]> {
 
         Self::from_ptr(ptr)
     }
-}
 
-trait RcFromSlice<T> {
-    fn from_slice(slice: &[T]) -> Self;
-}
-
-impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
-    #[inline]
-    default fn from_slice(v: &[T]) -> Self {
+    /// Constructs an `Rc<[T]>` from an iterator known to be of a certain size.
+    ///
+    /// Behavior is undefined should the size be wrong.
+    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Rc<[T]> {
         // Panic guard while cloning T elements.
         // In the event of a panic, elements that have been written
         // into the new RcBox will be dropped, then the memory freed.
@@ -797,32 +836,42 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             }
         }
 
+        let ptr = Self::allocate_for_slice(len);
+
+        let mem = ptr as *mut _ as *mut u8;
+        let layout = Layout::for_value(&*ptr);
+
+        // Pointer to first element
+        let elems = &mut (*ptr).value as *mut [T] as *mut T;
+
+        let mut guard = Guard {
+            mem: NonNull::new_unchecked(mem),
+            elems,
+            layout,
+            n_elems: 0,
+        };
+
+        for (i, item) in iter.enumerate() {
+            ptr::write(elems.add(i), item);
+            guard.n_elems += 1;
+        }
+
+        // All clear. Forget the guard so it doesn't free the new RcBox.
+        forget(guard);
+
+        Self::from_ptr(ptr)
+    }
+}
+
+trait RcFromSlice<T> {
+    fn from_slice(slice: &[T]) -> Self;
+}
+
+impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
+    #[inline]
+    default fn from_slice(v: &[T]) -> Self {
         unsafe {
-            let v_ptr = v as *const [T];
-            let ptr = Self::allocate_for_ptr(v_ptr);
-
-            let mem = ptr as *mut _ as *mut u8;
-            let layout = Layout::for_value(&*ptr);
-
-            // Pointer to first element
-            let elems = &mut (*ptr).value as *mut [T] as *mut T;
-
-            let mut guard = Guard {
-                mem: NonNull::new_unchecked(mem),
-                elems: elems,
-                layout: layout,
-                n_elems: 0,
-            };
-
-            for (i, item) in v.iter().enumerate() {
-                ptr::write(elems.add(i), item.clone());
-                guard.n_elems += 1;
-            }
-
-            // All clear. Forget the guard so it doesn't free the new RcBox.
-            forget(guard);
-
-            Self::from_ptr(ptr)
+            Self::from_iter_exact(v.iter().cloned(), v.len())
         }
     }
 }
@@ -1221,9 +1270,88 @@ impl<T> From<Vec<T>> for Rc<[T]> {
 }
 
 #[stable(feature = "shared_from_iter", since = "1.37.0")]
-impl<T> core::iter::FromIterator<T> for Rc<[T]> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        iter.into_iter().collect::<Vec<T>>().into()
+impl<T> iter::FromIterator<T> for Rc<[T]> {
+    /// Takes each element in the `Iterator` and collects it into an `Rc<[T]>`.
+    ///
+    /// # Performance characteristics
+    ///
+    /// ## The general case
+    ///
+    /// In the general case, collecting into `Rc<[T]>` is done by first
+    /// collecting into a `Vec<T>`. That is, when writing the following:
+    ///
+    /// ```rust
+    /// # use std::rc::Rc;
+    /// let evens: Rc<[u8]> = (0..10).filter(|&x| x % 2 == 0).collect();
+    /// # assert_eq!(&*evens, &[0, 2, 4, 6, 8]);
+    /// ```
+    ///
+    /// this behaves as if we wrote:
+    ///
+    /// ```rust
+    /// # use std::rc::Rc;
+    /// let evens: Rc<[u8]> = (0..10).filter(|&x| x % 2 == 0)
+    ///     .collect::<Vec<_>>() // The first set of allocations happens here.
+    ///     .into(); // A second allocation for `Rc<[T]>` happens here.
+    /// # assert_eq!(&*evens, &[0, 2, 4, 6, 8]);
+    /// ```
+    ///
+    /// This will allocate as many times as needed for constructing the `Vec<T>`
+    /// and then it will allocate once for turning the `Vec<T>` into the `Rc<[T]>`.
+    ///
+    /// ## Iterators of known length
+    ///
+    /// When your `Iterator` implements `TrustedLen` and is of an exact size,
+    /// a single allocation will be made for the `Rc<[T]>`. For example:
+    ///
+    /// ```rust
+    /// # use std::rc::Rc;
+    /// let evens: Rc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
+    /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
+    /// ```
+    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
+        RcFromIter::from_iter(iter.into_iter())
+    }
+}
+
+/// Specialization trait used for collecting into `Rc<[T]>`.
+trait RcFromIter<T, I> {
+    fn from_iter(iter: I) -> Self;
+}
+
+impl<T, I: Iterator<Item = T>> RcFromIter<T, I> for Rc<[T]> {
+    default fn from_iter(iter: I) -> Self {
+        iter.collect::<Vec<T>>().into()
+    }
+}
+
+impl<T, I: iter::TrustedLen<Item = T>> RcFromIter<T, I> for Rc<[T]>  {
+    default fn from_iter(iter: I) -> Self {
+        // This is the case for a `TrustedLen` iterator.
+        let (low, high) = iter.size_hint();
+        if let Some(high) = high {
+            debug_assert_eq!(
+                low, high,
+                "TrustedLen iterator's size hint is not exact: {:?}",
+                (low, high)
+            );
+
+            unsafe {
+                // SAFETY: We need to ensure that the iterator has an exact length and we have.
+                Rc::from_iter_exact(iter, low)
+            }
+        } else {
+            // Fall back to normal implementation.
+            iter.collect::<Vec<T>>().into()
+        }
+    }
+}
+
+impl<'a, T: 'a + Clone> RcFromIter<&'a T, slice::Iter<'a, T>> for Rc<[T]> {
+    fn from_iter(iter: slice::Iter<'a, T>) -> Self {
+        // Delegate to `impl<T: Clone> From<&[T]> for Rc<[T]>`
+        // which will use `ptr::copy_nonoverlapping`.
+        iter.as_slice().into()
     }
 }
 

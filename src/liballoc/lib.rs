@@ -102,6 +102,7 @@
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(unicode_internals)]
+#![feature(untagged_unions)]
 #![feature(unsize)]
 #![feature(unsized_locals)]
 #![feature(allocator_internals)]
