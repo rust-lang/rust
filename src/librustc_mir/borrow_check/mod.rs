@@ -1070,7 +1070,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 (Reservation(WriteKind::MutableBorrow(bk)), BorrowKind::Shallow)
                 | (Reservation(WriteKind::MutableBorrow(bk)), BorrowKind::Shared) if {
-                    tcx.migrate_borrowck()
+                    tcx.migrate_borrowck() && this.borrow_set.location_map.contains_key(&location)
                 } => {
                     let bi = this.borrow_set.location_map[&location];
                     debug!(
