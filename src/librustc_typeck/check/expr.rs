@@ -1125,7 +1125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     err.emit();
                 } else {
-                    self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name);
+                    self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name, span);
                 }
 
                 tcx.types.err
@@ -1196,6 +1196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: &hir::Field,
         skip_fields: &[hir::Field],
         kind_name: &str,
+        ty_span: Span
     ) {
         if variant.recovered {
             return;
@@ -1218,7 +1219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match variant.ctor_kind {
             CtorKind::Fn => {
                 err.span_label(field.ident.span, "field does not exist");
-                err.span_label(field.ident.span, format!(
+                err.span_label(ty_span, format!(
                     "`{adt}` is a tuple {kind_name}, use the appropriate syntax: `{adt}(/* fields */)`",
                     adt=ty,
                     kind_name=kind_name
