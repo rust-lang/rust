@@ -1,0 +1,66 @@
+error: only lifetime parameters can be used in this context
+  --> $DIR/cfg-generic-params.rs:7:45
+   |
+LL | type FnBad = for<#[cfg(no)] 'a, #[cfg(yes)] T> fn();
+   |                                             ^
+
+error: only lifetime parameters can be used in this context
+  --> $DIR/cfg-generic-params.rs:11:51
+   |
+LL | type PolyBad = dyn for<#[cfg(no)] 'a, #[cfg(yes)] T> Copy;
+   |                                                   ^
+
+error: only lifetime parameters can be used in this context
+  --> $DIR/cfg-generic-params.rs:15:54
+   |
+LL | struct WhereBad where for<#[cfg(no)] 'a, #[cfg(yes)] T> u8: Copy;
+   |                                                      ^
+
+error[E0658]: The attribute `unknown` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/cfg-generic-params.rs:19:29
+   |
+LL | fn f_lt_yes<#[cfg_attr(yes, unknown)] 'a>() {}
+   |                             ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `unknown` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/cfg-generic-params.rs:21:29
+   |
+LL | fn f_ty_yes<#[cfg_attr(yes, unknown)] T>() {}
+   |                             ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `unknown` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/cfg-generic-params.rs:24:34
+   |
+LL | type FnYes = for<#[cfg_attr(yes, unknown)] 'a> fn();
+   |                                  ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `unknown` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/cfg-generic-params.rs:28:40
+   |
+LL | type PolyYes = dyn for<#[cfg_attr(yes, unknown)] 'a> Copy;
+   |                                        ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error[E0658]: The attribute `unknown` is currently unknown to the compiler and may have meaning added to it in the future
+  --> $DIR/cfg-generic-params.rs:32:43
+   |
+LL | struct WhereYes where for<#[cfg_attr(yes, unknown)] 'a> u8: Copy;
+   |                                           ^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
