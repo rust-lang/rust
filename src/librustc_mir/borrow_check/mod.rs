@@ -1094,7 +1094,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 (Reservation(WriteKind::MutableBorrow(bk)), BorrowKind::Shallow)
                 | (Reservation(WriteKind::MutableBorrow(bk)), BorrowKind::Shared) if {
-                    tcx.migrate_borrowck()
+                    tcx.migrate_borrowck() && this.borrow_set.location_map.get(&location).is_some()
                 } => {
                     let bi = this.borrow_set.location_map[&location];
                     debug!(
