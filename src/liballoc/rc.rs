@@ -1674,14 +1674,16 @@ trait RcBoxPtr<T: ?Sized> {
 
     #[inline]
     fn inc_strong(&self) {
+        let strong = self.strong();
+
         // We want to abort on overflow instead of dropping the value.
         // The reference count will never be zero when this is called;
         // nevertheless, we insert an abort here to hint LLVM at
         // an otherwise missed optimization.
-        if self.strong() == 0 || self.strong() == usize::max_value() {
+        if strong == 0 || strong == usize::max_value() {
             unsafe { abort(); }
         }
-        self.inner().strong.set(self.strong() + 1);
+        self.inner().strong.set(strong + 1);
     }
 
     #[inline]
@@ -1696,14 +1698,16 @@ trait RcBoxPtr<T: ?Sized> {
 
     #[inline]
     fn inc_weak(&self) {
+        let weak = self.weak();
+
         // We want to abort on overflow instead of dropping the value.
         // The reference count will never be zero when this is called;
         // nevertheless, we insert an abort here to hint LLVM at
         // an otherwise missed optimization.
-        if self.weak() == 0 || self.weak() == usize::max_value() {
+        if weak == 0 || weak == usize::max_value() {
             unsafe { abort(); }
         }
-        self.inner().weak.set(self.weak() + 1);
+        self.inner().weak.set(weak + 1);
     }
 
     #[inline]
