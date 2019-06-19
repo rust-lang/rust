@@ -212,7 +212,8 @@
 //! As the author of a data structure you get to decide for each field whether pinning
 //! "propagates" to this field or not. Pinning that propagates is also called "structural",
 //! because it follows the structure of the type.
-//! In the following, we describe the considerations that have to be made for either choice.
+//! In the following subsections, we describe the considerations that have to be made
+//! for either choice.
 //!
 //! ## Pinning *is not* structural for `field`
 //!
@@ -221,7 +222,8 @@
 //! nothing can go wrong! So, if you decide that some field does not have structural pinning,
 //! all you have to ensure is that you never create a pinned reference to that field.
 //!
-//! Then you may add a projection method that turns `Pin<&mut Struct>` into `&mut Field`:
+//! Fields without structural pinning may have a projection method that turns
+//! `Pin<&mut Struct>` into `&mut Field`:
 //! ```rust,no_run
 //! # use std::pin::Pin;
 //! # type Field = i32;
