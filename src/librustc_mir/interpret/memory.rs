@@ -56,6 +56,7 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// the wrong type), so we let the machine override this type.
     /// Either way, if the machine allows writing to a static, doing so will
     /// create a copy of the static allocation here.
+    // FIXME: this should not be public, but interning currently needs access to it
     pub(super) alloc_map: M::MemoryMap,
 
     /// To be able to compare pointers with NULL, and to check alignment for accesses
