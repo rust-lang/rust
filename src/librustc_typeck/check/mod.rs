@@ -3932,6 +3932,72 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// A possible error is to forget to add `.await` when using futures:
+    ///
+    /// ```
+    /// #![feature(async_await)]
+    ///
+    /// async fn make_u32() -> u32 {
+    ///     22
+    /// }
+    ///
+    /// fn take_u32(x: u32) {}
+    ///
+    /// async fn foo() {
+    ///     let x = make_u32();
+    ///     take_u32(x);
+    /// }
+    /// ```
+    ///
+    /// This routine checks if the found type `T` implements `Future<Output=U>` where `U` is the
+    /// expected type. If this is the case, and we are inside of an async body, it suggests adding
+    /// `.await` to the tail of the expression.
+    fn suggest_missing_await(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        expr: &hir::Expr,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        // `.await` is not permitted outside of `async` bodies, so don't bother to suggest if the
+        // body isn't `async`.
+        let item_id = self.tcx().hir().get_parent_node(self.body_id);
+        if let Some(body_id) = self.tcx().hir().maybe_body_owned_by(item_id) {
+            let body = self.tcx().hir().body(body_id);
+            if let Some(hir::GeneratorKind::Async) = body.generator_kind {
+                let sp = expr.span;
+                // Check for `Future` implementations by constructing a predicate to
+                // prove: `<T as Future>::Output == U`
+                let future_trait = self.tcx.lang_items().future_trait().unwrap();
+                let item_def_id = self.tcx.associated_items(future_trait).next().unwrap().def_id;
+                let predicate = ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
+                    // `<T as Future>::Output`
+                    projection_ty: ty::ProjectionTy {
+                        // `T`
+                        substs: self.tcx.mk_substs_trait(
+                            found,
+                            self.fresh_substs_for_item(sp, item_def_id)
+                        ),
+                        // `Future::Output`
+                        item_def_id,
+                    },
+                    ty: expected,
+                }));
+                let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
+                if self.infcx.predicate_may_hold(&obligation) {
+                    if let Ok(code) = self.sess().source_map().span_to_snippet(sp) {
+                        err.span_suggestion(
+                            sp,
+                            "consider using `.await` here",
+                            format!("{}.await", code),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     /// A common error is to add an extra semicolon:
     ///
     /// ```
