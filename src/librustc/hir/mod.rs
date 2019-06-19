@@ -1306,7 +1306,7 @@ pub struct BodyId {
 ///
 /// - an `arguments` array containing the `(x, y)` pattern
 /// - a `value` containing the `x + y` expression (maybe wrapped in a block)
-/// - `is_generator` would be false
+/// - `generator_kind` would be `None`
 ///
 /// All bodies have an **owner**, which can be accessed via the HIR
 /// map using `body_owner_def_id()`.
@@ -1314,7 +1314,7 @@ pub struct BodyId {
 pub struct Body {
     pub arguments: HirVec<Arg>,
     pub value: Expr,
-    pub is_generator: bool,
+    pub generator_kind: Option<GeneratorKind>,
 }
 
 impl Body {
@@ -1322,6 +1322,26 @@ impl Body {
         BodyId {
             hir_id: self.value.hir_id,
         }
+    }
+}
+
+/// The type of source expression that caused this generator to be created.
+// Not `IsAsync` because we want to eventually add support for `AsyncGen`
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
+         RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum GeneratorKind {
+    /// An `async` block or function.
+    Async,
+    /// A generator literal created via a `yield` inside a closure.
+    Gen,
+}
+
+impl fmt::Display for GeneratorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            GeneratorKind::Async => "`async` object",
+            GeneratorKind::Gen => "generator",
+        })
     }
 }
 
@@ -1531,8 +1551,8 @@ pub enum ExprKind {
     ///
     /// The final span is the span of the argument block `|...|`.
     ///
-    /// This may also be a generator literal, indicated by the final boolean,
-    /// in that case there is an `GeneratorClause`.
+    /// This may also be a generator literal or an `async block` as indicated by the
+    /// `Option<GeneratorMovability>`.
     Closure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorMovability>),
     /// A block (e.g., `'label: { ... }`).
     Block(P<Block>, Option<Label>),
@@ -1576,7 +1596,7 @@ pub enum ExprKind {
     Repeat(P<Expr>, AnonConst),
 
     /// A suspension point for generators (i.e., `yield <expr>`).
-    Yield(P<Expr>),
+    Yield(P<Expr>, YieldSource),
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err,
@@ -1668,12 +1688,12 @@ pub enum LoopIdError {
 
 impl fmt::Display for LoopIdError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(match *self {
+        f.write_str(match self {
             LoopIdError::OutsideLoopScope => "not inside loop scope",
             LoopIdError::UnlabeledCfInWhileCondition =>
                 "unlabeled control flow (break or continue) in while condition",
             LoopIdError::UnresolvedLabel => "label not found",
-        }, f)
+        })
     }
 }
 
@@ -1687,11 +1707,32 @@ pub struct Destination {
     pub target_id: Result<HirId, LoopIdError>,
 }
 
+/// Whether a generator contains self-references, causing it to be `!Unpin`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, HashStable,
          RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum GeneratorMovability {
+    /// May contain self-references, `!Unpin`.
     Static,
+    /// Must not contain self-references, `Unpin`.
     Movable,
+}
+
+/// The yield kind that caused an `ExprKind::Yield`.
+#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum YieldSource {
+    /// An `<expr>.await`.
+    Await,
+    /// A plain `yield`.
+    Yield,
+}
+
+impl fmt::Display for YieldSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            YieldSource::Await => "`await`",
+            YieldSource::Yield => "`yield`",
+        })
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, HashStable)]
@@ -2058,11 +2099,10 @@ impl Defaultness {
 
 impl fmt::Display for Unsafety {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(match *self {
-                              Unsafety::Normal => "normal",
-                              Unsafety::Unsafe => "unsafe",
-                          },
-                          f)
+        f.write_str(match self {
+            Unsafety::Normal => "normal",
+            Unsafety::Unsafe => "unsafe",
+        })
     }
 }
 
@@ -2076,10 +2116,10 @@ pub enum ImplPolarity {
 
 impl fmt::Debug for ImplPolarity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            ImplPolarity::Positive => "positive".fmt(f),
-            ImplPolarity::Negative => "negative".fmt(f),
-        }
+        f.write_str(match self {
+            ImplPolarity::Positive => "positive",
+            ImplPolarity::Negative => "negative",
+        })
     }
 }
 

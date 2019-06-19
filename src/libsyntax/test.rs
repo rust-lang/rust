@@ -280,15 +280,10 @@ fn generate_test_harness(sess: &ParseSess,
         test_runner
     };
 
-    mark.set_expn_info(ExpnInfo {
-        call_site: DUMMY_SP,
-        def_site: None,
-        format: MacroAttribute(sym::test_case),
-        allow_internal_unstable: Some(vec![sym::main, sym::test, sym::rustc_attrs].into()),
-        allow_internal_unsafe: false,
-        local_inner_macros: false,
-        edition: sess.edition,
-    });
+    mark.set_expn_info(ExpnInfo::with_unstable(
+        MacroAttribute(sym::test_case), DUMMY_SP, sess.edition,
+        &[sym::main, sym::test, sym::rustc_attrs],
+    ));
 
     TestHarnessGenerator {
         cx,

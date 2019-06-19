@@ -60,15 +60,10 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt<'_>, span: Span, traits: &[ast::P
     }
     pretty_name.push(')');
 
-    cx.current_expansion.mark.set_expn_info(ExpnInfo {
-        call_site: span,
-        def_site: None,
-        format: ExpnFormat::MacroAttribute(Symbol::intern(&pretty_name)),
-        allow_internal_unstable: Some(vec![sym::rustc_attrs, sym::structural_match].into()),
-        allow_internal_unsafe: false,
-        local_inner_macros: false,
-        edition: cx.parse_sess.edition,
-    });
+    cx.current_expansion.mark.set_expn_info(ExpnInfo::with_unstable(
+        ExpnFormat::MacroAttribute(Symbol::intern(&pretty_name)), span, cx.parse_sess.edition,
+        &[sym::rustc_attrs, sym::structural_match],
+    ));
 
     let span = span.with_ctxt(cx.backtrace());
     item.visit_attrs(|attrs| {

@@ -509,8 +509,9 @@ impl<'a, 'tcx> CrateMetadata {
         if !self.is_proc_macro(index) {
             self.entry(index).kind.def_kind()
         } else {
-            let kind = self.proc_macros.as_ref().unwrap()[index.to_proc_macro_index()].1.kind();
-            Some(DefKind::Macro(kind))
+            Some(DefKind::Macro(
+                self.proc_macros.as_ref().unwrap()[index.to_proc_macro_index()].1.macro_kind()
+            ))
         }
     }
 
@@ -737,7 +738,7 @@ impl<'a, 'tcx> CrateMetadata {
             if id == CRATE_DEF_INDEX {
                 for (id, &(name, ref ext)) in proc_macros.iter().enumerate() {
                     let res = Res::Def(
-                        DefKind::Macro(ext.kind()),
+                        DefKind::Macro(ext.macro_kind()),
                         self.local_def_id(DefIndex::from_proc_macro_index(id)),
                     );
                     let ident = Ident::with_empty_ctxt(name);

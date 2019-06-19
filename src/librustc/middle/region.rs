@@ -331,12 +331,21 @@ pub struct ScopeTree {
     /// The reason is that semantically, until the `box` expression returns,
     /// the values are still owned by their containing expressions. So
     /// we'll see that `&x`.
-    yield_in_scope: FxHashMap<Scope, (Span, usize)>,
+    yield_in_scope: FxHashMap<Scope, YieldData>,
 
     /// The number of visit_expr and visit_pat calls done in the body.
     /// Used to sanity check visit_expr/visit_pat call count when
     /// calculating generator interiors.
     body_expr_count: FxHashMap<hir::BodyId, usize>,
+}
+
+#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub struct YieldData {
+    /// `Span` of the yield.
+    pub span: Span,
+    /// The number of expressions and patterns appearing before the `yield` in the body + 1.
+    pub expr_and_pat_count: usize,
+    pub source: hir::YieldSource,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -695,7 +704,7 @@ impl<'tcx> ScopeTree {
     /// returns `Some((span, expr_count))` with the span of a yield we found and
     /// the number of expressions and patterns appearing before the `yield` in the body + 1.
     /// If there a are multiple yields in a scope, the one with the highest number is returned.
-    pub fn yield_in_scope(&self, scope: Scope) -> Option<(Span, usize)> {
+    pub fn yield_in_scope(&self, scope: Scope) -> Option<YieldData> {
         self.yield_in_scope.get(&scope).cloned()
     }
 
@@ -706,14 +715,14 @@ impl<'tcx> ScopeTree {
                                    scope: Scope,
                                    expr_hir_id: hir::HirId,
                                    body: &'tcx hir::Body) -> Option<Span> {
-        self.yield_in_scope(scope).and_then(|(span, count)| {
+        self.yield_in_scope(scope).and_then(|YieldData { span, expr_and_pat_count, .. }| {
             let mut visitor = ExprLocatorVisitor {
                 hir_id: expr_hir_id,
                 result: None,
                 expr_and_pat_count: 0,
             };
             visitor.visit_body(body);
-            if count >= visitor.result.unwrap() {
+            if expr_and_pat_count >= visitor.result.unwrap() {
                 Some(span)
             } else {
                 None
@@ -953,12 +962,16 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
     debug!("resolve_expr post-increment {}, expr = {:?}", visitor.expr_and_pat_count, expr);
 
-    if let hir::ExprKind::Yield(..) = expr.node {
+    if let hir::ExprKind::Yield(_, source) = &expr.node {
         // Mark this expr's scope and all parent scopes as containing `yield`.
         let mut scope = Scope { id: expr.hir_id.local_id, data: ScopeData::Node };
         loop {
-            visitor.scope_tree.yield_in_scope.insert(scope,
-                (expr.span, visitor.expr_and_pat_count));
+            let data = YieldData {
+                span: expr.span,
+                expr_and_pat_count: visitor.expr_and_pat_count,
+                source: *source,
+            };
+            visitor.scope_tree.yield_in_scope.insert(scope, data);
 
             // Keep traversing up while we can.
             match visitor.scope_tree.parent_map.get(&scope) {
@@ -1302,7 +1315,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             resolve_local(self, None, Some(&body.value));
         }
 
-        if body.is_generator {
+        if body.generator_kind.is_some() {
             self.scope_tree.body_expr_count.insert(body_id, self.expr_and_pat_count);
         }
 

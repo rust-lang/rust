@@ -1501,7 +1501,7 @@ impl<'a> State<'a> {
 
                 self.pclose()?;
             }
-            hir::ExprKind::Yield(ref expr) => {
+            hir::ExprKind::Yield(ref expr, _) => {
                 self.word_space("yield")?;
                 self.print_expr_maybe_paren(&expr, parser::PREC_JUMP)?;
             }

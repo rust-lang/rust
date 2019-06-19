@@ -817,10 +817,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                              .unwrap_or(ty::ClosureKind::LATTICE_BOTTOM),
 
                     None =>
-                        self.tcx.global_tcx()
-                                .lift(&closure_substs)
-                                .expect("no inference cx, but inference variables in closure ty")
-                                .closure_kind(closure_def_id, self.tcx.global_tcx()),
+                        closure_substs.closure_kind(closure_def_id, self.tcx.global_tcx()),
                 }
             }
             _ => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", ty),

@@ -3066,7 +3066,7 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter<'
         _ => false,
     };
     render_impl(w, cx, implementor, AssocItemLink::Anchor(None), RenderMode::Normal,
-                implementor.impl_item.stable_since(), false, Some(use_absolute), false)?;
+                implementor.impl_item.stable_since(), false, Some(use_absolute), false, false)?;
     Ok(())
 }
 
@@ -3077,7 +3077,7 @@ fn render_impls(cx: &Context, w: &mut fmt::Formatter<'_>,
         let did = i.trait_did().unwrap();
         let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
         render_impl(w, cx, i, assoc_link,
-                    RenderMode::Normal, containing_item.stable_since(), true, None, false)?;
+                    RenderMode::Normal, containing_item.stable_since(), true, None, false, true)?;
     }
     Ok(())
 }
@@ -3307,7 +3307,7 @@ fn item_trait(
                 );
                 render_impl(w, cx, &implementor, assoc_link,
                             RenderMode::Normal, implementor.impl_item.stable_since(), false,
-                            None, true)?;
+                            None, true, false)?;
             }
             write_loading_content(w, "")?;
         }
@@ -3979,7 +3979,7 @@ fn render_assoc_items(w: &mut fmt::Formatter<'_>,
         };
         for i in &non_trait {
             render_impl(w, cx, i, AssocItemLink::Anchor(None), render_mode,
-                        containing_item.stable_since(), true, None, false)?;
+                        containing_item.stable_since(), true, None, false, true)?;
         }
     }
     if let AssocItemRender::DerefFor { .. } = what {
@@ -4161,7 +4161,8 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
 
 fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
                render_mode: RenderMode, outer_version: Option<&str>, show_def_docs: bool,
-               use_absolute: Option<bool>, is_on_foreign_type: bool) -> fmt::Result {
+               use_absolute: Option<bool>, is_on_foreign_type: bool,
+               show_default_items: bool) -> fmt::Result {
     if render_mode == RenderMode::Normal {
         let id = cx.derive_id(match i.inner_impl().trait_ {
             Some(ref t) => if is_on_foreign_type {
@@ -4345,9 +4346,13 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
 
     // If we've implemented a trait, then also emit documentation for all
     // default items which weren't overridden in the implementation block.
-    if let Some(t) = trait_ {
-        render_default_items(w, cx, t, &i.inner_impl(),
-                             render_mode, outer_version, show_def_docs)?;
+    // We don't emit documentation for default items if they appear in the
+    // Implementations on Foreign Types or Implementors sections.
+    if show_default_items {
+        if let Some(t) = trait_ {
+            render_default_items(w, cx, t, &i.inner_impl(),
+                                render_mode, outer_version, show_def_docs)?;
+        }
     }
     write!(w, "</div>")?;
 

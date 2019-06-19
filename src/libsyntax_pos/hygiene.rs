@@ -59,13 +59,12 @@ pub struct Mark(u32);
 #[derive(Clone, Debug)]
 struct MarkData {
     parent: Mark,
-    default_transparency: Transparency,
     expn_info: Option<ExpnInfo>,
 }
 
 /// A property of a macro expansion that determines how identifiers
 /// produced by that expansion are resolved.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
@@ -85,12 +84,7 @@ pub enum Transparency {
 impl Mark {
     pub fn fresh(parent: Mark) -> Self {
         HygieneData::with(|data| {
-            data.marks.push(MarkData {
-                parent,
-                // By default expansions behave like `macro_rules`.
-                default_transparency: Transparency::SemiTransparent,
-                expn_info: None,
-            });
+            data.marks.push(MarkData { parent, expn_info: None });
             Mark(data.marks.len() as u32 - 1)
         })
     }
@@ -118,18 +112,12 @@ impl Mark {
 
     #[inline]
     pub fn expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| data.expn_info(self))
+        HygieneData::with(|data| data.expn_info(self).cloned())
     }
 
     #[inline]
     pub fn set_expn_info(self, info: ExpnInfo) {
         HygieneData::with(|data| data.marks[self.0 as usize].expn_info = Some(info))
-    }
-
-    #[inline]
-    pub fn set_default_transparency(self, transparency: Transparency) {
-        assert_ne!(self, Mark::root());
-        HygieneData::with(|data| data.marks[self.0 as usize].default_transparency = transparency)
     }
 
     pub fn is_descendant_of(self, ancestor: Mark) -> bool {
@@ -172,9 +160,8 @@ impl Mark {
     #[inline]
     pub fn looks_like_proc_macro_derive(self) -> bool {
         HygieneData::with(|data| {
-            let mark_data = &data.marks[self.0 as usize];
-            if mark_data.default_transparency == Transparency::Opaque {
-                if let Some(expn_info) = &mark_data.expn_info {
+            if data.default_transparency(self) == Transparency::Opaque {
+                if let Some(expn_info) = &data.marks[self.0 as usize].expn_info {
                     if let ExpnFormat::MacroAttribute(name) = expn_info.format {
                         if name.as_str().starts_with("derive(") {
                             return true;
@@ -199,9 +186,6 @@ impl HygieneData {
         HygieneData {
             marks: vec![MarkData {
                 parent: Mark::root(),
-                // If the root is opaque, then loops searching for an opaque mark
-                // will automatically stop after reaching it.
-                default_transparency: Transparency::Opaque,
                 expn_info: None,
             }],
             syntax_contexts: vec![SyntaxContextData {
@@ -220,8 +204,8 @@ impl HygieneData {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
 
-    fn expn_info(&self, mark: Mark) -> Option<ExpnInfo> {
-        self.marks[mark.0 as usize].expn_info.clone()
+    fn expn_info(&self, mark: Mark) -> Option<&ExpnInfo> {
+        self.marks[mark.0 as usize].expn_info.as_ref()
     }
 
     fn is_descendant_of(&self, mut mark: Mark, ancestor: Mark) -> bool {
@@ -235,7 +219,9 @@ impl HygieneData {
     }
 
     fn default_transparency(&self, mark: Mark) -> Transparency {
-        self.marks[mark.0 as usize].default_transparency
+        self.marks[mark.0 as usize].expn_info.as_ref().map_or(
+            Transparency::SemiTransparent, |einfo| einfo.default_transparency
+        )
     }
 
     fn modern(&self, ctxt: SyntaxContext) -> SyntaxContext {
@@ -427,7 +413,6 @@ impl SyntaxContext {
         HygieneData::with(|data| {
             data.marks.push(MarkData {
                 parent: Mark::root(),
-                default_transparency: Transparency::SemiTransparent,
                 expn_info: Some(expansion_info),
             });
 
@@ -613,7 +598,7 @@ impl SyntaxContext {
     /// `ctxt.outer().expn_info()`.
     #[inline]
     pub fn outer_expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| data.expn_info(data.outer(self)))
+        HygieneData::with(|data| data.expn_info(data.outer(self)).cloned())
     }
 
     /// `ctxt.outer_and_expn_info()` is equivalent to but faster than
@@ -622,7 +607,7 @@ impl SyntaxContext {
     pub fn outer_and_expn_info(self) -> (Mark, Option<ExpnInfo>) {
         HygieneData::with(|data| {
             let outer = data.outer(self);
-            (outer, data.expn_info(outer))
+            (outer, data.expn_info(outer).cloned())
         })
     }
 
@@ -651,6 +636,7 @@ impl fmt::Debug for SyntaxContext {
 /// Extra information for tracking spans of macro and syntax sugar expansion
 #[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
+    // --- The part unique to each expansion.
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
     ///
@@ -661,13 +647,18 @@ pub struct ExpnInfo {
     /// call_site span would have its own ExpnInfo, with the call_site
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
+    /// The format with which the macro was invoked.
+    pub format: ExpnFormat,
+
+    // --- The part specific to the macro/desugaring definition.
+    // --- FIXME: Share it between expansions with the same definition.
     /// The span of the macro definition itself. The macro may not
     /// have a sensible definition span (e.g., something defined
     /// completely inside libsyntax) in which case this is None.
     /// This span serves only informational purpose and is not used for resolution.
     pub def_site: Option<Span>,
-    /// The format with which the macro was invoked.
-    pub format: ExpnFormat,
+    /// Transparency used by `apply_mark` for mark with this expansion info by default.
+    pub default_transparency: Transparency,
     /// List of #[unstable]/feature-gated features that the macro is allowed to use
     /// internally without forcing the whole crate to opt-in
     /// to them.
@@ -680,6 +671,30 @@ pub struct ExpnInfo {
     pub local_inner_macros: bool,
     /// Edition of the crate in which the macro is defined.
     pub edition: Edition,
+}
+
+impl ExpnInfo {
+    /// Constructs an expansion info with default properties.
+    pub fn default(format: ExpnFormat, call_site: Span, edition: Edition) -> ExpnInfo {
+        ExpnInfo {
+            call_site,
+            format,
+            def_site: None,
+            default_transparency: Transparency::SemiTransparent,
+            allow_internal_unstable: None,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            edition,
+        }
+    }
+
+    pub fn with_unstable(format: ExpnFormat, call_site: Span, edition: Edition,
+                         allow_internal_unstable: &[Symbol]) -> ExpnInfo {
+        ExpnInfo {
+            allow_internal_unstable: Some(allow_internal_unstable.into()),
+            ..ExpnInfo::default(format, call_site, edition)
+        }
+    }
 }
 
 /// The source of expansion.

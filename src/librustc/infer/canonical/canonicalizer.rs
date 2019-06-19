@@ -14,7 +14,7 @@ use crate::mir::interpret::ConstValue;
 use std::sync::atomic::Ordering;
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::subst::Kind;
-use crate::ty::{self, BoundVar, InferConst, Lift, List, Ty, TyCtxt, TypeFlags};
+use crate::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
 use crate::ty::flags::FlagComputation;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -43,7 +43,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'tcx, V>
     where
-        V: TypeFoldable<'tcx> + Lift<'tcx>,
+        V: TypeFoldable<'tcx>,
     {
         self.tcx
             .sess
@@ -87,7 +87,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query-result
     pub fn canonicalize_response<V>(&self, value: &V) -> Canonicalized<'tcx, V>
     where
-        V: TypeFoldable<'tcx> + Lift<'tcx>,
+        V: TypeFoldable<'tcx>,
     {
         let mut query_state = OriginalQueryValues::default();
         Canonicalizer::canonicalize(
@@ -101,7 +101,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
     pub fn canonicalize_user_type_annotation<V>(&self, value: &V) -> Canonicalized<'tcx, V>
     where
-        V: TypeFoldable<'tcx> + Lift<'tcx>,
+        V: TypeFoldable<'tcx>,
     {
         let mut query_state = OriginalQueryValues::default();
         Canonicalizer::canonicalize(
@@ -132,7 +132,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'tcx, V>
     where
-        V: TypeFoldable<'tcx> + Lift<'tcx>,
+        V: TypeFoldable<'tcx>,
     {
         self.tcx
             .sess
@@ -506,7 +506,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'tcx, V>
     where
-        V: TypeFoldable<'tcx> + Lift<'tcx>,
+        V: TypeFoldable<'tcx>,
     {
         let needs_canonical_flags = if canonicalize_region_mode.any() {
             TypeFlags::KEEP_IN_LOCAL_TCX |
@@ -520,20 +520,12 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             TypeFlags::HAS_CT_PLACEHOLDER
         };
 
-        let gcx = tcx.global_tcx();
-
         // Fast path: nothing that needs to be canonicalized.
         if !value.has_type_flags(needs_canonical_flags) {
-            let out_value = gcx.lift(value).unwrap_or_else(|| {
-                bug!(
-                    "failed to lift `{:?}` (nothing to canonicalize)",
-                    value
-                )
-            });
             let canon_value = Canonical {
                 max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
-                value: out_value,
+                value: value.clone(),
             };
             return canon_value;
         }
@@ -553,13 +545,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         // Once we have canonicalized `out_value`, it should not
         // contain anything that ties it to this inference context
         // anymore, so it should live in the global arena.
-        let out_value = gcx.lift(&out_value).unwrap_or_else(|| {
-            bug!(
-                "failed to lift `{:?}`, canonicalized from `{:?}`",
-                out_value,
-                value
-            )
-        });
+        debug_assert!(!out_value.has_type_flags(TypeFlags::KEEP_IN_LOCAL_TCX));
 
         let canonical_variables = tcx.intern_canonical_var_infos(&canonicalizer.variables);
 

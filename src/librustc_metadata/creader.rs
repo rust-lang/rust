@@ -26,7 +26,7 @@ use std::{cmp, fs};
 
 use syntax::ast;
 use syntax::attr;
-use syntax::ext::base::SyntaxExtension;
+use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use syntax::symbol::{Symbol, sym};
 use syntax::visit;
 use syntax::{span_err, span_fatal};
@@ -611,33 +611,31 @@ impl<'a> CrateLoader<'a> {
         };
 
         let extensions = decls.iter().map(|&decl| {
-            match decl {
+            let (name, kind, helper_attrs) = match decl {
                 ProcMacro::CustomDerive { trait_name, attributes, client } => {
-                    let attrs = attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
-                    (trait_name, SyntaxExtension::Derive(
-                        Box::new(ProcMacroDerive {
-                            client,
-                            attrs: attrs.clone(),
-                        }),
-                        attrs,
-                        root.edition,
-                    ))
+                    let helper_attrs =
+                        attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
+                    (
+                        trait_name,
+                        SyntaxExtensionKind::Derive(Box::new(ProcMacroDerive {
+                            client, attrs: helper_attrs.clone()
+                        })),
+                        helper_attrs,
+                    )
                 }
-                ProcMacro::Attr { name, client } => {
-                    (name, SyntaxExtension::Attr(
-                        Box::new(AttrProcMacro { client }),
-                        root.edition,
-                    ))
-                }
-                ProcMacro::Bang { name, client } => {
-                    (name, SyntaxExtension::Bang {
-                        expander: Box::new(BangProcMacro { client }),
-                        allow_internal_unstable: None,
-                        edition: root.edition,
-                    })
-                }
-            }
-        }).map(|(name, ext)| (Symbol::intern(name), Lrc::new(ext))).collect();
+                ProcMacro::Attr { name, client } => (
+                    name, SyntaxExtensionKind::Attr(Box::new(AttrProcMacro { client })), Vec::new()
+                ),
+                ProcMacro::Bang { name, client } => (
+                    name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new()
+                )
+            };
+
+            (Symbol::intern(name), Lrc::new(SyntaxExtension {
+                helper_attrs,
+                ..SyntaxExtension::default(kind, root.edition)
+            }))
+        }).collect();
 
         // Intentionally leak the dynamic library. We can't ever unload it
         // since the library can make things that will live arbitrarily long.

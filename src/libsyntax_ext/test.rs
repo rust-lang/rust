@@ -8,7 +8,7 @@ use syntax::attr;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::symbol::{Symbol, sym};
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::Span;
 use syntax::source_map::{ExpnInfo, MacroAttribute};
 use std::iter;
 
@@ -62,15 +62,10 @@ pub fn expand_test_or_bench(
 
     let (sp, attr_sp) = {
         let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo {
-            call_site: DUMMY_SP,
-            def_site: None,
-            format: MacroAttribute(sym::test),
-            allow_internal_unstable: Some(vec![sym::rustc_attrs, sym::test].into()),
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
-            edition: cx.parse_sess.edition,
-        });
+        mark.set_expn_info(ExpnInfo::with_unstable(
+            MacroAttribute(sym::test), attr_sp, cx.parse_sess.edition,
+            &[sym::rustc_attrs, sym::test],
+        ));
         (item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark)),
          attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(mark)))
     };

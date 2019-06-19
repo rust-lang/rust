@@ -295,7 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Index(ref base, ref idx) => {
                 self.check_expr_index(base, idx, needs, expr)
             }
-            ExprKind::Yield(ref value) => {
+            ExprKind::Yield(ref value, _) => {
                 self.check_expr_yield(value, expr)
             }
             hir::ExprKind::Err => {

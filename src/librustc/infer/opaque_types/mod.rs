@@ -469,11 +469,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             definition_ty
         );
 
-        // We can unwrap here because our reverse mapper always
-        // produces things with 'tcx lifetime, though the type folder
-        // obscures that.
-        let definition_ty = gcx.lift(&definition_ty).unwrap();
-
         definition_ty
     }
 }

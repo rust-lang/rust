@@ -15,7 +15,7 @@ use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast;
 use syntax::source_map::respan;
 use syntax::symbol::sym;
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::Span;
 use syntax::source_map::{ExpnInfo, MacroAttribute};
 use syntax::feature_gate;
 
@@ -37,15 +37,10 @@ pub fn expand(
 
     let sp = {
         let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo {
-            call_site: DUMMY_SP,
-            def_site: None,
-            format: MacroAttribute(sym::test_case),
-            allow_internal_unstable: Some(vec![sym::test, sym::rustc_attrs].into()),
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
-            edition: ecx.parse_sess.edition,
-        });
+        mark.set_expn_info(ExpnInfo::with_unstable(
+            MacroAttribute(sym::test_case), attr_sp, ecx.parse_sess.edition,
+            &[sym::test, sym::rustc_attrs],
+        ));
         attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     };
 

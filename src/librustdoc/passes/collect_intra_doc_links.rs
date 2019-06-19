@@ -423,7 +423,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
 /// Resolves a string as a macro.
 fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
-    use syntax::ext::base::{MacroKind, SyntaxExtension};
+    use syntax::ext::base::{MacroKind, SyntaxExtensionKind};
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
     let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
     cx.enter_resolver(|resolver| {
@@ -433,7 +433,7 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
             if let Res::Def(DefKind::Macro(MacroKind::ProcMacroStub), _) = res {
                 // skip proc-macro stubs, they'll cause `get_macro` to crash
             } else {
-                if let SyntaxExtension::LegacyBang { .. } = *resolver.get_macro(res) {
+                if let SyntaxExtensionKind::LegacyBang(..) = resolver.get_macro(res).kind {
                     return Some(res.map_id(|_| panic!("unexpected id")));
                 }
             }

@@ -4,9 +4,8 @@ use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 
-use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension};
+use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind, NamedSyntaxExtension};
 use syntax::ext::base::MacroExpanderFn;
-use syntax::ext::hygiene::Transparency;
 use syntax::symbol::{Symbol, sym};
 use syntax::ast;
 use syntax::feature_gate::AttributeType;
@@ -89,8 +88,8 @@ impl<'a> Registry<'a> {
         if name == sym::macro_rules {
             panic!("user-defined macros may not be named `macro_rules`");
         }
-        if let SyntaxExtension::LegacyBang { def_info: ref mut def_info @ None, .. } = extension {
-            *def_info = Some((ast::CRATE_NODE_ID, self.krate_span));
+        if extension.def_info.is_none() {
+            extension.def_info = Some((ast::CRATE_NODE_ID, self.krate_span));
         }
         self.syntax_exts.push((name, extension));
     }
@@ -98,19 +97,12 @@ impl<'a> Registry<'a> {
     /// Register a macro of the usual kind.
     ///
     /// This is a convenience wrapper for `register_syntax_extension`.
-    /// It builds for you a `SyntaxExtension::LegacyBang` that calls `expander`,
+    /// It builds for you a `SyntaxExtensionKind::LegacyBang` that calls `expander`,
     /// and also takes care of interning the macro's name.
     pub fn register_macro(&mut self, name: &str, expander: MacroExpanderFn) {
-        self.register_syntax_extension(Symbol::intern(name), SyntaxExtension::LegacyBang {
-            expander: Box::new(expander),
-            def_info: None,
-            transparency: Transparency::SemiTransparent,
-            allow_internal_unstable: None,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
-            unstable_feature: None,
-            edition: self.sess.edition(),
-        });
+        let kind = SyntaxExtensionKind::LegacyBang(Box::new(expander));
+        let ext = SyntaxExtension::default(kind, self.sess.edition());
+        self.register_syntax_extension(Symbol::intern(name), ext);
     }
 
     /// Register a compiler lint pass.

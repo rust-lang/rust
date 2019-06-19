@@ -227,16 +227,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn need_type_info_err_in_generator(
         &self,
+        kind: hir::GeneratorKind,
         span: Span,
         ty: Ty<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty, None);
-
-        let mut err = struct_span_err!(self.tcx.sess,
-                       span,
-                       E0698,
-                       "type inside generator must be known in this context");
+        let mut err = struct_span_err!(
+            self.tcx.sess, span, E0698, "type inside {} must be known in this context", kind,
+        );
         err.span_label(span, InferCtxt::missing_type_msg(&name));
         err
     }

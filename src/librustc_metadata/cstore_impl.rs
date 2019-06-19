@@ -30,9 +30,11 @@ use syntax::ast;
 use syntax::attr;
 use syntax::source_map;
 use syntax::edition::Edition;
+use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use syntax::parse::source_file_to_stream;
 use syntax::parse::parser::emit_unclosed_delims;
 use syntax::symbol::{Symbol, sym};
+use syntax_ext::proc_macro_impl::BangProcMacro;
 use syntax_pos::{Span, NO_EXPANSION, FileName};
 use rustc_data_structures::bit_set::BitSet;
 
@@ -427,14 +429,11 @@ impl cstore::CStore {
         if let Some(ref proc_macros) = data.proc_macros {
             return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
         } else if data.name == sym::proc_macro && data.item_name(id.index) == sym::quote {
-            use syntax::ext::base::SyntaxExtension;
-            use syntax_ext::proc_macro_impl::BangProcMacro;
-
             let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
-            let ext = SyntaxExtension::Bang {
-                expander: Box::new(BangProcMacro { client }),
-                allow_internal_unstable: Some(vec![sym::proc_macro_def_site].into()),
-                edition: data.root.edition,
+            let kind = SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client }));
+            let ext = SyntaxExtension {
+                allow_internal_unstable: Some([sym::proc_macro_def_site][..].into()),
+                ..SyntaxExtension::default(kind, data.root.edition)
             };
             return LoadedMacro::ProcMacro(Lrc::new(ext));
         }

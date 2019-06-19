@@ -172,7 +172,7 @@ use crate::mem::ManuallyDrop;
 ///
 /// # Layout
 ///
-/// `MaybeUninit<T>` is guaranteed to have the same size and alignment as `T`:
+/// `MaybeUninit<T>` is guaranteed to have the same size, alignment, and ABI as `T`:
 ///
 /// ```rust
 /// use std::mem::{MaybeUninit, size_of, align_of};
@@ -191,9 +191,23 @@ use crate::mem::ManuallyDrop;
 /// assert_eq!(size_of::<Option<bool>>(), 1);
 /// assert_eq!(size_of::<Option<MaybeUninit<bool>>>(), 2);
 /// ```
+///
+/// If `T` is FFI-safe, then so is `MaybeUninit<T>`.
+///
+/// While `MaybeUninit` is `#[repr(transparent)]` (indicating it guarantees the same size,
+/// alignment, and ABI as `T`), this does *not* change any of the previous caveats. `Option<T>` and
+/// `Option<MaybeUninit<T>>` may still have different sizes, and types containing a field of type
+/// `T` may be laid out (and sized) differently than if that field were `MaybeUninit<T>`.
+/// `MaybeUninit` is a union type, and `#[repr(transparent)]` on unions is unstable (see [the
+/// tracking issue](https://github.com/rust-lang/rust/issues/60405)). Over time, the exact
+/// guarantees of `#[repr(transparent)]` on unions may evolve, and `MaybeUninit` may or may not
+/// remain `#[repr(transparent)]`. That said, `MaybeUninit<T>` will *always* guarantee that it has
+/// the same size, alignment, and ABI as `T`; it's just that the way `MaybeUninit` implements that
+/// guarantee may evolve.
 #[allow(missing_debug_implementations)]
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 #[derive(Copy)]
+#[cfg_attr(not(bootstrap), repr(transparent))]
 pub union MaybeUninit<T> {
     uninit: (),
     value: ManuallyDrop<T>,
