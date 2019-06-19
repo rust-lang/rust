@@ -236,7 +236,7 @@ fn check_pat<'a, 'tcx>(
     }
 }
 
-fn lint_shadow<'a, 'tcx: 'a>(
+fn lint_shadow<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     name: Name,
     span: Span,

@@ -2136,18 +2136,18 @@ impl<'tcx> ImplicitHasherType<'tcx> {
     }
 }
 
-struct ImplicitHasherTypeVisitor<'a, 'tcx: 'a> {
+struct ImplicitHasherTypeVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     found: Vec<ImplicitHasherType<'tcx>>,
 }
 
-impl<'a, 'tcx: 'a> ImplicitHasherTypeVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ImplicitHasherTypeVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         Self { cx, found: vec![] }
     }
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty) {
         if let Some(target) = ImplicitHasherType::new(self.cx, t) {
             self.found.push(target);
@@ -2162,14 +2162,14 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
 }
 
 /// Looks for default-hasher-dependent constructors like `HashMap::new`.
-struct ImplicitHasherConstructorVisitor<'a, 'b, 'tcx: 'a + 'b> {
+struct ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     body: &'a TypeckTables<'tcx>,
     target: &'b ImplicitHasherType<'tcx>,
     suggestions: BTreeMap<Span, String>,
 }
 
-impl<'a, 'b, 'tcx: 'a + 'b> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     fn new(cx: &'a LateContext<'a, 'tcx>, target: &'b ImplicitHasherType<'tcx>) -> Self {
         Self {
             cx,
@@ -2180,7 +2180,7 @@ impl<'a, 'b, 'tcx: 'a + 'b> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     fn visit_body(&mut self, body: &'tcx Body) {
         let prev_body = self.body;
         self.body = self.cx.tcx.body_tables(body.id());

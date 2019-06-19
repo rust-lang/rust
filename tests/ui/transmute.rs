@@ -53,7 +53,7 @@ unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
 
 #[warn(clippy::transmute_ptr_to_ref)]
 fn issue1231() {
-    struct Foo<'a, T: 'a> {
+    struct Foo<'a, T> {
         bar: &'a T,
     }
 

@@ -236,13 +236,13 @@ fn is_commutative(op: hir::BinOpKind) -> bool {
     }
 }
 
-struct ExprVisitor<'a, 'tcx: 'a> {
+struct ExprVisitor<'a, 'tcx> {
     assignee: &'a hir::Expr,
     counter: u8,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if SpanlessEq::new(self.cx).ignore_fn().eq_expr(self.assignee, expr) {
             self.counter += 1;

@@ -27,7 +27,7 @@ declare_clippy_lint! {
     "unused labels"
 }
 
-struct UnusedLabelVisitor<'a, 'tcx: 'a> {
+struct UnusedLabelVisitor<'a, 'tcx> {
     labels: FxHashMap<LocalInternedString, Span>,
     cx: &'a LateContext<'a, 'tcx>,
 }
@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
     }
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for UnusedLabelVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for UnusedLabelVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprKind::Break(destination, _) | hir::ExprKind::Continue(destination) => {

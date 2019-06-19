@@ -112,7 +112,7 @@ fn check_cond<'a, 'tcx, 'b>(
     None
 }
 
-struct InsertVisitor<'a, 'tcx: 'a, 'b> {
+struct InsertVisitor<'a, 'tcx, 'b> {
     cx: &'a LateContext<'a, 'tcx>,
     span: Span,
     ty: &'static str,

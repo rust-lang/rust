@@ -1046,7 +1046,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
 
 /// Checks for the `OR_FUN_CALL` lint.
 #[allow(clippy::too_many_lines)]
-fn lint_or_fun_call<'a, 'tcx: 'a>(
+fn lint_or_fun_call<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     expr: &hir::Expr,
     method_span: Span,
@@ -1054,7 +1054,7 @@ fn lint_or_fun_call<'a, 'tcx: 'a>(
     args: &'tcx [hir::Expr],
 ) {
     // Searches an expression for method calls or function calls that aren't ctors
-    struct FunCallFinder<'a, 'tcx: 'a> {
+    struct FunCallFinder<'a, 'tcx> {
         cx: &'a LateContext<'a, 'tcx>,
         found: bool,
     }
@@ -1142,7 +1142,7 @@ fn lint_or_fun_call<'a, 'tcx: 'a>(
 
     /// Checks for `*or(foo())`.
     #[allow(clippy::too_many_arguments)]
-    fn check_general_case<'a, 'tcx: 'a>(
+    fn check_general_case<'a, 'tcx>(
         cx: &LateContext<'a, 'tcx>,
         name: &str,
         method_span: Span,

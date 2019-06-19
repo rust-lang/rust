@@ -326,7 +326,7 @@ fn requires_exact_signature(attrs: &[Attribute]) -> bool {
     })
 }
 
-struct MovedVariablesCtxt<'a, 'tcx: 'a> {
+struct MovedVariablesCtxt<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     moved_vars: FxHashSet<HirId>,
     /// Spans which need to be prefixed with `*` for dereferencing the

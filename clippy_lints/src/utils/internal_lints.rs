@@ -217,12 +217,12 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty) -> bool {
     false
 }
 
-struct LintCollector<'a, 'tcx: 'a> {
+struct LintCollector<'a, 'tcx> {
     output: &'a mut FxHashSet<Name>,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for LintCollector<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         walk_expr(self, expr);
     }

@@ -53,7 +53,7 @@ pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr
 }
 
 // returns (found_mapping, found_filtering)
-fn check_expression<'a, 'tcx: 'a>(
+fn check_expression<'a, 'tcx>(
     cx: &'a LateContext<'a, 'tcx>,
     arg_id: hir::HirId,
     expr: &'tcx hir::Expr,
@@ -104,7 +104,7 @@ fn check_expression<'a, 'tcx: 'a>(
     }
 }
 
-struct ReturnVisitor<'a, 'tcx: 'a> {
+struct ReturnVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     arg_id: hir::HirId,
     // Found a non-None return that isn't Some(input)
@@ -113,7 +113,7 @@ struct ReturnVisitor<'a, 'tcx: 'a> {
     found_filtering: bool,
 }
 
-impl<'a, 'tcx: 'a> ReturnVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ReturnVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'a, 'tcx>, arg_id: hir::HirId) -> ReturnVisitor<'a, 'tcx> {
         ReturnVisitor {
             cx,

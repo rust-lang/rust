@@ -49,13 +49,13 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
     use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
     use rustc::hir::*;
 
-    struct FindPanicUnwrap<'a, 'tcx: 'a> {
+    struct FindPanicUnwrap<'a, 'tcx> {
         lcx: &'a LateContext<'a, 'tcx>,
         tables: &'tcx ty::TypeckTables<'tcx>,
         result: Vec<Span>,
     }
 
-    impl<'a, 'tcx: 'a> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
+    impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
         fn visit_expr(&mut self, expr: &'tcx Expr) {
             // check for `begin_panic`
             if_chain! {

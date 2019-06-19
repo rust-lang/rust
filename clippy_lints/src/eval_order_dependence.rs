@@ -92,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     }
 }
 
-struct DivergenceVisitor<'a, 'tcx: 'a> {
+struct DivergenceVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
 }
 
@@ -272,7 +272,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> St
 }
 
 /// A visitor that looks for reads from a variable.
-struct ReadVisitor<'a, 'tcx: 'a> {
+struct ReadVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     /// The ID of the variable we're looking for.
     var: HirId,

@@ -41,7 +41,7 @@ impl CognitiveComplexity {
 impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
-    fn check<'a, 'tcx: 'a>(&mut self, cx: &'a LateContext<'a, 'tcx>, body: &'tcx Body, span: Span) {
+    fn check<'a, 'tcx>(&mut self, cx: &'a LateContext<'a, 'tcx>, body: &'tcx Body, span: Span) {
         if in_macro_or_desugar(span) {
             return;
         }
@@ -132,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CognitiveComplexity {
     }
 }
 
-struct CCHelper<'a, 'tcx: 'a> {
+struct CCHelper<'a, 'tcx> {
     match_arms: u64,
     divergence: u64,
     returns: u64,

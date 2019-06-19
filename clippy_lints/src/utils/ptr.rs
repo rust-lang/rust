@@ -22,7 +22,7 @@ pub fn get_spans(
     }
 }
 
-fn extract_clone_suggestions<'a, 'tcx: 'a>(
+fn extract_clone_suggestions<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     name: Name,
     replace: &[(&'static str, &'static str)],
@@ -43,7 +43,7 @@ fn extract_clone_suggestions<'a, 'tcx: 'a>(
     }
 }
 
-struct PtrCloneVisitor<'a, 'tcx: 'a> {
+struct PtrCloneVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     name: Name,
     replace: &'a [(&'static str, &'static str)],
@@ -51,7 +51,7 @@ struct PtrCloneVisitor<'a, 'tcx: 'a> {
     abort: bool,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if self.abort {
             return;

@@ -291,7 +291,7 @@ fn raw_ptr_arg(arg: &hir::Arg, ty: &hir::Ty) -> Option<hir::HirId> {
     }
 }
 
-struct DerefVisitor<'a, 'tcx: 'a> {
+struct DerefVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     ptrs: FxHashSet<hir::HirId>,
     tables: &'a ty::TypeckTables<'tcx>,
@@ -330,7 +330,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx: 'a> DerefVisitor<'a, 'tcx> {
+impl<'a, 'tcx> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr) {
         if let hir::ExprKind::Path(ref qpath) = ptr.node {
             if let Res::Local(id) = self.cx.tables.qpath_res(qpath, ptr.hir_id) {

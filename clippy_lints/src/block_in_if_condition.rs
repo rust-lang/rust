@@ -44,12 +44,12 @@ declare_clippy_lint! {
 
 declare_lint_pass!(BlockInIfCondition => [BLOCK_IN_IF_CONDITION_EXPR, BLOCK_IN_IF_CONDITION_STMT]);
 
-struct ExVisitor<'a, 'tcx: 'a> {
+struct ExVisitor<'a, 'tcx> {
     found_block: Option<&'tcx Expr>,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if let ExprKind::Closure(_, _, eid, _, _) = expr.node {
             let body = self.cx.tcx.hir().body(eid);

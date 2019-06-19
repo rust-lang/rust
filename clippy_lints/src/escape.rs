@@ -43,7 +43,7 @@ fn is_non_trait_box(ty: Ty<'_>) -> bool {
     ty.is_box() && !ty.boxed_ty().is_trait()
 }
 
-struct EscapeDelegate<'a, 'tcx: 'a> {
+struct EscapeDelegate<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
     set: HirIdSet,
     too_large_for_stack: u64,
