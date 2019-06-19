@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 [01ab9fe6...master](https://github.com/rust-lang/rust-clippy/compare/01ab9fe6...master)
 
 
-## Rust 1.36 
+## Rust 1.36
 
 Current beta
 
@@ -129,7 +129,9 @@ Released 2019-02-26
 * Improve suggestions for `question_mark` lint
 * Fix incorrect suggestion for `get_unwrap`
 
-## Rust 1.32 (2019-01-17)
+## Rust 1.32
+
+Released 2019-01-17
 
 [2e26fdc2...b2601be](https://github.com/rust-lang/rust-clippy/compare/2e26fdc2...b2601be)
 
@@ -158,6 +160,7 @@ Released 2019-02-26
 * Move `needless_pass_by_value` from `pedantic` group to `style`
 
 ## Rust 1.31
+
 Released 2018-12-06
 
 [125907ad..2e26fdc2](https://github.com/rust-lang/rust-clippy/compare/125907ad..2e26fdc2)
