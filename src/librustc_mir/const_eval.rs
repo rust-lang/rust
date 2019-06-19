@@ -99,7 +99,7 @@ fn op_to_const<'tcx>(
         Ok(mplace) => {
             let ptr = mplace.ptr.to_ptr().unwrap();
             let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-            ConstValue::ByRef(ptr, mplace.align, alloc)
+            ConstValue::ByRef(ptr.offset, mplace.align, alloc)
         },
         // see comment on `let try_as_immediate` above
         Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
@@ -113,7 +113,7 @@ fn op_to_const<'tcx>(
                 let mplace = op.to_mem_place();
                 let ptr = mplace.ptr.to_ptr().unwrap();
                 let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                ConstValue::ByRef(ptr, mplace.align, alloc)
+                ConstValue::ByRef(ptr.offset, mplace.align, alloc)
             },
         },
         Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
@@ -542,7 +542,7 @@ fn validate_and_turn_into_const<'tcx>(
             let ptr = mplace.ptr.to_ptr()?;
             Ok(tcx.mk_const(ty::Const {
                 val: ConstValue::ByRef(
-                    ptr,
+                    ptr.offset,
                     mplace.align,
                     ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
                 ),

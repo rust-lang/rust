@@ -218,7 +218,7 @@ impl LiteralExpander<'tcx> {
             (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => {
                 let alloc = self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id);
                 ConstValue::ByRef(
-                    p,
+                    p.offset,
                     // FIXME(oli-obk): this should be the type's layout
                     alloc.align,
                     alloc,
@@ -1436,9 +1436,10 @@ fn slice_pat_covered_by_const<'tcx>(
     suffix: &[Pattern<'tcx>],
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
-        (ConstValue::ByRef(ptr, _, alloc), ty::Array(t, n)) => {
+        (ConstValue::ByRef(offset, _, alloc), ty::Array(t, n)) => {
             assert_eq!(*t, tcx.types.u8);
             let n = n.assert_usize(tcx).unwrap();
+            let ptr = Pointer::new(AllocId(0), offset);
             alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
         },
         (ConstValue::Slice { data, start, end }, ty::Slice(t)) => {
@@ -1758,9 +1759,9 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                     let (alloc, offset, n, ty) = match value.ty.sty {
                         ty::Array(t, n) => {
                             match value.val {
-                                ConstValue::ByRef(ptr, _, alloc) => (
+                                ConstValue::ByRef(offset, _, alloc) => (
                                     alloc,
-                                    ptr.offset,
+                                    offset,
                                     n.unwrap_usize(cx.tcx),
                                     t,
                                 ),
