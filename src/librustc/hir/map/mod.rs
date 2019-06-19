@@ -940,13 +940,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Returns the name associated with the given `NodeId`'s AST.
-    pub fn name(&self, id: NodeId) -> Name {
-        let hir_id = self.node_to_hir_id(id);
-        self.name_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn name_by_hir_id(&self, id: HirId) -> Name {
         match self.get_by_hir_id(id) {
             Node::Item(i) => i.ident.name,
