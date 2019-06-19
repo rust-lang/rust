@@ -1534,7 +1534,7 @@ impl<T: ?Sized> *const T {
     /// `usize::max_value()`.
     ///
     /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
-    /// used with the `offset` or `offset_to` methods.
+    /// used with the `offset` method.
     ///
     /// There are no guarantees whatsover that offsetting the pointer will not overflow or go
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
@@ -2335,7 +2335,7 @@ impl<T: ?Sized> *mut T {
     /// `usize::max_value()`.
     ///
     /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
-    /// used with the `offset` or `offset_to` methods.
+    /// used with the `offset` method.
     ///
     /// There are no guarantees whatsover that offsetting the pointer will not overflow or go
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
