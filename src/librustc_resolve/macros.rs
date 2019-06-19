@@ -673,7 +673,8 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 WhereToResolve::MacroUsePrelude => {
-                    if use_prelude || rust_2015 {
+                    // FIXME: Remove `panic` from here once its uses in std/core are hygienized.
+                    if use_prelude || rust_2015 || ident.name.as_str() == "panic" {
                         match self.macro_use_prelude.get(&ident.name).cloned() {
                             Some(binding) =>
                                 Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE)),
