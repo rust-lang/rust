@@ -46,7 +46,10 @@ pub enum ConstValue<'tcx> {
     /// An allocation together with a pointer into the allocation.
     /// Invariant: the pointer's `AllocId` resolves to the allocation.
     /// The alignment exists to allow `const_field` to have `ByRef` access to nonprimitive fields
-    /// of packed structs.
+    /// of packed structs. The alignment may be lower than the alignment of the `Allocation` and
+    /// allow reads with lower alignment than what the allocation would normally permit.
+    /// FIXME(RalfJ,oli-obk): The alignment checks are part of miri, but const eval doesn't really
+    /// need them. Disabling them may be too hard though.
     ByRef(Pointer, Align, &'tcx Allocation),
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
