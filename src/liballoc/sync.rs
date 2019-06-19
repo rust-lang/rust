@@ -206,6 +206,19 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
+impl<T: ?Sized> Arc<T> {
+    fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
+        Self {
+            ptr,
+            phantom: PhantomData,
+        }
+    }
+
+    unsafe fn from_ptr(ptr: *mut ArcInner<T>) -> Self {
+        Self::from_inner(NonNull::new_unchecked(ptr))
+    }
+}
+
 /// `Weak` is a version of [`Arc`] that holds a non-owning reference to the
 /// managed value. The value is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an [`Option`]`<`[`Arc`]`<T>>`.
@@ -290,7 +303,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data,
         };
-        Arc { ptr: Box::into_raw_non_null(x), phantom: PhantomData }
+        Self::from_inner(Box::into_raw_non_null(x))
     }
 
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
@@ -403,10 +416,7 @@ impl<T: ?Sized> Arc<T> {
         let fake_ptr = ptr as *mut ArcInner<T>;
         let arc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
 
-        Arc {
-            ptr: NonNull::new_unchecked(arc_ptr),
-            phantom: PhantomData,
-        }
+        Self::from_ptr(arc_ptr)
     }
 
     /// Consumes the `Arc`, returning the wrapped pointer as `NonNull<T>`.
@@ -617,7 +627,7 @@ impl<T: ?Sized> Arc<T> {
             // Free the allocation without dropping its contents
             box_free(box_unique);
 
-            Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Self::from_ptr(ptr)
         }
     }
 }
@@ -644,7 +654,7 @@ impl<T> Arc<[T]> {
             &mut (*ptr).data as *mut [T] as *mut T,
             v.len());
 
-        Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+        Self::from_ptr(ptr)
     }
 }
 
@@ -702,7 +712,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
             // All clear. Forget the guard so it doesn't free the new ArcInner.
             mem::forget(guard);
 
-            Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Self::from_ptr(ptr)
         }
     }
 }
@@ -760,7 +770,7 @@ impl<T: ?Sized> Clone for Arc<T> {
             }
         }
 
-        Arc { ptr: self.ptr, phantom: PhantomData }
+        Self::from_inner(self.ptr)
     }
 }
 
@@ -1039,7 +1049,7 @@ impl Arc<dyn Any + Send + Sync> {
         if (*self).is::<T>() {
             let ptr = self.ptr.cast::<ArcInner<T>>();
             mem::forget(self);
-            Ok(Arc { ptr, phantom: PhantomData })
+            Ok(Arc::from_inner(ptr))
         } else {
             Err(self)
         }
@@ -1260,11 +1270,7 @@ impl<T: ?Sized> Weak<T> {
 
             // Relaxed is valid for the same reason it is on Arc's Clone impl
             match inner.strong.compare_exchange_weak(n, n + 1, Relaxed, Relaxed) {
-                Ok(_) => return Some(Arc {
-                    // null checked above
-                    ptr: self.ptr,
-                    phantom: PhantomData,
-                }),
+                Ok(_) => return Some(Arc::from_inner(self.ptr)), // null checked above
                 Err(old) => n = old,
             }
         }
