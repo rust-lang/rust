@@ -1,5 +1,9 @@
 #![warn(clippy::needless_return)]
 
+macro_rules! the_answer {
+    () => (42)
+}
+
 fn test_end_of_fn() -> bool {
     if true {
         // no error!
@@ -34,6 +38,22 @@ fn test_closure() {
         return true;
     };
     let _ = || return true;
+}
+
+fn test_macro_call() -> i32 {
+    return the_answer!();
+}
+
+fn test_void_fun() {
+    return;
+}
+
+fn test_void_if_fun(b: bool) {
+    if b {
+        return;
+    } else {
+        return;
+    }
 }
 
 fn main() {
