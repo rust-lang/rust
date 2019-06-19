@@ -227,7 +227,7 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
             println!("{}Closure", ind);
             println!("{}clause: {:?}", ind, clause);
         },
-        hir::ExprKind::Yield(ref sub) => {
+        hir::ExprKind::Yield(ref sub, _) => {
             println!("{}Yield", ind);
             print_expr(cx, sub, indent + 1);
         },
