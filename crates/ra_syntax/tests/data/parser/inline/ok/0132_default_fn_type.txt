@@ -1,0 +1,55 @@
+SOURCE_FILE@[0; 69)
+  IMPL_BLOCK@[0; 68)
+    IMPL_KW@[0; 4) "impl"
+    WHITESPACE@[4; 5) " "
+    PATH_TYPE@[5; 6)
+      PATH@[5; 6)
+        PATH_SEGMENT@[5; 6)
+          NAME_REF@[5; 6)
+            IDENT@[5; 6) "T"
+    WHITESPACE@[6; 7) " "
+    FOR_KW@[7; 10) "for"
+    WHITESPACE@[10; 11) " "
+    PATH_TYPE@[11; 14)
+      PATH@[11; 14)
+        PATH_SEGMENT@[11; 14)
+          NAME_REF@[11; 14)
+            IDENT@[11; 14) "Foo"
+    WHITESPACE@[14; 15) " "
+    ITEM_LIST@[15; 68)
+      L_CURLY@[15; 16) "{"
+      WHITESPACE@[16; 21) "\n    "
+      TYPE_ALIAS_DEF@[21; 42)
+        DEFAULT_KW@[21; 28) "default"
+        WHITESPACE@[28; 29) " "
+        TYPE_KW@[29; 33) "type"
+        WHITESPACE@[33; 34) " "
+        NAME@[34; 35)
+          IDENT@[34; 35) "T"
+        WHITESPACE@[35; 36) " "
+        EQ@[36; 37) "="
+        WHITESPACE@[37; 38) " "
+        PATH_TYPE@[38; 41)
+          PATH@[38; 41)
+            PATH_SEGMENT@[38; 41)
+              NAME_REF@[38; 41)
+                IDENT@[38; 41) "Bar"
+        SEMI@[41; 42) ";"
+      WHITESPACE@[42; 47) "\n    "
+      FN_DEF@[47; 66)
+        DEFAULT_KW@[47; 54) "default"
+        WHITESPACE@[54; 55) " "
+        FN_KW@[55; 57) "fn"
+        WHITESPACE@[57; 58) " "
+        NAME@[58; 61)
+          IDENT@[58; 61) "foo"
+        PARAM_LIST@[61; 63)
+          L_PAREN@[61; 62) "("
+          R_PAREN@[62; 63) ")"
+        WHITESPACE@[63; 64) " "
+        BLOCK@[64; 66)
+          L_CURLY@[64; 65) "{"
+          R_CURLY@[65; 66) "}"
+      WHITESPACE@[66; 67) "\n"
+      R_CURLY@[67; 68) "}"
+  WHITESPACE@[68; 69) "\n"

@@ -103,7 +103,21 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         p.bump_remap(T![auto]);
         has_mods = true;
     }
-    if p.at(IDENT) && p.at_contextual_kw("default") && p.nth(1) == T![impl] {
+
+    if p.at(IDENT)
+        && p.at_contextual_kw("default")
+        && (match p.nth(1) {
+            T![impl] => true,
+            T![fn] | T![type] => {
+                if let ItemFlavor::Mod = flavor {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        })
+    {
         p.bump_remap(T![default]);
         has_mods = true;
     }
@@ -163,12 +177,25 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // test default_impl
         // default impl Foo {}
 
+        // test_err default_fn_type
+        // trait T {
+        //     default type T = Bar;
+        //     default fn foo() {}
+        // }
+
+        // test default_fn_type
+        // impl T for Foo {
+        //     default type T = Bar;
+        //     default fn foo() {}
+        // }
+
         // test unsafe_default_impl
         // unsafe default impl Foo {}
         T![impl] => {
             traits::impl_block(p);
             m.complete(p, IMPL_BLOCK);
         }
+
         // test existential_type
         // existential type Foo: Fn() -> usize;
         T![type] => {
