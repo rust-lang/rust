@@ -4461,11 +4461,11 @@ impl<'a> LoweringContext<'a> {
                     };
 
                     // `match <sub_expr> { ... }`
-                    let arms = hir_vec![pat_arm, break_arm];
-                    let match_expr = self.expr(
+                    let match_expr = self.expr_match(
                         sub_expr.span,
-                        hir::ExprKind::Match(sub_expr, arms, hir::MatchSource::WhileLetDesugar),
-                        ThinVec::new(),
+                        sub_expr,
+                        hir_vec![pat_arm, break_arm],
+                        hir::MatchSource::WhileLetDesugar,
                     );
 
                     // `[opt_ident]: loop { ... }`
@@ -4479,10 +4479,46 @@ impl<'a> LoweringContext<'a> {
                     loop_expr
                 } else {
                     self.with_loop_scope(e.id, |this| {
-                        hir::ExprKind::While(
-                            this.with_loop_condition_scope(|this| P(this.lower_expr(cond))),
-                            this.lower_block(body, false),
+                        // We desugar: `'label: while $cond $body` into:
+                        //
+                        // ```
+                        // 'label: loop {
+                        //     match DropTemps($cond) {
+                        //         true => $block,
+                        //         _ => break,
+                        //     }
+                        // }
+                        // ```
+
+                        // `true => then`:
+                        let then_pat = this.pat_bool(e.span, true);
+                        let then_blk = this.lower_block(body, false);
+                        let then_expr = this.expr_block(then_blk, ThinVec::new());
+                        let then_arm = this.arm(hir_vec![then_pat], P(then_expr));
+
+                        // `_ => break`:
+                        let else_pat = this.pat_wild(e.span);
+                        let else_expr = this.expr_break(e.span, ThinVec::new());
+                        let else_arm = this.arm(hir_vec![else_pat], else_expr);
+
+                        // Lower condition:
+                        let cond = this.with_loop_condition_scope(|this| this.lower_expr(cond));
+                        // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
+                        // to preserve drop semantics since `if cond { ... }` does not
+                        // let temporaries live outside of `cond`.
+                        let cond = this.expr_drop_temps(cond.span, P(cond), ThinVec::new());
+
+                        let match_expr = this.expr_match(
+                            cond.span,
+                            P(cond),
+                            vec![then_arm, else_arm].into(),
+                            hir::MatchSource::WhileDesugar,
+                        );
+
+                        hir::ExprKind::Loop(
+                            P(this.block_expr(P(match_expr))),
                             this.lower_label(opt_label),
+                            hir::LoopSource::While,
                         )
                     })
                 }

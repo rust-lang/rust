@@ -138,19 +138,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 join_block.unit()
             }
-            ExprKind::Loop {
-                condition: opt_cond_expr,
-                body,
-            } => {
-                // [block] --> [loop_block] -/eval. cond./-> [loop_block_end] -1-> [exit_block]
-                //                  ^                               |
-                //                  |                               0
-                //                  |                               |
-                //                  |                               v
-                //           [body_block_end] <-/eval. body/-- [body_block]
-                //
-                // If `opt_cond_expr` is `None`, then the graph is somewhat simplified:
-                //
+            ExprKind::Loop { body } => {
                 // [block]
                 //    |
                 //   [loop_block] -> [body_block] -/eval. body/-> [body_block_end]
@@ -177,33 +165,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     destination.clone(),
                     move |this| {
                         // conduct the test, if necessary
-                        let body_block;
-                        if let Some(cond_expr) = opt_cond_expr {
-                            let cond_expr = this.hir.mirror(cond_expr);
-                            let (true_block, false_block)
-                                = this.test_bool(loop_block, cond_expr, source_info);
-                            body_block = true_block;
-
-                            // if the test is false, there's no `break` to assign `destination`, so
-                            // we have to do it
-                            this.cfg.push_assign_unit(false_block, source_info, destination);
-                            this.cfg.terminate(
-                                false_block,
-                                source_info,
-                                TerminatorKind::Goto { target: exit_block },
-                            );
-                        } else {
-                            body_block = this.cfg.start_new_block();
-                            let diverge_cleanup = this.diverge_cleanup();
-                            this.cfg.terminate(
-                                loop_block,
-                                source_info,
-                                TerminatorKind::FalseUnwind {
-                                    real_target: body_block,
-                                    unwind: Some(diverge_cleanup),
-                                },
-                            )
-                        }
+                        let body_block = this.cfg.start_new_block();
+                        let diverge_cleanup = this.diverge_cleanup();
+                        this.cfg.terminate(
+                            loop_block,
+                            source_info,
+                            TerminatorKind::FalseUnwind {
+                                real_target: body_block,
+                                unwind: Some(diverge_cleanup),
+                            },
+                        );
 
                         // The “return” value of the loop body must always be an unit. We therefore
                         // introduce a unit temporary as the destination for the loop body.

@@ -3865,7 +3865,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match expression.node {
                 ExprKind::Call(..) |
                 ExprKind::MethodCall(..) |
-                ExprKind::While(..) |
                 ExprKind::Loop(..) |
                 ExprKind::Match(..) |
                 ExprKind::Block(..) => {

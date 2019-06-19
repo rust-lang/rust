@@ -731,7 +731,7 @@ impl<'hir> Map<'hir> {
             match *node {
                 Node::Expr(ref expr) => {
                     match expr.node {
-                        ExprKind::While(..) | ExprKind::Loop(..) | ExprKind::Ret(..) => true,
+                        ExprKind::Loop(..) | ExprKind::Ret(..) => true,
                         _ => false,
                     }
                 }

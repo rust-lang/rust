@@ -64,9 +64,25 @@ declare_lint! {
 
 declare_lint_pass!(WhileTrue => [WHILE_TRUE]);
 
+fn as_while_cond(expr: &hir::Expr) -> Option<&hir::Expr> {
+    if let hir::ExprKind::Loop(blk, ..) = &expr.node {
+        if let Some(match_expr) = &blk.expr {
+            if let hir::ExprKind::Match(cond, .., hir::MatchSource::WhileDesugar)
+                = &match_expr.node
+            {
+                if let hir::ExprKind::DropTemps(cond) = &cond.node {
+                    return Some(cond);
+                }
+            }
+        }
+    }
+
+    None
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
-        if let hir::ExprKind::While(ref cond, ..) = e.node {
+        if let Some(ref cond) = as_while_cond(e) {
             if let hir::ExprKind::Lit(ref lit) = cond.node {
                 if let ast::LitKind::Bool(true) = lit.node {
                     if lit.span.ctxt() == SyntaxContext::empty() {

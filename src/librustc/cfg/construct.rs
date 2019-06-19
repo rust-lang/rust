@@ -165,48 +165,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_ast_node(expr.hir_id.local_id, &[blk_exit])
             }
 
-            hir::ExprKind::While(ref cond, ref body, _) => {
-                //
-                //         [pred]
-                //           |
-                //           v 1
-                //       [loopback] <--+ 5
-                //           |         |
-                //           v 2       |
-                //   +-----[cond]      |
-                //   |       |         |
-                //   |       v 4       |
-                //   |     [body] -----+
-                //   v 3
-                // [expr]
-                //
-                // Note that `break` and `continue` statements
-                // may cause additional edges.
-
-                let loopback = self.add_dummy_node(&[pred]);              // 1
-
-                // Create expr_exit without pred (cond_exit)
-                let expr_exit = self.add_ast_node(expr.hir_id.local_id, &[]);         // 3
-
-                // The LoopScope needs to be on the loop_scopes stack while evaluating the
-                // condition and the body of the loop (both can break out of the loop)
-                self.loop_scopes.push(LoopScope {
-                    loop_id: expr.hir_id.local_id,
-                    continue_index: loopback,
-                    break_index: expr_exit
-                });
-
-                let cond_exit = self.expr(&cond, loopback);             // 2
-
-                // Add pred (cond_exit) to expr_exit
-                self.add_contained_edge(cond_exit, expr_exit);
-
-                let body_exit = self.block(&body, cond_exit);          // 4
-                self.add_contained_edge(body_exit, loopback);            // 5
-                self.loop_scopes.pop();
-                expr_exit
-            }
-
             hir::ExprKind::Loop(ref body, _, _) => {
                 //
                 //     [pred]

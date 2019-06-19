@@ -371,7 +371,8 @@ fn check_arms<'a, 'tcx>(
             match is_useful(cx, &seen, &v, LeaveOutWitness) {
                 NotUseful => {
                     match source {
-                        hir::MatchSource::IfDesugar { .. } => bug!(),
+                        hir::MatchSource::IfDesugar { .. } |
+                        hir::MatchSource::WhileDesugar => bug!(),
                         hir::MatchSource::IfLetDesugar { .. } => {
                             cx.tcx.lint_hir(
                                 lint::builtin::IRREFUTABLE_LET_PATTERNS,
