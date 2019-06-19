@@ -2777,20 +2777,6 @@ impl<'tcx> TyCtxt<'tcx> {
         });
     }
 
-    pub fn expr_span(self, id: NodeId) -> Span {
-        match self.hir().find(id) {
-            Some(Node::Expr(e)) => {
-                e.span
-            }
-            Some(f) => {
-                bug!("node-ID {} is not an expr: {:?}", id, f);
-            }
-            None => {
-                bug!("node-ID {} is not present in the node map", id);
-            }
-        }
-    }
-
     pub fn provided_trait_methods(self, id: DefId) -> Vec<AssocItem> {
         self.associated_items(id)
             .filter(|item| item.kind == AssocKind::Method && item.defaultness.has_value())
