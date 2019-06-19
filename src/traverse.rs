@@ -35,7 +35,7 @@ use std::collections::{BTreeMap, HashSet, VecDeque};
 /// The main entry point to our analysis passes.
 ///
 /// Set up the necessary data structures and run the analysis passes and call the actual passes.
-pub fn run_analysis<'tcx>(tcx: TyCtxt<'tcx>, old: DefId, new: DefId) -> ChangeSet<'tcx> {
+pub fn run_analysis(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
     let mut changes = ChangeSet::default();
     let mut id_mapping = IdMapping::new(old.krate, new.krate);
 
@@ -74,7 +74,7 @@ fn get_vis(outer_vis: Visibility, def: Export<HirId>) -> Visibility {
     }
 }
 
-pub fn run_traversal<'tcx>(tcx: TyCtxt<'tcx>, new: DefId) {
+pub fn run_traversal(tcx: TyCtxt, new: DefId) {
     use rustc::hir::def::DefKind::*;
     let mut visited = HashSet::new();
     let mut mod_queue = VecDeque::new();
@@ -1063,7 +1063,7 @@ fn diff_inherent_impls<'tcx>(
 #[allow(clippy::let_and_return)]
 #[allow(clippy::match_same_arms)]
 fn is_impl_trait_public<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) -> bool {
-    fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty) -> Visibility {
+    fn type_visibility(tcx: TyCtxt, ty: Ty) -> Visibility {
         match ty.sty {
             TyKind::Adt(def, _) => tcx.visibility(def.did),
 

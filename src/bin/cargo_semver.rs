@@ -475,7 +475,7 @@ impl<'a> WorkInfo<'a> {
         }
 
         if let Some(s) = matches.opt_str("features") {
-            opts.features = s.split(" ").map(str::to_owned).collect();
+            opts.features = s.split(' ').map(str::to_owned).collect();
         }
 
         opts.all_features = matches.opt_present("all-features");
