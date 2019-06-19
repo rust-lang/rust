@@ -1,5 +1,4 @@
 use std::fmt::Write;
-use std::hash::Hash;
 use std::ops::RangeInclusive;
 
 use syntax_pos::symbol::{sym, Symbol};
@@ -10,6 +9,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
     Scalar, GlobalAlloc, InterpResult, InterpError, CheckInAllocMsg,
 };
+
+use std::hash::Hash;
 
 use super::{
     OpTy, Machine, InterpretCx, ValueVisitor, MPlaceTy,
@@ -76,19 +77,34 @@ pub enum PathElem {
 }
 
 /// State for tracking recursive validation of references
-pub struct RefTracking<T> {
+pub struct RefTracking<T, PATH = ()> {
     pub seen: FxHashSet<T>,
-    pub todo: Vec<(T, Vec<PathElem>)>,
+    pub todo: Vec<(T, PATH)>,
 }
 
-impl<T: Copy + Eq + Hash> RefTracking<T> {
-    pub fn new(op: T) -> Self {
-        let mut ref_tracking = RefTracking {
+impl<T: Copy + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH> {
+    pub fn empty() -> Self {
+        RefTracking {
             seen: FxHashSet::default(),
-            todo: vec![(op, Vec::new())],
+            todo: vec![],
+        }
+    }
+    pub fn new(op: T) -> Self {
+        let mut ref_tracking_for_consts = RefTracking {
+            seen: FxHashSet::default(),
+            todo: vec![(op, PATH::default())],
         };
-        ref_tracking.seen.insert(op);
-        ref_tracking
+        ref_tracking_for_consts.seen.insert(op);
+        ref_tracking_for_consts
+    }
+
+    pub fn track(&mut self, op: T, path: impl FnOnce() -> PATH) {
+        if self.seen.insert(op) {
+            trace!("Recursing below ptr {:#?}", op);
+            let path = path();
+            // Remember to come back to this later.
+            self.todo.push((op, path));
+        }
     }
 }
 
@@ -154,8 +170,10 @@ struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// starts must not be changed!  `visit_fields` and `visit_array` rely on
     /// this stack discipline.
     path: Vec<PathElem>,
-    ref_tracking: Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::PointerTag>>>,
-    const_mode: bool,
+    ref_tracking_for_consts: Option<&'rt mut RefTracking<
+        MPlaceTy<'tcx, M::PointerTag>,
+        Vec<PathElem>,
+    >>,
     ecx: &'rt InterpretCx<'mir, 'tcx, M>,
 }
 
@@ -314,7 +332,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // types below!
                 let size = value.layout.size;
                 let value = value.to_scalar_or_undef();
-                if self.const_mode {
+                if self.ref_tracking_for_consts.is_some() {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
                     try_validation!(value.to_bits(size),
                         value, self.path, "initialized plain (non-pointer) bytes");
@@ -324,7 +342,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             ty::RawPtr(..) => {
-                if self.const_mode {
+                if self.ref_tracking_for_consts.is_some() {
                     // Integers/floats in CTFE: For consistency with integers, we do not
                     // accept undef.
                     let _ptr = try_validation!(value.to_scalar_ptr(),
@@ -393,9 +411,9 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     }
                 }
                 // Recursive checking
-                if let Some(ref mut ref_tracking) = self.ref_tracking {
-                    assert!(self.const_mode, "We should only do recursie checking in const mode");
+                if let Some(ref mut ref_tracking) = self.ref_tracking_for_consts {
                     let place = self.ecx.ref_to_mplace(value)?;
+                    // FIXME(RalfJ): check ZST for inbound pointers
                     if size != Size::ZERO {
                         // Non-ZST also have to be dereferencable
                         let ptr = try_validation!(place.ptr.to_ptr(),
@@ -423,16 +441,15 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // before.  Proceed recursively even for integer pointers, no
                     // reason to skip them! They are (recursively) valid for some ZST,
                     // but not for others (e.g., `!` is a ZST).
-                    if ref_tracking.seen.insert(place) {
-                        trace!("Recursing below ptr {:#?}", *place);
+                    let path = &self.path;
+                    ref_tracking.track(place, || {
                         // We need to clone the path anyway, make sure it gets created
                         // with enough space for the additional `Deref`.
-                        let mut new_path = Vec::with_capacity(self.path.len()+1);
-                        new_path.clone_from(&self.path);
+                        let mut new_path = Vec::with_capacity(path.len() + 1);
+                        new_path.clone_from(path);
                         new_path.push(PathElem::Deref);
-                        // Remember to come back to this later.
-                        ref_tracking.todo.push((place, new_path));
-                    }
+                        new_path
+                    });
                 }
             }
             ty::FnPtr(_sig) => {
@@ -488,10 +505,17 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     let non_null =
                         self.ecx.memory.check_align(
                             Scalar::Ptr(ptr), Align::from_bytes(1).unwrap()
-                        ).is_ok() ||
-                        self.ecx.memory.get_fn(ptr).is_ok();
+                        ).is_ok();
                     if !non_null {
-                        // could be NULL
+                        // These conditions are just here to improve the diagnostics so we can
+                        // differentiate between null pointers and dangling pointers
+                        if self.ref_tracking_for_consts.is_some() &&
+                            self.ecx.memory.get(ptr.alloc_id).is_err() &&
+                            self.ecx.memory.get_fn(ptr).is_err() {
+                            return validation_failure!(
+                                "encountered dangling pointer", self.path
+                            );
+                        }
                         return validation_failure!("a potentially NULL pointer", self.path);
                     }
                     return Ok(());
@@ -574,7 +598,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     self.ecx,
                     ptr,
                     size,
-                    /*allow_ptr_and_undef*/!self.const_mode,
+                    /*allow_ptr_and_undef*/ self.ref_tracking_for_consts.is_none(),
                 ) {
                     // In the happy case, we needn't check anything else.
                     Ok(()) => {},
@@ -612,23 +636,25 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     /// is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     ///
-    /// `ref_tracking` can be `None` to avoid recursive checking below references.
+    /// `ref_tracking_for_consts` can be `None` to avoid recursive checking below references.
     /// This also toggles between "run-time" (no recursion) and "compile-time" (with recursion)
-    /// validation (e.g., pointer values are fine in integers at runtime).
+    /// validation (e.g., pointer values are fine in integers at runtime) and various other const
+    /// specific validation checks
     pub fn validate_operand(
         &self,
         op: OpTy<'tcx, M::PointerTag>,
         path: Vec<PathElem>,
-        ref_tracking: Option<&mut RefTracking<MPlaceTy<'tcx, M::PointerTag>>>,
-        const_mode: bool,
+        ref_tracking_for_consts: Option<&mut RefTracking<
+            MPlaceTy<'tcx, M::PointerTag>,
+            Vec<PathElem>,
+        >>,
     ) -> InterpResult<'tcx> {
         trace!("validate_operand: {:?}, {:?}", *op, op.layout.ty);
 
         // Construct a visitor
         let mut visitor = ValidityVisitor {
             path,
-            ref_tracking,
-            const_mode,
+            ref_tracking_for_consts,
             ecx: self,
         };
 

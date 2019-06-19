@@ -232,10 +232,10 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
 
 impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     #[inline(always)]
-    pub fn try_as_mplace(self) -> Result<MPlaceTy<'tcx, Tag>, Immediate<Tag>> {
+    pub fn try_as_mplace(self) -> Result<MPlaceTy<'tcx, Tag>, ImmTy<'tcx, Tag>> {
         match *self {
             Operand::Indirect(mplace) => Ok(MPlaceTy { mplace, layout: self.layout }),
-            Operand::Immediate(imm) => Err(imm),
+            Operand::Immediate(imm) => Err(ImmTy { imm, layout: self.layout }),
         }
     }
 
@@ -660,7 +660,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?, vec![], None, /*const_mode*/false)?;
+            self.validate_operand(self.place_to_op(dest)?, vec![], None)?;
         }
 
         Ok(())
@@ -677,7 +677,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into(), vec![], None, /*const_mode*/ false)?;
+            self.validate_operand(dest.into(), vec![], None)?;
         }
 
         Ok(())
@@ -809,7 +809,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?, vec![], None, /*const_mode*/false)?;
+            self.validate_operand(self.place_to_op(dest)?, vec![], None)?;
         }
 
         Ok(())
@@ -836,7 +836,7 @@ where
                 // Yay, we got a value that we can write directly.
                 // FIXME: Add a check to make sure that if `src` is indirect,
                 // it does not overlap with `dest`.
-                return self.write_immediate_no_validate(src_val, dest);
+                return self.write_immediate_no_validate(*src_val, dest);
             }
             Err(mplace) => mplace,
         };
@@ -897,7 +897,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into(), vec![], None, /*const_mode*/false)?;
+            self.validate_operand(dest.into(), vec![], None)?;
         }
 
         Ok(())

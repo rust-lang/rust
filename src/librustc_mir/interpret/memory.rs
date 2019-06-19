@@ -20,6 +20,7 @@ use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
     InterpResult, Scalar, InterpError, GlobalAlloc, PointerArithmetic,
     Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg, InboundsCheck,
+    InterpError::ValidationFailure,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -55,12 +56,13 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// the wrong type), so we let the machine override this type.
     /// Either way, if the machine allows writing to a static, doing so will
     /// create a copy of the static allocation here.
-    alloc_map: M::MemoryMap,
+    // FIXME: this should not be public, but interning currently needs access to it
+    pub(super) alloc_map: M::MemoryMap,
 
     /// To be able to compare pointers with NULL, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
     /// that do not exist any more.
-    dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
+    pub(super) dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
 
     /// Extra data added by the machine.
     pub extra: M::MemoryExtra,
@@ -452,9 +454,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         if let Ok(alloc) = self.get(id) {
             return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
         }
+        // can't do this in the match argument, we may get cycle errors since the lock would get
+        // dropped after the match.
+        let alloc = self.tcx.alloc_map.lock().get(id);
         // Could also be a fn ptr or extern static
-        match self.tcx.alloc_map.lock().get(id) {
+        match alloc {
             Some(GlobalAlloc::Function(..)) => Ok((Size::ZERO, Align::from_bytes(1).unwrap())),
+            // `self.get` would also work, but can cause cycles if a static refers to itself
             Some(GlobalAlloc::Static(did)) => {
                 // The only way `get` couldn't have worked here is if this is an extern static
                 assert!(self.tcx.is_foreign_item(did));
@@ -463,14 +469,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
                 Ok((layout.size, layout.align.abi))
             }
-            _ => match liveness {
-                InboundsCheck::MaybeDead => {
-                    // Must be a deallocated pointer
-                    Ok(*self.dead_alloc_map.get(&id).expect(
-                        "allocation missing in dead_alloc_map"
-                    ))
-                },
-                InboundsCheck::Live => err!(DanglingPointerDeref),
+            _ => {
+                if let Ok(alloc) = self.get(id) {
+                    return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
+                }
+                match liveness {
+                    InboundsCheck::MaybeDead => {
+                        // Must be a deallocated pointer
+                        self.dead_alloc_map.get(&id).cloned().ok_or_else(||
+                            ValidationFailure("allocation missing in dead_alloc_map".to_string())
+                                .into()
+                        )
+                    },
+                    InboundsCheck::Live => err!(DanglingPointerDeref),
+                }
             },
         }
     }
@@ -630,56 +642,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             let ptr = self.force_ptr(ptr)?;
             self.get(ptr.alloc_id)?.get_bytes(self, ptr, size)
         }
-    }
-}
-
-/// Interning (for CTFE)
-impl<'mir, 'tcx, M> Memory<'mir, 'tcx, M>
-where
-    M: Machine<'mir, 'tcx, PointerTag = (), AllocExtra = (), MemoryExtra = ()>,
-    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
-    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
-{
-    /// mark an allocation as static and initialized, either mutable or not
-    pub fn intern_static(
-        &mut self,
-        alloc_id: AllocId,
-        mutability: Mutability,
-    ) -> InterpResult<'tcx> {
-        trace!(
-            "mark_static_initialized {:?}, mutability: {:?}",
-            alloc_id,
-            mutability
-        );
-        // remove allocation
-        let (kind, mut alloc) = self.alloc_map.remove(&alloc_id).unwrap();
-        match kind {
-            MemoryKind::Machine(_) => bug!("Static cannot refer to machine memory"),
-            MemoryKind::Stack | MemoryKind::Vtable => {},
-        }
-        // ensure llvm knows not to put this into immutable memory
-        alloc.mutability = mutability;
-        let alloc = self.tcx.intern_const_alloc(alloc);
-        self.tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
-        // recurse into inner allocations
-        for &(_, alloc) in alloc.relocations.values() {
-            // FIXME: Reusing the mutability here is likely incorrect.  It is originally
-            // determined via `is_freeze`, and data is considered frozen if there is no
-            // `UnsafeCell` *immediately* in that data -- however, this search stops
-            // at references.  So whenever we follow a reference, we should likely
-            // assume immutability -- and we should make sure that the compiler
-            // does not permit code that would break this!
-            if self.alloc_map.contains_key(&alloc) {
-                // Not yet interned, so proceed recursively
-                self.intern_static(alloc, mutability)?;
-            } else if self.dead_alloc_map.contains_key(&alloc) {
-                // dangling pointer
-                return err!(ValidationFailure(
-                    "encountered dangling pointer in final constant".into(),
-                ))
-            }
-        }
-        Ok(())
     }
 }
 

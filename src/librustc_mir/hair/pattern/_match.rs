@@ -215,10 +215,15 @@ impl LiteralExpander<'tcx> {
         debug!("fold_const_value_deref {:?} {:?} {:?}", val, rty, crty);
         match (val, &crty.sty, &rty.sty) {
             // the easy case, deref a reference
-            (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => ConstValue::ByRef(
-                p,
-                self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id),
-            ),
+            (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => {
+                let alloc = self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id);
+                ConstValue::ByRef(
+                    p,
+                    // FIXME(oli-obk): this should be the type's layout
+                    alloc.align,
+                    alloc,
+                )
+            },
             // unsize array to slice if pattern is array but match value or other patterns are slice
             (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
                 assert_eq!(t, u);
@@ -1431,7 +1436,7 @@ fn slice_pat_covered_by_const<'tcx>(
     suffix: &[Pattern<'tcx>],
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
-        (ConstValue::ByRef(ptr, alloc), ty::Array(t, n)) => {
+        (ConstValue::ByRef(ptr, _, alloc), ty::Array(t, n)) => {
             assert_eq!(*t, tcx.types.u8);
             let n = n.assert_usize(tcx).unwrap();
             alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
@@ -1753,7 +1758,7 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                     let (alloc, offset, n, ty) = match value.ty.sty {
                         ty::Array(t, n) => {
                             match value.val {
-                                ConstValue::ByRef(ptr, alloc) => (
+                                ConstValue::ByRef(ptr, _, alloc) => (
                                     alloc,
                                     ptr.offset,
                                     n.unwrap_usize(cx.tcx),

@@ -4,7 +4,9 @@
 use std::convert::TryInto;
 
 use rustc::{mir, ty};
-use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx};
+use rustc::ty::layout::{
+    self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx,
+};
 
 use rustc::mir::interpret::{
     GlobalId, AllocId, CheckInAllocMsg,
@@ -217,7 +219,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     fn try_read_immediate_from_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, Option<Immediate<M::PointerTag>>> {
+    ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::PointerTag>>> {
         if mplace.layout.is_unsized() {
             // Don't touch unsized
             return Ok(None);
@@ -228,7 +230,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             // Not all ZSTs have a layout we would handle below, so just short-circuit them
             // all here.
             self.memory.check_align(ptr, ptr_align)?;
-            return Ok(Some(Immediate::Scalar(Scalar::zst().into())));
+            return Ok(Some(ImmTy {
+                imm: Immediate::Scalar(Scalar::zst().into()),
+                layout: mplace.layout,
+            }));
         }
 
         // check for integer pointers before alignment to report better errors
@@ -239,7 +244,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 let scalar = self.memory
                     .get(ptr.alloc_id)?
                     .read_scalar(self, ptr, mplace.layout.size)?;
-                Ok(Some(Immediate::Scalar(scalar)))
+                Ok(Some(ImmTy {
+                    imm: Immediate::Scalar(scalar),
+                    layout: mplace.layout,
+                }))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
                 let (a, b) = (&a.value, &b.value);
@@ -256,7 +264,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 let b_val = self.memory
                     .get(ptr.alloc_id)?
                     .read_scalar(self, b_ptr, b_size)?;
-                Ok(Some(Immediate::ScalarPair(a_val, b_val)))
+                Ok(Some(ImmTy {
+                    imm: Immediate::ScalarPair(a_val, b_val),
+                    layout: mplace.layout,
+                }))
             }
             _ => Ok(None),
         }
@@ -271,13 +282,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     pub(crate) fn try_read_immediate(
         &self,
         src: OpTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, Result<Immediate<M::PointerTag>, MemPlace<M::PointerTag>>> {
+    ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::PointerTag>, MPlaceTy<'tcx, M::PointerTag>>> {
         Ok(match src.try_as_mplace() {
             Ok(mplace) => {
                 if let Some(val) = self.try_read_immediate_from_mplace(mplace)? {
                     Ok(val)
                 } else {
-                    Err(*mplace)
+                    Err(mplace)
                 }
             },
             Err(val) => Ok(val),
@@ -291,7 +302,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         op: OpTy<'tcx, M::PointerTag>
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
         if let Ok(imm) = self.try_read_immediate(op)? {
-            Ok(ImmTy { imm, layout: op.layout })
+            Ok(imm)
         } else {
             bug!("primitive read failed for type: {:?}", op.layout.ty);
         }
@@ -339,9 +350,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             return Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout });
         }
         let offset = op.layout.fields.offset(field);
-        let immediate = match base {
+        let immediate = match *base {
             // the field covers the entire type
-            _ if offset.bytes() == 0 && field_layout.size == op.layout.size => base,
+            _ if offset.bytes() == 0 && field_layout.size == op.layout.size => *base,
             // extract fields from types with `ScalarPair` ABI
             Immediate::ScalarPair(a, b) => {
                 let val = if offset.bytes() == 0 { a } else { b };
@@ -527,11 +538,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             self.layout_of(self.monomorphize(val.ty)?)
         })?;
         let op = match val.val {
-            ConstValue::ByRef(ptr, _alloc) => {
+            ConstValue::ByRef(ptr, align, _alloc) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
                 let ptr = self.tag_static_base_pointer(ptr);
-                Operand::Indirect(MemPlace::from_ptr(ptr, layout.align.abi))
+                Operand::Indirect(MemPlace::from_ptr(ptr, align))
             },
             ConstValue::Scalar(x) =>
                 Operand::Immediate(Immediate::Scalar(tag_scalar(x).into())),

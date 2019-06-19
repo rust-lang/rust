@@ -9,7 +9,7 @@ use std::convert::TryInto;
 
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
+use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
@@ -18,15 +18,14 @@ use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
 use rustc_data_structures::fx::FxHashMap;
 
-use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
-    PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Immediate, Scalar,
+    PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar,
     RawConst, ConstValue,
     InterpResult, InterpErrorInfo, InterpError, GlobalId, InterpretCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
-    snapshot, RefTracking,
+    snapshot, RefTracking, intern_const_alloc_recursive,
 };
 
 /// Number of steps until the detector even starts doing anything.
@@ -63,33 +62,19 @@ pub(crate) fn eval_promoted<'mir, 'tcx>(
     eval_body_using_ecx(&mut ecx, cid, body, param_env)
 }
 
-fn mplace_to_const<'tcx>(
-    ecx: &CompileTimeEvalContext<'_, 'tcx>,
-    mplace: MPlaceTy<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
-    let MemPlace { ptr, align, meta } = *mplace;
-    // extract alloc-offset pair
-    assert!(meta.is_none());
-    let ptr = ptr.to_ptr().unwrap();
-    let alloc = ecx.memory.get(ptr.alloc_id).unwrap();
-    assert!(alloc.align >= align);
-    assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= mplace.layout.size.bytes());
-    let mut alloc = alloc.clone();
-    alloc.align = align;
-    // FIXME shouldn't it be the case that `mark_static_initialized` has already
-    // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
-    let alloc = ecx.tcx.intern_const_alloc(alloc);
-    let val = ConstValue::ByRef(ptr, alloc);
-    ecx.tcx.mk_const(ty::Const { val, ty: mplace.layout.ty })
-}
-
 fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: OpTy<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
-    // We do not normalize just any data.  Only non-union scalars and slices.
-    let normalize = match op.layout.abi {
-        layout::Abi::Scalar(..) => op.layout.ty.ty_adt_def().map_or(true, |adt| !adt.is_union()),
+    // We do not have value optmizations for everything.
+    // Only scalars and slices, since they are very common.
+    // Note that further down we turn scalars of undefined bits back to `ByRef`. These can result
+    // from scalar unions that are initialized with one of their zero sized variants. We could
+    // instead allow `ConstValue::Scalar` to store `ScalarMaybeUndef`, but that would affect all
+    // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
+    // `Undef` situation.
+    let try_as_immediate = match op.layout.abi {
+        layout::Abi::Scalar(..) => true,
         layout::Abi::ScalarPair(..) => match op.layout.ty.sty {
             ty::Ref(_, inner, _) => match inner.sty {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,
@@ -100,16 +85,38 @@ fn op_to_const<'tcx>(
         },
         _ => false,
     };
-    let normalized_op = if normalize {
-        Err(*ecx.read_immediate(op).expect("normalization works on validated constants"))
+    let immediate = if try_as_immediate {
+        Err(ecx.read_immediate(op).expect("normalization works on validated constants"))
     } else {
+        // It is guaranteed that any non-slice scalar pair is actually ByRef here.
+        // When we come back from raw const eval, we are always by-ref. The only way our op here is
+        // by-val is if we are in const_field, i.e., if this is (a field of) something that we
+        // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
+        // structs containing such.
         op.try_as_mplace()
     };
-    let val = match normalized_op {
-        Ok(mplace) => return mplace_to_const(ecx, mplace),
-        Err(Immediate::Scalar(x)) =>
-            ConstValue::Scalar(x.not_undef().unwrap()),
-        Err(Immediate::ScalarPair(a, b)) => {
+    let val = match immediate {
+        Ok(mplace) => {
+            let ptr = mplace.ptr.to_ptr().unwrap();
+            let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
+            ConstValue::ByRef(ptr, mplace.align, alloc)
+        },
+        // see comment on `let try_as_immediate` above
+        Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
+            ScalarMaybeUndef::Scalar(s) => ConstValue::Scalar(s),
+            ScalarMaybeUndef::Undef => {
+                // When coming out of "normal CTFE", we'll always have an `Indirect` operand as
+                // argument and we will not need this. The only way we can already have an
+                // `Immediate` is when we are called from `const_field`, and that `Immediate`
+                // comes from a constant so it can happen have `Undef`, because the indirect
+                // memory that was read had undefined bytes.
+                let mplace = op.to_mem_place();
+                let ptr = mplace.ptr.to_ptr().unwrap();
+                let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
+                ConstValue::ByRef(ptr, mplace.align, alloc)
+            },
+        },
+        Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
             let (data, start) = match a.not_undef().unwrap() {
                 Scalar::Ptr(ptr) => (
                     ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
@@ -164,13 +171,12 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.run()?;
 
     // Intern the result
-    let mutability = if tcx.is_mutable_static(cid.instance.def_id()) ||
-                     !layout.ty.is_freeze(tcx, param_env, body.span) {
-        Mutability::Mutable
-    } else {
-        Mutability::Immutable
-    };
-    ecx.memory.intern_static(ret.ptr.to_ptr()?.alloc_id, mutability)?;
+    intern_const_alloc_recursive(
+        ecx,
+        cid.instance.def_id(),
+        ret,
+        param_env,
+    )?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
@@ -297,7 +303,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     }
 }
 
-type CompileTimeEvalContext<'mir, 'tcx> =
+crate type CompileTimeEvalContext<'mir, 'tcx> =
     InterpretCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
 
 impl interpret::MayLeak for ! {
@@ -526,13 +532,22 @@ fn validate_and_turn_into_const<'tcx>(
                 mplace.into(),
                 path,
                 Some(&mut ref_tracking),
-                true, // const mode
             )?;
         }
         // Now that we validated, turn this into a proper constant.
+        // Statics/promoteds are always `ByRef`, for the rest `op_to_const` decides
+        // whether they become immediates.
         let def_id = cid.instance.def.def_id();
         if tcx.is_static(def_id) || cid.promoted.is_some() {
-            Ok(mplace_to_const(&ecx, mplace))
+            let ptr = mplace.ptr.to_ptr()?;
+            Ok(tcx.mk_const(ty::Const {
+                val: ConstValue::ByRef(
+                    ptr,
+                    mplace.align,
+                    ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                ),
+                ty: mplace.layout.ty,
+            }))
         } else {
             Ok(op_to_const(&ecx, mplace.into()))
         }
