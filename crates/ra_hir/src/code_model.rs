@@ -282,7 +282,7 @@ impl Module {
             .collect()
     }
 
-    pub fn impl_blocks(self, db: &impl HirDatabase) -> Vec<ImplBlock> {
+    pub fn impl_blocks(self, db: &impl DefDatabase) -> Vec<ImplBlock> {
         let module_impl_blocks = db.impls_in_module(self);
         module_impl_blocks
             .impls

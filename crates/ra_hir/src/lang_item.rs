@@ -31,7 +31,7 @@ impl LangItemTarget {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct LangItems {
     items: FxHashMap<SmolStr, LangItemTarget>,
 }
@@ -46,13 +46,26 @@ impl LangItems {
         db: &(impl DefDatabase + AstDatabase),
         krate: Crate,
     ) -> Arc<LangItems> {
-        let mut lang_items = LangItems { items: FxHashMap::default() };
+        let mut lang_items = LangItems::default();
 
         if let Some(module) = krate.root_module(db) {
-            lang_items.collect_lang_items_recursive(db, &module);
+            lang_items.collect_lang_items_recursive(db, module);
         }
 
         Arc::new(lang_items)
+    }
+
+    pub(crate) fn module_lang_items_query(
+        db: &(impl DefDatabase + AstDatabase),
+        module: Module,
+    ) -> Option<Arc<LangItems>> {
+        let mut lang_items = LangItems::default();
+        lang_items.collect_lang_items(db, module);
+        if lang_items.items.is_empty() {
+            None
+        } else {
+            Some(Arc::new(lang_items))
+        }
     }
 
     /// Salsa query. Look for a lang item, starting from the specified crate and recursively
@@ -78,19 +91,14 @@ impl LangItems {
         }
     }
 
-    fn collect_lang_items_recursive(
-        &mut self,
-        db: &(impl DefDatabase + AstDatabase),
-        module: &Module,
-    ) {
+    fn collect_lang_items(&mut self, db: &(impl DefDatabase + AstDatabase), module: Module) {
         // Look for impl targets
-        let (impl_blocks, source_map) = db.impls_in_module_with_source_map(module.clone());
-        let source = module.definition_source(db).ast;
-        for (impl_id, _) in impl_blocks.impls.iter() {
-            let impl_block = source_map.get(&source, impl_id);
-            if let Some(lang_item_name) = lang_item_name(&*impl_block) {
-                let imp = ImplBlock::from_id(*module, impl_id);
-                self.items.entry(lang_item_name).or_insert_with(|| LangItemTarget::ImplBlock(imp));
+        for impl_block in module.impl_blocks(db) {
+            let src = impl_block.source(db);
+            if let Some(lang_item_name) = lang_item_name(&*src.ast) {
+                self.items
+                    .entry(lang_item_name)
+                    .or_insert_with(|| LangItemTarget::ImplBlock(impl_block));
             }
         }
 
@@ -106,10 +114,20 @@ impl LangItems {
                 _ => {}
             }
         }
+    }
+
+    fn collect_lang_items_recursive(
+        &mut self,
+        db: &(impl DefDatabase + AstDatabase),
+        module: Module,
+    ) {
+        if let Some(module_lang_items) = db.module_lang_items(module) {
+            self.items.extend(module_lang_items.items.iter().map(|(k, v)| (k.clone(), v.clone())))
+        }
 
         // Look for lang items in the children
         for child in module.children(db) {
-            self.collect_lang_items_recursive(db, &child);
+            self.collect_lang_items_recursive(db, child);
         }
     }
 
