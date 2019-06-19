@@ -263,6 +263,7 @@ pub mod temporary_assignment;
 pub mod transmute;
 pub mod transmuting_null;
 pub mod trivially_copy_pass_by_ref;
+pub mod try_err;
 pub mod types;
 pub mod unicode;
 pub mod unsafe_removed_from_name;
@@ -546,6 +547,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_early_lint_pass(box literal_representation::DecimalLiteralRepresentation::new(
             conf.literal_representation_threshold
     ));
+    reg.register_late_lint_pass(box try_err::TryErr);
     reg.register_late_lint_pass(box use_self::UseSelf);
     reg.register_late_lint_pass(box bytecount::ByteCount);
     reg.register_late_lint_pass(box infinite_iter::InfiniteIter);
@@ -861,6 +863,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         transmute::WRONG_TRANSMUTE,
         transmuting_null::TRANSMUTING_NULL,
         trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF,
+        try_err::TRY_ERR,
         types::ABSURD_EXTREME_COMPARISONS,
         types::BORROWED_BOX,
         types::BOX_VEC,
@@ -963,6 +966,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         returns::NEEDLESS_RETURN,
         returns::UNUSED_UNIT,
         strings::STRING_LIT_AS_BYTES,
+        try_err::TRY_ERR,
         types::FN_TO_NUMERIC_CAST,
         types::FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
         types::IMPLICIT_HASHER,

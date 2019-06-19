@@ -1,0 +1,120 @@
+use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
+use if_chain::if_chain;
+use rustc::hir::*;
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::ty::Ty;
+use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_errors::Applicability;
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usages of `Err(x)?`.
+    ///
+    /// **Why is this bad?** The `?` operator is designed to allow calls that
+    /// can fail to be easily chained. For example, `foo()?.bar()` or
+    /// `foo(bar()?)`. Because `Err(x)?` can't be used that way (it will
+    /// always return), it is more clear to write `return Err(x)`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust,ignore
+    /// // Bad
+    /// fn foo(fail: bool) -> Result<i32, String> {
+    ///     if fail {
+    ///       Err("failed")?;
+    ///     }
+    ///     Ok(0)
+    /// }
+    ///
+    /// // Good
+    /// fn foo(fail: bool) -> Result<i32, String> {
+    ///     if fail {
+    ///       return Err("failed".into());
+    ///     }
+    ///     Ok(0)
+    /// }
+    /// ```
+    pub TRY_ERR,
+    style,
+    "return errors explicitly rather than hiding them behind a `?`"
+}
+
+declare_lint_pass!(TryErr => [TRY_ERR]);
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        // Looks for a structure like this:
+        // match ::std::ops::Try::into_result(Err(5)) {
+        //     ::std::result::Result::Err(err) =>
+        //         #[allow(unreachable_code)]
+        //         return ::std::ops::Try::from_error(::std::convert::From::from(err)),
+        //     ::std::result::Result::Ok(val) =>
+        //         #[allow(unreachable_code)]
+        //         val,
+        // };
+        if_chain! {
+            if let ExprKind::Match(ref match_arg, _, MatchSource::TryDesugar) = expr.node;
+            if let ExprKind::Call(ref match_fun, ref try_args) = match_arg.node;
+            if let ExprKind::Path(ref match_fun_path) = match_fun.node;
+            if match_qpath(match_fun_path, &["std", "ops", "Try", "into_result"]);
+            if let Some(ref try_arg) = try_args.get(0);
+            if let ExprKind::Call(ref err_fun, ref err_args) = try_arg.node;
+            if let Some(ref err_arg) = err_args.get(0);
+            if let ExprKind::Path(ref err_fun_path) = err_fun.node;
+            if match_qpath(err_fun_path, &paths::RESULT_ERR);
+            if let Some(return_type) = find_err_return_type(cx, &expr.node);
+
+            then {
+                let err_type = cx.tables.expr_ty(err_arg);
+                let suggestion = if err_type == return_type {
+                    format!("return Err({})", snippet(cx, err_arg.span, "_"))
+                } else {
+                    format!("return Err({}.into())", snippet(cx, err_arg.span, "_"))
+                };
+
+                span_lint_and_then(
+                    cx,
+                    TRY_ERR,
+                    expr.span,
+                    &format!("confusing error return, consider using `{}`", suggestion),
+                    |db| {
+                        db.span_suggestion(
+                            expr.span,
+                            "try this",
+                            suggestion,
+                            Applicability::MaybeIncorrect
+                        );
+                    },
+                );
+            }
+        }
+    }
+}
+
+// In order to determine whether to suggest `.into()` or not, we need to find the error type the
+// function returns. To do that, we look for the From::from call (see tree above), and capture
+// its output type.
+fn find_err_return_type<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx ExprKind) -> Option<Ty<'tcx>> {
+    if let ExprKind::Match(_, ref arms, MatchSource::TryDesugar) = expr {
+        arms.iter().filter_map(|ty| find_err_return_type_arm(cx, ty)).nth(0)
+    } else {
+        None
+    }
+}
+
+// Check for From::from in one of the match arms.
+fn find_err_return_type_arm<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arm: &'tcx Arm) -> Option<Ty<'tcx>> {
+    if_chain! {
+        if let ExprKind::Ret(Some(ref err_ret)) = arm.body.node;
+        if let ExprKind::Call(ref from_error_path, ref from_error_args) = err_ret.node;
+        if let ExprKind::Path(ref from_error_fn) = from_error_path.node;
+        if match_qpath(from_error_fn, &["std", "ops", "Try", "from_error"]);
+        if let Some(from_error_arg) = from_error_args.get(0);
+        then {
+            Some(cx.tables.expr_ty(from_error_arg))
+        } else {
+            None
+        }
+    }
+}
