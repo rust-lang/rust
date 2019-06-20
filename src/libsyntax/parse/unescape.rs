@@ -569,4 +569,34 @@ mod tests {
         check("hello \\\r\n     world", b"hello world");
         check("thread's", b"thread's")
     }
+
+    #[test]
+    fn test_unescape_raw_str() {
+        fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeError>)]) {
+            let mut unescaped = Vec::with_capacity(literal.len());
+            unescape_raw_str(literal, &mut |range, res| unescaped.push((range, res)));
+            assert_eq!(unescaped, expected);
+        }
+
+        check("\r\n", &[(0..2, Ok('\n'))]);
+        check("\r", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString))]);
+        check("\rx", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString)), (1..2, Ok('x'))]);
+    }
+
+    #[test]
+    fn test_unescape_raw_byte_str() {
+        fn check(literal: &str, expected: &[(Range<usize>, Result<u8, EscapeError>)]) {
+            let mut unescaped = Vec::with_capacity(literal.len());
+            unescape_raw_byte_str(literal, &mut |range, res| unescaped.push((range, res)));
+            assert_eq!(unescaped, expected);
+        }
+
+        check("\r\n", &[(0..2, Ok(byte_from_char('\n')))]);
+        check("\r", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString))]);
+        check("🦀", &[(0..4, Err(EscapeError::NonAsciiCharInByteString))]);
+        check(
+            "🦀a",
+            &[(0..4, Err(EscapeError::NonAsciiCharInByteString)), (4..5, Ok(byte_from_char('a')))],
+        );
+    }
 }
