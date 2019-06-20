@@ -723,7 +723,8 @@ pub enum CompilerDesugaringKind {
     /// We desugar `if c { i } else { e }` to `match $ExprKind::Use(c) { true => i, _ => e }`.
     /// However, we do not want to blame `c` for unreachability but rather say that `i`
     /// is unreachable. This desugaring kind allows us to avoid blaming `c`.
-    IfTemporary,
+    /// This also applies to `while` loops.
+    CondTemporary,
     QuestionMark,
     TryBlock,
     /// Desugaring of an `impl Trait` in return type position
@@ -738,7 +739,7 @@ pub enum CompilerDesugaringKind {
 impl CompilerDesugaringKind {
     pub fn name(self) -> Symbol {
         Symbol::intern(match self {
-            CompilerDesugaringKind::IfTemporary => "if",
+            CompilerDesugaringKind::CondTemporary => "if and while condition",
             CompilerDesugaringKind::Async => "async",
             CompilerDesugaringKind::Await => "await",
             CompilerDesugaringKind::QuestionMark => "?",

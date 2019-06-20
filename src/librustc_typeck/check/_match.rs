@@ -180,7 +180,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // then that's equivalent to there existing a LUB.
                 if let Some(mut err) = self.demand_suptype_diag(pat.span, expected, pat_ty) {
                     err.emit_unless(discrim_span
-                        .filter(|&s| s.is_compiler_desugaring(CompilerDesugaringKind::IfTemporary))
+                        .filter(|&s| {
+                            // In the case of `if`- and `while`-expressions we've already checked
+                            // that `scrutinee: bool`. We know that the pattern is `true`,
+                            // so an error here would be a duplicate and from the wrong POV.
+                            s.is_compiler_desugaring(CompilerDesugaringKind::CondTemporary)
+                        })
                         .is_some());
                 }
 
@@ -624,14 +629,15 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let tcx = self.tcx;
 
         use hir::MatchSource::*;
-        let (source_if, if_no_else, if_desugar) = match match_src {
+        let (source_if, if_no_else, force_scrutinee_bool) = match match_src {
             IfDesugar { contains_else_clause } => (true, !contains_else_clause, true),
             IfLetDesugar { contains_else_clause } => (true, !contains_else_clause, false),
+            WhileDesugar => (false, false, true),
             _ => (false, false, false),
         };
 
         // Type check the descriminant and get its type.
-        let discrim_ty = if if_desugar {
+        let discrim_ty = if force_scrutinee_bool {
             // Here we want to ensure:
             //
             // 1. That default match bindings are *not* accepted in the condition of an
@@ -651,7 +657,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             return tcx.types.never;
         }
 
-        self.warn_arms_when_scrutinee_diverges(arms, source_if);
+        self.warn_arms_when_scrutinee_diverges(arms, match_src);
 
         // Otherwise, we have to union together the types that the
         // arms produce and so forth.
@@ -726,7 +732,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             if source_if {
                 let then_expr = &arms[0].body;
                 match (i, if_no_else) {
-                    (0, _) => coercion.coerce(self, &self.misc(span), then_expr, arm_ty),
+                    (0, _) => coercion.coerce(self, &self.misc(span), &arm.body, arm_ty),
                     (_, true) => self.if_fallback_coercion(span, then_expr, &mut coercion),
                     (_, _) => {
                         let then_ty = prior_arm_ty.unwrap();
@@ -771,9 +777,14 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
     /// When the previously checked expression (the scrutinee) diverges,
     /// warn the user about the match arms being unreachable.
-    fn warn_arms_when_scrutinee_diverges(&self, arms: &'tcx [hir::Arm], source_if: bool) {
+    fn warn_arms_when_scrutinee_diverges(&self, arms: &'tcx [hir::Arm], source: hir::MatchSource) {
         if self.diverges.get().always() {
-            let msg = if source_if { "block in `if` expression" } else { "arm" };
+            use hir::MatchSource::*;
+            let msg = match source {
+                IfDesugar { .. } | IfLetDesugar { .. } => "block in `if` expression",
+                WhileDesugar { .. } | WhileLetDesugar { .. } => "block in `while` expression",
+                _ => "arm",
+            };
             for arm in arms {
                 self.warn_if_unreachable(arm.body.hir_id, arm.body.span, msg);
             }

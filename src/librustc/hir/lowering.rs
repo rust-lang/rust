@@ -63,7 +63,7 @@ use syntax::errors;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::print::pprust;
 use syntax::source_map::{self, respan, ExpnInfo, CompilerDesugaringKind, Spanned};
-use syntax::source_map::CompilerDesugaringKind::IfTemporary;
+use syntax::source_map::CompilerDesugaringKind::CondTemporary;
 use syntax::std_inject;
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
@@ -4408,7 +4408,7 @@ impl<'a> LoweringContext<'a> {
                         // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
                         // to preserve drop semantics since `if cond { ... }`
                         // don't let temporaries live outside of `cond`.
-                        let span_block = self.mark_span_with_reason(IfTemporary, cond.span, None);
+                        let span_block = self.mark_span_with_reason(CondTemporary, cond.span, None);
                         // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
                         // to preserve drop semantics since `if cond { ... }` does not
                         // let temporaries live outside of `cond`.
@@ -4484,7 +4484,7 @@ impl<'a> LoweringContext<'a> {
                         // ```
                         // 'label: loop {
                         //     match DropTemps($cond) {
-                        //         true => $block,
+                        //         true => $body,
                         //         _ => break,
                         //     }
                         // }
@@ -4502,11 +4502,12 @@ impl<'a> LoweringContext<'a> {
                         let else_arm = this.arm(hir_vec![else_pat], else_expr);
 
                         // Lower condition:
+                        let span_block = this.mark_span_with_reason(CondTemporary, cond.span, None);
                         let cond = this.with_loop_condition_scope(|this| this.lower_expr(cond));
                         // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
                         // to preserve drop semantics since `if cond { ... }` does not
                         // let temporaries live outside of `cond`.
-                        let cond = this.expr_drop_temps(cond.span, P(cond), ThinVec::new());
+                        let cond = this.expr_drop_temps(span_block, P(cond), ThinVec::new());
 
                         let match_expr = this.expr_match(
                             cond.span,
