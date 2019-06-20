@@ -31,9 +31,9 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         Ok(self)
     }
 
-    fn print_type(self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
+    fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         match ty.sty {
-            // types without identity
+            // Types without identity.
             | ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -48,28 +48,33 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Never
             | ty::Tuple(_)
             | ty::Dynamic(_, _)
-            | ty::Adt(..)
-            | ty::Foreign(_)
-            // should be unreachable, but there's no hurt in printing it (and better than ICEing)
-            | ty::Error
             => self.pretty_print_type(ty),
-            | ty::Infer(_)
-            | ty::Bound(_, _)
+
+            // Placeholders (all printed as `_` to uniformize them).
             | ty::Param(_)
+            | ty::Bound(..)
             | ty::Placeholder(_)
-            | ty::Projection(_)
-            | ty::UnnormalizedProjection(_)
-            | ty::GeneratorWitness(_)
-            => bug!(
-                "{:#?} in `type_name` should not happen because we are always monomorphized",
-                ty,
-            ),
-            // types with identity (print the module path instead)
-            | ty::FnDef(did, substs)
-            | ty::Opaque(did, substs)
-            => self.print_def_path(did, substs),
-            ty::Closure(did, substs) => self.print_def_path(did, substs.substs),
-            ty::Generator(did, substs, _) => self.print_def_path(did, substs.substs),
+            | ty::Infer(_)
+            | ty::Error
+            => {
+                write!(self, "_")?;
+                Ok(self)
+            }
+
+            // Types with identity (print the module path).
+            | ty::Adt(&ty::AdtDef { did: def_id, .. }, substs)
+            | ty::FnDef(def_id, substs)
+            | ty::Opaque(def_id, substs)
+            | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
+            | ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs })
+            | ty::Closure(def_id, ty::ClosureSubsts { substs })
+            | ty::Generator(def_id, ty::GeneratorSubsts { substs }, _)
+            => self.print_def_path(def_id, substs),
+            ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
+
+            ty::GeneratorWitness(_) => {
+                bug!("type_name: unexpected `GeneratorWitness`")
+            }
         }
     }
 
