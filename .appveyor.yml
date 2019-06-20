@@ -36,7 +36,7 @@ build_script:
     - cargo install --all-features --force --path . --locked --offline
     # Get ourselves a MIR-full libstd, and use it henceforth
     - cargo miri setup
-    - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\miri\cache\HOST
+    - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\rust-lang\miri\cache\HOST
 
 test_script:
     # Test miri
