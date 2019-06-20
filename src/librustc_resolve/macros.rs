@@ -236,20 +236,19 @@ impl<'a> base::Resolver for Resolver<'a> {
         };
         invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, &format));
 
+        if let Some((feature, issue)) = ext.unstable_feature {
+            let features = self.session.features_untracked();
+            if !span.allows_unstable(feature) &&
+               features.declared_lib_features.iter().all(|(feat, _)| *feat != feature) {
+                let msg = format!("macro {}! is unstable", path);
+                emit_feature_err(&self.session.parse_sess, feature, span,
+                                 GateIssue::Library(Some(issue)), &msg);
+            }
+        }
+
         if let Res::Def(_, def_id) = res {
             if after_derive {
                 self.session.span_err(span, "macro attributes must be placed before `#[derive]`");
-            }
-            if let Some((feature, issue)) = ext.unstable_feature {
-                // Do not stability-check macros in the same crate.
-                let features = self.session.features_untracked();
-                if !def_id.is_local() &&
-                   !span.allows_unstable(feature) &&
-                   features.declared_lib_features.iter().all(|(feat, _)| *feat != feature) {
-                    let msg = format!("macro {}! is unstable", path);
-                    emit_feature_err(&self.session.parse_sess, feature, span,
-                                     GateIssue::Library(Some(issue)), &msg);
-                }
             }
             self.macro_defs.insert(invoc.expansion_data.mark, def_id);
             let normal_module_def_id =
