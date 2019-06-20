@@ -31,7 +31,7 @@ use crate::edition::Edition;
 use crate::symbol::{kw, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use std::fmt;
 
@@ -128,32 +128,6 @@ impl Mark {
     /// `mark.is_descendant_of(ctxt.outer())`.
     pub fn outer_is_descendant_of(self, ctxt: SyntaxContext) -> bool {
         HygieneData::with(|data| data.is_descendant_of(self, data.outer(ctxt)))
-    }
-
-    /// Computes a mark such that both input marks are descendants of (or equal to) the returned
-    /// mark. That is, the following holds:
-    ///
-    /// ```rust
-    /// let la = least_ancestor(a, b);
-    /// assert!(a.is_descendant_of(la))
-    /// assert!(b.is_descendant_of(la))
-    /// ```
-    pub fn least_ancestor(mut a: Mark, mut b: Mark) -> Mark {
-        HygieneData::with(|data| {
-            // Compute the path from a to the root
-            let mut a_path = FxHashSet::<Mark>::default();
-            while a != Mark::root() {
-                a_path.insert(a);
-                a = data.marks[a.0 as usize].parent;
-            }
-
-            // While the path from b to the root hasn't intersected, move up the tree
-            while !a_path.contains(&b) {
-                b = data.marks[b.0 as usize].parent;
-            }
-
-            b
-        })
     }
 
     // Used for enabling some compatibility fallback in resolve.
