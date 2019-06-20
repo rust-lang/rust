@@ -508,21 +508,21 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
-        memory_extra: &Self::MemoryExtra,
+        memory: &Memory<'mir, 'tcx, Self>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
         let (extra, base_tag) = Stacks::new_allocation(
             id,
             Size::from_bytes(alloc.bytes.len() as u64),
-            Rc::clone(memory_extra),
+            Rc::clone(&memory.extra),
             kind,
         );
         if kind != MiriMemoryKind::Static.into() {
             assert!(alloc.relocations.is_empty(), "Only statics can come initialized with inner pointers");
             // Now we can rely on the inner pointers being static, too.
         }
-        let mut memory_extra = memory_extra.borrow_mut();
+        let mut memory_extra = memory.extra.borrow_mut();
         let alloc: Allocation<Tag, Self::AllocExtra> = Allocation {
             bytes: alloc.bytes,
             relocations: Relocations::from_presorted(
@@ -543,9 +543,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn tag_static_base_pointer(
         id: AllocId,
-        memory_extra: &Self::MemoryExtra,
+        memory: &Memory<'mir, 'tcx, Self>,
     ) -> Self::PointerTag {
-        memory_extra.borrow_mut().static_base_ptr(id)
+        memory.extra.borrow_mut().static_base_ptr(id)
     }
 
     #[inline(always)]
