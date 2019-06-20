@@ -409,6 +409,60 @@ impl<T: ?Sized> RwLock<T> {
         let data = unsafe { &mut *self.data.get() };
         poison::map_result(self.poison.borrow(), |_| data)
     }
+
+    /// Call function while holding write lock
+    ///
+    /// This attempts to take the write lock, and if successful passes a mutable
+    /// reference to the value to the callback.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the RwLock is poisoned. An RwLock
+    /// is poisoned whenever a writer panics while holding an exclusive lock.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![feature(mutex_with)]
+    /// use std::sync::RwLock;
+    ///
+    /// let rw = RwLock::new(String::new());
+    ///
+    /// let prev = rw.with_write(|mut s| {
+    ///         let prev = s.clone();
+    ///         *s += "foo";
+    ///         prev
+    ///     });
+    /// ```
+    #[unstable(feature = "mutex_with", issue = "61974")]
+    pub fn with_write<U, F: FnOnce(&mut T) -> U>(&self, func: F) -> U {
+        self.write().map(|mut v| func(&mut *v)).expect("RwLock poisoned")
+    }
+
+    /// Call function while holding read lock
+    ///
+    /// This attempts to take the read lock, and if successful passes a
+    /// reference to the value to the callback.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the RwLock is poisoned. An RwLock
+    /// is poisoned whenever a writer panics while holding an exclusive lock.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![feature(mutex_with)]
+    /// use std::sync::RwLock;
+    ///
+    /// let rw = RwLock::new("hello world".to_string());
+    ///
+    /// let val = rw.with_read(|s| s.clone());
+    /// ```
+    #[unstable(feature = "mutex_with", issue = "61974")]
+    pub fn with_read<U, F: FnOnce(&T) -> U>(&self, func: F) -> U {
+        self.read().map(|v| func(&*v)).expect("RwLock poisoned")
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -796,5 +850,25 @@ mod tests {
             Err(e) => assert_eq!(*e.into_inner(), NonCopy(10)),
             Ok(x) => panic!("get_mut of poisoned RwLock is Ok: {:?}", x),
         }
+    }
+
+    #[test]
+    fn test_with_read() {
+        let m = RwLock::new(10);
+
+        let v = m.with_read(|v| *v);
+
+        assert_eq!(v, 10);
+    }
+
+    #[test]
+    fn test_with_write() {
+        let m = RwLock::new(10);
+
+        let old = m.with_write(|v| {let old = *v; *v += 1; old});
+        let now = m.with_read(|v| *v);
+
+        assert_eq!(old, 10);
+        assert_eq!(now, 11);
     }
 }
