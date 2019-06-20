@@ -1,7 +1,9 @@
 #![warn(clippy::needless_return)]
 
 macro_rules! the_answer {
-    () => (42)
+    () => {
+        42
+    };
 }
 
 fn test_end_of_fn() -> bool {
@@ -53,6 +55,13 @@ fn test_void_if_fun(b: bool) {
         return;
     } else {
         return;
+    }
+}
+
+fn test_void_match(x: u32) {
+    match x {
+        0 => (),
+        _ => return,
     }
 }
 

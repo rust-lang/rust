@@ -141,11 +141,11 @@ fn run_ui_toml() {
 
     let res = run_ui_toml_tests(&config, tests);
     match res {
-        Ok(true) => {},
+        Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
         Err(e) => {
             println!("I/O failure during tests: {:?}", e);
-        },
+        }
     }
 }
 

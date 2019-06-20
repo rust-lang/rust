@@ -1648,16 +1648,15 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
     );
 
     // Check if the first argument to .fold is a suitable literal
-    match fold_args[1].node {
-        hir::ExprKind::Lit(ref lit) => match lit.node {
+    if let hir::ExprKind::Lit(ref lit) = fold_args[1].node {
+        match lit.node {
             ast::LitKind::Bool(false) => check_fold_with_op(cx, fold_args, hir::BinOpKind::Or, "any", true),
             ast::LitKind::Bool(true) => check_fold_with_op(cx, fold_args, hir::BinOpKind::And, "all", true),
             ast::LitKind::Int(0, _) => check_fold_with_op(cx, fold_args, hir::BinOpKind::Add, "sum", false),
             ast::LitKind::Int(1, _) => check_fold_with_op(cx, fold_args, hir::BinOpKind::Mul, "product", false),
-            _ => return,
-        },
-        _ => return,
-    };
+            _ => (),
+        }
+    }
 }
 
 fn lint_iter_nth<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, iter_args: &'tcx [hir::Expr], is_mut: bool) {

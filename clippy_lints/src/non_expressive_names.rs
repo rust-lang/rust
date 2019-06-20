@@ -169,7 +169,9 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             .any(|id| id.name == ident.name)
         {
             return;
-        } else if let Some(scope) = &mut self.0.single_char_names.last_mut() {
+        }
+
+        if let Some(scope) = &mut self.0.single_char_names.last_mut() {
             scope.push(ident);
         }
     }

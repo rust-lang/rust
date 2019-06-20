@@ -95,8 +95,6 @@ fn find_sugg_for_if_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, 
                 );
             },
         );
-    } else {
-        return;
     }
 }
 
@@ -161,8 +159,6 @@ fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, o
                 },
             );
         }
-    } else {
-        return;
     }
 }
 
