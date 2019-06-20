@@ -27,9 +27,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let param_env = self.cx.tcx.param_env(param_env_def_id);
 
         debug!("get_auto_trait_impls({:?})", ty);
-        let auto_traits = self.cx.send_trait.into_iter().chain(
-            Some(self.cx.tcx.require_lang_item(lang_items::SyncTraitLangItem))
-        );
+        let auto_traits = self.cx.auto_traits.iter().cloned();
         auto_traits.filter_map(|trait_def_id| {
             let trait_ref = ty::TraitRef {
                 def_id: trait_def_id,
