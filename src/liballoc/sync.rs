@@ -1903,8 +1903,14 @@ impl<T, I: iter::TrustedLen<Item = T>> ArcFromIter<T, I> for Arc<[T]> {
 
 impl<'a, T: 'a + Clone> ArcFromIter<&'a T, slice::Iter<'a, T>> for Arc<[T]> {
     fn from_iter(iter: slice::Iter<'a, T>) -> Self {
-        // Delegate to `impl<T: Clone> From<&[T]> for Arc<[T]>`
-        // which will use `ptr::copy_nonoverlapping`.
+        // Delegate to `impl<T: Clone> From<&[T]> for Rc<[T]>`.
+        //
+        // In the case that `T: Copy`, we get to use `ptr::copy_nonoverlapping`
+        // which is even more performant.
+        //
+        // In the fall-back case we have `T: Clone`. This is still better
+        // than the `TrustedLen` implementation as slices have a known length
+        // and so we get to avoid calling `size_hint` and avoid the branching.
         iter.as_slice().into()
     }
 }
