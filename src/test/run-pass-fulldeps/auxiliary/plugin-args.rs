@@ -11,8 +11,8 @@ extern crate rustc_plugin;
 use std::borrow::ToOwned;
 use syntax::ast;
 use syntax::ext::build::AstBuilder;
-use syntax::ext::base::{SyntaxExtension, TTMacroExpander, ExtCtxt, MacResult, MacEager};
-use syntax::ext::hygiene::Transparency;
+use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
+use syntax::ext::base::{TTMacroExpander, ExtCtxt, MacResult, MacEager};
 use syntax::print::pprust;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -38,15 +38,7 @@ impl TTMacroExpander for Expander {
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     let args = reg.args().to_owned();
-    reg.register_syntax_extension(Symbol::intern("plugin_args"),
-        SyntaxExtension::LegacyBang {
-            expander: Box::new(Expander { args: args, }),
-            def_info: None,
-            transparency: Transparency::SemiTransparent,
-            allow_internal_unstable: None,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
-            unstable_feature: None,
-            edition: reg.sess.edition(),
-        });
+    reg.register_syntax_extension(Symbol::intern("plugin_args"), SyntaxExtension::default(
+        SyntaxExtensionKind::LegacyBang(Box::new(Expander { args })), reg.sess.edition()
+    ));
 }

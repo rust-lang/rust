@@ -5,6 +5,8 @@
 //! Utilities related to FFI bindings.
 
 use crate::fmt;
+use crate::marker::PhantomData;
+use crate::ops::{Deref, DerefMut};
 
 /// Equivalent to C's `void` type when used as a [pointer].
 ///
@@ -45,25 +47,33 @@ impl fmt::Debug for c_void {
 }
 
 /// Basic implementation of a `va_list`.
+// The name is WIP, using `VaListImpl` for now.
 #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-              not(target_arch = "x86_64")),
+              not(target_arch = "x86_64"), not(target_arch = "asmjs")),
+          all(target_arch = "aarch64", target_os = "ios"),
+          windows))]
+#[repr(transparent)]
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+#[lang = "va_list"]
+pub struct VaListImpl<'f> {
+    ptr: *mut c_void,
+    _marker: PhantomData<&'f c_void>,
+}
+
+#[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
+              not(target_arch = "x86_64"), not(target_arch = "asmjs")),
           all(target_arch = "aarch64", target_os = "ios"),
           windows))]
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-extern {
-    type VaListImpl;
-}
-
-#[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-              not(target_arch = "x86_64")),
-          all(target_arch = "aarch64", target_os = "ios"),
-          windows))]
-impl fmt::Debug for VaListImpl {
+impl<'f> fmt::Debug for VaListImpl<'f> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "va_list* {:p}", self)
+        write!(f, "va_list* {:p}", self.ptr)
     }
 }
 
@@ -79,12 +89,14 @@ impl fmt::Debug for VaListImpl {
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-struct VaListImpl {
+#[lang = "va_list"]
+pub struct VaListImpl<'f> {
     stack: *mut c_void,
     gr_top: *mut c_void,
     vr_top: *mut c_void,
     gr_offs: i32,
     vr_offs: i32,
+    _marker: PhantomData<&'f c_void>,
 }
 
 /// PowerPC ABI implementation of a `va_list`.
@@ -95,12 +107,14 @@ struct VaListImpl {
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-struct VaListImpl {
+#[lang = "va_list"]
+pub struct VaListImpl<'f> {
     gpr: u8,
     fpr: u8,
     reserved: u16,
     overflow_arg_area: *mut c_void,
     reg_save_area: *mut c_void,
+    _marker: PhantomData<&'f c_void>,
 }
 
 /// x86_64 ABI implementation of a `va_list`.
@@ -111,22 +125,131 @@ struct VaListImpl {
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-struct VaListImpl {
+#[lang = "va_list"]
+pub struct VaListImpl<'f> {
     gp_offset: i32,
     fp_offset: i32,
     overflow_arg_area: *mut c_void,
     reg_save_area: *mut c_void,
+    _marker: PhantomData<&'f c_void>,
+}
+
+/// asm.js ABI implementation of a `va_list`.
+// asm.js uses the PNaCl ABI, which specifies that a `va_list` is
+// an array of 4 32-bit integers, according to the old PNaCl docs at
+// https://web.archive.org/web/20130518054430/https://www.chromium.org/nativeclient/pnacl/bitcode-abi#TOC-Derived-Types
+// and clang does the same in `CreatePNaClABIBuiltinVaListDecl` from `lib/AST/ASTContext.cpp`
+#[cfg(all(target_arch = "asmjs", not(windows)))]
+#[repr(C)]
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+#[lang = "va_list"]
+pub struct VaListImpl<'f> {
+    inner: [crate::mem::MaybeUninit<i32>; 4],
+    _marker: PhantomData<&'f c_void>,
+}
+
+#[cfg(all(target_arch = "asmjs", not(windows)))]
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+impl<'f> fmt::Debug for VaListImpl<'f> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        unsafe {
+            write!(f, "va_list* [{:#x}, {:#x}, {:#x}, {:#x}]",
+                   self.inner[0].read(), self.inner[1].read(),
+                   self.inner[2].read(), self.inner[3].read())
+        }
+    }
 }
 
 /// A wrapper for a `va_list`
-#[lang = "va_list"]
+#[repr(transparent)]
 #[derive(Debug)]
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-#[repr(transparent)]
-pub struct VaList<'a>(&'a mut VaListImpl);
+pub struct VaList<'a, 'f: 'a> {
+    #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
+                  not(target_arch = "x86_64"), not(target_arch = "asmjs")),
+              all(target_arch = "aarch64", target_os = "ios"),
+              windows))]
+    inner: VaListImpl<'f>,
+
+    #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc",
+                  target_arch = "x86_64", target_arch = "asmjs"),
+              any(not(target_arch = "aarch64"), not(target_os = "ios")),
+              not(windows)))]
+    inner: &'a mut VaListImpl<'f>,
+
+    _marker: PhantomData<&'a mut VaListImpl<'f>>,
+}
+
+#[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
+              not(target_arch = "x86_64"), not(target_arch = "asmjs")),
+          all(target_arch = "aarch64", target_os = "ios"),
+          windows))]
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+impl<'f> VaListImpl<'f> {
+    /// Convert a `VaListImpl` into a `VaList` that is binary-compatible with C's `va_list`.
+    #[inline]
+    pub fn as_va_list<'a>(&'a mut self) -> VaList<'a, 'f> {
+        VaList {
+            inner: VaListImpl { ..*self },
+            _marker: PhantomData,
+        }
+    }
+}
+
+#[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc",
+              target_arch = "x86_64", target_arch = "asmjs"),
+          any(not(target_arch = "aarch64"), not(target_os = "ios")),
+          not(windows)))]
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+impl<'f> VaListImpl<'f> {
+    /// Convert a `VaListImpl` into a `VaList` that is binary-compatible with C's `va_list`.
+    #[inline]
+    pub fn as_va_list<'a>(&'a mut self) -> VaList<'a, 'f> {
+        VaList {
+            inner: self,
+            _marker: PhantomData,
+        }
+    }
+}
+
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+impl<'a, 'f: 'a> Deref for VaList<'a, 'f> {
+    type Target = VaListImpl<'f>;
+
+    #[inline]
+    fn deref(&self) -> &VaListImpl<'f> {
+        &self.inner
+    }
+}
+
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+impl<'a, 'f: 'a> DerefMut for VaList<'a, 'f> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut VaListImpl<'f> {
+        &mut self.inner
+    }
+}
 
 // The VaArgSafe trait needs to be used in public interfaces, however, the trait
 // itself must not be allowed to be used outside this module. Allowing users to
@@ -175,56 +298,76 @@ impl<T> sealed_trait::VaArgSafe for *mut T {}
            issue = "44930")]
 impl<T> sealed_trait::VaArgSafe for *const T {}
 
-impl<'a> VaList<'a> {
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+#[cfg(not(bootstrap))]
+impl<'f> VaListImpl<'f> {
     /// Advance to the next arg.
-    #[unstable(feature = "c_variadic",
-               reason = "the `c_variadic` feature has not been properly tested on \
-                         all supported platforms",
-               issue = "44930")]
+    #[inline]
     pub unsafe fn arg<T: sealed_trait::VaArgSafe>(&mut self) -> T {
         va_arg(self)
     }
 
     /// Copies the `va_list` at the current location.
-    #[unstable(feature = "c_variadic",
-               reason = "the `c_variadic` feature has not been properly tested on \
-                         all supported platforms",
-               issue = "44930")]
     pub unsafe fn with_copy<F, R>(&self, f: F) -> R
-            where F: for<'copy> FnOnce(VaList<'copy>) -> R {
-        #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-                      not(target_arch = "x86_64")),
-                  all(target_arch = "aarch64", target_os = "ios"),
-                  windows))]
-        let mut ap = va_copy(self);
-        #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
-                  not(windows), not(all(target_arch = "aarch64", target_os = "ios"))))]
-        let mut ap_inner = va_copy(self);
-        #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
-                  not(windows), not(all(target_arch = "aarch64", target_os = "ios"))))]
-        let mut ap = VaList(&mut ap_inner);
-        let ret = f(VaList(ap.0));
+            where F: for<'copy> FnOnce(VaList<'copy, 'f>) -> R {
+        let mut ap = self.clone();
+        let ret = f(ap.as_va_list());
         va_end(&mut ap);
         ret
+    }
+}
+
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+#[cfg(not(bootstrap))]
+impl<'f> Clone for VaListImpl<'f> {
+    #[inline]
+    fn clone(&self) -> Self {
+        let mut dest = crate::mem::MaybeUninit::uninit();
+        unsafe {
+            va_copy(dest.as_mut_ptr(), self);
+            dest.assume_init()
+        }
+    }
+}
+
+#[unstable(feature = "c_variadic",
+           reason = "the `c_variadic` feature has not been properly tested on \
+                     all supported platforms",
+           issue = "44930")]
+#[cfg(not(bootstrap))]
+impl<'f> Drop for VaListImpl<'f> {
+    fn drop(&mut self) {
+        // FIXME: this should call `va_end`, but there's no clean way to
+        // guarantee that `drop` always gets inlined into its caller,
+        // so the `va_end` would get directly called from the same function as
+        // the corresponding `va_copy`. `man va_end` states that C requires this,
+        // and LLVM basically follows the C semantics, so we need to make sure
+        // that `va_end` is always called from the same function as `va_copy`.
+        // For more details, see https://github.com/rust-lang/rust/pull/59625
+        // and https://llvm.org/docs/LangRef.html#llvm-va-end-intrinsic.
+        //
+        // This works for now, since `va_end` is a no-op on all current LLVM targets.
     }
 }
 
 extern "rust-intrinsic" {
     /// Destroy the arglist `ap` after initialization with `va_start` or
     /// `va_copy`.
-    fn va_end(ap: &mut VaList<'_>);
+    #[cfg(not(bootstrap))]
+    fn va_end(ap: &mut VaListImpl<'_>);
 
     /// Copies the current location of arglist `src` to the arglist `dst`.
-    #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
-                  not(target_arch = "x86_64")),
-              all(target_arch = "aarch64", target_os = "ios"),
-              windows))]
-    fn va_copy<'a>(src: &VaList<'a>) -> VaList<'a>;
-    #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
-              not(windows), not(all(target_arch = "aarch64", target_os = "ios"))))]
-    fn va_copy(src: &VaList<'_>) -> VaListImpl;
+    #[cfg(not(bootstrap))]
+    fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
 
     /// Loads an argument of type `T` from the `va_list` `ap` and increment the
     /// argument `ap` points to.
-    fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaList<'_>) -> T;
+    #[cfg(not(bootstrap))]
+    fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
 }

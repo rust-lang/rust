@@ -70,7 +70,7 @@ impl Inliner<'tcx> {
 
         // Only do inlining into fn bodies.
         let id = self.tcx.hir().as_local_hir_id(self.source.def_id()).unwrap();
-        if self.tcx.hir().body_owner_kind_by_hir_id(id).is_fn_or_closure()
+        if self.tcx.hir().body_owner_kind(id).is_fn_or_closure()
             && self.source.promoted.is_none()
         {
             for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated() {
@@ -643,7 +643,7 @@ fn type_size_of<'tcx>(
  * Updates block indices, references to locals and other control flow
  * stuff.
 */
-struct Integrator<'a, 'tcx: 'a> {
+struct Integrator<'a, 'tcx> {
     block_idx: usize,
     args: &'a [Local],
     local_map: IndexVec<Local, Local>,

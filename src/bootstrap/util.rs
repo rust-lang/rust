@@ -209,7 +209,7 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
             let h = CreateFileW(path.as_ptr(),
                                 GENERIC_WRITE,
                                 FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                0 as *mut _,
+                                ptr::null_mut(),
                                 OPEN_EXISTING,
                                 FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
                                 ptr::null_mut());

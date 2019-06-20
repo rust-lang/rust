@@ -29,7 +29,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 }
 
-struct RawConstraints<'a, 'tcx: 'a> {
+struct RawConstraints<'a, 'tcx> {
     regioncx: &'a RegionInferenceContext<'tcx>,
 }
 
@@ -78,7 +78,7 @@ impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
     }
 }
 
-struct SccConstraints<'a, 'tcx: 'a> {
+struct SccConstraints<'a, 'tcx> {
     regioncx: &'a RegionInferenceContext<'tcx>,
     nodes_per_scc: IndexVec<ConstraintSccIndex, Vec<RegionVid>>,
 }

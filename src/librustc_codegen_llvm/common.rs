@@ -11,7 +11,7 @@ use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
 
 use crate::consts::const_alloc_to_llvm;
-use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
+use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size, Align};
 use rustc::mir::interpret::{Scalar, GlobalAlloc, Allocation};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 
@@ -344,11 +344,12 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn from_const_alloc(
         &self,
         layout: TyLayout<'tcx>,
+        align: Align,
         alloc: &Allocation,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
         let init = const_alloc_to_llvm(self, alloc);
-        let base_addr = self.static_addr_of(init, layout.align.abi, None);
+        let base_addr = self.static_addr_of(init, align, None);
 
         let llval = unsafe { llvm::LLVMConstInBoundsGEP(
             self.const_bitcast(base_addr, self.type_i8p()),
@@ -356,7 +357,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             1,
         )};
         let llval = self.const_bitcast(llval, self.type_ptr_to(layout.llvm_type(self)));
-        PlaceRef::new_sized(llval, layout, alloc.align)
+        PlaceRef::new_sized(llval, layout, align)
     }
 
     fn const_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {

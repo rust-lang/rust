@@ -1509,6 +1509,20 @@ impl<I> DoubleEndedIterator for Skip<I> where I: DoubleEndedIterator + ExactSize
         }
     }
 
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<I::Item> {
+        let len = self.len();
+        if n < len {
+            self.iter.nth_back(n)
+        } else {
+            if len > 0 {
+                // consume the original iterator
+                self.iter.nth_back(len-1);
+            }
+            None
+        }
+    }
+
     fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {

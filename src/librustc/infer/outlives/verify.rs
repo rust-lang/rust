@@ -12,7 +12,7 @@ use crate::util::captures::Captures;
 /// via a "delegate" of type `D` -- this is usually the `infcx`, which
 /// accrues them into the `region_obligations` code, but for NLL we
 /// use something else.
-pub struct VerifyBoundCx<'cx, 'tcx: 'cx> {
+pub struct VerifyBoundCx<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,

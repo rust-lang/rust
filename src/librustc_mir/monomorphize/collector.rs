@@ -345,7 +345,7 @@ fn collect_roots<'tcx>(tcx: TyCtxt<'tcx>, mode: MonoItemCollectionMode) -> Vec<M
 }
 
 // Collect all monomorphized items reachable from `starting_point`
-fn collect_items_rec<'a, 'tcx: 'a>(
+fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_point: MonoItem<'tcx>,
     visited: MTRef<'_, MTLock<FxHashSet<MonoItem<'tcx>>>>,
@@ -455,7 +455,7 @@ fn check_recursion_limit<'tcx>(
         let error = format!("reached the recursion limit while instantiating `{}`",
                             instance);
         if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
-            tcx.sess.span_fatal(tcx.hir().span_by_hir_id(hir_id), &error);
+            tcx.sess.span_fatal(tcx.hir().span(hir_id), &error);
         } else {
             tcx.sess.fatal(&error);
         }
@@ -515,7 +515,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     }
 }
 
-struct MirNeighborCollector<'a, 'tcx: 'a> {
+struct MirNeighborCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
     output: &'a mut Vec<MonoItem<'tcx>>,
@@ -1262,7 +1262,7 @@ fn collect_const<'tcx>(
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
         ConstValue::Slice { data: alloc, start: _, end: _ } |
-        ConstValue::ByRef(_, alloc) => {
+        ConstValue::ByRef(_, _, alloc) => {
             for &((), id) in alloc.relocations.values() {
                 collect_miri(tcx, id, output);
             }

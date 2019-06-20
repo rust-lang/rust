@@ -738,27 +738,29 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 qualifs[IsNotPromotable] = true;
 
                 if self.mode.requires_const_checking() {
-                    if let BorrowKind::Mut { .. } = kind {
-                        let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
-                                                       "references in {}s may only refer \
-                                                        to immutable values", self.mode);
-                        err.span_label(self.span, format!("{}s require immutable values",
-                                                            self.mode));
-                        if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                            err.note("References in statics and constants may only refer to \
-                                      immutable values.\n\n\
-                                      Statics are shared everywhere, and if they refer to \
-                                      mutable data one might violate memory safety since \
-                                      holding multiple mutable references to shared data is \
-                                      not allowed.\n\n\
-                                      If you really want global mutable state, try using \
-                                      static mut or a global UnsafeCell.");
+                    if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                        if let BorrowKind::Mut { .. } = kind {
+                            let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
+                                                        "references in {}s may only refer \
+                                                            to immutable values", self.mode);
+                            err.span_label(self.span, format!("{}s require immutable values",
+                                                                self.mode));
+                            if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                                err.note("References in statics and constants may only refer to \
+                                        immutable values.\n\n\
+                                        Statics are shared everywhere, and if they refer to \
+                                        mutable data one might violate memory safety since \
+                                        holding multiple mutable references to shared data is \
+                                        not allowed.\n\n\
+                                        If you really want global mutable state, try using \
+                                        static mut or a global UnsafeCell.");
+                            }
+                            err.emit();
+                        } else {
+                            span_err!(self.tcx.sess, self.span, E0492,
+                                    "cannot borrow a constant which may contain \
+                                    interior mutability, create a static instead");
                         }
-                        err.emit();
-                    } else {
-                        span_err!(self.tcx.sess, self.span, E0492,
-                                  "cannot borrow a constant which may contain \
-                                   interior mutability, create a static instead");
                     }
                 }
             } else if let BorrowKind::Mut { .. } | BorrowKind::Shared = kind {
@@ -1503,7 +1505,7 @@ impl MirPass for QualifyAndPromoteConstants {
         let def_id = src.def_id();
         let id = tcx.hir().as_local_hir_id(def_id).unwrap();
         let mut const_promoted_temps = None;
-        let mode = match tcx.hir().body_owner_kind_by_hir_id(id) {
+        let mode = match tcx.hir().body_owner_kind(id) {
             hir::BodyOwnerKind::Closure => Mode::NonConstFn,
             hir::BodyOwnerKind::Fn => {
                 if tcx.is_const_fn(def_id) {

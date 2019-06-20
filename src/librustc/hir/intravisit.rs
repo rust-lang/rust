@@ -74,7 +74,7 @@ impl<'a> FnKind<'a> {
 ///
 /// See the comments on `ItemLikeVisitor` for more details on the overall
 /// visit strategy.
-pub enum NestedVisitorMap<'this, 'tcx: 'this> {
+pub enum NestedVisitorMap<'this, 'tcx> {
     /// Do not visit any nested things. When you add a new
     /// "non-nested" thing, you will want to audit such uses to see if
     /// they remain valid.
@@ -171,7 +171,7 @@ pub trait Visitor<'v> : Sized {
     /// but cannot supply a `Map`; see `nested_visit_map` for advice.
     #[allow(unused_variables)]
     fn visit_nested_item(&mut self, id: ItemId) {
-        let opt_item = self.nested_visit_map().inter().map(|map| map.expect_item_by_hir_id(id.id));
+        let opt_item = self.nested_visit_map().inter().map(|map| map.expect_item(id.id));
         if let Some(item) = opt_item {
             self.visit_item(item);
         }
@@ -773,7 +773,6 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics) {
     walk_list!(visitor, visit_generic_param, &generics.params);
-    visitor.visit_id(generics.where_clause.hir_id);
     walk_list!(visitor, visit_where_predicate, &generics.where_clause.predicates);
 }
 
@@ -1089,7 +1088,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
                 visitor.visit_expr(expr)
             }
         }
-        ExprKind::Yield(ref subexpression) => {
+        ExprKind::Yield(ref subexpression, _) => {
             visitor.visit_expr(subexpression);
         }
         ExprKind::Lit(_) | ExprKind::Err => {}

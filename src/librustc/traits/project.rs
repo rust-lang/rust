@@ -285,7 +285,7 @@ where
     }
 }
 
-struct AssocTypeNormalizer<'a, 'b: 'a, 'tcx: 'b> {
+struct AssocTypeNormalizer<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -409,7 +409,6 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                             promoted: None
                         };
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                            let substs = tcx.lift_to_global(&substs).unwrap();
                             let evaluated = evaluated.subst(tcx, substs);
                             return evaluated;
                         }

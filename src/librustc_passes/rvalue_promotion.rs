@@ -74,7 +74,7 @@ fn rvalue_promotable_map<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ItemLo
     tcx.arena.alloc(visitor.result)
 }
 
-struct CheckCrateVisitor<'a, 'tcx: 'a> {
+struct CheckCrateVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     in_fn: bool,
     in_static: bool,
@@ -165,7 +165,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn check_nested_body(&mut self, body_id: hir::BodyId) -> Promotability {
         let item_id = self.tcx.hir().body_owner(body_id);
-        let item_def_id = self.tcx.hir().local_def_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item_id);
 
         let outer_in_fn = self.in_fn;
         let outer_tables = self.tables;
@@ -545,7 +545,7 @@ fn check_expr_kind<'a, 'tcx>(
         }
 
         // Generator expressions
-        hir::ExprKind::Yield(ref expr) => {
+        hir::ExprKind::Yield(ref expr, _) => {
             let _ = v.check_expr(&expr);
             NotPromotable
         }

@@ -2,10 +2,7 @@
 
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
-use crate::cell::UnsafeCell;
 use crate::fmt;
-use crate::hint;
-use crate::mem;
 
 /// A thread local storage key which owns its contents.
 ///
@@ -92,10 +89,7 @@ pub struct LocalKey<T: 'static> {
     // trivially devirtualizable by LLVM because the value of `inner` never
     // changes and the constant should be readonly within a crate. This mainly
     // only runs into problems when TLS statics are exported across crates.
-    inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
-
-    // initialization routine to invoke to create a value
-    init: fn() -> T,
+    inner: unsafe fn() -> Option<&'static T>,
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -159,10 +153,7 @@ macro_rules! __thread_local_inner {
             #[inline]
             fn __init() -> $t { $init }
 
-            unsafe fn __getit() -> $crate::option::Option<
-                &'static $crate::cell::UnsafeCell<
-                    $crate::option::Option<$t>>>
-            {
+            unsafe fn __getit() -> $crate::option::Option<&'static $t> {
                 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
                 static __KEY: $crate::thread::__StaticLocalKeyInner<$t> =
                     $crate::thread::__StaticLocalKeyInner::new();
@@ -182,11 +173,11 @@ macro_rules! __thread_local_inner {
                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                     $crate::thread::__OsLocalKeyInner::new();
 
-                __KEY.get()
+                __KEY.get(__init)
             }
 
             unsafe {
-                $crate::thread::LocalKey::new(__getit, __init)
+                $crate::thread::LocalKey::new(__getit)
             }
         }
     };
@@ -221,11 +212,9 @@ impl<T: 'static> LocalKey<T> {
     #[unstable(feature = "thread_local_internals",
                reason = "recently added to create a key",
                issue = "0")]
-    pub const unsafe fn new(inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
-                            init: fn() -> T) -> LocalKey<T> {
+    pub const unsafe fn new(inner: unsafe fn() -> Option<&'static T>) -> LocalKey<T> {
         LocalKey {
             inner,
-            init,
         }
     }
 
@@ -246,37 +235,6 @@ impl<T: 'static> LocalKey<T> {
                                  after it is destroyed")
     }
 
-    unsafe fn init(&self, slot: &UnsafeCell<Option<T>>) -> &T {
-        // Execute the initialization up front, *then* move it into our slot,
-        // just in case initialization fails.
-        let value = (self.init)();
-        let ptr = slot.get();
-
-        // note that this can in theory just be `*ptr = Some(value)`, but due to
-        // the compiler will currently codegen that pattern with something like:
-        //
-        //      ptr::drop_in_place(ptr)
-        //      ptr::write(ptr, Some(value))
-        //
-        // Due to this pattern it's possible for the destructor of the value in
-        // `ptr` (e.g., if this is being recursively initialized) to re-access
-        // TLS, in which case there will be a `&` and `&mut` pointer to the same
-        // value (an aliasing violation). To avoid setting the "I'm running a
-        // destructor" flag we just use `mem::replace` which should sequence the
-        // operations a little differently and make this safe to call.
-        mem::replace(&mut *ptr, Some(value));
-
-        // After storing `Some` we want to get a reference to the contents of
-        // what we just stored. While we could use `unwrap` here and it should
-        // always work it empirically doesn't seem to always get optimized away,
-        // which means that using something like `try_with` can pull in
-        // panicking code and cause a large size bloat.
-        match *ptr {
-            Some(ref x) => x,
-            None => hint::unreachable_unchecked(),
-        }
-    }
-
     /// Acquires a reference to the value in this TLS key.
     ///
     /// This will lazily initialize the value if this thread has not referenced
@@ -293,13 +251,68 @@ impl<T: 'static> LocalKey<T> {
         F: FnOnce(&T) -> R,
     {
         unsafe {
-            let slot = (self.inner)().ok_or(AccessError {
+            let thread_local = (self.inner)().ok_or(AccessError {
                 _private: (),
             })?;
-            Ok(f(match *slot.get() {
-                Some(ref inner) => inner,
-                None => self.init(slot),
-            }))
+            Ok(f(thread_local))
+        }
+    }
+}
+
+mod lazy {
+    use crate::cell::UnsafeCell;
+    use crate::mem;
+    use crate::hint;
+
+    pub struct LazyKeyInner<T> {
+        inner: UnsafeCell<Option<T>>,
+    }
+
+    impl<T> LazyKeyInner<T> {
+        pub const fn new() -> LazyKeyInner<T> {
+            LazyKeyInner {
+                inner: UnsafeCell::new(None),
+            }
+        }
+
+        pub unsafe fn get(&self) -> Option<&'static T> {
+            (*self.inner.get()).as_ref()
+        }
+
+        pub unsafe fn initialize<F: FnOnce() -> T>(&self, init: F) -> &'static T {
+            // Execute the initialization up front, *then* move it into our slot,
+            // just in case initialization fails.
+            let value = init();
+            let ptr = self.inner.get();
+
+            // note that this can in theory just be `*ptr = Some(value)`, but due to
+            // the compiler will currently codegen that pattern with something like:
+            //
+            //      ptr::drop_in_place(ptr)
+            //      ptr::write(ptr, Some(value))
+            //
+            // Due to this pattern it's possible for the destructor of the value in
+            // `ptr` (e.g., if this is being recursively initialized) to re-access
+            // TLS, in which case there will be a `&` and `&mut` pointer to the same
+            // value (an aliasing violation). To avoid setting the "I'm running a
+            // destructor" flag we just use `mem::replace` which should sequence the
+            // operations a little differently and make this safe to call.
+            mem::replace(&mut *ptr, Some(value));
+
+            // After storing `Some` we want to get a reference to the contents of
+            // what we just stored. While we could use `unwrap` here and it should
+            // always work it empirically doesn't seem to always get optimized away,
+            // which means that using something like `try_with` can pull in
+            // panicking code and cause a large size bloat.
+            match *ptr {
+                Some(ref x) => x,
+                None => hint::unreachable_unchecked(),
+            }
+        }
+
+        #[allow(unused)]
+        pub unsafe fn take(&mut self) -> Option<T> {
+            (*self.inner.get()).take()
         }
     }
 }
@@ -309,11 +322,11 @@ impl<T: 'static> LocalKey<T> {
 #[doc(hidden)]
 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
 pub mod statik {
-    use crate::cell::UnsafeCell;
+    use super::lazy::LazyKeyInner;
     use crate::fmt;
 
     pub struct Key<T> {
-        inner: UnsafeCell<Option<T>>,
+        inner: LazyKeyInner<T>,
     }
 
     unsafe impl<T> Sync for Key<T> { }
@@ -327,12 +340,16 @@ pub mod statik {
     impl<T> Key<T> {
         pub const fn new() -> Key<T> {
             Key {
-                inner: UnsafeCell::new(None),
+                inner: LazyKeyInner::new(),
             }
         }
 
-        pub unsafe fn get(&self) -> Option<&'static UnsafeCell<Option<T>>> {
-            Some(&*(&self.inner as *const _))
+        pub unsafe fn get(&self, init: fn() -> T) -> Option<&'static T> {
+            let value = match self.inner.get() {
+                Some(ref value) => value,
+                None => self.inner.initialize(init),
+            };
+            Some(value)
         }
     }
 }
@@ -340,19 +357,38 @@ pub mod statik {
 #[doc(hidden)]
 #[cfg(target_thread_local)]
 pub mod fast {
-    use crate::cell::{Cell, UnsafeCell};
+    use super::lazy::LazyKeyInner;
+    use crate::cell::Cell;
     use crate::fmt;
     use crate::mem;
-    use crate::ptr;
-    use crate::sys::fast_thread_local::{register_dtor, requires_move_before_drop};
+    use crate::sys::fast_thread_local::register_dtor;
 
+    #[derive(Copy, Clone)]
+    enum DtorState {
+        Unregistered,
+        Registered,
+        RunningOrHasRun,
+    }
+
+    // This data structure has been carefully constructed so that the fast path
+    // only contains one branch on x86. That optimization is necessary to avoid
+    // duplicated tls lookups on OSX.
+    //
+    // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
     pub struct Key<T> {
-        inner: UnsafeCell<Option<T>>,
+        // If `LazyKeyInner::get` returns `None`, that indicates either:
+        //   * The value has never been initialized
+        //   * The value is being recursively initialized
+        //   * The value has already been destroyed or is being destroyed
+        // To determine which kind of `None`, check `dtor_state`.
+        //
+        // This is very optimizer friendly for the fast path - initialized but
+        // not yet dropped.
+        inner: LazyKeyInner<T>,
 
         // Metadata to keep track of the state of the destructor. Remember that
-        // these variables are thread-local, not global.
-        dtor_registered: Cell<bool>,
-        dtor_running: Cell<bool>,
+        // this variable is thread-local, not global.
+        dtor_state: Cell<DtorState>,
     }
 
     impl<T> fmt::Debug for Key<T> {
@@ -364,54 +400,75 @@ pub mod fast {
     impl<T> Key<T> {
         pub const fn new() -> Key<T> {
             Key {
-                inner: UnsafeCell::new(None),
-                dtor_registered: Cell::new(false),
-                dtor_running: Cell::new(false)
+                inner: LazyKeyInner::new(),
+                dtor_state: Cell::new(DtorState::Unregistered),
             }
         }
 
-        pub unsafe fn get(&self) -> Option<&'static UnsafeCell<Option<T>>> {
-            if mem::needs_drop::<T>() && self.dtor_running.get() {
-                return None
+        pub unsafe fn get<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
+            match self.inner.get() {
+                Some(val) => Some(val),
+                None => self.try_initialize(init),
             }
-            self.register_dtor();
-            Some(&*(&self.inner as *const _))
         }
 
-        unsafe fn register_dtor(&self) {
-            if !mem::needs_drop::<T>() || self.dtor_registered.get() {
-                return
+        // `try_initialize` is only called once per fast thread local variable,
+        // except in corner cases where thread_local dtors reference other
+        // thread_local's, or it is being recursively initialized.
+        //
+        // Macos: Inlining this function can cause two `tlv_get_addr` calls to
+        // be performed for every call to `Key::get`. The #[cold] hint makes
+        // that less likely.
+        // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
+        #[cold]
+        unsafe fn try_initialize<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
+            if !mem::needs_drop::<T>() || self.try_register_dtor() {
+                Some(self.inner.initialize(init))
+            } else {
+                None
             }
+        }
 
-            register_dtor(self as *const _ as *mut u8,
-                          destroy_value::<T>);
-            self.dtor_registered.set(true);
+        // `try_register_dtor` is only called once per fast thread local
+        // variable, except in corner cases where thread_local dtors reference
+        // other thread_local's, or it is being recursively initialized.
+        unsafe fn try_register_dtor(&self) -> bool {
+            match self.dtor_state.get() {
+                DtorState::Unregistered => {
+                    // dtor registration happens before initialization.
+                    register_dtor(self as *const _ as *mut u8,
+                                destroy_value::<T>);
+                    self.dtor_state.set(DtorState::Registered);
+                    true
+                }
+                DtorState::Registered => {
+                    // recursively initialized
+                    true
+                }
+                DtorState::RunningOrHasRun => {
+                    false
+                }
+            }
         }
     }
 
     unsafe extern fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
-        // Right before we run the user destructor be sure to flag the
-        // destructor as running for this thread so calls to `get` will return
-        // `None`.
-        (*ptr).dtor_running.set(true);
 
-        // Some implementations may require us to move the value before we drop
-        // it as it could get re-initialized in-place during destruction.
-        //
-        // Hence, we use `ptr::read` on those platforms (to move to a "safe"
-        // location) instead of drop_in_place.
-        if requires_move_before_drop() {
-            ptr::read((*ptr).inner.get());
-        } else {
-            ptr::drop_in_place((*ptr).inner.get());
-        }
+        // Right before we run the user destructor be sure to set the
+        // `Option<T>` to `None`, and `dtor_state` to `RunningOrHasRun`. This
+        // causes future calls to `get` to run `try_initialize_drop` again,
+        // which will now fail, and return `None`.
+        let value = (*ptr).inner.take();
+        (*ptr).dtor_state.set(DtorState::RunningOrHasRun);
+        drop(value);
     }
 }
 
 #[doc(hidden)]
 pub mod os {
-    use crate::cell::{Cell, UnsafeCell};
+    use super::lazy::LazyKeyInner;
+    use crate::cell::Cell;
     use crate::fmt;
     use crate::marker;
     use crate::ptr;
@@ -432,8 +489,8 @@ pub mod os {
     unsafe impl<T> Sync for Key<T> { }
 
     struct Value<T: 'static> {
+        inner: LazyKeyInner<T>,
         key: &'static Key<T>,
-        value: UnsafeCell<Option<T>>,
     }
 
     impl<T: 'static> Key<T> {
@@ -444,24 +501,43 @@ pub mod os {
             }
         }
 
-        pub unsafe fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
+        pub unsafe fn get(&'static self, init: fn() -> T) -> Option<&'static T> {
             let ptr = self.os.get() as *mut Value<T>;
-            if !ptr.is_null() {
-                if ptr as usize == 1 {
-                    return None
+            if ptr as usize > 1 {
+                match (*ptr).inner.get() {
+                    Some(ref value) => return Some(value),
+                    None => {},
                 }
-                return Some(&(*ptr).value);
+            }
+            self.try_initialize(init)
+        }
+
+        // `try_initialize` is only called once per os thread local variable,
+        // except in corner cases where thread_local dtors reference other
+        // thread_local's, or it is being recursively initialized.
+        unsafe fn try_initialize(&'static self, init: fn() -> T) -> Option<&'static T> {
+            let ptr = self.os.get() as *mut Value<T>;
+            if ptr as usize == 1 {
+                // destructor is running
+                return None
             }
 
-            // If the lookup returned null, we haven't initialized our own
-            // local copy, so do that now.
-            let ptr: Box<Value<T>> = box Value {
-                key: self,
-                value: UnsafeCell::new(None),
+            let ptr = if ptr.is_null() {
+                // If the lookup returned null, we haven't initialized our own
+                // local copy, so do that now.
+                let ptr: Box<Value<T>> = box Value {
+                    inner: LazyKeyInner::new(),
+                    key: self,
+                };
+                let ptr = Box::into_raw(ptr);
+                self.os.set(ptr as *mut u8);
+                ptr
+            } else {
+                // recursive initialization
+                ptr
             };
-            let ptr = Box::into_raw(ptr);
-            self.os.set(ptr as *mut u8);
-            Some(&(*ptr).value)
+
+            Some((*ptr).inner.initialize(init))
         }
     }
 

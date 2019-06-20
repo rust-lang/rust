@@ -204,11 +204,9 @@ macro_rules! define_dep_nodes {
         impl DepNode {
             #[allow(unreachable_code, non_snake_case)]
             #[inline(always)]
-            pub fn new<'a, 'tcx>(tcx: TyCtxt<'tcx>,
+            pub fn new<'tcx>(tcx: TyCtxt<'tcx>,
                                        dep: DepConstructor<'tcx>)
                                        -> DepNode
-                where 'tcx: 'a,
-                      'tcx: 'a
             {
                 match dep {
                     $(

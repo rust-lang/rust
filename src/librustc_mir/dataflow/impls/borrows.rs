@@ -29,7 +29,7 @@ newtype_index! {
 /// `BorrowIndex`, and maps each such index to a `BorrowData`
 /// describing the borrow. These indexes are used for representing the
 /// borrows in compact bitvectors.
-pub struct Borrows<'a, 'tcx: 'a> {
+pub struct Borrows<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
 

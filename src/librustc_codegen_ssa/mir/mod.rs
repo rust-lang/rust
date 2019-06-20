@@ -23,7 +23,7 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
+pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
     mir: &'a mir::Body<'tcx>,
@@ -43,7 +43,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    personality_slot: Option<PlaceRef<'tcx, Bx::Value,>>,
+    personality_slot: Option<PlaceRef<'tcx, Bx::Value>>,
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: IndexVec<mir::BasicBlock, Bx::BasicBlock>,
@@ -83,11 +83,11 @@ pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<Bx::DIScope>>,
 
     /// If this function is a C-variadic function, this contains the `PlaceRef` of the
-    /// "spoofed" `VaList`.
+    /// "spoofed" `VaListImpl`.
     va_list_ref: Option<PlaceRef<'tcx, Bx::Value>>,
 }
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
@@ -167,7 +167,7 @@ enum LocalRef<'tcx, V> {
     Operand(Option<OperandRef<'tcx, V>>),
 }
 
-impl<'a, 'tcx: 'a, V: CodegenObject> LocalRef<'tcx, V> {
+impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
     fn new_operand<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         layout: TyLayout<'tcx>,
@@ -185,7 +185,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> LocalRef<'tcx, V> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     llfn: Bx::Value,
     mir: &'a Body<'tcx>,
@@ -351,14 +351,15 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     mir: &'a Body<'tcx>,
     bx: &mut Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
-    block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>)
-    -> (IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
-        IndexVec<mir::BasicBlock, Option<Bx::Funclet>>)
-{
+    block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>,
+) -> (
+    IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
+    IndexVec<mir::BasicBlock, Option<Bx::Funclet>>,
+) {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
             CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {}
@@ -420,7 +421,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 /// Produces, for each argument, a `Value` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
-fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     fx: &FunctionCx<'a, 'tcx, Bx>,
     memory_locals: &BitSet<mir::Local>,
@@ -561,35 +562,24 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             indirect_operand.store(bx, tmp);
             tmp
         } else {
+            let tmp = PlaceRef::alloca(bx, arg.layout, &name);
             if fx.fn_ty.c_variadic && last_arg_idx.map(|idx| arg_index == idx).unwrap_or(false) {
-                let va_list_impl = match arg_decl.ty.ty_adt_def() {
-                    Some(adt) => adt.non_enum_variant(),
-                    None => bug!("`va_list` language item improperly constructed")
+                let va_list_did = match tcx.lang_items().va_list() {
+                    Some(did) => did,
+                    None => bug!("`va_list` lang item required for C-variadic functions"),
                 };
-                match tcx.type_of(va_list_impl.fields[0].did).sty {
-                    ty::Ref(_, ty, _) => {
-                        // If the underlying structure the `VaList` contains is a structure,
-                        // we need to allocate it (e.g., X86_64 on Linux).
-                        let tmp = PlaceRef::alloca(bx, arg.layout, &name);
-                        if let ty::Adt(..) = ty.sty {
-                            let layout = bx.layout_of(ty);
-                            // Create an unnamed allocation for the backing structure
-                            // and store it in the the spoofed `VaList`.
-                            let backing = PlaceRef::alloca(bx, layout, "");
-                            bx.store(backing.llval, tmp.llval, layout.align.abi);
-                        }
-                        // Call `va_start` on the spoofed `VaList`.
+                match arg_decl.ty.sty {
+                    ty::Adt(def, _) if def.did == va_list_did => {
+                        // Call `va_start` on the spoofed `VaListImpl`.
                         bx.va_start(tmp.llval);
                         *va_list_ref = Some(tmp);
-                        tmp
-                    }
-                    _ => bug!("improperly constructed `va_list` lang item"),
+                    },
+                    _ => bug!("last argument of variadic function is not a `va_list`")
                 }
             } else {
-                let tmp = PlaceRef::alloca(bx, arg.layout, &name);
                 bx.store_fn_arg(arg, &mut llarg_idx, tmp);
-                tmp
             }
+            tmp
         };
         let upvar_debuginfo = &mir.__upvar_debuginfo_codegen_only_do_not_use;
         arg_scope.map(|scope| {

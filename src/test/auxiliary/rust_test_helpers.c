@@ -216,18 +216,25 @@ uint64_t get_c_many_params(void *a, void *b, void *c, void *d, struct quad f) {
 }
 
 // Calculates the average of `(x + y) / n` where x: i64, y: f64. There must be exactly n pairs
-// passed as variadic arguments.
-double rust_interesting_average(uint64_t n, ...) {
-    va_list pairs;
+// passed as variadic arguments. There are two versions of this function: the
+// variadic one, and the one that takes a `va_list`.
+double rust_valist_interesting_average(uint64_t n, va_list pairs) {
     double sum = 0.0;
     int i;
-    va_start(pairs, n);
     for(i = 0; i < n; i += 1) {
         sum += (double)va_arg(pairs, int64_t);
         sum += va_arg(pairs, double);
     }
-    va_end(pairs);
     return sum / n;
+}
+
+double rust_interesting_average(uint64_t n, ...) {
+    double sum;
+    va_list pairs;
+    va_start(pairs, n);
+    sum = rust_valist_interesting_average(n, pairs);
+    va_end(pairs);
+    return sum;
 }
 
 int32_t rust_int8_to_int32(int8_t x) {

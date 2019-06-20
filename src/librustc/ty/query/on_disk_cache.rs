@@ -505,13 +505,11 @@ impl<'a, 'tcx> DecoderWithPosition for CacheDecoder<'a, 'tcx> {
 
 // Decode something that was encoded with encode_tagged() and verify that the
 // tag matches and the correct amount of bytes was read.
-fn decode_tagged<'a, 'tcx, D, T, V>(decoder: &mut D,
-                                    expected_tag: T)
-                                    -> Result<V, D::Error>
-    where T: Decodable + Eq + ::std::fmt::Debug,
-          V: Decodable,
-          D: DecoderWithPosition,
-          'tcx: 'a,
+fn decode_tagged<D, T, V>(decoder: &mut D, expected_tag: T) -> Result<V, D::Error>
+where
+    T: Decodable + Eq + ::std::fmt::Debug,
+    V: Decodable,
+    D: DecoderWithPosition,
 {
     let start_pos = decoder.position();
 

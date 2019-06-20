@@ -47,7 +47,7 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
 
 // The first pass over the crate simply builds up the set of inferreds.
 
-pub struct TermsContext<'a, 'tcx: 'a> {
+pub struct TermsContext<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub arena: &'a TypedArena<VarianceTerm<'a>>,
 
@@ -129,7 +129,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         debug!("add_inferreds for item {}",
-               self.tcx.hir().hir_to_string(item.hir_id));
+               self.tcx.hir().node_to_string(item.hir_id));
 
         match item.node {
             hir::ItemKind::Struct(ref struct_def, _) |

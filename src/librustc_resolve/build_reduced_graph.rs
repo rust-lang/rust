@@ -772,9 +772,8 @@ impl<'a> Resolver<'a> {
     pub fn get_macro(&mut self, res: Res) -> Lrc<SyntaxExtension> {
         let def_id = match res {
             Res::Def(DefKind::Macro(..), def_id) => def_id,
-            Res::NonMacroAttr(attr_kind) => return Lrc::new(SyntaxExtension::NonMacroAttr {
-                mark_used: attr_kind == NonMacroAttrKind::Tool,
-            }),
+            Res::NonMacroAttr(attr_kind) =>
+                return self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool),
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
         };
         if let Some(ext) = self.macro_map.get(&def_id) {
@@ -930,7 +929,7 @@ impl<'a> Resolver<'a> {
     }
 }
 
-pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
+pub struct BuildReducedGraphVisitor<'a, 'b> {
     pub resolver: &'a mut Resolver<'b>,
     pub current_legacy_scope: LegacyScope<'b>,
     pub expansion: Mark,

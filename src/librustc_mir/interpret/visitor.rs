@@ -81,6 +81,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::
         ecx.operand_field(self, field)
     }
 }
+
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for MPlaceTy<'tcx, M::PointerTag> {
     #[inline(always)]
     fn layout(&self) -> TyLayout<'tcx> {

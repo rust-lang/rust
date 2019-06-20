@@ -160,7 +160,7 @@ pub struct LocalTy<'tcx> {
 
 /// A wrapper for `InferCtxt`'s `in_progress_tables` field.
 #[derive(Copy, Clone)]
-struct MaybeInProgressTables<'a, 'tcx: 'a> {
+struct MaybeInProgressTables<'a, 'tcx> {
     maybe_tables: Option<&'a RefCell<ty::TypeckTables<'tcx>>>,
 }
 
@@ -193,7 +193,7 @@ impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
 /// Here, the function `foo()` and the closure passed to
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
-pub struct Inherited<'a, 'tcx: 'a> {
+pub struct Inherited<'a, 'tcx> {
     infcx: InferCtxt<'a, 'tcx>,
 
     tables: MaybeInProgressTables<'a, 'tcx>,
@@ -217,7 +217,7 @@ pub struct Inherited<'a, 'tcx: 'a> {
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
 
-    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>)>>,
+    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
 
     // Opaque types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
@@ -512,7 +512,7 @@ impl<'tcx> EnclosingBreakables<'tcx> {
     }
 }
 
-pub struct FnCtxt<'a, 'tcx: 'a> {
+pub struct FnCtxt<'a, 'tcx> {
     body_id: hir::HirId,
 
     /// The parameter environment used for proving trait obligations
@@ -622,7 +622,7 @@ impl Inherited<'a, 'tcx> {
     fn new(infcx: InferCtxt<'a, 'tcx>, def_id: DefId) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().as_local_hir_id(def_id);
-        let body_id = item_id.and_then(|id| tcx.hir().maybe_body_owned_by_by_hir_id(id));
+        let body_id = item_id.and_then(|id| tcx.hir().maybe_body_owned_by(id));
         let implicit_region_bound = body_id.map(|body_id| {
             let body = tcx.hir().body(body_id);
             tcx.mk_region(ty::ReScope(region::Scope {
@@ -821,7 +821,7 @@ fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::TypeckT
     }
 
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let span = tcx.hir().span_by_hir_id(id);
+    let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
     let (body_id, fn_decl) = primary_body_of(tcx, id).unwrap_or_else(|| {
@@ -919,7 +919,7 @@ fn check_abi<'tcx>(tcx: TyCtxt<'tcx>, span: Span, abi: Abi) {
     }
 }
 
-struct GatherLocalsVisitor<'a, 'tcx: 'a> {
+struct GatherLocalsVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     parent_id: hir::HirId,
 }
@@ -1071,7 +1071,7 @@ fn check_fn<'a, 'tcx>(
 
     let span = body.value.span;
 
-    if body.is_generator && can_be_generator.is_some() {
+    if body.generator_kind.is_some() && can_be_generator.is_some() {
         let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::TypeInference,
             span,
@@ -1108,12 +1108,12 @@ fn check_fn<'a, 'tcx>(
     // We insert the deferred_generator_interiors entry after visiting the body.
     // This ensures that all nested generators appear before the entry of this generator.
     // resolve_generator_interiors relies on this property.
-    let gen_ty = if can_be_generator.is_some() && body.is_generator {
+    let gen_ty = if let (Some(_), Some(gen_kind)) = (can_be_generator, body.generator_kind) {
         let interior = fcx.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::MiscVariable,
             span,
         });
-        fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior));
+        fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior, gen_kind));
         Some(GeneratorTypes {
             yield_ty: fcx.yield_ty.unwrap(),
             interior,
@@ -1193,7 +1193,7 @@ fn check_fn<'a, 'tcx>(
                 }
 
                 let inputs = fn_sig.inputs();
-                let span = fcx.tcx.hir().span_by_hir_id(fn_id);
+                let span = fcx.tcx.hir().span(fn_id);
                 if inputs.len() == 1 {
                     let arg_is_panic_info = match inputs[0].sty {
                         ty::Ref(region, ty, mutbl) => match ty.sty {
@@ -1246,7 +1246,7 @@ fn check_fn<'a, 'tcx>(
                 }
 
                 let inputs = fn_sig.inputs();
-                let span = fcx.tcx.hir().span_by_hir_id(fn_id);
+                let span = fcx.tcx.hir().span(fn_id);
                 if inputs.len() == 1 {
                     let arg_is_alloc_layout = match inputs[0].sty {
                         ty::Adt(ref adt, _) => {
@@ -1448,7 +1448,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
     };
     let param_env = ty::ParamEnv::reveal_all();
     if let Ok(static_) = tcx.const_eval(param_env.and(cid)) {
-        let alloc = if let ConstValue::ByRef(_, allocation) = static_.val {
+        let alloc = if let ConstValue::ByRef(_, _, allocation) = static_.val {
             allocation
         } else {
             bug!("Matching on non-ByRef static")
@@ -1788,32 +1788,71 @@ fn check_packed_inner<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, stack: &mut Vec<De
     false
 }
 
+/// Emit an error when encountering more or less than one variant in a transparent enum.
+fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, did: DefId) {
+    let variant_spans: Vec<_> = adt.variants.iter().map(|variant| {
+        tcx.hir().span_if_local(variant.def_id).unwrap()
+    }).collect();
+    let msg = format!(
+        "needs exactly one variant, but has {}",
+        adt.variants.len(),
+    );
+    let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
+    err.span_label(sp, &msg);
+    if let &[ref start.., ref end] = &variant_spans[..] {
+        for variant_span in start {
+            err.span_label(*variant_span, "");
+        }
+        err.span_label(*end, &format!("too many variants in `{}`", tcx.def_path_str(did)));
+    }
+    err.emit();
+}
+
+/// Emit an error when encountering more or less than one non-zero-sized field in a transparent
+/// enum.
+fn bad_non_zero_sized_fields<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adt: &'tcx ty::AdtDef,
+    field_count: usize,
+    field_spans: impl Iterator<Item = Span>,
+    sp: Span,
+) {
+    let msg = format!("needs exactly one non-zero-sized field, but has {}", field_count);
+    let mut err = struct_span_err!(
+        tcx.sess,
+        sp,
+        E0690,
+        "{}transparent {} {}",
+        if adt.is_enum() { "the variant of a " } else { "" },
+        adt.descr(),
+        msg,
+    );
+    err.span_label(sp, &msg);
+    for sp in field_spans {
+        err.span_label(sp, "this field is non-zero-sized");
+    }
+    err.emit();
+}
+
 fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, def_id: DefId) {
     let adt = tcx.adt_def(def_id);
     if !adt.repr.transparent() {
         return;
     }
+    let sp = tcx.sess.source_map().def_span(sp);
 
     if adt.is_enum() {
         if !tcx.features().transparent_enums {
-            emit_feature_err(&tcx.sess.parse_sess,
-                             sym::transparent_enums,
-                             sp,
-                             GateIssue::Language,
-                             "transparent enums are unstable");
+            emit_feature_err(
+                &tcx.sess.parse_sess,
+                sym::transparent_enums,
+                sp,
+                GateIssue::Language,
+                "transparent enums are unstable",
+            );
         }
         if adt.variants.len() != 1 {
-            let variant_spans: Vec<_> = adt.variants.iter().map(|variant| {
-                tcx.hir().span_if_local(variant.def_id).unwrap()
-            }).collect();
-            let mut err = struct_span_err!(tcx.sess, sp, E0731,
-                            "transparent enum needs exactly one variant, but has {}",
-                            adt.variants.len());
-            if !variant_spans.is_empty() {
-                err.span_note(variant_spans, &format!("the following variants exist on `{}`",
-                                                      tcx.def_path_str(def_id)));
-            }
-            err.emit();
+            bad_variant_count(tcx, adt, sp, def_id);
             if adt.variants.is_empty() {
                 // Don't bother checking the fields. No variants (and thus no fields) exist.
                 return;
@@ -1841,28 +1880,24 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, def_id: DefId) {
         (span, zst, align1)
     });
 
-    let non_zst_fields = field_infos.clone().filter(|(_span, zst, _align1)| !*zst);
+    let non_zst_fields = field_infos.clone().filter_map(|(span, zst, _align1)| if !zst {
+        Some(span)
+    } else {
+        None
+    });
     let non_zst_count = non_zst_fields.clone().count();
     if non_zst_count != 1 {
-        let field_spans: Vec<_> = non_zst_fields.map(|(span, _zst, _align1)| span).collect();
-
-        let mut err = struct_span_err!(tcx.sess, sp, E0690,
-                         "{}transparent {} needs exactly one non-zero-sized field, but has {}",
-                         if adt.is_enum() { "the variant of a " } else { "" },
-                         adt.descr(),
-                         non_zst_count);
-        if !field_spans.is_empty() {
-            err.span_note(field_spans,
-                          &format!("the following non-zero-sized fields exist on `{}`:",
-                                   tcx.def_path_str(def_id)));
-        }
-        err.emit();
+        bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, sp);
     }
     for (span, zst, align1) in field_infos {
         if zst && !align1 {
-            span_err!(tcx.sess, span, E0691,
-                      "zero-sized field in transparent {} has alignment larger than 1",
-                      adt.descr());
+            struct_span_err!(
+                tcx.sess,
+                span,
+                E0691,
+                "zero-sized field in transparent {} has alignment larger than 1",
+                adt.descr(),
+            ).span_label(span, "has alignment larger than 1").emit();
         }
     }
 }
@@ -1909,11 +1944,11 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
             let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did).unwrap();
             let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
             let i_span = match variant_i.node.disr_expr {
-                Some(ref expr) => tcx.hir().span_by_hir_id(expr.hir_id),
-                None => tcx.hir().span_by_hir_id(variant_i_hir_id)
+                Some(ref expr) => tcx.hir().span(expr.hir_id),
+                None => tcx.hir().span(variant_i_hir_id)
             };
             let span = match v.node.disr_expr {
-                Some(ref expr) => tcx.hir().span_by_hir_id(expr.hir_id),
+                Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => v.span
             };
             struct_span_err!(tcx.sess, span, E0081,
@@ -2181,7 +2216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn local_ty(&self, span: Span, nid: hir::HirId) -> LocalTy<'tcx> {
         self.locals.borrow().get(&nid).cloned().unwrap_or_else(||
             span_bug!(span, "no type for local variable {}",
-                      self.tcx.hir().hir_to_string(nid))
+                      self.tcx.hir().node_to_string(nid))
         )
     }
 
@@ -2517,9 +2552,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(&t) => t,
             None if self.is_tainted_by_errors() => self.tcx.types.err,
             None => {
-                let node_id = self.tcx.hir().hir_to_node_id(id);
                 bug!("no type for node {}: {} in fcx {}",
-                     node_id, self.tcx.hir().node_to_string(node_id),
+                     id, self.tcx.hir().node_to_string(id),
                      self.tag());
             }
         }
@@ -2599,9 +2633,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
-        for (body_id, interior) in generators.drain(..) {
+        for (body_id, interior, kind) in generators.drain(..) {
             self.select_obligations_where_possible(false);
-            generator_interior::resolve_interior(self, def_id, body_id, interior);
+            generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
         }
     }
 
@@ -3662,39 +3696,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
-    fn get_parent_fn_decl(&self, blk_id: hir::HirId) -> Option<(hir::FnDecl, ast::Ident)> {
+    fn get_parent_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl, ast::Ident)> {
         let parent = self.tcx.hir().get_by_hir_id(self.tcx.hir().get_parent_item(blk_id));
         self.get_node_fn_decl(parent).map(|(fn_decl, ident, _)| (fn_decl, ident))
     }
 
     /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
-    fn get_node_fn_decl(&self, node: Node<'_>) -> Option<(hir::FnDecl, ast::Ident, bool)> {
+    fn get_node_fn_decl(&self, node: Node<'tcx>) -> Option<(&'tcx hir::FnDecl, ast::Ident, bool)> {
         match node {
             Node::Item(&hir::Item {
                 ident, node: hir::ItemKind::Fn(ref decl, ..), ..
-            }) => decl.clone().and_then(|decl| {
+            }) => {
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
                 Some((decl, ident, ident.name != sym::main))
-            }),
+            }
             Node::TraitItem(&hir::TraitItem {
                 ident, node: hir::TraitItemKind::Method(hir::MethodSig {
                     ref decl, ..
                 }, ..), ..
-            }) => decl.clone().and_then(|decl| Some((decl, ident, true))),
+            }) => Some((decl, ident, true)),
             Node::ImplItem(&hir::ImplItem {
                 ident, node: hir::ImplItemKind::Method(hir::MethodSig {
                     ref decl, ..
                 }, ..), ..
-            }) => decl.clone().and_then(|decl| Some((decl, ident, false))),
+            }) => Some((decl, ident, false)),
             _ => None,
         }
     }
 
     /// Given a `HirId`, return the `FnDecl` of the method it is enclosed by and whether a
     /// suggestion can be made, `None` otherwise.
-    pub fn get_fn_decl(&self, blk_id: hir::HirId) -> Option<(hir::FnDecl, bool)> {
+    pub fn get_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {
@@ -3923,52 +3957,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Some(original_span.with_lo(original_span.hi() - BytePos(1)))
     }
 
-    // Rewrite `SelfCtor` to `Ctor`
-    pub fn rewrite_self_ctor(
-        &self,
-        res: Res,
-        span: Span,
-    ) -> Result<Res, ErrorReported> {
-        let tcx = self.tcx;
-        if let Res::SelfCtor(impl_def_id) = res {
-            let ty = self.impl_self_ty(span, impl_def_id).ty;
-            let adt_def = ty.ty_adt_def();
-
-            match adt_def {
-                Some(adt_def) if adt_def.has_ctor() => {
-                    let variant = adt_def.non_enum_variant();
-                    let ctor_def_id = variant.ctor_def_id.unwrap();
-                    Ok(Res::Def(DefKind::Ctor(CtorOf::Struct, variant.ctor_kind), ctor_def_id))
-                }
-                _ => {
-                    let mut err = tcx.sess.struct_span_err(span,
-                        "the `Self` constructor can only be used with tuple or unit structs");
-                    if let Some(adt_def) = adt_def {
-                        match adt_def.adt_kind() {
-                            AdtKind::Enum => {
-                                err.help("did you mean to use one of the enum's variants?");
-                            },
-                            AdtKind::Struct |
-                            AdtKind::Union => {
-                                err.span_suggestion(
-                                    span,
-                                    "use curly brackets",
-                                    String::from("Self { /* fields */ }"),
-                                    Applicability::HasPlaceholders,
-                                );
-                            }
-                        }
-                    }
-                    err.emit();
-
-                    Err(ErrorReported)
-                }
-            }
-        } else {
-            Ok(res)
-        }
-    }
-
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
     pub fn instantiate_value_path(&self,
@@ -3988,12 +3976,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
 
-        let res = match self.rewrite_self_ctor(res, span) {
-            Ok(res) => res,
-            Err(ErrorReported) => return (tcx.types.err, res),
-        };
         let path_segs = match res {
-            Res::Local(_) => vec![],
+            Res::Local(_) | Res::SelfCtor(_) => vec![],
             Res::Def(kind, def_id) =>
                 AstConv::def_ids_for_value_path_segments(self, segments, self_ty, kind, def_id),
             _ => bug!("instantiate_value_path on {:?}", res),
@@ -4098,13 +4082,53 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tcx.generics_of(*def_id).has_self
         }).unwrap_or(false);
 
+        let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
+            let ty = self.impl_self_ty(span, impl_def_id).ty;
+            let adt_def = ty.ty_adt_def();
+
+            match ty.sty {
+                ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
+                    let variant = adt_def.non_enum_variant();
+                    let ctor_def_id = variant.ctor_def_id.unwrap();
+                    (
+                        Res::Def(DefKind::Ctor(CtorOf::Struct, variant.ctor_kind), ctor_def_id),
+                        Some(substs),
+                    )
+                }
+                _ => {
+                    let mut err = tcx.sess.struct_span_err(span,
+                        "the `Self` constructor can only be used with tuple or unit structs");
+                    if let Some(adt_def) = adt_def {
+                        match adt_def.adt_kind() {
+                            AdtKind::Enum => {
+                                err.help("did you mean to use one of the enum's variants?");
+                            },
+                            AdtKind::Struct |
+                            AdtKind::Union => {
+                                err.span_suggestion(
+                                    span,
+                                    "use curly brackets",
+                                    String::from("Self { /* fields */ }"),
+                                    Applicability::HasPlaceholders,
+                                );
+                            }
+                        }
+                    }
+                    err.emit();
+
+                    return (tcx.types.err, res)
+                }
+            }
+        } else {
+            (res, None)
+        };
         let def_id = res.def_id();
 
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
         let ty = tcx.type_of(def_id);
 
-        let substs = AstConv::create_substs_for_generic_args(
+        let substs = self_ctor_substs.unwrap_or_else(|| AstConv::create_substs_for_generic_args(
             tcx,
             def_id,
             &[][..],
@@ -4174,7 +4198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             },
-        );
+        ));
         assert!(!substs.has_escaping_bound_vars());
         assert!(!ty.has_escaping_bound_vars());
 
@@ -4364,7 +4388,7 @@ pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, t
     for (&used, param) in types_used.iter().zip(types) {
         if !used {
             let id = tcx.hir().as_local_hir_id(param.def_id).unwrap();
-            let span = tcx.hir().span_by_hir_id(id);
+            let span = tcx.hir().span(id);
             struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name)
                 .span_label(span, "unused type parameter")
                 .emit();

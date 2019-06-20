@@ -139,7 +139,7 @@ impl context::ResolventOps<ChalkArenas<'tcx>, ChalkArenas<'tcx>>
     }
 }
 
-struct AnswerSubstitutor<'cx, 'tcx: 'cx> {
+struct AnswerSubstitutor<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     environment: Environment<'tcx>,
     answer_subst: CanonicalVarValues<'tcx>,

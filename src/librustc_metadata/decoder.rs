@@ -35,10 +35,10 @@ use syntax::ext::hygiene::Mark;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
 use log::debug;
 
-pub struct DecodeContext<'a, 'tcx: 'a> {
+pub struct DecodeContext<'a, 'tcx> {
     opaque: opaque::Decoder<'a>,
     cdata: Option<&'a CrateMetadata>,
-    sess: Option<&'a Session>,
+    sess: Option<&'tcx Session>,
     tcx: Option<TyCtxt<'tcx>>,
 
     // Cache the last used source_file for translating spans as an optimization.
@@ -54,10 +54,8 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
 pub trait Metadata<'a, 'tcx>: Copy {
     fn raw_bytes(self) -> &'a [u8];
     fn cdata(self) -> Option<&'a CrateMetadata> { None }
-    fn sess(self) -> Option<&'a Session> { None }
-    fn tcx(self) -> Option<TyCtxt<'tcx>> {
-        None
-        }
+    fn sess(self) -> Option<&'tcx Session> { None }
+    fn tcx(self) -> Option<TyCtxt<'tcx>> { None }
 
     fn decoder(self, pos: usize) -> DecodeContext<'a, 'tcx> {
         let tcx = self.tcx();
@@ -82,13 +80,13 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a MetadataBlob {
 }
 
 
-impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a MetadataBlob, &'a Session) {
+impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a MetadataBlob, &'tcx Session) {
     fn raw_bytes(self) -> &'a [u8] {
         let (blob, _) = self;
         &blob.0
     }
 
-    fn sess(self) -> Option<&'a Session> {
+    fn sess(self) -> Option<&'tcx Session> {
         let (_, sess) = self;
         Some(sess)
     }
@@ -104,14 +102,14 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a CrateMetadata {
     }
 }
 
-impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, &'a Session) {
+impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, &'tcx Session) {
     fn raw_bytes(self) -> &'a [u8] {
         self.0.raw_bytes()
     }
     fn cdata(self) -> Option<&'a CrateMetadata> {
         Some(self.0)
     }
-    fn sess(self) -> Option<&'a Session> {
+    fn sess(self) -> Option<&'tcx Session> {
         Some(&self.1)
     }
 }
@@ -128,7 +126,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'tcx>) {
     }
 }
 
-impl<'a, 'tcx: 'a, T: Decodable> Lazy<T> {
+impl<'a, 'tcx, T: Decodable> Lazy<T> {
     pub fn decode<M: Metadata<'a, 'tcx>>(self, meta: M) -> T {
         let mut dcx = meta.decoder(self.position);
         dcx.lazy_state = LazyState::NodeStart(self.position);
@@ -136,11 +134,11 @@ impl<'a, 'tcx: 'a, T: Decodable> Lazy<T> {
     }
 }
 
-impl<'a, 'tcx: 'a, T: Decodable> LazySeq<T> {
+impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable> LazySeq<T> {
     pub fn decode<M: Metadata<'a, 'tcx>>(
         self,
         meta: M,
-    ) -> impl Iterator<Item = T> + Captures<'tcx> + 'a {
+    ) -> impl Iterator<Item = T> + Captures<'a> + Captures<'tcx> + 'x {
         let mut dcx = meta.decoder(self.position);
         dcx.lazy_state = LazyState::NodeStart(self.position);
         (0..self.len).map(move |_| T::decode(&mut dcx).unwrap())
@@ -511,8 +509,9 @@ impl<'a, 'tcx> CrateMetadata {
         if !self.is_proc_macro(index) {
             self.entry(index).kind.def_kind()
         } else {
-            let kind = self.proc_macros.as_ref().unwrap()[index.to_proc_macro_index()].1.kind();
-            Some(DefKind::Macro(kind))
+            Some(DefKind::Macro(
+                self.proc_macros.as_ref().unwrap()[index.to_proc_macro_index()].1.macro_kind()
+            ))
         }
     }
 
@@ -739,7 +738,7 @@ impl<'a, 'tcx> CrateMetadata {
             if id == CRATE_DEF_INDEX {
                 for (id, &(name, ref ext)) in proc_macros.iter().enumerate() {
                     let res = Res::Def(
-                        DefKind::Macro(ext.kind()),
+                        DefKind::Macro(ext.macro_kind()),
                         self.local_def_id(DefIndex::from_proc_macro_index(id)),
                     );
                     let ident = Ident::with_empty_ctxt(name);

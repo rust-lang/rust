@@ -616,7 +616,7 @@ fn compute_storage_conflicts(
     storage_conflicts
 }
 
-struct StorageConflictVisitor<'body, 'tcx: 'body, 's> {
+struct StorageConflictVisitor<'body, 'tcx, 's> {
     body: &'body Body<'tcx>,
     stored_locals: &'s liveness::LiveVarSet,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
@@ -624,8 +624,9 @@ struct StorageConflictVisitor<'body, 'tcx: 'body, 's> {
     local_conflicts: BitMatrix<Local, Local>,
 }
 
-impl<'body, 'tcx: 'body, 's> DataflowResultsConsumer<'body, 'tcx>
-for StorageConflictVisitor<'body, 'tcx, 's> {
+impl<'body, 'tcx, 's> DataflowResultsConsumer<'body, 'tcx>
+    for StorageConflictVisitor<'body, 'tcx, 's>
+{
     type FlowState = FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>;
 
     fn body(&self) -> &'body Body<'tcx> {
@@ -654,7 +655,7 @@ for StorageConflictVisitor<'body, 'tcx, 's> {
     }
 }
 
-impl<'body, 'tcx: 'body, 's> StorageConflictVisitor<'body, 'tcx, 's> {
+impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
     fn apply_state(&mut self,
                    flow_state: &FlowAtLocation<'tcx, MaybeStorageLive<'body, 'tcx>>,
                    loc: Location) {

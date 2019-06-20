@@ -1607,3 +1607,9 @@ pub fn maxnumf64(x: f64, y: f64) -> f64 {
     // Identical to the `f32` case.
     (if x < y || x != x { y } else { x }) * 1.0
 }
+
+/// For bootstrapping, implement unchecked_sub as just wrapping_sub.
+#[cfg(bootstrap)]
+pub unsafe fn unchecked_sub<T>(x: T, y: T) -> T {
+    sub_with_overflow(x, y).0
+}

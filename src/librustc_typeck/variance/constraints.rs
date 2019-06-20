@@ -12,7 +12,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use super::terms::*;
 use super::terms::VarianceTerm::*;
 
-pub struct ConstraintContext<'a, 'tcx: 'a> {
+pub struct ConstraintContext<'a, 'tcx> {
     pub terms_cx: TermsContext<'a, 'tcx>,
 
     // These are pointers to common `ConstantTerm` instances

@@ -164,7 +164,7 @@ impl InitializationData {
     }
 }
 
-struct Elaborator<'a, 'b: 'a, 'tcx: 'b> {
+struct Elaborator<'a, 'b, 'tcx> {
     init_data: &'a InitializationData,
     ctxt: &'a mut ElaborateDropsCtxt<'b, 'tcx>,
 }
@@ -285,7 +285,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     }
 }
 
-struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
+struct ElaborateDropsCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     env: &'a MoveDataParamEnv<'tcx>,

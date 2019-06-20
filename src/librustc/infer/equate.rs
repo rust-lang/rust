@@ -11,7 +11,7 @@ use crate::mir::interpret::ConstValue;
 use crate::infer::unify_key::replace_if_possible;
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
-pub struct Equate<'combine, 'infcx: 'combine, 'tcx: 'infcx> {
+pub struct Equate<'combine, 'infcx, 'tcx> {
     fields: &'combine mut CombineFields<'infcx, 'tcx>,
     a_is_expected: bool,
 }

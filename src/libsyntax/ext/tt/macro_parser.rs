@@ -156,7 +156,7 @@ type NamedMatchVec = SmallVec<[NamedMatch; 4]>;
 /// all the elements in that `SmallVec` strictly outlive the root stack slot
 /// lifetime. By separating `'tt` from `'root`, we can show that.
 #[derive(Clone)]
-struct MatcherPos<'root, 'tt: 'root> {
+struct MatcherPos<'root, 'tt> {
     /// The token or sequence of tokens that make up the matcher
     top_elts: TokenTreeOrTokenTreeSlice<'tt>,
 
@@ -233,7 +233,7 @@ impl<'root, 'tt> MatcherPos<'root, 'tt> {
 // Therefore, the initial MatcherPos is always allocated on the stack,
 // subsequent ones (of which there aren't that many) are allocated on the heap,
 // and this type is used to encapsulate both cases.
-enum MatcherPosHandle<'root, 'tt: 'root> {
+enum MatcherPosHandle<'root, 'tt> {
     Ref(&'root mut MatcherPos<'root, 'tt>),
     Box(Box<MatcherPos<'root, 'tt>>),
 }

@@ -469,11 +469,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             definition_ty
         );
 
-        // We can unwrap here because our reverse mapper always
-        // produces things with 'tcx lifetime, though the type folder
-        // obscures that.
-        let definition_ty = gcx.lift(&definition_ty).unwrap();
-
         definition_ty
     }
 }
@@ -723,7 +718,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
     }
 }
 
-struct Instantiator<'a, 'tcx: 'a> {
+struct Instantiator<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     parent_def_id: DefId,
     body_id: hir::HirId,
@@ -819,7 +814,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                             },
                             _ => bug!(
                                 "expected (impl) item, found {}",
-                                tcx.hir().hir_to_string(opaque_hir_id),
+                                tcx.hir().node_to_string(opaque_hir_id),
                             ),
                         };
                         if in_definition_scope {

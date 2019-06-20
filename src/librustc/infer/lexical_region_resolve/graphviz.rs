@@ -107,7 +107,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(
     }
 }
 
-struct ConstraintGraph<'a, 'tcx: 'a> {
+struct ConstraintGraph<'a, 'tcx> {
     graph_name: String,
     region_rels: &'a RegionRelations<'a, 'tcx>,
     map: &'a BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,

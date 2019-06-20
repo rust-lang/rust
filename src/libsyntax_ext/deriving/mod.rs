@@ -2,9 +2,10 @@
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::{self, MetaItem};
-use syntax::ext::base::{Annotatable, ExtCtxt, SyntaxExtension, Resolver, MultiItemModifier};
+use syntax::edition::Edition;
+use syntax::ext::base::{Annotatable, ExtCtxt, Resolver, MultiItemModifier};
+use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
 use syntax::ext::build::AstBuilder;
-use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
@@ -67,11 +68,25 @@ macro_rules! derive_traits {
             }
         }
 
-        pub fn register_builtin_derives(resolver: &mut dyn Resolver) {
+        pub fn register_builtin_derives(resolver: &mut dyn Resolver, edition: Edition) {
+            let allow_internal_unstable = Some([
+                sym::core_intrinsics,
+                sym::rustc_attrs,
+                Symbol::intern("derive_clone_copy"),
+                Symbol::intern("derive_eq"),
+                Symbol::intern("libstd_sys_internals"), // RustcDeserialize and RustcSerialize
+            ][..].into());
+
             $(
                 resolver.add_builtin(
                     ast::Ident::with_empty_ctxt(Symbol::intern($name)),
-                    Lrc::new(SyntaxExtension::LegacyDerive(Box::new(BuiltinDerive($func))))
+                    Lrc::new(SyntaxExtension {
+                        allow_internal_unstable: allow_internal_unstable.clone(),
+                        ..SyntaxExtension::default(
+                            SyntaxExtensionKind::LegacyDerive(Box::new(BuiltinDerive($func))),
+                            edition,
+                        )
+                    }),
                 );
             )*
         }
@@ -148,24 +163,11 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
 
 /// Constructs an expression that calls an intrinsic
 fn call_intrinsic(cx: &ExtCtxt<'_>,
-                  mut span: Span,
+                  span: Span,
                   intrinsic: &str,
                   args: Vec<P<ast::Expr>>)
                   -> P<ast::Expr> {
-    let intrinsic_allowed_via_allow_internal_unstable = cx
-        .current_expansion.mark.expn_info().unwrap()
-        .allow_internal_unstable.map_or(false, |features| features.iter().any(|&s|
-            s == sym::core_intrinsics
-        ));
-    if intrinsic_allowed_via_allow_internal_unstable {
-        span = span.with_ctxt(cx.backtrace());
-    } else { // Avoid instability errors with user defined curstom derives, cc #36316
-        let mut info = cx.current_expansion.mark.expn_info().unwrap();
-        info.allow_internal_unstable = Some(vec![sym::core_intrinsics].into());
-        let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(info);
-        span = span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
-    }
+    let span = span.with_ctxt(cx.backtrace());
     let path = cx.std_path(&[sym::intrinsics, Symbol::intern(intrinsic)]);
     let call = cx.expr_call_global(span, path, args);
 

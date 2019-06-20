@@ -19,7 +19,7 @@ use syntax::{
     mut_visit::{self, MutVisitor},
     parse::ParseSess,
     ptr::P,
-    symbol::{kw, sym, Symbol}
+    symbol::{kw, sym}
 };
 use syntax_pos::Span;
 
@@ -58,11 +58,10 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
     fn flat_map_item(&mut self, item: P<Item>) -> SmallVec<[P<Item>; 1]> {
         debug!("in submodule {}", self.in_submod);
 
-        let name = if attr::contains_name(&item.attrs, sym::global_allocator) {
-            "global_allocator"
-        } else {
+        if !attr::contains_name(&item.attrs, sym::global_allocator) {
             return mut_visit::noop_flat_map_item(item, self);
-        };
+        }
+
         match item.node {
             ItemKind::Static(..) => {}
             _ => {
@@ -87,15 +86,9 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
 
         // Create a fresh Mark for the new macro expansion we are about to do
         let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo {
-            call_site: item.span, // use the call site of the static
-            def_site: None,
-            format: MacroAttribute(Symbol::intern(name)),
-            allow_internal_unstable: Some(vec![sym::rustc_attrs].into()),
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
-            edition: self.sess.edition,
-        });
+        mark.set_expn_info(ExpnInfo::with_unstable(
+            MacroAttribute(sym::global_allocator), item.span, self.sess.edition, &[sym::rustc_attrs]
+        ));
 
         // Tie the span to the macro expansion info we just created
         let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark));

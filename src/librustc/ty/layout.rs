@@ -2711,7 +2711,7 @@ where
             }
 
             // If this is a C-variadic function, this is not the return value,
-            // and there is one or more fixed arguments; ensure that the `VaList`
+            // and there is one or more fixed arguments; ensure that the `VaListImpl`
             // is ignored as an argument.
             if sig.c_variadic {
                 match (last_arg_idx, arg_idx) {
@@ -2722,7 +2722,7 @@ where
                         };
                         match ty.sty {
                             ty::Adt(def, _) if def.did == va_list_did => {
-                                // This is the "spoofed" `VaList`. Set the arguments mode
+                                // This is the "spoofed" `VaListImpl`. Set the arguments mode
                                 // so that it will be ignored.
                                 arg.mode = PassMode::Ignore(IgnoreMode::CVarArgs);
                             }

@@ -49,7 +49,7 @@ pub struct InterpretCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 
 /// A stack frame.
 #[derive(Clone)]
-pub struct Frame<'mir, 'tcx: 'mir, Tag=(), Extra=()> {
+pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +195,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpretCx<'mir, 'tcx, M>
     }
 }
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>, machine: M) -> Self {
         InterpretCx {
             machine,
@@ -576,7 +576,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     self.place_to_op(return_place)?,
                     vec![],
                     None,
-                    /*const_mode*/false,
                 )?;
             }
         } else {
@@ -641,6 +640,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         &self,
         gid: GlobalId<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        // FIXME(oli-obk): make this check an assertion that it's not a static here
+        // FIXME(RalfJ, oli-obk): document that `Place::Static` can never be anything but a static
+        // and `ConstValue::Unevaluated` can never be a static
         let param_env = if self.tcx.is_static(gid.instance.def_id()) {
             ty::ParamEnv::reveal_all()
         } else {

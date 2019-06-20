@@ -51,7 +51,7 @@ use rls_data::config::Config;
 use log::{debug, error, info};
 
 
-pub struct SaveContext<'l, 'tcx: 'l> {
+pub struct SaveContext<'l, 'tcx> {
     tcx: TyCtxt<'tcx>,
     tables: &'l ty::TypeckTables<'tcx>,
     access_levels: &'l AccessLevels,
@@ -67,7 +67,7 @@ pub enum Data {
     RelationData(Relation, Impl),
 }
 
-impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
+impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     fn span_from_span(&self, span: Span) -> SpanData {
         use rls_span::{Column, Row};
 
@@ -960,8 +960,8 @@ impl<'l> PathCollector<'l> {
     }
 }
 
-impl<'l, 'a: 'l> Visitor<'a> for PathCollector<'l> {
-    fn visit_pat(&mut self, p: &'a ast::Pat) {
+impl<'l> Visitor<'l> for PathCollector<'l> {
+    fn visit_pat(&mut self, p: &'l ast::Pat) {
         match p.node {
             PatKind::Struct(ref path, ..) => {
                 self.collected_paths.push((p.id, path));

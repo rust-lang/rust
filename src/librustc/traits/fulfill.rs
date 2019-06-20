@@ -224,7 +224,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 }
 
-struct FulfillProcessor<'a, 'b: 'a, 'tcx: 'b> {
+struct FulfillProcessor<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     register_region_obligations: bool,
 }

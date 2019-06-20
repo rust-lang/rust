@@ -47,7 +47,7 @@ fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> Diagn
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
-struct MatchVisitor<'a, 'tcx: 'a> {
+struct MatchVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body_owner: DefId,
     tables: &'a ty::TypeckTables<'tcx>,
@@ -161,7 +161,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        let module = self.tcx.hir().get_module_parent_by_hir_id(scrut.hir_id);
+        let module = self.tcx.hir().get_module_parent(scrut.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut have_errors = false;
 
@@ -193,7 +193,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
             let pat_ty = self.tables.node_type(scrut.hir_id);
-            let module = self.tcx.hir().get_module_parent_by_hir_id(scrut.hir_id);
+            let module = self.tcx.hir().get_module_parent(scrut.hir_id);
             let mut def_span = None;
             let mut missing_variants = vec![];
             if inlined_arms.is_empty() {
@@ -261,7 +261,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
-        let module = self.tcx.hir().get_module_parent_by_hir_id(pat.hir_id);
+        let module = self.tcx.hir().get_module_parent(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
@@ -439,7 +439,7 @@ fn check_arms<'a, 'tcx>(
     }
 }
 
-fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(
+fn check_exhaustive<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     scrut_ty: Ty<'tcx>,
     sp: Span,
@@ -642,7 +642,7 @@ fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard) {
     };
 }
 
-struct MutationChecker<'a, 'tcx: 'a> {
+struct MutationChecker<'a, 'tcx> {
     cx: &'a MatchVisitor<'a, 'tcx>,
 }
 
@@ -691,7 +691,7 @@ fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pa
     AtBindingPatternVisitor { cx: cx, bindings_allowed: true }.visit_pat(pat);
 }
 
-struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
+struct AtBindingPatternVisitor<'a, 'b, 'tcx> {
     cx: &'a MatchVisitor<'b, 'tcx>,
     bindings_allowed: bool
 }

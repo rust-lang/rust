@@ -73,7 +73,7 @@ pub struct NormalizationResult<'tcx> {
     pub normalized_ty: Ty<'tcx>,
 }
 
-struct QueryNormalizer<'cx, 'tcx: 'cx> {
+struct QueryNormalizer<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     cause: &'cx ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -203,7 +203,6 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                             promoted: None,
                         };
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                            let substs = tcx.lift_to_global(&substs).unwrap();
                             let evaluated = evaluated.subst(tcx, substs);
                             return evaluated;
                         }

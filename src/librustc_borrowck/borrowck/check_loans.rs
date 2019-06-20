@@ -78,7 +78,7 @@ fn owned_ptr_base_path_rc<'tcx>(loan_path: &Rc<LoanPath<'tcx>>) -> Rc<LoanPath<'
     }
 }
 
-struct CheckLoanCtxt<'a, 'tcx: 'a> {
+struct CheckLoanCtxt<'a, 'tcx> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
     dfcx_loans: &'a LoanDataFlow<'tcx>,
     move_data: &'a move_data::FlowedMoveData<'tcx>,

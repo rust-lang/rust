@@ -16,6 +16,6 @@ pub fn main() {
 
     if args.len() >= 2 && args[1] == "signal" {
         // Raise a segfault.
-        unsafe { *(0 as *mut isize) = 0; }
+        unsafe { *std::ptr::null_mut::<isize>() = 0; }
     }
 }

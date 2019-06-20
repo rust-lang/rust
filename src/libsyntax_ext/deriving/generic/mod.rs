@@ -339,14 +339,15 @@ pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
 /// This method helps to extract all the type parameters referenced from a
 /// type. For a type parameter `<T>`, it looks for either a `TyPath` that
 /// is not global and starts with `T`, or a `TyQPath`.
-fn find_type_parameters(ty: &ast::Ty,
-                        ty_param_names: &[ast::Name],
-                        span: Span,
-                        cx: &ExtCtxt<'_>)
-                        -> Vec<P<ast::Ty>> {
+fn find_type_parameters(
+    ty: &ast::Ty,
+    ty_param_names: &[ast::Name],
+    span: Span,
+    cx: &ExtCtxt<'_>,
+) -> Vec<P<ast::Ty>> {
     use syntax::visit;
 
-    struct Visitor<'a, 'b: 'a> {
+    struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
         span: Span,
         ty_param_names: &'a [ast::Name],

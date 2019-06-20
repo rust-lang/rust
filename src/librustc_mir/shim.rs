@@ -248,7 +248,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     body
 }
 
-pub struct DropShimElaborator<'a, 'tcx: 'a> {
+pub struct DropShimElaborator<'a, 'tcx> {
     pub body: &'a Body<'tcx>,
     pub patch: MirPatch<'tcx>,
     pub tcx: TyCtxt<'tcx>,

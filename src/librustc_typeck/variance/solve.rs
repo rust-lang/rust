@@ -14,7 +14,7 @@ use super::terms::*;
 use super::terms::VarianceTerm::*;
 use super::xform::*;
 
-struct SolveContext<'a, 'tcx: 'a> {
+struct SolveContext<'a, 'tcx> {
     terms_cx: TermsContext<'a, 'tcx>,
     constraints: Vec<Constraint<'a>>,
 

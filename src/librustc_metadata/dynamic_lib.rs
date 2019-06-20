@@ -115,7 +115,7 @@ mod dl {
     {
         use std::sync::{Mutex, Once};
         static INIT: Once = Once::new();
-        static mut LOCK: *mut Mutex<()> = 0 as *mut _;
+        static mut LOCK: *mut Mutex<()> = ptr::null_mut();
         unsafe {
             INIT.call_once(|| {
                 LOCK = Box::into_raw(Box::new(Mutex::new(())));

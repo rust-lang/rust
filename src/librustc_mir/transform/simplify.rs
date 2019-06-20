@@ -63,12 +63,12 @@ impl MirPass for SimplifyCfg {
     }
 }
 
-pub struct CfgSimplifier<'a, 'tcx: 'a> {
+pub struct CfgSimplifier<'a, 'tcx> {
     basic_blocks: &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     pred_count: IndexVec<BasicBlock, u32>
 }
 
-impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
+impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     pub fn new(body: &'a mut Body<'tcx>) -> Self {
         let mut pred_count = IndexVec::from_elem(0u32, body.basic_blocks());
 

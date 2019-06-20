@@ -41,7 +41,7 @@ use std::collections::hash_map::Entry;
 use super::InferCtxt;
 use super::unify_key::ToType;
 
-pub struct TypeFreshener<'a, 'tcx: 'a> {
+pub struct TypeFreshener<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     ty_freshen_count: u32,
     const_freshen_count: u32,

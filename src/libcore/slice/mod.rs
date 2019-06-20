@@ -25,7 +25,7 @@
 use crate::cmp::Ordering::{self, Less, Equal, Greater};
 use crate::cmp;
 use crate::fmt;
-use crate::intrinsics::assume;
+use crate::intrinsics::{assume, exact_div, unchecked_sub};
 use crate::isize;
 use crate::iter::*;
 use crate::ops::{FnMut, Try, self};
@@ -44,19 +44,6 @@ pub mod memchr;
 
 mod rotate;
 mod sort;
-
-#[repr(C)]
-union Repr<'a, T: 'a> {
-    rust: &'a [T],
-    rust_mut: &'a mut [T],
-    raw: FatPtr<T>,
-}
-
-#[repr(C)]
-struct FatPtr<T> {
-    data: *const T,
-    len: usize,
-}
 
 //
 // Extension traits
@@ -78,7 +65,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_slice_len")]
     pub const fn len(&self) -> usize {
         unsafe {
-            Repr { rust: self }.raw.len
+            crate::ptr::Repr { rust: self }.raw.len
         }
     }
 
@@ -2998,14 +2985,27 @@ macro_rules! is_empty {
 // unexpected way. (Tested by `codegen/slice-position-bounds-check`.)
 macro_rules! len {
     ($self: ident) => {{
+        #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
+
         let start = $self.ptr;
-        let diff = ($self.end as usize).wrapping_sub(start as usize);
         let size = size_from_ptr(start);
         if size == 0 {
+            // This _cannot_ use `unchecked_sub` because we depend on wrapping
+            // to represent the length of long ZST slice iterators.
+            let diff = ($self.end as usize).wrapping_sub(start as usize);
             diff
         } else {
-            // Using division instead of `offset_from` helps LLVM remove bounds checks
-            diff / size
+            // We know that `start <= end`, so can do better than `offset_from`,
+            // which needs to deal in signed.  By setting appropriate flags here
+            // we can tell LLVM this, which helps it remove bounds checks.
+            // SAFETY: By the type invariant, `start <= end`
+            let diff = unsafe { unchecked_sub($self.end as usize, start as usize) };
+            // By also telling LLVM that the pointers are apart by an exact
+            // multiple of the type size, it can optimize `len() == 0` down to
+            // `start == end` instead of `(end - start) < size`.
+            // SAFETY: By the type invariant, the pointers are aligned so the
+            //         distance between them must be a multiple of pointee size
+            unsafe { exact_div(diff, size) }
         }
     }}
 }
@@ -3019,6 +3019,28 @@ macro_rules! iterator {
         {$( $mut_:tt )*},
         {$($extra:tt)*}
     ) => {
+        // Returns the first element and moves the start of the iterator forwards by 1.
+        // Greatly improves performance compared to an inlined function. The iterator
+        // must not be empty.
+        macro_rules! next_unchecked {
+            ($self: ident) => {& $( $mut_ )* *$self.post_inc_start(1)}
+        }
+
+        // Returns the last element and moves the end of the iterator backwards by 1.
+        // Greatly improves performance compared to an inlined function. The iterator
+        // must not be empty.
+        macro_rules! next_back_unchecked {
+            ($self: ident) => {& $( $mut_ )* *$self.pre_dec_end(1)}
+        }
+
+        // Shrinks the iterator when T is a ZST, by moving the end of the iterator
+        // backwards by `n`. `n` must not exceed `self.len()`.
+        macro_rules! zst_shrink {
+            ($self: ident, $n: ident) => {
+                $self.end = ($self.end as * $raw_mut u8).wrapping_offset(-$n) as * $raw_mut T;
+            }
+        }
+
         impl<'a, T> $name<'a, T> {
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
@@ -3028,12 +3050,11 @@ macro_rules! iterator {
 
             // Helper function for moving the start of the iterator forwards by `offset` elements,
             // returning the old start.
-            // Unsafe because the offset must be in-bounds or one-past-the-end.
+            // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn post_inc_start(&mut self, offset: isize) -> * $raw_mut T {
                 if mem::size_of::<T>() == 0 {
-                    // This is *reducing* the length.  `ptr` never changes with ZST.
-                    self.end = (self.end as * $raw_mut u8).wrapping_offset(-offset) as * $raw_mut T;
+                    zst_shrink!(self, offset);
                     self.ptr
                 } else {
                     let old = self.ptr;
@@ -3044,11 +3065,11 @@ macro_rules! iterator {
 
             // Helper function for moving the end of the iterator backwards by `offset` elements,
             // returning the new end.
-            // Unsafe because the offset must be in-bounds or one-past-the-end.
+            // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn pre_dec_end(&mut self, offset: isize) -> * $raw_mut T {
                 if mem::size_of::<T>() == 0 {
-                    self.end = (self.end as * $raw_mut u8).wrapping_offset(-offset) as * $raw_mut T;
+                    zst_shrink!(self, offset);
                     self.ptr
                 } else {
                     self.end = self.end.offset(-offset);
@@ -3085,7 +3106,7 @@ macro_rules! iterator {
                     if is_empty!(self) {
                         None
                     } else {
-                        Some(& $( $mut_ )* *self.post_inc_start(1))
+                        Some(next_unchecked!(self))
                     }
                 }
             }
@@ -3114,11 +3135,10 @@ macro_rules! iterator {
                     }
                     return None;
                 }
-                // We are in bounds. `offset` does the right thing even for ZSTs.
+                // We are in bounds. `post_inc_start` does the right thing even for ZSTs.
                 unsafe {
-                    let elem = Some(& $( $mut_ )* *self.ptr.add(n));
-                    self.post_inc_start((n as isize).wrapping_add(1));
-                    elem
+                    self.post_inc_start(n as isize);
+                    Some(next_unchecked!(self))
                 }
             }
 
@@ -3135,13 +3155,13 @@ macro_rules! iterator {
                 let mut accum = init;
                 unsafe {
                     while len!(self) >= 4 {
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
+                        accum = f(accum, next_unchecked!(self))?;
+                        accum = f(accum, next_unchecked!(self))?;
+                        accum = f(accum, next_unchecked!(self))?;
+                        accum = f(accum, next_unchecked!(self))?;
                     }
                     while !is_empty!(self) {
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
+                        accum = f(accum, next_unchecked!(self))?;
                     }
                 }
                 Try::from_ok(accum)
@@ -3212,8 +3232,22 @@ macro_rules! iterator {
                     if is_empty!(self) {
                         None
                     } else {
-                        Some(& $( $mut_ )* *self.pre_dec_end(1))
+                        Some(next_back_unchecked!(self))
                     }
+                }
+            }
+
+            #[inline]
+            fn nth_back(&mut self, n: usize) -> Option<$elem> {
+                if n >= len!(self) {
+                    // This iterator is now empty.
+                    self.end = self.ptr;
+                    return None;
+                }
+                // We are in bounds. `pre_dec_end` does the right thing even for ZSTs.
+                unsafe {
+                    self.pre_dec_end(n as isize);
+                    Some(next_back_unchecked!(self))
                 }
             }
 
@@ -3225,14 +3259,14 @@ macro_rules! iterator {
                 let mut accum = init;
                 unsafe {
                     while len!(self) >= 4 {
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
                     }
                     // inlining is_empty everywhere makes a huge performance difference
                     while !is_empty!(self) {
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
                     }
                 }
                 Try::from_ok(accum)
@@ -5182,7 +5216,7 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
     debug_assert!(mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
                   "attempt to create slice covering half the address space");
-    Repr { raw: FatPtr { data, len } }.rust
+    &*ptr::slice_from_raw_parts(data, len)
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
@@ -5203,7 +5237,7 @@ pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T]
     debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
     debug_assert!(mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
                   "attempt to create slice covering half the address space");
-    Repr { raw: FatPtr { data, len } }.rust_mut
+    &mut *ptr::slice_from_raw_parts_mut(data, len)
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).

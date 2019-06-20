@@ -352,7 +352,7 @@ impl IrMaps<'tcx> {
     }
 }
 
-fn visit_fn<'a, 'tcx: 'a>(
+fn visit_fn<'tcx>(
     ir: &mut IrMaps<'tcx>,
     fk: FnKind<'tcx>,
     decl: &'tcx hir::FnDecl,
@@ -682,7 +682,7 @@ const ACC_READ: u32 = 1;
 const ACC_WRITE: u32 = 2;
 const ACC_USE: u32 = 4;
 
-struct Liveness<'a, 'tcx: 'a> {
+struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     s: Specials,
@@ -1171,7 +1171,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Call(ref f, ref args) => {
-                let m = self.ir.tcx.hir().get_module_parent_by_hir_id(expr.hir_id);
+                let m = self.ir.tcx.hir().get_module_parent(expr.hir_id);
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
                     self.s.exit_ln
                 } else {
@@ -1182,7 +1182,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::MethodCall(.., ref args) => {
-                let m = self.ir.tcx.hir().get_module_parent_by_hir_id(expr.hir_id);
+                let m = self.ir.tcx.hir().get_module_parent(expr.hir_id);
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(m, self.tables.expr_ty(expr)) {
                     self.s.exit_ln
                 } else {
@@ -1218,7 +1218,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Type(ref e, _) |
             hir::ExprKind::DropTemps(ref e) |
             hir::ExprKind::Unary(_, ref e) |
-            hir::ExprKind::Yield(ref e) |
+            hir::ExprKind::Yield(ref e, _) |
             hir::ExprKind::Repeat(ref e, _) => {
                 self.propagate_through_expr(&e, succ)
             }

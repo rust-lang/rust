@@ -65,7 +65,7 @@ fn method_might_be_inlined<'tcx>(
 }
 
 // Information needed while computing reachability.
-struct ReachableContext<'a, 'tcx: 'a> {
+struct ReachableContext<'a, 'tcx> {
     // The type context.
     tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
@@ -174,12 +174,12 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         } else {
                             let impl_did = self.tcx
                                                .hir()
-                                               .get_parent_did_by_hir_id(hir_id);
+                                               .get_parent_did(hir_id);
                             // Check the impl. If the generics on the self
                             // type of the impl require inlining, this method
                             // does too.
                             let impl_hir_id = self.tcx.hir().as_local_hir_id(impl_did).unwrap();
-                            match self.tcx.hir().expect_item_by_hir_id(impl_hir_id).node {
+                            match self.tcx.hir().expect_item(impl_hir_id).node {
                                 hir::ItemKind::Impl(..) => {
                                     let generics = self.tcx.generics_of(impl_did);
                                     generics.requires_monomorphization(self.tcx)
@@ -296,7 +296,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         self.visit_nested_body(body);
                     }
                     hir::ImplItemKind::Method(_, body) => {
-                        let did = self.tcx.hir().get_parent_did_by_hir_id(search_item);
+                        let did = self.tcx.hir().get_parent_did(search_item);
                         if method_might_be_inlined(self.tcx, impl_item, did) {
                             self.visit_nested_body(body)
                         }
@@ -318,7 +318,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",
-                    self.tcx.hir().hir_to_string(search_item),
+                    self.tcx.hir().node_to_string(search_item),
                     node,
                 );
             }
@@ -334,13 +334,13 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 // items of non-exported traits (or maybe all local traits?) unless their respective
 // trait items are used from inlinable code through method call syntax or UFCS, or their
 // trait is a lang item.
-struct CollectPrivateImplItemsVisitor<'a, 'tcx: 'a> {
+struct CollectPrivateImplItemsVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     access_levels: &'a privacy::AccessLevels,
     worklist: &'a mut Vec<hir::HirId>,
 }
 
-impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         // Anything which has custom linkage gets thrown on the worklist no
         // matter where it is in the crate, along with "special std symbols"

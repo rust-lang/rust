@@ -251,7 +251,7 @@ enum FieldAccessError {
 /// The sanitize_XYZ methods here take an MIR object and compute its
 /// type, calling `span_mirbug` and returning an error type if there
 /// is a problem.
-struct TypeVerifier<'a, 'b: 'a, 'tcx: 'b> {
+struct TypeVerifier<'a, 'b, 'tcx> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
     body: &'b Body<'tcx>,
     last_span: Span,
@@ -830,7 +830,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 /// constraints needed for it to be valid and well-typed. Along the
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
-struct TypeChecker<'a, 'tcx: 'a> {
+struct TypeChecker<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
@@ -845,7 +845,7 @@ struct TypeChecker<'a, 'tcx: 'a> {
     universal_region_relations: &'a UniversalRegionRelations<'tcx>,
 }
 
-struct BorrowCheckContext<'a, 'tcx: 'a> {
+struct BorrowCheckContext<'a, 'tcx> {
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a LocationTable,
     all_facts: &'a mut Option<AllFacts>,
@@ -1695,7 +1695,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         from_hir_call: bool,
     ) {
         debug!("check_call_inputs({:?}, {:?})", sig, args);
-        // Do not count the `VaList` argument as a "true" argument to
+        // Do not count the `VaListImpl` argument as a "true" argument to
         // a C-variadic function.
         let inputs = if sig.c_variadic {
             &sig.inputs()[..sig.inputs().len() - 1]
@@ -1864,7 +1864,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
         let gcx = tcx.global_tcx();
-        let erased_ty = gcx.lift(&tcx.erase_regions(&ty)).unwrap();
+        let erased_ty = tcx.erase_regions(&ty);
         if !erased_ty.is_sized(gcx.at(span), self.param_env) {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return
@@ -2650,7 +2650,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
     where
-        T: type_op::normalize::Normalizable<'tcx> + Copy,
+        T: type_op::normalize::Normalizable<'tcx> + Copy + 'tcx,
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
         let param_env = self.param_env;

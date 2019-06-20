@@ -71,7 +71,9 @@ pub fn codegen_static_initializer(
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
 
     let alloc = match static_.val {
-        ConstValue::ByRef(ptr, alloc) if ptr.offset.bytes() == 0 => alloc,
+        ConstValue::ByRef(ptr, align, alloc) if ptr.offset.bytes() == 0 && align == alloc.align => {
+            alloc
+        },
         _ => bug!("static const eval returned {:#?}", static_),
     };
     Ok((const_alloc_to_llvm(cx, alloc), alloc))

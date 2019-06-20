@@ -43,32 +43,31 @@ pub mod proc_macro_impl;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 
-use syntax::ext::base::{MacroExpanderFn, NamedSyntaxExtension, SyntaxExtension};
-use syntax::ext::hygiene::Transparency;
+use syntax::ext::base::MacroExpanderFn;
+use syntax::ext::base::{NamedSyntaxExtension, SyntaxExtension, SyntaxExtensionKind};
 use syntax::edition::Edition;
 use syntax::symbol::{sym, Symbol};
 
 pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
                          user_exts: Vec<NamedSyntaxExtension>,
                          edition: Edition) {
-    deriving::register_builtin_derives(resolver);
+    deriving::register_builtin_derives(resolver, edition);
 
     let mut register = |name, ext| {
         resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
     };
     macro_rules! register {
         ($( $name:ident: $f:expr, )*) => { $(
-            register(Symbol::intern(stringify!($name)),
-                     SyntaxExtension::LegacyBang {
-                        expander: Box::new($f as MacroExpanderFn),
-                        def_info: None,
-                        transparency: Transparency::SemiTransparent,
-                        allow_internal_unstable: None,
-                        allow_internal_unsafe: false,
-                        local_inner_macros: false,
-                        unstable_feature: None,
-                        edition,
-                    });
+            register(Symbol::intern(stringify!($name)), SyntaxExtension::default(
+                SyntaxExtensionKind::LegacyBang(Box::new($f as MacroExpanderFn)), edition
+            ));
+        )* }
+    }
+    macro_rules! register_attr {
+        ($( $name:ident: $f:expr, )*) => { $(
+            register(Symbol::intern(stringify!($name)), SyntaxExtension::default(
+                SyntaxExtensionKind::LegacyAttr(Box::new($f)), edition
+            ));
         )* }
     }
 
@@ -97,33 +96,26 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
         assert: assert::expand_assert,
     }
 
-    register(sym::test_case, SyntaxExtension::LegacyAttr(Box::new(test_case::expand)));
-    register(sym::test, SyntaxExtension::LegacyAttr(Box::new(test::expand_test)));
-    register(sym::bench, SyntaxExtension::LegacyAttr(Box::new(test::expand_bench)));
+    register_attr! {
+        test_case: test_case::expand,
+        test: test::expand_test,
+        bench: test::expand_bench,
+    }
 
     // format_args uses `unstable` things internally.
-    register(Symbol::intern("format_args"),
-             SyntaxExtension::LegacyBang {
-                expander: Box::new(format::expand_format_args),
-                def_info: None,
-                transparency: Transparency::SemiTransparent,
-                allow_internal_unstable: Some(vec![sym::fmt_internals].into()),
-                allow_internal_unsafe: false,
-                local_inner_macros: false,
-                unstable_feature: None,
-                edition,
-            });
-    register(sym::format_args_nl,
-             SyntaxExtension::LegacyBang {
-                 expander: Box::new(format::expand_format_args_nl),
-                 def_info: None,
-                 transparency: Transparency::SemiTransparent,
-                 allow_internal_unstable: Some(vec![sym::fmt_internals].into()),
-                 allow_internal_unsafe: false,
-                 local_inner_macros: false,
-                 unstable_feature: None,
-                 edition,
-             });
+    let allow_internal_unstable = Some([sym::fmt_internals][..].into());
+    register(Symbol::intern("format_args"), SyntaxExtension {
+        allow_internal_unstable: allow_internal_unstable.clone(),
+        ..SyntaxExtension::default(
+            SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args)), edition
+        )
+    });
+    register(sym::format_args_nl, SyntaxExtension {
+        allow_internal_unstable,
+        ..SyntaxExtension::default(
+            SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args_nl)), edition
+        )
+    });
 
     for (name, ext) in user_exts {
         register(name, ext);

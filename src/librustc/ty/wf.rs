@@ -101,7 +101,7 @@ pub fn predicate_obligations<'a, 'tcx>(
     wf.normalize()
 }
 
-struct WfPredicates<'a, 'tcx: 'a> {
+struct WfPredicates<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,

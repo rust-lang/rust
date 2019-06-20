@@ -26,7 +26,7 @@ pub struct PlaceRef<'tcx, V> {
     pub align: Align,
 }
 
-impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
+impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(
         llval: V,
         layout: TyLayout<'tcx>,
@@ -98,7 +98,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
 
 }
 
-impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
+impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     /// Access a field, at a point when the value's case is known.
     pub fn project_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self, bx: &mut Bx,
@@ -386,7 +386,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 }
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_place(
         &mut self,
         bx: &mut Bx,
@@ -424,8 +424,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 match bx.tcx().const_eval(param_env.and(cid)) {
                     Ok(val) => match val.val {
-                        mir::interpret::ConstValue::ByRef(ptr, alloc) => {
-                            bx.cx().from_const_alloc(layout, alloc, ptr.offset)
+                        mir::interpret::ConstValue::ByRef(ptr, align, alloc) => {
+                            bx.cx().from_const_alloc(layout, align, alloc, ptr.offset)
                         }
                         _ => bug!("promoteds should have an allocation: {:?}", val),
                     },

@@ -121,7 +121,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx>) {
 
     for extern_crate in &crates_to_lint {
         let id = tcx.hir().as_local_hir_id(extern_crate.def_id).unwrap();
-        let item = tcx.hir().expect_item_by_hir_id(id);
+        let item = tcx.hir().expect_item(id);
 
         // If the crate is fully unused, we suggest removing it altogether.
         // We do this in any edition.
@@ -194,7 +194,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx>) {
     }
 }
 
-struct CollectExternCrateVisitor<'a, 'tcx: 'a> {
+struct CollectExternCrateVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     crates_to_lint: &'a mut Vec<ExternCrateToLint>,
 }

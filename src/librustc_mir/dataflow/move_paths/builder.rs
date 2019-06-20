@@ -12,7 +12,7 @@ use super::{LocationMap, MoveData, MovePath, MovePathLookup, MovePathIndex, Move
 use super::{MoveError, InitIndex, Init, InitLocation, LookupResult, InitKind};
 use super::IllegalMoveOriginKind::*;
 
-struct MoveDataBuilder<'a, 'tcx: 'a> {
+struct MoveDataBuilder<'a, 'tcx> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     data: MoveData<'tcx>,
@@ -253,7 +253,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     }
 }
 
-struct Gatherer<'b, 'a: 'b, 'tcx: 'a> {
+struct Gatherer<'b, 'a, 'tcx> {
     builder: &'b mut MoveDataBuilder<'a, 'tcx>,
     loc: Location,
 }

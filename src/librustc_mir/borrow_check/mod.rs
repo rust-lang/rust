@@ -177,7 +177,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
 
-    let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind_by_hir_id(id).is_fn_or_closure();
+    let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(id).is_fn_or_closure();
     let borrow_set = Rc::new(BorrowSet::build(
             tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
@@ -423,7 +423,7 @@ fn downgrade_if_error(diag: &mut Diagnostic) {
     }
 }
 
-pub struct MirBorrowckCtxt<'cx, 'tcx: 'cx> {
+pub struct MirBorrowckCtxt<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     body: &'cx Body<'tcx>,
     mir_def_id: DefId,
@@ -670,7 +670,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 // "Lift" into the gcx -- once regions are erased, this type should be in the
                 // global arenas; this "lift" operation basically just asserts that is true, but
                 // that is useful later.
-                let drop_place_ty = gcx.lift(&drop_place_ty).unwrap();
+                gcx.lift_to_global(&drop_place_ty).unwrap();
 
                 debug!("visit_terminator_drop \
                         loc: {:?} term: {:?} drop_place: {:?} drop_place_ty: {:?} span: {:?}",
@@ -891,7 +891,7 @@ enum InitializationRequiringAction {
     PartialAssignment,
 }
 
-struct RootPlace<'d, 'tcx: 'd> {
+struct RootPlace<'d, 'tcx> {
     place: &'d Place<'tcx>,
     is_local_mutation_allowed: LocalMutationIsAllowed,
 }
@@ -1070,7 +1070,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 (Reservation(WriteKind::MutableBorrow(bk)), BorrowKind::Shallow)
                 | (Reservation(WriteKind::MutableBorrow(bk)), BorrowKind::Shared) if {
-                    tcx.migrate_borrowck()
+                    tcx.migrate_borrowck() && this.borrow_set.location_map.contains_key(&location)
                 } => {
                     let bi = this.borrow_set.location_map[&location];
                     debug!(

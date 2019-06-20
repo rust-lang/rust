@@ -32,7 +32,7 @@ fn maybe_args() -> io::Result<Args> {
         let (mut argc, mut argv_buf_size) = (0, 0);
         cvt_wasi(libc::__wasi_args_sizes_get(&mut argc, &mut argv_buf_size))?;
 
-        let mut argc = vec![0 as *mut libc::c_char; argc];
+        let mut argc = vec![core::ptr::null_mut::<libc::c_char>(); argc];
         let mut argv_buf = vec![0; argv_buf_size];
         cvt_wasi(libc::__wasi_args_get(argc.as_mut_ptr(), argv_buf.as_mut_ptr()))?;
 

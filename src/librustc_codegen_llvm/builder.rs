@@ -27,7 +27,7 @@ use std::iter::TrustedLen;
 
 // All Builders must have an llfn associated with them
 #[must_use]
-pub struct Builder<'a, 'll: 'a, 'tcx: 'll> {
+pub struct Builder<'a, 'll, 'tcx> {
     pub llbuilder: &'ll mut llvm::Builder<'ll>,
     pub cx: &'a CodegenCx<'ll, 'tcx>,
 }

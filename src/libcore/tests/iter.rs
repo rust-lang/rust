@@ -2334,6 +2334,40 @@ fn test_skip_try_folds() {
 }
 
 #[test]
+fn test_skip_nth_back() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let mut it = xs.iter().skip(2);
+    assert_eq!(it.nth_back(0), Some(&5));
+    assert_eq!(it.nth_back(1), Some(&3));
+    assert_eq!(it.nth_back(0), Some(&2));
+    assert_eq!(it.nth_back(0), None);
+
+    let ys = [2, 3, 4, 5];
+    let mut ity = ys.iter();
+    let mut it = xs.iter().skip(2);
+    assert_eq!(it.nth_back(1), ity.nth_back(1));
+    assert_eq!(it.clone().nth(0), ity.clone().nth(0));
+    assert_eq!(it.nth_back(0), ity.nth_back(0));
+    assert_eq!(it.clone().nth(0), ity.clone().nth(0));
+    assert_eq!(it.nth_back(0), ity.nth_back(0));
+    assert_eq!(it.clone().nth(0), ity.clone().nth(0));
+    assert_eq!(it.nth_back(0), ity.nth_back(0));
+    assert_eq!(it.clone().nth(0), ity.clone().nth(0));
+
+    let mut it = xs.iter().skip(2);
+    assert_eq!(it.nth_back(4), None);
+    assert_eq!(it.nth_back(0), None);
+
+    let mut it = xs.iter();
+    it.by_ref().skip(2).nth_back(3);
+    assert_eq!(it.next_back(), Some(&1));
+
+    let mut it = xs.iter();
+    it.by_ref().skip(2).nth_back(10);
+    assert_eq!(it.next_back(), Some(&1));
+}
+
+#[test]
 fn test_take_try_folds() {
     let f = &|acc, x| i32::checked_add(2*acc, x);
     assert_eq!((10..30).take(10).try_fold(7, f), (10..20).try_fold(7, f));

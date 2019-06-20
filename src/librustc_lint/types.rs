@@ -505,7 +505,7 @@ declare_lint! {
 
 declare_lint_pass!(ImproperCTypes => [IMPROPER_CTYPES]);
 
-struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
+struct ImproperCTypesVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
 }
 
@@ -892,7 +892,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
         let inputs = if sig.c_variadic {
-            // Don't include the spoofed `VaList` in the functions list
+            // Don't include the spoofed `VaListImpl` in the functions list
             // of inputs.
             &sig.inputs()[..sig.inputs().len() - 1]
         } else {
@@ -921,7 +921,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem) {
         let mut vis = ImproperCTypesVisitor { cx };
-        let abi = cx.tcx.hir().get_foreign_abi_by_hir_id(it.hir_id);
+        let abi = cx.tcx.hir().get_foreign_abi(it.hir_id);
         if abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic {
             match it.node {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {

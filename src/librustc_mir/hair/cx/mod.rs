@@ -21,7 +21,7 @@ use rustc::hir;
 use crate::hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
-pub struct Cx<'a, 'tcx: 'a> {
+pub struct Cx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
 
@@ -56,7 +56,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;
         let src_def_id = tcx.hir().local_def_id_from_hir_id(src_id);
         let tables = tcx.typeck_tables_of(src_def_id);
-        let body_owner_kind = tcx.hir().body_owner_kind_by_hir_id(src_id);
+        let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {
             hir::BodyOwnerKind::Const |
@@ -65,7 +65,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             hir::BodyOwnerKind::Fn => hir::Constness::NotConst,
         };
 
-        let attrs = tcx.hir().attrs_by_hir_id(src_id);
+        let attrs = tcx.hir().attrs(src_id);
 
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
@@ -190,12 +190,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     }
 
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
-        let (ty, param_env) = self.tcx.lift_to_global(&(ty, self.param_env)).unwrap_or_else(|| {
-            bug!("MIR: Cx::needs_drop({:?}, {:?}) got \
-                  type with inference types/regions",
-                 ty, self.param_env);
-        });
-        ty.needs_drop(self.tcx.global_tcx(), param_env)
+        ty.needs_drop(self.tcx.global_tcx(), self.param_env)
     }
 
     pub fn tcx(&self) -> TyCtxt<'tcx> {

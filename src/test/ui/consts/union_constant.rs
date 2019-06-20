@@ -6,5 +6,6 @@ union Uninit {
 }
 
 const UNINIT: Uninit = Uninit { uninit: () };
+const UNINIT2: (Uninit,) = (Uninit { uninit: () }, );
 
 fn main() {}

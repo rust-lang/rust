@@ -20,7 +20,7 @@ pub fn check_code_block_syntax(krate: clean::Crate, cx: &DocContext<'_>) -> clea
     SyntaxChecker { cx }.fold_crate(krate)
 }
 
-struct SyntaxChecker<'a, 'tcx: 'a> {
+struct SyntaxChecker<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
 }
 

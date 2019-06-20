@@ -11,11 +11,11 @@ use crate::dataflow::BitDenotation;
 /// This is used to compute which locals are live during a yield expression for
 /// immovable generators.
 #[derive(Copy, Clone)]
-pub struct HaveBeenBorrowedLocals<'a, 'tcx: 'a> {
+pub struct HaveBeenBorrowedLocals<'a, 'tcx> {
     body: &'a Body<'tcx>,
 }
 
-impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
+impl<'a, 'tcx> HaveBeenBorrowedLocals<'a, 'tcx> {
     pub fn new(body: &'a Body<'tcx>)
                -> Self {
         HaveBeenBorrowedLocals { body }
@@ -97,7 +97,7 @@ impl<'a, 'tcx> InitialFlow for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 }
 
-struct BorrowedLocalsVisitor<'b, 'c: 'b> {
+struct BorrowedLocalsVisitor<'b, 'c> {
     sets: &'b mut BlockSets<'c, Local>,
 }
 

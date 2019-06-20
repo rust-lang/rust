@@ -2104,7 +2104,7 @@ impl<'tcx> Place<'tcx> {
 /// N.B., this particular impl strategy is not the most obvious. It was
 /// chosen because it makes a measurable difference to NLL
 /// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
-pub enum Projections<'p, 'tcx: 'p> {
+pub enum Projections<'p, 'tcx> {
     Empty,
 
     List {
@@ -2143,7 +2143,7 @@ impl<'p, 'tcx> IntoIterator for &'p Projections<'p, 'tcx> {
 /// N.B., this is not a *true* Rust iterator -- the code above just
 /// manually invokes `next`. This is because we (sometimes) want to
 /// keep executing even after `None` has been returned.
-pub struct ProjectionsIter<'p, 'tcx: 'p> {
+pub struct ProjectionsIter<'p, 'tcx> {
     pub value: &'p Projections<'p, 'tcx>,
 }
 
@@ -2565,7 +2565,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let name = if tcx.sess.opts.debugging_opts.span_free_formats {
                                 format!("[closure@{:?}]", hir_id)
                             } else {
-                                format!("[closure@{:?}]", tcx.hir().span_by_hir_id(hir_id))
+                                format!("[closure@{:?}]", tcx.hir().span(hir_id))
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
@@ -2585,7 +2585,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
                         if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
                             let name = format!("[generator@{:?}]",
-                                               tcx.hir().span_by_hir_id(hir_id));
+                                               tcx.hir().span(hir_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
                             if let Some(upvars) = tcx.upvars(def_id) {

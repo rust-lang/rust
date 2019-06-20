@@ -1,6 +1,7 @@
 use crate::{ast, attr};
 use crate::edition::Edition;
-use crate::ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension, TTMacroExpander};
+use crate::ext::base::{SyntaxExtension, SyntaxExtensionKind};
+use crate::ext::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
 use crate::ext::expand::{AstFragment, AstFragmentKind};
 use crate::ext::hygiene::Transparency;
 use crate::ext::tt::macro_parser::{Success, Error, Failure};
@@ -376,7 +377,7 @@ pub fn compile(
         valid,
     });
 
-    let transparency = if attr::contains_name(&def.attrs, sym::rustc_transparent_macro) {
+    let default_transparency = if attr::contains_name(&def.attrs, sym::rustc_transparent_macro) {
         Transparency::Transparent
     } else if body.legacy {
         Transparency::SemiTransparent
@@ -426,14 +427,15 @@ pub fn compile(
         }
     });
 
-    SyntaxExtension::LegacyBang {
-        expander,
+    SyntaxExtension {
+        kind: SyntaxExtensionKind::LegacyBang(expander),
         def_info: Some((def.id, def.span)),
-        transparency,
+        default_transparency,
         allow_internal_unstable,
         allow_internal_unsafe,
         local_inner_macros,
         unstable_feature,
+        helper_attrs: Vec::new(),
         edition,
     }
 }

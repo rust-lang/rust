@@ -8,7 +8,7 @@ use crate::traits::*;
 
 use super::FunctionCx;
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant(
         &mut self,
         constant: &mir::Constant<'tcx>,

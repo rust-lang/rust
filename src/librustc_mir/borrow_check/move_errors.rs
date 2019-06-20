@@ -422,7 +422,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let upvar = &self.upvars[upvar_field.unwrap().index()];
                 let upvar_hir_id = upvar.var_hir_id;
                 let upvar_name = upvar.name;
-                let upvar_span = self.infcx.tcx.hir().span_by_hir_id(upvar_hir_id);
+                let upvar_span = self.infcx.tcx.hir().span(upvar_hir_id);
 
                 let place_name = self.describe_place(move_place).unwrap();
 

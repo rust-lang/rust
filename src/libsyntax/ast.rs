@@ -362,7 +362,6 @@ impl Default for Generics {
         Generics {
             params: Vec::new(),
             where_clause: WhereClause {
-                id: DUMMY_NODE_ID,
                 predicates: Vec::new(),
                 span: DUMMY_SP,
             },
@@ -374,7 +373,6 @@ impl Default for Generics {
 /// A where-clause in a definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
-    pub id: NodeId,
     pub predicates: Vec<WherePredicate>,
     pub span: Span,
 }

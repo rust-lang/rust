@@ -114,8 +114,8 @@ impl<T> Default for TypedArena<T> {
         TypedArena {
             // We set both `ptr` and `end` to 0 so that the first call to
             // alloc() will trigger a grow().
-            ptr: Cell::new(0 as *mut T),
-            end: Cell::new(0 as *mut T),
+            ptr: Cell::new(ptr::null_mut()),
+            end: Cell::new(ptr::null_mut()),
             chunks: RefCell::new(vec![]),
             _own: PhantomData,
         }
@@ -370,8 +370,8 @@ impl Default for DroplessArena {
     #[inline]
     fn default() -> DroplessArena {
         DroplessArena {
-            ptr: Cell::new(0 as *mut u8),
-            end: Cell::new(0 as *mut u8),
+            ptr: Cell::new(ptr::null_mut()),
+            end: Cell::new(ptr::null_mut()),
             chunks: Default::default(),
         }
     }

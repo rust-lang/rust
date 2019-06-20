@@ -58,12 +58,7 @@ pub(super) fn trace(
 }
 
 /// Contextual state for the type-liveness generator.
-struct LivenessContext<'me, 'typeck, 'flow, 'tcx>
-where
-    'typeck: 'me,
-    'flow: 'me,
-    'tcx: 'typeck + 'flow,
-{
+struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     /// Current type-checker, giving us our inference context etc.
     typeck: &'me mut TypeChecker<'typeck, 'tcx>,
 
@@ -96,12 +91,7 @@ struct DropData<'tcx> {
     region_constraint_data: Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>,
 }
 
-struct LivenessResults<'me, 'typeck, 'flow, 'tcx>
-where
-    'typeck: 'me,
-    'flow: 'me,
-    'tcx: 'typeck + 'flow,
-{
+struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     cx: LivenessContext<'me, 'typeck, 'flow, 'tcx>,
 
     /// Set of points that define the current local.

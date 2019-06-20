@@ -67,7 +67,7 @@ pub struct OutlivesEnvironment<'tcx> {
 /// because of implied bounds.
 pub type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
 
-impl<'a, 'tcx: 'a> OutlivesEnvironment<'tcx> {
+impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
     pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
         let mut env = OutlivesEnvironment {
             param_env,

@@ -263,7 +263,8 @@ install:
           if [[ "$SCRIPT" == "./x.py dist" ]]; then
             travis_retry brew update &&
             travis_retry brew install xz &&
-            travis_retry brew install swig;
+            travis_retry brew install swig@3 &&
+            brew link --force swig@3;
           fi &&
           travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/sccache &&

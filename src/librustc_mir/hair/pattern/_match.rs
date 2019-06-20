@@ -215,10 +215,15 @@ impl LiteralExpander<'tcx> {
         debug!("fold_const_value_deref {:?} {:?} {:?}", val, rty, crty);
         match (val, &crty.sty, &rty.sty) {
             // the easy case, deref a reference
-            (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => ConstValue::ByRef(
-                p,
-                self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id),
-            ),
+            (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => {
+                let alloc = self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id);
+                ConstValue::ByRef(
+                    p,
+                    // FIXME(oli-obk): this should be the type's layout
+                    alloc.align,
+                    alloc,
+                )
+            },
             // unsize array to slice if pattern is array but match value or other patterns are slice
             (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
                 assert_eq!(t, u);
@@ -285,7 +290,7 @@ impl<'tcx> Pattern<'tcx> {
 
 /// A 2D matrix. Nx1 matrices are very common, which is why `SmallVec[_; 2]`
 /// works well for each row.
-pub struct Matrix<'p, 'tcx: 'p>(Vec<SmallVec<[&'p Pattern<'tcx>; 2]>>);
+pub struct Matrix<'p, 'tcx>(Vec<SmallVec<[&'p Pattern<'tcx>; 2]>>);
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
     pub fn empty() -> Self {
@@ -349,7 +354,7 @@ impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pattern<'tcx>; 2]>> for Matrix<'p, 'tc
     }
 }
 
-pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
+pub struct MatchCheckCtxt<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
@@ -392,9 +397,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pattern<'tcx>) -> bool
-        where 'a: 'p
-    {
+    fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pattern<'tcx>) -> bool {
         match *pattern.kind {
             PatternKind::Variant { adt_def, variant_index, .. } => {
                 let ref variant = adt_def.variants[variant_index];
@@ -634,10 +637,10 @@ impl<'tcx> Witness<'tcx> {
 ///
 /// We make sure to omit constructors that are statically impossible. E.g., for
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
-fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                                  pcx: PatternContext<'tcx>)
-                                  -> Vec<Constructor<'tcx>>
-{
+fn all_constructors<'a, 'tcx>(
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    pcx: PatternContext<'tcx>,
+) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
     let ctors = match pcx.ty.sty {
         ty::Bool => {
@@ -708,10 +711,10 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     ctors
 }
 
-fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    patterns: I) -> u64
-    where I: Iterator<Item=&'p Pattern<'tcx>>
+fn max_slice_length<'p, 'a, 'tcx, I>(cx: &mut MatchCheckCtxt<'a, 'tcx>, patterns: I) -> u64
+where
+    I: Iterator<Item = &'p Pattern<'tcx>>,
+    'tcx: 'p,
 {
     // The exhaustiveness-checking paper does not include any details on
     // checking variable-length slice patterns. However, they are matched
@@ -985,7 +988,7 @@ enum MissingCtors<'tcx> {
 // (The split logic gives a performance win, because we always need to know if
 // the set is empty, but we rarely need the full set, and it can be expensive
 // to compute the full set.)
-fn compute_missing_ctors<'a, 'tcx: 'a>(
+fn compute_missing_ctors<'tcx>(
     info: MissingCtorsInfo,
     tcx: TyCtxt<'tcx>,
     all_ctors: &Vec<Constructor<'tcx>>,
@@ -1057,11 +1060,12 @@ fn compute_missing_ctors<'a, 'tcx: 'a>(
 /// relation to preceding patterns, it is not reachable) and exhaustiveness
 /// checking (if a wildcard pattern is useful in relation to a matrix, the
 /// matrix isn't exhaustive).
-pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                                       matrix: &Matrix<'p, 'tcx>,
-                                       v: &[&Pattern<'tcx>],
-                                       witness: WitnessPreference)
-                                       -> Usefulness<'tcx> {
+pub fn is_useful<'p, 'a, 'tcx>(
+    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    matrix: &Matrix<'p, 'tcx>,
+    v: &[&Pattern<'tcx>],
+    witness: WitnessPreference,
+) -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
@@ -1267,7 +1271,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
 /// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
-fn is_useful_specialized<'p, 'a: 'p, 'tcx: 'a>(
+fn is_useful_specialized<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
     v: &[&Pattern<'tcx>],
@@ -1311,7 +1315,7 @@ fn is_useful_specialized<'p, 'a: 'p, 'tcx: 'a>(
 /// Returns `None` in case of a catch-all, which can't be specialized.
 fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                           pat: &Pattern<'tcx>,
-                          pcx: PatternContext<'_>)
+                          pcx: PatternContext<'tcx>)
                           -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {
@@ -1373,10 +1377,11 @@ fn constructor_arity(cx: &MatchCheckCtxt<'a, 'tcx>, ctor: &Constructor<'tcx>, ty
 /// expanded to.
 ///
 /// For instance, a tuple pattern (43u32, 'a') has sub pattern types [u32, char].
-fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
-                                             ctor: &Constructor<'tcx>,
-                                             ty: Ty<'tcx>) -> Vec<Ty<'tcx>>
-{
+fn constructor_sub_pattern_tys<'a, 'tcx>(
+    cx: &MatchCheckCtxt<'a, 'tcx>,
+    ctor: &Constructor<'tcx>,
+    ty: Ty<'tcx>,
+) -> Vec<Ty<'tcx>> {
     debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
     match ty.sty {
         ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
@@ -1431,7 +1436,7 @@ fn slice_pat_covered_by_const<'tcx>(
     suffix: &[Pattern<'tcx>],
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
-        (ConstValue::ByRef(ptr, alloc), ty::Array(t, n)) => {
+        (ConstValue::ByRef(ptr, _, alloc), ty::Array(t, n)) => {
             assert_eq!(*t, tcx.types.u8);
             let n = n.assert_usize(tcx).unwrap();
             alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
@@ -1520,7 +1525,7 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'tcx>, ctor: &Constructor<'tcx>) 
 /// boundaries for each interval range, sort them, then create constructors for each new interval
 /// between every pair of boundary points. (This essentially sums up to performing the intuitive
 /// merging operation depicted above.)
-fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
+fn split_grouped_constructors<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     ctors: Vec<Constructor<'tcx>>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
@@ -1598,7 +1603,7 @@ fn split_grouped_constructors<'p, 'a: 'p, 'tcx: 'a>(
 }
 
 /// Checks whether there exists any shared value in either `ctor` or `pat` by intersecting them.
-fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
+fn constructor_intersects_pattern<'p, 'tcx>(
     tcx: TyCtxt<'tcx>,
     ctor: &Constructor<'tcx>,
     pat: &'p Pattern<'tcx>,
@@ -1688,7 +1693,7 @@ fn constructor_covered_by_range<'tcx>(
     }
 }
 
-fn patterns_for_variant<'p, 'a: 'p, 'tcx: 'a>(
+fn patterns_for_variant<'p, 'tcx>(
     subpatterns: &'p [FieldPattern<'tcx>],
     wild_patterns: &[&'p Pattern<'tcx>])
     -> SmallVec<[&'p Pattern<'tcx>; 2]>
@@ -1711,7 +1716,7 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx: 'a>(
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize<'p, 'a: 'p, 'tcx: 'a>(
+fn specialize<'p, 'a: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     r: &[&'p Pattern<'tcx>],
     constructor: &Constructor<'tcx>,
@@ -1753,7 +1758,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     let (alloc, offset, n, ty) = match value.ty.sty {
                         ty::Array(t, n) => {
                             match value.val {
-                                ConstValue::ByRef(ptr, alloc) => (
+                                ConstValue::ByRef(ptr, _, alloc) => (
                                     alloc,
                                     ptr.offset,
                                     n.unwrap_usize(cx.tcx),
