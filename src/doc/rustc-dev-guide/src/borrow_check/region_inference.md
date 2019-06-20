@@ -71,6 +71,8 @@ TODO: write about _how_ these regions are computed.
 
 [`UniversalRegions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/universal_regions/struct.UniversalRegions.html
 
+<a name="region-variables"></a>
+
 ## Region variables
 
 The value of a region can be thought of as a **set**. This set contains all

@@ -77,6 +77,8 @@
         - [MIR type checker](./borrow_check/type_check.md)
         - [Region inference](./borrow_check/region_inference.md)
             - [Constraint propagation](./borrow_check/region_inference/constraint_propagation.md)
+            - [Lifetime parameters](./borrow_check/region_inference/lifetime_parameters.md)
+            - [Member constraints](./borrow_check/region_inference/member_constraints.md)
             - [Placeholders and universes](./borrow_check/region_inference/placeholders_and_universes.md)
             - [Closure constraints](./borrow_check/region_inference/closure_constraints.md)
             - [Errror reporting](./borrow_check/region_inference/error_reporting.md)
