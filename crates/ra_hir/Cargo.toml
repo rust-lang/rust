@@ -10,7 +10,7 @@ log = "0.4.5"
 relative-path = "0.4.0"
 rustc-hash = "1.0"
 parking_lot = "0.8.0"
-ena = "0.11"
+ena = "0.13"
 join_to_string = "0.1.3"
 once_cell = "0.2"
 
@@ -28,5 +28,5 @@ chalk-ir = { git = "https://github.com/flodiebold/chalk.git", branch = "fuel" }
 lalrpop-intern = "0.15.1"
 
 [dev-dependencies]
-flexi_logger = "0.11.0"
+flexi_logger = "0.13.0"
 insta = "0.8.1"

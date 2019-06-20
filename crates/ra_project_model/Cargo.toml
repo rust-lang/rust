@@ -11,7 +11,7 @@ relative-path = "0.4.0"
 
 walkdir = "2.2.7"
 
-cargo_metadata = "0.7.0"
+cargo_metadata = "0.8.0"
 
 ra_arena = { path = "../ra_arena" }
 ra_db = { path = "../ra_db" }
