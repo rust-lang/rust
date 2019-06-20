@@ -1,12 +1,12 @@
-error[E0401]: can't use generic parameters from outer function
+error[E0401]: can't use generic parameters in `static` associated item
   --> $DIR/inner-static-type-parameter.rs:6:19
    |
 LL | fn foo<T>() {
-   |    --- - type parameter from outer function
-   |    |
-   |    try adding a local generic parameter in this method instead
+   |        - type parameter being used
 LL |     static a: Bar<T> = Bar::What;
-   |                   ^ use of generic parameter from outer function
+   |                   ^ use of generic parameter in `static` associated item
+   |
+   = help: `static` associated item need a type instead of a generic parameter
 
 error[E0392]: parameter `T` is never used
   --> $DIR/inner-static-type-parameter.rs:3:10

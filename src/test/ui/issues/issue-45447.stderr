@@ -1,0 +1,34 @@
+error[E0401]: can't use generic parameters in `const` associated item
+  --> $DIR/issue-45447.rs:4:17
+   |
+LL | fn bar<T: Foo>(n: T) {
+   |        - type parameter being used
+LL |     const BASE: T = T::FOO;
+   |                 ^ use of generic parameter in `const` associated item
+   |
+   = help: `const` associated item need a type instead of a generic parameter
+
+error[E0401]: can't use generic parameters in `const` associated item
+  --> $DIR/issue-45447.rs:4:21
+   |
+LL | fn bar<T: Foo>(n: T) {
+   |        - type parameter being used
+LL |     const BASE: T = T::FOO;
+   |                     ^^^^^^ use of generic parameter in `const` associated item
+   |
+   = help: `const` associated item need a type instead of a generic parameter
+
+error[E0401]: can't use generic parameters in associated type
+  --> $DIR/issue-45447.rs:7:17
+   |
+LL | fn bar<T: Foo>(n: T) {
+   |        - type parameter being used
+...
+LL |     type Type = T;
+   |                 ^ use of generic parameter in associated type
+   |
+   = help: associated type need a type instead of a generic parameter
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0401`.
