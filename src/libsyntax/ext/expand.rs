@@ -243,7 +243,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         module.directory.pop();
         self.cx.root_path = module.directory.clone();
         self.cx.current_expansion.module = Rc::new(module);
-        self.cx.current_expansion.crate_span = Some(krate.span);
 
         let orig_mod_span = krate.module.inner;
 
@@ -668,39 +667,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
         let path = &mac.node.path;
 
-        let validate = |this: &mut Self| {
-            // feature-gate the macro invocation
-            if let Some((feature, issue)) = ext.unstable_feature {
-                let crate_span = this.cx.current_expansion.crate_span.unwrap();
-                // don't stability-check macros in the same crate
-                if !crate_span.contains(ext.span)
-                    && !span.allows_unstable(feature)
-                    && this.cx.ecfg.features.map_or(true, |feats| {
-                    // macro features will count as lib features
-                    !feats.declared_lib_features.iter().any(|&(feat, _)| feat == feature)
-                }) {
-                    let explain = format!("macro {}! is unstable", path);
-                    emit_feature_err(this.cx.parse_sess, feature, span,
-                                     GateIssue::Library(Some(issue)), &explain);
-                    this.cx.trace_macros_diag();
-                }
-            }
-
-            Ok(())
-        };
-
         let opt_expanded = match &ext.kind {
+            SyntaxExtensionKind::Bang(expander) => {
+                self.gate_proc_macro_expansion_kind(span, kind);
+                let tok_result = expander.expand(self.cx, span, mac.node.stream());
+                let result = self.parse_ast_fragment(tok_result, kind, path, span);
+                self.gate_proc_macro_expansion(span, &result);
+                result
+            }
             SyntaxExtensionKind::LegacyBang(expander) => {
-                if let Err(dummy_span) = validate(self) {
-                    dummy_span
-                } else {
-                    kind.make_from(expander.expand(
-                        self.cx,
-                        span,
-                        mac.node.stream(),
-                        Some(ext.span),
-                    ))
-                }
+                let tok_result = expander.expand(self.cx, span, mac.node.stream(), Some(ext.span));
+                kind.make_from(tok_result)
             }
 
             SyntaxExtensionKind::Attr(..) |
@@ -716,14 +693,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 self.cx.span_err(path.span, &format!("`{}` is a derive macro", path));
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
-            }
-
-            SyntaxExtensionKind::Bang(expander) => {
-                self.gate_proc_macro_expansion_kind(span, kind);
-                let tok_result = expander.expand(self.cx, span, mac.node.stream());
-                let result = self.parse_ast_fragment(tok_result, kind, path, span);
-                self.gate_proc_macro_expansion(span, &result);
-                result
             }
         };
 
