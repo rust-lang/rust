@@ -652,25 +652,9 @@ impl<T: ?Sized> Arc<T> {
 impl<T> Arc<[T]> {
     // Allocates an `ArcInner<[T]>` with the given length.
     unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
-        // FIXME(#60667): Deduplicate.
-        fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
-            #[repr(C)]
-            union Repr<T> {
-                rust_mut: *mut [T],
-                raw: FatPtr<T>,
-            }
-
-            #[repr(C)]
-            struct FatPtr<T> {
-                data: *const T,
-                len: usize,
-            }
-            unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
-        }
-
         Self::allocate_for_unsized(
             Layout::array::<T>(len).unwrap(),
-            |mem| slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
+            |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
         )
     }
 }

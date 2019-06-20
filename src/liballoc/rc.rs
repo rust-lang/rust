@@ -764,25 +764,9 @@ impl<T: ?Sized> Rc<T> {
 impl<T> Rc<[T]> {
     // Allocates an `RcBox<[T]>` with the given length.
     unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
-        // FIXME(#60667): Deduplicate.
-        fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
-            #[repr(C)]
-            union Repr<T> {
-                rust_mut: *mut [T],
-                raw: FatPtr<T>,
-            }
-
-            #[repr(C)]
-            struct FatPtr<T> {
-                data: *const T,
-                len: usize,
-            }
-            unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
-        }
-
         Self::allocate_for_unsized(
             Layout::array::<T>(len).unwrap(),
-            |mem| slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>,
+            |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>,
         )
     }
 }
