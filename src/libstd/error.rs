@@ -560,6 +560,10 @@ impl<T: Error> Error for Box<T> {
     fn cause(&self) -> Option<&dyn Error> {
         Error::cause(&**self)
     }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&**self)
+    }
 }
 
 #[stable(feature = "fmt_error", since = "1.11.0")]
