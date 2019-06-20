@@ -1125,7 +1125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     err.emit();
                 } else {
-                    self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name);
+                    self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name, span);
                 }
 
                 tcx.types.err
@@ -1196,6 +1196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: &hir::Field,
         skip_fields: &[hir::Field],
         kind_name: &str,
+        ty_span: Span
     ) {
         if variant.recovered {
             return;
@@ -1215,37 +1216,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             },
             ty);
-        // prevent all specified fields from being suggested
-        let skip_fields = skip_fields.iter().map(|ref x| x.ident.as_str());
-        if let Some(field_name) = Self::suggest_field_name(variant,
-                                                           &field.ident.as_str(),
-                                                           skip_fields.collect()) {
-            err.span_suggestion(
-                field.ident.span,
-                "a field with a similar name exists",
-                field_name.to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        } else {
-            match ty.sty {
-                ty::Adt(adt, ..) => {
-                    if adt.is_enum() {
-                        err.span_label(field.ident.span,
-                                       format!("`{}::{}` does not have this field",
-                                               ty, variant.ident));
-                    } else {
-                        err.span_label(field.ident.span,
-                                       format!("`{}` does not have this field", ty));
-                    }
-                    let available_field_names = self.available_field_names(variant);
-                    if !available_field_names.is_empty() {
-                        err.note(&format!("available fields are: {}",
-                                          self.name_series_display(available_field_names)));
-                    }
-                }
-                _ => bug!("non-ADT passed to report_unknown_field")
+        match variant.ctor_kind {
+            CtorKind::Fn => {
+                err.span_label(variant.ident.span, format!("`{adt}` defined here", adt=ty));
+                err.span_label(field.ident.span, "field does not exist");
+                err.span_label(ty_span, format!(
+                        "`{adt}` is a tuple {kind_name}, \
+                         use the appropriate syntax: `{adt}(/* fields */)`",
+                    adt=ty,
+                    kind_name=kind_name
+                ));
             }
-        };
+            _ => {
+                // prevent all specified fields from being suggested
+                let skip_fields = skip_fields.iter().map(|ref x| x.ident.as_str());
+                if let Some(field_name) = Self::suggest_field_name(
+                    variant,
+                    &field.ident.as_str(),
+                    skip_fields.collect()
+                ) {
+                    err.span_suggestion(
+                        field.ident.span,
+                        "a field with a similar name exists",
+                        field_name.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    match ty.sty {
+                        ty::Adt(adt, ..) => {
+                            if adt.is_enum() {
+                                err.span_label(field.ident.span, format!(
+                                    "`{}::{}` does not have this field",
+                                    ty,
+                                    variant.ident
+                                ));
+                            } else {
+                                err.span_label(field.ident.span, format!(
+                                    "`{}` does not have this field",
+                                    ty
+                                ));
+                            }
+                            let available_field_names = self.available_field_names(variant);
+                            if !available_field_names.is_empty() {
+                                err.note(&format!("available fields are: {}",
+                                                  self.name_series_display(available_field_names)));
+                            }
+                        }
+                        _ => bug!("non-ADT passed to report_unknown_field")
+                    }
+                };
+            }
+        }
         err.emit();
     }
 
