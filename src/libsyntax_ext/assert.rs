@@ -8,7 +8,7 @@ use syntax::parse::token::{self, TokenKind};
 use syntax::parse::parser::Parser;
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::symbol::{sym, Symbol};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -27,7 +27,13 @@ pub fn expand_assert<'cx>(
 
     let sp = sp.apply_mark(cx.current_expansion.mark);
     let panic_call = Mac_ {
-        path: Path::from_ident(Ident::new(sym::panic, sp)),
+        path: Path {
+            segments: vec![
+                PathSegment::from_ident(Ident::new(kw::StdLib, sp)),
+                PathSegment::from_ident(Ident::new(sym::panic, sp)),
+            ],
+            span: sp,
+        },
         tts: custom_message.unwrap_or_else(|| {
             TokenStream::from(TokenTree::token(
                 TokenKind::lit(token::Str, Symbol::intern(&format!(

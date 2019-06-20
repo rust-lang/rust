@@ -50,7 +50,12 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
+                    #[cfg(bootstrap)]
                     panic!(r#"assertion failed: `(left == right)`
+  left: `{:?}`,
+ right: `{:?}`"#, &*left_val, &*right_val);
+                    #[cfg(not(bootstrap))]
+                    __rustc_standard_library::panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
  right: `{:?}`"#, &*left_val, &*right_val)
                 }
@@ -67,7 +72,13 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
+                    #[cfg(bootstrap)]
                     panic!(r#"assertion failed: `(left == right)`
+  left: `{:?}`,
+ right: `{:?}`: {}"#, &*left_val, &*right_val,
+                           format_args!($($arg)+));
+                    #[cfg(not(bootstrap))]
+                    __rustc_standard_library::panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
  right: `{:?}`: {}"#, &*left_val, &*right_val,
                            format_args!($($arg)+))
@@ -107,7 +118,12 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
+                    #[cfg(bootstrap)]
                     panic!(r#"assertion failed: `(left != right)`
+  left: `{:?}`,
+ right: `{:?}`"#, &*left_val, &*right_val);
+                    #[cfg(not(bootstrap))]
+                    __rustc_standard_library::panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
  right: `{:?}`"#, &*left_val, &*right_val)
                 }
@@ -124,7 +140,13 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
+                    #[cfg(bootstrap)]
                     panic!(r#"assertion failed: `(left != right)`
+  left: `{:?}`,
+ right: `{:?}`: {}"#, &*left_val, &*right_val,
+                           format_args!($($arg)+));
+                    #[cfg(not(bootstrap))]
+                    __rustc_standard_library::panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
  right: `{:?}`: {}"#, &*left_val, &*right_val,
                            format_args!($($arg)+))
@@ -491,7 +513,10 @@ macro_rules! writeln {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unreachable {
     () => ({
-        panic!("internal error: entered unreachable code")
+        #[cfg(bootstrap)]
+        panic!("internal error: entered unreachable code");
+        #[cfg(not(bootstrap))]
+        __rustc_standard_library::panic!("internal error: entered unreachable code")
     });
     ($msg:expr) => ({
         $crate::unreachable!("{}", $msg)
@@ -500,7 +525,12 @@ macro_rules! unreachable {
         $crate::unreachable!($msg)
     });
     ($fmt:expr, $($arg:tt)*) => ({
-        panic!(concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
+        #[cfg(bootstrap)]
+        panic!(concat!("internal error: entered unreachable code: ", $fmt), $($arg)*);
+        #[cfg(not(bootstrap))]
+        __rustc_standard_library::panic!(
+            concat!("internal error: entered unreachable code: ", $fmt), $($arg)*
+        )
     });
 }
 
@@ -554,6 +584,16 @@ macro_rules! unreachable {
 ///     // we aren't even using baz() yet, so this is fine.
 /// }
 /// ```
+#[cfg(not(bootstrap))]
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+macro_rules! unimplemented {
+    () => (__rustc_standard_library::panic!("not yet implemented"));
+    ($($arg:tt)+) =>
+        (__rustc_standard_library::panic!("not yet implemented: {}", format_args!($($arg)*)));
+}
+/// Bootstrap doc
+#[cfg(bootstrap)]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unimplemented {
@@ -613,6 +653,16 @@ macro_rules! unimplemented {
 ///     // we aren't even using baz() yet, so this is fine.
 /// }
 /// ```
+#[cfg(not(bootstrap))]
+#[macro_export]
+#[unstable(feature = "todo_macro", issue = "59277")]
+macro_rules! todo {
+    () => (__rustc_standard_library::panic!("not yet implemented"));
+    ($($arg:tt)+) =>
+        (__rustc_standard_library::panic!("not yet implemented: {}", format_args!($($arg)*)));
+}
+/// Bootstrap doc
+#[cfg(bootstrap)]
 #[macro_export]
 #[unstable(feature = "todo_macro", issue = "59277")]
 macro_rules! todo {

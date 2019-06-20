@@ -13,7 +13,8 @@ mod bar {
     }
     fn f() {
         ::foo::m!();
-        assert_eq!(0, 0); //~ ERROR cannot find macro `panic!` in this scope
+        assert!(true); // OK
+        assert_eq!(0, 0); // OK
     }
 }
 
