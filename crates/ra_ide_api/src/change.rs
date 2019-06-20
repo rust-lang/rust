@@ -226,9 +226,12 @@ impl RootDatabase {
 
         self.query(ra_db::ParseQuery).sweep(sweep);
         self.query(hir::db::ParseMacroQuery).sweep(sweep);
-        self.query(hir::db::MacroDefQuery).sweep(sweep);
-        self.query(hir::db::MacroArgQuery).sweep(sweep);
-        self.query(hir::db::MacroExpandQuery).sweep(sweep);
+
+        // Macros do take significant space, but less then the syntax trees
+        // self.query(hir::db::MacroDefQuery).sweep(sweep);
+        // self.query(hir::db::MacroArgQuery).sweep(sweep);
+        // self.query(hir::db::MacroExpandQuery).sweep(sweep);
+
         self.query(hir::db::AstIdMapQuery).sweep(sweep);
 
         self.query(hir::db::RawItemsWithSourceMapQuery).sweep(sweep);
