@@ -335,11 +335,14 @@ macro_rules! r#try {
 /// ```
 /// use std::io::Write;
 ///
-/// let mut w = Vec::new();
-/// write!(&mut w, "test").unwrap();
-/// write!(&mut w, "formatted {}", "arguments").unwrap();
+/// fn main() -> std::io::Result<()> {
+///     let mut w = Vec::new();
+///     write!(&mut w, "test")?;
+///     write!(&mut w, "formatted {}", "arguments")?;
 ///
-/// assert_eq!(w, b"testformatted arguments");
+///     assert_eq!(w, b"testformatted arguments");
+///     Ok(())
+/// }
 /// ```
 ///
 /// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
