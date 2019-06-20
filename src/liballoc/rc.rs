@@ -2304,6 +2304,7 @@ fn data_offset_sized<T>() -> isize {
     data_offset_align(align_of::<T>())
 }
 
+#[inline]
 fn data_offset_align(align: usize) -> isize {
     let layout = Layout::new::<RcBox<()>>();
     (layout.size() + layout.padding_needed_for(align)) as isize
