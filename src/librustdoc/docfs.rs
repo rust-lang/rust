@@ -11,7 +11,6 @@
 
 use errors;
 
-use std::cell::RefCell;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -32,7 +31,7 @@ pub trait PathError {
 }
 
 pub struct ErrorStorage {
-    sender: Sender<Option<String>>,
+    sender: Option<Sender<Option<String>>>,
     receiver: Receiver<Option<String>>,
 }
 
@@ -40,15 +39,16 @@ impl ErrorStorage {
     pub fn new() -> ErrorStorage {
         let (sender, receiver) = channel();
         ErrorStorage {
-            sender,
+            sender: Some(sender),
             receiver,
         }
     }
 
     /// Prints all stored errors. Returns the number of printed errors.
-    pub fn write_errors(&self, diag: &errors::Handler) -> usize {
+    pub fn write_errors(&mut self, diag: &errors::Handler) -> usize {
         let mut printed = 0;
-        drop(self.sender);
+        // In order to drop the sender part of the channel.
+        self.sender = None;
 
         for msg in self.receiver.iter() {
             if let Some(ref error) = msg {
@@ -95,7 +95,7 @@ impl DocFS {
             // be to create the file sync so errors are reported eagerly.
             let contents = contents.as_ref().to_vec();
             let path = path.as_ref().to_path_buf();
-            let sender = self.errors.sender.clone();
+            let sender = self.errors.sender.clone().unwrap();
             rayon::spawn(move || {
                 match fs::write(&path, &contents) {
                     Ok(_) => {

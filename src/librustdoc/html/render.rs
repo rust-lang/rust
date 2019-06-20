@@ -552,7 +552,7 @@ pub fn run(mut krate: clean::Crate,
         },
         _ => PathBuf::new(),
     };
-    let errors = Arc::new(ErrorStorage::new());
+    let mut errors = Arc::new(ErrorStorage::new());
     let mut scx = SharedContext {
         src_root,
         passes,
@@ -722,7 +722,7 @@ pub fn run(mut krate: clean::Crate,
 
     // And finally render the whole crate's documentation
     let ret = cx.krate(krate);
-    let nb_errors = errors.write_errors(diag);
+    let nb_errors = Arc::get_mut(&mut errors).map_or_else(|| 0, |errors| errors.write_errors(diag));
     if ret.is_err() {
         ret
     } else if nb_errors > 0 {
