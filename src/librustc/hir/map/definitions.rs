@@ -397,11 +397,6 @@ impl Definitions {
         self.node_to_hir_id[node_id]
     }
 
-    #[inline]
-    pub fn def_index_to_node_id(&self, def_index: DefIndex) -> ast::NodeId {
-        self.as_local_node_id(DefId::local(def_index)).unwrap()
-    }
-
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate, the span exists
     /// and it's not `DUMMY_SP`.
     #[inline]
