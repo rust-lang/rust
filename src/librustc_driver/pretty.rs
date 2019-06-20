@@ -909,7 +909,8 @@ fn print_with_analysis<'tcx>(
                 tcx.sess.fatal(&format!("--pretty flowgraph couldn't find id: {}", nodeid))
             });
 
-            match blocks::Code::from_node(&tcx.hir(), nodeid) {
+            let hir_id = tcx.hir().node_to_hir_id(nodeid);
+            match blocks::Code::from_node(&tcx.hir(), hir_id) {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(tcx.sess);
 
