@@ -3756,6 +3756,12 @@ impl<'a> Resolver<'a> {
                             self.resolve_crate_root(ident)));
                         continue;
                     }
+                    if name == kw::StdLib {
+                        // `__rustc_standard_library::a::b`
+                        module = Some(ModuleOrUniformRoot::Module(
+                            self.injected_crate.unwrap_or(self.graph_root)));
+                        continue;
+                    }
                 }
             }
 

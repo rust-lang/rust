@@ -27,6 +27,7 @@ symbols! {
         PathRoot:           "{{root}}",
         DollarCrate:        "$crate",
         Underscore:         "_",
+        StdLib:             "__rustc_standard_library",
 
         // Keywords that are used in stable Rust.
         As:                 "as",
@@ -1043,7 +1044,8 @@ impl Symbol {
         self == kw::SelfUpper ||
         self == kw::Crate ||
         self == kw::PathRoot ||
-        self == kw::DollarCrate
+        self == kw::DollarCrate ||
+        self == kw::StdLib
     }
 
     /// This symbol can be a raw identifier.
