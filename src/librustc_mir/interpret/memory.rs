@@ -881,7 +881,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         match scalar {
             Scalar::Ptr(ptr) => Ok(ptr),
-            _ => M::int_to_ptr(scalar.to_usize(self)?, &self.extra)
+            _ => M::int_to_ptr(scalar.to_usize(self)?, self)
         }
     }
 
@@ -892,7 +892,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, u128> {
         match scalar.to_bits_or_ptr(size, self) {
             Ok(bits) => Ok(bits),
-            Err(ptr) => Ok(M::ptr_to_int(ptr, &self.extra)? as u128)
+            Err(ptr) => Ok(M::ptr_to_int(ptr, self)? as u128)
         }
     }
 }
