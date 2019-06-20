@@ -608,15 +608,7 @@ impl<'a> LoweringContext<'a> {
                 });
 
                 if let Some(hir_id) = item_hir_id {
-                    let item_generics = match self.lctx.items.get(&hir_id).unwrap().node {
-                        hir::ItemKind::Impl(_, _, _, ref generics, ..)
-                        | hir::ItemKind::Trait(_, _, ref generics, ..) => {
-                            generics.params.clone()
-                        }
-                        _ => HirVec::new(),
-                    };
-
-                    self.lctx.with_parent_impl_lifetime_defs(&item_generics, |this| {
+                    self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
                         let this = &mut ItemLowerer { lctx: this };
                         if let ItemKind::Impl(.., ref opt_trait_ref, _, _) = item.node {
                             this.with_trait_impl_ref(opt_trait_ref, |this| {
@@ -1054,14 +1046,22 @@ impl<'a> LoweringContext<'a> {
     // This should only be used with generics that have already had their
     // in-band lifetimes added. In practice, this means that this function is
     // only used when lowering a child item of a trait or impl.
-    fn with_parent_impl_lifetime_defs<T, F>(&mut self,
-        params: &HirVec<hir::GenericParam>,
+    fn with_parent_item_lifetime_defs<T, F>(&mut self,
+        parent_hir_id: hir::HirId,
         f: F
     ) -> T where
         F: FnOnce(&mut LoweringContext<'_>) -> T,
     {
         let old_len = self.in_scope_lifetimes.len();
-        let lt_def_names = params.iter().filter_map(|param| match param.kind {
+
+        let parent_generics = match self.items.get(&parent_hir_id).unwrap().node {
+            hir::ItemKind::Impl(_, _, _, ref generics, ..)
+            | hir::ItemKind::Trait(_, _, ref generics, ..) => {
+                &generics.params[..]
+            }
+            _ => &[],
+        };
+        let lt_def_names = parent_generics.iter().filter_map(|param| match param.kind {
             hir::GenericParamKind::Lifetime { .. } => Some(param.name.ident().modern()),
             _ => None,
         });
@@ -1113,8 +1113,7 @@ impl<'a> LoweringContext<'a> {
 
         lowered_generics.params = lowered_generics
             .params
-            .iter()
-            .cloned()
+            .into_iter()
             .chain(in_band_defs)
             .collect();
 
@@ -3114,8 +3113,8 @@ impl<'a> LoweringContext<'a> {
             &NodeMap::default(),
             itctx.reborrow(),
         );
-        let trait_ref = self.with_parent_impl_lifetime_defs(
-            &bound_generic_params,
+        let trait_ref = self.with_in_scope_lifetime_defs(
+            &p.bound_generic_params,
             |this| this.lower_trait_ref(&p.trait_ref, itctx),
         );
 
@@ -3602,8 +3601,7 @@ impl<'a> LoweringContext<'a> {
                 // Essentially a single `use` which imports two names is desugared into
                 // two imports.
                 for (res, &new_node_id) in resolutions.zip([id1, id2].iter()) {
-                    let vis = vis.clone();
-                    let ident = ident.clone();
+                    let ident = *ident;
                     let mut path = path.clone();
                     for seg in &mut path.segments {
                         seg.id = self.sess.next_node_id();
@@ -3616,19 +3614,7 @@ impl<'a> LoweringContext<'a> {
                         let path =
                             this.lower_path_extra(res, &path, ParamMode::Explicit, None);
                         let item = hir::ItemKind::Use(P(path), hir::UseKind::Single);
-                        let vis_kind = match vis.node {
-                            hir::VisibilityKind::Public => hir::VisibilityKind::Public,
-                            hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
-                            hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
-                            hir::VisibilityKind::Restricted { ref path, hir_id: _ } => {
-                                let path = this.renumber_segment_ids(path);
-                                hir::VisibilityKind::Restricted {
-                                    path,
-                                    hir_id: this.next_id(),
-                                }
-                            }
-                        };
-                        let vis = respan(vis.span, vis_kind);
+                        let vis = this.rebuild_vis(&vis);
 
                         this.insert_item(
                             hir::Item {
@@ -3692,8 +3678,6 @@ impl<'a> LoweringContext<'a> {
                 for &(ref use_tree, id) in trees {
                     let new_hir_id = self.lower_node_id(id);
 
-                    let mut vis = vis.clone();
-                    let mut ident = ident.clone();
                     let mut prefix = prefix.clone();
 
                     // Give the segments new node-ids since they are being cloned.
@@ -3707,26 +3691,15 @@ impl<'a> LoweringContext<'a> {
                     // own its own names, we have to adjust the owner before
                     // lowering the rest of the import.
                     self.with_hir_id_owner(id, |this| {
+                        let mut vis = this.rebuild_vis(&vis);
+                        let mut ident = *ident;
+
                         let item = this.lower_use_tree(use_tree,
                                                        &prefix,
                                                        id,
                                                        &mut vis,
                                                        &mut ident,
                                                        attrs);
-
-                        let vis_kind = match vis.node {
-                            hir::VisibilityKind::Public => hir::VisibilityKind::Public,
-                            hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
-                            hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
-                            hir::VisibilityKind::Restricted { ref path, hir_id: _ } => {
-                                let path = this.renumber_segment_ids(path);
-                                hir::VisibilityKind::Restricted {
-                                    path: path,
-                                    hir_id: this.next_id(),
-                                }
-                            }
-                        };
-                        let vis = respan(vis.span, vis_kind);
 
                         this.insert_item(
                             hir::Item {
@@ -3773,15 +3746,35 @@ impl<'a> LoweringContext<'a> {
     /// Paths like the visibility path in `pub(super) use foo::{bar, baz}` are repeated
     /// many times in the HIR tree; for each occurrence, we need to assign distinct
     /// `NodeId`s. (See, e.g., #56128.)
-    fn renumber_segment_ids(&mut self, path: &P<hir::Path>) -> P<hir::Path> {
-        debug!("renumber_segment_ids(path = {:?})", path);
-        let mut path = path.clone();
-        for seg in path.segments.iter_mut() {
-            if seg.hir_id.is_some() {
-                seg.hir_id = Some(self.next_id());
-            }
+    fn rebuild_use_path(&mut self, path: &hir::Path) -> hir::Path {
+        debug!("rebuild_use_path(path = {:?})", path);
+        let segments = path.segments.iter().map(|seg| hir::PathSegment {
+            ident: seg.ident,
+            hir_id: seg.hir_id.map(|_| self.next_id()),
+            res: seg.res,
+            args: None,
+            infer_args: seg.infer_args,
+        }).collect();
+        hir::Path {
+            span: path.span,
+            res: path.res,
+            segments,
         }
-        path
+    }
+
+    fn rebuild_vis(&mut self, vis: &hir::Visibility) -> hir::Visibility {
+        let vis_kind = match vis.node {
+            hir::VisibilityKind::Public => hir::VisibilityKind::Public,
+            hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
+            hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
+            hir::VisibilityKind::Restricted { ref path, hir_id: _ } => {
+                hir::VisibilityKind::Restricted {
+                    path: P(self.rebuild_use_path(path)),
+                    hir_id: self.next_id(),
+                }
+            }
+        };
+        respan(vis.span, vis_kind)
     }
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {

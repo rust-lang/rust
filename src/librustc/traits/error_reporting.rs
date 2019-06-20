@@ -1050,10 +1050,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 (self.tcx.sess.source_map().def_span(span), self.tcx.hir().body(id).arguments.iter()
                     .map(|arg| {
                         if let hir::Pat {
-                            node: hir::PatKind::Tuple(args, _),
+                            node: hir::PatKind::Tuple(ref args, _),
                             span,
                             ..
-                        } = arg.pat.clone().into_inner() {
+                        } = *arg.pat {
                             ArgKind::Tuple(
                                 Some(span),
                                 args.iter().map(|pat| {

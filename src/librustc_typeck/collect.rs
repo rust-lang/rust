@@ -165,7 +165,7 @@ impl ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id }
     }
 
-    pub fn to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_ty: &'tcx hir::Ty) -> Ty<'tcx> {
         AstConv::ast_ty_to_ty(self, ast_ty)
     }
 }
@@ -338,7 +338,7 @@ impl ItemCtxt<'tcx> {
     /// bounds for a type parameter `X` if `X::Foo` is used.
     fn type_parameter_bounds_in_generics(
         &self,
-        ast_generics: &hir::Generics,
+        ast_generics: &'tcx hir::Generics,
         param_id: hir::HirId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
@@ -1909,7 +1909,9 @@ fn explicit_predicates_of<'tcx>(
     let mut is_default_impl_trait = None;
 
     let icx = ItemCtxt::new(tcx, def_id);
-    let no_generics = hir::Generics::empty();
+
+    const NO_GENERICS: &hir::Generics = &hir::Generics::empty();
+
     let empty_trait_items = HirVec::new();
 
     let mut predicates = UniquePredicates::new();
@@ -1991,17 +1993,17 @@ fn explicit_predicates_of<'tcx>(
                     }
                 }
 
-                _ => &no_generics,
+                _ => NO_GENERICS,
             }
         }
 
         Node::ForeignItem(item) => match item.node {
-            ForeignItemKind::Static(..) => &no_generics,
+            ForeignItemKind::Static(..) => NO_GENERICS,
             ForeignItemKind::Fn(_, _, ref generics) => generics,
-            ForeignItemKind::Type => &no_generics,
+            ForeignItemKind::Type => NO_GENERICS,
         },
 
-        _ => &no_generics,
+        _ => NO_GENERICS,
     };
 
     let generics = tcx.generics_of(def_id);
@@ -2205,7 +2207,7 @@ fn explicit_predicates_of<'tcx>(
 fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx>,
     param_ty: Ty<'tcx>,
-    bound: &hir::GenericBound,
+    bound: &'tcx hir::GenericBound,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     match *bound {
         hir::GenericBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
@@ -2227,7 +2229,7 @@ fn predicates_from_bound<'tcx>(
 fn compute_sig_of_foreign_fn_decl<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    decl: &hir::FnDecl,
+    decl: &'tcx hir::FnDecl,
     abi: abi::Abi,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
