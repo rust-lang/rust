@@ -159,7 +159,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
-        let mut module = self.module.clean(cx);
+        let mut module = self.module.as_ref().unwrap().clean(cx);
         let mut masked_crates = FxHashSet::default();
 
         match module.inner {
@@ -600,7 +600,7 @@ pub struct Module {
     pub is_crate: bool,
 }
 
-impl Clean<Item> for doctree::Module {
+impl Clean<Item> for doctree::Module<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let name = if self.name.is_some() {
             self.name.expect("No name provided").clean(cx)
@@ -620,7 +620,7 @@ impl Clean<Item> for doctree::Module {
         items.extend(self.unions.iter().map(|x| x.clean(cx)));
         items.extend(self.enums.iter().map(|x| x.clean(cx)));
         items.extend(self.fns.iter().map(|x| x.clean(cx)));
-        items.extend(self.foreigns.iter().flat_map(|x| x.clean(cx)));
+        items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
         items.extend(self.typedefs.iter().map(|x| x.clean(cx)));
         items.extend(self.existentials.iter().map(|x| x.clean(cx)));
@@ -1920,10 +1920,10 @@ pub struct Function {
     pub ret_types: Vec<Type>,
 }
 
-impl Clean<Item> for doctree::Function {
+impl Clean<Item> for doctree::Function<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let (generics, decl) = enter_impl_trait(cx, || {
-            (self.generics.clean(cx), (&self.decl, self.body).clean(cx))
+            (self.generics.clean(cx), (self.decl, self.body).clean(cx))
         });
 
         let did = cx.tcx.hir().local_def_id_from_hir_id(self.id);
@@ -2128,7 +2128,7 @@ pub struct Trait {
     pub is_auto: bool,
 }
 
-impl Clean<Item> for doctree::Trait {
+impl Clean<Item> for doctree::Trait<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let attrs = self.attrs.clean(cx);
         let is_spotlight = attrs.has_doc_flag(sym::spotlight);
@@ -2143,7 +2143,7 @@ impl Clean<Item> for doctree::Trait {
             inner: TraitItem(Trait {
                 auto: self.is_auto.clean(cx),
                 unsafety: self.unsafety,
-                items: self.items.clean(cx),
+                items: self.items.iter().map(|ti| ti.clean(cx)).collect(),
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
                 is_spotlight,
@@ -2159,7 +2159,7 @@ pub struct TraitAlias {
     pub bounds: Vec<GenericBound>,
 }
 
-impl Clean<Item> for doctree::TraitAlias {
+impl Clean<Item> for doctree::TraitAlias<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let attrs = self.attrs.clean(cx);
         Item {
@@ -2809,7 +2809,8 @@ impl Clean<Type> for hir::Ty {
                     let mut ty_substs = FxHashMap::default();
                     let mut lt_substs = FxHashMap::default();
                     let mut ct_substs = FxHashMap::default();
-                    provided_params.with_generic_args(|generic_args| {
+                    let generic_args = provided_params.generic_args();
+                    {
                         let mut indices: GenericParamCount = Default::default();
                         for param in generics.params.iter() {
                             match param.kind {
@@ -2852,11 +2853,11 @@ impl Clean<Type> for hir::Ty {
                                             _ => None,
                                         }
                                     });
-                                    if let Some(ty) = type_.cloned() {
+                                    if let Some(ty) = type_ {
                                         ty_substs.insert(ty_param_def_id, ty.clean(cx));
                                     } else if let Some(default) = default.clone() {
                                         ty_substs.insert(ty_param_def_id,
-                                                         default.into_inner().clean(cx));
+                                                         default.clean(cx));
                                     }
                                     indices.types += 1;
                                 }
@@ -2876,7 +2877,7 @@ impl Clean<Type> for hir::Ty {
                                             _ => None,
                                         }
                                     });
-                                    if let Some(ct) = const_.cloned() {
+                                    if let Some(ct) = const_ {
                                         ct_substs.insert(const_param_def_id, ct.clean(cx));
                                     }
                                     // FIXME(const_generics:defaults)
@@ -2884,26 +2885,26 @@ impl Clean<Type> for hir::Ty {
                                 }
                             }
                         }
-                    });
+                    }
                     return cx.enter_alias(ty_substs, lt_substs, ct_substs, || ty.clean(cx));
                 }
                 resolve_type(cx, path.clean(cx), self.hir_id)
             }
             TyKind::Path(hir::QPath::Resolved(Some(ref qself), ref p)) => {
-                let mut segments: Vec<_> = p.segments.clone().into();
-                segments.pop();
-                let trait_path = hir::Path {
-                    span: p.span,
+                let segments = if p.is_global() { &p.segments[1..] } else { &p.segments };
+                let trait_segments = &segments[..segments.len() - 1];
+                let trait_path = self::Path {
+                    global: p.is_global(),
                     res: Res::Def(
                         DefKind::Trait,
                         cx.tcx.associated_item(p.res.def_id()).container.id(),
                     ),
-                    segments: segments.into(),
+                    segments: trait_segments.clean(cx),
                 };
                 Type::QPath {
                     name: p.segments.last().expect("segments were empty").ident.name.clean(cx),
                     self_type: box qself.clean(cx),
-                    trait_: box resolve_type(cx, trait_path.clean(cx), self.hir_id)
+                    trait_: box resolve_type(cx, trait_path, self.hir_id)
                 }
             }
             TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
@@ -3234,7 +3235,7 @@ pub struct Union {
     pub fields_stripped: bool,
 }
 
-impl Clean<Item> for doctree::Struct {
+impl Clean<Item> for doctree::Struct<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item {
             name: Some(self.name.clean(cx)),
@@ -3254,7 +3255,7 @@ impl Clean<Item> for doctree::Struct {
     }
 }
 
-impl Clean<Item> for doctree::Union {
+impl Clean<Item> for doctree::Union<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item {
             name: Some(self.name.clean(cx)),
@@ -3301,7 +3302,7 @@ pub struct Enum {
     pub variants_stripped: bool,
 }
 
-impl Clean<Item> for doctree::Enum {
+impl Clean<Item> for doctree::Enum<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item {
             name: Some(self.name.clean(cx)),
@@ -3325,7 +3326,7 @@ pub struct Variant {
     pub kind: VariantKind,
 }
 
-impl Clean<Item> for doctree::Variant {
+impl Clean<Item> for doctree::Variant<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item {
             name: Some(self.name.clean(cx)),
@@ -3537,7 +3538,7 @@ impl Clean<PathSegment> for hir::PathSegment {
     fn clean(&self, cx: &DocContext<'_>) -> PathSegment {
         PathSegment {
             name: self.ident.name.clean(cx),
-            args: self.with_generic_args(|generic_args| generic_args.clean(cx))
+            args: self.generic_args().clean(cx),
         }
     }
 }
@@ -3630,7 +3631,7 @@ pub struct Typedef {
     pub generics: Generics,
 }
 
-impl Clean<Item> for doctree::Typedef {
+impl Clean<Item> for doctree::Typedef<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item {
             name: Some(self.name.clean(cx)),
@@ -3654,7 +3655,7 @@ pub struct Existential {
     pub generics: Generics,
 }
 
-impl Clean<Item> for doctree::Existential {
+impl Clean<Item> for doctree::Existential<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item {
             name: Some(self.name.clean(cx)),
@@ -3704,7 +3705,7 @@ pub struct Static {
     pub expr: String,
 }
 
-impl Clean<Item> for doctree::Static {
+impl Clean<Item> for doctree::Static<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         debug!("cleaning static {}: {:?}", self.name.clean(cx), self);
         Item {
@@ -3730,7 +3731,7 @@ pub struct Constant {
     pub expr: String,
 }
 
-impl Clean<Item> for doctree::Constant {
+impl Clean<Item> for doctree::Constant<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item {
             name: Some(self.name.clean(cx)),
@@ -3800,11 +3801,11 @@ pub fn get_auto_trait_and_blanket_impls(
         .chain(BlanketImplFinder::new(cx).get_blanket_impls(ty, param_env_def_id))
 }
 
-impl Clean<Vec<Item>> for doctree::Impl {
+impl Clean<Vec<Item>> for doctree::Impl<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
         let mut ret = Vec::new();
         let trait_ = self.trait_.clean(cx);
-        let items = self.items.clean(cx);
+        let items = self.items.iter().map(|ii| ii.clean(cx)).collect::<Vec<_>>();
 
         // If this impl block is an implementation of the Deref trait, then we
         // need to try inlining the target's inherent impl blocks as well.
@@ -3901,7 +3902,7 @@ fn build_deref_target_impls(cx: &DocContext<'_>,
     }
 }
 
-impl Clean<Vec<Item>> for doctree::ExternCrate {
+impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
 
         let please_inline = self.vis.node.is_pub() && self.attrs.iter().any(|a| {
@@ -3940,7 +3941,7 @@ impl Clean<Vec<Item>> for doctree::ExternCrate {
     }
 }
 
-impl Clean<Vec<Item>> for doctree::Import {
+impl Clean<Vec<Item>> for doctree::Import<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
         // We consider inlining the documentation of `pub use` statements, but we
         // forcefully don't inline if this is not public or if the
@@ -4016,22 +4017,11 @@ pub struct ImportSource {
     pub did: Option<DefId>,
 }
 
-impl Clean<Vec<Item>> for hir::ForeignMod {
-    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
-        let mut items = self.items.clean(cx);
-        for item in &mut items {
-            if let ForeignFunctionItem(ref mut f) = item.inner {
-                f.header.abi = self.abi;
-            }
-        }
-        items
-    }
-}
-
-impl Clean<Item> for hir::ForeignItem {
+impl Clean<Item> for doctree::ForeignItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let inner = match self.node {
+        let inner = match self.kind {
             hir::ForeignItemKind::Fn(ref decl, ref names, ref generics) => {
+                let abi = cx.tcx.hir().get_foreign_abi(self.id);
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (generics.clean(cx), (&**decl, &names[..]).clean(cx))
                 });
@@ -4041,7 +4031,7 @@ impl Clean<Item> for hir::ForeignItem {
                     generics,
                     header: hir::FnHeader {
                         unsafety: hir::Unsafety::Unsafe,
-                        abi: Abi::Rust,
+                        abi,
                         constness: hir::Constness::NotConst,
                         asyncness: hir::IsAsync::NotAsync,
                     },
@@ -4061,16 +4051,14 @@ impl Clean<Item> for hir::ForeignItem {
             }
         };
 
-        let local_did = cx.tcx.hir().local_def_id_from_hir_id(self.hir_id);
-
         Item {
-            name: Some(self.ident.clean(cx)),
+            name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
-            def_id: local_did,
+            source: self.whence.clean(cx),
+            def_id: cx.tcx.hir().local_def_id_from_hir_id(self.id),
             visibility: self.vis.clean(cx),
-            stability: get_stability(cx, local_did),
-            deprecation: get_deprecation(cx, local_did),
+            stability: self.stab.clean(cx),
+            deprecation: self.depr.clean(cx),
             inner,
         }
     }
@@ -4245,7 +4233,7 @@ pub struct Macro {
     pub imported_from: Option<String>,
 }
 
-impl Clean<Item> for doctree::Macro {
+impl Clean<Item> for doctree::Macro<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let name = self.name.clean(cx);
         Item {
@@ -4274,7 +4262,7 @@ pub struct ProcMacro {
     pub helpers: Vec<String>,
 }
 
-impl Clean<Item> for doctree::ProcMacro {
+impl Clean<Item> for doctree::ProcMacro<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item {
             name: Some(self.name.clean(cx)),

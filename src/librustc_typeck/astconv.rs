@@ -97,15 +97,15 @@ pub enum SizedByDefault {
     No,
 }
 
-struct ConvertedBinding<'tcx> {
+struct ConvertedBinding<'a, 'tcx> {
     item_name: ast::Ident,
-    kind: ConvertedBindingKind<'tcx>,
+    kind: ConvertedBindingKind<'a, 'tcx>,
     span: Span,
 }
 
-enum ConvertedBindingKind<'tcx> {
+enum ConvertedBindingKind<'a, 'tcx> {
     Equality(Ty<'tcx>),
-    Constraint(P<[hir::GenericBound]>),
+    Constraint(&'a [hir::GenericBound]),
 }
 
 #[derive(PartialEq)]
@@ -191,15 +191,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_segment: &hir::PathSegment)
         -> SubstsRef<'tcx>
     {
-        let (substs, assoc_bindings, _) = item_segment.with_generic_args(|generic_args| {
-            self.create_substs_for_ast_path(
-                span,
-                def_id,
-                generic_args,
-                item_segment.infer_args,
-                None,
-            )
-        });
+        let (substs, assoc_bindings, _) = self.create_substs_for_ast_path(
+            span,
+            def_id,
+            item_segment.generic_args(),
+            item_segment.infer_args,
+            None,
+        );
 
         assoc_bindings.first().map(|b| Self::prohibit_assoc_ty_binding(self.tcx(), b.span));
 
@@ -598,7 +596,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         generic_args: &'a hir::GenericArgs,
         infer_args: bool,
         self_ty: Option<Ty<'tcx>>)
-        -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>)
+        -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>)
     {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
@@ -740,7 +738,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     hir::TypeBindingKind::Equality { ref ty } =>
                         ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty)),
                     hir::TypeBindingKind::Constraint { ref bounds } =>
-                        ConvertedBindingKind::Constraint(bounds.clone()),
+                        ConvertedBindingKind::Constraint(bounds),
                 };
                 ConvertedBinding {
                     item_name: binding.ident,
@@ -861,21 +859,21 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ty::TraitRef::new(trait_def_id, substs)
     }
 
-    fn create_substs_for_ast_trait_ref(
+    fn create_substs_for_ast_trait_ref<'a>(
         &self,
         span: Span,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        trait_segment: &hir::PathSegment,
-    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>) {
+        trait_segment: &'a hir::PathSegment,
+    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>) {
         debug!("create_substs_for_ast_trait_ref(trait_segment={:?})",
                trait_segment);
 
         let trait_def = self.tcx().trait_def(trait_def_id);
 
         if !self.tcx().features().unboxed_closures &&
-            trait_segment.with_generic_args(|generic_args| generic_args.parenthesized)
-            != trait_def.paren_sugar {
+            trait_segment.generic_args().parenthesized != trait_def.paren_sugar
+        {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let msg = if trait_def.paren_sugar {
                 "the precise format of `Fn`-family traits' type parameters is subject to change. \
@@ -887,13 +885,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                              span, GateIssue::Language, msg);
         }
 
-        trait_segment.with_generic_args(|generic_args| {
-            self.create_substs_for_ast_path(span,
-                                            trait_def_id,
-                                            generic_args,
-                                            trait_segment.infer_args,
-                                            Some(self_ty))
-        })
+        self.create_substs_for_ast_path(span,
+                                        trait_def_id,
+                                        trait_segment.generic_args(),
+                                        trait_segment.infer_args,
+                                        Some(self_ty))
     }
 
     fn trait_defines_associated_type_named(&self,
@@ -916,7 +912,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for ab in ast_bounds {
             if let &hir::GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = ab {
                 if unbound.is_none() {
-                    unbound = Some(ptr.trait_ref.clone());
+                    unbound = Some(&ptr.trait_ref);
                 } else {
                     span_err!(
                         tcx.sess,
@@ -931,7 +927,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let kind_id = tcx.lang_items().require(SizedTraitLangItem);
         match unbound {
-            Some(ref tpb) => {
+            Some(tpb) => {
                 // FIXME(#8559) currently requires the unbound to be built-in.
                 if let Ok(kind_id) = kind_id {
                     if tpb.path.res != Res::Def(DefKind::Trait, kind_id) {
@@ -1052,7 +1048,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        binding: &ConvertedBinding<'tcx>,
+        binding: &ConvertedBinding<'_, 'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
         dup_bindings: &mut FxHashMap<DefId, Span>,
@@ -1169,7 +1165,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 }), binding.span));
             }
-            ConvertedBindingKind::Constraint(ref ast_bounds) => {
+            ConvertedBindingKind::Constraint(ast_bounds) => {
                 // "Desugar" a constraint like `T: Iterator<Item: Debug>` to
                 //
                 // `<T as Iterator>::Item: Debug`
@@ -1765,47 +1761,45 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             &self, segments: T) -> bool {
         let mut has_err = false;
         for segment in segments {
-            segment.with_generic_args(|generic_args| {
-                let (mut err_for_lt, mut err_for_ty, mut err_for_ct) = (false, false, false);
-                for arg in &generic_args.args {
-                    let (span, kind) = match arg {
-                        hir::GenericArg::Lifetime(lt) => {
-                            if err_for_lt { continue }
-                            err_for_lt = true;
-                            has_err = true;
-                            (lt.span, "lifetime")
-                        }
-                        hir::GenericArg::Type(ty) => {
-                            if err_for_ty { continue }
-                            err_for_ty = true;
-                            has_err = true;
-                            (ty.span, "type")
-                        }
-                        hir::GenericArg::Const(ct) => {
-                            if err_for_ct { continue }
-                            err_for_ct = true;
-                            (ct.span, "const")
-                        }
-                    };
-                    let mut err = struct_span_err!(
-                        self.tcx().sess,
-                        span,
-                        E0109,
-                        "{} arguments are not allowed for this type",
-                        kind,
-                    );
-                    err.span_label(span, format!("{} argument not allowed", kind));
-                    err.emit();
-                    if err_for_lt && err_for_ty && err_for_ct {
-                        break;
+            let (mut err_for_lt, mut err_for_ty, mut err_for_ct) = (false, false, false);
+            for arg in &segment.generic_args().args {
+                let (span, kind) = match arg {
+                    hir::GenericArg::Lifetime(lt) => {
+                        if err_for_lt { continue }
+                        err_for_lt = true;
+                        has_err = true;
+                        (lt.span, "lifetime")
                     }
-                }
-                for binding in &generic_args.bindings {
-                    has_err = true;
-                    Self::prohibit_assoc_ty_binding(self.tcx(), binding.span);
+                    hir::GenericArg::Type(ty) => {
+                        if err_for_ty { continue }
+                        err_for_ty = true;
+                        has_err = true;
+                        (ty.span, "type")
+                    }
+                    hir::GenericArg::Const(ct) => {
+                        if err_for_ct { continue }
+                        err_for_ct = true;
+                        (ct.span, "const")
+                    }
+                };
+                let mut err = struct_span_err!(
+                    self.tcx().sess,
+                    span,
+                    E0109,
+                    "{} arguments are not allowed for this type",
+                    kind,
+                );
+                err.span_label(span, format!("{} argument not allowed", kind));
+                err.emit();
+                if err_for_lt && err_for_ty && err_for_ct {
                     break;
                 }
-            })
+            }
+            for binding in &segment.generic_args().bindings {
+                has_err = true;
+                Self::prohibit_assoc_ty_binding(self.tcx(), binding.span);
+                break;
+            }
         }
         has_err
     }
