@@ -105,7 +105,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
     #[inline]
     pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
-        ptr.with_tag(M::tag_static_base_pointer(ptr.alloc_id, &self.extra))
+        ptr.with_tag(M::tag_static_base_pointer(ptr.alloc_id, &self))
     }
 
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> Pointer<M::PointerTag> {
@@ -138,7 +138,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKinds>,
     ) -> Pointer<M::PointerTag> {
         let id = self.tcx.alloc_map.lock().reserve();
-        let (alloc, tag) = M::tag_allocation(id, Cow::Owned(alloc), Some(kind), &self.extra);
+        let (alloc, tag) = M::tag_allocation(id, Cow::Owned(alloc), Some(kind), &self);
         self.alloc_map.insert(id, (kind, alloc.into_owned()));
         Pointer::from(id).with_tag(tag)
     }
@@ -325,7 +325,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     fn get_static_alloc(
         id: AllocId,
         tcx: TyCtxtAt<'tcx>,
-        memory_extra: &M::MemoryExtra,
+        memory: &Memory<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
         let alloc = match alloc {
@@ -372,7 +372,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             id, // always use the ID we got as input, not the "hidden" one.
             alloc,
             M::STATIC_KIND.map(MemoryKind::Machine),
-            memory_extra
+            memory
         ).0)
     }
 
@@ -385,7 +385,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // `get_static_alloc` that we can actually use directly without inserting anything anywhere.
         // So the error type is `InterpResult<'tcx, &Allocation<M::PointerTag>>`.
         let a = self.alloc_map.get_or(id, || {
-            let alloc = Self::get_static_alloc(id, self.tcx, &self.extra).map_err(Err)?;
+            let alloc = Self::get_static_alloc(id, self.tcx, &self).map_err(Err)?;
             match alloc {
                 Cow::Borrowed(alloc) => {
                     // We got a ref, cheaply return that as an "error" so that the
@@ -414,11 +414,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
     ) -> InterpResult<'tcx, &mut Allocation<M::PointerTag, M::AllocExtra>> {
         let tcx = self.tcx;
-        let memory_extra = &self.extra;
+        let alloc = Self::get_static_alloc(id, tcx, &self);
         let a = self.alloc_map.get_mut_or(id, || {
             // Need to make a copy, even if `get_static_alloc` is able
             // to give us a cheap reference.
-            let alloc = Self::get_static_alloc(id, tcx, memory_extra)?;
+            let alloc = alloc?;
             if alloc.mutability == Mutability::Immutable {
                 return err!(ModifiedConstantMemory);
             }

@@ -177,7 +177,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
-        memory_extra: &Self::MemoryExtra,
+        memory: &Memory<'mir, 'tcx, Self>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
 
     /// Return the "base" tag for the given static allocation: the one that is used for direct
@@ -187,7 +187,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// for cyclic statics!
     fn tag_static_base_pointer(
         id: AllocId,
-        memory_extra: &Self::MemoryExtra,
+        memory: &Memory<'mir, 'tcx, Self>,
     ) -> Self::PointerTag;
 
     /// Executes a retagging operation
