@@ -1311,10 +1311,19 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     ) -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
         use SavedLocalEligibility::*;
         let tcx = self.tcx;
-        let recompute_memory_index = |offsets: &[Size]| -> Vec<u32> {
+        let recompute_memory_index = |offsets: &[Size], fields: &[TyLayout<'_>]| -> Vec<u32> {
             debug!("recompute_memory_index({:?})", offsets);
+            debug!("fields = {:#?}", fields);
             let mut inverse_index = (0..offsets.len() as u32).collect::<Vec<_>>();
-            inverse_index.sort_unstable_by_key(|i| offsets[*i as usize]);
+            inverse_index.sort_unstable_by_key(|i| {
+                // Place ZSTs before other fields at the same offset so all fields are
+                // in order by offset. Codegen expects this.
+                //
+                // In generators we can have ZST fields with nonzero offsets (these are
+                // fields specific to one variant that come after the prefix).
+                let zst = fields[*i as usize].is_zst();
+                (offsets[*i as usize], !zst)
+            });
 
             let mut index = vec![0; offsets.len()];
             for i in 0..index.len() {
@@ -1337,9 +1346,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let prefix_tys = substs.prefix_tys(def_id, tcx)
             .chain(iter::once(substs.discr_ty(tcx)))
             .chain(promoted_tys);
+        let prefix_layouts = prefix_tys
+            .map(|ty| self.layout_of(ty))
+            .collect::<Result<Vec<_>, _>>()?;
         let prefix = self.univariant_uninterned(
             ty,
-            &prefix_tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
+            &prefix_layouts,
             &ReprOptions::default(),
             StructKind::AlwaysSized)?;
         let (prefix_size, prefix_align) = (prefix.size, prefix.align);
@@ -1354,7 +1366,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let offsets_b = offsets.split_off(discr_index + 1);
                 let offsets_a = offsets;
 
-                let memory_index = recompute_memory_index(&offsets_a);
+                // Okay to use `prefix_layouts` here since we're accessing
+                // fields (0..discr_index + 1); the field indices will be the
+                // same.
+                let memory_index = recompute_memory_index(&offsets_a, &prefix_layouts);
+
                 let outer_fields = FieldPlacement::Arbitrary { offsets: offsets_a, memory_index };
                 (outer_fields, offsets_b)
             }
@@ -1364,24 +1380,29 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let mut size = prefix.size;
         let mut align = prefix.align;
         let variants = info.variant_fields.iter_enumerated().map(|(index, variant_fields)| {
-            // Only include overlap-eligible fields when we compute our variant layout.
-            let variant_only_tys = variant_fields
-                .iter()
-                .filter(|local| {
-                    match assignments[**local] {
-                        Unassigned => bug!(),
-                        Assigned(v) if v == index => true,
-                        Assigned(_) => bug!("assignment does not match variant"),
-                        Ineligible(_) => false,
-                    }
-                })
-                .map(|local| subst_field(info.field_tys[*local]));
+            let mut variant_layouts = Vec::with_capacity(variant_fields.len());
+            let mut variant_only_layouts = Vec::with_capacity(variant_fields.len());
+            for local in variant_fields {
+                let ty = subst_field(info.field_tys[*local]);
+                let layout = self.layout_of(ty)?;
+
+                variant_layouts.push(layout);
+
+                // Only include overlap-eligible fields when we compute our variant layout.
+                let variant_only = match assignments[*local] {
+                    Unassigned => bug!(),
+                    Assigned(v) if v == index => true,
+                    Assigned(_) => bug!("assignment does not match variant"),
+                    Ineligible(_) => false,
+                };
+                if variant_only {
+                    variant_only_layouts.push(layout);
+                }
+            }
 
             let mut variant = self.univariant_uninterned(
                 ty,
-                &variant_only_tys
-                    .map(|ty| self.layout_of(ty))
-                    .collect::<Result<Vec<_>, _>>()?,
+                &variant_only_layouts,
                 &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi))?;
             variant.variants = Variants::Single { index };
@@ -1408,7 +1429,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
                 }
             }
-            let memory_index = recompute_memory_index(&combined_offsets);
+            let memory_index = recompute_memory_index(&combined_offsets, &variant_layouts);
             variant.fields = FieldPlacement::Arbitrary { offsets: combined_offsets, memory_index };
 
             size = size.max(variant.size);
@@ -1442,7 +1463,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         debug!("generator layout ({:?}): {:#?}", ty, layout);
         Ok(layout)
     }
+}
 
+impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     /// This is invoked by the `layout_raw` query to record the final
     /// layout of each type.
     #[inline(always)]
