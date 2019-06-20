@@ -927,7 +927,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_expr_by_hir_id(&self, id: HirId) -> &'hir Expr {
+    pub fn expect_expr(&self, id: HirId) -> &'hir Expr {
         match self.find_by_hir_id(id) { // read recorded by find
             Some(Node::Expr(expr)) => expr,
             _ => bug!("expected expr, found {}", self.node_to_string(id))

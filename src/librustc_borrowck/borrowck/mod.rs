@@ -702,7 +702,7 @@ impl BorrowckCtxt<'_, 'tcx> {
             move_data::MovePat => (self.tcx.hir().span(hir_id), ""),
 
             move_data::Captured =>
-                (match self.tcx.hir().expect_expr_by_hir_id(hir_id).node {
+                (match self.tcx.hir().expect_expr(hir_id).node {
                     hir::ExprKind::Closure(.., fn_decl_span, _) => fn_decl_span,
                     ref r => bug!("Captured({:?}) maps to non-closure: {:?}",
                                   the_move.id, r),

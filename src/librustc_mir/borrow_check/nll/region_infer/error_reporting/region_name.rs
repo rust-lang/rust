@@ -237,7 +237,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                     if let DefiningTy::Closure(def_id, substs) = def_ty {
                         let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
-                            tcx.hir().expect_expr_by_hir_id(mir_hir_id).node
+                            tcx.hir().expect_expr(mir_hir_id).node
                         {
                             span
                         } else {

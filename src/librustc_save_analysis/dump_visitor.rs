@@ -1532,7 +1532,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
         match ex.node {
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let expr_hir_id = self.save_ctxt.tcx.hir().node_to_hir_id(ex.id);
-                let hir_expr = self.save_ctxt.tcx.hir().expect_expr_by_hir_id(expr_hir_id);
+                let hir_expr = self.save_ctxt.tcx.hir().expect_expr(expr_hir_id);
                 let adt = match self.save_ctxt.tables.expr_ty_opt(&hir_expr) {
                     Some(ty) if ty.ty_adt_def().is_some() => ty.ty_adt_def().unwrap(),
                     _ => {

@@ -617,7 +617,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 hir::MatchSource::TryDesugar => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
-                        let discrim_expr = self.tcx.hir().expect_expr_by_hir_id(discrim_hir_id);
+                        let discrim_expr = self.tcx.hir().expect_expr(discrim_hir_id);
                         let discrim_ty = if let hir::ExprKind::Call(_, args) = &discrim_expr.node {
                             let arg_expr = args.first().expect("try desugaring call w/out arg");
                             self.in_progress_tables.and_then(|tables| {

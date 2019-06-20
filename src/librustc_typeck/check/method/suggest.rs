@@ -389,7 +389,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Applicability::MachineApplicable,
                                 );
                             } else {
-                                let call_expr = self.tcx.hir().expect_expr_by_hir_id(
+                                let call_expr = self.tcx.hir().expect_expr(
                                     self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id),
                                 );
 
