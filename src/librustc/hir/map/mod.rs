@@ -927,12 +927,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_expr(&self, id: NodeId) -> &'hir Expr {
-        let hir_id = self.node_to_hir_id(id);
-        self.expect_expr_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn expect_expr_by_hir_id(&self, id: HirId) -> &'hir Expr {
         match self.find_by_hir_id(id) { // read recorded by find
             Some(Node::Expr(expr)) => expr,

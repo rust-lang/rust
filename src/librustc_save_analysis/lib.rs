@@ -513,7 +513,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
-        let hir_node = self.tcx.hir().expect_expr(expr.id);
+        let expr_hir_id = self.tcx.hir().node_to_hir_id(expr.id);
+        let hir_node = self.tcx.hir().expect_expr_by_hir_id(expr_hir_id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
         if ty.is_none() || ty.unwrap().sty == ty::Error {
             return None;
