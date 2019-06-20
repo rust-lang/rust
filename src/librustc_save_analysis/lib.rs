@@ -607,7 +607,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_path_res(&self, hir_id: hir::HirId) -> Res {
-        match self.tcx.hir().get_by_hir_id(hir_id) {
+        match self.tcx.hir().get(hir_id) {
             Node::TraitRef(tr) => tr.path.res,
 
             Node::Item(&hir::Item {

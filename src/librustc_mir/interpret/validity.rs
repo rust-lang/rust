@@ -193,7 +193,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                         // Sometimes the index is beyond the number of upvars (seen
                         // for a generator).
                         if let Some((&var_hir_id, _)) = upvars.get_index(field) {
-                            let node = self.ecx.tcx.hir().get_by_hir_id(var_hir_id);
+                            let node = self.ecx.tcx.hir().get(var_hir_id);
                             if let hir::Node::Binding(pat) = node {
                                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
                                     name = Some(ident.name);

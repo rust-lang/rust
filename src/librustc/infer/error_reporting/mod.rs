@@ -1335,7 +1335,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                             // instead we suggest `T: 'a + 'b` in that case.
                             let mut has_bounds = false;
-                            if let Node::GenericParam(ref param) = hir.get_by_hir_id(id) {
+                            if let Node::GenericParam(ref param) = hir.get(id) {
                                 has_bounds = !param.bounds.is_empty();
                             }
                             let sp = hir.span(id);

@@ -945,8 +945,8 @@ pub fn may_define_existential_type(
     let mut hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     trace!(
         "may_define_existential_type(def={:?}, opaque_node={:?})",
-        tcx.hir().get_by_hir_id(hir_id),
-        tcx.hir().get_by_hir_id(opaque_hir_id)
+        tcx.hir().get(hir_id),
+        tcx.hir().get(opaque_hir_id)
     );
 
     // Named existential types can be defined by any siblings or children of siblings.

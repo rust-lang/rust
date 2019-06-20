@@ -26,7 +26,7 @@ pub fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
-    let (body_id, return_ty_span) = match tcx.hir().get_by_hir_id(id) {
+    let (body_id, return_ty_span) = match tcx.hir().get(id) {
         Node::Expr(hir::Expr { node: hir::ExprKind::Closure(_, decl, body_id, _, _), .. })
         | Node::Item(hir::Item { node: hir::ItemKind::Fn(decl, _, _, body_id), .. })
         | Node::ImplItem(

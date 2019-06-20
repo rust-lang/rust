@@ -80,7 +80,7 @@ fn borrowck<'tcx>(tcx: TyCtxt<'tcx>, owner_def_id: DefId) -> &'tcx BorrowCheckRe
 
     let owner_id = tcx.hir().as_local_hir_id(owner_def_id).unwrap();
 
-    match tcx.hir().get_by_hir_id(owner_id) {
+    match tcx.hir().get(owner_id) {
         Node::Ctor(..) => {
             // We get invoked with anything that has MIR, but some of
             // those things (notably the synthesized constructors from
@@ -390,7 +390,7 @@ pub enum LoanPathElem<'tcx> {
 
 fn closure_to_block(closure_id: LocalDefId, tcx: TyCtxt<'_>) -> HirId {
     let closure_id = tcx.hir().local_def_id_to_hir_id(closure_id);
-    match tcx.hir().get_by_hir_id(closure_id) {
+    match tcx.hir().get(closure_id) {
         Node::Expr(expr) => match expr.node {
             hir::ExprKind::Closure(.., body_id, _, _) => {
                 body_id.hir_id
@@ -896,7 +896,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                 // to implement two traits for "one operator" is not very intuitive for
                 // many programmers.
                 if err.cmt.note == mc::NoteIndex {
-                    let node = self.tcx.hir().get_by_hir_id(err.cmt.hir_id);
+                    let node = self.tcx.hir().get(err.cmt.hir_id);
 
                     // This pattern probably always matches.
                     if let Node::Expr(
@@ -1172,7 +1172,7 @@ impl BorrowckCtxt<'_, 'tcx> {
     }
 
     fn local_binding_mode(&self, hir_id: hir::HirId) -> ty::BindingMode {
-        let pat = match self.tcx.hir().get_by_hir_id(hir_id) {
+        let pat = match self.tcx.hir().get(hir_id) {
             Node::Binding(pat) => pat,
             node => bug!("bad node for local: {:?}", node)
         };
@@ -1190,7 +1190,7 @@ impl BorrowckCtxt<'_, 'tcx> {
 
     fn local_ty(&self, hir_id: hir::HirId) -> (Option<&hir::Ty>, bool) {
         let parent = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
-        let parent_node = self.tcx.hir().get_by_hir_id(parent);
+        let parent_node = self.tcx.hir().get(parent);
 
         // The parent node is like a fn
         if let Some(fn_like) = FnLikeNode::from_node(parent_node) {
@@ -1255,7 +1255,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                     None => return
                 };
 
-                if let Node::Field(ref field) = self.tcx.hir().get_by_hir_id(hir_id) {
+                if let Node::Field(ref field) = self.tcx.hir().get(hir_id) {
                     if let Some(msg) = self.suggest_mut_for_immutable(&field.ty, false) {
                         db.span_label(field.ty.span, msg);
                     }

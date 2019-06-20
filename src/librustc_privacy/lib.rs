@@ -229,14 +229,14 @@ fn def_id_visibility<'tcx>(
 ) -> (ty::Visibility, Span, &'static str) {
     match tcx.hir().as_local_hir_id(def_id) {
         Some(hir_id) => {
-            let vis = match tcx.hir().get_by_hir_id(hir_id) {
+            let vis = match tcx.hir().get(hir_id) {
                 Node::Item(item) => &item.vis,
                 Node::ForeignItem(foreign_item) => &foreign_item.vis,
                 Node::TraitItem(..) | Node::Variant(..) => {
                     return def_id_visibility(tcx, tcx.hir().get_parent_did(hir_id));
                 }
                 Node::ImplItem(impl_item) => {
-                    match tcx.hir().get_by_hir_id(tcx.hir().get_parent_item(hir_id)) {
+                    match tcx.hir().get(tcx.hir().get_parent_item(hir_id)) {
                         Node::Item(item) => match &item.node {
                             hir::ItemKind::Impl(.., None, _, _) => &impl_item.vis,
                             hir::ItemKind::Impl(.., Some(trait_ref), _, _)
@@ -248,7 +248,7 @@ fn def_id_visibility<'tcx>(
                 }
                 Node::Ctor(vdata) => {
                     let parent_hir_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
-                    match tcx.hir().get_by_hir_id(parent_hir_id) {
+                    match tcx.hir().get(parent_hir_id) {
                         Node::Variant(..) => {
                             let parent_did = tcx.hir().local_def_id_from_hir_id(parent_hir_id);
                             let (mut ctor_vis, mut span, mut descr) = def_id_visibility(
@@ -274,7 +274,7 @@ fn def_id_visibility<'tcx>(
                             return (ctor_vis, span, descr);
                         }
                         Node::Item(..) => {
-                            let item = match tcx.hir().get_by_hir_id(parent_hir_id) {
+                            let item = match tcx.hir().get(parent_hir_id) {
                                 Node::Item(item) => item,
                                 node => bug!("unexpected node kind: {:?}", node),
                             };

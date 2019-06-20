@@ -1610,7 +1610,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Option<Ty<'tcx>> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return None
         let hir_id = self.hir().as_local_hir_id(scope_def_id).unwrap();
-        match self.hir().get_by_hir_id(hir_id) {
+        match self.hir().get(hir_id) {
             Node::Item(item) => {
                 match item.node {
                     ItemKind::Fn(..) => { /* type_of_def_id() will work */ }

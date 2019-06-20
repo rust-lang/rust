@@ -337,7 +337,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         if !self.view_item_stack.insert(res_hir_id) { return false }
 
-        let ret = match tcx.hir().get_by_hir_id(res_hir_id) {
+        let ret = match tcx.hir().get(res_hir_id) {
             Node::Item(&hir::Item { node: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for i in &m.item_ids {

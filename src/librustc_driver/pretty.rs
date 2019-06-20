@@ -627,7 +627,7 @@ fn print_flowgraph<'tcx, W: Write>(
             // Find the function this expression is from.
             let mut hir_id = expr.hir_id;
             loop {
-                let node = tcx.hir().get_by_hir_id(hir_id);
+                let node = tcx.hir().get(hir_id);
                 if let Some(n) = hir::map::blocks::FnLikeNode::from_node(node) {
                     break n.body();
                 }
@@ -831,7 +831,7 @@ pub fn print_after_hir_lowering<'tcx>(
                                                                          annotation.pp_ann());
                     for node_id in uii.all_matching_node_ids(hir_map) {
                         let hir_id = tcx.hir().node_to_hir_id(node_id);
-                        let node = hir_map.get_by_hir_id(hir_id);
+                        let node = hir_map.get(hir_id);
                         pp_state.print_node(node)?;
                         pp_state.s.space()?;
                         let path = annotation.node_path(node_id)
@@ -849,7 +849,7 @@ pub fn print_after_hir_lowering<'tcx>(
                     debug!("pretty printing source code {:?}", s);
                     for node_id in uii.all_matching_node_ids(tcx.hir()) {
                         let hir_id = tcx.hir().node_to_hir_id(node_id);
-                        let node = tcx.hir().get_by_hir_id(hir_id);
+                        let node = tcx.hir().get(hir_id);
                         write!(out, "{:#?}", node)?;
                     }
                     Ok(())

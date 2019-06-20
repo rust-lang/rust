@@ -276,7 +276,7 @@ fn lint_int_literal<'a, 'tcx>(
         }
 
         let par_id = cx.tcx.hir().get_parent_node_by_hir_id(e.hir_id);
-        if let Node::Expr(par_e) = cx.tcx.hir().get_by_hir_id(par_id) {
+        if let Node::Expr(par_e) = cx.tcx.hir().get(par_id) {
             if let hir::ExprKind::Struct(..) = par_e.node {
                 if is_range_literal(cx.sess(), par_e)
                     && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t)
@@ -315,7 +315,7 @@ fn lint_uint_literal<'a, 'tcx>(
     };
     if lit_val < min || lit_val > max {
         let parent_id = cx.tcx.hir().get_parent_node_by_hir_id(e.hir_id);
-        if let Node::Expr(par_e) = cx.tcx.hir().get_by_hir_id(parent_id) {
+        if let Node::Expr(par_e) = cx.tcx.hir().get(parent_id) {
             match par_e.node {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.tables.expr_ty(par_e).sty {

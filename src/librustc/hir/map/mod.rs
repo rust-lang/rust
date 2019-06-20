@@ -458,7 +458,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body_owner_kind(&self, id: HirId) -> BodyOwnerKind {
-        match self.get_by_hir_id(id) {
+        match self.get(id) {
             Node::Item(&Item { node: ItemKind::Const(..), .. }) |
             Node::TraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
             Node::ImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) |
@@ -482,7 +482,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn ty_param_owner(&self, id: HirId) -> HirId {
-        match self.get_by_hir_id(id) {
+        match self.get(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
             Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => id,
             Node::GenericParam(_) => self.get_parent_node_by_hir_id(id),
@@ -491,7 +491,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn ty_param_name(&self, id: HirId) -> Name {
-        match self.get_by_hir_id(id) {
+        match self.get(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
             Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => kw::SelfUpper,
             Node::GenericParam(param) => param.name.ident().name,
@@ -561,14 +561,14 @@ impl<'hir> Map<'hir> {
     }
 
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
-    pub fn get_by_hir_id(&self, id: HirId) -> Node<'hir> {
+    pub fn get(&self, id: HirId) -> Node<'hir> {
         // read recorded by `find`
         self.find_by_hir_id(id).unwrap_or_else(||
             bug!("couldn't find hir id {} in the HIR map", id))
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        self.as_local_hir_id(id).map(|id| self.get_by_hir_id(id)) // read recorded by `get`
+        self.as_local_hir_id(id).map(|id| self.get(id)) // read recorded by `get`
     }
 
     pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics> {
@@ -840,7 +840,7 @@ impl<'hir> Map<'hir> {
             if scope == CRATE_HIR_ID {
                 return Some(CRATE_HIR_ID);
             }
-            match self.get_by_hir_id(scope) {
+            match self.get(scope) {
                 Node::Item(i) => {
                     match i.node {
                         ItemKind::Existential(ExistTy { impl_trait_fn: None, .. }) => {}
@@ -929,7 +929,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn name(&self, id: HirId) -> Name {
-        match self.get_by_hir_id(id) {
+        match self.get(id) {
             Node::Item(i) => i.ident.name,
             Node::ForeignItem(fi) => fi.ident.name,
             Node::ImplItem(ii) => ii.ident.name,
@@ -1061,7 +1061,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn hir_to_pretty_string(&self, id: HirId) -> String {
-        print::to_string(self, |s| s.print_node(self.get_by_hir_id(id)))
+        print::to_string(self, |s| s.print_node(self.get(id)))
     }
 }
 
