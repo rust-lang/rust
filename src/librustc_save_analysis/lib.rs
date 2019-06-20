@@ -606,8 +606,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_res(&self, id: NodeId) -> Res {
-        match self.tcx.hir().get(id) {
+    pub fn get_path_res(&self, hir_id: hir::HirId) -> Res {
+        match self.tcx.hir().get_by_hir_id(hir_id) {
             Node::TraitRef(tr) => tr.path.res,
 
             Node::Item(&hir::Item {
@@ -620,7 +620,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Node::PathSegment(seg) => {
                 match seg.res {
                     Some(res) if res != Res::Err => res,
-                    _ => self.get_path_res(self.tcx.hir().get_parent_node(id)),
+                    _ => self.get_path_res(self.tcx.hir().get_parent_node_by_hir_id(hir_id)),
                 }
             }
 
@@ -628,7 +628,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 node: hir::ExprKind::Struct(ref qpath, ..),
                 ..
             }) => {
-                let hir_id = self.tcx.hir().node_to_hir_id(id);
                 self.tables.qpath_res(qpath, hir_id)
             }
 
@@ -652,7 +651,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 node: hir::TyKind::Path(ref qpath),
                 ..
             }) => {
-                let hir_id = self.tcx.hir().node_to_hir_id(id);
                 self.tables.qpath_res(qpath, hir_id)
             }
 
@@ -697,7 +695,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             return None;
         }
 
-        let res = self.get_path_res(id);
+        let hir_id = self.tcx.hir().node_to_hir_id(id);
+        let res = self.get_path_res(hir_id);
         let span = path_seg.ident.span;
         filter!(self.span_utils, span);
         let span = self.span_from_span(span);
@@ -869,7 +868,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
-        match self.get_path_res(ref_id) {
+        let hir_id = self.tcx.hir().node_to_hir_id(ref_id);
+        match self.get_path_res(hir_id) {
             Res::PrimTy(_) | Res::SelfTy(..) | Res::Err => None,
             def => Some(def.def_id()),
         }

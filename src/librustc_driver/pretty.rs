@@ -830,7 +830,8 @@ pub fn print_after_hir_lowering<'tcx>(
                                                                          box out,
                                                                          annotation.pp_ann());
                     for node_id in uii.all_matching_node_ids(hir_map) {
-                        let node = hir_map.get(node_id);
+                        let hir_id = tcx.hir().node_to_hir_id(node_id);
+                        let node = hir_map.get_by_hir_id(hir_id);
                         pp_state.print_node(node)?;
                         pp_state.s.space()?;
                         let path = annotation.node_path(node_id)
@@ -847,7 +848,8 @@ pub fn print_after_hir_lowering<'tcx>(
                 s.call_with_pp_support_hir(tcx, move |_annotation, _krate| {
                     debug!("pretty printing source code {:?}", s);
                     for node_id in uii.all_matching_node_ids(tcx.hir()) {
-                        let node = tcx.hir().get(node_id);
+                        let hir_id = tcx.hir().node_to_hir_id(node_id);
+                        let node = tcx.hir().get_by_hir_id(hir_id);
                         write!(out, "{:#?}", node)?;
                     }
                     Ok(())

@@ -561,12 +561,6 @@ impl<'hir> Map<'hir> {
     }
 
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
-    pub fn get(&self, id: NodeId) -> Node<'hir> {
-        let hir_id = self.node_to_hir_id(id);
-        self.get_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn get_by_hir_id(&self, id: HirId) -> Node<'hir> {
         // read recorded by `find`
         self.find_by_hir_id(id).unwrap_or_else(||
@@ -574,7 +568,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        self.as_local_node_id(id).map(|id| self.get(id)) // read recorded by `get`
+        self.as_local_hir_id(id).map(|id| self.get_by_hir_id(id)) // read recorded by `get`
     }
 
     pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics> {
