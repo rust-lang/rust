@@ -3019,6 +3019,28 @@ macro_rules! iterator {
         {$( $mut_:tt )*},
         {$($extra:tt)*}
     ) => {
+        // Returns the first element and moves the start of the iterator forwards by 1.
+        // Greatly improves performance compared to an inlined function. The iterator
+        // must not be empty.
+        macro_rules! next_unchecked {
+            ($self: ident) => {& $( $mut_ )* *$self.post_inc_start(1)}
+        }
+
+        // Returns the last element and moves the end of the iterator backwards by 1.
+        // Greatly improves performance compared to an inlined function. The iterator
+        // must not be empty.
+        macro_rules! next_back_unchecked {
+            ($self: ident) => {& $( $mut_ )* *$self.pre_dec_end(1)}
+        }
+
+        // Shrinks the iterator when T is a ZST, by moving the end of the iterator
+        // backwards by `n`. `n` must not exceed `self.len()`.
+        macro_rules! zst_shrink {
+            ($self: ident, $n: ident) => {
+                $self.end = ($self.end as * $raw_mut u8).wrapping_offset(-$n) as * $raw_mut T;
+            }
+        }
+
         impl<'a, T> $name<'a, T> {
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
@@ -3028,12 +3050,11 @@ macro_rules! iterator {
 
             // Helper function for moving the start of the iterator forwards by `offset` elements,
             // returning the old start.
-            // Unsafe because the offset must be in-bounds or one-past-the-end.
+            // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn post_inc_start(&mut self, offset: isize) -> * $raw_mut T {
                 if mem::size_of::<T>() == 0 {
-                    // This is *reducing* the length.  `ptr` never changes with ZST.
-                    self.end = (self.end as * $raw_mut u8).wrapping_offset(-offset) as * $raw_mut T;
+                    zst_shrink!(self, offset);
                     self.ptr
                 } else {
                     let old = self.ptr;
@@ -3044,11 +3065,11 @@ macro_rules! iterator {
 
             // Helper function for moving the end of the iterator backwards by `offset` elements,
             // returning the new end.
-            // Unsafe because the offset must be in-bounds or one-past-the-end.
+            // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn pre_dec_end(&mut self, offset: isize) -> * $raw_mut T {
                 if mem::size_of::<T>() == 0 {
-                    self.end = (self.end as * $raw_mut u8).wrapping_offset(-offset) as * $raw_mut T;
+                    zst_shrink!(self, offset);
                     self.ptr
                 } else {
                     self.end = self.end.offset(-offset);
@@ -3085,7 +3106,7 @@ macro_rules! iterator {
                     if is_empty!(self) {
                         None
                     } else {
-                        Some(& $( $mut_ )* *self.post_inc_start(1))
+                        Some(next_unchecked!(self))
                     }
                 }
             }
@@ -3114,11 +3135,10 @@ macro_rules! iterator {
                     }
                     return None;
                 }
-                // We are in bounds. `offset` does the right thing even for ZSTs.
+                // We are in bounds. `post_inc_start` does the right thing even for ZSTs.
                 unsafe {
-                    let elem = Some(& $( $mut_ )* *self.ptr.add(n));
-                    self.post_inc_start((n as isize).wrapping_add(1));
-                    elem
+                    self.post_inc_start(n as isize);
+                    Some(next_unchecked!(self))
                 }
             }
 
@@ -3135,13 +3155,13 @@ macro_rules! iterator {
                 let mut accum = init;
                 unsafe {
                     while len!(self) >= 4 {
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
+                        accum = f(accum, next_unchecked!(self))?;
+                        accum = f(accum, next_unchecked!(self))?;
+                        accum = f(accum, next_unchecked!(self))?;
+                        accum = f(accum, next_unchecked!(self))?;
                     }
                     while !is_empty!(self) {
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
+                        accum = f(accum, next_unchecked!(self))?;
                     }
                 }
                 Try::from_ok(accum)
@@ -3212,8 +3232,22 @@ macro_rules! iterator {
                     if is_empty!(self) {
                         None
                     } else {
-                        Some(& $( $mut_ )* *self.pre_dec_end(1))
+                        Some(next_back_unchecked!(self))
                     }
+                }
+            }
+
+            #[inline]
+            fn nth_back(&mut self, n: usize) -> Option<$elem> {
+                if n >= len!(self) {
+                    // This iterator is now empty.
+                    self.end = self.ptr;
+                    return None;
+                }
+                // We are in bounds. `pre_dec_end` does the right thing even for ZSTs.
+                unsafe {
+                    self.pre_dec_end(n as isize);
+                    Some(next_back_unchecked!(self))
                 }
             }
 
@@ -3225,14 +3259,14 @@ macro_rules! iterator {
                 let mut accum = init;
                 unsafe {
                     while len!(self) >= 4 {
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
                     }
                     // inlining is_empty everywhere makes a huge performance difference
                     while !is_empty!(self) {
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
                     }
                 }
                 Try::from_ok(accum)
