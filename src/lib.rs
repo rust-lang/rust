@@ -72,7 +72,7 @@ pub struct MiriConfig {
 
 // Used by priroda.
 pub fn create_ecx<'mir, 'tcx: 'mir>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     main_id: DefId,
     config: MiriConfig,
 ) -> InterpResult<'tcx, InterpretCx<'mir, 'tcx, Evaluator<'tcx>>> {
@@ -212,7 +212,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 }
 
 pub fn eval_main<'tcx>(
-    tcx: TyCtxt<'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     main_id: DefId,
     config: MiriConfig,
 ) {
@@ -475,7 +475,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     fn find_foreign_static(
         def_id: DefId,
-        tcx: TyCtxtAt<'tcx, 'tcx>,
+        tcx: TyCtxtAt<'tcx>,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
