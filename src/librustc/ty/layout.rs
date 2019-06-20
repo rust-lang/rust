@@ -1340,13 +1340,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Build a prefix layout, including "promoting" all ineligible
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
-        let discr_index = substs.prefix_tys(def_id, tcx).count();
+        let discr_index = substs.outer_tys(def_id, tcx).count();
         let promoted_tys =
             ineligible_locals.iter().map(|local| subst_field(info.field_tys[local]));
-        let prefix_tys = substs.prefix_tys(def_id, tcx)
+        let outer_tys = substs.outer_tys(def_id, tcx)
             .chain(iter::once(substs.discr_ty(tcx)))
             .chain(promoted_tys);
-        let prefix_layouts = prefix_tys
+        let prefix_layouts = outer_tys
             .map(|ty| self.layout_of(ty))
             .collect::<Result<Vec<_>, _>>()?;
         let prefix = self.univariant_uninterned(
@@ -2044,7 +2044,7 @@ where
                         if i == discr_index {
                             return discr_layout(discr);
                         }
-                        substs.prefix_tys(def_id, tcx).nth(i).unwrap()
+                        substs.outer_tys(def_id, tcx).nth(i).unwrap()
                     }
                 }
             }

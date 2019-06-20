@@ -790,10 +790,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 ty::Generator(def_id, substs, _) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
-                    return match substs.prefix_tys(def_id, tcx).nth(field.index()) {
+                    return match substs.outer_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.prefix_tys(def_id, tcx).count(),
+                            field_count: substs.outer_tys(def_id, tcx).count(),
                         }),
                     }
                 }
@@ -1922,10 +1922,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match substs.prefix_tys(def_id, tcx).nth(field_index) {
+                match substs.outer_tys(def_id, tcx).nth(field_index) {
                     Some(ty) => Ok(ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: substs.prefix_tys(def_id, tcx).count(),
+                        field_count: substs.outer_tys(def_id, tcx).count(),
                     }),
                 }
             }
