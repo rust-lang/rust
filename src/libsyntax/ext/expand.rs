@@ -673,8 +673,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             if let Some((feature, issue)) = ext.unstable_feature {
                 let crate_span = this.cx.current_expansion.crate_span.unwrap();
                 // don't stability-check macros in the same crate
-                // (the only time this is null is for syntax extensions registered as macros)
-                if ext.def_info.map_or(false, |(_, def_span)| !crate_span.contains(def_span))
+                if !crate_span.contains(ext.span)
                     && !span.allows_unstable(feature)
                     && this.cx.ecfg.features.map_or(true, |feats| {
                     // macro features will count as lib features
@@ -699,7 +698,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.cx,
                         span,
                         mac.node.stream(),
-                        ext.def_info.map(|(_, s)| s),
+                        Some(ext.span),
                     ))
                 }
             }

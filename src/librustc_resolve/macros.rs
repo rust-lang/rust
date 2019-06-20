@@ -9,8 +9,7 @@ use crate::resolve_imports::ImportResolver;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
-use rustc::{ty, lint};
-use rustc::{bug, span_bug};
+use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
@@ -259,14 +258,10 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn check_unused_macros(&self) {
-        for did in self.unused_macros.iter() {
-            if let Some((id, span)) = self.macro_map[did].def_info {
-                let lint = lint::builtin::UNUSED_MACROS;
-                let msg = "unused macro definition";
-                self.session.buffer_lint(lint, id, span, msg);
-            } else {
-                bug!("attempted to create unused macro error, but span not available");
-            }
+        for (&node_id, &span) in self.unused_macros.iter() {
+            self.session.buffer_lint(
+                lint::builtin::UNUSED_MACROS, node_id, span, "unused macro definition"
+            );
         }
     }
 }
@@ -323,7 +318,9 @@ impl<'a> Resolver<'a> {
 
         match res {
             Res::Def(DefKind::Macro(macro_kind), def_id) => {
-                self.unused_macros.remove(&def_id);
+                if let Some(node_id) = self.definitions.as_local_node_id(def_id) {
+                    self.unused_macros.remove(&node_id);
+                }
                 if macro_kind == MacroKind::ProcMacroStub {
                     let msg = "can't use a procedural macro from the same crate that defines it";
                     self.session.span_err(path.span, msg);
@@ -1157,13 +1154,13 @@ impl<'a> Resolver<'a> {
                             (res, vis, item.span, expansion, IsMacroExport));
             } else {
                 self.check_reserved_macro_name(ident, res);
-                self.unused_macros.insert(def_id);
+                self.unused_macros.insert(item.id, item.span);
             }
         } else {
             let module = self.current_module;
             let vis = self.resolve_visibility(&item.vis);
             if vis != ty::Visibility::Public {
-                self.unused_macros.insert(def_id);
+                self.unused_macros.insert(item.id, item.span);
             }
             self.define(module, ident, MacroNS, (res, vis, item.span, expansion));
         }

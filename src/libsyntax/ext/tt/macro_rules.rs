@@ -442,7 +442,7 @@ pub fn compile(
 
     SyntaxExtension {
         kind: SyntaxExtensionKind::LegacyBang(expander),
-        def_info: Some((def.id, def.span)),
+        span: def.span,
         default_transparency,
         allow_internal_unstable,
         allow_internal_unsafe,

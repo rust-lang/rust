@@ -606,8 +606,8 @@ pub enum SyntaxExtensionKind {
 pub struct SyntaxExtension {
     /// A syntax extension kind.
     pub kind: SyntaxExtensionKind,
-    /// Some info about the macro's definition point.
-    pub def_info: Option<(ast::NodeId, Span)>,
+    /// Span of the macro definition.
+    pub span: Span,
     /// Hygienic properties of spans produced by this macro by default.
     pub default_transparency: Transparency,
     /// Whitelist of unstable features that are treated as stable inside this macro.
@@ -657,7 +657,7 @@ impl SyntaxExtension {
     /// Constructs a syntax extension with default properties.
     pub fn default(kind: SyntaxExtensionKind, edition: Edition) -> SyntaxExtension {
         SyntaxExtension {
-            def_info: None,
+            span: DUMMY_SP,
             default_transparency: kind.default_transparency(),
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
@@ -681,7 +681,7 @@ impl SyntaxExtension {
         ExpnInfo {
             call_site,
             format: self.expn_format(Symbol::intern(format)),
-            def_site: self.def_info.map(|(_, span)| span),
+            def_site: Some(self.span),
             default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),
             allow_internal_unsafe: self.allow_internal_unsafe,

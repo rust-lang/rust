@@ -1666,10 +1666,7 @@ pub struct Resolver<'a> {
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
     macro_defs: FxHashMap<Mark, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
-
-    /// List of crate local macros that we need to warn about as being unused.
-    /// Right now this only includes macro_rules! macros, and macros 2.0.
-    unused_macros: FxHashSet<DefId>,
+    unused_macros: NodeMap<Span>,
 
     /// Maps the `Mark` of an expansion to its containing module or block.
     invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
@@ -2009,7 +2006,7 @@ impl<'a> Resolver<'a> {
             name_already_seen: FxHashMap::default(),
             potentially_unused_imports: Vec::new(),
             struct_constructors: Default::default(),
-            unused_macros: FxHashSet::default(),
+            unused_macros: Default::default(),
             current_type_ascription: Vec::new(),
             injected_crate: None,
         }
