@@ -291,8 +291,8 @@ impl<'hir> Map<'hir> {
         self.definitions.def_index_to_hir_id(def_id.to_def_id().index)
     }
 
-    fn def_kind(&self, node_id: NodeId) -> Option<DefKind> {
-        let node = if let Some(node) = self.find(node_id) {
+    fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
+        let node = if let Some(node) = self.find_by_hir_id(hir_id) {
             node
         } else {
             return None
@@ -347,7 +347,7 @@ impl<'hir> Map<'hir> {
                 if variant_data.ctor_hir_id().is_none() {
                     return None;
                 }
-                let ctor_of = match self.find(self.get_parent_node(node_id)) {
+                let ctor_of = match self.find_by_hir_id(self.get_parent_node_by_hir_id(hir_id)) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,
                     _ => unreachable!(),
@@ -1400,8 +1400,8 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
 
 pub fn provide(providers: &mut Providers<'_>) {
     providers.def_kind = |tcx, def_id| {
-        if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-            tcx.hir().def_kind(node_id)
+        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+            tcx.hir().def_kind(hir_id)
         } else {
             bug!("calling local def_kind query provider for upstream DefId: {:?}",
                 def_id
