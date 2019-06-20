@@ -2184,29 +2184,7 @@ impl<'tcx> Debug for Place<'tcx> {
         });
 
         self.iterate(|place_base, place_projections| {
-            match place_base {
-                PlaceBase::Local(id) => {
-                    write!(fmt, "{:?}", id)?;
-                }
-                PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static(def_id) }) => {
-                    write!(
-                        fmt,
-                        "({}: {:?})",
-                        ty::tls::with(|tcx| tcx.def_path_str(*def_id)),
-                        ty
-                    )?;
-                },
-                PlaceBase::Static(
-                    box self::Static { ty, kind: StaticKind::Promoted(promoted) }
-                ) => {
-                    write!(
-                        fmt,
-                        "({:?}: {:?})",
-                        promoted,
-                        ty
-                    )?;
-                },
-            }
+            write!(fmt, "{:?}", place_base)?;
 
             for projection in place_projections {
                 match projection.elem {
@@ -2253,6 +2231,30 @@ impl<'tcx> Debug for Place<'tcx> {
 
             Ok(())
         })
+    }
+}
+
+impl Debug for PlaceBase<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match *self {
+            PlaceBase::Local(id) => write!(fmt, "{:?}", id),
+            PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static(def_id) }) => {
+                write!(
+                    fmt,
+                    "({}: {:?})",
+                    ty::tls::with(|tcx| tcx.def_path_str(def_id)),
+                    ty
+                )
+            },
+            PlaceBase::Static(box self::Static { ty, kind: StaticKind::Promoted(promoted) }) => {
+                write!(
+                    fmt,
+                    "({:?}: {:?})",
+                    promoted,
+                    ty
+                )
+            },
+        }
     }
 }
 
