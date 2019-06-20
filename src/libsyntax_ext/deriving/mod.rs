@@ -1,11 +1,7 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
-use rustc_data_structures::sync::Lrc;
 use syntax::ast::{self, MetaItem};
-use syntax::attr::Deprecation;
-use syntax::edition::Edition;
-use syntax::ext::base::{Annotatable, ExtCtxt, Resolver, MultiItemModifier};
-use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
+use syntax::ext::base::{Annotatable, ExtCtxt, MultiItemModifier};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};
@@ -43,8 +39,8 @@ pub mod ord;
 
 pub mod generic;
 
-struct BuiltinDerive(
-    fn(&mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable))
+crate struct BuiltinDerive(
+    crate fn(&mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable))
 );
 
 impl MultiItemModifier for BuiltinDerive {
@@ -58,82 +54,6 @@ impl MultiItemModifier for BuiltinDerive {
         (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a));
         items
     }
-}
-
-macro_rules! derive_traits {
-    ($( [$deprecation:expr] $name:ident => $func:path, )+) => {
-        pub fn is_builtin_trait(name: ast::Name) -> bool {
-            match name {
-                $( sym::$name )|+ => true,
-                _ => false,
-            }
-        }
-
-        pub fn register_builtin_derives(resolver: &mut dyn Resolver, edition: Edition) {
-            let allow_internal_unstable = Some([
-                sym::core_intrinsics,
-                sym::rustc_attrs,
-                Symbol::intern("derive_clone_copy"),
-                Symbol::intern("derive_eq"),
-                Symbol::intern("libstd_sys_internals"), // RustcDeserialize and RustcSerialize
-            ][..].into());
-
-            $(
-                resolver.add_builtin(
-                    ast::Ident::with_empty_ctxt(sym::$name),
-                    Lrc::new(SyntaxExtension {
-                        deprecation: $deprecation.map(|msg| Deprecation {
-                            since: Some(Symbol::intern("1.0.0")),
-                            note: Some(Symbol::intern(msg)),
-                        }),
-                        allow_internal_unstable: allow_internal_unstable.clone(),
-                        ..SyntaxExtension::default(
-                            SyntaxExtensionKind::LegacyDerive(Box::new(BuiltinDerive($func))),
-                            edition,
-                        )
-                    }),
-                );
-            )+
-        }
-    }
-}
-
-derive_traits! {
-    [None]
-    Clone => clone::expand_deriving_clone,
-
-    [None]
-    Hash => hash::expand_deriving_hash,
-
-    [None]
-    RustcEncodable => encodable::expand_deriving_rustc_encodable,
-
-    [None]
-    RustcDecodable => decodable::expand_deriving_rustc_decodable,
-
-    [None]
-    PartialEq => partial_eq::expand_deriving_partial_eq,
-    [None]
-    Eq => eq::expand_deriving_eq,
-    [None]
-    PartialOrd => partial_ord::expand_deriving_partial_ord,
-    [None]
-    Ord => ord::expand_deriving_ord,
-
-    [None]
-    Debug => debug::expand_deriving_debug,
-
-    [None]
-    Default => default::expand_deriving_default,
-
-    [None]
-    Copy => bounds::expand_deriving_copy,
-
-    // deprecated
-    [Some("derive(Encodable) is deprecated in favor of derive(RustcEncodable)")]
-    Encodable => encodable::expand_deriving_encodable,
-    [Some("derive(Decodable) is deprecated in favor of derive(RustcDecodable)")]
-    Decodable => decodable::expand_deriving_decodable,
 }
 
 /// Construct a name for the inner type parameter that can't collide with any type parameters of

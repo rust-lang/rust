@@ -114,7 +114,6 @@ enum Scope<'a> {
     CrateRoot,
     Module(Module<'a>),
     MacroUsePrelude,
-    BuiltinMacros,
     BuiltinAttrs,
     LegacyPluginHelpers,
     ExternPrelude,
@@ -1679,7 +1678,7 @@ pub struct Resolver<'a> {
 
     crate_loader: &'a mut CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
-    builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
+    builtin_macros: FxHashMap<Name, SyntaxExtension>,
     macro_use_prelude: FxHashMap<Name, &'a NameBinding<'a>>,
     pub all_macros: FxHashMap<Name, Res>,
     macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
@@ -2021,7 +2020,7 @@ impl<'a> Resolver<'a> {
 
             crate_loader,
             macro_names: FxHashSet::default(),
-            builtin_macros: FxHashMap::default(),
+            builtin_macros: Default::default(),
             macro_use_prelude: FxHashMap::default(),
             all_macros: FxHashMap::default(),
             macro_map: FxHashMap::default(),
@@ -2066,6 +2065,11 @@ impl<'a> Resolver<'a> {
         f(self, TypeNS);
         f(self, ValueNS);
         f(self, MacroNS);
+    }
+
+    fn is_builtin_macro(&mut self, def_id: Option<DefId>) -> bool {
+        def_id.and_then(|def_id| self.get_macro_by_def_id(def_id))
+              .map_or(false, |ext| ext.is_builtin)
     }
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
@@ -2146,7 +2150,7 @@ impl<'a> Resolver<'a> {
         scope_set: ScopeSet,
         parent_scope: &ParentScope<'a>,
         ident: Ident,
-        mut visitor: impl FnMut(&mut Self, Scope<'a>, Ident) -> Option<T>,
+        mut visitor: impl FnMut(&mut Self, Scope<'a>, /*use_prelude*/ bool, Ident) -> Option<T>,
     ) -> Option<T> {
         // General principles:
         // 1. Not controlled (user-defined) names should have higher priority than controlled names
@@ -2185,8 +2189,8 @@ impl<'a> Resolver<'a> {
         // 4. `macro_use` prelude (open, the open part is from macro expansions, not controlled).
         // 4a. User-defined prelude from macro-use
         //    (open, the open part is from macro expansions, not controlled).
-        // 4b. Standard library prelude is currently implemented as `macro-use` (closed, controlled)
-        // 5. Language prelude: builtin macros (closed, controlled, except for legacy plugins).
+        // 4b. "Standard library prelude" part implemented through `macro-use` (closed, controlled).
+        // 4c. Standard library prelude (de-facto closed, controlled).
         // 6. Language prelude: builtin attributes (closed, controlled).
         // 4-6. Legacy plugin helpers (open, not controlled). Similar to derive helpers,
         //    but introduced by legacy plugins using `register_attribute`. Priority is somewhere
@@ -2214,17 +2218,16 @@ impl<'a> Resolver<'a> {
                 Scope::CrateRoot => true,
                 Scope::Module(..) => true,
                 Scope::MacroUsePrelude => use_prelude || rust_2015,
-                Scope::BuiltinMacros => true,
                 Scope::BuiltinAttrs => true,
                 Scope::LegacyPluginHelpers => use_prelude || rust_2015,
                 Scope::ExternPrelude => use_prelude || is_absolute_path,
                 Scope::ToolPrelude => use_prelude,
-                Scope::StdLibPrelude => use_prelude,
+                Scope::StdLibPrelude => use_prelude || ns == MacroNS,
                 Scope::BuiltinTypes => true,
             };
 
             if visit {
-                if let break_result @ Some(..) = visitor(self, scope, ident) {
+                if let break_result @ Some(..) = visitor(self, scope, use_prelude, ident) {
                     return break_result;
                 }
             }
@@ -2263,7 +2266,6 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::MacroUsePrelude => Scope::StdLibPrelude,
-                Scope::BuiltinMacros => Scope::BuiltinAttrs,
                 Scope::BuiltinAttrs => Scope::LegacyPluginHelpers,
                 Scope::LegacyPluginHelpers => break, // nowhere else to search
                 Scope::ExternPrelude if is_absolute_path => break,
@@ -2272,7 +2274,7 @@ impl<'a> Resolver<'a> {
                 Scope::StdLibPrelude => match ns {
                     TypeNS => Scope::BuiltinTypes,
                     ValueNS => break, // nowhere else to search
-                    MacroNS => Scope::BuiltinMacros,
+                    MacroNS => Scope::BuiltinAttrs,
                 }
                 Scope::BuiltinTypes => break, // nowhere else to search
             };

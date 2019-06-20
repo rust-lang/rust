@@ -21,8 +21,8 @@ use rustc::lint::builtin::{
     PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     UNUSED_IMPORTS,
 };
-use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::hir::def::{self, DefKind, PartialRes, Export};
+use rustc::hir::def_id::DefId;
+use rustc::hir::def::{self, PartialRes, Export};
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
@@ -1214,17 +1214,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
         self.per_ns(|this, ns| if let Some(binding) = source_bindings[ns].get().ok() {
-            let mut res = binding.res();
-            if let Res::Def(DefKind::Macro(_), def_id) = res {
-                // `DefId`s from the "built-in macro crate" should not leak from resolve because
-                // later stages are not ready to deal with them and produce lots of ICEs. Replace
-                // them with `Res::Err` until some saner scheme is implemented for built-in macros.
-                if def_id.krate == CrateNum::BuiltinMacros {
-                    this.session.span_err(directive.span, "cannot import a built-in macro");
-                    res = Res::Err;
-                }
-            }
-            this.import_res_map.entry(directive.id).or_default()[ns] = Some(res);
+            this.import_res_map.entry(directive.id).or_default()[ns] = Some(binding.res());
         });
 
         self.check_for_redundant_imports(
@@ -1388,7 +1378,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let res = binding.res();
                 if res != Res::Err {
                     if let Some(def_id) = res.opt_def_id() {
-                        if !def_id.is_local() && def_id.krate != CrateNum::BuiltinMacros {
+                        if !def_id.is_local() {
                             self.cstore.export_macros_untracked(def_id.krate);
                         }
                     }

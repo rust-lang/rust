@@ -592,6 +592,9 @@ pub struct SyntaxExtension {
     pub helper_attrs: Vec<Symbol>,
     /// Edition of the crate in which this macro is defined.
     pub edition: Edition,
+    /// Built-in macros have a couple of special properties (meaning of `$crate`,
+    /// availability in `#[no_implicit_prelude]` modules), so we have to keep this flag.
+    pub is_builtin: bool,
 }
 
 impl SyntaxExtensionKind {
@@ -636,6 +639,7 @@ impl SyntaxExtension {
             deprecation: None,
             helper_attrs: Vec::new(),
             edition,
+            is_builtin: false,
             kind,
         }
     }
@@ -687,7 +691,7 @@ pub trait Resolver {
     fn resolve_dollar_crates(&mut self);
     fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment,
                                             derives: &[ExpnId]);
-    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
+    fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension);
 
     fn resolve_imports(&mut self);
 

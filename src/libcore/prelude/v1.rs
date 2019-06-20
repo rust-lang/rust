@@ -44,3 +44,50 @@ pub use crate::option::Option::{self, Some, None};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use crate::result::Result::{self, Ok, Err};
+
+// Re-exported built-in macros
+#[cfg(not(bootstrap))]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow(deprecated)]
+#[doc(no_inline)]
+pub use crate::macros::builtin::{
+    Clone,
+    Copy,
+    Debug,
+    Decodable,
+    Default,
+    Encodable,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    RustcDecodable,
+    RustcEncodable,
+    __rust_unstable_column,
+    asm,
+    assert,
+    bench,
+    cfg,
+    column,
+    compile_error,
+    concat,
+    concat_idents,
+    env,
+    file,
+    format_args,
+    format_args_nl,
+    global_allocator,
+    global_asm,
+    include,
+    include_bytes,
+    include_str,
+    line,
+    log_syntax,
+    module_path,
+    option_env,
+    stringify,
+    test,
+    test_case,
+    trace_macros,
+};

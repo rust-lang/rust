@@ -221,14 +221,15 @@
 
 #![cfg_attr(test, feature(print_internals, set_stdio, test, update_panic_count))]
 #![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
-            feature(global_asm, slice_index_methods,
-                    decl_macro, coerce_unsized, sgx_platform, ptr_wrapping_offset_from))]
+            feature(slice_index_methods, decl_macro, coerce_unsized,
+                    sgx_platform, ptr_wrapping_offset_from))]
 #![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"),
             feature(fixed_size_array, maybe_uninit_extra))]
 
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 // NB: the following list is sorted to minimize merge conflicts.
+#![cfg_attr(not(bootstrap), feature(__rust_unstable_column))]
 #![feature(alloc_error_handler)]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
@@ -251,6 +252,7 @@
 #![feature(const_cstr_unchecked)]
 #![feature(const_raw_ptr_deref)]
 #![feature(core_intrinsics)]
+#![feature(custom_test_frameworks)]
 #![feature(doc_alias)]
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
@@ -262,7 +264,9 @@
 #![feature(exhaustive_patterns)]
 #![feature(external_doc)]
 #![feature(fn_traits)]
+#![feature(format_args_nl)]
 #![feature(generator_trait)]
+#![feature(global_asm)]
 #![feature(hash_raw_entry)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
@@ -272,6 +276,7 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
+#![feature(log_syntax)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(mem_take)]
@@ -303,6 +308,7 @@
 #![feature(thread_local)]
 #![feature(todo_macro)]
 #![feature(toowned_clone_into)]
+#![feature(trace_macros)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
@@ -509,6 +515,36 @@ mod std_detect;
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]
 pub use std_detect::detect;
+
+// Document built-in macros in the crate root for consistency with libcore and existing tradition.
+// FIXME: Attribute and derive macros are not reexported because rustdoc renders them
+// as reexports rather than as macros, and that's not what we want.
+#[cfg(rustdoc)]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+pub use crate::prelude::v1::{
+    __rust_unstable_column,
+    asm,
+    assert,
+    cfg,
+    column,
+    compile_error,
+    concat,
+    concat_idents,
+    env,
+    file,
+    format_args,
+    format_args_nl,
+    global_asm,
+    include,
+    include_bytes,
+    include_str,
+    line,
+    log_syntax,
+    module_path,
+    option_env,
+    stringify,
+    trace_macros,
+};
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`

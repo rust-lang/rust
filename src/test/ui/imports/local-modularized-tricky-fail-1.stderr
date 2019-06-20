@@ -27,7 +27,7 @@ error[E0659]: `include` is ambiguous (macro-expanded name vs less macro-expanded
 LL | include!();
    | ^^^^^^^ ambiguous name
    |
-   = note: `include` could refer to a built-in macro
+   = note: `include` could refer to a macro from prelude
 note: `include` could also refer to the macro defined here
   --> $DIR/local-modularized-tricky-fail-1.rs:17:5
    |

@@ -217,7 +217,7 @@ impl fmt::Debug for Context<'_> {
 /// This handle encapsulates a [`RawWaker`] instance, which defines the
 /// executor-specific wakeup behavior.
 ///
-/// Implements [`Clone`], [`Send`], and [`Sync`].
+/// Implements [`Clone`], [`trait@Send`], and [`trait@Sync`].
 ///
 /// [`RawWaker`]: struct.RawWaker.html
 #[repr(transparent)]
