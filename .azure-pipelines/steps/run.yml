@@ -37,7 +37,8 @@ steps:
     set -e
     brew update
     brew install xz
-    brew install swig
+    brew install swig@3
+    brew link --force swig@3
   displayName: Install build dependencies (OSX)
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'), eq(variables['SCRIPT'],'./x.py dist'))
 
