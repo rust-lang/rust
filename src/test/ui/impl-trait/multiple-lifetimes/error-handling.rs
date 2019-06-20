@@ -1,5 +1,6 @@
 // compile-flags:-Zborrowck=mir
 
+#![feature(member_constraints)]
 #![feature(existential_type)]
 
 #[derive(Clone)]

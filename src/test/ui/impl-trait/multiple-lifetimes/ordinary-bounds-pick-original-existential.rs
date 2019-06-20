@@ -3,6 +3,7 @@
 // revisions: migrate mir
 //[mir]compile-flags: -Z borrowck=mir
 
+#![feature(member_constraints)]
 #![feature(existential_type)]
 
 trait Trait<'a, 'b> { }

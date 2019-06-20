@@ -389,6 +389,7 @@ symbols! {
         match_beginning_vert,
         match_default_bindings,
         may_dangle,
+        member_constraints,
         message,
         meta,
         min_const_fn,

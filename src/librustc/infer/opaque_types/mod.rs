@@ -10,6 +10,7 @@ use crate::ty::subst::{InternalSubsts, Kind, SubstsRef, UnpackedKind};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use crate::util::nodemap::DefIdMap;
 use errors::DiagnosticBuilder;
+use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::Span;
@@ -398,6 +399,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             abstract_type_generics,
                             opaque_defn,
                             def_id,
+                            lr,
+                            subst_arg,
                         );
                     }
                 }
@@ -418,13 +421,28 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// related, we would generate a constraint `'r in ['a, 'b,
     /// 'static]` for each region `'r` that appears in the hidden type
     /// (i.e., it must be equal to `'a`, `'b`, or `'static`).
+    ///
+    /// `conflict1` and `conflict2` are the two region bounds that we
+    /// detected which were unrelated. They are used for diagnostics.
     fn generate_member_constraint(
         &self,
         concrete_ty: Ty<'tcx>,
         abstract_type_generics: &ty::Generics,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
         opaque_type_def_id: DefId,
+        conflict1: ty::Region<'tcx>,
+        conflict2: ty::Region<'tcx>,
     ) {
+        // For now, enforce a feature gate outside of async functions.
+        if self.member_constraint_feature_gate(
+            opaque_defn,
+            opaque_type_def_id,
+            conflict1,
+            conflict2,
+        ) {
+            return;
+        }
+
         // Create the set of choice regions: each region in the hidden
         // type can be equal to any of the region parameters of the
         // opaque type definition.
@@ -451,6 +469,60 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 &choice_regions,
             ),
         });
+    }
+
+    /// Member constraints are presently feature-gated except for
+    /// async-await. We expect to lift this once we've had a bit more
+    /// time.
+    fn member_constraint_feature_gate(
+        &self,
+        opaque_defn: &OpaqueTypeDecl<'tcx>,
+        opaque_type_def_id: DefId,
+        conflict1: ty::Region<'tcx>,
+        conflict2: ty::Region<'tcx>,
+    ) -> bool {
+        // If we have `#![feature(member_constraints)]`, no problems.
+        if self.tcx.features().member_constraints {
+            return false;
+        }
+
+        let span = self.tcx.def_span(opaque_type_def_id);
+
+        // Otherwise, we allow for async-await but not otherwise.
+        let context_name = match opaque_defn.origin {
+            hir::ExistTyOrigin::ExistentialType => "existential type",
+            hir::ExistTyOrigin::ReturnImplTrait => "impl Trait",
+            hir::ExistTyOrigin::AsyncFn => {
+                // we permit
+                return false;
+            }
+        };
+        let msg = format!("ambiguous lifetime bound in `{}`", context_name);
+        let mut err = self.tcx.sess.struct_span_err(span, &msg);
+
+        let conflict1_name = conflict1.to_string();
+        let conflict2_name = conflict2.to_string();
+        let label_owned;
+        let label = match (&*conflict1_name, &*conflict2_name) {
+            ("'_", "'_") => "the elided lifetimes here do not outlive one another",
+            _ => {
+                label_owned = format!(
+                    "neither `{}` nor `{}` outlives the other",
+                    conflict1_name, conflict2_name,
+                );
+                &label_owned
+            }
+        };
+        err.span_label(span, label);
+
+        if nightly_options::is_nightly_build() {
+            help!(err,
+                  "add #![feature(member_constraints)] to the crate attributes \
+                   to enable");
+        }
+
+        err.emit();
+        true
     }
 
     /// Given the fully resolved, instantiated type for an opaque

@@ -1,11 +1,11 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ordinary-bounds-unsuited.rs:18:62
+  --> $DIR/ordinary-bounds-unsuited.rs:20:62
    |
 LL | fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b>
    |                                                              ^^^^^^^^^^^^^^^^^^
    |
-note: hidden type `Ordinary<'_>` captures the scope of call-site for function at 20:1
-  --> $DIR/ordinary-bounds-unsuited.rs:20:1
+note: hidden type `Ordinary<'_>` captures the scope of call-site for function at 22:1
+  --> $DIR/ordinary-bounds-unsuited.rs:22:1
    |
 LL | / {
 LL | |     // We return a value:

@@ -1,5 +1,7 @@
 // run-pass
 
+#![feature(member_constraints)]
+
 use std::fmt::Debug;
 
 trait MultiRegionTrait<'a, 'b> {}
