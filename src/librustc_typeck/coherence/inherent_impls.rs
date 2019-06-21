@@ -17,10 +17,10 @@ use syntax::ast;
 use syntax_pos::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
-pub fn crate_inherent_impls<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn crate_inherent_impls(
+    tcx: TyCtxt<'_>,
     crate_num: CrateNum,
-) -> &'tcx CrateInherentImpls {
+) -> &CrateInherentImpls {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     let krate = tcx.hir().krate();
@@ -33,7 +33,7 @@ pub fn crate_inherent_impls<'tcx>(
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
-pub fn inherent_impls<'tcx>(tcx: TyCtxt<'tcx>, ty_def_id: DefId) -> &'tcx [DefId] {
+pub fn inherent_impls(tcx: TyCtxt<'_>, ty_def_id: DefId) -> &[DefId] {
     assert!(ty_def_id.is_local());
 
     // NB. Until we adopt the red-green dep-tracking algorithm (see
