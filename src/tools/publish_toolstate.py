@@ -77,27 +77,29 @@ def issue(
         status_description = 'has failing tests'
     else:
         status_description = 'no longer builds'
+    request = json.dumps({
+        'body': maybe_delink(textwrap.dedent('''\
+        Hello, this is your friendly neighborhood mergebot.
+        After merging PR {}, I observed that the tool {} {}.
+        A follow-up PR to the repository {} is needed to fix the fallout.
+
+        cc @{}, do you think you would have time to do the follow-up work?
+        If so, that would be great!
+
+        cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
+
+        ''').format(
+            relevant_pr_number, tool, status_description,
+            REPOS.get(tool), relevant_pr_user, pr_reviewer
+        )),
+        'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
+        'assignees': assignees,
+        'labels': ['T-compiler', 'I-nominated'],
+    })
+    print("Creating issue:\n{}".format(request))
     response = urllib2.urlopen(urllib2.Request(
         gh_url(),
-        json.dumps({
-            'body': maybe_delink(textwrap.dedent('''\
-            Hello, this is your friendly neighborhood mergebot.
-            After merging PR {}, I observed that the tool {} {}.
-            A follow-up PR to the repository {} is needed to fix the fallout.
-
-            cc @{}, do you think you would have time to do the follow-up work?
-            If so, that would be great!
-
-            cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
-
-            ''').format(
-                relevant_pr_number, tool, status_description,
-                REPOS.get(tool), relevant_pr_user, pr_reviewer
-            )),
-            'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
-            'assignees': assignees,
-            'labels': ['T-compiler', 'I-nominated'],
-        }),
+        request,
         {
             'Authorization': 'token ' + github_token,
             'Content-Type': 'application/json',
