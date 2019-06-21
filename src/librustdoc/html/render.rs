@@ -35,9 +35,9 @@ use std::default::Default;
 use std::error;
 use std::fmt::{self, Display, Formatter, Write as FmtWrite};
 use std::ffi::OsStr;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File};
 use std::io::prelude::*;
-use std::io::{self, BufWriter, BufReader};
+use std::io::{self, BufReader};
 use std::mem;
 use std::path::{PathBuf, Path, Component};
 use std::str;
@@ -61,6 +61,7 @@ use rustc_data_structures::flock;
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, Mutability};
 use crate::config::RenderOptions;
+use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
 use crate::fold::DocFolder;
 use crate::html::escape::Escape;
@@ -87,6 +88,58 @@ impl<'a> Display for SlashChecker<'a> {
             write!(f, "{}", self.0)
         }
     }
+}
+
+#[derive(Debug)]
+pub struct Error {
+    pub file: PathBuf,
+    pub error: io::Error,
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        self.error.description()
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let file = self.file.display().to_string();
+        if file.is_empty() {
+            write!(f, "{}", self.error)
+        } else {
+            write!(f, "\"{}\": {}", self.file.display(), self.error)
+        }
+    }
+}
+
+impl PathError for Error {
+    fn new<P: AsRef<Path>>(e: io::Error, path: P) -> Error {
+        Error {
+            file: path.as_ref().to_path_buf(),
+            error: e,
+        }
+    }
+}
+
+macro_rules! try_none {
+    ($e:expr, $file:expr) => ({
+        use std::io;
+        match $e {
+            Some(e) => e,
+            None => return Err(Error::new(io::Error::new(io::ErrorKind::Other, "not found"),
+                                          $file))
+        }
+    })
+}
+
+macro_rules! try_err {
+    ($e:expr, $file:expr) => ({
+        match $e {
+            Ok(e) => e,
+            Err(e) => return Err(Error::new(e, $file)),
+        }
+    })
 }
 
 /// Major driving force in all rustdoc rendering. This contains information
@@ -156,13 +209,15 @@ struct SharedContext {
     pub generate_search_filter: bool,
     /// Option disabled by default to generate files used by RLS and some other tools.
     pub generate_redirect_pages: bool,
+    /// The fs handle we are working with.
+    pub fs: DocFS,
 }
 
 impl SharedContext {
-    fn ensure_dir(&self, dst: &Path) -> io::Result<()> {
+    fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
         let mut dirs = self.created_dirs.borrow_mut();
         if !dirs.contains(dst) {
-            fs::create_dir_all(dst)?;
+            try_err!(self.fs.create_dir_all(dst), dst);
             dirs.insert(dst.to_path_buf());
         }
 
@@ -214,53 +269,6 @@ impl Impl {
     fn trait_did(&self) -> Option<DefId> {
         self.inner_impl().trait_.def_id()
     }
-}
-
-#[derive(Debug)]
-pub struct Error {
-    pub file: PathBuf,
-    pub error: io::Error,
-}
-
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        self.error.description()
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "\"{}\": {}", self.file.display(), self.error)
-    }
-}
-
-impl Error {
-    pub fn new(e: io::Error, file: &Path) -> Error {
-        Error {
-            file: file.to_path_buf(),
-            error: e,
-        }
-    }
-}
-
-macro_rules! try_none {
-    ($e:expr, $file:expr) => ({
-        use std::io;
-        match $e {
-            Some(e) => e,
-            None => return Err(Error::new(io::Error::new(io::ErrorKind::Other, "not found"),
-                                          $file))
-        }
-    })
-}
-
-macro_rules! try_err {
-    ($e:expr, $file:expr) => ({
-        match $e {
-            Ok(e) => e,
-            Err(e) => return Err(Error::new(e, $file)),
-        }
-    })
 }
 
 /// This cache is used to store information about the `clean::Crate` being
@@ -544,6 +552,7 @@ pub fn run(mut krate: clean::Crate,
         },
         _ => PathBuf::new(),
     };
+    let mut errors = Arc::new(ErrorStorage::new());
     let mut scx = SharedContext {
         src_root,
         passes,
@@ -564,6 +573,7 @@ pub fn run(mut krate: clean::Crate,
         static_root_path,
         generate_search_filter,
         generate_redirect_pages,
+        fs: DocFS::new(&errors),
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -601,9 +611,9 @@ pub fn run(mut krate: clean::Crate,
         }
     }
     let dst = output;
-    try_err!(fs::create_dir_all(&dst), &dst);
+    scx.ensure_dir(&dst)?;
     krate = render_sources(&dst, &mut scx, krate)?;
-    let cx = Context {
+    let mut cx = Context {
         current: Vec::new(),
         dst,
         render_redirect_pages: false,
@@ -705,10 +715,21 @@ pub fn run(mut krate: clean::Crate,
     CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
     CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
 
+    // Write shared runs within a flock; disable thread dispatching of IO temporarily.
+    Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
     write_shared(&cx, &krate, &*cache, index, &md_opts, diag)?;
+    Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
 
     // And finally render the whole crate's documentation
-    cx.krate(krate)
+    let ret = cx.krate(krate);
+    let nb_errors = Arc::get_mut(&mut errors).map_or_else(|| 0, |errors| errors.write_errors(diag));
+    if ret.is_err() {
+        ret
+    } else if nb_errors > 0 {
+        Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
+    } else {
+        Ok(())
+    }
 }
 
 /// Builds the search index from the collected metadata
@@ -797,13 +818,13 @@ fn write_shared(
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
-    write_minify(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
                  static_files::RUSTDOC_CSS,
                  options.enable_minification)?;
-    write_minify(cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
                  static_files::SETTINGS_CSS,
                  options.enable_minification)?;
-    write_minify(cx.dst.join(&format!("noscript{}.css", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.dst.join(&format!("noscript{}.css", cx.shared.resource_suffix)),
                  static_files::NOSCRIPT_CSS,
                  options.enable_minification)?;
 
@@ -815,11 +836,13 @@ fn write_shared(
         let content = try_err!(fs::read(&entry), &entry);
         let theme = try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry);
         let extension = try_none!(try_none!(entry.extension(), &entry).to_str(), &entry);
-        write(cx.dst.join(format!("{}{}.{}", theme, cx.shared.resource_suffix, extension)),
-              content.as_slice())?;
+        cx.shared.fs.write(
+            cx.dst.join(format!("{}{}.{}", theme, cx.shared.resource_suffix, extension)),
+            content.as_slice())?;
         themes.insert(theme.to_owned());
     }
 
+    let write = |p, c| { cx.shared.fs.write(p, c) };
     if (*cx.shared).layout.logo.is_empty() {
         write(cx.dst.join(&format!("rust-logo{}.png", cx.shared.resource_suffix)),
               static_files::RUST_LOGO)?;
@@ -834,11 +857,11 @@ fn write_shared(
           static_files::WHEEL_SVG)?;
     write(cx.dst.join(&format!("down-arrow{}.svg", cx.shared.resource_suffix)),
           static_files::DOWN_ARROW_SVG)?;
-    write_minify(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
                  static_files::themes::LIGHT,
                  options.enable_minification)?;
     themes.insert("light".to_owned());
-    write_minify(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
                  static_files::themes::DARK,
                  options.enable_minification)?;
     themes.insert("dark".to_owned());
@@ -847,8 +870,7 @@ fn write_shared(
     themes.sort();
     // To avoid theme switch latencies as much as possible, we put everything theme related
     // at the beginning of the html files into another js file.
-    write(cx.dst.join(&format!("theme{}.js", cx.shared.resource_suffix)),
-          format!(
+    let theme_js = format!(
 r#"var themes = document.getElementById("theme-choices");
 var themePicker = document.getElementById("theme-picker");
 
@@ -891,39 +913,45 @@ themePicker.onblur = handleThemeButtonsBlur;
                  themes.iter()
                        .map(|s| format!("\"{}\"", s))
                        .collect::<Vec<String>>()
-                       .join(",")).as_bytes(),
+                       .join(","));
+    write(cx.dst.join(&format!("theme{}.js", cx.shared.resource_suffix)),
+          theme_js.as_bytes()
     )?;
 
-    write_minify(cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
                  static_files::MAIN_JS,
                  options.enable_minification)?;
-    write_minify(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
                  static_files::SETTINGS_JS,
                  options.enable_minification)?;
     if cx.shared.include_sources {
-        write_minify(cx.dst.join(&format!("source-script{}.js", cx.shared.resource_suffix)),
-                     static_files::sidebar::SOURCE_SCRIPT,
-                     options.enable_minification)?;
+        write_minify(
+            &cx.shared.fs,
+            cx.dst.join(&format!("source-script{}.js", cx.shared.resource_suffix)),
+            static_files::sidebar::SOURCE_SCRIPT,
+            options.enable_minification)?;
     }
 
     {
-        write_minify(cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)),
-                     &format!("var resourcesSuffix = \"{}\";{}",
-                              cx.shared.resource_suffix,
-                              static_files::STORAGE_JS),
-                     options.enable_minification)?;
+        write_minify(
+            &cx.shared.fs,
+            cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)),
+            &format!("var resourcesSuffix = \"{}\";{}",
+                     cx.shared.resource_suffix,
+                     static_files::STORAGE_JS),
+            options.enable_minification)?;
     }
 
     if let Some(ref css) = cx.shared.css_file_extension {
         let out = cx.dst.join(&format!("theme{}.css", cx.shared.resource_suffix));
+        let buffer = try_err!(fs::read_to_string(css), css);
         if !options.enable_minification {
-            try_err!(fs::copy(css, out), css);
+            cx.shared.fs.write(&out, &buffer)?;
         } else {
-            let buffer = try_err!(fs::read_to_string(css), css);
-            write_minify(out, &buffer, options.enable_minification)?;
+            write_minify(&cx.shared.fs, out, &buffer, options.enable_minification)?;
         }
     }
-    write_minify(cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
+    write_minify(&cx.shared.fs, cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
                  static_files::NORMALIZE_CSS,
                  options.enable_minification)?;
     write(cx.dst.join("FiraSans-Regular.woff"),
@@ -999,7 +1027,6 @@ themePicker.onblur = handleThemeButtonsBlur;
     let dst = cx.dst.join(&format!("aliases{}.js", cx.shared.resource_suffix));
     {
         let (mut all_aliases, _, _) = try_err!(collect(&dst, &krate.name, "ALIASES", false), &dst);
-        let mut w = try_err!(File::create(&dst), &dst);
         let mut output = String::with_capacity(100);
         for (alias, items) in &cache.aliases {
             if items.is_empty() {
@@ -1014,10 +1041,12 @@ themePicker.onblur = handleThemeButtonsBlur;
         }
         all_aliases.push(format!("ALIASES[\"{}\"] = {{{}}};", krate.name, output));
         all_aliases.sort();
-        try_err!(writeln!(&mut w, "var ALIASES = {{}};"), &dst);
+        let mut v = Vec::new();
+        try_err!(writeln!(&mut v, "var ALIASES = {{}};"), &dst);
         for aliases in &all_aliases {
-            try_err!(writeln!(&mut w, "{}", aliases), &dst);
+            try_err!(writeln!(&mut v, "{}", aliases), &dst);
         }
+        cx.shared.fs.write(&dst, &v)?;
     }
 
     use std::ffi::OsString;
@@ -1101,11 +1130,12 @@ themePicker.onblur = handleThemeButtonsBlur;
                                  &krate.name,
                                  hierarchy.to_json_string()));
         all_sources.sort();
-        let mut w = try_err!(File::create(&dst), &dst);
-        try_err!(writeln!(&mut w,
+        let mut v = Vec::new();
+        try_err!(writeln!(&mut v,
                           "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();",
                           all_sources.join("\n")),
                  &dst);
+        cx.shared.fs.write(&dst, &v)?;
     }
 
     // Update the search index
@@ -1119,14 +1149,17 @@ themePicker.onblur = handleThemeButtonsBlur;
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
-    let mut w = try_err!(File::create(&dst), &dst);
-    try_err!(writeln!(&mut w, "var N=null,E=\"\",T=\"t\",U=\"u\",searchIndex={{}};"), &dst);
-    try_err!(write_minify_replacer(&mut w,
-                                   &format!("{}\n{}", variables.join(""), all_indexes.join("\n")),
-                                   options.enable_minification),
-             &dst);
-    try_err!(write!(&mut w, "initSearch(searchIndex);addSearchOptions(searchIndex);"), &dst);
-
+    {
+        let mut v = Vec::new();
+        try_err!(writeln!(&mut v, "var N=null,E=\"\",T=\"t\",U=\"u\",searchIndex={{}};"), &dst);
+        try_err!(write_minify_replacer(
+            &mut v,
+            &format!("{}\n{}", variables.join(""), all_indexes.join("\n")),
+            options.enable_minification),
+            &dst);
+        try_err!(write!(&mut v, "initSearch(searchIndex);addSearchOptions(searchIndex);"), &dst);
+        cx.shared.fs.write(&dst, &v)?;
+    }
     if options.enable_index_page {
         if let Some(index_page) = options.index_page.clone() {
             let mut md_opts = options.clone();
@@ -1136,7 +1169,6 @@ themePicker.onblur = handleThemeButtonsBlur;
             crate::markdown::render(index_page, md_opts, diag, cx.edition);
         } else {
             let dst = cx.dst.join("index.html");
-            let mut w = BufWriter::new(try_err!(File::create(&dst), &dst));
             let page = layout::Page {
                 title: "Index of crates",
                 css_class: "mod",
@@ -1163,12 +1195,13 @@ themePicker.onblur = handleThemeButtonsBlur;
                                                 SlashChecker(s), s)
                                     })
                                     .collect::<String>());
-            try_err!(layout::render(&mut w, &cx.shared.layout,
+            let mut v = Vec::new();
+            try_err!(layout::render(&mut v, &cx.shared.layout,
                                     &page, &(""), &content,
                                     cx.shared.css_file_extension.is_some(),
                                     &cx.shared.themes,
                                     cx.shared.generate_search_filter), &dst);
-            try_err!(w.flush(), &dst);
+            cx.shared.fs.write(&dst, &v)?;
         }
     }
 
@@ -1220,7 +1253,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         for part in &remote_path[..remote_path.len() - 1] {
             mydst.push(part);
         }
-        try_err!(fs::create_dir_all(&mydst), &mydst);
+        cx.shared.ensure_dir(&mydst)?;
         mydst.push(&format!("{}.{}.js",
                             remote_item_type.css_class(),
                             remote_path[remote_path.len() - 1]));
@@ -1233,19 +1266,20 @@ themePicker.onblur = handleThemeButtonsBlur;
         // identically even with rustdoc running in parallel.
         all_implementors.sort();
 
-        let mut f = try_err!(File::create(&mydst), &mydst);
-        try_err!(writeln!(&mut f, "(function() {{var implementors = {{}};"), &mydst);
+        let mut v = Vec::new();
+        try_err!(writeln!(&mut v, "(function() {{var implementors = {{}};"), &mydst);
         for implementor in &all_implementors {
-            try_err!(writeln!(&mut f, "{}", *implementor), &mydst);
+            try_err!(writeln!(&mut v, "{}", *implementor), &mydst);
         }
-        try_err!(writeln!(&mut f, "{}", r"
+        try_err!(writeln!(&mut v, "{}", r"
             if (window.register_implementors) {
                 window.register_implementors(implementors);
             } else {
                 window.pending_implementors = implementors;
             }
         "), &mydst);
-        try_err!(writeln!(&mut f, r"}})()"), &mydst);
+        try_err!(writeln!(&mut v, r"}})()"), &mydst);
+        cx.shared.fs.write(&mydst, &v)?;
     }
     Ok(())
 }
@@ -1254,7 +1288,7 @@ fn render_sources(dst: &Path, scx: &mut SharedContext,
                   krate: clean::Crate) -> Result<clean::Crate, Error> {
     info!("emitting source files");
     let dst = dst.join("src").join(&krate.name);
-    try_err!(fs::create_dir_all(&dst), &dst);
+    scx.ensure_dir(&dst)?;
     let mut folder = SourceCollector {
         dst,
         scx,
@@ -1262,22 +1296,17 @@ fn render_sources(dst: &Path, scx: &mut SharedContext,
     Ok(folder.fold_crate(krate))
 }
 
-/// Writes the entire contents of a string to a destination, not attempting to
-/// catch any errors.
-fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
-    Ok(try_err!(fs::write(&dst, contents), &dst))
-}
-
-fn write_minify(dst: PathBuf, contents: &str, enable_minification: bool) -> Result<(), Error> {
+fn write_minify(fs:&DocFS, dst: PathBuf, contents: &str, enable_minification: bool
+                ) -> Result<(), Error> {
     if enable_minification {
         if dst.extension() == Some(&OsStr::new("css")) {
             let res = try_none!(minifier::css::minify(contents).ok(), &dst);
-            write(dst, res.as_bytes())
+            fs.write(dst, res.as_bytes())
         } else {
-            write(dst, minifier::js::minify(contents).as_bytes())
+            fs.write(dst, minifier::js::minify(contents).as_bytes())
         }
     } else {
-        write(dst, contents.as_bytes())
+        fs.write(dst, contents.as_bytes())
     }
 }
 
@@ -1439,7 +1468,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
 
 impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
-    fn emit_source(&mut self, filename: &FileName) -> io::Result<()> {
+    fn emit_source(&mut self, filename: &FileName) -> Result<(), Error> {
         let p = match *filename {
             FileName::Real(ref file) => file,
             _ => return Ok(()),
@@ -1449,7 +1478,7 @@ impl<'a> SourceCollector<'a> {
             return Ok(());
         }
 
-        let contents = fs::read_to_string(&p)?;
+        let contents = try_err!(fs::read_to_string(&p), &p);
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\u{feff}") {
@@ -1468,7 +1497,7 @@ impl<'a> SourceCollector<'a> {
             href.push_str(&component.to_string_lossy());
             href.push('/');
         });
-        fs::create_dir_all(&cur)?;
+        self.scx.ensure_dir(&cur)?;
         let mut fname = p.file_name()
                          .expect("source has no filename")
                          .to_os_string();
@@ -1476,7 +1505,7 @@ impl<'a> SourceCollector<'a> {
         cur.push(&fname);
         href.push_str(&fname.to_string_lossy());
 
-        let mut w = BufWriter::new(File::create(&cur)?);
+        let mut v = Vec::new();
         let title = format!("{} -- source", cur.file_name().expect("failed to get file name")
                                                .to_string_lossy());
         let desc = format!("Source to the Rust file `{}`.", filename);
@@ -1491,12 +1520,12 @@ impl<'a> SourceCollector<'a> {
             extra_scripts: &[&format!("source-files{}", self.scx.resource_suffix)],
             static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
         };
-        layout::render(&mut w, &self.scx.layout,
+        try_err!(layout::render(&mut v, &self.scx.layout,
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some(),
                        &self.scx.themes,
-                       self.scx.generate_search_filter)?;
-        w.flush()?;
+                       self.scx.generate_search_filter), &cur);
+        self.scx.fs.write(&cur, &v)?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
     }
@@ -2073,7 +2102,6 @@ impl Context {
             }
         }
 
-        let mut w = BufWriter::new(try_err!(File::create(&final_file), &final_file));
         let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
         if !root_path.ends_with('/') {
             root_path.push('/');
@@ -2099,12 +2127,14 @@ impl Context {
         } else {
             String::new()
         };
-        try_err!(layout::render(&mut w, &self.shared.layout,
+        let mut v = Vec::new();
+        try_err!(layout::render(&mut v, &self.shared.layout,
                                 &page, &sidebar, &all,
                                 self.shared.css_file_extension.is_some(),
                                 &self.shared.themes,
                                 self.shared.generate_search_filter),
                  &final_file);
+        self.shared.fs.write(&final_file, &v)?;
 
         // Generating settings page.
         let settings = Settings::new(self.shared.static_root_path.deref().unwrap_or("./"),
@@ -2113,17 +2143,18 @@ impl Context {
         page.description = "Settings of Rustdoc";
         page.root_path = "./";
 
-        let mut w = BufWriter::new(try_err!(File::create(&settings_file), &settings_file));
         let mut themes = self.shared.themes.clone();
         let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
         themes.push(PathBuf::from("settings.css"));
         let layout = self.shared.layout.clone();
-        try_err!(layout::render(&mut w, &layout,
+        let mut v = Vec::new();
+        try_err!(layout::render(&mut v, &layout,
                                 &page, &sidebar, &settings,
                                 self.shared.css_file_extension.is_some(),
                                 &themes,
                                 self.shared.generate_search_filter),
                  &settings_file);
+        self.shared.fs.write(&settings_file, &v)?;
 
         Ok(())
     }
@@ -2223,6 +2254,7 @@ impl Context {
             // recurse into the items of the module as well.
             let name = item.name.as_ref().unwrap().to_string();
             let mut item = Some(item);
+            let scx = self.shared.clone();
             self.recurse(name, |this| {
                 let item = item.take().unwrap();
 
@@ -2230,9 +2262,9 @@ impl Context {
                 this.render_item(&mut buf, &item, false).unwrap();
                 // buf will be empty if the module is stripped and there is no redirect for it
                 if !buf.is_empty() {
-                    try_err!(this.shared.ensure_dir(&this.dst), &this.dst);
+                    this.shared.ensure_dir(&this.dst)?;
                     let joint_dst = this.dst.join("index.html");
-                    try_err!(fs::write(&joint_dst, buf), &joint_dst);
+                    scx.fs.write(&joint_dst, buf)?;
                 }
 
                 let m = match item.inner {
@@ -2245,9 +2277,10 @@ impl Context {
                 if !this.render_redirect_pages {
                     let items = this.build_sidebar_items(&m);
                     let js_dst = this.dst.join("sidebar-items.js");
-                    let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
-                    try_err!(write!(&mut js_out, "initSidebarItems({});",
+                    let mut v = Vec::new();
+                    try_err!(write!(&mut v, "initSidebarItems({});",
                                     as_json(&items)), &js_dst);
+                    scx.fs.write(&js_dst, &v)?;
                 }
 
                 for item in m.items {
@@ -2264,9 +2297,9 @@ impl Context {
                 let name = item.name.as_ref().unwrap();
                 let item_type = item.type_();
                 let file_name = &item_path(item_type, name);
-                try_err!(self.shared.ensure_dir(&self.dst), &self.dst);
+                self.shared.ensure_dir(&self.dst)?;
                 let joint_dst = self.dst.join(file_name);
-                try_err!(fs::write(&joint_dst, buf), &joint_dst);
+                self.shared.fs.write(&joint_dst, buf)?;
 
                 if !self.render_redirect_pages {
                     all.append(full_path(self, &item), &item_type);
@@ -2276,21 +2309,18 @@ impl Context {
                     // URL for the page.
                     let redir_name = format!("{}.{}.html", name, item_type.name_space());
                     let redir_dst = self.dst.join(redir_name);
-                    if let Ok(redirect_out) = OpenOptions::new().create_new(true)
-                                                                .write(true)
-                                                                .open(&redir_dst) {
-                        let mut redirect_out = BufWriter::new(redirect_out);
-                        try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
-                    }
+                    let mut v = Vec::new();
+                    try_err!(layout::redirect(&mut v, file_name), &redir_dst);
+                    self.shared.fs.write(&redir_dst, &v)?;
                 }
                 // If the item is a macro, redirect from the old macro URL (with !)
                 // to the new one (without).
                 if item_type == ItemType::Macro {
                     let redir_name = format!("{}.{}!.html", item_type, name);
                     let redir_dst = self.dst.join(redir_name);
-                    let redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
-                    let mut redirect_out = BufWriter::new(redirect_out);
-                    try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
+                    let mut v = Vec::new();
+                    try_err!(layout::redirect(&mut v, file_name), &redir_dst);
+                    self.shared.fs.write(&redir_dst, &v)?;
                 }
             }
         }
