@@ -437,6 +437,7 @@ pub fn compile(
         allow_internal_unsafe: attr::contains_name(&def.attrs, sym::allow_internal_unsafe),
         local_inner_macros,
         stability: attr::find_stability(&sess, &def.attrs, def.span),
+        deprecation: attr::find_deprecation(&sess, &def.attrs, def.span),
         helper_attrs: Vec::new(),
         edition,
     }

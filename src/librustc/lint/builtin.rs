@@ -5,10 +5,12 @@
 //! lints are all available in `rustc_lint::builtin`.
 
 use crate::lint::{LintPass, LateLintPass, LintArray};
+use crate::middle::stability;
 use crate::session::Session;
 use errors::{Applicability, DiagnosticBuilder};
 use syntax::ast;
 use syntax::source_map::Span;
+use syntax::symbol::Symbol;
 
 declare_lint! {
     pub EXCEEDING_BITSHIFTS,
@@ -461,6 +463,7 @@ pub enum BuiltinLintDiagnostics {
     UnusedImports(String, Vec<(Span, String)>),
     NestedImplTrait { outer_impl_trait_span: Span, inner_impl_trait_span: Span },
     RedundantImport(Vec<(Span, bool)>, ast::Ident),
+    DeprecatedMacro(Option<Symbol>, Span),
 }
 
 pub(crate) fn add_elided_lifetime_in_path_suggestion(
@@ -586,6 +589,8 @@ impl BuiltinLintDiagnostics {
                     );
                 }
             }
+            BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) =>
+                stability::deprecation_suggestion(db, suggestion, span),
         }
     }
 }

@@ -231,21 +231,14 @@ impl<'a> base::Resolver for Resolver<'a> {
         };
 
         let span = invoc.span();
+        let path = fast_print_path(path);
         let format = match kind {
-            MacroKind::Derive => format!("derive({})", fast_print_path(path)),
-            _ => fast_print_path(path),
+            MacroKind::Derive => format!("derive({})", path),
+            _ => path.clone(),
         };
         invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, &format));
 
-        if let Some(stability) = ext.stability {
-            if let StabilityLevel::Unstable { reason, issue } = stability.level {
-                let (feature, features) = (stability.feature, self.session.features_untracked());
-                if !span.allows_unstable(feature) &&
-                   features.declared_lib_features.iter().all(|(feat, _)| *feat != feature) {
-                    stability::report_unstable(self.session, feature, reason, issue, span);
-                }
-            }
-        }
+        self.check_stability_and_deprecation(&ext, &path, span);
 
         if let Res::Def(_, def_id) = res {
             if after_derive {
@@ -1014,6 +1007,28 @@ impl<'a> Resolver<'a> {
             let _ = self.early_resolve_ident_in_lexical_scope(
                 ident, ScopeSet::Macro(MacroKind::Attr), &parent_scope, true, true, ident.span
             );
+        }
+    }
+
+    fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, path: &str, span: Span) {
+        if let Some(stability) = &ext.stability {
+            if let StabilityLevel::Unstable { reason, issue } = stability.level {
+                let (feature, features) = (stability.feature, self.session.features_untracked());
+                if !span.allows_unstable(feature) &&
+                   features.declared_lib_features.iter().all(|(feat, _)| *feat != feature) {
+                    stability::report_unstable(self.session, feature, reason, issue, span);
+                }
+            }
+            if let Some(depr) = &stability.rustc_depr {
+                let (message, lint) = stability::rustc_deprecation_message(depr, path);
+                stability::early_report_deprecation(
+                    self.session, &message, depr.suggestion, lint, span
+                );
+            }
+        }
+        if let Some(depr) = &ext.deprecation {
+            let (message, lint) = stability::deprecation_message(depr, path);
+            stability::early_report_deprecation(self.session, &message, None, lint, span);
         }
     }
 
