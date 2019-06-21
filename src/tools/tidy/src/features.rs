@@ -51,7 +51,7 @@ pub struct Feature {
 
 pub type Features = HashMap<String, Feature>;
 
-pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
+pub fn check(path: &Path, bad: &mut bool, verbose: bool) {
     let mut features = collect_lang_features(path, bad);
     assert!(!features.is_empty());
 
@@ -132,18 +132,18 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
     if *bad {
         return;
     }
-    if quiet {
+
+    if verbose {
+        let mut lines = Vec::new();
+        lines.extend(format_features(&features, "lang"));
+        lines.extend(format_features(&lib_features, "lib"));
+
+        lines.sort();
+        for line in lines {
+            println!("* {}", line);
+        }
+    } else {
         println!("* {} features", features.len());
-        return;
-    }
-
-    let mut lines = Vec::new();
-    lines.extend(format_features(&features, "lang"));
-    lines.extend(format_features(&lib_features, "lib"));
-
-    lines.sort();
-    for line in lines {
-        println!("* {}", line);
     }
 }
 
