@@ -2,14 +2,14 @@ use crate::utils::{
     get_trait_def_id, implements_trait, in_macro, in_macro_or_desugar, match_type, paths, snippet_opt,
     span_lint_and_then, SpanlessEq,
 };
+use if_chain::if_chain;
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
-use syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
+use syntax::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for boolean expressions that can be written more
@@ -93,6 +93,18 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     }
 
     fn run(&mut self, e: &'v Expr) -> Result<Bool, String> {
+        fn negate(bin_op_kind: BinOpKind) -> Option<BinOpKind> {
+            match bin_op_kind {
+                BinOpKind::Eq => Some(BinOpKind::Ne),
+                BinOpKind::Ne => Some(BinOpKind::Eq),
+                BinOpKind::Gt => Some(BinOpKind::Le),
+                BinOpKind::Ge => Some(BinOpKind::Lt),
+                BinOpKind::Lt => Some(BinOpKind::Ge),
+                BinOpKind::Le => Some(BinOpKind::Gt),
+                _ => None,
+            }
+        }
+
         // prevent folding of `cfg!` macros and the like
         if !in_macro_or_desugar(e.span) {
             match &e.node {
@@ -115,33 +127,18 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 #[allow(clippy::cast_possible_truncation)]
                 return Ok(Bool::Term(n as u8));
             }
-            let negated = match &e.node {
-                ExprKind::Binary(binop, lhs, rhs) => {
-                    if !implements_ord(self.cx, lhs) {
-                        continue;
-                    }
 
-                    let mk_expr = |op| Expr {
-                        hir_id: DUMMY_HIR_ID,
-                        span: DUMMY_SP,
-                        attrs: ThinVec::new(),
-                        node: ExprKind::Binary(dummy_spanned(op), lhs.clone(), rhs.clone()),
-                    };
-                    match binop.node {
-                        BinOpKind::Eq => mk_expr(BinOpKind::Ne),
-                        BinOpKind::Ne => mk_expr(BinOpKind::Eq),
-                        BinOpKind::Gt => mk_expr(BinOpKind::Le),
-                        BinOpKind::Ge => mk_expr(BinOpKind::Lt),
-                        BinOpKind::Lt => mk_expr(BinOpKind::Ge),
-                        BinOpKind::Le => mk_expr(BinOpKind::Gt),
-                        _ => continue,
-                    }
-                },
-                _ => continue,
-            };
-            if SpanlessEq::new(self.cx).ignore_fn().eq_expr(&negated, expr) {
-                #[allow(clippy::cast_possible_truncation)]
-                return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
+            if_chain! {
+                if let ExprKind::Binary(e_binop, e_lhs, e_rhs) = &e.node;
+                if implements_ord(self.cx, e_lhs);
+                if let ExprKind::Binary(expr_binop, expr_lhs, expr_rhs) = &expr.node;
+                if negate(e_binop.node) == Some(expr_binop.node);
+                if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e_lhs, expr_lhs);
+                if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e_rhs, expr_rhs);
+                then {
+                    #[allow(clippy::cast_possible_truncation)]
+                    return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
+                }
             }
         }
         let n = self.terminals.len();

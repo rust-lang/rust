@@ -129,7 +129,7 @@ impl QuestionMark {
         }
     }
 
-    fn return_expression(block: &Block) -> Option<P<Expr>> {
+    fn return_expression(block: &Block) -> Option<&P<Expr>> {
         // Check if last expression is a return statement. Then, return the expression
         if_chain! {
             if block.stmts.len() == 1;
@@ -139,7 +139,7 @@ impl QuestionMark {
             if let &Some(ref ret_expr) = ret_expr;
 
             then {
-                return Some(ret_expr.clone());
+                return Some(ret_expr);
             }
         }
 
@@ -148,7 +148,7 @@ impl QuestionMark {
             if block.stmts.len() == 0;
             if let Some(ExprKind::Ret(Some(ret_expr))) = block.expr.as_ref().map(|e| &e.node);
             then {
-                return Some(ret_expr.clone());
+                return Some(ret_expr);
             }
         }
 
