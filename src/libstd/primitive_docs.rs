@@ -120,7 +120,7 @@ mod prim_bool { }
 /// When implementing this trait for [`String`] we need to pick a type for [`Err`]. And since
 /// converting a string into a string will never result in an error, the appropriate type is `!`.
 /// (Currently the type actually used is an enum with no variants, though this is only because `!`
-/// was added to Rust at a later date and it may change in the future). With an [`Err`] type of
+/// was added to Rust at a later date and it may change in the future.) With an [`Err`] type of
 /// `!`, if we have to call [`String::from_str`] for some reason the result will be a
 /// [`Result<String, !>`] which we can unpack like this:
 ///
