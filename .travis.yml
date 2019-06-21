@@ -12,6 +12,9 @@ os:
 - osx
 dist: xenial
 
+# Run in PRs and for bors, but not on master.
+if: branch = staging OR branch = trying OR type = pull_request
+
 env:
   global:
   - RUST_TEST_NOCAPTURE=1
@@ -53,3 +56,5 @@ notifications:
 branches:
   only:
   - master
+  - auto
+  - try
