@@ -42,7 +42,7 @@ declare_clippy_lint! {
 #[allow(clippy::module_name_repetitions)]
 #[derive(Default)]
 pub struct MultipleInherentImpl {
-    impls: FxHashMap<def_id::DefId, (Span, Generics)>,
+    impls: FxHashMap<def_id::DefId, Span>,
 }
 
 impl_lint_pass!(MultipleInherentImpl => [MULTIPLE_INHERENT_IMPL]);
@@ -51,8 +51,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
     fn check_item(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemKind::Impl(_, _, _, ref generics, None, _, _) = item.node {
             // Remember for each inherent implementation encoutered its span and generics
-            self.impls
-                .insert(item.hir_id.owner_def_id(), (item.span, generics.clone()));
+            // but filter out implementations that have generic params (type or lifetime)
+            if generics.params.len() == 0 {
+                self.impls.insert(item.hir_id.owner_def_id(), item.span);
+            }
         }
     }
 
@@ -66,10 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
                 .values()
             {
                 // Filter out implementations that have generic params (type or lifetime)
-                let mut impl_spans = impls
-                    .iter()
-                    .filter_map(|impl_def| self.impls.get(impl_def))
-                    .filter_map(|(span, generics)| if generics.params.len() == 0 { Some(span) } else { None });
+                let mut impl_spans = impls.iter().filter_map(|impl_def| self.impls.get(impl_def));
                 if let Some(initial_span) = impl_spans.nth(0) {
                     impl_spans.for_each(|additional_span| {
                         span_lint_and_then(

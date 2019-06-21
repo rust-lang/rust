@@ -315,14 +315,14 @@ pub fn implements_trait<'a, 'tcx>(
 ///     }
 /// }
 /// ```
-pub fn trait_ref_of_method(cx: &LateContext<'_, '_>, hir_id: HirId) -> Option<TraitRef> {
+pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'_, 'tcx>, hir_id: HirId) -> Option<&'tcx TraitRef> {
     // Get the implemented trait for the current function
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
     if_chain! {
         if parent_impl != hir::CRATE_HIR_ID;
         if let hir::Node::Item(item) = cx.tcx.hir().get_by_hir_id(parent_impl);
         if let hir::ItemKind::Impl(_, _, _, _, trait_ref, _, _) = &item.node;
-        then { return trait_ref.clone(); }
+        then { return trait_ref.as_ref(); }
     }
     None
 }
