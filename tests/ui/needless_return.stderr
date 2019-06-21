@@ -2,7 +2,7 @@ error: unneeded return statement
   --> $DIR/needless_return.rs:14:5
    |
 LL |     return true;
-   |     ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |     ^^^^^^^^^^^^ help: remove `return`: `true`
    |
    = note: `-D clippy::needless-return` implied by `-D warnings`
 
@@ -10,43 +10,43 @@ error: unneeded return statement
   --> $DIR/needless_return.rs:18:5
    |
 LL |     return true;
-   |     ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |     ^^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded return statement
   --> $DIR/needless_return.rs:23:9
    |
 LL |         return true;
-   |         ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |         ^^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded return statement
   --> $DIR/needless_return.rs:25:9
    |
 LL |         return false;
-   |         ^^^^^^^^^^^^^ help: remove `return` as shown: `false`
+   |         ^^^^^^^^^^^^^ help: remove `return`: `false`
 
 error: unneeded return statement
   --> $DIR/needless_return.rs:31:17
    |
 LL |         true => return false,
-   |                 ^^^^^^^^^^^^ help: remove `return` as shown: `false`
+   |                 ^^^^^^^^^^^^ help: remove `return`: `false`
 
 error: unneeded return statement
   --> $DIR/needless_return.rs:33:13
    |
 LL |             return true;
-   |             ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |             ^^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded return statement
   --> $DIR/needless_return.rs:40:9
    |
 LL |         return true;
-   |         ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |         ^^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded return statement
   --> $DIR/needless_return.rs:42:16
    |
 LL |     let _ = || return true;
-   |                ^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |                ^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded return statement
   --> $DIR/needless_return.rs:50:5
@@ -70,7 +70,7 @@ error: unneeded return statement
   --> $DIR/needless_return.rs:64:14
    |
 LL |         _ => return,
-   |              ^^^^^^ help: replace `return` with the unit type `()`: `()`
+   |              ^^^^^^ help: replace `return` with the unit type: `()`
 
 error: aborting due to 12 previous errors
 

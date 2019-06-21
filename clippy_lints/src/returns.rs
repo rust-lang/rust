@@ -86,7 +86,7 @@ declare_clippy_lint! {
 #[derive(PartialEq, Eq, Copy, Clone)]
 enum RetReplacement {
     Empty,
-    Unit
+    Unit,
 }
 
 declare_lint_pass!(Return => [NEEDLESS_RETURN, LET_AND_RETURN, UNUSED_UNIT]);
@@ -105,13 +105,24 @@ impl Return {
     }
 
     // Check a the final expression in a block if it's a return.
-    fn check_final_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr, span: Option<Span>, replacement: RetReplacement) {
+    fn check_final_expr(
+        &mut self,
+        cx: &EarlyContext<'_>,
+        expr: &ast::Expr,
+        span: Option<Span>,
+        replacement: RetReplacement,
+    ) {
         match expr.node {
             // simple return is always "bad"
             ast::ExprKind::Ret(ref inner) => {
                 // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
                 if !expr.attrs.iter().any(attr_is_cfg) {
-                    self.emit_return_lint(cx, span.expect("`else return` is not possible"), inner.as_ref().map(|i| i.span), replacement);
+                    self.emit_return_lint(
+                        cx,
+                        span.expect("`else return` is not possible"),
+                        inner.as_ref().map(|i| i.span),
+                        replacement,
+                    );
                 }
             },
             // a whole block? check it!
@@ -135,7 +146,13 @@ impl Return {
         }
     }
 
-    fn emit_return_lint(&mut self, cx: &EarlyContext<'_>, ret_span: Span, inner_span: Option<Span>, replacement: RetReplacement) {
+    fn emit_return_lint(
+        &mut self,
+        cx: &EarlyContext<'_>,
+        ret_span: Span,
+        inner_span: Option<Span>,
+        replacement: RetReplacement,
+    ) {
         match inner_span {
             Some(inner_span) => {
                 if in_external_macro(cx.sess(), inner_span) || in_macro_or_desugar(inner_span) {
@@ -144,39 +161,32 @@ impl Return {
 
                 span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
                     if let Some(snippet) = snippet_opt(cx, inner_span) {
-                        db.span_suggestion(
-                            ret_span,
-                            "remove `return` as shown",
-                            snippet,
-                            Applicability::MachineApplicable,
-                        );
+                        db.span_suggestion(ret_span, "remove `return`", snippet, Applicability::MachineApplicable);
                     }
                 })
             },
-            None => {
-                match replacement {
-                    RetReplacement::Empty => {
-                        span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
-                            db.span_suggestion(
-                                ret_span,
-                                "remove `return`",
-                                String::new(),
-                                Applicability::MachineApplicable,
-                            );
-                        });
-                    }
-                    RetReplacement::Unit => {
-                        span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
-                            db.span_suggestion(
-                                ret_span,
-                                "replace `return` with the unit type `()`",
-                                "()".to_string(),
-                                Applicability::MachineApplicable,
-                            );
-                        });
-                    }
-                }
-            }
+            None => match replacement {
+                RetReplacement::Empty => {
+                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
+                        db.span_suggestion(
+                            ret_span,
+                            "remove `return`",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        );
+                    });
+                },
+                RetReplacement::Unit => {
+                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
+                        db.span_suggestion(
+                            ret_span,
+                            "replace `return` with the unit type",
+                            "()".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    });
+                },
+            },
         }
     }
 
