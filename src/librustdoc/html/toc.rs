@@ -119,7 +119,7 @@ impl TocBuilder {
     /// Push a level `level` heading into the appropriate place in the
     /// hierarchy, returning a string containing the section number in
     /// `<num>.<num>.<num>` format.
-    pub fn push<'a>(&'a mut self, level: u32, name: String, id: String) -> &'a str {
+    pub fn push(&mut self, level: u32, name: String, id: String) -> &str {
         assert!(level >= 1);
 
         // collapse all previous sections into their parents until we
