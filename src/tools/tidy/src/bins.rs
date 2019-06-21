@@ -35,7 +35,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             return;
         }
 
-        let metadata = t!(fs::symlink_metadata(&file), &file);
+        let metadata = t!(entry.metadata(), file);
         if metadata.mode() & 0o111 != 0 {
             let rel_path = file.strip_prefix(path).unwrap();
             let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
