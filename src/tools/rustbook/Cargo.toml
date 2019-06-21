@@ -8,9 +8,8 @@ edition = "2018"
 [dependencies]
 clap = "2.25.0"
 
-[dependencies.mdbook_2]
-package = "mdbook"
-version = "0.2.3"
+[dependencies.mdbook]
+version = "0.3.0"
 default-features = false
 features = ["search"]
 
