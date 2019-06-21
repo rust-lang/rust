@@ -198,9 +198,9 @@ enum ResolutionError<'a> {
 ///
 /// This takes the error provided, combines it with the span and any additional spans inside the
 /// error and emits it.
-fn resolve_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
-                            span: Span,
-                            resolution_error: ResolutionError<'a>) {
+fn resolve_error(resolver: &Resolver<'_>,
+                 span: Span,
+                 resolution_error: ResolutionError<'_>) {
     resolve_struct_error(resolver, span, resolution_error).emit();
 }
 

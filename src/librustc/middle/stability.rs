@@ -466,7 +466,7 @@ impl<'tcx> Index<'tcx> {
 
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors.
-fn check_mod_unstable_api_usage<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
+fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut Checker { tcx }.as_deep_visitor());
 }
 
@@ -836,7 +836,7 @@ impl<'tcx> TyCtxt<'tcx> {
 /// Given the list of enabled features that were not language features (i.e., that
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
-pub fn check_unused_or_stable_features<'tcx>(tcx: TyCtxt<'tcx>) {
+pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     if tcx.stability().staged_api[&LOCAL_CRATE] {
@@ -920,8 +920,8 @@ pub fn check_unused_or_stable_features<'tcx>(tcx: TyCtxt<'tcx>) {
     // don't lint about unused features. We should reenable this one day!
 }
 
-fn unnecessary_stable_feature_lint<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn unnecessary_stable_feature_lint(
+    tcx: TyCtxt<'_>,
     span: Span,
     feature: Symbol,
     since: Symbol,

@@ -1031,7 +1031,7 @@ impl Json {
 
      /// If the Json value is an Object, returns the value associated with the provided key.
     /// Otherwise, returns None.
-    pub fn find<'a>(&'a self, key: &str) -> Option<&'a Json>{
+    pub fn find(&self, key: &str) -> Option<&Json> {
         match *self {
             Json::Object(ref map) => map.get(key),
             _ => None
@@ -1052,7 +1052,7 @@ impl Json {
     /// If the Json value is an Object, performs a depth-first search until
     /// a value associated with the provided key is found. If no value is found
     /// or the Json value is not an Object, returns `None`.
-    pub fn search<'a>(&'a self, key: &str) -> Option<&'a Json> {
+    pub fn search(&self, key: &str) -> Option<&Json> {
         match self {
             &Json::Object(ref map) => {
                 match map.get(key) {
