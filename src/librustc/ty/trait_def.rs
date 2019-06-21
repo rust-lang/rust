@@ -150,10 +150,10 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 // Query provider for `trait_impls_of`.
-pub(super) fn trait_impls_of_provider<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(super) fn trait_impls_of_provider(
+    tcx: TyCtxt<'_>,
     trait_id: DefId,
-) -> &'tcx TraitImpls {
+) -> &TraitImpls {
     let mut impls = TraitImpls::default();
 
     {

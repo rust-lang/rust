@@ -56,7 +56,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
     }
 }
 
-pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> smallvec::IntoIter<TypeWalkerArray<'tcx>> {
+pub fn walk_shallow(ty: Ty<'_>) -> smallvec::IntoIter<TypeWalkerArray<'_>> {
     let mut stack = SmallVec::new();
     push_subtypes(&mut stack, ty);
     stack.into_iter()
