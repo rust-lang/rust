@@ -171,7 +171,8 @@ def update_latest(
                     # than failing the entire build job
                     print("I/O error when creating issue for status regression: {0}".format(e))
                 except:
-                    print("Unexpected error when creating issue for status regression: {0}".format(sys.exc_info()[0]))
+                    print("Unexpected error when creating issue for status regression: {0}"
+                          .format(sys.exc_info()[0]))
                     raise
 
             if changed:
