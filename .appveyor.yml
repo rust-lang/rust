@@ -9,7 +9,8 @@ environment:
 branches:
   # whitelist
   only:
-    - master
+    - auto
+    - try
 
 cache:
     - '%USERPROFILE%\.cargo'
