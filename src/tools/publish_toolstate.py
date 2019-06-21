@@ -166,9 +166,11 @@ def update_latest(
                         tool, create_issue_for_status, MAINTAINERS.get(tool, ''),
                         relevant_pr_number, relevant_pr_user, pr_reviewer,
                     )
-                except IOError as e:
+                except urllib2.HTTPError as e:
                     # network errors will simply end up not creating an issue, but that's better
                     # than failing the entire build job
+                    print("HTTPError when creating issue for status regression: {0}\n{1}".format(e, e.read()))
+                except IOError as e:
                     print("I/O error when creating issue for status regression: {0}".format(e))
                 except:
                     print("Unexpected error when creating issue for status regression: {0}"
