@@ -62,7 +62,7 @@ impl fmt::Debug for ty::ClosureUpvar<'tcx> {
 impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = ty::tls::with(|tcx| {
-            tcx.hir().name_by_hir_id(self.var_path.hir_id)
+            tcx.hir().name(self.var_path.hir_id)
         });
         write!(f, "UpvarId({:?};`{}`;{:?})",
             self.var_path.hir_id,

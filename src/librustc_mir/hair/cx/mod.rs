@@ -155,7 +155,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
 
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
         let tcx = self.tcx.global_tcx();
-        let p = match tcx.hir().get_by_hir_id(p.hir_id) {
+        let p = match tcx.hir().get(p.hir_id) {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node)
         };

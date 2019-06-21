@@ -246,7 +246,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     match parent_node.or(self.mod_ids.last().cloned()) {
                         Some(parent) if parent != hir::CRATE_HIR_ID => {
                             // FIXME: can we pull the parent module's name from elsewhere?
-                            Some(self.cx.tcx.hir().name_by_hir_id(parent).to_string())
+                            Some(self.cx.tcx.hir().name(parent).to_string())
                         }
                         _ => None,
                     }

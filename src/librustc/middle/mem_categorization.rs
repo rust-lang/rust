@@ -344,7 +344,7 @@ impl MutabilityCategory {
         tables: &ty::TypeckTables<'_>,
         id: hir::HirId,
     ) -> MutabilityCategory {
-        let ret = match tcx.hir().get_by_hir_id(id) {
+        let ret = match tcx.hir().get(id) {
             Node::Binding(p) => match p.node {
                 PatKind::Binding(..) => {
                     let bm = *tables.pat_binding_modes()

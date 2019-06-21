@@ -73,7 +73,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         let hir_id = tcx.hir().as_local_hir_id(def_id)
                               .expect("Non-local call to local provider is_const_fn");
 
-        let node = tcx.hir().get_by_hir_id(hir_id);
+        let node = tcx.hir().get(hir_id);
         if let Some(fn_like) = FnLikeNode::from_node(node) {
             fn_like.constness() == hir::Constness::Const
         } else if let hir::Node::Ctor(_) = node {

@@ -15,7 +15,7 @@ use crate::hir as ast;
 use crate::hir::map;
 use crate::hir::{Expr, FnDecl, Node};
 use crate::hir::intravisit::FnKind;
-use syntax::ast::{Attribute, Ident, NodeId};
+use syntax::ast::{Attribute, Ident};
 use syntax_pos::Span;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
@@ -83,11 +83,11 @@ impl<'a> Code<'a> {
     }
 
     /// Attempts to construct a Code from presumed FnLike or Expr node input.
-    pub fn from_node(map: &map::Map<'a>, id: NodeId) -> Option<Code<'a>> {
+    pub fn from_node(map: &map::Map<'a>, id: ast::HirId) -> Option<Code<'a>> {
         match map.get(id) {
             map::Node::Block(_) => {
                 //  Use the parent, hopefully an expression node.
-                Code::from_node(map, map.get_parent_node(id))
+                Code::from_node(map, map.get_parent_node_by_hir_id(id))
             }
             map::Node::Expr(expr) => Some(Code::Expr(expr)),
             node => FnLikeNode::from_node(node).map(Code::FnLike)

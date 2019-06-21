@@ -617,7 +617,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 hir::MatchSource::TryDesugar => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
-                        let discrim_expr = self.tcx.hir().expect_expr_by_hir_id(discrim_hir_id);
+                        let discrim_expr = self.tcx.hir().expect_expr(discrim_hir_id);
                         let discrim_ty = if let hir::ExprKind::Call(_, args) = &discrim_expr.node {
                             let arg_expr = args.first().expect("try desugaring call w/out arg");
                             self.in_progress_tables.and_then(|tables| {
@@ -1335,7 +1335,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                             // instead we suggest `T: 'a + 'b` in that case.
                             let mut has_bounds = false;
-                            if let Node::GenericParam(ref param) = hir.get_by_hir_id(id) {
+                            if let Node::GenericParam(ref param) = hir.get(id) {
                                 has_bounds = !param.bounds.is_empty();
                             }
                             let sp = hir.span(id);
@@ -1583,7 +1583,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 format!(" for lifetime parameter `{}` in coherence check", name)
             }
             infer::UpvarRegion(ref upvar_id, _) => {
-                let var_name = self.tcx.hir().name_by_hir_id(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 format!(" for capture of `{}` by closure", var_name)
             }
             infer::NLL(..) => bug!("NLL variable found in lexical phase"),
