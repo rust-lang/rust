@@ -2777,20 +2777,6 @@ impl<'tcx> TyCtxt<'tcx> {
         });
     }
 
-    pub fn expr_span(self, id: NodeId) -> Span {
-        match self.hir().find(id) {
-            Some(Node::Expr(e)) => {
-                e.span
-            }
-            Some(f) => {
-                bug!("node-ID {} is not an expr: {:?}", id, f);
-            }
-            None => {
-                bug!("node-ID {} is not present in the node map", id);
-            }
-        }
-    }
-
     pub fn provided_trait_methods(self, id: DefId) -> Vec<AssocItem> {
         self.associated_items(id)
             .filter(|item| item.kind == AssocKind::Method && item.defaultness.has_value())
@@ -2805,7 +2791,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
         let is_associated_item = if let Some(hir_id) = self.hir().as_local_hir_id(def_id) {
-            match self.hir().get_by_hir_id(hir_id) {
+            match self.hir().get(hir_id) {
                 Node::TraitItem(_) | Node::ImplItem(_) => true,
                 _ => false,
             }
@@ -3227,7 +3213,7 @@ fn trait_of_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<DefId> {
 /// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition.
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
-        if let Node::Item(item) = tcx.hir().get_by_hir_id(hir_id) {
+        if let Node::Item(item) = tcx.hir().get(hir_id) {
             if let hir::ItemKind::Existential(ref exist_ty) = item.node {
                 return exist_ty.impl_trait_fn;
             }

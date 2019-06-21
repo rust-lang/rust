@@ -191,7 +191,7 @@ pub fn check_loans<'a, 'tcx>(
     let def_id = bccx.tcx.hir().body_owner_def_id(body.id());
 
     let hir_id = bccx.tcx.hir().as_local_hir_id(def_id).unwrap();
-    let movable_generator = !match bccx.tcx.hir().get_by_hir_id(hir_id) {
+    let movable_generator = !match bccx.tcx.hir().get(hir_id) {
         Node::Expr(&hir::Expr {
             node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..

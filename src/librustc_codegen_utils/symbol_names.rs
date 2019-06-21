@@ -135,7 +135,7 @@ fn symbol_name(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> InternedString {
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
     let is_foreign = if let Some(id) = hir_id {
-        match tcx.hir().get_by_hir_id(id) {
+        match tcx.hir().get(id) {
             Node::ForeignItem(_) => true,
             _ => false,
         }

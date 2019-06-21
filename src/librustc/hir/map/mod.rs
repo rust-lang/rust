@@ -291,8 +291,8 @@ impl<'hir> Map<'hir> {
         self.definitions.def_index_to_hir_id(def_id.to_def_id().index)
     }
 
-    fn def_kind(&self, node_id: NodeId) -> Option<DefKind> {
-        let node = if let Some(node) = self.find(node_id) {
+    fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
+        let node = if let Some(node) = self.find_by_hir_id(hir_id) {
             node
         } else {
             return None
@@ -347,7 +347,7 @@ impl<'hir> Map<'hir> {
                 if variant_data.ctor_hir_id().is_none() {
                     return None;
                 }
-                let ctor_of = match self.find(self.get_parent_node(node_id)) {
+                let ctor_of = match self.find_by_hir_id(self.get_parent_node_by_hir_id(hir_id)) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,
                     _ => unreachable!(),
@@ -458,7 +458,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body_owner_kind(&self, id: HirId) -> BodyOwnerKind {
-        match self.get_by_hir_id(id) {
+        match self.get(id) {
             Node::Item(&Item { node: ItemKind::Const(..), .. }) |
             Node::TraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
             Node::ImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) |
@@ -482,7 +482,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn ty_param_owner(&self, id: HirId) -> HirId {
-        match self.get_by_hir_id(id) {
+        match self.get(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
             Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => id,
             Node::GenericParam(_) => self.get_parent_node_by_hir_id(id),
@@ -491,7 +491,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn ty_param_name(&self, id: HirId) -> Name {
-        match self.get_by_hir_id(id) {
+        match self.get(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
             Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => kw::SelfUpper,
             Node::GenericParam(param) => param.name.ident().name,
@@ -561,20 +561,14 @@ impl<'hir> Map<'hir> {
     }
 
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
-    pub fn get(&self, id: NodeId) -> Node<'hir> {
-        let hir_id = self.node_to_hir_id(id);
-        self.get_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
-    pub fn get_by_hir_id(&self, id: HirId) -> Node<'hir> {
+    pub fn get(&self, id: HirId) -> Node<'hir> {
         // read recorded by `find`
         self.find_by_hir_id(id).unwrap_or_else(||
             bug!("couldn't find hir id {} in the HIR map", id))
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        self.as_local_node_id(id).map(|id| self.get(id)) // read recorded by `get`
+        self.as_local_hir_id(id).map(|id| self.get(id)) // read recorded by `get`
     }
 
     pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics> {
@@ -846,7 +840,7 @@ impl<'hir> Map<'hir> {
             if scope == CRATE_HIR_ID {
                 return Some(CRATE_HIR_ID);
             }
-            match self.get_by_hir_id(scope) {
+            match self.get(scope) {
                 Node::Item(i) => {
                     match i.node {
                         ItemKind::Existential(ExistTy { impl_trait_fn: None, .. }) => {}
@@ -927,28 +921,15 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_expr(&self, id: NodeId) -> &'hir Expr {
-        let hir_id = self.node_to_hir_id(id);
-        self.expect_expr_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
-    pub fn expect_expr_by_hir_id(&self, id: HirId) -> &'hir Expr {
+    pub fn expect_expr(&self, id: HirId) -> &'hir Expr {
         match self.find_by_hir_id(id) { // read recorded by find
             Some(Node::Expr(expr)) => expr,
             _ => bug!("expected expr, found {}", self.node_to_string(id))
         }
     }
 
-    /// Returns the name associated with the given `NodeId`'s AST.
-    pub fn name(&self, id: NodeId) -> Name {
-        let hir_id = self.node_to_hir_id(id);
-        self.name_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
-    pub fn name_by_hir_id(&self, id: HirId) -> Name {
-        match self.get_by_hir_id(id) {
+    pub fn name(&self, id: HirId) -> Name {
+        match self.get(id) {
             Node::Item(i) => i.ident.name,
             Node::ForeignItem(fi) => fi.ident.name,
             Node::ImplItem(ii) => ii.ident.name,
@@ -958,7 +939,7 @@ impl<'hir> Map<'hir> {
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { node: PatKind::Binding(_, _, l, _), .. }) => l.name,
-            Node::Ctor(..) => self.name_by_hir_id(self.get_parent_item(id)),
+            Node::Ctor(..) => self.name(self.get_parent_item(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
     }
@@ -1080,7 +1061,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn hir_to_pretty_string(&self, id: HirId) -> String {
-        print::to_string(self, |s| s.print_node(self.get_by_hir_id(id)))
+        print::to_string(self, |s| s.print_node(self.get(id)))
     }
 }
 
@@ -1407,8 +1388,8 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
 
 pub fn provide(providers: &mut Providers<'_>) {
     providers.def_kind = |tcx, def_id| {
-        if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-            tcx.hir().def_kind(node_id)
+        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+            tcx.hir().def_kind(hir_id)
         } else {
             bug!("calling local def_kind query provider for upstream DefId: {:?}",
                 def_id
