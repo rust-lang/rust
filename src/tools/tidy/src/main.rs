@@ -24,9 +24,9 @@ fn main() {
     style::check(&path, &mut bad);
     errors::check(&path, &mut bad);
     cargo::check(&path, &mut bad);
-    features::check(&path, &mut bad, verbose);
+    let collected = features::check(&path, &mut bad, verbose);
     pal::check(&path, &mut bad);
-    unstable_book::check(&path, &mut bad);
+    unstable_book::check(&path, collected, &mut bad);
     libcoretest::check(&path, &mut bad);
     if !args.iter().any(|s| *s == "--no-vendor") {
         deps::check(&path, &mut bad);

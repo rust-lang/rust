@@ -50,7 +50,36 @@ pub struct Feature {
 
 pub type Features = HashMap<String, Feature>;
 
-pub fn check(path: &Path, bad: &mut bool, verbose: bool) {
+pub struct CollectedFeatures {
+    pub lib: Features,
+    pub lang: Features,
+}
+
+// Currently only used for unstable book generation
+pub fn collect_lib_features(base_src_path: &Path) -> Features {
+    let mut lib_features = Features::new();
+
+    // This library feature is defined in the `compiler_builtins` crate, which
+    // has been moved out-of-tree. Now it can no longer be auto-discovered by
+    // `tidy`, because we need to filter out its (submodule) directory. Manually
+    // add it to the set of known library features so we can still generate docs.
+    lib_features.insert("compiler_builtins_lib".to_owned(), Feature {
+        level: Status::Unstable,
+        since: None,
+        has_gate_test: false,
+        tracking_issue: None,
+    });
+
+    map_lib_features(base_src_path,
+                     &mut |res, _, _| {
+        if let Ok((name, feature)) = res {
+            lib_features.insert(name.to_owned(), feature);
+        }
+    });
+   lib_features
+}
+
+pub fn check(path: &Path, bad: &mut bool, verbose: bool) -> CollectedFeatures {
     let mut features = collect_lang_features(path, bad);
     assert!(!features.is_empty());
 
@@ -125,7 +154,7 @@ pub fn check(path: &Path, bad: &mut bool, verbose: bool) {
     }
 
     if *bad {
-        return;
+        return CollectedFeatures { lib: lib_features, lang: features };
     }
 
     if verbose {
@@ -140,6 +169,8 @@ pub fn check(path: &Path, bad: &mut bool, verbose: bool) {
     } else {
         println!("* {} features", features.len());
     }
+
+    CollectedFeatures { lib: lib_features, lang: features }
 }
 
 fn format_features<'a>(features: &'a Features, family: &'a str) -> impl Iterator<Item = String> + 'a {
@@ -301,32 +332,6 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 }))
         })
         .collect()
-}
-
-pub fn collect_lib_features(base_src_path: &Path) -> Features {
-    let mut lib_features = Features::new();
-
-    // This library feature is defined in the `compiler_builtins` crate, which
-    // has been moved out-of-tree. Now it can no longer be auto-discovered by
-    // `tidy`, because we need to filter out its (submodule) directory. Manually
-    // add it to the set of known library features so we can still generate docs.
-    lib_features.insert("compiler_builtins_lib".to_owned(), Feature {
-        level: Status::Unstable,
-        since: None,
-        has_gate_test: false,
-        tracking_issue: None,
-    });
-
-    map_lib_features(base_src_path,
-                     &mut |res, _, _| {
-        if let Ok((name, feature)) = res {
-            if lib_features.contains_key(name) {
-                return;
-            }
-            lib_features.insert(name.to_owned(), feature);
-        }
-    });
-   lib_features
 }
 
 fn get_and_check_lib_features(base_src_path: &Path,
