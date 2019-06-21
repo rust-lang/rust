@@ -217,8 +217,9 @@ fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
     };
 
     let predicates = cx.tcx.predicates_of(did);
-    let generics = (cx.tcx.generics_of(did), &predicates).clean(cx);
-    let decl = (did, sig).clean(cx);
+    let (generics, decl) = clean::enter_impl_trait(cx, || {
+        ((cx.tcx.generics_of(did), &predicates).clean(cx), (did, sig).clean(cx))
+    });
     let (all_types, ret_types) = clean::get_all_types(&generics, &decl, cx);
     clean::Function {
         decl,
@@ -372,7 +373,9 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
                     None
                 }
             }).collect::<Vec<_>>(),
-            (tcx.generics_of(did), &predicates).clean(cx),
+            clean::enter_impl_trait(cx, || {
+                (tcx.generics_of(did), &predicates).clean(cx)
+            }),
         )
     };
     let polarity = tcx.impl_polarity(did);
