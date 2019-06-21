@@ -1863,7 +1863,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-pub fn encode_metadata<'tcx>(tcx: TyCtxt<'tcx>) -> EncodedMetadata {
+pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let mut encoder = opaque::Encoder::new(vec![]);
     encoder.emit_raw_bytes(METADATA_HEADER);
 
@@ -1905,7 +1905,7 @@ pub fn encode_metadata<'tcx>(tcx: TyCtxt<'tcx>) -> EncodedMetadata {
     EncodedMetadata { raw_data: result }
 }
 
-pub fn get_repr_options<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> ReprOptions {
+pub fn get_repr_options(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
     let ty = tcx.type_of(did);
     match ty.sty {
         ty::Adt(ref def, _) => return def.repr,

@@ -77,7 +77,7 @@ impl<'a> Registry<'a> {
     ///
     /// Returns empty slice in case the plugin was loaded
     /// with `--extra-plugins`
-    pub fn args<'b>(&'b self) -> &'b [ast::NestedMetaItem] {
+    pub fn args(&self) -> &[ast::NestedMetaItem] {
         self.args_hidden.as_ref().map(|v| &v[..]).unwrap_or(&[])
     }
 

@@ -38,7 +38,7 @@ pub fn print_hir_stats(krate: &hir::Crate) {
     collector.print("HIR STATS");
 }
 
-pub fn print_ast_stats<'v>(krate: &'v ast::Crate, title: &str) {
+pub fn print_ast_stats(krate: &ast::Crate, title: &str) {
     let mut collector = StatCollector {
         krate: None,
         data: FxHashMap::default(),
