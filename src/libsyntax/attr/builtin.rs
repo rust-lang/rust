@@ -171,7 +171,8 @@ pub fn contains_feature_attr(attrs: &[Attribute], feature_name: Symbol) -> bool 
     })
 }
 
-/// Finds the first stability attribute. `None` if none exists.
+/// Collects stability info from all stability attributes in `attrs`.
+/// Returns `None` if no stability attributes are found.
 pub fn find_stability(sess: &ParseSess, attrs: &[Attribute],
                       item_sp: Span) -> Option<Stability> {
     find_stability_generic(sess, attrs.iter(), item_sp)

@@ -1,5 +1,5 @@
 use crate::ast::{self, Attribute, Name, PatKind};
-use crate::attr::HasAttrs;
+use crate::attr::{HasAttrs, Stability};
 use crate::source_map::{SourceMap, Spanned, respan};
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
@@ -616,8 +616,8 @@ pub struct SyntaxExtension {
     pub allow_internal_unsafe: bool,
     /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
     pub local_inner_macros: bool,
-    /// The macro's feature name and tracking issue number if it is unstable.
-    pub unstable_feature: Option<(Symbol, u32)>,
+    /// The macro's stability and deprecation info.
+    pub stability: Option<Stability>,
     /// Names of helper attributes registered by this macro.
     pub helper_attrs: Vec<Symbol>,
     /// Edition of the crate in which this macro is defined.
@@ -662,7 +662,7 @@ impl SyntaxExtension {
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
-            unstable_feature: None,
+            stability: None,
             helper_attrs: Vec::new(),
             edition,
             kind,

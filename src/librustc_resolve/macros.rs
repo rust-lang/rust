@@ -11,7 +11,7 @@ use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, Ident};
-use syntax::attr;
+use syntax::attr::{self, StabilityLevel};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
@@ -236,13 +236,15 @@ impl<'a> base::Resolver for Resolver<'a> {
         };
         invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, &format));
 
-        if let Some((feature, issue)) = ext.unstable_feature {
-            let features = self.session.features_untracked();
-            if !span.allows_unstable(feature) &&
-               features.declared_lib_features.iter().all(|(feat, _)| *feat != feature) {
-                let msg = format!("macro {}! is unstable", path);
-                emit_feature_err(&self.session.parse_sess, feature, span,
-                                 GateIssue::Library(Some(issue)), &msg);
+        if let Some(stability) = ext.stability {
+            if let StabilityLevel::Unstable { issue, .. } = stability.level {
+                let features = self.session.features_untracked();
+                if !span.allows_unstable(stability.feature) &&
+                   features.declared_lib_features.iter().all(|(feat, _)| *feat != stability.feature) {
+                    let msg = format!("macro {}! is unstable", path);
+                    emit_feature_err(&self.session.parse_sess, stability.feature, span,
+                                     GateIssue::Library(Some(issue)), &msg);
+                }
             }
         }
 
