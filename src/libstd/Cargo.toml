@@ -53,9 +53,6 @@ rustc_tsan = { path = "../librustc_tsan" }
 [target.'cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.1", features = ['rustc-dep-of-std'] }
 
-[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
-mach = { version = "0.3.2", default-features = false, features = ['rustc-dep-of-std'] }
-
 [target.x86_64-fortanix-unknown-sgx.dependencies]
 fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
 
