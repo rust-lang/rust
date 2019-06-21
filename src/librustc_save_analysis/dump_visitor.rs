@@ -233,8 +233,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     }
 
     fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
-        let hir_id = self.save_ctxt.tcx.hir().node_to_hir_id(ref_id);
-        match self.save_ctxt.get_path_res(hir_id) {
+        match self.save_ctxt.get_path_res(ref_id) {
             Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => None,
             def => Some(def.def_id()),
         }
@@ -887,8 +886,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         return;
                     }
                 };
-                let hir_id = self.save_ctxt.tcx.hir().node_to_hir_id(p.id);
-                let variant = adt.variant_of_res(self.save_ctxt.get_path_res(hir_id));
+                let variant = adt.variant_of_res(self.save_ctxt.get_path_res(p.id));
 
                 for &Spanned { node: ref field, .. } in fields {
                     if let Some(index) = self.tcx.find_field_index(field.ident, variant) {
@@ -918,8 +916,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         // process collected paths
         for (id, ident, immut) in collector.collected_idents {
-            let hir_id = self.save_ctxt.tcx.hir().node_to_hir_id(id);
-            match self.save_ctxt.get_path_res(hir_id) {
+            match self.save_ctxt.get_path_res(id) {
                 Res::Local(hir_id) => {
                     let mut value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(ident.span)
@@ -1543,7 +1540,8 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
                         return;
                     }
                 };
-                let res = self.save_ctxt.get_path_res(hir_expr.hir_id);
+                let node_id = self.save_ctxt.tcx.hir().hir_to_node_id(hir_expr.hir_id);
+                let res = self.save_ctxt.get_path_res(node_id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), base)
             }
             ast::ExprKind::MethodCall(ref seg, ref args) => self.process_method_call(ex, seg, args),

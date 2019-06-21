@@ -606,7 +606,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_res(&self, hir_id: hir::HirId) -> Res {
+    pub fn get_path_res(&self, id: NodeId) -> Res {
+        let hir_id = self.tcx.hir().node_to_hir_id(id);
         match self.tcx.hir().get(hir_id) {
             Node::TraitRef(tr) => tr.path.res,
 
@@ -620,7 +621,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Node::PathSegment(seg) => {
                 match seg.res {
                     Some(res) if res != Res::Err => res,
-                    _ => self.get_path_res(self.tcx.hir().get_parent_node_by_hir_id(hir_id)),
+                    _ => self.get_path_res(self.tcx.hir().get_parent_node(id)),
                 }
             }
 
@@ -695,8 +696,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             return None;
         }
 
-        let hir_id = self.tcx.hir().node_to_hir_id(id);
-        let res = self.get_path_res(hir_id);
+        let res = self.get_path_res(id);
         let span = path_seg.ident.span;
         filter!(self.span_utils, span);
         let span = self.span_from_span(span);
@@ -868,8 +868,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
-        let hir_id = self.tcx.hir().node_to_hir_id(ref_id);
-        match self.get_path_res(hir_id) {
+        match self.get_path_res(ref_id) {
             Res::PrimTy(_) | Res::SelfTy(..) | Res::Err => None,
             def => Some(def.def_id()),
         }
