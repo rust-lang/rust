@@ -11,12 +11,12 @@ trait _1 = _0;
 
 // Straight list expansion:
 type _T0 = dyn _1;
-//~^ ERROR at least one non-builtin trait is required for an object type [E0224]
+//~^ ERROR at least one trait is required for an object type [E0224]
 
 // Twice:
 trait _2 = _1 + _1;
 
 type _T1 = dyn _2;
-//~^ ERROR at least one non-builtin trait is required for an object type [E0224]
+//~^ ERROR at least one trait is required for an object type [E0224]
 
 fn main() {}

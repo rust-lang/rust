@@ -1,4 +1,4 @@
-error[E0224]: at least one non-builtin trait is required for an object type
+error[E0224]: at least one trait is required for an object type
   --> $DIR/trait-object-macro-matcher.rs:11:8
    |
 LL |     m!(dyn 'static +);
