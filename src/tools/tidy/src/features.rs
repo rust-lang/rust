@@ -378,7 +378,15 @@ fn map_lib_features(base_src_path: &Path,
             return;
         }
 
-        let mut becoming_feature: Option<(String, Feature)> = None;
+        // This is an early exit -- all the attributes we're concerned with must contain this:
+        // * rustc_const_unstable(
+        // * unstable(
+        // * stable(
+        if !contents.contains("stable(") {
+            return;
+        }
+
+        let mut becoming_feature: Option<(&str, Feature)> = None;
         for (i, line) in contents.lines().enumerate() {
             macro_rules! err {
                 ($msg:expr) => {{
@@ -457,7 +465,7 @@ fn map_lib_features(base_src_path: &Path,
             if line.contains(']') {
                 mf(Ok((feature_name, feature)), file, i + 1);
             } else {
-                becoming_feature = Some((feature_name.to_owned(), feature));
+                becoming_feature = Some((feature_name, feature));
             }
         }
     });
