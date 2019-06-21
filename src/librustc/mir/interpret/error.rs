@@ -313,6 +313,7 @@ pub enum InterpError<'tcx, O> {
     GeneratorResumedAfterReturn,
     GeneratorResumedAfterPanic,
     InfiniteLoop,
+    InvalidIntToPtrCast,
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
