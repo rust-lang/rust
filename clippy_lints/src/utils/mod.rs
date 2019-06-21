@@ -315,7 +315,7 @@ pub fn implements_trait<'a, 'tcx>(
 ///     }
 /// }
 /// ```
-pub fn trait_ref_of_method<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, hir_id: HirId) -> Option<&'a TraitRef> {
+pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'_, 'tcx>, hir_id: HirId) -> Option<&'tcx TraitRef> {
     // Get the implemented trait for the current function
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
     if_chain! {
