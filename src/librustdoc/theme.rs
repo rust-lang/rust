@@ -103,16 +103,16 @@ fn is_line_comment(pos: usize, v: &[u8], events: &[Events]) -> bool {
     if let Some(&Events::StartComment(_)) = events.last() {
         return false;
     }
-    pos + 1 < v.len() && v[pos + 1] == b'/'
+    v[pos + 1] == b'/'
 }
 
 fn load_css_events(v: &[u8]) -> Vec<Events> {
     let mut pos = 0;
     let mut events = Vec::with_capacity(100);
 
-    while pos < v.len() - 1 {
+    while pos + 1 < v.len() {
         match v[pos] {
-            b'/' if pos + 1 < v.len() && v[pos + 1] == b'*' => {
+            b'/' if v[pos + 1] == b'*' => {
                 events.push(Events::StartComment(pos));
                 pos += 1;
             }
@@ -123,7 +123,7 @@ fn load_css_events(v: &[u8]) -> Vec<Events> {
             b'\n' if previous_is_line_comment(&events) => {
                 events.push(Events::EndComment(pos));
             }
-            b'*' if pos + 1 < v.len() && v[pos + 1] == b'/' => {
+            b'*' if v[pos + 1] == b'/' => {
                 events.push(Events::EndComment(pos + 2));
                 pos += 1;
             }
@@ -264,9 +264,11 @@ pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) 
     }
 }
 
-pub fn test_theme_against<P: AsRef<Path>>(f: &P, against: &CssPath, diag: &Handler)
-    -> (bool, Vec<String>)
-{
+pub fn test_theme_against<P: AsRef<Path>>(
+    f: &P,
+    against: &CssPath,
+    diag: &Handler,
+) -> (bool, Vec<String>) {
     let data = try_something!(fs::read(f), diag, (false, vec![]));
     let paths = load_css_paths(&data);
     let mut ret = vec![];
@@ -365,5 +367,17 @@ a {
         assert!(ret.is_empty());
         get_differences(&other, &against, &mut ret);
         assert_eq!(ret, vec!["  Missing \"c\" rule".to_owned()]);
+    }
+
+    #[test]
+    fn check_empty_css() {
+        let events = load_css_events(&[]);
+        assert_eq!(events.len(), 0);
+    }
+
+    #[test]
+    fn check_invalid_css() {
+        let events = load_css_events(b"*");
+        assert_eq!(events.len(), 0);
     }
 }
