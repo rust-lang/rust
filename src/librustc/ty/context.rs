@@ -2223,7 +2223,7 @@ impl<'tcx> Borrow<[Ty<'tcx>]> for Interned<'tcx, List<Ty<'tcx>>> {
 }
 
 impl<'tcx> Borrow<[CanonicalVarInfo]> for Interned<'tcx, List<CanonicalVarInfo>> {
-    fn borrow<'a>(&'a self) -> &'a [CanonicalVarInfo] {
+    fn borrow(&self) -> &[CanonicalVarInfo] {
         &self.0[..]
     }
 }
@@ -2236,13 +2236,13 @@ impl<'tcx> Borrow<[Kind<'tcx>]> for Interned<'tcx, InternalSubsts<'tcx>> {
 
 impl<'tcx> Borrow<[ProjectionKind]>
     for Interned<'tcx, List<ProjectionKind>> {
-    fn borrow<'a>(&'a self) -> &'a [ProjectionKind] {
+    fn borrow(&self) -> &[ProjectionKind] {
         &self.0[..]
     }
 }
 
 impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
-    fn borrow<'a>(&'a self) -> &'a RegionKind {
+    fn borrow(&self) -> &RegionKind {
         &self.0
     }
 }

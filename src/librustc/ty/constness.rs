@@ -67,9 +67,9 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 
-pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
+pub fn provide(providers: &mut Providers<'_>) {
     /// only checks whether the function has a `const` modifier
-    fn is_const_fn_raw<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         let hir_id = tcx.hir().as_local_hir_id(def_id)
                               .expect("Non-local call to local provider is_const_fn");
 
@@ -83,7 +83,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         }
     }
 
-    fn is_promotable_const_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         tcx.is_const_fn(def_id) && match tcx.lookup_stability(def_id) {
             Some(stab) => {
                 if cfg!(debug_assertions) && stab.promotable {
@@ -101,7 +101,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         }
     }
 
-    fn const_fn_is_allowed_fn_ptr<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    fn const_fn_is_allowed_fn_ptr(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         tcx.is_const_fn(def_id) &&
             tcx.lookup_stability(def_id)
                 .map(|stab| stab.allow_const_fn_ptr).unwrap_or(false)

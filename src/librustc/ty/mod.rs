@@ -213,7 +213,7 @@ impl AssocItem {
         }
     }
 
-    pub fn signature<'tcx>(&self, tcx: TyCtxt<'tcx>) -> String {
+    pub fn signature(&self, tcx: TyCtxt<'_>) -> String {
         match self.kind {
             ty::AssocKind::Method => {
                 // We skip the binder here because the binder would deanonymize all
@@ -2311,7 +2311,7 @@ impl<'tcx> AdtDef {
     /// Returns an iterator over all fields contained
     /// by this ADT.
     #[inline]
-    pub fn all_fields<'s>(&'s self) -> impl Iterator<Item = &'s FieldDef> + Clone {
+    pub fn all_fields(&self) -> impl Iterator<Item=&FieldDef> + Clone {
         self.variants.iter().flat_map(|v| v.fields.iter())
     }
 
@@ -3125,7 +3125,7 @@ impl Iterator for AssocItemsIterator<'_> {
     }
 }
 
-fn associated_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> AssocItem {
+fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> AssocItem {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let parent_id = tcx.hir().get_parent_item(id);
     let parent_def_id = tcx.hir().local_def_id_from_hir_id(parent_id);
@@ -3170,7 +3170,7 @@ pub struct AdtSizedConstraint<'tcx>(pub &'tcx [Ty<'tcx>]);
 ///       such.
 ///     - a Error, if a type contained itself. The representability
 ///       check should catch this case.
-fn adt_sized_constraint<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> AdtSizedConstraint<'tcx> {
+fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> AdtSizedConstraint<'_> {
     let def = tcx.adt_def(def_id);
 
     let result = tcx.mk_type_list(def.variants.iter().flat_map(|v| {
@@ -3184,7 +3184,7 @@ fn adt_sized_constraint<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> AdtSizedConst
     AdtSizedConstraint(result)
 }
 
-fn associated_item_def_ids<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx [DefId] {
+fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let item = tcx.hir().expect_item(id);
     match item.node {
@@ -3207,14 +3207,14 @@ fn associated_item_def_ids<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx [Def
     }
 }
 
-fn def_span<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Span {
+fn def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
     tcx.hir().span_if_local(def_id).unwrap()
 }
 
 /// If the given `DefId` describes an item belonging to a trait,
 /// returns the `DefId` of the trait that the trait item belongs to;
 /// otherwise, returns `None`.
-fn trait_of_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<DefId> {
+fn trait_of_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     tcx.opt_associated_item(def_id)
         .and_then(|associated_item| {
             match associated_item.container {
@@ -3237,7 +3237,7 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
 }
 
 /// See `ParamEnv` struct definition for details.
-fn param_env<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ParamEnv<'tcx> {
+fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ParamEnv<'_> {
     // The param_env of an impl Trait type is its defining function's param_env
     if let Some(parent) = is_impl_trait_defn(tcx, def_id) {
         return param_env(tcx, parent);
@@ -3272,17 +3272,17 @@ fn param_env<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ParamEnv<'tcx> {
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
 }
 
-fn crate_disambiguator<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> CrateDisambiguator {
+fn crate_disambiguator(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateDisambiguator {
     assert_eq!(crate_num, LOCAL_CRATE);
     tcx.sess.local_crate_disambiguator()
 }
 
-fn original_crate_name<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> Symbol {
+fn original_crate_name(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Symbol {
     assert_eq!(crate_num, LOCAL_CRATE);
     tcx.crate_name.clone()
 }
 
-fn crate_hash<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> Svh {
+fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     assert_eq!(crate_num, LOCAL_CRATE);
     tcx.hir().crate_hash
 }
@@ -3302,7 +3302,7 @@ fn instance_def_size_estimate<'tcx>(tcx: TyCtxt<'tcx>, instance_def: InstanceDef
 /// If `def_id` is an issue 33140 hack impl, returns its self type; otherwise, returns `None`.
 ///
 /// See [`ImplOverlapKind::Issue33140`] for more details.
-fn issue33140_self_ty<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Ty<'tcx>> {
+fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
     debug!("issue33140_self_ty({:?})", def_id);
 
     let trait_ref = tcx.impl_trait_ref(def_id).unwrap_or_else(|| {
