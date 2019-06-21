@@ -16,7 +16,7 @@ except ImportError:
 # List of people to ping when the status of a tool or a book changed.
 MAINTAINERS = {
     'miri': '@oli-obk @RalfJung @eddyb',
-    'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk @phansch',
+    'clippy-driver': '@Manishearth @oli-obk',
     'rls': '@Xanewok',
     'rustfmt': '@topecongiro',
     'book': '@carols10cents @steveklabnik',
@@ -72,7 +72,7 @@ def issue(
 ):
     # Open an issue about the toolstate failure.
     assignees = [x.strip() for x in maintainers.split('@') if x != '']
-    assignees.append(relevant_pr_user)
+    # assignees.append(relevant_pr_user)
     if status == 'test-fail':
         status_description = 'has failing tests'
     else:
@@ -160,7 +160,7 @@ def update_latest(
                     if new == 'build-fail' or (tool == 'miri' and new == 'test-fail'):
                         create_issue_for_status = new
 
-            if create_issue_for_status is not None:
+            if tool == 'clippy-driver': #create_issue_for_status is not None:
                 try:
                     issue(
                         tool, create_issue_for_status, MAINTAINERS.get(tool, ''),
