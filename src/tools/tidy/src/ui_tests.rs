@@ -7,7 +7,8 @@ pub fn check(path: &Path, bad: &mut bool) {
     super::walk_many(
         &[&path.join("test/ui"), &path.join("test/ui-fulldeps")],
         &mut |_| false,
-        &mut |file_path| {
+        &mut |entry, _contents| {
+            let file_path = entry.path();
             if let Some(ext) = file_path.extension() {
                 if ext == "stderr" || ext == "stdout" {
                     // Test output filenames have one of the formats:

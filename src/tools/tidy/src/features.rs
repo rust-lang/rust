@@ -64,7 +64,8 @@ pub fn check(path: &Path, bad: &mut bool, verbose: bool) {
                        &path.join("test/ui-fulldeps"),
                        &path.join("test/compile-fail")],
                      &mut |path| super::filter_dirs(path),
-                     &mut |file| {
+                     &mut |entry, _contents| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         if !filename.ends_with(".rs") || filename == "features.rs" ||
            filename == "diagnostic_list.rs" {
@@ -371,7 +372,8 @@ fn map_lib_features(base_src_path: &Path,
     let mut contents = String::new();
     super::walk(base_src_path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
-                &mut |file| {
+                &mut |entry, _contents| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         if !filename.ends_with(".rs") || filename == "features.rs" ||
            filename == "diagnostic_list.rs" {

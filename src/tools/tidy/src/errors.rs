@@ -13,7 +13,8 @@ pub fn check(path: &Path, bad: &mut bool) {
     let mut map: HashMap<_, Vec<_>> = HashMap::new();
     super::walk(path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
-                &mut |file| {
+                &mut |entry, _contents| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         if filename != "error_codes.rs" {
             return

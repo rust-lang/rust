@@ -91,7 +91,8 @@ pub fn check(path: &Path, bad: &mut bool) {
     // Sanity check that the complex parsing here works.
     let mut saw_target_arch = false;
     let mut saw_cfg_bang = false;
-    super::walk(path, &mut super::filter_dirs, &mut |file| {
+    super::walk(path, &mut super::filter_dirs, &mut |entry, _contents| {
+        let file = entry.path();
         let filestr = file.to_string_lossy().replace("\\", "/");
         if !filestr.ends_with(".rs") { return }
 

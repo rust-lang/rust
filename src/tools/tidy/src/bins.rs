@@ -27,7 +27,8 @@ pub fn check(path: &Path, bad: &mut bool) {
 
     super::walk(path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/etc"),
-                &mut |file| {
+                &mut |entry, _contents| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".py", ".sh"];
         if extensions.iter().any(|e| filename.ends_with(e)) {

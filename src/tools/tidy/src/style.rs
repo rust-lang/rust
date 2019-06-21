@@ -130,7 +130,8 @@ macro_rules! suppressible_tidy_err {
 
 pub fn check(path: &Path, bad: &mut bool) {
     let mut contents = String::new();
-    super::walk(path, &mut super::filter_dirs, &mut |file| {
+    super::walk(path, &mut super::filter_dirs, &mut |entry, _contents| {
+        let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h"];
         if extensions.iter().all(|e| !filename.ends_with(e)) ||

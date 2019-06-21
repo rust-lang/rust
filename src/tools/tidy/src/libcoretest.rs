@@ -11,7 +11,8 @@ pub fn check(path: &Path, bad: &mut bool) {
     super::walk(
         &libcore_path,
         &mut |subpath| t!(subpath.strip_prefix(&libcore_path)).starts_with("tests"),
-        &mut |subpath| {
+        &mut |entry, _contents| {
+            let subpath = entry.path();
             if let Some("rs") = subpath.extension().and_then(|e| e.to_str()) {
                 match read_to_string(subpath) {
                     Ok(contents) => {
