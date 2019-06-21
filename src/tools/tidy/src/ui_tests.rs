@@ -4,10 +4,8 @@ use std::fs;
 use std::path::Path;
 
 pub fn check(path: &Path, bad: &mut bool) {
-    super::walk_many(
-        &[&path.join("test/ui"), &path.join("test/ui-fulldeps")],
-        &mut |_| false,
-        &mut |entry, _contents| {
+    for path in &[&path.join("test/ui"), &path.join("test/ui-fulldeps")] {
+        super::walk_no_read(path, &mut |_| false, &mut |entry| {
             let file_path = entry.path();
             if let Some(ext) = file_path.extension() {
                 if ext == "stderr" || ext == "stdout" {
@@ -46,6 +44,6 @@ pub fn check(path: &Path, bad: &mut bool) {
                     }
                 }
             }
-        },
-    );
+        });
+    }
 }

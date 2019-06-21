@@ -13,8 +13,6 @@
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
 
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::Path;
 
 const COLS: usize = 100;
@@ -109,7 +107,7 @@ enum Directive {
     Ignore(bool),
 }
 
-fn contains_ignore_directive(contents: &String, check: &str) -> Directive {
+fn contains_ignore_directive(contents: &str, check: &str) -> Directive {
     if contents.contains(&format!("// ignore-tidy-{}", check)) ||
         contents.contains(&format!("# ignore-tidy-{}", check)) {
         Directive::Ignore(false)
@@ -129,8 +127,7 @@ macro_rules! suppressible_tidy_err {
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let mut contents = String::new();
-    super::walk(path, &mut super::filter_dirs, &mut |entry, _contents| {
+    super::walk(path, &mut super::filter_dirs, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h"];
@@ -138,9 +135,6 @@ pub fn check(path: &Path, bad: &mut bool) {
            filename.starts_with(".#") {
             return
         }
-
-        contents.truncate(0);
-        t!(t!(File::open(file), file).read_to_string(&mut contents));
 
         if contents.is_empty() {
             tidy_error!(bad, "{}: empty file", file.display());

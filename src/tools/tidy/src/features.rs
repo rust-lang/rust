@@ -11,8 +11,7 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::fs::{self, File};
-use std::io::prelude::*;
+use std::fs;
 use std::path::Path;
 
 use regex::Regex;
@@ -58,13 +57,11 @@ pub fn check(path: &Path, bad: &mut bool, verbose: bool) {
     let lib_features = get_and_check_lib_features(path, bad, &features);
     assert!(!lib_features.is_empty());
 
-    let mut contents = String::new();
-
     super::walk_many(&[&path.join("test/ui"),
                        &path.join("test/ui-fulldeps"),
                        &path.join("test/compile-fail")],
                      &mut |path| super::filter_dirs(path),
-                     &mut |entry, _contents| {
+                     &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         if !filename.ends_with(".rs") || filename == "features.rs" ||
@@ -74,9 +71,6 @@ pub fn check(path: &Path, bad: &mut bool, verbose: bool) {
 
         let filen_underscore = filename.replace('-',"_").replace(".rs","");
         let filename_is_gate_test = test_filen_gate(&filen_underscore, &mut features);
-
-        contents.truncate(0);
-        t!(t!(File::open(&file), &file).read_to_string(&mut contents));
 
         for (i, line) in contents.lines().enumerate() {
             let mut err = |msg: &str| {
@@ -369,19 +363,15 @@ fn get_and_check_lib_features(base_src_path: &Path,
 
 fn map_lib_features(base_src_path: &Path,
                     mf: &mut dyn FnMut(Result<(&str, Feature), &str>, &Path, usize)) {
-    let mut contents = String::new();
     super::walk(base_src_path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
-                &mut |entry, _contents| {
+                &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         if !filename.ends_with(".rs") || filename == "features.rs" ||
            filename == "diagnostic_list.rs" {
             return;
         }
-
-        contents.truncate(0);
-        t!(t!(File::open(&file), &file).read_to_string(&mut contents));
 
         let mut becoming_feature: Option<(String, Feature)> = None;
         for (i, line) in contents.lines().enumerate() {

@@ -67,6 +67,7 @@ fn filter_dirs(path: &Path) -> bool {
     skip.iter().any(|p| path.ends_with(p))
 }
 
+
 fn walk_many(
     paths: &[&Path], skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&DirEntry, &str)
 ) {
@@ -76,19 +77,25 @@ fn walk_many(
 }
 
 fn walk(path: &Path, skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&DirEntry, &str)) {
+    let mut contents = String::new();
+    walk_no_read(path, skip, &mut |entry| {
+        contents.clear();
+        if t!(File::open(entry.path()), entry.path()).read_to_string(&mut contents).is_err() {
+            contents.clear();
+        }
+        f(&entry, &contents);
+    });
+}
+
+fn walk_no_read(path: &Path, skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&DirEntry)) {
     let walker = WalkDir::new(path).into_iter()
         .filter_entry(|e| !skip(e.path()));
-    let mut contents = String::new();
     for entry in walker {
         if let Ok(entry) = entry {
             if entry.file_type().is_dir() {
                 continue;
             }
-            contents.clear();
-            if t!(File::open(entry.path()), entry.path()).read_to_string(&mut contents).is_err() {
-                contents.clear();
-            }
-            f(&entry, &contents);
+            f(&entry);
         }
     }
 }

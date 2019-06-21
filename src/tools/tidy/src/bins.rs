@@ -25,9 +25,9 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
     }
 
-    super::walk(path,
+    super::walk_no_read(path,
                 &mut |path| super::filter_dirs(path) || path.ends_with("src/etc"),
-                &mut |entry, _contents| {
+                &mut |entry| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".py", ".sh"];
