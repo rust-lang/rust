@@ -72,7 +72,6 @@ def issue(
 ):
     # Open an issue about the toolstate failure.
     assignees = [x.strip() for x in maintainers.split('@') if x != '']
-    assignees.append(relevant_pr_user)
     if status == 'test-fail':
         status_description = 'has failing tests'
     else:
