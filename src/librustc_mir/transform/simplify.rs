@@ -53,7 +53,7 @@ pub fn simplify_cfg(body: &mut Body<'_>) {
 }
 
 impl MirPass for SimplifyCfg {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
+    fn name(&self) -> Cow<'_, str> {
         Cow::Borrowed(&self.label)
     }
 

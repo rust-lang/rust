@@ -1509,8 +1509,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 ///
 /// Based on the "projection mode", this lookup may in fact only examine the
 /// topmost impl. See the comments for `Reveal` for more details.
-fn assoc_ty_def<'cx, 'tcx>(
-    selcx: &SelectionContext<'cx, 'tcx>,
+fn assoc_ty_def(
+    selcx: &SelectionContext<'_, '_>,
     impl_def_id: DefId,
     assoc_ty_def_id: DefId,
 ) -> specialization_graph::NodeItem<ty::AssocItem> {

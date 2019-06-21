@@ -247,7 +247,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         /// returns the fuzzy category of a given type, or None
         /// if the type can be equated to any type.
-        fn type_category<'tcx>(t: Ty<'tcx>) -> Option<u32> {
+        fn type_category(t: Ty<'_>) -> Option<u32> {
             match t.sty {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
