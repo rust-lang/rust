@@ -135,13 +135,13 @@ def update_latest(
         for status in latest:
             tool = status['tool']
             changed = False
-            create_issue = False
+            create_issue_for_status = None # set to the status that caused the issue
 
             for os, s in current_status.items():
                 old = status[os]
                 new = s.get(tool, old)
                 status[os] = new
-                if new > old:
+                if new > old: # comparing the strings, but they are ordered appropriately!
                     # things got fixed or at least the status quo improved
                     changed = True
                     message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
@@ -156,12 +156,12 @@ def update_latest(
                     # Most tools only create issues for build failures.
                     # Other failures can be spurious.
                     if new == 'build-fail' or (tool == 'miri' and new == 'test-fail'):
-                        create_issue = True
+                        create_issue_for_status = new
 
-            if create_issue:
+            if create_issue_for_status is not None:
                 try:
                     issue(
-                        tool, new, MAINTAINERS.get(tool, ''),
+                        tool, create_issue_for_status, MAINTAINERS.get(tool, ''),
                         relevant_pr_number, relevant_pr_user, pr_reviewer,
                     )
                 except IOError as e:
