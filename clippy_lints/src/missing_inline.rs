@@ -68,7 +68,7 @@ fn check_missing_inline_attrs(cx: &LateContext<'_, '_>, attrs: &[ast::Attribute]
     }
 }
 
-fn is_executable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>) -> bool {
+fn is_executable(cx: &LateContext<'_, '_>) -> bool {
     use rustc::session::config::CrateType;
 
     cx.tcx.sess.crate_types.get().iter().any(|t: &CrateType| match t {

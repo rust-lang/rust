@@ -154,7 +154,7 @@ impl Constant {
 }
 
 /// Parses a `LitKind` to a `Constant`.
-pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
+pub fn lit_to_constant(lit: &LitKind, ty: Ty<'_>) -> Constant {
     use syntax::ast::*;
 
     match *lit {

@@ -342,7 +342,7 @@ pub fn resolve_node(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> Res {
 
 /// Returns the method names and argument list of nested method call expressions that make up
 /// `expr`.
-pub fn method_calls<'a>(expr: &'a Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&'a [Expr]>) {
+pub fn method_calls(expr: &Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&[Expr]>) {
     let mut method_names = Vec::with_capacity(max_depth);
     let mut arg_lists = Vec::with_capacity(max_depth);
 
