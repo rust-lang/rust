@@ -180,6 +180,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::Allocation {
             extra: _,
         } = self;
         bytes.hash_stable(hcx, hasher);
+        relocations.len().hash_stable(hcx, hasher);
         for reloc in relocations.iter() {
             reloc.hash_stable(hcx, hasher);
         }
