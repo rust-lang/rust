@@ -3,7 +3,7 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
-use std::fs;
+use walkdir::WalkDir;
 
 use std::path::Path;
 
@@ -72,18 +72,14 @@ fn walk_many(paths: &[&Path], skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn F
 }
 
 fn walk(path: &Path, skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&Path)) {
-    if let Ok(dir) = fs::read_dir(path) {
-        for entry in dir {
-            let entry = t!(entry);
-            let kind = t!(entry.file_type());
-            let path = entry.path();
-            if kind.is_dir() {
-                if !skip(&path) {
-                    walk(&path, skip, f);
-                }
-            } else {
-                f(&path);
+    let walker = WalkDir::new(path).into_iter()
+        .filter_entry(|e| !skip(e.path()));
+    for entry in walker {
+        if let Ok(entry) = entry {
+            if entry.file_type().is_dir() {
+                continue;
             }
+            f(&entry.path());
         }
     }
 }
