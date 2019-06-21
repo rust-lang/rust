@@ -106,11 +106,14 @@ pub fn find(build: &mut Build) {
         let cxx_configured = if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
             true
+        } else if build.hosts.contains(&target) {
+            set_compiler(&mut cfg, Language::CPlusPlus, target, config, build);
+            true
         } else {
-            set_compiler(&mut cfg, Language::CPlusPlus, target, config, build)
+            false
         };
 
-        if cxx_configured || build.hosts.contains(&target) {
+        if cxx_configured {
             let compiler = cfg.get_compiler();
             build.cxx.insert(target, compiler);
         }
@@ -132,7 +135,7 @@ fn set_compiler(cfg: &mut cc::Build,
                 compiler: Language,
                 target: Interned<String>,
                 config: Option<&Target>,
-                build: &Build) -> bool {
+                build: &Build) {
     match &*target {
         // When compiling for android we may have the NDK configured in the
         // config.toml in which case we look there. Otherwise the default
@@ -145,7 +148,6 @@ fn set_compiler(cfg: &mut cc::Build,
                                    .replace("thumbv7", "arm");
                 let compiler = format!("{}-{}", target, compiler.clang());
                 cfg.compiler(ndk.join("bin").join(compiler));
-                return true;
             }
         }
 
@@ -155,35 +157,32 @@ fn set_compiler(cfg: &mut cc::Build,
             let c = cfg.get_compiler();
             let gnu_compiler = compiler.gcc();
             if !c.path().ends_with(gnu_compiler) {
-                return false;
+                return
             }
 
             let output = output(c.to_command().arg("--version"));
             let i = match output.find(" 4.") {
                 Some(i) => i,
-                None => return false,
+                None => return,
             };
             match output[i + 3..].chars().next().unwrap() {
                 '0' ..= '6' => {}
-                _ => return false,
+                _ => return,
             }
             let alternative = format!("e{}", gnu_compiler);
             if Command::new(&alternative).output().is_ok() {
                 cfg.compiler(alternative);
-                return true;
             }
         }
 
         "mips-unknown-linux-musl" => {
             if cfg.get_compiler().path().to_str() == Some("gcc") {
                 cfg.compiler("mips-linux-musl-gcc");
-                return true;
             }
         }
         "mipsel-unknown-linux-musl" => {
             if cfg.get_compiler().path().to_str() == Some("gcc") {
                 cfg.compiler("mipsel-linux-musl-gcc");
-                return true;
             }
         }
 
@@ -192,14 +191,12 @@ fn set_compiler(cfg: &mut cc::Build,
                 let guess = root.join("bin/musl-gcc");
                 if guess.exists() {
                     cfg.compiler(guess);
-                    return true;
                 }
             }
         }
 
         _ => {}
     }
-    false
 }
 
 /// The target programming language for a native compiler.
