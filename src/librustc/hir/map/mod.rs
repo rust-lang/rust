@@ -147,7 +147,7 @@ impl Forest {
         }
     }
 
-    pub fn krate<'hir>(&'hir self) -> &'hir Crate {
+    pub fn krate(&self) -> &Crate {
         self.dep_graph.read(DepNode::new_no_params(DepKind::Krate));
         &self.krate
     }
@@ -155,7 +155,7 @@ impl Forest {
     /// This is used internally in the dependency tracking system.
     /// Use the `krate` method to ensure your dependency on the
     /// crate is tracked.
-    pub fn untracked_krate<'hir>(&'hir self) -> &'hir Crate {
+    pub fn untracked_krate(&self) -> &Crate {
         &self.krate
     }
 }
@@ -1085,7 +1085,7 @@ impl<'a> NodesMatchingSuffix<'a> {
         // If `id` itself is a mod named `m` with parent `p`, then
         // returns `Some(id, m, p)`.  If `id` has no mod in its parent
         // chain, then returns `None`.
-        fn find_first_mod_parent<'a>(map: &'a Map<'_>, mut id: HirId) -> Option<(HirId, Name)> {
+        fn find_first_mod_parent(map: &Map<'_>, mut id: HirId) -> Option<(HirId, Name)> {
             loop {
                 if let Node::Item(item) = map.find(id)? {
                     if item_is_mod(&item) {

@@ -417,7 +417,7 @@ pub struct SupertraitDefIds<'tcx> {
     visited: FxHashSet<DefId>,
 }
 
-pub fn supertrait_def_ids<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId) -> SupertraitDefIds<'tcx> {
+pub fn supertrait_def_ids(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SupertraitDefIds<'_> {
     SupertraitDefIds {
         tcx,
         stack: vec![trait_def_id],

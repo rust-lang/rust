@@ -50,13 +50,13 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn is_mir_available<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     tcx.mir_keys(def_id.krate).contains(&def_id)
 }
 
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
-fn mir_keys<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum) -> &'tcx DefIdSet {
+fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
     assert_eq!(krate, LOCAL_CRATE);
 
     let mut set = DefIdSet::default();
@@ -94,7 +94,7 @@ fn mir_keys<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum) -> &'tcx DefIdSet {
     tcx.arena.alloc(set)
 }
 
-fn mir_built<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
+fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
     let mir = build::mir_build(tcx, def_id);
     tcx.alloc_steal_mir(mir)
 }
@@ -137,7 +137,7 @@ pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
 pub trait MirPass {
-    fn name<'a>(&'a self) -> Cow<'a, str> {
+    fn name(&self) -> Cow<'_, str> {
         default_name::<Self>()
     }
 
@@ -192,7 +192,7 @@ pub fn run_passes(
     }
 }
 
-fn mir_const<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
+fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
 
@@ -223,7 +223,7 @@ fn mir_validated(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
     tcx.alloc_steal_mir(body)
 }
 
-fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Body<'tcx> {
+fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
     if tcx.is_constructor(def_id) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
