@@ -88,6 +88,8 @@ fn eq() {
     assert_eq!(*x.0.borrow(), 0);
 }
 
+// The test code below is identical to that in `rc.rs`.
+// For better maintainability we therefore define this type alias.
 type Rc<T> = Arc<T>;
 
 const SHARED_ITER_MAX: u16 = 100;

@@ -588,11 +588,11 @@ impl<T: ?Sized> Arc<T> {
 }
 
 impl<T: ?Sized> Arc<T> {
-    // Allocates an `ArcInner<T>` with sufficient space for
-    // an unsized value where the value has the layout provided.
-    //
-    // The function `mem_to_arcinner` is called with the data pointer
-    // and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
+    /// Allocates an `ArcInner<T>` with sufficient space for
+    /// an unsized value where the value has the layout provided.
+    ///
+    /// The function `mem_to_arcinner` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
     unsafe fn allocate_for_unsized(
         value_layout: Layout,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>
@@ -618,7 +618,7 @@ impl<T: ?Sized> Arc<T> {
         inner
     }
 
-    // Allocates an `ArcInner<T>` with sufficient space for an unsized value
+    /// Allocates an `ArcInner<T>` with sufficient space for an unsized value.
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
         // Allocate for the `ArcInner<T>` using the given value.
         Self::allocate_for_unsized(
@@ -650,7 +650,7 @@ impl<T: ?Sized> Arc<T> {
 }
 
 impl<T> Arc<[T]> {
-    // Allocates an `ArcInner<[T]>` with the given length.
+    /// Allocates an `ArcInner<[T]>` with the given length.
     unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
         Self::allocate_for_unsized(
             Layout::array::<T>(len).unwrap(),
@@ -659,19 +659,19 @@ impl<T> Arc<[T]> {
     }
 }
 
-// Sets the data pointer of a `?Sized` raw pointer.
-//
-// For a slice/trait object, this sets the `data` field and leaves the rest
-// unchanged. For a sized raw pointer, this simply sets the pointer.
+/// Sets the data pointer of a `?Sized` raw pointer.
+///
+/// For a slice/trait object, this sets the `data` field and leaves the rest
+/// unchanged. For a sized raw pointer, this simply sets the pointer.
 unsafe fn set_data_ptr<T: ?Sized, U>(mut ptr: *mut T, data: *mut U) -> *mut T {
     ptr::write(&mut ptr as *mut _ as *mut *mut u8, data as *mut u8);
     ptr
 }
 
 impl<T> Arc<[T]> {
-    // Copy elements from slice into newly allocated Arc<[T]>
-    //
-    // Unsafe because the caller must either take ownership or bind `T: Copy`
+    /// Copy elements from slice into newly allocated Arc<[T]>
+    ///
+    /// Unsafe because the caller must either take ownership or bind `T: Copy`.
     unsafe fn copy_from_slice(v: &[T]) -> Arc<[T]> {
         let ptr = Self::allocate_for_slice(v.len());
 
@@ -735,7 +735,7 @@ impl<T> Arc<[T]> {
     }
 }
 
-// Specialization trait used for From<&[T]>
+/// Specialization trait used for `From<&[T]>`.
 trait ArcFromSlice<T> {
     fn from_slice(slice: &[T]) -> Self;
 }
@@ -1903,7 +1903,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ArcFromIter<T, I> for Arc<[T]> {
 
 impl<'a, T: 'a + Clone> ArcFromIter<&'a T, slice::Iter<'a, T>> for Arc<[T]> {
     fn from_iter(iter: slice::Iter<'a, T>) -> Self {
-        // Delegate to `impl<T: Clone> From<&[T]> for Rc<[T]>`.
+        // Delegate to `impl<T: Clone> From<&[T]> for Arc<[T]>`.
         //
         // In the case that `T: Copy`, we get to use `ptr::copy_nonoverlapping`
         // which is even more performant.

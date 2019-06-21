@@ -699,11 +699,11 @@ impl Rc<dyn Any> {
 }
 
 impl<T: ?Sized> Rc<T> {
-    // Allocates an `RcBox<T>` with sufficient space for
-    // an unsized value where the value has the layout provided.
-    //
-    // The function `mem_to_rcbox` is called with the data pointer
-    // and must return back a (potentially fat)-pointer for the `RcBox<T>`.
+    /// Allocates an `RcBox<T>` with sufficient space for
+    /// an unsized value where the value has the layout provided.
+    ///
+    /// The function `mem_to_rcbox` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
     unsafe fn allocate_for_unsized(
         value_layout: Layout,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>
@@ -730,7 +730,7 @@ impl<T: ?Sized> Rc<T> {
         inner
     }
 
-    // Allocates an `RcBox<T>` with sufficient space for an unsized value
+    /// Allocates an `RcBox<T>` with sufficient space for an unsized value
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
         // Allocate for the `RcBox<T>` using the given value.
         Self::allocate_for_unsized(
@@ -762,7 +762,7 @@ impl<T: ?Sized> Rc<T> {
 }
 
 impl<T> Rc<[T]> {
-    // Allocates an `RcBox<[T]>` with the given length.
+    /// Allocates an `RcBox<[T]>` with the given length.
     unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
         Self::allocate_for_unsized(
             Layout::array::<T>(len).unwrap(),
@@ -771,19 +771,19 @@ impl<T> Rc<[T]> {
     }
 }
 
-// Sets the data pointer of a `?Sized` raw pointer.
-//
-// For a slice/trait object, this sets the `data` field and leaves the rest
-// unchanged. For a sized raw pointer, this simply sets the pointer.
+/// Sets the data pointer of a `?Sized` raw pointer.
+///
+/// For a slice/trait object, this sets the `data` field and leaves the rest
+/// unchanged. For a sized raw pointer, this simply sets the pointer.
 unsafe fn set_data_ptr<T: ?Sized, U>(mut ptr: *mut T, data: *mut U) -> *mut T {
     ptr::write(&mut ptr as *mut _ as *mut *mut u8, data as *mut u8);
     ptr
 }
 
 impl<T> Rc<[T]> {
-    // Copy elements from slice into newly allocated Rc<[T]>
-    //
-    // Unsafe because the caller must either take ownership or bind `T: Copy`
+    /// Copy elements from slice into newly allocated Rc<[T]>
+    ///
+    /// Unsafe because the caller must either take ownership or bind `T: Copy`
     unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
         let ptr = Self::allocate_for_slice(v.len());
 
@@ -847,6 +847,7 @@ impl<T> Rc<[T]> {
     }
 }
 
+/// Specialization trait used for `From<&[T]>`.
 trait RcFromSlice<T> {
     fn from_slice(slice: &[T]) -> Self;
 }
