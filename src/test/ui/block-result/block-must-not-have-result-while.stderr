@@ -1,3 +1,11 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/block-must-not-have-result-while.rs:2:5
+   |
+LL |     while true {
+   |     ^^^^^^^^^^ help: use `loop`
+   |
+   = note: #[warn(while_true)] on by default
+
 error[E0308]: mismatched types
   --> $DIR/block-must-not-have-result-while.rs:3:9
    |

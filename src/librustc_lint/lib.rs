@@ -96,6 +96,7 @@ macro_rules! early_lint_passes {
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
             NonCamelCaseTypes: NonCamelCaseTypes,
             DeprecatedAttr: DeprecatedAttr::new(),
+            WhileTrue: WhileTrue,
         ]);
     )
 }
@@ -140,7 +141,6 @@ macro_rules! late_lint_mod_passes {
     ($macro:path, $args:tt) => (
         $macro!($args, [
             HardwiredLints: HardwiredLints,
-            WhileTrue: WhileTrue,
             ImproperCTypes: ImproperCTypes,
             VariantSizeDifferences: VariantSizeDifferences,
             BoxPointers: BoxPointers,

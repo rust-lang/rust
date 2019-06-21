@@ -19,6 +19,7 @@ fn main() {
 
     if (true) {} //~ ERROR unnecessary parentheses around `if` condition
     while (true) {} //~ ERROR unnecessary parentheses around `while` condition
+    //~^ WARN denote infinite loops with
     match (true) { //~ ERROR unnecessary parentheses around `match` head expression
         _ => {}
     }

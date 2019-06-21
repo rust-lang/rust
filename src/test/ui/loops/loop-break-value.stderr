@@ -1,3 +1,11 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/loop-break-value.rs:26:5
+   |
+LL |     'while_loop: while true {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
+   |
+   = note: #[warn(while_true)] on by default
+
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/loop-break-value.rs:28:9
    |
