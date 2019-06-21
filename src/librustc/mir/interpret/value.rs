@@ -43,7 +43,7 @@ pub enum ConstValue<'tcx> {
         end: usize,
     },
 
-    /// An value not represented/representable by `Scalar` or `Slice`
+    /// A value not represented/representable by `Scalar` or `Slice`
     ByRef {
         /// The alignment exists to allow `const_field` to have `ByRef` access to nonprimitive
         /// fields of `repr(packed)` structs. The alignment may be lower than the type of this
