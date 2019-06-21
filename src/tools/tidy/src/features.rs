@@ -186,9 +186,11 @@ fn test_find_attr_val() {
 }
 
 fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
-    if filen_underscore.starts_with("feature_gate") {
+    let prefix = "feature_gate_";
+    if filen_underscore.starts_with(prefix) {
         for (n, f) in features.iter_mut() {
-            if filen_underscore == format!("feature_gate_{}", n) {
+            // Equivalent to filen_underscore == format!("feature_gate_{}", n)
+            if &filen_underscore[prefix.len()..] == n {
                 f.has_gate_test = true;
                 return true;
             }
