@@ -613,7 +613,7 @@ pub fn const_eval_provider<'tcx>(
             ty::FnDef(_, substs) => substs,
             _ => bug!("intrinsic with type {:?}", ty),
         };
-        return Ok(eval_intrinsic(tcx, key.param_env, def_id, substs));
+        return Ok(eval_nulary_intrinsic(tcx, key.param_env, def_id, substs));
     }
 
     tcx.const_eval_raw(key).and_then(|val| {
@@ -621,7 +621,7 @@ pub fn const_eval_provider<'tcx>(
     })
 }
 
-fn eval_intrinsic<'tcx>(
+fn eval_nulary_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     def_id: DefId,
