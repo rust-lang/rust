@@ -15,7 +15,7 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
 
-use regex::{Regex, escape};
+use regex::Regex;
 
 mod version;
 use version::Version;
@@ -159,8 +159,19 @@ fn format_features<'a>(features: &'a Features, family: &'a str) -> impl Iterator
 }
 
 fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
-    let r = Regex::new(&format!(r#"{}\s*=\s*"([^"]*)""#, escape(attr)))
-        .expect("malformed regex for find_attr_val");
+    lazy_static::lazy_static! {
+        static ref ISSUE: Regex = Regex::new(r#"issue\s*=\s*"([^"]*)""#).unwrap();
+        static ref FEATURE: Regex = Regex::new(r#"feature\s*=\s*"([^"]*)""#).unwrap();
+        static ref SINCE: Regex = Regex::new(r#"since\s*=\s*"([^"]*)""#).unwrap();
+    }
+
+    let r = match attr {
+        "issue" => &*ISSUE,
+        "feature" => &*FEATURE,
+        "since" => &*SINCE,
+        _ => unimplemented!("{} not handled", attr),
+    };
+
     r.captures(line)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str())
