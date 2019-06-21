@@ -193,43 +193,38 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         place: &Place<'tcx>
     ) {
         debug!("kill_borrows_on_place: place={:?}", place);
-        // Handle the `Place::Local(..)` case first and exit early.
-        if let Place::Base(PlaceBase::Local(local)) = place {
-            if let Some(borrow_indices) = self.borrow_set.local_map.get(&local) {
-                debug!("kill_borrows_on_place: borrow_indices={:?}", borrow_indices);
-                sets.kill_all(borrow_indices);
+
+        if let Some(local) = place.base_local() {
+            let other_borrows_of_local = self
+                .borrow_set
+                .local_map
+                .get(&local)
+                .into_iter()
+                .flat_map(|bs| bs.into_iter());
+
+            // If the borrowed place is a local with no projections, all other borrows of this
+            // local must conflict. This is purely an optimization so we don't have to call
+            // `places_conflict` for every borrow.
+            if let Place::Base(PlaceBase::Local(_)) = place {
+                sets.kill_all(other_borrows_of_local);
                 return;
             }
-        }
-
-        // Otherwise, look at all borrows that are live and if they conflict with the assignment
-        // into our place then we can kill them.
-        let mut borrows = sets.on_entry.clone();
-        let _ = borrows.union(sets.gen_set);
-        for borrow_index in borrows.iter() {
-            let borrow_data = &self.borrows()[borrow_index];
-            debug!(
-                "kill_borrows_on_place: borrow_index={:?} borrow_data={:?}",
-                borrow_index, borrow_data,
-            );
 
             // By passing `PlaceConflictBias::NoOverlap`, we conservatively assume that any given
             // pair of array indices are unequal, so that when `places_conflict` returns true, we
             // will be assured that two places being compared definitely denotes the same sets of
             // locations.
-            if places_conflict::places_conflict(
-                self.tcx,
-                self.body,
-                &borrow_data.borrowed_place,
-                place,
-                places_conflict::PlaceConflictBias::NoOverlap,
-            ) {
-                debug!(
-                    "kill_borrows_on_place: (kill) borrow_index={:?} borrow_data={:?}",
-                    borrow_index, borrow_data,
-                );
-                sets.kill(borrow_index);
-            }
+            let definitely_conflicting_borrows = other_borrows_of_local
+                .filter(|&&i| {
+                    places_conflict::places_conflict(
+                        self.tcx,
+                        self.body,
+                        &self.borrow_set.borrows[i].borrowed_place,
+                        place,
+                        places_conflict::PlaceConflictBias::NoOverlap)
+                });
+
+            sets.kill_all(definitely_conflicting_borrows);
         }
     }
 }
