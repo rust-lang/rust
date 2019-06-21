@@ -5,7 +5,7 @@
 fn g() where
     'static: 'static,
     dyn 'static +: 'static + Copy,
-    //~^ ERROR at least one non-builtin trait is required for an object type
+    //~^ ERROR at least one trait is required for an object type
 {}
 
 fn main() {}
