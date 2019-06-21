@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs;
-use std::path;
+use std::path::{PathBuf, Path};
 use crate::features::{collect_lang_features, collect_lib_features, Features, Status};
 
 pub const PATH_STR: &str = "doc/unstable-book";
@@ -12,19 +12,19 @@ pub const LANG_FEATURES_DIR: &str = "src/language-features";
 pub const LIB_FEATURES_DIR: &str = "src/library-features";
 
 /// Builds the path to the Unstable Book source directory from the Rust 'src' directory.
-pub fn unstable_book_path(base_src_path: &path::Path) -> path::PathBuf {
+pub fn unstable_book_path(base_src_path: &Path) -> PathBuf {
     base_src_path.join(PATH_STR)
 }
 
 /// Builds the path to the directory where the features are documented within the Unstable Book
 /// source directory.
-pub fn unstable_book_lang_features_path(base_src_path: &path::Path) -> path::PathBuf {
+pub fn unstable_book_lang_features_path(base_src_path: &Path) -> PathBuf {
     unstable_book_path(base_src_path).join(LANG_FEATURES_DIR)
 }
 
 /// Builds the path to the directory where the features are documented within the Unstable Book
 /// source directory.
-pub fn unstable_book_lib_features_path(base_src_path: &path::Path) -> path::PathBuf {
+pub fn unstable_book_lib_features_path(base_src_path: &Path) -> PathBuf {
     unstable_book_path(base_src_path).join(LIB_FEATURES_DIR)
 }
 
@@ -45,7 +45,7 @@ pub fn collect_unstable_feature_names(features: &Features) -> BTreeSet<String> {
         .collect()
 }
 
-pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<String> {
+pub fn collect_unstable_book_section_file_names(dir: &Path) -> BTreeSet<String> {
     fs::read_dir(dir)
         .expect("could not read directory")
         .map(|entry| entry.expect("could not read directory entry"))
@@ -60,7 +60,7 @@ pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<St
 ///
 /// * hyphens replaced by underscores,
 /// * the markdown suffix ('.md') removed.
-fn collect_unstable_book_lang_features_section_file_names(base_src_path: &path::Path)
+fn collect_unstable_book_lang_features_section_file_names(base_src_path: &Path)
                                                           -> BTreeSet<String> {
     collect_unstable_book_section_file_names(&unstable_book_lang_features_path(base_src_path))
 }
@@ -69,12 +69,11 @@ fn collect_unstable_book_lang_features_section_file_names(base_src_path: &path::
 ///
 /// * hyphens replaced by underscores,
 /// * the markdown suffix ('.md') removed.
-fn collect_unstable_book_lib_features_section_file_names(base_src_path: &path::Path)
-                                                         -> BTreeSet<String> {
+fn collect_unstable_book_lib_features_section_file_names(base_src_path: &Path) -> BTreeSet<String> {
     collect_unstable_book_section_file_names(&unstable_book_lib_features_path(base_src_path))
 }
 
-pub fn check(path: &path::Path, bad: &mut bool) {
+pub fn check(path: &Path, bad: &mut bool) {
     // Library features
 
     let lang_features = collect_lang_features(path, bad);
