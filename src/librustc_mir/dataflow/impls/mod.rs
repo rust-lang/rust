@@ -4,7 +4,7 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Body, Location};
-use rustc_data_structures::bit_set::{BitSet, BitSetOperator};
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::MoveDataParamEnv;
@@ -12,7 +12,7 @@ use super::MoveDataParamEnv;
 use crate::util::elaborate_drops::DropFlagState;
 
 use super::move_paths::{HasMoveData, MoveData, MovePathIndex, InitIndex, InitKind};
-use super::{BitDenotation, InitialFlow, GenKillSet};
+use super::{BitDenotation, BottomValue, GenKillSet};
 
 use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
@@ -505,68 +505,22 @@ impl<'a, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitSetOperator for MaybeInitializedPlaces<'a, 'tcx> {
-    #[inline]
-    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        inout_set.union(in_set) // "maybe" means we union effects of both preds
-    }
+impl<'a, 'tcx> BottomValue for MaybeInitializedPlaces<'a, 'tcx> {
+    /// bottom = uninitialized
+    const BOTTOM_VALUE: bool = false;
 }
 
-impl<'a, 'tcx> BitSetOperator for MaybeUninitializedPlaces<'a, 'tcx> {
-    #[inline]
-    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        inout_set.union(in_set) // "maybe" means we union effects of both preds
-    }
+impl<'a, 'tcx> BottomValue for MaybeUninitializedPlaces<'a, 'tcx> {
+    /// bottom = initialized (start_block_effect counters this at outset)
+    const BOTTOM_VALUE: bool = false;
 }
 
-impl<'a, 'tcx> BitSetOperator for DefinitelyInitializedPlaces<'a, 'tcx> {
-    #[inline]
-    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        inout_set.intersect(in_set) // "definitely" means we intersect effects of both preds
-    }
+impl<'a, 'tcx> BottomValue for DefinitelyInitializedPlaces<'a, 'tcx> {
+    /// bottom = initialized (start_block_effect counters this at outset)
+    const BOTTOM_VALUE: bool = true;
 }
 
-impl<'a, 'tcx> BitSetOperator for EverInitializedPlaces<'a, 'tcx> {
-    #[inline]
-    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        inout_set.union(in_set) // inits from both preds are in scope
-    }
-}
-
-// The way that dataflow fixed point iteration works, you want to
-// start at bottom and work your way to a fixed point. Control-flow
-// merges will apply the `join` operator to each block entry's current
-// state (which starts at that bottom value).
-//
-// This means, for propagation across the graph, that you either want
-// to start at all-zeroes and then use Union as your merge when
-// propagating, or you start at all-ones and then use Intersect as
-// your merge when propagating.
-
-impl<'a, 'tcx> InitialFlow for MaybeInitializedPlaces<'a, 'tcx> {
-    #[inline]
-    fn bottom_value() -> bool {
-        false // bottom = uninitialized
-    }
-}
-
-impl<'a, 'tcx> InitialFlow for MaybeUninitializedPlaces<'a, 'tcx> {
-    #[inline]
-    fn bottom_value() -> bool {
-        false // bottom = initialized (start_block_effect counters this at outset)
-    }
-}
-
-impl<'a, 'tcx> InitialFlow for DefinitelyInitializedPlaces<'a, 'tcx> {
-    #[inline]
-    fn bottom_value() -> bool {
-        true // bottom = initialized (start_block_effect counters this at outset)
-    }
-}
-
-impl<'a, 'tcx> InitialFlow for EverInitializedPlaces<'a, 'tcx> {
-    #[inline]
-    fn bottom_value() -> bool {
-        false // bottom = no initialized variables by default
-    }
+impl<'a, 'tcx> BottomValue for EverInitializedPlaces<'a, 'tcx> {
+    /// bottom = no initialized variables by default
+    const BOTTOM_VALUE: bool = false;
 }

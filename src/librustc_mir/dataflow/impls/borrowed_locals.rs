@@ -83,18 +83,9 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitSetOperator for HaveBeenBorrowedLocals<'a, 'tcx> {
-    #[inline]
-    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        inout_set.union(in_set) // "maybe" means we union effects of both preds
-    }
-}
-
-impl<'a, 'tcx> InitialFlow for HaveBeenBorrowedLocals<'a, 'tcx> {
-    #[inline]
-    fn bottom_value() -> bool {
-        false // bottom = unborrowed
-    }
+impl<'a, 'tcx> BottomValue for HaveBeenBorrowedLocals<'a, 'tcx> {
+    // bottom = unborrowed
+    const BOTTOM_VALUE: bool = false;
 }
 
 struct BorrowedLocalsVisitor<'gk> {

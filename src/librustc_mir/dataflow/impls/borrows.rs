@@ -5,11 +5,11 @@ use rustc::mir::{self, Location, Place, PlaceBase, Body};
 use rustc::ty::TyCtxt;
 use rustc::ty::RegionVid;
 
-use rustc_data_structures::bit_set::{BitSet, BitSetOperator};
+use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
-use crate::dataflow::{BitDenotation, InitialFlow, GenKillSet};
+use crate::dataflow::{BitDenotation, BottomValue, GenKillSet};
 use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use crate::borrow_check::nll::ToRegionVid;
 use crate::borrow_check::places_conflict;
@@ -331,16 +331,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitSetOperator for Borrows<'a, 'tcx> {
-    #[inline]
-    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        inout_set.union(in_set) // "maybe" means we union effects of both preds
-    }
-}
-
-impl<'a, 'tcx> InitialFlow for Borrows<'a, 'tcx> {
-    #[inline]
-    fn bottom_value() -> bool {
-        false // bottom = nothing is reserved or activated yet
-    }
+impl<'a, 'tcx> BottomValue for Borrows<'a, 'tcx> {
+    /// bottom = nothing is reserved or activated yet;
+    const BOTTOM_VALUE: bool = false;
 }

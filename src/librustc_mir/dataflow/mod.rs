@@ -1,7 +1,7 @@
 use syntax::ast::{self, MetaItem};
 use syntax::symbol::{Symbol, sym};
 
-use rustc_data_structures::bit_set::{BitSet, BitSetOperator, HybridBitSet};
+use rustc_data_structures::bit_set::{BitSet, HybridBitSet};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::work_queue::WorkQueue;
 
@@ -552,14 +552,28 @@ impl<E:Idx> AllSets<E> {
 }
 
 /// Parameterization for the precise form of data flow that is used.
-/// `InitialFlow` handles initializing the bitvectors before any
-/// code is inspected by the analysis. Analyses that need more nuanced
-/// initialization (e.g., they need to consult the results of some other
-/// dataflow analysis to set up the initial bitvectors) should not
-/// implement this.
-pub trait InitialFlow {
-    /// Specifies the initial value for each bit in the `on_entry` set
-    fn bottom_value() -> bool;
+///
+/// `BottomValue` determines whether the initial entry set for each basic block is empty or full.
+/// This also determines the semantics of the lattice `join` operator used to merge dataflow
+/// results, since dataflow works by starting at the bottom and moving monotonically to a fixed
+/// point.
+///
+/// This means, for propagation across the graph, that you either want to start at all-zeroes and
+/// then use Union as your merge when propagating, or you start at all-ones and then use Intersect
+/// as your merge when propagating.
+pub trait BottomValue {
+    /// Specifies the initial value for each bit in the entry set for each basic block.
+    const BOTTOM_VALUE: bool;
+
+    /// Merges `in_set` into `inout_set`, returning `true` if `inout_set` changed.
+    #[inline]
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        if Self::BOTTOM_VALUE == false {
+            inout_set.union(in_set)
+        } else {
+            inout_set.intersect(in_set)
+        }
+    }
 }
 
 /// A specific flavor of dataflow analysis.
@@ -567,10 +581,10 @@ pub trait InitialFlow {
 /// To run a dataflow analysis, one sets up an initial state for the
 /// `START_BLOCK` via `start_block_effect` and a transfer function (`trans`)
 /// for each block individually. The entry set for all other basic blocks is
-/// initialized to `InitialFlow::bottom_value`. The dataflow analysis then
+/// initialized to `Self::BOTTOM_VALUE`. The dataflow analysis then
 /// iteratively modifies the various entry sets (but leaves the the transfer
 /// function unchanged).
-pub trait BitDenotation<'tcx>: BitSetOperator + InitialFlow {
+pub trait BitDenotation<'tcx>: BottomValue {
     /// Specifies what index type is used to access the bitvector.
     type Idx: Idx;
 
@@ -688,7 +702,7 @@ impl<'a, 'tcx, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation<'tcx>
         let bits_per_block = denotation.bits_per_block();
         let num_blocks = body.basic_blocks().len();
 
-        let on_entry = if D::bottom_value() {
+        let on_entry = if D::BOTTOM_VALUE == true {
             vec![BitSet::new_filled(bits_per_block); num_blocks]
         } else {
             vec![BitSet::new_empty(bits_per_block); num_blocks]

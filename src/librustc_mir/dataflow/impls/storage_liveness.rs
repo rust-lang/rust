@@ -59,16 +59,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitSetOperator for MaybeStorageLive<'a, 'tcx> {
-    #[inline]
-    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        inout_set.union(in_set) // "maybe" means we union effects of both preds
-    }
-}
-
-impl<'a, 'tcx> InitialFlow for MaybeStorageLive<'a, 'tcx> {
-    #[inline]
-    fn bottom_value() -> bool {
-        false // bottom = dead
-    }
+impl<'a, 'tcx> BottomValue for MaybeStorageLive<'a, 'tcx> {
+    /// bottom = dead
+    const BOTTOM_VALUE: bool = false;
 }
