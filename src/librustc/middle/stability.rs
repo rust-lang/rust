@@ -477,6 +477,36 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
+pub fn report_unstable(
+    sess: &Session, feature: Symbol, reason: Option<Symbol>, issue: u32, span: Span
+) {
+    let msg = match reason {
+        Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
+        None => format!("use of unstable library feature '{}'", &feature)
+    };
+
+    let msp: MultiSpan = span.into();
+    let cm = &sess.parse_sess.source_map();
+    let span_key = msp.primary_span().and_then(|sp: Span|
+        if !sp.is_dummy() {
+            let file = cm.lookup_char_pos(sp.lo()).file;
+            if file.name.is_macros() {
+                None
+            } else {
+                Some(span)
+            }
+        } else {
+            None
+        }
+    );
+
+    let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
+    let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
+    if fresh {
+        emit_feature_err(&sess.parse_sess, feature, span, GateIssue::Library(Some(issue)), &msg);
+    }
+}
+
 /// Checks whether an item marked with `deprecated(since="X")` is currently
 /// deprecated (i.e., whether X is not greater than the current rustc version).
 pub fn deprecation_in_effect(since: &str) -> bool {
@@ -715,34 +745,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
         match self.eval_stability(def_id, id, span) {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue } => {
-                let msg = match reason {
-                    Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
-                    None => format!("use of unstable library feature '{}'", &feature)
-                };
-
-                let msp: MultiSpan = span.into();
-                let cm = &self.sess.parse_sess.source_map();
-                let span_key = msp.primary_span().and_then(|sp: Span|
-                    if !sp.is_dummy() {
-                        let file = cm.lookup_char_pos(sp.lo()).file;
-                        if file.name.is_macros() {
-                            None
-                        } else {
-                            Some(span)
-                        }
-                    } else {
-                        None
-                    }
-                );
-
-                let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
-                let fresh = self.sess.one_time_diagnostics.borrow_mut().insert(error_id);
-                if fresh {
-                    emit_feature_err(&self.sess.parse_sess, feature, span,
-                                     GateIssue::Library(Some(issue)), &msg);
-                }
-            }
+            EvalResult::Deny { feature, reason, issue } =>
+                report_unstable(self.sess, feature, reason, issue, span),
             EvalResult::Unmarked => {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.

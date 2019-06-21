@@ -9,6 +9,7 @@ use crate::resolve_imports::ImportResolver;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
+use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, Ident};
 use syntax::attr::{self, StabilityLevel};
@@ -18,7 +19,7 @@ use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::{feature_err, emit_feature_err, is_builtin_attr_name};
+use syntax::feature_gate::{feature_err, is_builtin_attr_name};
 use syntax::feature_gate::{AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES};
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::visit::Visitor;
@@ -237,13 +238,11 @@ impl<'a> base::Resolver for Resolver<'a> {
         invoc.expansion_data.mark.set_expn_info(ext.expn_info(span, &format));
 
         if let Some(stability) = ext.stability {
-            if let StabilityLevel::Unstable { issue, .. } = stability.level {
-                let features = self.session.features_untracked();
-                if !span.allows_unstable(stability.feature) &&
-                   features.declared_lib_features.iter().all(|(feat, _)| *feat != stability.feature) {
-                    let msg = format!("macro {}! is unstable", path);
-                    emit_feature_err(&self.session.parse_sess, stability.feature, span,
-                                     GateIssue::Library(Some(issue)), &msg);
+            if let StabilityLevel::Unstable { reason, issue } = stability.level {
+                let (feature, features) = (stability.feature, self.session.features_untracked());
+                if !span.allows_unstable(feature) &&
+                   features.declared_lib_features.iter().all(|(feat, _)| *feat != feature) {
+                    stability::report_unstable(self.session, feature, reason, issue, span);
                 }
             }
         }

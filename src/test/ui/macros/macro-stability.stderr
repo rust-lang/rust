@@ -1,4 +1,4 @@
-error[E0658]: macro local_unstable! is unstable
+error[E0658]: use of unstable library feature 'local_unstable'
   --> $DIR/macro-stability.rs:10:5
    |
 LL |     local_unstable!();
@@ -6,7 +6,7 @@ LL |     local_unstable!();
    |
    = help: add #![feature(local_unstable)] to the crate attributes to enable
 
-error[E0658]: macro unstable_macro! is unstable
+error[E0658]: use of unstable library feature 'unstable_macros'
   --> $DIR/macro-stability.rs:11:5
    |
 LL |     unstable_macro!();

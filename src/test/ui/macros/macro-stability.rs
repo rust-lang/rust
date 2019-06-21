@@ -7,6 +7,6 @@
 macro_rules! local_unstable { () => () }
 
 fn main() {
-    local_unstable!(); //~ ERROR: macro local_unstable! is unstable
-    unstable_macro!(); //~ ERROR: macro unstable_macro! is unstable
+    local_unstable!(); //~ ERROR use of unstable library feature 'local_unstable'
+    unstable_macro!(); //~ ERROR use of unstable library feature 'unstable_macros'
 }
