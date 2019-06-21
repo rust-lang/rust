@@ -265,7 +265,7 @@ pub enum SubregionOrigin<'tcx> {
     DerefPointer(Span),
 
     /// Closure bound must not outlive captured variables
-    ClosureCapture(Span, ast::NodeId),
+    ClosureCapture(Span, hir::HirId),
 
     /// Index into slice must be within its lifetime
     IndexSlice(Span),

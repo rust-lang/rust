@@ -759,7 +759,7 @@ fn primary_body_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: hir::HirId,
 ) -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl>)> {
-    match tcx.hir().get_by_hir_id(id) {
+    match tcx.hir().get(id) {
         Node::Item(item) => {
             match item.node {
                 hir::ItemKind::Const(_, body) |
@@ -993,10 +993,9 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         if let PatKind::Binding(_, _, ident, _) = p.node {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
-            let node_id = self.fcx.tcx.hir().hir_to_node_id(p.hir_id);
             if !self.fcx.tcx.features().unsized_locals {
                 self.fcx.require_type_is_sized(var_ty, p.span,
-                                               traits::VariableType(node_id));
+                                               traits::VariableType(p.hir_id));
             }
 
             debug!("Pattern binding {} is assigned to {} with type {:?}",
@@ -1214,7 +1213,7 @@ fn check_fn<'a, 'tcx>(
                         );
                     }
 
-                    if let Node::Item(item) = fcx.tcx.hir().get_by_hir_id(fn_id) {
+                    if let Node::Item(item) = fcx.tcx.hir().get(fn_id) {
                         if let ItemKind::Fn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
@@ -1262,7 +1261,7 @@ fn check_fn<'a, 'tcx>(
                         );
                     }
 
-                    if let Node::Item(item) = fcx.tcx.hir().get_by_hir_id(fn_id) {
+                    if let Node::Item(item) = fcx.tcx.hir().get(fn_id) {
                         if let ItemKind::Fn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
@@ -3677,7 +3676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn parent_item_span(&self, id: hir::HirId) -> Option<Span> {
-        let node = self.tcx.hir().get_by_hir_id(self.tcx.hir().get_parent_item(id));
+        let node = self.tcx.hir().get(self.tcx.hir().get_parent_item(id));
         match node {
             Node::Item(&hir::Item {
                 node: hir::ItemKind::Fn(_, _, _, body_id), ..
@@ -3697,7 +3696,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
     fn get_parent_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl, ast::Ident)> {
-        let parent = self.tcx.hir().get_by_hir_id(self.tcx.hir().get_parent_item(blk_id));
+        let parent = self.tcx.hir().get(self.tcx.hir().get_parent_item(blk_id));
         self.get_node_fn_decl(parent).map(|(fn_decl, ident, _)| (fn_decl, ident))
     }
 
@@ -3732,7 +3731,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {
-            let parent = self.tcx.hir().get_by_hir_id(blk_id);
+            let parent = self.tcx.hir().get(blk_id);
             self.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
         })
     }
@@ -4259,7 +4258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If our calling expression is indeed the function itself, we're good!
         // If not, generate an error that this can only be called directly.
-        if let Node::Expr(expr) = self.tcx.hir().get_by_hir_id(
+        if let Node::Expr(expr) = self.tcx.hir().get(
             self.tcx.hir().get_parent_node_by_hir_id(hir_id))
         {
             if let ExprKind::Call(ref callee, ..) = expr.node {
@@ -4335,7 +4334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut contained_in_place = false;
 
         while let hir::Node::Expr(parent_expr) =
-            self.tcx.hir().get_by_hir_id(self.tcx.hir().get_parent_node_by_hir_id(expr_id))
+            self.tcx.hir().get(self.tcx.hir().get_parent_node_by_hir_id(expr_id))
         {
             match &parent_expr.node {
                 hir::ExprKind::Assign(lhs, ..) | hir::ExprKind::AssignOp(_, lhs, ..) => {

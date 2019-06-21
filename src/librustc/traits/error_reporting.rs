@@ -937,9 +937,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         code: &ObligationCauseCode<'tcx>,
         err: &mut DiagnosticBuilder<'tcx>,
     ) {
-        if let &ObligationCauseCode::VariableType(node_id) = code {
-            let parent_node = self.tcx.hir().get_parent_node(node_id);
-            if let Some(Node::Local(ref local)) = self.tcx.hir().find(parent_node) {
+        if let &ObligationCauseCode::VariableType(hir_id) = code {
+            let parent_node = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+            if let Some(Node::Local(ref local)) = self.tcx.hir().find_by_hir_id(parent_node) {
                 if let Some(ref expr) = local.init {
                     if let hir::ExprKind::Index(_, _) = expr.node {
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(expr.span) {

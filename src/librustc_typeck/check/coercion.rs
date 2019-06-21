@@ -1291,7 +1291,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 cause.span,
                 blk_id,
             );
-            let parent = fcx.tcx.hir().get_by_hir_id(parent_id);
+            let parent = fcx.tcx.hir().get(parent_id);
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
         } else {
             fcx.get_fn_decl(parent_id)

@@ -268,7 +268,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         let snippet = tcx.sess.source_map().span_to_snippet(span);
                                         let filename = tcx.sess.source_map().span_to_filename(span);
 
-                                        let parent_node = self.tcx.hir().get_by_hir_id(
+                                        let parent_node = self.tcx.hir().get(
                                             self.tcx.hir().get_parent_node_by_hir_id(hir_id),
                                         );
                                         let msg = format!(
@@ -389,7 +389,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Applicability::MachineApplicable,
                                 );
                             } else {
-                                let call_expr = self.tcx.hir().expect_expr_by_hir_id(
+                                let call_expr = self.tcx.hir().expect_expr(
                                     self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id),
                                 );
 

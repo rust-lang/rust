@@ -284,7 +284,7 @@ fn type_param_predicates<'tcx>(
     let mut extend = None;
 
     let item_hir_id = tcx.hir().as_local_hir_id(item_def_id).unwrap();
-    let ast_generics = match tcx.hir().get_by_hir_id(item_hir_id) {
+    let ast_generics = match tcx.hir().get(item_hir_id) {
         Node::TraitItem(item) => &item.generics,
 
         Node::ImplItem(item) => &item.generics,
@@ -623,7 +623,7 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::AdtDef {
     use rustc::hir::*;
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let item = match tcx.hir().get_by_hir_id(hir_id) {
+    let item = match tcx.hir().get(hir_id) {
         Node::Item(item) => item,
         _ => bug!(),
     };
@@ -693,7 +693,7 @@ fn super_predicates_of<'tcx>(
     debug!("super_predicates(trait_def_id={:?})", trait_def_id);
     let trait_hir_id = tcx.hir().as_local_hir_id(trait_def_id).unwrap();
 
-    let item = match tcx.hir().get_by_hir_id(trait_hir_id) {
+    let item = match tcx.hir().get(trait_hir_id) {
         Node::Item(item) => item,
         _ => bug!("trait_node_id {} is not an item", trait_hir_id),
     };
@@ -884,7 +884,7 @@ fn generics_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::Generics {
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
-    let node = tcx.hir().get_by_hir_id(hir_id);
+    let node = tcx.hir().get(hir_id);
     let parent_def_id = match node {
         Node::ImplItem(_) | Node::TraitItem(_) | Node::Variant(_) |
         Node::Ctor(..) | Node::Field(_) => {
@@ -1154,7 +1154,7 @@ pub fn checked_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fail: bool) -> Op
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    Some(match tcx.hir().get_by_hir_id(hir_id) {
+    Some(match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.node {
             TraitItemKind::Method(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -1298,7 +1298,7 @@ pub fn checked_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fail: bool) -> Op
         }
 
         Node::AnonConst(_) => {
-            let parent_node = tcx.hir().get_by_hir_id(tcx.hir().get_parent_node_by_hir_id(hir_id));
+            let parent_node = tcx.hir().get(tcx.hir().get_parent_node_by_hir_id(hir_id));
             match parent_node {
                 Node::Ty(&hir::Ty {
                     node: hir::TyKind::Array(_, ref constant),
@@ -1660,8 +1660,8 @@ fn find_existential_constraints<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Ty<'t
     if scope == hir::CRATE_HIR_ID {
         intravisit::walk_crate(&mut locator, tcx.hir().krate());
     } else {
-        debug!("find_existential_constraints: scope={:?}", tcx.hir().get_by_hir_id(scope));
-        match tcx.hir().get_by_hir_id(scope) {
+        debug!("find_existential_constraints: scope={:?}", tcx.hir().get(scope));
+        match tcx.hir().get(scope) {
             Node::Item(ref it) => intravisit::walk_item(&mut locator, it),
             Node::ImplItem(ref it) => intravisit::walk_impl_item(&mut locator, it),
             Node::TraitItem(ref it) => intravisit::walk_trait_item(&mut locator, it),
@@ -1690,7 +1690,7 @@ fn fn_sig<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::PolyFnSig<'tcx> {
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    match tcx.hir().get_by_hir_id(hir_id) {
+    match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
             node: TraitItemKind::Method(sig, _),
             ..
@@ -1903,7 +1903,7 @@ fn explicit_predicates_of<'tcx>(
         Some(hir_id) => hir_id,
         None => return tcx.predicates_of(def_id),
     };
-    let node = tcx.hir().get_by_hir_id(hir_id);
+    let node = tcx.hir().get(hir_id);
 
     let mut is_trait = None;
     let mut is_default_impl_trait = None;

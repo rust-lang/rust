@@ -124,14 +124,13 @@ fn do_mir_borrowck<'a, 'tcx>(
         .flat_map(|v| v.values())
         .map(|upvar_id| {
             let var_hir_id = upvar_id.var_path.hir_id;
-            let var_node_id = tcx.hir().hir_to_node_id(var_hir_id);
             let capture = tables.upvar_capture(*upvar_id);
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,
                 ty::UpvarCapture::ByRef(..) => true,
             };
             let mut upvar = Upvar {
-                name: tcx.hir().name(var_node_id),
+                name: tcx.hir().name(var_hir_id),
                 var_hir_id,
                 by_ref,
                 mutability: Mutability::Not,
@@ -231,7 +230,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
-    let movable_generator = match tcx.hir().get_by_hir_id(id) {
+    let movable_generator = match tcx.hir().get(id) {
         Node::Expr(&hir::Expr {
             node: hir::ExprKind::Closure(.., Some(hir::GeneratorMovability::Static)),
             ..

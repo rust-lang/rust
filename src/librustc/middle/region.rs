@@ -190,7 +190,7 @@ impl Scope {
         }
         let span = tcx.hir().span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
-            if let Node::Block(ref blk) = tcx.hir().get_by_hir_id(hir_id) {
+            if let Node::Block(ref blk) = tcx.hir().get(hir_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
                 // `blk`; reuse span of `blk` and shift `lo`
@@ -1368,7 +1368,7 @@ fn region_scope_tree<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ScopeTree 
         // If the item is an associated const or a method,
         // record its impl/trait parent, as it can also have
         // lifetime parameters free in this body.
-        match tcx.hir().get_by_hir_id(id) {
+        match tcx.hir().get(id) {
             Node::ImplItem(_) |
             Node::TraitItem(_) => {
                 visitor.scope_tree.root_parent = Some(tcx.hir().get_parent_item(id));
