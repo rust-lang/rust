@@ -538,10 +538,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
             self.layout_of(self.monomorphize(val.ty)?)
         })?;
         let op = match val.val {
-            ConstValue::ByRef(ptr, align, _alloc) => {
+            ConstValue::ByRef { offset, align, alloc } => {
+                let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
-                let ptr = self.tag_static_base_pointer(ptr);
+                let ptr = self.tag_static_base_pointer(Pointer::new(id, offset));
                 Operand::Indirect(MemPlace::from_ptr(ptr, align))
             },
             ConstValue::Scalar(x) =>

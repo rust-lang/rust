@@ -99,7 +99,7 @@ fn op_to_const<'tcx>(
         Ok(mplace) => {
             let ptr = mplace.ptr.to_ptr().unwrap();
             let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-            ConstValue::ByRef(ptr, mplace.align, alloc)
+            ConstValue::ByRef { offset: ptr.offset, align: mplace.align, alloc }
         },
         // see comment on `let try_as_immediate` above
         Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
@@ -113,7 +113,7 @@ fn op_to_const<'tcx>(
                 let mplace = op.to_mem_place();
                 let ptr = mplace.ptr.to_ptr().unwrap();
                 let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                ConstValue::ByRef(ptr, mplace.align, alloc)
+                ConstValue::ByRef { offset: ptr.offset, align: mplace.align, alloc }
             },
         },
         Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
@@ -541,11 +541,11 @@ fn validate_and_turn_into_const<'tcx>(
         if tcx.is_static(def_id) || cid.promoted.is_some() {
             let ptr = mplace.ptr.to_ptr()?;
             Ok(tcx.mk_const(ty::Const {
-                val: ConstValue::ByRef(
-                    ptr,
-                    mplace.align,
-                    ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
-                ),
+                val: ConstValue::ByRef {
+                    offset: ptr.offset,
+                    align: mplace.align,
+                    alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                },
                 ty: mplace.layout.ty,
             }))
         } else {

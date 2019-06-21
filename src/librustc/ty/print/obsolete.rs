@@ -186,7 +186,7 @@ impl DefPathBasedNames<'tcx> {
     // as well as the unprintable types of constants (see `push_type_name` for more details).
     pub fn push_const_name(&self, c: &Const<'tcx>, output: &mut String, debug: bool) {
         match c.val {
-            ConstValue::Scalar(..) | ConstValue::Slice { .. } | ConstValue::ByRef(..) => {
+            ConstValue::Scalar(..) | ConstValue::Slice { .. } | ConstValue::ByRef { .. } => {
                 // FIXME(const_generics): we could probably do a better job here.
                 write!(output, "{:?}", c).unwrap()
             }

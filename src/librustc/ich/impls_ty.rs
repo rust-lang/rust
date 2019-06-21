@@ -175,13 +175,18 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::Allocation {
         hcx: &mut StableHashingContext<'a>,
         hasher: &mut StableHasher<W>,
     ) {
-        self.bytes.hash_stable(hcx, hasher);
-        for reloc in self.relocations.iter() {
+        let mir::interpret::Allocation {
+            bytes, relocations, undef_mask, align, mutability,
+            extra: _,
+        } = self;
+        bytes.hash_stable(hcx, hasher);
+        relocations.len().hash_stable(hcx, hasher);
+        for reloc in relocations.iter() {
             reloc.hash_stable(hcx, hasher);
         }
-        self.undef_mask.hash_stable(hcx, hasher);
-        self.align.hash_stable(hcx, hasher);
-        self.mutability.hash_stable(hcx, hasher);
+        undef_mask.hash_stable(hcx, hasher);
+        align.hash_stable(hcx, hasher);
+        mutability.hash_stable(hcx, hasher);
     }
 }
 

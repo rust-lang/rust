@@ -1335,7 +1335,8 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            ConstValue::ByRef(ptr, align, alloc) => ConstValue::ByRef(ptr, align, alloc),
+            ConstValue::ByRef { offset, align, alloc } =>
+                ConstValue::ByRef { offset, align, alloc },
             ConstValue::Infer(ic) => ConstValue::Infer(ic.fold_with(folder)),
             ConstValue::Param(p) => ConstValue::Param(p.fold_with(folder)),
             ConstValue::Placeholder(p) => ConstValue::Placeholder(p),
@@ -1348,7 +1349,7 @@ impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ConstValue::ByRef(..) => false,
+            ConstValue::ByRef { .. } => false,
             ConstValue::Infer(ic) => ic.visit_with(visitor),
             ConstValue::Param(p) => p.visit_with(visitor),
             ConstValue::Placeholder(_) => false,
