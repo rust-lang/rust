@@ -181,7 +181,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn visit_arm(&mut self, a: &'tcx hir::Arm) { visit_arm(self, a); }
 }
 
-fn check_mod_liveness<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
+fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut IrMaps::new(tcx, module_def_id).as_deep_visitor(),

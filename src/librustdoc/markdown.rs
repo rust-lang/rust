@@ -17,7 +17,7 @@ use crate::html::markdown::{ErrorCodes, IdMap, Markdown, MarkdownWithToc, find_t
 use crate::test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
-fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
+fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
     let mut metadata = Vec::new();
     let mut count = 0;
 

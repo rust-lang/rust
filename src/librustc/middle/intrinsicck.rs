@@ -10,7 +10,7 @@ use syntax_pos::{Span, sym};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir;
 
-fn check_mod_intrinsics<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
+fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut ItemVisitor { tcx }.as_deep_visitor()
