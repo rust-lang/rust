@@ -168,7 +168,8 @@ def update_latest(
                 except urllib2.HTTPError as e:
                     # network errors will simply end up not creating an issue, but that's better
                     # than failing the entire build job
-                    print("HTTPError when creating issue for status regression: {0}\n{1}".format(e, e.read()))
+                    print("HTTPError when creating issue for status regression: {0}\n{1}"
+                          .format(e, e.read()))
                 except IOError as e:
                     print("I/O error when creating issue for status regression: {0}".format(e))
                 except:
