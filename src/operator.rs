@@ -109,6 +109,27 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     err!(InvalidPointerMath)
                 }
             }
+            Gt | Ge if left.is_ptr() && right.is_bits() => {
+                // "ptr >[=] integer" can be tested if the integer is small enough.
+                let left = left.to_ptr().expect("we checked is_ptr");
+                let right = right.to_bits(self.memory().pointer_size()).expect("we checked is_bits");
+                let (_alloc_size, alloc_align) = self.memory()
+                    .get_size_and_align(left.alloc_id, InboundsCheck::MaybeDead)
+                    .expect("determining size+align of dead ptr cannot fail");
+                let min_ptr_val = u128::from(alloc_align.bytes()) + u128::from(left.offset.bytes());
+                let result = match bin_op {
+                    Gt => min_ptr_val > right,
+                    Ge => min_ptr_val >= right,
+                    _ => bug!(),
+                };
+                if result {
+                    // Definitely true!
+                    Ok((Scalar::from_bool(true), false))
+                } else {
+                    // Sorry, can't tell.
+                    err!(InvalidPointerMath)
+                }
+            }
             // These work if the left operand is a pointer, and the right an integer
             Add | BitAnd | Sub | Rem if left.is_ptr() && right.is_bits() => {
                 // Cast to i128 is fine as we checked the kind to be ptr-sized

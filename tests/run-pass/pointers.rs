@@ -83,4 +83,11 @@ fn main() {
     assert!(dangling != 5usize);
     assert!(dangling != 6usize);
     assert!(dangling != 7usize);
+
+    // Using inequality to do the comparison.
+    assert!(dangling > 0);
+    assert!(dangling > 1);
+    assert!(dangling > 2);
+    assert!(dangling > 3);
+    assert!(dangling >= 4);
 }
