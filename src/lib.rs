@@ -637,15 +637,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
         let alloc = memory.get(ptr.alloc_id)?;
 
-        let base_addr = match alloc.extra.base_addr.borrow().clone() { 
-            Some(base_addr) => base_addr,
+        let mut base_addr = alloc.extra.base_addr.borrow_mut();
+        
+        let addr = match *base_addr { 
+            Some(addr) => addr,
             None => {
-                let base_addr = extra.addr;
+                let addr = extra.addr;
                 extra.addr += alloc.bytes.len() as u64;
 
-                *alloc.extra.base_addr.borrow_mut() = Some(base_addr);
+                *base_addr = Some(addr);
 
-                let elem = (base_addr, ptr.alloc_id);
+                let elem = (addr, ptr.alloc_id);
 
                 if let Err(pos) = extra.vec.binary_search(&elem) {
                     extra.vec.insert(pos, elem);
@@ -653,10 +655,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                     return err!(Unreachable);
                 }
 
-                base_addr
+                addr
             }
         };
 
-        Ok(base_addr + ptr.offset.bytes())
+        Ok(addr + ptr.offset.bytes())
     }
 }
