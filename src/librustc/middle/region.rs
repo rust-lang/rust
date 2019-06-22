@@ -1044,9 +1044,9 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             debug!("resolve_expr - fixing up counts to {}", visitor.expr_and_pat_count);
 
             for scope in target_scopes {
-                let (span, count) = visitor.scope_tree.yield_in_scope.get_mut(&scope).unwrap();
-                let count = *count;
-                let span = *span;
+                let mut yield_data = visitor.scope_tree.yield_in_scope.get_mut(&scope).unwrap();
+                let count = yield_data.expr_and_pat_count;
+                let span = yield_data.span;
 
                 // expr_and_pat_count never decreases. Since we recorded counts in yield_in_scope
                 // before walking the left-hand side, it should be impossible for the recorded
@@ -1059,7 +1059,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
                 debug!("resolve_expr - increasing count for scope {:?} from {} to {} at span {:?}",
                        scope, count, new_count, span);
 
-                visitor.scope_tree.yield_in_scope.insert(scope, (span, new_count));
+                yield_data.expr_and_pat_count = new_count;
             }
 
         }
