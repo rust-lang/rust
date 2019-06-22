@@ -91,10 +91,10 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Vec<ast::Attribute> {
-        if !attr.check_name(sym::cfg_attr) {
+        if attr.path != sym::cfg_attr {
             return vec![attr];
         }
-        if attr.tokens.len() == 0 {
+        if attr.tokens.is_empty() {
             self.sess.span_diagnostic
                 .struct_span_err(
                     attr.span,
@@ -108,7 +108,7 @@ impl<'a> StripUnconfigured<'a> {
                        <https://doc.rust-lang.org/reference/conditional-compilation.html\
                        #the-cfg_attr-attribute>")
                 .emit();
-            return Vec::new();
+            return vec![];
         }
 
         let (cfg_predicate, expanded_attrs) = match attr.parse(self.sess, |parser| {
@@ -133,16 +133,17 @@ impl<'a> StripUnconfigured<'a> {
             Ok(result) => result,
             Err(mut e) => {
                 e.emit();
-                return Vec::new();
+                return vec![];
             }
         };
 
-        // Check feature gate and lint on zero attributes in source. Even if the feature is gated,
-        // we still compute as if it wasn't, since the emitted error will stop compilation further
-        // along the compilation.
-        if expanded_attrs.len() == 0 {
-            // FIXME: Emit unused attribute lint here.
+        // Lint on zero attributes in source.
+        if expanded_attrs.is_empty() {
+            return vec![attr];
         }
+
+        // At this point we know the attribute is considered used.
+        attr::mark_used(&attr);
 
         if attr::cfg_matches(&cfg_predicate, self.sess, self.features) {
             // We call `process_cfg_attr` recursively in case there's a
@@ -159,7 +160,7 @@ impl<'a> StripUnconfigured<'a> {
             }))
             .collect()
         } else {
-            Vec::new()
+            vec![]
         }
     }
 
