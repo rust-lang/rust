@@ -4453,6 +4453,21 @@ impl<'a, T> DoubleEndedIterator for ChunksExact<'a, T> {
             Some(snd)
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &[];
+            None
+        } else {
+            let start = (len - 1 - n) * self.chunk_size;
+            let end = start + self.chunk_size;
+            let nth_back = &self.v[start..end];
+            self.v = &self.v[..start];
+            Some(nth_back)
+        }
+    }
 }
 
 #[stable(feature = "chunks_exact", since = "1.31.0")]
