@@ -800,7 +800,7 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
 /// [blog post]: https://is.gd/0hKvIr
 struct TypeGeneralizer<'me, 'tcx, D>
 where
-    D: TypeRelatingDelegate<'tcx> + 'me,
+    D: TypeRelatingDelegate<'tcx>,
 {
     infcx: &'me InferCtxt<'me, 'tcx>,
 
