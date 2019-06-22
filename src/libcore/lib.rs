@@ -107,8 +107,6 @@
 #![feature(unwind_attributes)]
 #![feature(doc_alias)]
 #![feature(mmx_target_feature)]
-#![feature(tbm_target_feature)]
-#![feature(sse4a_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(powerpc_target_feature)]
 #![feature(mips_target_feature)]
@@ -124,7 +122,6 @@
 #![feature(non_exhaustive)]
 #![feature(structural_match)]
 #![feature(abi_unadjusted)]
-#![feature(adx_target_feature)]
 #![feature(maybe_uninit_slice, maybe_uninit_array)]
 #![feature(external_doc)]
 
