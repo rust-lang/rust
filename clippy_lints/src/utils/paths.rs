@@ -107,6 +107,7 @@ pub const TO_OWNED_METHOD: [&str; 4] = ["alloc", "borrow", "ToOwned", "to_owned"
 pub const TO_STRING: [&str; 3] = ["alloc", "string", "ToString"];
 pub const TO_STRING_METHOD: [&str; 4] = ["alloc", "string", "ToString", "to_string"];
 pub const TRANSMUTE: [&str; 4] = ["core", "intrinsics", "", "transmute"];
+pub const TRY_FROM_ERROR: [&str; 4] = ["std", "ops", "Try", "from_error"];
 pub const TRY_INTO_RESULT: [&str; 4] = ["std", "ops", "Try", "into_result"];
 pub const UNINIT: [&str; 4] = ["core", "intrinsics", "", "uninit"];
 pub const VEC: [&str; 3] = ["alloc", "vec", "Vec"];

@@ -1,4 +1,4 @@
-use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
+use crate::utils::{match_qpath, paths, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -17,17 +17,17 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    ///
-    /// ```rust,ignore
-    /// // Bad
+    /// ```rust
     /// fn foo(fail: bool) -> Result<i32, String> {
     ///     if fail {
     ///       Err("failed")?;
     ///     }
     ///     Ok(0)
     /// }
+    /// ```
+    /// Could be written:
     ///
-    /// // Good
+    /// ```rust
     /// fn foo(fail: bool) -> Result<i32, String> {
     ///     if fail {
     ///       return Err("failed".into());
@@ -57,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
             if let ExprKind::Match(ref match_arg, _, MatchSource::TryDesugar) = expr.node;
             if let ExprKind::Call(ref match_fun, ref try_args) = match_arg.node;
             if let ExprKind::Path(ref match_fun_path) = match_fun.node;
-            if match_qpath(match_fun_path, &["std", "ops", "Try", "into_result"]);
+            if match_qpath(match_fun_path, &paths::TRY_INTO_RESULT);
             if let Some(ref try_arg) = try_args.get(0);
             if let ExprKind::Call(ref err_fun, ref err_args) = try_arg.node;
             if let Some(ref err_arg) = err_args.get(0);
@@ -73,19 +73,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
                     format!("return Err({}.into())", snippet(cx, err_arg.span, "_"))
                 };
 
-                span_lint_and_then(
+                span_lint_and_sugg(
                     cx,
                     TRY_ERR,
                     expr.span,
-                    &format!("confusing error return, consider using `{}`", suggestion),
-                    |db| {
-                        db.span_suggestion(
-                            expr.span,
-                            "try this",
-                            suggestion,
-                            Applicability::MaybeIncorrect
-                        );
-                    },
+                    "returning an `Err(_)` with the `?` operator",
+                    "try this",
+                    suggestion,
+                    Applicability::MaybeIncorrect
                 );
             }
         }
@@ -97,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
 // its output type.
 fn find_err_return_type<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx ExprKind) -> Option<Ty<'tcx>> {
     if let ExprKind::Match(_, ref arms, MatchSource::TryDesugar) = expr {
-        arms.iter().filter_map(|ty| find_err_return_type_arm(cx, ty)).nth(0)
+        arms.iter().find_map(|ty| find_err_return_type_arm(cx, ty))
     } else {
         None
     }
@@ -109,7 +104,7 @@ fn find_err_return_type_arm<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arm: &'tcx Arm
         if let ExprKind::Ret(Some(ref err_ret)) = arm.body.node;
         if let ExprKind::Call(ref from_error_path, ref from_error_args) = err_ret.node;
         if let ExprKind::Path(ref from_error_fn) = from_error_path.node;
-        if match_qpath(from_error_fn, &["std", "ops", "Try", "from_error"]);
+        if match_qpath(from_error_fn, &paths::TRY_FROM_ERROR);
         if let Some(from_error_arg) = from_error_args.get(0);
         then {
             Some(cx.tables.expr_ty(from_error_arg))

@@ -1823,7 +1823,7 @@ pub const ALL_LINTS: [Lint; 306] = [
     Lint {
         name: "try_err",
         group: "style",
-        desc: "TODO",
+        desc: "return errors explicitly rather than hiding them behind a `?`",
         deprecation: None,
         module: "try_err",
     },

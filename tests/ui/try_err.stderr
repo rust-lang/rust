@@ -1,4 +1,4 @@
-error: confusing error return, consider using `return Err(err)`
+error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:7:5
    |
 LL |     Err(err)?;
@@ -10,19 +10,19 @@ note: lint level defined here
 LL | #![deny(clippy::try_err)]
    |         ^^^^^^^^^^^^^^^
 
-error: confusing error return, consider using `return Err(err.into())`
+error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:14:5
    |
 LL |     Err(err)?;
    |     ^^^^^^^^^ help: try this: `return Err(err.into())`
 
-error: confusing error return, consider using `return Err(err)`
+error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:31:13
    |
 LL |             Err(err)?;
    |             ^^^^^^^^^ help: try this: `return Err(err)`
 
-error: confusing error return, consider using `return Err(err.into())`
+error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:46:13
    |
 LL |             Err(err)?;
