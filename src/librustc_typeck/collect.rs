@@ -2367,11 +2367,6 @@ fn from_target_feature(
                 Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
                 Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
                 Some(sym::f16c_target_feature) => rust_features.f16c_target_feature,
-                // These are stable:
-                | Some(sym::sse4a_target_feature)
-                | Some(sym::tbm_target_feature)
-                | Some(sym::adx_target_feature)
-                    => true,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };

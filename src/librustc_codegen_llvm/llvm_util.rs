@@ -129,7 +129,7 @@ const AARCH64_WHITELIST: &[(&str, Option<Symbol>)] = &[
 ];
 
 const X86_WHITELIST: &[(&str, Option<Symbol>)] = &[
-    ("adx", Some(sym::adx_target_feature)),
+    ("adx", None),
     ("aes", None),
     ("avx", None),
     ("avx2", None),
@@ -163,9 +163,9 @@ const X86_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("sse3", None),
     ("sse4.1", None),
     ("sse4.2", None),
-    ("sse4a", Some(sym::sse4a_target_feature)),
+    ("sse4a", None),
     ("ssse3", None),
-    ("tbm", Some(sym::tbm_target_feature)),
+    ("tbm", None),
     ("xsave", None),
     ("xsavec", None),
     ("xsaveopt", None),
