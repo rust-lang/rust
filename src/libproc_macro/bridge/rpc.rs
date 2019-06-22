@@ -59,7 +59,7 @@ macro_rules! rpc_encode_decode {
         }
     };
     (enum $name:ident $(<$($T:ident),+>)? { $($variant:ident $(($field:ident))*),* $(,)? }) => {
-        impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)* {
+        impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
             fn encode(self, w: &mut Writer, s: &mut S) {
                 // HACK(eddyb): `Tag` enum duplicated between the
                 // two impls as there's no other place to stash it.
@@ -79,8 +79,8 @@ macro_rules! rpc_encode_decode {
             }
         }
 
-        impl<S, $($($T: for<'s> DecodeMut<'a, 's, S>),+)*> DecodeMut<'a, '_, S>
-            for $name $(<$($T),+>)*
+        impl<S, $($($T: for<'s> DecodeMut<'a, 's, S>),+)?> DecodeMut<'a, '_, S>
+            for $name $(<$($T),+>)?
         {
             fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
                 // HACK(eddyb): `Tag` enum duplicated between the

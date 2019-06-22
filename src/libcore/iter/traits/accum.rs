@@ -72,10 +72,10 @@ macro_rules! integer_sum_product {
     ($($a:ty)*) => (
         integer_sum_product!(@impls 0, 1,
                 #[stable(feature = "iter_arith_traits", since = "1.12.0")],
-                $($a)+);
+                $($a)*);
         integer_sum_product!(@impls Wrapping(0), Wrapping(1),
                 #[stable(feature = "wrapping_iter_arith", since = "1.14.0")],
-                $(Wrapping<$a>)+);
+                $(Wrapping<$a>)*);
     );
 }
 

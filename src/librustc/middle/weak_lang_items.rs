@@ -147,7 +147,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let lang_items = self.lang_items();
         let did = Some(item_def_id);
 
-        $(lang_items.$name() == did)||+
+        $(lang_items.$name() == did)||*
     }
 }
 

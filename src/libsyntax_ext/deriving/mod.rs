@@ -88,7 +88,7 @@ macro_rules! derive_traits {
                         )
                     }),
                 );
-            )*
+            )+
         }
     }
 }
