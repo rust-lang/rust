@@ -2129,8 +2129,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self.tcx.sess
     }
 
-    pub fn err_count_since_creation(&self) -> usize {
-        self.tcx.sess.err_count() - self.err_count_on_creation
+    pub fn errors_reported_since_creation(&self) -> bool {
+        self.tcx.sess.err_count() > self.err_count_on_creation
     }
 
     /// Produces warning on the given node, if the current point in the
@@ -4376,7 +4376,7 @@ pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, t
         } else if let ty::Error = leaf_ty.sty {
             // If there is already another error, do not emit
             // an error for not using a type Parameter.
-            assert!(tcx.sess.err_count() > 0);
+            assert!(tcx.sess.has_errors());
             return;
         }
     }

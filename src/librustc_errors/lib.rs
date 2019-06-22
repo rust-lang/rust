@@ -352,7 +352,7 @@ pub struct HandlerFlags {
 
 impl Drop for Handler {
     fn drop(&mut self) {
-        if self.err_count() == 0 {
+        if !self.has_errors() {
             let mut bugs = self.delayed_span_bugs.borrow_mut();
             let has_bugs = !bugs.is_empty();
             for bug in bugs.drain(..) {
@@ -705,10 +705,9 @@ impl Handler {
     }
 
     pub fn abort_if_errors(&self) {
-        if self.err_count() == 0 {
-            return;
+        if self.has_errors() {
+            FatalError.raise();
         }
-        FatalError.raise();
     }
     pub fn emit(&self, msp: &MultiSpan, msg: &str, lvl: Level) {
         if lvl == Warning && !self.flags.can_emit_warnings {
