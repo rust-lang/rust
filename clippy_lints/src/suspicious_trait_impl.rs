@@ -67,7 +67,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
             // as a child node
             let mut parent_expr = cx.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
             while parent_expr != hir::CRATE_HIR_ID {
-                if let hir::Node::Expr(e) = cx.tcx.hir().get_by_hir_id(parent_expr) {
+                if let hir::Node::Expr(e) = cx.tcx.hir().get(parent_expr) {
                     match e.node {
                         hir::ExprKind::Binary(..)
                         | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
