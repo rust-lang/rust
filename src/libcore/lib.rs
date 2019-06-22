@@ -124,6 +124,9 @@
 #![feature(abi_unadjusted)]
 #![feature(maybe_uninit_slice, maybe_uninit_array)]
 #![feature(external_doc)]
+#![cfg_attr(bootstrap, feature(sse4a_target_feature))]
+#![cfg_attr(bootstrap, feature(tbm_target_feature))]
+#![cfg_attr(bootstrap, feature(adx_target_feature))]
 
 #[prelude_import]
 #[allow(unused)]
