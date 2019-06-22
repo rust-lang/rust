@@ -3,7 +3,7 @@ use crate::utils::differing_macro_contexts;
 use rustc::hir::ptr::P;
 use rustc::hir::*;
 use rustc::lint::LateContext;
-use rustc::ty::{Ty, TypeckTables};
+use rustc::ty::{self, Ty, TypeckTables};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use syntax::ast::Name;
@@ -45,7 +45,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         match (&left.node, &right.node) {
             (&StmtKind::Local(ref l), &StmtKind::Local(ref r)) => {
                 self.eq_pat(&l.pat, &r.pat)
-                    && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
+                    && both(&l.ty, &r.ty, |l, r| self.eq_ty(*l, *r))
                     && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
             },
             (&StmtKind::Expr(ref l), &StmtKind::Expr(ref r)) | (&StmtKind::Semi(ref l), &StmtKind::Semi(ref r)) => {
@@ -257,7 +257,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    pub fn eq_ty(&mut self, left: &Ty, right: &Ty) -> bool {
+    pub fn eq_ty(&mut self, left: &Ty<'tcx>, right: &Ty<'tcx>) -> bool {
         self.eq_ty_kind(&left.node, &right.node)
     }
 
@@ -604,26 +604,26 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_ty(&mut self, ty: &Ty) {
+    pub fn hash_ty(&mut self, ty: &Ty<'tcx>) {
         std::mem::discriminant(&ty.node).hash(&mut self.s);
-        match ty.node {
-            Ty::Slice(ty) => {
+        match ty.sty {
+            ty::Slice(ty) => {
                 self.hash_ty(ty);
             },
-            Ty::Array(ty, anon_const) => {
+            ty::Array(ty, anon_const) => {
                 self.hash_ty(ty);
                 self.hash_expr(&self.cx.tcx.hir().body(anon_const.body).value);
             },
-            Ty::Ptr(mut_ty) => {
+            ty::Ptr(mut_ty) => {
                 self.hash_ty(&mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            Ty::Rptr(lifetime, mut_ty) => {
+            ty::Rptr(lifetime, mut_ty) => {
                 self.hash_lifetime(lifetime);
                 self.hash_ty(&mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            Ty::BareFn(bfn) => {
+            ty::BareFn(bfn) => {
                 bfn.unsafety.hash(&mut self.s);
                 bfn.abi.hash(&mut self.s);
                 for arg in &bfn.decl.inputs {
@@ -639,13 +639,13 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
                 bfn.decl.c_variadic.hash(&mut self.s);
             },
-            Ty::Tup(ty_list) => {
+            ty::Tup(ty_list) => {
                 for ty in ty_list {
                     self.hash_ty(ty);
                 }
 
             },
-            Ty::Path(qpath) => {
+            ty::Path(qpath) => {
                 match qpath {
                     QPath::Resolved(ref maybe_ty, ref path) => {
                         if let Some(ref ty) = maybe_ty {
@@ -661,7 +661,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     },
                 }
             },
-            Ty::Def(_, arg_list) => {
+            ty::Def(_, arg_list) => {
                 for arg in arg_list {
                     match arg {
                         GenericArg::Lifetime(ref l) => self.hash_lifetime(l),
@@ -672,17 +672,17 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                 }
             },
-            Ty::TraitObject(_, lifetime) => {
+            ty::TraitObject(_, lifetime) => {
                 self.hash_lifetime(lifetime);
 
             },
-            Ty::Typeof(anon_const) => {
+            ty::Typeof(anon_const) => {
                 self.hash_expr(&self.cx.tcx.hir().body(anon_const.body).value);
             },
-            Ty::CVarArgs(lifetime) => {
+            ty::CVarArgs(lifetime) => {
                 self.hash_lifetime(lifetime);
             },
-            Ty::Err | Ty::Infer | Ty::Never => {},
+            ty::Err | ty::Infer | ty::Never => {},
         }
     }
 }
