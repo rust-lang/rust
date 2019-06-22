@@ -21,7 +21,7 @@ use super::{
 };
 use crate::const_eval::{CompileTimeInterpreter, CompileTimeEvalContext};
 
-struct InternVisitor<'rt, 'mir: 'rt, 'tcx: 'rt + 'mir> {
+struct InternVisitor<'rt, 'mir, 'tcx> {
     /// previously encountered safe references
     ref_tracking: &'rt mut RefTracking<(MPlaceTy<'tcx>, Mutability, InternMode)>,
     ecx: &'rt mut CompileTimeEvalContext<'mir, 'tcx>,

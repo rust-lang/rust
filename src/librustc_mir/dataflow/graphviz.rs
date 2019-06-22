@@ -30,7 +30,7 @@ impl<'a, 'tcx, BD> MirWithFlowState<'tcx> for DataflowBuilder<'a, 'tcx, BD>
     fn flow_state(&self) -> &DataflowState<'tcx, Self::BD> { &self.flow_state.flow_state }
 }
 
-struct Graph<'a, 'tcx, MWF:'a, P> where
+struct Graph<'a, 'tcx, MWF, P> where
     MWF: MirWithFlowState<'tcx>
 {
     mbcx: &'a MWF,

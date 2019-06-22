@@ -231,7 +231,7 @@ pub struct CommonConsts<'tcx> {
     pub err: &'tcx Const<'tcx>,
 }
 
-pub struct LocalTableInContext<'a, V: 'a> {
+pub struct LocalTableInContext<'a, V> {
     local_id_root: Option<DefId>,
     data: &'a ItemLocalMap<V>
 }
@@ -294,7 +294,7 @@ impl<'a, V> ::std::ops::Index<hir::HirId> for LocalTableInContext<'a, V> {
     }
 }
 
-pub struct LocalTableInContextMut<'a, V: 'a> {
+pub struct LocalTableInContextMut<'a, V> {
     local_id_root: Option<DefId>,
     data: &'a mut ItemLocalMap<V>
 }
@@ -2171,7 +2171,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
 
 /// An entry in an interner.
-struct Interned<'tcx, T: 'tcx+?Sized>(&'tcx T);
+struct Interned<'tcx, T: ?Sized>(&'tcx T);
 
 impl<'tcx, T: 'tcx+?Sized> Clone for Interned<'tcx, T> {
     fn clone(&self) -> Self {
