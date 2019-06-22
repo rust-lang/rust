@@ -487,7 +487,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtension) -> Option<AstFragment> {
         if invoc.fragment_kind == AstFragmentKind::ForeignItems &&
-           !self.cx.ecfg.macros_in_extern_enabled() {
+           !self.cx.ecfg.macros_in_extern() {
             if let SyntaxExtensionKind::NonMacroAttr { .. } = ext.kind {} else {
                 emit_feature_err(&self.cx.parse_sess, sym::macros_in_extern,
                                  invoc.span(), GateIssue::Language,
@@ -919,7 +919,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         })
                         .map(|i| attrs.remove(i));
         if let Some(attr) = &attr {
-            if !self.cx.ecfg.enable_custom_inner_attributes() &&
+            if !self.cx.ecfg.custom_inner_attributes() &&
                attr.style == ast::AttrStyle::Inner && attr.path != sym::test {
                 emit_feature_err(&self.cx.parse_sess, sym::custom_inner_attributes,
                                  attr.span, GateIssue::Language,
@@ -1432,19 +1432,6 @@ pub struct ExpansionConfig<'feat> {
     pub keep_macs: bool,
 }
 
-macro_rules! feature_tests {
-    ($( fn $getter:ident = $field:ident, )*) => {
-        $(
-            pub fn $getter(&self) -> bool {
-                match self.features {
-                    Some(&Features { $field: true, .. }) => true,
-                    _ => false,
-                }
-            }
-        )*
-    }
-}
-
 impl<'feat> ExpansionConfig<'feat> {
     pub fn default(crate_name: String) -> ExpansionConfig<'static> {
         ExpansionConfig {
@@ -1458,20 +1445,13 @@ impl<'feat> ExpansionConfig<'feat> {
         }
     }
 
-    feature_tests! {
-        fn enable_asm = asm,
-        fn enable_custom_test_frameworks = custom_test_frameworks,
-        fn enable_global_asm = global_asm,
-        fn enable_log_syntax = log_syntax,
-        fn enable_concat_idents = concat_idents,
-        fn enable_trace_macros = trace_macros,
-        fn enable_allow_internal_unstable = allow_internal_unstable,
-        fn enable_format_args_nl = format_args_nl,
-        fn macros_in_extern_enabled = macros_in_extern,
-        fn proc_macro_hygiene = proc_macro_hygiene,
+    fn macros_in_extern(&self) -> bool {
+        self.features.map_or(false, |features| features.macros_in_extern)
     }
-
-    fn enable_custom_inner_attributes(&self) -> bool {
+    fn proc_macro_hygiene(&self) -> bool {
+        self.features.map_or(false, |features| features.proc_macro_hygiene)
+    }
+    fn custom_inner_attributes(&self) -> bool {
         self.features.map_or(false, |features| features.custom_inner_attributes)
     }
 }

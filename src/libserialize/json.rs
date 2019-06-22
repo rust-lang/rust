@@ -103,6 +103,7 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! # #![allow(deprecated)]
 //! extern crate serialize;
 //! use serialize::json::{self, ToJson, Json};
 //!
@@ -143,6 +144,7 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! # #![allow(deprecated)]
 //! extern crate serialize;
 //! use std::collections::BTreeMap;
 //! use serialize::json::{self, Json, ToJson};

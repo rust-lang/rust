@@ -1,4 +1,4 @@
-error[E0658]: `log_syntax!` is not stable enough for use and is subject to change
+error[E0658]: use of unstable library feature 'log_syntax': `log_syntax!` is not stable enough for use and is subject to change
   --> $DIR/feature-gate-log_syntax.rs:2:5
    |
 LL |     log_syntax!()

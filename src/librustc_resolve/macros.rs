@@ -1013,9 +1013,8 @@ impl<'a> Resolver<'a> {
     fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, path: &str, span: Span) {
         if let Some(stability) = &ext.stability {
             if let StabilityLevel::Unstable { reason, issue } = stability.level {
-                let (feature, features) = (stability.feature, self.session.features_untracked());
-                if !span.allows_unstable(feature) &&
-                   features.declared_lib_features.iter().all(|(feat, _)| *feat != feature) {
+                let feature = stability.feature;
+                if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
                     stability::report_unstable(self.session, feature, reason, issue, span);
                 }
             }

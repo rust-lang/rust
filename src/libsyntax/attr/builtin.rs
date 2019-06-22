@@ -135,6 +135,19 @@ pub enum StabilityLevel {
     Stable { since: Symbol },
 }
 
+impl Stability {
+    pub fn unstable(feature: Symbol, reason: Option<Symbol>, issue: u32) -> Stability {
+        Stability {
+            level: StabilityLevel::Unstable { reason, issue },
+            feature,
+            rustc_depr: None,
+            const_stability: None,
+            promotable: false,
+            allow_const_fn_ptr: false,
+        }
+    }
+}
+
 impl StabilityLevel {
     pub fn is_unstable(&self) -> bool {
         if let StabilityLevel::Unstable {..} = *self {

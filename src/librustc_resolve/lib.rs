@@ -1684,6 +1684,9 @@ pub struct Resolver<'a> {
     current_type_ascription: Vec<Span>,
 
     injected_crate: Option<Module<'a>>,
+
+    /// Features enabled for this crate.
+    active_features: FxHashSet<Symbol>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1922,6 +1925,7 @@ impl<'a> Resolver<'a> {
         let mut macro_defs = FxHashMap::default();
         macro_defs.insert(Mark::root(), root_def_id);
 
+        let features = session.features_untracked();
         let non_macro_attr = |mark_used| Lrc::new(SyntaxExtension::default(
             SyntaxExtensionKind::NonMacroAttr { mark_used }, session.edition()
         ));
@@ -2009,6 +2013,10 @@ impl<'a> Resolver<'a> {
             unused_macros: Default::default(),
             current_type_ascription: Vec::new(),
             injected_crate: None,
+            active_features:
+                features.declared_lib_features.iter().map(|(feat, ..)| *feat)
+                    .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
+                    .collect(),
         }
     }
 

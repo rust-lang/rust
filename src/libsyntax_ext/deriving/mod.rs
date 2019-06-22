@@ -2,6 +2,7 @@
 
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::{self, MetaItem};
+use syntax::attr::Deprecation;
 use syntax::edition::Edition;
 use syntax::ext::base::{Annotatable, ExtCtxt, Resolver, MultiItemModifier};
 use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
@@ -60,7 +61,7 @@ impl MultiItemModifier for BuiltinDerive {
 }
 
 macro_rules! derive_traits {
-    ($( $name:expr => $func:path, )+) => {
+    ($( [$deprecation:expr] $name:expr => $func:path, )+) => {
         pub fn is_builtin_trait(name: ast::Name) -> bool {
             match &*name.as_str() {
                 $( $name )|+ => true,
@@ -81,6 +82,10 @@ macro_rules! derive_traits {
                 resolver.add_builtin(
                     ast::Ident::with_empty_ctxt(Symbol::intern($name)),
                     Lrc::new(SyntaxExtension {
+                        deprecation: $deprecation.map(|msg| Deprecation {
+                            since: Some(Symbol::intern("1.0.0")),
+                            note: Some(Symbol::intern(msg)),
+                        }),
                         allow_internal_unstable: allow_internal_unstable.clone(),
                         ..SyntaxExtension::default(
                             SyntaxExtensionKind::LegacyDerive(Box::new(BuiltinDerive($func))),
@@ -94,42 +99,41 @@ macro_rules! derive_traits {
 }
 
 derive_traits! {
+    [None]
     "Clone" => clone::expand_deriving_clone,
 
+    [None]
     "Hash" => hash::expand_deriving_hash,
 
+    [None]
     "RustcEncodable" => encodable::expand_deriving_rustc_encodable,
 
+    [None]
     "RustcDecodable" => decodable::expand_deriving_rustc_decodable,
 
+    [None]
     "PartialEq" => partial_eq::expand_deriving_partial_eq,
+    [None]
     "Eq" => eq::expand_deriving_eq,
+    [None]
     "PartialOrd" => partial_ord::expand_deriving_partial_ord,
+    [None]
     "Ord" => ord::expand_deriving_ord,
 
+    [None]
     "Debug" => debug::expand_deriving_debug,
 
+    [None]
     "Default" => default::expand_deriving_default,
 
+    [None]
     "Copy" => bounds::expand_deriving_copy,
 
     // deprecated
+    [Some("derive(Encodable) is deprecated in favor of derive(RustcEncodable)")]
     "Encodable" => encodable::expand_deriving_encodable,
+    [Some("derive(Decodable) is deprecated in favor of derive(RustcDecodable)")]
     "Decodable" => decodable::expand_deriving_decodable,
-}
-
-#[inline] // because `name` is a compile-time constant
-fn warn_if_deprecated(ecx: &mut ExtCtxt<'_>, sp: Span, name: &str) {
-    if let Some(replacement) = match name {
-        "Encodable" => Some("RustcEncodable"),
-        "Decodable" => Some("RustcDecodable"),
-        _ => None,
-    } {
-        ecx.span_warn(sp,
-                      &format!("derive({}) is deprecated in favor of derive({})",
-                               name,
-                               replacement));
-    }
 }
 
 /// Construct a name for the inner type parameter that can't collide with any type parameters of
