@@ -1,52 +1,76 @@
 error: unneeded return statement
-  --> $DIR/needless_return.rs:8:5
+  --> $DIR/needless_return.rs:14:5
    |
 LL |     return true;
-   |     ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |     ^^^^^^^^^^^^ help: remove `return`: `true`
    |
    = note: `-D clippy::needless-return` implied by `-D warnings`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:12:5
+  --> $DIR/needless_return.rs:18:5
    |
 LL |     return true;
-   |     ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |     ^^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:17:9
+  --> $DIR/needless_return.rs:23:9
    |
 LL |         return true;
-   |         ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |         ^^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:19:9
+  --> $DIR/needless_return.rs:25:9
    |
 LL |         return false;
-   |         ^^^^^^^^^^^^^ help: remove `return` as shown: `false`
+   |         ^^^^^^^^^^^^^ help: remove `return`: `false`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:25:17
+  --> $DIR/needless_return.rs:31:17
    |
 LL |         true => return false,
-   |                 ^^^^^^^^^^^^ help: remove `return` as shown: `false`
+   |                 ^^^^^^^^^^^^ help: remove `return`: `false`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:27:13
+  --> $DIR/needless_return.rs:33:13
    |
 LL |             return true;
-   |             ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |             ^^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:34:9
+  --> $DIR/needless_return.rs:40:9
    |
 LL |         return true;
-   |         ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |         ^^^^^^^^^^^^ help: remove `return`: `true`
 
 error: unneeded return statement
-  --> $DIR/needless_return.rs:36:16
+  --> $DIR/needless_return.rs:42:16
    |
 LL |     let _ = || return true;
-   |                ^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |                ^^^^^^^^^^^ help: remove `return`: `true`
 
-error: aborting due to 8 previous errors
+error: unneeded return statement
+  --> $DIR/needless_return.rs:50:5
+   |
+LL |     return;
+   |     ^^^^^^^ help: remove `return`
+
+error: unneeded return statement
+  --> $DIR/needless_return.rs:55:9
+   |
+LL |         return;
+   |         ^^^^^^^ help: remove `return`
+
+error: unneeded return statement
+  --> $DIR/needless_return.rs:57:9
+   |
+LL |         return;
+   |         ^^^^^^^ help: remove `return`
+
+error: unneeded return statement
+  --> $DIR/needless_return.rs:64:14
+   |
+LL |         _ => return,
+   |              ^^^^^^ help: replace `return` with the unit type: `()`
+
+error: aborting due to 12 previous errors
 

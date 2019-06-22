@@ -51,6 +51,5 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidRef {
                 span_help_and_lint(cx, INVALID_REF, expr.span, msg, HELP);
             }
         }
-        return;
     }
 }
