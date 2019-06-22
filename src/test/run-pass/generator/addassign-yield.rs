@@ -1,3 +1,9 @@
+// Regression test for broken MIR error (#61442)
+// Due to the two possible evaluation orders for
+// a '+=' expression (depending on whether or not the 'AddAssign' trait
+// is being used), we were failing to account for all types that might
+// possibly be live across a yield point.
+
 #![feature(generators)]
 
 fn foo() {
