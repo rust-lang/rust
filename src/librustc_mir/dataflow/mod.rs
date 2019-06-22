@@ -181,7 +181,7 @@ where
 
 struct PropagationContext<'b, 'a, 'tcx, O>
 where
-    O: 'b + BitDenotation<'tcx>,
+    O: BitDenotation<'tcx>,
 {
     builder: &'b mut DataflowAnalysis<'a, 'tcx, O>,
 }
