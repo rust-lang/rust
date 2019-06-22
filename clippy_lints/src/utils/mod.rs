@@ -66,7 +66,7 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 /// ```
 pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
     let parent_id = cx.tcx.hir().get_parent_item(id);
-    match cx.tcx.hir().get_by_hir_id(parent_id) {
+    match cx.tcx.hir().get(parent_id) {
         Node::Item(&Item {
             node: ItemKind::Const(..),
             ..
@@ -320,7 +320,7 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'_, 'tcx>, hir_id: HirId) -> O
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
     if_chain! {
         if parent_impl != hir::CRATE_HIR_ID;
-        if let hir::Node::Item(item) = cx.tcx.hir().get_by_hir_id(parent_impl);
+        if let hir::Node::Item(item) = cx.tcx.hir().get(parent_impl);
         if let hir::ItemKind::Impl(_, _, _, _, trait_ref, _, _) = &item.node;
         then { return trait_ref.as_ref(); }
     }

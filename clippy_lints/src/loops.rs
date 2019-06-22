@@ -1647,7 +1647,7 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<HirId>
         then {
             let res = cx.tables.qpath_res(qpath, bound.hir_id);
             if let Res::Local(node_id) = res {
-                let node_str = cx.tcx.hir().get_by_hir_id(node_id);
+                let node_str = cx.tcx.hir().get(node_id);
                 if_chain! {
                     if let Node::Binding(pat) = node_str;
                     if let PatKind::Binding(bind_ann, ..) = pat.node;
