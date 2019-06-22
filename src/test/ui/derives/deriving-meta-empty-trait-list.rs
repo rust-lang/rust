@@ -1,6 +1,6 @@
-// compile-pass
+#![deny(unused)]
 
-#[derive()] //~ WARNING empty trait list in `derive`
-struct Bar;
+#[derive()] //~ ERROR unused attribute
+struct _Bar;
 
 pub fn main() {}
