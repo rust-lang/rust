@@ -567,6 +567,9 @@ declare_features! (
     // #[repr(transparent)] on unions.
     (active, transparent_unions, "1.37.0", Some(60405), None),
 
+    // Allows coercing non-capturing closures to fn pointers of non-Rust ABI
+    (active, closure_to_extern_fn_coercion, "1.37.0", Some(44291), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

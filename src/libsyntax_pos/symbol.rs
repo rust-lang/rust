@@ -175,6 +175,7 @@ symbols! {
         Clone,
         clone_closures,
         clone_from,
+        closure_to_extern_fn_coercion,
         closure_to_fn_coercion,
         cmp,
         cmpxchg16b_target_feature,

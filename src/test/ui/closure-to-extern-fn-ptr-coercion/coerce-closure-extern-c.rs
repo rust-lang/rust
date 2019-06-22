@@ -1,5 +1,7 @@
 // compile-pass
 
+#![feature(closure_to_extern_fn_coercion)]
+
 fn call_extern_c(func: extern "C" fn()) {
     func()
 }

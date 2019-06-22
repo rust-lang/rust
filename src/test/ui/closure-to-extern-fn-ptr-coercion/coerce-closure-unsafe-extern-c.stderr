@@ -1,5 +1,5 @@
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/coerce-unsafe-closure-to-unsafe-extern-fn-ptr.rs:2:42
+  --> $DIR/coerce-closure-unsafe-extern-c.rs:4:42
    |
 LL |     let _: unsafe extern "C" fn() = || { ::std::pin::Pin::new_unchecked(&0_u8); };
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
