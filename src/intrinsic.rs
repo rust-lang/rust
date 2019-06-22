@@ -505,7 +505,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             let ptr = mplace.ptr.to_ptr()?;
                             this.memory_mut()
                                 .get_mut(ptr.alloc_id)?
-                                .mark_definedness(ptr, dest.layout.size, false)?;
+                                .mark_definedness(ptr, dest.layout.size, false);
                         }
                     }
                 }
