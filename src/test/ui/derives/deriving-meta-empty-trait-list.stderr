@@ -1,6 +1,15 @@
-warning: empty trait list in `derive`
+error: unused attribute
   --> $DIR/deriving-meta-empty-trait-list.rs:3:1
    |
 LL | #[derive()]
    | ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/deriving-meta-empty-trait-list.rs:1:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: #[deny(unused_attributes)] implied by #[deny(unused)]
+
+error: aborting due to previous error
 
