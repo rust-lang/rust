@@ -322,7 +322,7 @@ impl DirtyCleanVisitor<'tcx> {
     /// Return all DepNode labels that should be asserted for this item.
     /// index=0 is the "name" used for error messages
     fn auto_labels(&mut self, item_id: hir::HirId, attr: &Attribute) -> (&'static str, Labels) {
-        let node = self.tcx.hir().get_by_hir_id(item_id);
+        let node = self.tcx.hir().get(item_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
                 match item.node {

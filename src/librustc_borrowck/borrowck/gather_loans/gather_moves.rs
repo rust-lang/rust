@@ -49,7 +49,7 @@ fn get_pattern_source<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat) -> PatternSource<'tcx>
 
     let parent = tcx.hir().get_parent_node_by_hir_id(pat.hir_id);
 
-    match tcx.hir().get_by_hir_id(parent) {
+    match tcx.hir().get(parent) {
         Node::Expr(ref e) => {
             // the enclosing expression must be a `match` or something else
             assert!(match e.node {

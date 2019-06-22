@@ -52,7 +52,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     if let Node::Expr(Expr {
                         node: Closure(_, _, _, closure_span, None),
                         ..
-                    }) = hir.get_by_hir_id(hir_id) {
+                    }) = hir.get(hir_id) {
                         let sup_sp = sup_origin.span();
                         let origin_sp = origin.span();
                         let mut err = self.tcx().sess.struct_span_err(

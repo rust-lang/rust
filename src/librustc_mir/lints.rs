@@ -10,7 +10,7 @@ use rustc::ty::subst::InternalSubsts;
 pub fn check(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
-    if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get_by_hir_id(hir_id)) {
+    if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get(hir_id)) {
         check_fn_for_unconditional_recursion(tcx, fn_like_node.kind(), body, def_id);
     }
 }

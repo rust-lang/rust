@@ -188,7 +188,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// S { ... } must be Sized
     StructInitializerSized,
     /// Type of each variable must be Sized
-    VariableType(ast::NodeId),
+    VariableType(hir::HirId),
     /// Argument type must be Sized
     SizedArgumentType,
     /// Return type must be Sized

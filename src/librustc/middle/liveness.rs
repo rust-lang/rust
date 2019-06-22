@@ -1630,7 +1630,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     );
 
                     if self.ir.variable_is_shorthand(var) {
-                        if let Node::Binding(pat) = self.ir.tcx.hir().get_by_hir_id(hir_id) {
+                        if let Node::Binding(pat) = self.ir.tcx.hir().get(hir_id) {
                             // Handle `ref` and `ref mut`.
                             let spans = spans.iter()
                                 .map(|_span| (pat.span, format!("{}: _", name)))

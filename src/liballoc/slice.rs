@@ -581,7 +581,9 @@ pub trait SliceConcatExt<T: ?Sized> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(since = "1.3.0", reason = "renamed to join")]
-    fn connect(&self, sep: &T) -> Self::Output;
+    fn connect(&self, sep: &T) -> Self::Output {
+        self.join(sep)
+    }
 }
 
 #[unstable(feature = "slice_concat_ext",
@@ -614,10 +616,6 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
             result.extend_from_slice(v.borrow())
         }
         result
-    }
-
-    fn connect(&self, sep: &T) -> Vec<T> {
-        self.join(sep)
     }
 }
 

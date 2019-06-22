@@ -349,7 +349,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let (&var_id, _) = self.infcx.tcx.upvars(def_id).unwrap()
                         .get_index(field.index()).unwrap();
 
-                    self.infcx.tcx.hir().name_by_hir_id(var_id).to_string()
+                    self.infcx.tcx.hir().name(var_id).to_string()
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
@@ -659,7 +659,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             def_id, target_place, places
         );
         let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id)?;
-        let expr = &self.infcx.tcx.hir().expect_expr_by_hir_id(hir_id).node;
+        let expr = &self.infcx.tcx.hir().expect_expr(hir_id).node;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(
             .., args_span, _

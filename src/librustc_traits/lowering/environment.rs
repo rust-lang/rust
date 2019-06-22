@@ -185,7 +185,7 @@ crate fn environment<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Environment<'tcx
         .map(Clause::ForAll);
 
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    let node = tcx.hir().get_by_hir_id(hir_id);
+    let node = tcx.hir().get(hir_id);
 
     enum NodeKind {
         TraitImpl,

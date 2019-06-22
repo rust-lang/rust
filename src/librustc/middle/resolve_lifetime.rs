@@ -1488,7 +1488,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
             }
         };
-        if let Node::Lifetime(hir_lifetime) = self.tcx.hir().get_by_hir_id(lifetime.hir_id) {
+        if let Node::Lifetime(hir_lifetime) = self.tcx.hir().get(lifetime.hir_id) {
             if let Some(parent) = self.tcx.hir().find_by_hir_id(
                 self.tcx.hir().get_parent_item(hir_lifetime.hir_id))
             {
@@ -1569,7 +1569,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Some(LifetimeUseSet::One(lifetime)) => {
                     let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
                     debug!("hir id first={:?}", hir_id);
-                    if let Some((id, span, name)) = match self.tcx.hir().get_by_hir_id(hir_id) {
+                    if let Some((id, span, name)) = match self.tcx.hir().get(hir_id) {
                         Node::Lifetime(hir_lifetime) => Some((
                             hir_lifetime.hir_id,
                             hir_lifetime.span,
@@ -1620,7 +1620,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
                 None => {
                     let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
-                    if let Some((id, span, name)) = match self.tcx.hir().get_by_hir_id(hir_id) {
+                    if let Some((id, span, name)) = match self.tcx.hir().get(hir_id) {
                         Node::Lifetime(hir_lifetime) => Some((
                             hir_lifetime.hir_id,
                             hir_lifetime.span,
@@ -1823,7 +1823,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 // Do not free early-bound regions, only late-bound ones.
             } else if let Some(body_id) = outermost_body {
                 let fn_id = self.tcx.hir().body_owner(body_id);
-                match self.tcx.hir().get_by_hir_id(fn_id) {
+                match self.tcx.hir().get(fn_id) {
                     Node::Item(&hir::Item {
                         node: hir::ItemKind::Fn(..),
                         ..
@@ -2052,7 +2052,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut assoc_item_kind = None;
         let mut impl_self = None;
         let parent = self.tcx.hir().get_parent_node_by_hir_id(output.hir_id);
-        let body = match self.tcx.hir().get_by_hir_id(parent) {
+        let body = match self.tcx.hir().get(parent) {
             // `fn` definitions and methods.
             Node::Item(&hir::Item {
                 node: hir::ItemKind::Fn(.., body),

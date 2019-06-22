@@ -853,7 +853,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     format!(
                         "...but `{}` will be dropped here, when the function `{}` returns",
                         name,
-                        self.infcx.tcx.hir().name_by_hir_id(fn_hir_id),
+                        self.infcx.tcx.hir().name(fn_hir_id),
                     ),
                 );
 

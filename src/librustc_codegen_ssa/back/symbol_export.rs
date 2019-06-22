@@ -82,7 +82,7 @@ fn reachable_non_generics_provider<'tcx>(
             //
             // As a result, if this id is an FFI item (foreign item) then we only
             // let it through if it's included statically.
-            match tcx.hir().get_by_hir_id(hir_id) {
+            match tcx.hir().get(hir_id) {
                 Node::ForeignItem(..) => {
                     let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
                     if tcx.is_statically_included_foreign_item(def_id) {

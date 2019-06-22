@@ -580,7 +580,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             let mut diag = self.struct_span_lint_hir(lint, id, span, &msg);
             if let Some(suggestion) = suggestion {
-                if let hir::Node::Expr(_) = self.hir().get_by_hir_id(id) {
+                if let hir::Node::Expr(_) = self.hir().get(id) {
                     diag.span_suggestion(
                         span,
                         "replace the use of the deprecated item",

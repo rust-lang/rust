@@ -123,7 +123,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     {
         let tcx = self.tcx();
         let lifetime_name = |def_id| {
-            tcx.hir().name_by_hir_id(tcx.hir().as_local_hir_id(def_id).unwrap()).as_interned_str()
+            tcx.hir().name(tcx.hir().as_local_hir_id(def_id).unwrap()).as_interned_str()
         };
 
         let r = match tcx.named_region(lifetime.hir_id) {
@@ -1253,7 +1253,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         if regular_traits.is_empty() && auto_traits.is_empty() {
             span_err!(tcx.sess, span, E0224,
-                "at least one non-builtin trait is required for an object type");
+                "at least one trait is required for an object type");
             return tcx.types.err;
         }
 
@@ -2004,7 +2004,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                tcx.mk_ty_param(index, tcx.hir().name_by_hir_id(hir_id).as_interned_str())
+                tcx.mk_ty_param(index, tcx.hir().name(hir_id).as_interned_str())
             }
             Res::SelfTy(Some(_), None) => {
                 // `Self` in trait or type alias.
@@ -2194,7 +2194,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
             let generics = tcx.generics_of(item_def_id);
             let index = generics.param_def_id_to_index[&tcx.hir().local_def_id_from_hir_id(hir_id)];
-            let name = tcx.hir().name_by_hir_id(hir_id).as_interned_str();
+            let name = tcx.hir().name(hir_id).as_interned_str();
             const_.val = ConstValue::Param(ty::ParamConst::new(index, name));
         }
 
