@@ -6,7 +6,6 @@ use crate::print::pprust;
 use crate::ptr::P;
 use crate::symbol::Symbol;
 use crate::tokenstream;
-use crate::util::path;
 
 use smallvec::SmallVec;
 use syntax_pos::{self, Pos, Span};
@@ -78,7 +77,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: &[tokenstrea
         None => return DummyResult::any(sp),
     };
     // The file will be added to the code map by the parser
-    let file = path::resolve(file, sp, cx.source_map());
+    let file = cx.resolve_path(file, sp);
     let directory_ownership = DirectoryOwnership::Owned { relative: None };
     let p = parse::new_sub_parser_from_file(cx.parse_sess(), &file, directory_ownership, None, sp);
 
@@ -115,7 +114,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::To
         Some(f) => f,
         None => return DummyResult::expr(sp)
     };
-    let file = path::resolve(file, sp, cx.source_map());
+    let file = cx.resolve_path(file, sp);
     match fs::read_to_string(&file) {
         Ok(src) => {
             let interned_src = Symbol::intern(&src);
@@ -143,7 +142,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::
         Some(f) => f,
         None => return DummyResult::expr(sp)
     };
-    let file = path::resolve(file, sp, cx.source_map());
+    let file = cx.resolve_path(file, sp);
     match fs::read(&file) {
         Ok(bytes) => {
             // Add the contents to the source map if it contains UTF-8.

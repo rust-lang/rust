@@ -135,7 +135,6 @@ pub mod util {
     #[cfg(test)]
     pub mod parser_testing;
     pub mod map_in_place;
-    pub mod path;
 }
 
 pub mod json;
