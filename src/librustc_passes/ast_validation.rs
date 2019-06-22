@@ -76,29 +76,18 @@ struct AstValidator<'a> {
     warning_period_57979_impl_trait_in_proj: bool,
 }
 
-/// With the `new` value in `store`,
-/// runs and returns the `scoped` computation,
-/// resetting the old value of `store` after,
-/// and returning the result of `scoped`.
-fn with<C, T, S>(
-    this: &mut C,
-    new: S,
-    store: impl Fn(&mut C) -> &mut S,
-    scoped: impl FnOnce(&mut C) -> T
-) -> T {
-    let old = mem::replace(store(this), new);
-    let ret = scoped(this);
-    *store(this) = old;
-    ret
-}
-
 impl<'a> AstValidator<'a> {
     fn with_impl_trait_in_proj_warning<T>(&mut self, v: bool, f: impl FnOnce(&mut Self) -> T) -> T {
-        with(self, v, |this| &mut this.warning_period_57979_impl_trait_in_proj, f)
+        let old = mem::replace(&mut self.warning_period_57979_impl_trait_in_proj, v);
+        let ret = f(self);
+        self.warning_period_57979_impl_trait_in_proj = old;
+        ret
     }
 
     fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
-        with(self, true, |this| &mut this.is_impl_trait_banned, f)
+        let old = mem::replace(&mut self.is_impl_trait_banned, true);
+        f(self);
+        self.is_impl_trait_banned = old;
     }
 
     fn with_banned_assoc_ty_bound(&mut self, f: impl FnOnce(&mut Self)) {
@@ -108,7 +97,9 @@ impl<'a> AstValidator<'a> {
     }
 
     fn with_impl_trait(&mut self, outer: Option<OuterImplTrait>, f: impl FnOnce(&mut Self)) {
-        with(self, outer, |this| &mut this.outer_impl_trait, f)
+        let old = mem::replace(&mut self.outer_impl_trait, outer);
+        f(self);
+        self.outer_impl_trait = old;
     }
 
     fn visit_assoc_ty_constraint_from_generic_args(&mut self, constraint: &'a AssocTyConstraint) {
