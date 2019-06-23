@@ -19,10 +19,10 @@ pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue};
 
 pub use self::allocation::{
     InboundsCheck, Allocation, AllocationExtra,
-    Relocations, UndefMask, CheckInAllocMsg,
+    Relocations, UndefMask,
 };
 
-pub use self::pointer::{Pointer, PointerArithmetic};
+pub use self::pointer::{Pointer, PointerArithmetic, CheckInAllocMsg};
 
 use std::fmt;
 use crate::mir;
