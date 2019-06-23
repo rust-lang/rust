@@ -1,3 +1,104 @@
+Version 1.36.0 (2019-07-04)
+==========================
+
+Language
+--------
+- [Non-Lexical Lifetimes are now enabled on the 2015 edition.][59114]
+- [The order of traits in trait objects no longer affects the semantics of that
+  object.][59445] e.g. `dyn Send + fmt::Debug` is now equivalent to
+  `dyn fmt::Debug + Send`, where this was previously not the case.
+
+Libraries
+---------
+- [`HashMap`'s implementation has been replaced with `hashbrown::HashMap` implementation.][58623]
+- [`TryFromSliceError` now implements `From<Infallible>`.][60318]
+- [`mem::needs_drop` is now available as a const fn.][60364]
+- [`alloc::Layout::from_size_align_unchecked` is now available as a const fn.][60370]
+- [`String` now implements `BorrowMut<str>`.][60404]
+- [`io::Cursor` now implements `Default`.][60234]
+- [Both `NonNull::{dangling, cast}` are now const fns.][60244]
+- [The `alloc` crate is now stable.][59675] `alloc` allows you to use a subset
+  of `std` (e.g. `Vec`, `Box`, `Arc`) in `#![no_std]` environments if the
+  environment has access to heap memory allocation.
+- [`String` now implements `From<&String>`.][59825]
+- [You can now pass multiple arguments to the `dbg!` macro.][59826] `dbg!` will
+  return a tuple of each argument when there is multiple arguments.
+- [`Result::{is_err, is_ok}` are now `#[must_use]` and will produce a warning if
+  not used.][59648]
+
+Stabilized APIs
+---------------
+- [`VecDeque::rotate_left`]
+- [`VecDeque::rotate_right`]
+- [`Iterator::copied`]
+- [`io::IoSlice`]
+- [`io::IoSliceMut`]
+- [`Read::read_vectored`]
+- [`Write::write_vectored`]
+- [`str::as_mut_ptr`]
+- [`mem::MaybeUninit`]
+- [`pointer::align_offset`]
+- [`future::Future`]
+- [`task::Context`] 
+- [`task::RawWaker`]
+- [`task::RawWakerVTable`]
+- [`task::Waker`]
+- [`task::Poll`]
+
+Cargo
+-----
+- [Cargo will now produce an error if you attempt to use the name of a required dependency as a feature.][cargo/6860]
+- [You can now pass the `--offline` flag to run cargo without accessing the network.][cargo/6934]
+
+You can find further change's in [Cargo's 1.36.0 release notes][cargo-1-36-0].
+
+Clippy
+------
+There have been numerous additions and fixes to clippy, see [Clippy's 1.36.0 release notes][clippy-1-36-0] for more details.
+
+Misc
+----
+
+Compatibility Notes
+-------------------
+- With the stabilisation of `mem::MaybeUninit`, `mem::uninitialized` use is no
+  longer recommended, and will be deprecated in 1.38.0.
+
+[60318]: https://github.com/rust-lang/rust/pull/60318/
+[60364]: https://github.com/rust-lang/rust/pull/60364/
+[60370]: https://github.com/rust-lang/rust/pull/60370/
+[60404]: https://github.com/rust-lang/rust/pull/60404/
+[60234]: https://github.com/rust-lang/rust/pull/60234/
+[60244]: https://github.com/rust-lang/rust/pull/60244/
+[58623]: https://github.com/rust-lang/rust/pull/58623/
+[59648]: https://github.com/rust-lang/rust/pull/59648/
+[59675]: https://github.com/rust-lang/rust/pull/59675/
+[59825]: https://github.com/rust-lang/rust/pull/59825/
+[59826]: https://github.com/rust-lang/rust/pull/59826/
+[59445]: https://github.com/rust-lang/rust/pull/59445/
+[59114]: https://github.com/rust-lang/rust/pull/59114/
+[cargo/6860]: https://github.com/rust-lang/cargo/pull/6860/
+[cargo/6934]: https://github.com/rust-lang/cargo/pull/6934/
+[`VecDeque::rotate_left`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.rotate_left
+[`VecDeque::rotate_right`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.rotate_right
+[`Iterator::copied`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.copied
+[`io::IoSlice`]: https://doc.rust-lang.org/std/io/struct.IoSlice.html
+[`io::IoSliceMut`]: https://doc.rust-lang.org/std/io/struct.IoSliceMut.html
+[`Read::read_vectored`]: https://doc.rust-lang.org/std/io/trait.Read.html#method.read_vectored
+[`Write::write_vectored`]: https://doc.rust-lang.org/std/io/trait.Write.html#method.write_vectored
+[`str::as_mut_ptr`]: https://doc.rust-lang.org/std/primitive.str.html#method.as_mut_ptr
+[`mem::MaybeUninit`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html
+[`pointer::align_offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.align_offset
+[`future::Future`]: https://doc.rust-lang.org/std/future/trait.Future.html
+[`task::Context`]: https://doc.rust-lang.org/beta/std/task/struct.Context.html
+[`task::RawWaker`]: https://doc.rust-lang.org/beta/std/task/struct.RawWaker.html
+[`task::RawWakerVTable`]: https://doc.rust-lang.org/beta/std/task/struct.RawWakerVTable.html
+[`task::Waker`]: https://doc.rust-lang.org/beta/std/task/struct.Waker.html
+[`task::Poll`]: https://doc.rust-lang.org/beta/std/task/enum.Poll.html
+[clippy-1-36-0]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md#rust-136
+[cargo-1-36-0]: https://github.com/rust-lang/cargo/blob/master/CHANGELOG.md#cargo-136-2019-07-04
+
+
 Version 1.35.0 (2019-05-23)
 ==========================
 
@@ -62,7 +163,7 @@ Cargo
 - [You can now set `cargo:rustc-cdylib-link-arg` at build time to pass custom
   linker arguments when building a `cdylib`.][cargo/6298] Its usage is highly
   platform specific.
-  
+
 Misc
 ----
 - [The Rust toolchain is now available natively for musl based distros.][58575]
