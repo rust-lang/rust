@@ -1022,6 +1022,12 @@ impl<'a> Resolver<'a> {
 
     fn suggest_macro_name(&mut self, name: Symbol, kind: MacroKind,
                           err: &mut DiagnosticBuilder<'a>, span: Span) {
+        if kind == MacroKind::Derive && (name.as_str() == "Send" || name.as_str() == "Sync") {
+            let msg = format!("unsafe traits like `{}` should be implemented explicitly", name);
+            err.span_note(span, &msg);
+            return;
+        }
+
         // First check if this is a locally-defined bang macro.
         let suggestion = if let MacroKind::Bang = kind {
             find_best_match_for_name(
