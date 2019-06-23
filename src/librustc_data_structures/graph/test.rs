@@ -59,7 +59,7 @@ impl WithPredecessors for TestGraph {
 }
 
 impl WithSuccessors for TestGraph {
-    fn successors(&self, node: usize) -> <Self as GraphSuccessors>::Iter {
+    fn successors(&self, node: usize) -> <Self as GraphSuccessors<'_>>::Iter {
         self.successors[&node].iter().cloned()
     }
 }
