@@ -131,10 +131,6 @@ pub trait MutVisitor: Sized {
         noop_visit_arm(a, self);
     }
 
-    fn visit_guard(&mut self, g: &mut Guard) {
-        noop_visit_guard(g, self);
-    }
-
     fn visit_pat(&mut self, p: &mut P<Pat>) {
         noop_visit_pat(p, self);
     }
@@ -389,15 +385,9 @@ pub fn noop_visit_arm<T: MutVisitor>(
 ) {
     visit_attrs(attrs, vis);
     visit_vec(pats, |pat| vis.visit_pat(pat));
-    visit_opt(guard, |guard| vis.visit_guard(guard));
+    visit_opt(guard, |guard| vis.visit_expr(guard));
     vis.visit_expr(body);
     vis.visit_span(span);
-}
-
-pub fn noop_visit_guard<T: MutVisitor>(g: &mut Guard, vis: &mut T) {
-    match g {
-        Guard::If(e) => vis.visit_expr(e),
-    }
 }
 
 pub fn noop_visit_ty_constraint<T: MutVisitor>(

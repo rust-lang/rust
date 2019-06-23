@@ -3065,7 +3065,7 @@ impl<'a> Resolver<'a> {
         // This has to happen *after* we determine which pat_idents are variants.
         self.check_consistent_bindings(&arm.pats);
 
-        if let Some(ast::Guard::If(ref expr)) = arm.guard {
+        if let Some(ref expr) = arm.guard {
             self.visit_expr(expr)
         }
         self.visit_expr(&arm.body);
