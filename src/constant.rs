@@ -106,7 +106,7 @@ pub fn force_eval_const<'a, 'tcx: 'a>(
     }
 }
 
-fn trans_const_value<'a, 'tcx: 'a>(
+pub fn trans_const_value<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     const_: Const<'tcx>,
 ) -> CValue<'tcx> {

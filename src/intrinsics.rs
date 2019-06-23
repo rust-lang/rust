@@ -186,11 +186,24 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             };
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         };
+        pref_align_of, <T> () {
+            let pref_align = fx.layout_of(T).align.pref.bytes();
+            let pref_align = CValue::const_val(fx, usize_layout.ty, pref_align as i64);
+            ret.write_cvalue(fx, pref_align);
+        };
+
+
         type_id, <T> () {
             let type_id = fx.tcx.type_id_hash(T);
             let type_id = CValue::const_val(fx, u64_layout.ty, type_id as i64);
             ret.write_cvalue(fx, type_id);
         };
+        type_name, <T> () {
+            let type_name = fx.tcx.type_name(T);
+            let type_name = crate::constant::trans_const_value(fx, *type_name);
+            ret.write_cvalue(fx, type_name);
+        };
+
         _ if intrinsic.starts_with("unchecked_") || intrinsic == "exact_div", (c x, c y) {
             // FIXME trap on overflow
             let bin_op = match intrinsic {
@@ -416,6 +429,19 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 crate::trap::trap_panic(fx, "[panic] Called intrinsic::panic_if_uninhabited for uninhabited type.");
                 return;
             }
+        };
+
+        volatile_load, (c ptr) {
+            // Cranelift treats loads as volatile by default
+            let inner_layout =
+                fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
+            let val = CValue::by_ref(ptr.load_scalar(fx), inner_layout);
+            ret.write_cvalue(fx, val);
+        };
+        volatile_store, (v ptr, c val) {
+            // Cranelift treats stores as volatile by default
+            let dest = CPlace::for_addr(ptr, val.layout());
+            dest.write_cvalue(fx, val);
         };
 
         _ if intrinsic.starts_with("atomic_fence"), () {};
