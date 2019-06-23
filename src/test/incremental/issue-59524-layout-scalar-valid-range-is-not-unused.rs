@@ -3,7 +3,7 @@
 // seeing it fire (on subsequent runs) if incremental compilation is
 // enabled.
 
-// revisions: rpass1 rpass2
+// revisions: cfail1 cfail2
 // compile-pass
 
 #![feature(rustc_attrs)]

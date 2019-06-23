@@ -10,7 +10,7 @@ use crate::common::{Config, TestPaths};
 use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
 use diff;
 use crate::errors::{self, Error, ErrorKind};
-use crate::header::TestProps;
+use crate::header::{TestProps, PassMode};
 use crate::json;
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
@@ -310,20 +310,19 @@ impl<'test> TestCx<'test> {
     }
 
     fn should_run_successfully(&self) -> bool {
-        let run_pass = match self.config.mode {
+        match self.config.mode {
             RunPass => true,
-            Ui => self.props.run_pass,
-            _ => unimplemented!(),
-        };
-        return run_pass && !self.props.skip_codegen;
+            Ui => self.props.pass_mode == Some(PassMode::Run),
+            mode => panic!("unimplemented for mode {:?}", mode),
+        }
     }
 
     fn should_compile_successfully(&self) -> bool {
         match self.config.mode {
-            CompileFail => self.props.compile_pass,
+            CompileFail => false,
             RunPass => true,
             JsDocTest => true,
-            Ui => self.props.compile_pass,
+            Ui => self.props.pass_mode.is_some(),
             Incremental => {
                 let revision = self.revision
                     .expect("incremental tests require a list of revisions");
@@ -331,7 +330,7 @@ impl<'test> TestCx<'test> {
                     true
                 } else if revision.starts_with("cfail") {
                     // FIXME: would be nice if incremental revs could start with "cpass"
-                    self.props.compile_pass
+                    self.props.pass_mode.is_some()
                 } else {
                     panic!("revision name must begin with rpass, rfail, or cfail");
                 }
@@ -433,11 +432,9 @@ impl<'test> TestCx<'test> {
             "run-pass tests with expected warnings should be moved to ui/"
         );
 
-        if !self.props.skip_codegen {
-            let proc_res = self.exec_compiled_test();
-            if !proc_res.status.success() {
-                self.fatal_proc_rec("test run failed!", &proc_res);
-            }
+        let proc_res = self.exec_compiled_test();
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("test run failed!", &proc_res);
         }
     }
 
@@ -1344,7 +1341,7 @@ impl<'test> TestCx<'test> {
     fn check_error_patterns(&self, output_to_check: &str, proc_res: &ProcRes) {
         debug!("check_error_patterns");
         if self.props.error_patterns.is_empty() {
-            if self.props.compile_pass {
+            if self.props.pass_mode.is_some() {
                 return;
             } else {
                 self.fatal(&format!(
@@ -1971,7 +1968,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        if self.props.skip_codegen {
+        if self.props.pass_mode == Some(PassMode::Check) {
             assert!(
                 !self
                     .props

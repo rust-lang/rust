@@ -1,7 +1,7 @@
-// compile-pass
-// skip-codegen
+// check-pass
+
 #![feature(associated_type_defaults)]
-#![allow(warnings)]
+
 trait State: Sized {
     type NextState: State = StateMachineEnded;
     fn execute(self) -> Option<Self::NextState>;
@@ -15,6 +15,4 @@ impl State for StateMachineEnded {
     }
 }
 
-
-fn main() {
-}
+fn main() {}

@@ -1,5 +1,5 @@
-// compile-pass
-// skip-codegen
+// check-pass
+
 mod foo {
     pub use bar::*;
     pub use main as f;
@@ -14,6 +14,5 @@ pub use baz::*;
 mod baz {
     pub use super::*;
 }
-
 
 pub fn main() {}

@@ -1,8 +1,7 @@
 // Unnecessary path disambiguator is ok
 
-// compile-pass
-// skip-codegen
-#![allow(unused)]
+// check-pass
+
 macro_rules! m {
     ($p: path) => {
         let _ = $p(0);
@@ -22,6 +21,5 @@ fn f() {
 
     m!(S::<u8>);
 }
-
 
 fn main() {}

@@ -1,6 +1,5 @@
-// compile-pass
-// skip-codegen
-#![allow(warnings)]
+// check-pass
+
 struct Attr {
     name: String,
     value: String,
@@ -20,7 +19,6 @@ impl Element {
                   });
     }
 }
-
 
 fn main() {
     let element = Element { attrs: Vec::new() };
