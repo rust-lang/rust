@@ -24,7 +24,7 @@ pub use self::eval_context::{
 
 pub use self::place::{Place, PlaceTy, MemPlace, MPlaceTy};
 
-pub use self::memory::{Memory, MemoryKind};
+pub use self::memory::{Memory, MemoryKind, AllocCheck};
 
 pub use self::machine::{Machine, AllocMap, MayLeak};
 

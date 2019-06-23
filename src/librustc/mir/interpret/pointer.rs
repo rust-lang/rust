@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Display};
 
 use crate::mir;
 use crate::ty::layout::{self, HasDataLayout, Size};

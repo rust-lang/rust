@@ -6,21 +6,12 @@ use super::{
 
 use crate::ty::layout::{Size, Align};
 use syntax::ast::Mutability;
-use std::{iter, fmt::{self, Display}};
+use std::iter;
 use crate::mir;
 use std::ops::{Range, Deref, DerefMut};
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_macros::HashStable;
 use rustc_target::abi::HasDataLayout;
 use std::borrow::Cow;
-
-/// Used by `check_bounds` to indicate whether the pointer needs to be just inbounds
-/// or also inbounds of a *live* allocation.
-#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum InboundsCheck {
-    Live,
-    MaybeDead,
-}
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Allocation<Tag=(),Extra=()> {
