@@ -289,7 +289,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         // Normalize to a `Pointer` if we definitely need one.
         let normalized = if size.bytes() == 0 {
-            // Can be an integer, just take what we got.
+            // Can be an integer, just take what we got.  We do NOT `force_bits` here;
+            // if this is already a `Pointer` we want to do the bounds checks!
             sptr
         } else {
             // A "real" access, we must get a pointer.
