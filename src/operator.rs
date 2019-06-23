@@ -193,8 +193,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     // on read hardware this can easily happen. Thus for comparisons we require
                     // both pointers to be live.
                     if self.pointer_inbounds(left).is_ok() && self.pointer_inbounds(right).is_ok() {
-                        // Two in-bounds pointers, we can compare across allocations.
-                        left == right
+                        // Two in-bounds pointers in different allocatons are different.
+                        false
                     } else {
                         return err!(InvalidPointerMath);
                     }
