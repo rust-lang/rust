@@ -119,19 +119,19 @@ macro_rules! flavor_mappings {
     ($((($($flavor:tt)*), $string:expr),)*) => (
         impl LinkerFlavor {
             pub const fn one_of() -> &'static str {
-                concat!("one of: ", $($string, " ",)+)
+                concat!("one of: ", $($string, " ",)*)
             }
 
             pub fn from_str(s: &str) -> Option<Self> {
                 Some(match s {
-                    $($string => $($flavor)*,)+
+                    $($string => $($flavor)*,)*
                     _ => return None,
                 })
             }
 
             pub fn desc(&self) -> &str {
                 match *self {
-                    $($($flavor)* => $string,)+
+                    $($($flavor)* => $string,)*
                 }
             }
         }

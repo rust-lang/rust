@@ -92,7 +92,7 @@ pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
 #[derive(Debug)]
 struct DropCtxt<'l, 'b, 'tcx, D>
 where
-    D: DropElaborator<'b, 'tcx> + 'l,
+    D: DropElaborator<'b, 'tcx>,
 {
     elaborator: &'l mut D,
 

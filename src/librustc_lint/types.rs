@@ -219,7 +219,7 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<String> {
                             return Some(format!("{:?}", $itypes))
                         })*
                         None
-                    },)*
+                    },)+
                     _ => None
                 }
             }

@@ -70,7 +70,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
         macro_rules! tt {
             ($ty:ident { $($field:ident $(: $value:expr)*),+ $(,)? }) => (
                 TokenTree::$ty(self::$ty {
-                    $($field $(: $value)*,)*
+                    $($field $(: $value)*,)+
                     span,
                 })
             );

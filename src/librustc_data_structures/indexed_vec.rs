@@ -423,7 +423,7 @@ macro_rules! newtype_index {
     (@derives      [$($derives:ident,)*]
      @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
-     @max          [$_max:expr]
+     @max          [$max:expr]
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]
                    $(#[doc = $doc:expr])*
