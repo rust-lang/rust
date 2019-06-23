@@ -20,7 +20,6 @@ use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
     InterpResult, Scalar, InterpError, GlobalAlloc, PointerArithmetic,
     Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg,
-    InterpError::ValidationFailure,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -260,13 +259,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     /// Check if the given scalar is allowed to do a memory access of given `size`
-    /// and `align`.  On success, returns `None` for zero-sized accesses (where
+    /// and `align`. On success, returns `None` for zero-sized accesses (where
     /// nothing else is left to do) and a `Pointer` to use for the actual access otherwise.
     /// Crucially, if the input is a `Pointer`, we will test it for liveness
     /// *even of* the size is 0.
     ///
     /// Everyone accessing memory based on a `Scalar` should use this method to get the
-    /// `Pointer` they need.  And even if you already have a `Pointer`, call this method
+    /// `Pointer` they need. And even if you already have a `Pointer`, call this method
     /// to make sure it is sufficiently aligned and not dangling.  Not doing that may
     /// cause ICEs.
     pub fn check_ptr_access(
@@ -292,9 +291,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     return err!(InvalidNullPointerUsage);
                 }
                 if bits % align.bytes() != 0 {
-                    let bits_pow1 = 1 << bits.trailing_zeros();
+                    // The biggest power of two through which `bits` is divisible.
+                    let bits_pow2 = 1 << bits.trailing_zeros();
                     return err!(AlignmentCheckFailed {
-                        has: Align::from_bytes(bits_pow1).unwrap(),
+                        has: Align::from_bytes(bits_pow2).unwrap(),
                         required: align,
                     });
                 }
@@ -308,7 +308,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // checks for overflow.
                 let end_ptr = ptr.offset(size, self)?;
                 end_ptr.check_in_alloc(allocation_size, CheckInAllocMsg::MemoryAccessTest)?;
-                // Test align.  Check this last; if both bounds and alignment are violated
+                // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
                 if alloc_align.bytes() < align.bytes() {
                     // The allocation itself is not aligned enough.
@@ -323,10 +323,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 }
                 let offset = ptr.offset.bytes();
                 if offset % align.bytes() != 0 {
-                    // The offset os not aligned enough.
-                    let has = offset % align.bytes();
+                    // The biggest power of two through which `offset` is divisible.
+                    let bits_pow2 = 1 << offset.trailing_zeros();
                     return err!(AlignmentCheckFailed {
-                        has: Align::from_bytes(has).unwrap(),
+                        has: Align::from_bytes(bits_pow2).unwrap(),
                         required: align,
                     })
                 }
@@ -520,15 +520,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
             _ => {
                 if let Ok(alloc) = self.get(id) {
-                    return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
+                    Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align))
                 }
-                if let AllocCheck::MaybeDead = liveness {
+                else if let AllocCheck::MaybeDead = liveness {
                     // Deallocated pointers are allowed, we should be able to find
                     // them in the map.
-                    self.dead_alloc_map.get(&id).copied().ok_or_else(||
-                        ValidationFailure("allocation missing in dead_alloc_map".to_string())
-                            .into()
-                    )
+                    Ok(*self.dead_alloc_map.get(&id)
+                        .expect("deallocated pointers should all be recorded in `dead_alloc_map`"))
                 } else {
                     err!(DanglingPointerDeref)
                 }

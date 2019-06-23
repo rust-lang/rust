@@ -228,10 +228,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
 
         let ptr = match self.memory.check_ptr_access(ptr, mplace.layout.size, ptr_align)? {
             Some(ptr) => ptr,
-            None => return Ok(Some(ImmTy {
+            None => return Ok(Some(ImmTy { // zero-sized type
                 imm: Immediate::Scalar(Scalar::zst().into()),
                 layout: mplace.layout,
-            })), // zero-sized access
+            })),
         };
 
         match mplace.layout.abi {

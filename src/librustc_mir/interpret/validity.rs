@@ -366,11 +366,15 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     match tail.sty {
                         ty::Dynamic(..) => {
                             let vtable = meta.unwrap();
-                            try_validation!(self.ecx.memory.check_ptr_access(
-                                vtable,
-                                3*self.ecx.tcx.data_layout.pointer_size, // drop, size, align
-                                self.ecx.tcx.data_layout.pointer_align.abi,
-                            ), "dangling or unaligned vtable pointer", self.path);
+                            try_validation!(
+                                self.ecx.memory.check_ptr_access(
+                                    vtable,
+                                    3*self.ecx.tcx.data_layout.pointer_size, // drop, size, align
+                                    self.ecx.tcx.data_layout.pointer_align.abi,
+                                ),
+                                "dangling or unaligned vtable pointer or too small vtable",
+                                self.path
+                            );
                             try_validation!(self.ecx.read_drop_type_from_vtable(vtable),
                                 "invalid drop fn in vtable", self.path);
                             try_validation!(self.ecx.read_size_and_align_from_vtable(vtable),
@@ -397,7 +401,10 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 let ptr: Option<_> = match self.ecx.memory.check_ptr_access(ptr, size, align) {
                     Ok(ptr) => ptr,
                     Err(err) => {
-                        info!("{:?} is not aligned to {:?}", ptr, align);
+                        info!(
+                            "{:?} did not pass access check for size {:?}, align {:?}",
+                            ptr, size, align
+                        );
                         match err.kind {
                             InterpError::InvalidNullPointerUsage =>
                                 return validation_failure!("NULL reference", self.path),
@@ -405,6 +412,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 return validation_failure!(format!("unaligned reference \
                                     (required {} byte alignment but found {})",
                                     required.bytes(), has.bytes()), self.path),
+                            InterpError::ReadBytesAsPointer =>
+                                return validation_failure!(
+                                    "integer pointer in non-ZST reference",
+                                    self.path
+                                ),
                             _ =>
                                 return validation_failure!(
                                     "dangling (not entirely in bounds) reference",
