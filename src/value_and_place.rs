@@ -18,6 +18,11 @@ fn codegen_field<'a, 'tcx: 'a>(
     }
 }
 
+fn scalar_pair_calculate_b_offset(tcx: TyCtxt<'_>, a_scalar: &Scalar, b_scalar: &Scalar) -> i32 {
+    let b_offset = a_scalar.value.size(&tcx).align_to(b_scalar.value.align(&tcx).abi);
+    b_offset.bytes().try_into().unwrap()
+}
+
 /// A read-only value
 #[derive(Debug, Copy, Clone)]
 pub struct CValue<'tcx>(CValueInner, TyLayout<'tcx>);
@@ -89,18 +94,19 @@ impl<'tcx> CValue<'tcx> {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(addr) => {
-                let (a, b) = match &layout.abi {
-                    layout::Abi::ScalarPair(a, b) => (a.clone(), b.clone()),
+                let (a_scalar, b_scalar) = match &layout.abi {
+                    layout::Abi::ScalarPair(a, b) => (a, b),
                     _ => unreachable!(),
                 };
-                let clif_ty1 = scalar_to_clif_type(fx.tcx, a.clone());
-                let clif_ty2 = scalar_to_clif_type(fx.tcx, b);
+                let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                let clif_ty1 = scalar_to_clif_type(fx.tcx, a_scalar.clone());
+                let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar.clone());
                 let val1 = fx.bcx.ins().load(clif_ty1, MemFlags::new(), addr, 0);
                 let val2 = fx.bcx.ins().load(
                     clif_ty2,
                     MemFlags::new(),
                     addr,
-                    a.value.size(&fx.tcx).bytes() as i32,
+                    b_offset,
                 );
                 (val1, val2)
             }
@@ -341,13 +347,14 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             }
             CValueInner::ByValPair(value, extra) => {
                 match dst_layout.abi {
-                    Abi::ScalarPair(ref a, _) => {
+                    Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
+                        let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
                         fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
                         fx.bcx.ins().store(
                             MemFlags::new(),
                             extra,
                             addr,
-                            a.value.size(&fx.tcx).bytes() as u32 as i32,
+                            b_offset,
                         );
                     }
                     _ => bug!(
@@ -415,26 +422,8 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         if !inner_layout.is_unsized() {
             CPlace::Addr(self.to_cvalue(fx).load_scalar(fx), None, inner_layout)
         } else {
-            match self.layout().abi {
-                Abi::ScalarPair(ref a, ref b) => {
-                    let addr = self.to_addr(fx);
-                    let ptr =
-                        fx.bcx
-                            .ins()
-                            .load(scalar_to_clif_type(fx.tcx, a.clone()), MemFlags::new(), addr, 0);
-                    let extra = fx.bcx.ins().load(
-                        scalar_to_clif_type(fx.tcx, b.clone()),
-                        MemFlags::new(),
-                        addr,
-                        a.value.size(&fx.tcx).bytes() as u32 as i32,
-                    );
-                    CPlace::Addr(ptr, Some(extra), inner_layout)
-                }
-                _ => bug!(
-                    "Fat ptr doesn't have abi ScalarPair, but it has {:?}",
-                    self.layout().abi
-                ),
-            }
+            let (addr, extra) = self.to_cvalue(fx).load_scalar_pair(fx);
+            CPlace::Addr(addr, Some(extra), inner_layout)
         }
     }
 
@@ -444,23 +433,8 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             dest.write_cvalue(fx, ptr);
         } else {
             let (value, extra) = self.to_addr_maybe_unsized(fx);
-
-            match dest.layout().abi {
-                Abi::ScalarPair(ref a, _) => {
-                    let dest_addr = dest.to_addr(fx);
-                    fx.bcx.ins().store(MemFlags::new(), value, dest_addr, 0);
-                    fx.bcx.ins().store(
-                        MemFlags::new(),
-                        extra.expect("unsized type without metadata"),
-                        dest_addr,
-                        a.value.size(&fx.tcx).bytes() as u32 as i32,
-                    );
-                }
-                _ => bug!(
-                    "Non ScalarPair abi {:?} in write_place_ref dest",
-                    dest.layout().abi
-                ),
-            }
+            let ptr = CValue::by_val_pair(value, extra.expect("unsized type without metadata"), dest.layout());
+            dest.write_cvalue(fx, ptr);
         }
     }
 

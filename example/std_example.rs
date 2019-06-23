@@ -17,10 +17,25 @@ fn main() {
     ONCE.call_once(|| {});
 
     LoopState::Continue(()) == LoopState::Break(());
+
+    // Make sure ByValPair values with differently sized components are correctly passed
+    map(None::<(u8, Box<Instruction>)>);
 }
 
 #[derive(PartialEq)]
 enum LoopState {
     Continue(()),
     Break(())
+}
+
+pub enum Instruction {
+    Increment,
+    Loop,
+}
+
+fn map(a: Option<(u8, Box<Instruction>)>) -> Option<Box<Instruction>> {
+    match a {
+        None => None,
+        Some((_, instr)) => Some(instr),
+    }
 }
