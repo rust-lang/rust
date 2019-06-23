@@ -18,7 +18,6 @@ use crate::io::ErrorKind;
 #[cfg(all(not(rustdoc), target_os = "l4re"))]      pub use crate::os::linux as platform;
 #[cfg(all(not(rustdoc), target_os = "hermit"))]    pub use crate::os::hermit as platform;
 
-pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;
 
 #[macro_use]
@@ -47,7 +46,6 @@ pub mod os;
 pub mod path;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod rwlock;
 pub mod stack_overflow;
 pub mod thread;

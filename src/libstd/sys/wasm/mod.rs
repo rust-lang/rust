@@ -93,15 +93,6 @@ pub unsafe fn abort_internal() -> ! {
     ExitSysCall::perform(1)
 }
 
-// We don't have randomness yet, but I totally used a random number generator to
-// generate these numbers.
-//
-// More seriously though this is just for DOS protection in hash maps. It's ok
-// if we don't do that on wasm just yet.
-pub fn hashmap_random_keys() -> (u64, u64) {
-    (1, 2)
-}
-
 // Implement a minimal set of system calls to enable basic IO
 pub enum SysCallIndex {
     Read = 0,

@@ -11,7 +11,6 @@ use crate::sync::atomic::AtomicUsize;
 use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::hashmap_random_keys;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes
@@ -154,7 +153,11 @@ fn random_number() -> usize {
             return N.fetch_add(1, SeqCst)
         }
 
-        N.store(hashmap_random_keys().0 as usize, SeqCst);
+        let mut buf = [0u8; 8];
+        getrandom::getrandom(&mut buf).expect("OS RNG failure");
+        // SAFETY: `buf` should be aligned, so it's safe to transmute it to `u64`
+        let n: u64 = unsafe { core::mem::transmute(buf) } as usize;
+        N.store(n, SeqCst);
     }
 }
 

@@ -84,16 +84,6 @@ pub unsafe fn abort_internal() -> ! {
     libc::abort()
 }
 
-pub fn hashmap_random_keys() -> (u64, u64) {
-    let mut ret = (0u64, 0u64);
-    unsafe {
-        let base = &mut ret as *mut (u64, u64) as *mut libc::c_void;
-        let len = mem::size_of_val(&ret);
-        cvt_wasi(libc::__wasi_random_get(base, len)).unwrap();
-    }
-    return ret
-}
-
 #[doc(hidden)]
 pub trait IsMinusOne {
     fn is_minus_one(&self) -> bool;

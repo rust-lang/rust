@@ -3,7 +3,6 @@
 use crate::io::ErrorKind;
 
 pub use libc::strlen;
-pub use self::rand::hashmap_random_keys;
 
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
@@ -23,7 +22,6 @@ pub mod os;
 pub mod path;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod rwlock;
 pub mod stack_overflow;
 pub mod stdio;

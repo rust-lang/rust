@@ -24,6 +24,7 @@ compiler_builtins = { version = "0.1.16" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 hashbrown = { version = "0.4.0", features = ['rustc-dep-of-std'] }
+getrandom = "0.1"
 
 [dependencies.backtrace]
 version = "0.3.29"

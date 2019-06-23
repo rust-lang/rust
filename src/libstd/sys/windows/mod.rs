@@ -8,7 +8,6 @@ use crate::path::PathBuf;
 use crate::time::Duration;
 
 pub use libc::strlen;
-pub use self::rand::hashmap_random_keys;
 
 #[macro_use] pub mod compat;
 
@@ -31,7 +30,6 @@ pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod rwlock;
 pub mod stack_overflow;
 pub mod thread;
