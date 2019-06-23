@@ -257,7 +257,20 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             } else {
                 self.config.tab_spaces()
             };
-            self.buffer.truncate(total_len - chars_too_many);
+
+            // FIXME this is a temporaly fix
+            // should be remove truncate logic in close_block
+            // avoid not to truncate necessary chars
+            let truncate_start = total_len - chars_too_many;
+            let target_str = &self.buffer[truncate_start..total_len];
+            let truncate_length = target_str.len() - target_str.trim().len();
+
+            if let Some(last_char) = target_str.chars().last() {
+                self.buffer.truncate(total_len - truncate_length);
+                if last_char == '\n' {
+                    self.buffer.push_str("\n");
+                }
+            }
         }
         self.push_str("}");
         self.block_indent = self.block_indent.block_unindent(self.config);

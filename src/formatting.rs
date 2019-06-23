@@ -177,7 +177,12 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             visitor.format_separate_mod(module, &*source_file);
         };
 
-        debug_assert_eq!(visitor.line_number, count_newlines(&visitor.buffer));
+        debug_assert_eq!(
+            visitor.line_number,
+            count_newlines(&visitor.buffer),
+            "failed in format_file visitor.buffer:\n {:?}",
+            &visitor.buffer
+        );
 
         // For some reason, the source_map does not include terminating
         // newlines so we must add one on for each file. This is sad.
