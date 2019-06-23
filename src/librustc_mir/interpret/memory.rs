@@ -274,6 +274,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
+        fn check_offset_align(offset: u64, align: Align) -> InterpResult<'static> {
+            if offset % align.bytes() == 0 {
+                Ok(())
+            } else {
+                // The biggest power of two through which `offset` is divisible.
+                let offset_pow2 = 1 << offset.trailing_zeros();
+                err!(AlignmentCheckFailed {
+                    has: Align::from_bytes(offset_pow2).unwrap(),
+                    required: align,
+                })
+            }
+        }
+
         // Normalize to a `Pointer` if we definitely need one.
         let normalized = if size.bytes() == 0 {
             // Can be an integer, just take what we got.
@@ -290,14 +303,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 if bits == 0 {
                     return err!(InvalidNullPointerUsage);
                 }
-                if bits % align.bytes() != 0 {
-                    // The biggest power of two through which `bits` is divisible.
-                    let bits_pow2 = 1 << bits.trailing_zeros();
-                    return err!(AlignmentCheckFailed {
-                        has: Align::from_bytes(bits_pow2).unwrap(),
-                        required: align,
-                    });
-                }
+                check_offset_align(bits, align)?;
                 None
             }
             Err(ptr) => {
@@ -321,15 +327,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                         required: align,
                     });
                 }
-                let offset = ptr.offset.bytes();
-                if offset % align.bytes() != 0 {
-                    // The biggest power of two through which `offset` is divisible.
-                    let bits_pow2 = 1 << offset.trailing_zeros();
-                    return err!(AlignmentCheckFailed {
-                        has: Align::from_bytes(bits_pow2).unwrap(),
-                        required: align,
-                    })
-                }
+                check_offset_align(ptr.offset.bytes(), align)?;
 
                 // We can still be zero-sized in this branch, in which case we have to
                 // return `None`.
