@@ -1,4 +1,5 @@
 // run-pass
+#[allow(deprecated)]
 use std::num::{ParseFloatError, ParseIntError};
 
 fn main() {

@@ -1,5 +1,5 @@
 warning: `try` is a keyword in the 2018 edition
-  --> $DIR/try-macro.rs:12:5
+  --> $DIR/try-macro.rs:13:5
    |
 LL |     try!(x);
    |     ^^^ help: you can use a raw identifier to stay compatible: `r#try`
