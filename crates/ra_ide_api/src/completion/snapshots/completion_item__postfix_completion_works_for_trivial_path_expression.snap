@@ -1,10 +1,17 @@
 ---
-created: "2019-05-23T22:23:35.118738523Z"
+created: "2019-06-23T13:01:08.775536006Z"
 creator: insta@0.8.1
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
 [
+    CompletionItem {
+        label: "box",
+        source_range: [76; 76),
+        delete: [72; 76),
+        insert: "Box::new(bar)",
+        detail: "Box::new(expr)",
+    },
     CompletionItem {
         label: "dbg",
         source_range: [76; 76),
