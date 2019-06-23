@@ -40,13 +40,13 @@ error: unnecessary parentheses around `match` head expression
 LL |     match (true) {
    |           ^^^^^^ help: remove these parentheses
 
-error: unnecessary parentheses around `if let` head expression
+error: unnecessary parentheses around `let` head expression
   --> $DIR/lint-unnecessary-parens.rs:25:16
    |
 LL |     if let 1 = (1) {}
    |                ^^^ help: remove these parentheses
 
-error: unnecessary parentheses around `while let` head expression
+error: unnecessary parentheses around `let` head expression
   --> $DIR/lint-unnecessary-parens.rs:26:19
    |
 LL |     while let 1 = (2) {}

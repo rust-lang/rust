@@ -135,6 +135,7 @@ pub(crate) fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) ->
         kw::False,
         kw::For,
         kw::If,
+        kw::Let,
         kw::Loop,
         kw::Match,
         kw::Move,

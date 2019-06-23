@@ -260,6 +260,7 @@ pub enum ExprPrecedence {
 
     Box,
     AddrOf,
+    Let,
     Unary,
 
     Call,
@@ -277,9 +278,7 @@ pub enum ExprPrecedence {
     Path,
     Paren,
     If,
-    IfLet,
     While,
-    WhileLet,
     ForLoop,
     Loop,
     Match,
@@ -318,6 +317,11 @@ impl ExprPrecedence {
             // Unary, prefix
             ExprPrecedence::Box |
             ExprPrecedence::AddrOf |
+            // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
+            // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
+            // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
+            // but we need to print `(let _ = a) < b` as-is with parens.
+            ExprPrecedence::Let |
             ExprPrecedence::Unary => PREC_PREFIX,
 
             // Unary, postfix
@@ -338,9 +342,7 @@ impl ExprPrecedence {
             ExprPrecedence::Path |
             ExprPrecedence::Paren |
             ExprPrecedence::If |
-            ExprPrecedence::IfLet |
             ExprPrecedence::While |
-            ExprPrecedence::WhileLet |
             ExprPrecedence::ForLoop |
             ExprPrecedence::Loop |
             ExprPrecedence::Match |
@@ -353,6 +355,19 @@ impl ExprPrecedence {
     }
 }
 
+/// In `let p = e`, operators with precedence `<=` this one requires parenthesis in `e`.
+crate fn prec_let_scrutinee_needs_par() -> usize {
+    AssocOp::LAnd.precedence()
+}
+
+/// Suppose we have `let _ = e` and the `order` of `e`.
+/// Is the `order` such that `e` in `let _ = e` needs parenthesis when it is on the RHS?
+///
+/// Conversely, suppose that we have `(let _ = a) OP b` and `order` is that of `OP`.
+/// Can we print this as `let _ = a OP b`?
+crate fn needs_par_as_let_scrutinee(order: i8) -> bool {
+    order <= prec_let_scrutinee_needs_par() as i8
+}
 
 /// Expressions that syntactically contain an "exterior" struct literal i.e., not surrounded by any
 /// parens or other delimiters, e.g., `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and

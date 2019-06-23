@@ -68,7 +68,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
 
     let mut g = |e| f(expr(e));
 
-    for kind in 0 .. 16 {
+    for kind in 0..=19 {
         match kind {
             0 => iter_exprs(depth - 1, &mut |e| g(ExprKind::Box(e))),
             1 => iter_exprs(depth - 1, &mut |e| g(ExprKind::Call(e, vec![]))),
@@ -79,25 +79,26 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::MethodCall(
                             seg.clone(), vec![make_x(), e])));
             },
-            3 => {
-                let op = Spanned { span: DUMMY_SP, node: BinOpKind::Add };
+            3..=8 => {
+                let op = Spanned {
+                    span: DUMMY_SP,
+                    node: match kind {
+                        3 => BinOpKind::Add,
+                        4 => BinOpKind::Mul,
+                        5 => BinOpKind::Shl,
+                        6 => BinOpKind::And,
+                        7 => BinOpKind::Or,
+                        8 => BinOpKind::Lt,
+                        _ => unreachable!(),
+                    }
+                };
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, e, make_x())));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, make_x(), e)));
             },
-            4 => {
-                let op = Spanned { span: DUMMY_SP, node: BinOpKind::Mul };
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, e, make_x())));
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, make_x(), e)));
-            },
-            5 => {
-                let op = Spanned { span: DUMMY_SP, node: BinOpKind::Shl };
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, e, make_x())));
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::Binary(op, make_x(), e)));
-            },
-            6 => {
+            9 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Unary(UnOp::Deref, e)));
             },
-            7 => {
+            10 => {
                 let block = P(Block {
                     stmts: Vec::new(),
                     id: DUMMY_NODE_ID,
@@ -106,7 +107,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::If(e, block.clone(), None)));
             },
-            8 => {
+            11 => {
                 let decl = P(FnDecl {
                     inputs: vec![],
                     output: FunctionRetTy::Default(DUMMY_SP),
@@ -120,32 +121,40 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                                           e,
                                           DUMMY_SP)));
             },
-            9 => {
+            12 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Assign(e, make_x())));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Assign(make_x(), e)));
             },
-            10 => {
+            13 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Field(e, Ident::from_str("f"))));
             },
-            11 => {
+            14 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Range(
                             Some(e), Some(make_x()), RangeLimits::HalfOpen)));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Range(
                             Some(make_x()), Some(e), RangeLimits::HalfOpen)));
             },
-            12 => {
+            15 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::AddrOf(Mutability::Immutable, e)));
             },
-            13 => {
+            16 => {
                 g(ExprKind::Ret(None));
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Ret(Some(e))));
             },
-            14 => {
+            17 => {
                 let path = Path::from_ident(Ident::from_str("S"));
                 g(ExprKind::Struct(path, vec![], Some(make_x())));
             },
-            15 => {
+            18 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Try(e)));
+            },
+            19 => {
+                let ps = vec![P(Pat {
+                    id: DUMMY_NODE_ID,
+                    node: PatKind::Wild,
+                    span: DUMMY_SP,
+                })];
+                iter_exprs(depth - 1, &mut |e| g(ExprKind::Let(ps.clone(), e)))
             },
             _ => panic!("bad counter value in iter_exprs"),
         }

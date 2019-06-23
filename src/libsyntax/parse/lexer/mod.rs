@@ -1491,6 +1491,7 @@ mod tests {
             edition: Edition::from_session(),
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             param_attr_spans: Lock::new(Vec::new()),
+            let_chains_spans: Lock::new(Vec::new()),
         }
     }
 

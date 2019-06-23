@@ -1110,25 +1110,17 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
             vis.visit_ty(ty);
         }
         ExprKind::AddrOf(_m, ohs) => vis.visit_expr(ohs),
+        ExprKind::Let(pats, scrutinee) => {
+            visit_vec(pats, |pat| vis.visit_pat(pat));
+            vis.visit_expr(scrutinee);
+        }
         ExprKind::If(cond, tr, fl) => {
             vis.visit_expr(cond);
             vis.visit_block(tr);
             visit_opt(fl, |fl| vis.visit_expr(fl));
         }
-        ExprKind::IfLet(pats, expr, tr, fl) => {
-            visit_vec(pats, |pat| vis.visit_pat(pat));
-            vis.visit_expr(expr);
-            vis.visit_block(tr);
-            visit_opt(fl, |fl| vis.visit_expr(fl));
-        }
         ExprKind::While(cond, body, label) => {
             vis.visit_expr(cond);
-            vis.visit_block(body);
-            visit_opt(label, |label| vis.visit_label(label));
-        }
-        ExprKind::WhileLet(pats, expr, body, label) => {
-            visit_vec(pats, |pat| vis.visit_pat(pat));
-            vis.visit_expr(expr);
             vis.visit_block(body);
             visit_opt(label, |label| vis.visit_label(label));
         }

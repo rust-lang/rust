@@ -560,6 +560,9 @@ declare_features! (
     // Allows calling constructor functions in `const fn`.
     (active, const_constructor, "1.37.0", Some(61456), None),
 
+    // Allows `if/while p && let q = r && ...` chains.
+    (active, let_chains, "1.37.0", Some(53667), None),
+
     // #[repr(transparent)] on enums.
     (active, transparent_enums, "1.37.0", Some(60405), None),
 
@@ -577,7 +580,8 @@ declare_features! (
 const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::impl_trait_in_bindings,
     sym::generic_associated_types,
-    sym::const_generics
+    sym::const_generics,
+    sym::let_chains,
 ];
 
 declare_features! (
@@ -2515,6 +2519,17 @@ pub fn check_crate(krate: &ast::Crate,
             param_attrs,
             *span,
             "attributes on function parameters are unstable"
+        ));
+
+    sess
+        .let_chains_spans
+        .borrow()
+        .iter()
+        .for_each(|span| gate_feature!(
+            &ctx,
+            let_chains,
+            *span,
+            "`let` expressions in this position are experimental"
         ));
 
     let visitor = &mut PostExpansionVisitor {

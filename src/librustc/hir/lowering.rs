@@ -4344,53 +4344,147 @@ impl<'a> LoweringContext<'a> {
                 let ohs = P(self.lower_expr(ohs));
                 hir::ExprKind::AddrOf(m, ohs)
             }
-            // More complicated than you might expect because the else branch
-            // might be `if let`.
-            ExprKind::If(ref cond, ref then, ref else_opt) => {
-                // `true => then`:
-                let then_pat = self.pat_bool(e.span, true);
-                let then_blk = self.lower_block(then, false);
-                let then_expr = self.expr_block(then_blk, ThinVec::new());
-                let then_arm = self.arm(hir_vec![then_pat], P(then_expr));
+            ExprKind::Let(ref pats, ref scrutinee) => {
+                // If we got here, the `let` expression is not allowed.
+                self.sess
+                    .struct_span_err(e.span, "`let` expressions are not supported here")
+                    .note("only supported directly in conditions of `if`- and `while`-expressions")
+                    .note("as well as when nested within `&&` and parenthesis in those conditions")
+                    .emit();
 
+                // For better recovery, we emit:
+                // ```
+                // match scrutinee { pats => true, _ => false }
+                // ```
+                // While this doesn't fully match the user's intent, it has key advantages:
+                // 1. We can avoid using `abort_if_errors`.
+                // 2. We can typeck both `pats` and `scrutinee`.
+                // 3. `pats` is allowed to be refutable.
+                // 4. The return type of the block is `bool` which seems like what the user wanted.
+                let scrutinee = self.lower_expr(scrutinee);
+                let then_arm = {
+                    let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
+                    let expr = self.expr_bool(e.span, true);
+                    self.arm(pats, P(expr))
+                };
+                let else_arm = {
+                    let pats = hir_vec![self.pat_wild(e.span)];
+                    let expr = self.expr_bool(e.span, false);
+                    self.arm(pats, P(expr))
+                };
+                hir::ExprKind::Match(
+                    P(scrutinee),
+                    vec![then_arm, else_arm].into(),
+                    hir::MatchSource::Normal,
+                )
+            }
+            // FIXME(#53667): handle lowering of && and parens.
+            ExprKind::If(ref cond, ref then, ref else_opt) => {
                 // `_ => else_block` where `else_block` is `{}` if there's `None`:
                 let else_pat = self.pat_wild(e.span);
-                let else_expr = match else_opt {
-                    None => self.expr_block_empty(e.span),
-                    Some(els) => match els.node {
-                        ExprKind::IfLet(..) => {
-                            // Wrap the `if let` expr in a block.
-                            let els = self.lower_expr(els);
-                            let blk = self.block_all(els.span, hir_vec![], Some(P(els)));
-                            self.expr_block(P(blk), ThinVec::new())
-                        }
-                        _ => self.lower_expr(els),
-                    }
+                let (else_expr, contains_else_clause) = match else_opt {
+                    None => (self.expr_block_empty(e.span), false),
+                    Some(els) => (self.lower_expr(els), true),
                 };
                 let else_arm = self.arm(hir_vec![else_pat], P(else_expr));
 
-                // Lower condition:
-                let span_block = self.mark_span_with_reason(IfTemporary, cond.span, None);
-                let cond = self.lower_expr(cond);
-                // Wrap in a construct equivalent to `{ let _t = $cond; _t }` to preserve drop
-                // semantics since `if cond { ... }` don't let temporaries live outside of `cond`.
-                let cond = self.expr_drop_temps(span_block, P(cond), ThinVec::new());
+                // Handle then + scrutinee:
+                let then_blk = self.lower_block(then, false);
+                let then_expr = self.expr_block(then_blk, ThinVec::new());
+                let (then_pats, scrutinee, desugar) = match cond.node {
+                    // `<pat> => <then>`
+                    ExprKind::Let(ref pats, ref scrutinee) => {
+                        let scrutinee = self.lower_expr(scrutinee);
+                        let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
+                        let desugar = hir::MatchSource::IfLetDesugar { contains_else_clause };
+                        (pats, scrutinee, desugar)
+                    }
+                    // `true => then`:
+                    _ => {
+                        // Lower condition:
+                        let cond = self.lower_expr(cond);
+                        // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
+                        // to preserve drop semantics since `if cond { ... }`
+                        // don't let temporaries live outside of `cond`.
+                        let span_block = self.mark_span_with_reason(IfTemporary, cond.span, None);
+                        // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
+                        // to preserve drop semantics since `if cond { ... }` does not
+                        // let temporaries live outside of `cond`.
+                        let cond = self.expr_drop_temps(span_block, P(cond), ThinVec::new());
 
-                hir::ExprKind::Match(
-                    P(cond),
-                    vec![then_arm, else_arm].into(),
-                    hir::MatchSource::IfDesugar {
-                        contains_else_clause: else_opt.is_some()
-                    },
-                )
+                        let desugar = hir::MatchSource::IfDesugar { contains_else_clause };
+                        let pats = hir_vec![self.pat_bool(e.span, true)];
+                        (pats, cond, desugar)
+                    }
+                };
+                let then_arm = self.arm(then_pats, P(then_expr));
+
+                hir::ExprKind::Match(P(scrutinee), vec![then_arm, else_arm].into(), desugar)
             }
-            ExprKind::While(ref cond, ref body, opt_label) => self.with_loop_scope(e.id, |this| {
-                hir::ExprKind::While(
-                    this.with_loop_condition_scope(|this| P(this.lower_expr(cond))),
-                    this.lower_block(body, false),
-                    this.lower_label(opt_label),
-                )
-            }),
+            // FIXME(#53667): handle lowering of && and parens.
+            ExprKind::While(ref cond, ref body, opt_label) => {
+                // Desugar `ExprWhileLet`
+                // from: `[opt_ident]: while let <pat> = <sub_expr> <body>`
+                if let ExprKind::Let(ref pats, ref sub_expr) = cond.node {
+                    // to:
+                    //
+                    //   [opt_ident]: loop {
+                    //     match <sub_expr> {
+                    //       <pat> => <body>,
+                    //       _ => break
+                    //     }
+                    //   }
+
+                    // Note that the block AND the condition are evaluated in the loop scope.
+                    // This is done to allow `break` from inside the condition of the loop.
+                    let (body, break_expr, sub_expr) = self.with_loop_scope(e.id, |this| {
+                        (
+                            this.lower_block(body, false),
+                            this.expr_break(e.span, ThinVec::new()),
+                            this.with_loop_condition_scope(|this| P(this.lower_expr(sub_expr))),
+                        )
+                    });
+
+                    // `<pat> => <body>`
+                    let pat_arm = {
+                        let body_expr = P(self.expr_block(body, ThinVec::new()));
+                        let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
+                        self.arm(pats, body_expr)
+                    };
+
+                    // `_ => break`
+                    let break_arm = {
+                        let pat_under = self.pat_wild(e.span);
+                        self.arm(hir_vec![pat_under], break_expr)
+                    };
+
+                    // `match <sub_expr> { ... }`
+                    let arms = hir_vec![pat_arm, break_arm];
+                    let match_expr = self.expr(
+                        sub_expr.span,
+                        hir::ExprKind::Match(sub_expr, arms, hir::MatchSource::WhileLetDesugar),
+                        ThinVec::new(),
+                    );
+
+                    // `[opt_ident]: loop { ... }`
+                    let loop_block = P(self.block_expr(P(match_expr)));
+                    let loop_expr = hir::ExprKind::Loop(
+                        loop_block,
+                        self.lower_label(opt_label),
+                        hir::LoopSource::WhileLet,
+                    );
+                    // Add attributes to the outer returned expr node.
+                    loop_expr
+                } else {
+                    self.with_loop_scope(e.id, |this| {
+                        hir::ExprKind::While(
+                            this.with_loop_condition_scope(|this| P(this.lower_expr(cond))),
+                            this.lower_block(body, false),
+                            this.lower_label(opt_label),
+                        )
+                    })
+                }
+            }
             ExprKind::Loop(ref body, opt_label) => self.with_loop_scope(e.id, |this| {
                 hir::ExprKind::Loop(
                     this.lower_block(body, false),
@@ -4702,105 +4796,6 @@ impl<'a> LoweringContext<'a> {
             }
 
             ExprKind::Err => hir::ExprKind::Err,
-
-            // Desugar `ExprIfLet`
-            // from: `if let <pat> = <sub_expr> <body> [<else_opt>]`
-            ExprKind::IfLet(ref pats, ref sub_expr, ref body, ref else_opt) => {
-                // to:
-                //
-                //   match <sub_expr> {
-                //     <pat> => <body>,
-                //     _ => [<else_opt> | ()]
-                //   }
-
-                let mut arms = vec![];
-
-                // `<pat> => <body>`
-                {
-                    let body = self.lower_block(body, false);
-                    let body_expr = P(self.expr_block(body, ThinVec::new()));
-                    let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
-                    arms.push(self.arm(pats, body_expr));
-                }
-
-                // _ => [<else_opt>|{}]
-                {
-                    let wildcard_arm: Option<&Expr> = else_opt.as_ref().map(|p| &**p);
-                    let wildcard_pattern = self.pat_wild(e.span);
-                    let body = if let Some(else_expr) = wildcard_arm {
-                        self.lower_expr(else_expr)
-                    } else {
-                        self.expr_block_empty(e.span)
-                    };
-                    arms.push(self.arm(hir_vec![wildcard_pattern], P(body)));
-                }
-
-                let contains_else_clause = else_opt.is_some();
-
-                let sub_expr = P(self.lower_expr(sub_expr));
-
-                hir::ExprKind::Match(
-                    sub_expr,
-                    arms.into(),
-                    hir::MatchSource::IfLetDesugar {
-                        contains_else_clause,
-                    },
-                )
-            }
-
-            // Desugar `ExprWhileLet`
-            // from: `[opt_ident]: while let <pat> = <sub_expr> <body>`
-            ExprKind::WhileLet(ref pats, ref sub_expr, ref body, opt_label) => {
-                // to:
-                //
-                //   [opt_ident]: loop {
-                //     match <sub_expr> {
-                //       <pat> => <body>,
-                //       _ => break
-                //     }
-                //   }
-
-                // Note that the block AND the condition are evaluated in the loop scope.
-                // This is done to allow `break` from inside the condition of the loop.
-                let (body, break_expr, sub_expr) = self.with_loop_scope(e.id, |this| {
-                    (
-                        this.lower_block(body, false),
-                        this.expr_break(e.span, ThinVec::new()),
-                        this.with_loop_condition_scope(|this| P(this.lower_expr(sub_expr))),
-                    )
-                });
-
-                // `<pat> => <body>`
-                let pat_arm = {
-                    let body_expr = P(self.expr_block(body, ThinVec::new()));
-                    let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
-                    self.arm(pats, body_expr)
-                };
-
-                // `_ => break`
-                let break_arm = {
-                    let pat_under = self.pat_wild(e.span);
-                    self.arm(hir_vec![pat_under], break_expr)
-                };
-
-                // `match <sub_expr> { ... }`
-                let arms = hir_vec![pat_arm, break_arm];
-                let match_expr = self.expr(
-                    sub_expr.span,
-                    hir::ExprKind::Match(sub_expr, arms, hir::MatchSource::WhileLetDesugar),
-                    ThinVec::new(),
-                );
-
-                // `[opt_ident]: loop { ... }`
-                let loop_block = P(self.block_expr(P(match_expr)));
-                let loop_expr = hir::ExprKind::Loop(
-                    loop_block,
-                    self.lower_label(opt_label),
-                    hir::LoopSource::WhileLet,
-                );
-                // Add attributes to the outer returned expr node.
-                loop_expr
-            }
 
             // Desugar `ExprForLoop`
             // from: `[opt_ident]: for <pat> in <head> <body>`
@@ -5463,10 +5458,15 @@ impl<'a> LoweringContext<'a> {
         )
     }
 
+    /// Constructs a `true` or `false` literal expression.
+    fn expr_bool(&mut self, span: Span, val: bool) -> hir::Expr {
+        let lit = Spanned { span, node: LitKind::Bool(val) };
+        self.expr(span, hir::ExprKind::Lit(lit), ThinVec::new())
+    }
+
     /// Constructs a `true` or `false` literal pattern.
     fn pat_bool(&mut self, span: Span, val: bool) -> P<hir::Pat> {
-        let lit = Spanned { span, node: LitKind::Bool(val) };
-        let expr = self.expr(span, hir::ExprKind::Lit(lit), ThinVec::new());
+        let expr = self.expr_bool(span, val);
         self.pat(span, hir::PatKind::Lit(P(expr)))
     }
 

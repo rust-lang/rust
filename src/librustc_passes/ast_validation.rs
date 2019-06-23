@@ -17,13 +17,11 @@ use syntax::attr;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
-use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
 use syntax_ext::proc_macro_decls::is_proc_macro_attr;
 use syntax_pos::{Span, MultiSpan};
 use errors::{Applicability, FatalError};
-use log::debug;
 
 #[derive(Copy, Clone, Debug)]
 struct OuterImplTrait {
@@ -319,54 +317,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// With eRFC 2497, we need to check whether an expression is ambiguous and warn or error
-    /// depending on the edition, this function handles that.
-    fn while_if_let_ambiguity(&self, expr: &P<Expr>) {
-        if let Some((span, op_kind)) = self.while_if_let_expr_ambiguity(&expr) {
-            let mut err = self.err_handler().struct_span_err(
-                span, &format!("ambiguous use of `{}`", op_kind.to_string())
-            );
-
-            err.note(
-                "this will be a error until the `let_chains` feature is stabilized"
-            );
-            err.note(
-                "see rust-lang/rust#53668 for more information"
-            );
-
-            if let Ok(snippet) = self.session.source_map().span_to_snippet(span) {
-                err.span_suggestion(
-                    span, "consider adding parentheses", format!("({})", snippet),
-                    Applicability::MachineApplicable,
-                );
-            }
-
-            err.emit();
-        }
-    }
-
-    /// With eRFC 2497 adding if-let chains, there is a requirement that the parsing of
-    /// `&&` and `||` in a if-let statement be unambiguous. This function returns a span and
-    /// a `BinOpKind` (either `&&` or `||` depending on what was ambiguous) if it is determined
-    /// that the current expression parsed is ambiguous and will break in future.
-    fn while_if_let_expr_ambiguity(&self, expr: &P<Expr>) -> Option<(Span, BinOpKind)> {
-        debug!("while_if_let_expr_ambiguity: expr.node: {:?}", expr.node);
-        match &expr.node {
-            ExprKind::Binary(op, _, _) if op.node == BinOpKind::And || op.node == BinOpKind::Or => {
-                Some((expr.span, op.node))
-            },
-            ExprKind::Range(ref lhs, ref rhs, _) => {
-                let lhs_ambiguous = lhs.as_ref()
-                    .and_then(|lhs| self.while_if_let_expr_ambiguity(lhs));
-                let rhs_ambiguous = rhs.as_ref()
-                    .and_then(|rhs| self.while_if_let_expr_ambiguity(rhs));
-
-                lhs_ambiguous.or(rhs_ambiguous)
-            }
-            _ => None,
-        }
-    }
-
     fn check_fn_decl(&self, fn_decl: &FnDecl) {
         fn_decl
             .inputs
@@ -493,19 +443,17 @@ fn validate_generics_order<'a>(
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
-        match expr.node {
-            ExprKind::Closure(_, _, _, ref fn_decl, _, _) => {
+        match &expr.node {
+            ExprKind::Closure(_, _, _, fn_decl, _, _) => {
                 self.check_fn_decl(fn_decl);
             }
-            ExprKind::IfLet(_, ref expr, _, _) | ExprKind::WhileLet(_, ref expr, _, _) =>
-                self.while_if_let_ambiguity(&expr),
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
             }
             _ => {}
         }
 
-        visit::walk_expr(self, expr)
+        visit::walk_expr(self, expr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {

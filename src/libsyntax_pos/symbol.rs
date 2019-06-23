@@ -354,6 +354,7 @@ symbols! {
         label_break_value,
         lang,
         lang_items,
+        let_chains,
         lhs,
         lib,
         lifetime,

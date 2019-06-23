@@ -485,8 +485,6 @@ type BindingMap = FxHashMap<Ident, BindingInfo>;
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum PatternSource {
     Match,
-    IfLet,
-    WhileLet,
     Let,
     For,
     FnParam,
@@ -496,8 +494,6 @@ impl PatternSource {
     fn descr(self) -> &'static str {
         match self {
             PatternSource::Match => "match binding",
-            PatternSource::IfLet => "if let binding",
-            PatternSource::WhileLet => "while let binding",
             PatternSource::Let => "let binding",
             PatternSource::For => "for binding",
             PatternSource::FnParam => "function parameter",
@@ -3057,13 +3053,7 @@ impl<'a> Resolver<'a> {
     fn resolve_arm(&mut self, arm: &Arm) {
         self.ribs[ValueNS].push(Rib::new(NormalRibKind));
 
-        let mut bindings_list = FxHashMap::default();
-        for pattern in &arm.pats {
-            self.resolve_pattern(&pattern, PatternSource::Match, &mut bindings_list);
-        }
-
-        // This has to happen *after* we determine which pat_idents are variants.
-        self.check_consistent_bindings(&arm.pats);
+        self.resolve_pats(&arm.pats, PatternSource::Match);
 
         if let Some(ast::Guard::If(ref expr)) = arm.guard {
             self.visit_expr(expr)
@@ -3071,6 +3061,16 @@ impl<'a> Resolver<'a> {
         self.visit_expr(&arm.body);
 
         self.ribs[ValueNS].pop();
+    }
+
+    /// Arising from `source`, resolve a sequence of patterns (top level or-patterns).
+    fn resolve_pats(&mut self, pats: &[P<Pat>], source: PatternSource) {
+        let mut bindings_list = FxHashMap::default();
+        for pat in pats {
+            self.resolve_pattern(pat, source, &mut bindings_list);
+        }
+        // This has to happen *after* we determine which pat_idents are variants
+        self.check_consistent_bindings(pats);
     }
 
     fn resolve_block(&mut self, block: &Block) {
@@ -3151,8 +3151,7 @@ impl<'a> Resolver<'a> {
                 );
             }
             Some(..) if pat_src == PatternSource::Match ||
-                        pat_src == PatternSource::IfLet ||
-                        pat_src == PatternSource::WhileLet => {
+                        pat_src == PatternSource::Let => {
                 // `Variant1(a) | Variant2(a)`, ok
                 // Reuse definition from the first `a`.
                 res = self.ribs[ValueNS].last_mut().unwrap().bindings[&ident];
@@ -4345,41 +4344,26 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprKind::IfLet(ref pats, ref subexpression, ref if_block, ref optional_else) => {
-                self.visit_expr(subexpression);
+            ExprKind::Let(ref pats, ref scrutinee) => {
+                self.visit_expr(scrutinee);
+                self.resolve_pats(pats, PatternSource::Let);
+            }
 
+            ExprKind::If(ref cond, ref then, ref opt_else) => {
                 self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                let mut bindings_list = FxHashMap::default();
-                for pat in pats {
-                    self.resolve_pattern(pat, PatternSource::IfLet, &mut bindings_list);
-                }
-                // This has to happen *after* we determine which pat_idents are variants
-                self.check_consistent_bindings(pats);
-                self.visit_block(if_block);
+                self.visit_expr(cond);
+                self.visit_block(then);
                 self.ribs[ValueNS].pop();
 
-                optional_else.as_ref().map(|expr| self.visit_expr(expr));
+                opt_else.as_ref().map(|expr| self.visit_expr(expr));
             }
 
             ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
 
             ExprKind::While(ref subexpression, ref block, label) => {
                 self.with_resolved_label(label, expr.id, |this| {
-                    this.visit_expr(subexpression);
-                    this.visit_block(block);
-                });
-            }
-
-            ExprKind::WhileLet(ref pats, ref subexpression, ref block, label) => {
-                self.with_resolved_label(label, expr.id, |this| {
-                    this.visit_expr(subexpression);
                     this.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                    let mut bindings_list = FxHashMap::default();
-                    for pat in pats {
-                        this.resolve_pattern(pat, PatternSource::WhileLet, &mut bindings_list);
-                    }
-                    // This has to happen *after* we determine which pat_idents are variants.
-                    this.check_consistent_bindings(pats);
+                    this.visit_expr(subexpression);
                     this.visit_block(block);
                     this.ribs[ValueNS].pop();
                 });

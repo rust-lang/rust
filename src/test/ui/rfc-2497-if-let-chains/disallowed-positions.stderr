@@ -1,0 +1,987 @@
+error: expected one of `,` or `>`, found `&&`
+  --> $DIR/disallowed-positions.rs:242:14
+   |
+LL |         true && let 1 = 1
+   |              ^^ expected one of `,` or `>` here
+
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/disallowed-positions.rs:20:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+
+warning: the feature `let_chains` is incomplete and may cause the compiler to crash
+  --> $DIR/disallowed-positions.rs:22:12
+   |
+LL | #![feature(let_chains)] // Avoid inflating `.stderr` with overzealous gates in this test.
+   |            ^^^^^^^^^^
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:32:9
+   |
+LL |     if &let 0 = 0 {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:35:9
+   |
+LL |     if !let 0 = 0 {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:36:9
+   |
+LL |     if *let 0 = 0 {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:38:9
+   |
+LL |     if -let 0 = 0 {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:46:9
+   |
+LL |     if (let 0 = 0)? {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:50:16
+   |
+LL |     if true || let 0 = 0 {}
+   |                ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:51:17
+   |
+LL |     if (true || let 0 = 0) {}
+   |                 ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:52:25
+   |
+LL |     if true && (true || let 0 = 0) {}
+   |                         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:53:25
+   |
+LL |     if true || (true && let 0 = 0) {}
+   |                         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:56:12
+   |
+LL |     if x = let 0 = 0 {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:59:15
+   |
+LL |     if true..(let 0 = 0) {}
+   |               ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:61:11
+   |
+LL |     if ..(let 0 = 0) {}
+   |           ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:63:9
+   |
+LL |     if (let 0 = 0).. {}
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:67:8
+   |
+LL |     if let Range { start: _, end: _ } = true..true && false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:71:8
+   |
+LL |     if let Range { start: _, end: _ } = true..true || false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:78:8
+   |
+LL |     if let Range { start: F, end } = F..|| true {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:86:8
+   |
+LL |     if let Range { start: true, end } = t..&&false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:92:19
+   |
+LL |     if let true = let true = true {}
+   |                   ^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:96:12
+   |
+LL |     while &let 0 = 0 {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:99:12
+   |
+LL |     while !let 0 = 0 {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:100:12
+   |
+LL |     while *let 0 = 0 {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:102:12
+   |
+LL |     while -let 0 = 0 {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:110:12
+   |
+LL |     while (let 0 = 0)? {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:114:19
+   |
+LL |     while true || let 0 = 0 {}
+   |                   ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:115:20
+   |
+LL |     while (true || let 0 = 0) {}
+   |                    ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:116:28
+   |
+LL |     while true && (true || let 0 = 0) {}
+   |                            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:117:28
+   |
+LL |     while true || (true && let 0 = 0) {}
+   |                            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:120:15
+   |
+LL |     while x = let 0 = 0 {}
+   |               ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:123:18
+   |
+LL |     while true..(let 0 = 0) {}
+   |                  ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:125:14
+   |
+LL |     while ..(let 0 = 0) {}
+   |              ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:127:12
+   |
+LL |     while (let 0 = 0).. {}
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:131:11
+   |
+LL |     while let Range { start: _, end: _ } = true..true && false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:135:11
+   |
+LL |     while let Range { start: _, end: _ } = true..true || false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:142:11
+   |
+LL |     while let Range { start: F, end } = F..|| true {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:150:11
+   |
+LL |     while let Range { start: true, end } = t..&&false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:156:22
+   |
+LL |     while let true = let true = true {}
+   |                      ^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:170:6
+   |
+LL |     &let 0 = 0;
+   |      ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:172:6
+   |
+LL |     !let 0 = 0;
+   |      ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:173:6
+   |
+LL |     *let 0 = 0;
+   |      ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:175:6
+   |
+LL |     -let 0 = 0;
+   |      ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:183:6
+   |
+LL |     (let 0 = 0)?;
+   |      ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:187:13
+   |
+LL |     true || let 0 = 0;
+   |             ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:188:14
+   |
+LL |     (true || let 0 = 0);
+   |              ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:189:22
+   |
+LL |     true && (true || let 0 = 0);
+   |                      ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:192:9
+   |
+LL |     x = let 0 = 0;
+   |         ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:194:12
+   |
+LL |     true..(let 0 = 0);
+   |            ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:195:8
+   |
+LL |     ..(let 0 = 0);
+   |        ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:196:6
+   |
+LL |     (let 0 = 0)..;
+   |      ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:198:6
+   |
+LL |     (let Range { start: _, end: _ } = true..true || false);
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:202:6
+   |
+LL |     (let true = let true = true);
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:202:17
+   |
+LL |     (let true = let true = true);
+   |                 ^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:207:6
+   |
+LL |     &let 0 = 0
+   |      ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:218:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:224:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:230:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:32:8
+   |
+LL |     if &let 0 = 0 {}
+   |        ^^^^^^^^^^ expected bool, found &bool
+   |
+   = note: expected type `bool`
+              found type `&bool`
+
+error[E0614]: type `bool` cannot be dereferenced
+  --> $DIR/disallowed-positions.rs:36:8
+   |
+LL |     if *let 0 = 0 {}
+   |        ^^^^^^^^^^
+
+error[E0600]: cannot apply unary operator `-` to type `bool`
+  --> $DIR/disallowed-positions.rs:38:8
+   |
+LL |     if -let 0 = 0 {}
+   |        ^^^^^^^^^^ cannot apply unary operator `-`
+   |
+   = note: an implementation of `std::ops::Neg` might be missing for `bool`
+
+error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+  --> $DIR/disallowed-positions.rs:46:8
+   |
+LL |     if (let 0 = 0)? {}
+   |        ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `bool`
+   = note: required by `std::ops::Try::into_result`
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+  --> $DIR/disallowed-positions.rs:46:8
+   |
+LL |     if (let 0 = 0)? {}
+   |        ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `()`
+   = note: required by `std::ops::Try::from_error`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:56:8
+   |
+LL |     if x = let 0 = 0 {}
+   |        ^^^^^^^^^^^^^
+   |        |
+   |        expected bool, found ()
+   |        help: try comparing for equality: `x == let 0 = 0`
+   |
+   = note: expected type `bool`
+              found type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:59:8
+   |
+LL |     if true..(let 0 = 0) {}
+   |        ^^^^^^^^^^^^^^^^^ expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:61:8
+   |
+LL |     if ..(let 0 = 0) {}
+   |        ^^^^^^^^^^^^^ expected bool, found struct `std::ops::RangeTo`
+   |
+   = note: expected type `bool`
+              found type `std::ops::RangeTo<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:63:8
+   |
+LL |     if (let 0 = 0).. {}
+   |        ^^^^^^^^^^^^^ expected bool, found struct `std::ops::RangeFrom`
+   |
+   = note: expected type `bool`
+              found type `std::ops::RangeFrom<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:67:12
+   |
+LL |     if let Range { start: _, end: _ } = true..true && false {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this match expression has type `bool`
+   |            |
+   |            expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:67:8
+   |
+LL |     if let Range { start: _, end: _ } = true..true && false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:71:12
+   |
+LL |     if let Range { start: _, end: _ } = true..true || false {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this match expression has type `bool`
+   |            |
+   |            expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:71:8
+   |
+LL |     if let Range { start: _, end: _ } = true..true || false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:78:12
+   |
+LL |     if let Range { start: F, end } = F..|| true {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^ expected fn pointer, found struct `std::ops::Range`
+   |
+   = note: expected type `fn() -> bool`
+              found type `std::ops::Range<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:78:41
+   |
+LL |     if let Range { start: F, end } = F..|| true {}
+   |                                         ^^^^^^^ expected bool, found closure
+   |
+   = note: expected type `bool`
+              found type `[closure@$DIR/disallowed-positions.rs:78:41: 78:48]`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:78:8
+   |
+LL |     if let Range { start: F, end } = F..|| true {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:86:12
+   |
+LL |     if let Range { start: true, end } = t..&&false {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   - this match expression has type `bool`
+   |            |
+   |            expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:86:44
+   |
+LL |     if let Range { start: true, end } = t..&&false {}
+   |                                            ^^^^^^^ expected bool, found &&bool
+   |
+   = note: expected type `bool`
+              found type `&&bool`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:86:8
+   |
+LL |     if let Range { start: true, end } = t..&&false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<bool>`
+
+error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+  --> $DIR/disallowed-positions.rs:42:20
+   |
+LL |         if let 0 = 0? {}
+   |                    ^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `{integer}`
+   = note: required by `std::ops::Try::into_result`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:96:11
+   |
+LL |     while &let 0 = 0 {}
+   |           ^^^^^^^^^^ expected bool, found &bool
+   |
+   = note: expected type `bool`
+              found type `&bool`
+
+error[E0614]: type `bool` cannot be dereferenced
+  --> $DIR/disallowed-positions.rs:100:11
+   |
+LL |     while *let 0 = 0 {}
+   |           ^^^^^^^^^^
+
+error[E0600]: cannot apply unary operator `-` to type `bool`
+  --> $DIR/disallowed-positions.rs:102:11
+   |
+LL |     while -let 0 = 0 {}
+   |           ^^^^^^^^^^ cannot apply unary operator `-`
+   |
+   = note: an implementation of `std::ops::Neg` might be missing for `bool`
+
+error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+  --> $DIR/disallowed-positions.rs:110:11
+   |
+LL |     while (let 0 = 0)? {}
+   |           ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `bool`
+   = note: required by `std::ops::Try::into_result`
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+  --> $DIR/disallowed-positions.rs:110:11
+   |
+LL |     while (let 0 = 0)? {}
+   |           ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `()`
+   = note: required by `std::ops::Try::from_error`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:120:11
+   |
+LL |     while x = let 0 = 0 {}
+   |           ^^^^^^^^^^^^^
+   |           |
+   |           expected bool, found ()
+   |           help: try comparing for equality: `x == let 0 = 0`
+   |
+   = note: expected type `bool`
+              found type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:123:11
+   |
+LL |     while true..(let 0 = 0) {}
+   |           ^^^^^^^^^^^^^^^^^ expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:125:11
+   |
+LL |     while ..(let 0 = 0) {}
+   |           ^^^^^^^^^^^^^ expected bool, found struct `std::ops::RangeTo`
+   |
+   = note: expected type `bool`
+              found type `std::ops::RangeTo<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:127:11
+   |
+LL |     while (let 0 = 0).. {}
+   |           ^^^^^^^^^^^^^ expected bool, found struct `std::ops::RangeFrom`
+   |
+   = note: expected type `bool`
+              found type `std::ops::RangeFrom<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:131:15
+   |
+LL |     while let Range { start: _, end: _ } = true..true && false {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this match expression has type `bool`
+   |               |
+   |               expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:131:11
+   |
+LL |     while let Range { start: _, end: _ } = true..true && false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:135:15
+   |
+LL |     while let Range { start: _, end: _ } = true..true || false {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this match expression has type `bool`
+   |               |
+   |               expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:135:11
+   |
+LL |     while let Range { start: _, end: _ } = true..true || false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:142:15
+   |
+LL |     while let Range { start: F, end } = F..|| true {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^^ expected fn pointer, found struct `std::ops::Range`
+   |
+   = note: expected type `fn() -> bool`
+              found type `std::ops::Range<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:142:44
+   |
+LL |     while let Range { start: F, end } = F..|| true {}
+   |                                            ^^^^^^^ expected bool, found closure
+   |
+   = note: expected type `bool`
+              found type `[closure@$DIR/disallowed-positions.rs:142:44: 142:51]`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:142:11
+   |
+LL |     while let Range { start: F, end } = F..|| true {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<bool>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:150:15
+   |
+LL |     while let Range { start: true, end } = t..&&false {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   - this match expression has type `bool`
+   |               |
+   |               expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:150:47
+   |
+LL |     while let Range { start: true, end } = t..&&false {}
+   |                                               ^^^^^^^ expected bool, found &&bool
+   |
+   = note: expected type `bool`
+              found type `&&bool`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:150:11
+   |
+LL |     while let Range { start: true, end } = t..&&false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<bool>`
+
+error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+  --> $DIR/disallowed-positions.rs:106:23
+   |
+LL |         while let 0 = 0? {}
+   |                       ^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `{integer}`
+   = note: required by `std::ops::Try::into_result`
+
+error[E0614]: type `bool` cannot be dereferenced
+  --> $DIR/disallowed-positions.rs:173:5
+   |
+LL |     *let 0 = 0;
+   |     ^^^^^^^^^^
+
+error[E0600]: cannot apply unary operator `-` to type `bool`
+  --> $DIR/disallowed-positions.rs:175:5
+   |
+LL |     -let 0 = 0;
+   |     ^^^^^^^^^^ cannot apply unary operator `-`
+   |
+   = note: an implementation of `std::ops::Neg` might be missing for `bool`
+
+error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+  --> $DIR/disallowed-positions.rs:183:5
+   |
+LL |     (let 0 = 0)?;
+   |     ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `bool`
+   = note: required by `std::ops::Try::into_result`
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
+  --> $DIR/disallowed-positions.rs:183:5
+   |
+LL |     (let 0 = 0)?;
+   |     ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `()`
+   = note: required by `std::ops::Try::from_error`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:198:10
+   |
+LL |     (let Range { start: _, end: _ } = true..true || false);
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this match expression has type `bool`
+   |          |
+   |          expected bool, found struct `std::ops::Range`
+   |
+   = note: expected type `bool`
+              found type `std::ops::Range<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/disallowed-positions.rs:207:5
+   |
+LL | fn outside_if_and_while_expr() {
+   |                                - help: try adding a return type: `-> &bool`
+...
+LL |     &let 0 = 0
+   |     ^^^^^^^^^^ expected (), found &bool
+   |
+   = note: expected type `()`
+              found type `&bool`
+
+error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
+  --> $DIR/disallowed-positions.rs:179:17
+   |
+LL |         let 0 = 0?;
+   |                 ^^ the `?` operator cannot be applied to type `{integer}`
+   |
+   = help: the trait `std::ops::Try` is not implemented for `{integer}`
+   = note: required by `std::ops::Try::into_result`
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/disallowed-positions.rs:218:25
+   |
+LL |         true && let 1 = 1
+   |                         ^
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/disallowed-positions.rs:218:21
+   |
+LL |         true && let 1 = 1
+   |                     ^
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/disallowed-positions.rs:224:25
+   |
+LL |         true && let 1 = 1
+   |                         ^
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/disallowed-positions.rs:224:21
+   |
+LL |         true && let 1 = 1
+   |                     ^
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/disallowed-positions.rs:230:25
+   |
+LL |         true && let 1 = 1
+   |                         ^
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/disallowed-positions.rs:230:21
+   |
+LL |         true && let 1 = 1
+   |                     ^
+
+error: aborting due to 109 previous errors
+
+Some errors have detailed explanations: E0019, E0277, E0308, E0600, E0614.
+For more information about an error, try `rustc --explain E0019`.

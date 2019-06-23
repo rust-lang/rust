@@ -324,20 +324,28 @@ impl UnusedParens {
                                 value: &ast::Expr,
                                 msg: &str,
                                 followed_by_block: bool) {
-        if let ast::ExprKind::Paren(ref inner) = value.node {
-            let necessary = followed_by_block && match inner.node {
-                ast::ExprKind::Ret(_) | ast::ExprKind::Break(..) => true,
-                _ => parser::contains_exterior_struct_lit(&inner),
-            };
-            if !necessary {
-                let expr_text = if let Ok(snippet) = cx.sess().source_map()
-                    .span_to_snippet(value.span) {
-                        snippet
-                    } else {
-                        pprust::expr_to_string(value)
-                    };
-                Self::remove_outer_parens(cx, value.span, &expr_text, msg);
+        match value.node {
+            ast::ExprKind::Paren(ref inner) => {
+                let necessary = followed_by_block && match inner.node {
+                    ast::ExprKind::Ret(_) | ast::ExprKind::Break(..) => true,
+                    _ => parser::contains_exterior_struct_lit(&inner),
+                };
+                if !necessary {
+                    let expr_text = if let Ok(snippet) = cx.sess().source_map()
+                        .span_to_snippet(value.span) {
+                            snippet
+                        } else {
+                            pprust::expr_to_string(value)
+                        };
+                    Self::remove_outer_parens(cx, value.span, &expr_text, msg);
+                }
             }
+            ast::ExprKind::Let(_, ref expr) => {
+                // FIXME(#60336): Properly handle `let true = (false && true)`
+                // actually needing the parenthesis.
+                self.check_unused_parens_expr(cx, expr, "`let` head expression", followed_by_block);
+            }
+            _ => {}
         }
     }
 
@@ -399,8 +407,6 @@ impl EarlyLintPass for UnusedParens {
         let (value, msg, followed_by_block) = match e.node {
             If(ref cond, ..) => (cond, "`if` condition", true),
             While(ref cond, ..) => (cond, "`while` condition", true),
-            IfLet(_, ref cond, ..) => (cond, "`if let` head expression", true),
-            WhileLet(_, ref cond, ..) => (cond, "`while let` head expression", true),
             ForLoop(_, ref cond, ..) => (cond, "`for` head expression", true),
             Match(ref head, _) => (head, "`match` head expression", true),
             Ret(Some(ref value)) => (value, "`return` value", false),

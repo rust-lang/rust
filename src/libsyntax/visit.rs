@@ -719,6 +719,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ty(typ)
         }
+        ExprKind::Let(ref pats, ref scrutinee) => {
+            walk_list!(visitor, visit_pat, pats);
+            visitor.visit_expr(scrutinee);
+        }
         ExprKind::If(ref head_expression, ref if_block, ref optional_else) => {
             visitor.visit_expr(head_expression);
             visitor.visit_block(if_block);
@@ -726,18 +730,6 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::While(ref subexpression, ref block, ref opt_label) => {
             walk_list!(visitor, visit_label, opt_label);
-            visitor.visit_expr(subexpression);
-            visitor.visit_block(block);
-        }
-        ExprKind::IfLet(ref pats, ref subexpression, ref if_block, ref optional_else) => {
-            walk_list!(visitor, visit_pat, pats);
-            visitor.visit_expr(subexpression);
-            visitor.visit_block(if_block);
-            walk_list!(visitor, visit_expr, optional_else);
-        }
-        ExprKind::WhileLet(ref pats, ref subexpression, ref block, ref opt_label) => {
-            walk_list!(visitor, visit_label, opt_label);
-            walk_list!(visitor, visit_pat, pats);
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
         }
