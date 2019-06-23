@@ -128,15 +128,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, (Size, Align)> {
         let pointer_size = self.pointer_size();
         // We check for size = 3*ptr_size, that covers the drop fn (unused here),
-        // the size, and the align.
+        // the size, and the align (which we read below).
         let vtable = self.memory.check_ptr_access(
             vtable,
             3*pointer_size,
             self.tcx.data_layout.pointer_align.abi,
         )?.expect("cannot be a ZST");
         let alloc = self.memory.get(vtable.alloc_id)?;
-        let size = alloc.read_ptr_sized(self, vtable.offset(pointer_size, self)?)?
-            .to_bits(pointer_size)? as u64;
+        let size = alloc.read_ptr_sized(
+            self,
+            vtable.offset(pointer_size, self)?
+        )?.to_bits(pointer_size)? as u64;
         let align = alloc.read_ptr_sized(
             self,
             vtable.offset(pointer_size * 2, self)?,
