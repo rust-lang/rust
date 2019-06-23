@@ -74,14 +74,14 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
     };
     macro_rules! register {
         ($( $name:ident: $f:expr, )*) => { $(
-            register(Symbol::intern(stringify!($name)), SyntaxExtension::default(
+            register(sym::$name, SyntaxExtension::default(
                 SyntaxExtensionKind::LegacyBang(Box::new($f as MacroExpanderFn)), edition
             ));
         )* }
     }
     macro_rules! register_unstable {
         ($( [$feature:expr, $reason:expr, $issue:expr] $name:ident: $f:expr, )*) => { $(
-            register(Symbol::intern(stringify!($name)), SyntaxExtension {
+            register(sym::$name, SyntaxExtension {
                 stability: Some(Stability::unstable(
                     $feature, Some(Symbol::intern($reason)), $issue
                 )),
@@ -144,7 +144,7 @@ pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
 
     // format_args uses `unstable` things internally.
     let allow_internal_unstable = Some([sym::fmt_internals][..].into());
-    register(Symbol::intern("format_args"), SyntaxExtension {
+    register(sym::format_args, SyntaxExtension {
         allow_internal_unstable: allow_internal_unstable.clone(),
         ..SyntaxExtension::default(
             SyntaxExtensionKind::LegacyBang(Box::new(format::expand_format_args)), edition
