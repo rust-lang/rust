@@ -1,3 +1,6 @@
+#[global_allocator]
+static ALLOC: mimallocator::Mimalloc = mimallocator::Mimalloc;
+
 fn main() {
     // Pull in jemalloc when enabled.
     //

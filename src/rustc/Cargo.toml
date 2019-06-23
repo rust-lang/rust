@@ -9,6 +9,8 @@ name = "rustc_binary"
 path = "rustc.rs"
 
 [dependencies]
+mimallocator = "0.1.0"
+
 rustc_target = { path = "../librustc_target" }
 rustc_driver = { path = "../librustc_driver" }
 
