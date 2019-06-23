@@ -222,9 +222,9 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     }
 
     #[inline]
-    pub(super) fn vtable(self) -> InterpResult<'tcx, Pointer<Tag>> {
+    pub(super) fn vtable(self) -> Scalar<Tag> {
         match self.layout.ty.sty {
-            ty::Dynamic(..) => self.mplace.meta.unwrap().to_ptr(),
+            ty::Dynamic(..) => self.mplace.meta.unwrap(),
             _ => bug!("vtable not supported on type {:?}", self.layout.ty),
         }
     }
@@ -746,15 +746,13 @@ where
         // type things are read at. In case `src_val` is a `ScalarPair`, we don't do any magic here
         // to handle padding properly, which is only correct if we never look at this data with the
         // wrong type.
+        assert!(!dest.layout.is_unsized());
 
-        // Nothing to do for ZSTs, other than checking alignment
-        if dest.layout.is_zst() {
-            return self.memory.check_align(ptr, ptr_align);
-        }
+        let ptr = match self.memory.check_ptr_access(ptr, dest.layout.size, ptr_align)? {
+            Some(ptr) => ptr,
+            None => return Ok(()), // zero-sized access
+        };
 
-        // check for integer pointers before alignment to report better errors
-        let ptr = self.force_ptr(ptr)?;
-        self.memory.check_align(ptr.into(), ptr_align)?;
         let tcx = &*self.tcx;
         // FIXME: We should check that there are dest.layout.size many bytes available in
         // memory.  The code below is not sufficient, with enough padding it might not
@@ -771,6 +769,9 @@ where
                 )
             }
             Immediate::ScalarPair(a_val, b_val) => {
+                // We checked `ptr_align` above, so all fields will have the alignment they need.
+                // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
+                // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
                 let (a, b) = match dest.layout.abi {
                     layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
                     _ => bug!("write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
@@ -778,10 +779,7 @@ where
                 };
                 let (a_size, b_size) = (a.size(self), b.size(self));
                 let b_offset = a_size.align_to(b.align(self).abi);
-                let b_align = ptr_align.restrict_for_offset(b_offset);
                 let b_ptr = ptr.offset(b_offset, self)?;
-
-                self.memory.check_align(b_ptr.into(), b_align)?;
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
                 // but that does not work: We could be a newtype around a pair, then the
@@ -1053,7 +1051,7 @@ where
     /// Also return some more information so drop doesn't have to run the same code twice.
     pub(super) fn unpack_dyn_trait(&self, mplace: MPlaceTy<'tcx, M::PointerTag>)
     -> InterpResult<'tcx, (ty::Instance<'tcx>, MPlaceTy<'tcx, M::PointerTag>)> {
-        let vtable = mplace.vtable()?; // also sanity checks the type
+        let vtable = mplace.vtable(); // also sanity checks the type
         let (instance, ty) = self.read_drop_type_from_vtable(vtable)?;
         let layout = self.layout_of(ty)?;
 
