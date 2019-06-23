@@ -451,11 +451,10 @@ impl UseTree {
         // Normalise foo::self as bar -> foo as bar.
         if let UseSegment::Slf(_) = last {
             match self.path.last() {
-                None => {}
                 Some(UseSegment::Ident(_, None)) => {
                     aliased_self = true;
                 }
-                _ => unreachable!(),
+                _ => {}
             }
         }
 
