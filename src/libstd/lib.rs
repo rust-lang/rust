@@ -330,7 +330,10 @@ use prelude::v1::*;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{unreachable, unimplemented, write, writeln, r#try, todo};
+pub use core::{unreachable, unimplemented, write, writeln, todo};
+#[allow(deprecated)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::r#try;
 
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]

@@ -261,7 +261,9 @@ fn thread_local() {
 #[test]
 fn try() {
     fn inner() -> Result<(), ()> {
+        #[allow(deprecated)]
         try!(Ok(()));
+        #[allow(deprecated)]
         try!(Ok(()),);
         Ok(())
     }
