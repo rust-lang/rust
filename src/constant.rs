@@ -267,7 +267,7 @@ fn define_all_allocs(
                 let const_ = tcx.const_eval(ParamEnv::reveal_all().and(cid)).unwrap();
 
                 let alloc = match const_.val {
-                    ConstValue::ByRef(ptr, alloc) if ptr.offset.bytes() == 0 => alloc,
+                    ConstValue::ByRef { align: _, offset, alloc } if offset.bytes() == 0 => alloc,
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
@@ -396,12 +396,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         _: AllocId,
         alloc: Cow<'b, Allocation>,
         _: Option<MemoryKind<!>>,
-        _: &(),
+        _: &Memory<'mir, 'tcx, Self>,
     ) -> (Cow<'b, Allocation<(), ()>>, ()) {
         (alloc, ())
     }
 
-    fn tag_static_base_pointer(_: AllocId, _: &()) -> Self::PointerTag {
+    fn tag_static_base_pointer(_: AllocId, _: &Memory<'mir, 'tcx, Self>) -> Self::PointerTag {
         ()
     }
 

@@ -194,6 +194,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         _ if intrinsic.starts_with("unchecked_") || intrinsic == "exact_div", (c x, c y) {
             // FIXME trap on overflow
             let bin_op = match intrinsic {
+                "unchecked_sub" => BinOp::Sub,
                 "unchecked_div" | "exact_div" => BinOp::Div,
                 "unchecked_rem" => BinOp::Rem,
                 "unchecked_shl" => BinOp::Shl,

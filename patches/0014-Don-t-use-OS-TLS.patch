@@ -1,6 +1,6 @@
-From 0c7406a33e3a40427760e6955188be193fd568a8 Mon Sep 17 00:00:00 2001
+From 9e8b8114de61ecdbf39f7582d7a3280ef2bfd339 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Fri, 1 Mar 2019 18:36:22 +0100
+Date: Sun, 23 Jun 2019 10:37:53 +0200
 Subject: [PATCH] Don't use OS TLS
 
 ---
@@ -9,13 +9,13 @@ Subject: [PATCH] Don't use OS TLS
  2 files changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/src/libstd/thread/local.rs b/src/libstd/thread/local.rs
-index d1f5373..ce83b3b 100644
+index 9b355aa..a074aa5 100644
 --- a/src/libstd/thread/local.rs
 +++ b/src/libstd/thread/local.rs
-@@ -164,10 +164,10 @@ macro_rules! __thread_local_inner {
-                 &'static $crate::cell::UnsafeCell<
-                     $crate::option::Option<$t>>>
-             {
+@@ -154,10 +154,10 @@ macro_rules! __thread_local_inner {
+             fn __init() -> $t { $init }
+ 
+             unsafe fn __getit() -> $crate::option::Option<&'static $t> {
 -                #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
                  static __KEY: $crate::thread::__StaticLocalKeyInner<$t> =
                      $crate::thread::__StaticLocalKeyInner::new();
@@ -24,24 +24,24 @@ index d1f5373..ce83b3b 100644
                  #[thread_local]
                  #[cfg(all(
                      target_thread_local,
-@@ -182,6 +182,7 @@ macro_rules! __thread_local_inner {
+@@ -172,6 +172,7 @@ macro_rules! __thread_local_inner {
                  ))]
                  static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                      $crate::thread::__OsLocalKeyInner::new();
 +                */
  
-                 __KEY.get()
+                 __KEY.get(__init)
              }
-@@ -308,7 +309,6 @@ impl<T: 'static> LocalKey<T> {
+@@ -320,7 +321,6 @@ mod lazy {
  /// On some platforms like wasm32 there's no threads, so no need to generate
  /// thread locals and we can instead just use plain statics!
  #[doc(hidden)]
 -#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
  pub mod statik {
-     use crate::cell::UnsafeCell;
+     use super::lazy::LazyKeyInner;
      use crate::fmt;
 diff --git a/src/libstd/thread/mod.rs b/src/libstd/thread/mod.rs
-index 08f0aa2..eff3126 100644
+index 35de4f4..f142646 100644
 --- a/src/libstd/thread/mod.rs
 +++ b/src/libstd/thread/mod.rs
 @@ -195,7 +195,6 @@ pub use self::local::{LocalKey, AccessError};
@@ -53,4 +53,5 @@ index 08f0aa2..eff3126 100644
  #[unstable(feature = "libstd_thread_internals", issue = "0")]
  #[cfg(target_thread_local)]
 -- 
-2.17.2 (Apple Git-113)
+2.20.1 (Apple Git-117)
+
