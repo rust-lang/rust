@@ -371,14 +371,14 @@ struct RegionResolutionVisitor<'tcx> {
 
     // The number of expressions and patterns visited in the current body
     expr_and_pat_count: usize,
-    // When this is 'true', we record the Scopes we encounter
+    // When this is `true`, we record the `Scopes` we encounter
     // when processing a Yield expression. This allows us to fix
     // up their indices.
     pessimistic_yield: bool,
     // Stores scopes when pessimistic_yield is true.
     // Each time we encounter an ExprKind::AssignOp, we push
-    // a new Vec into the outermost Vec. This inner Vec is uesd
-    // to store any scopes we encounter when visiting the inenr expressions
+    // a new Vec into the outermost Vec. This inner Vec is used
+    // to store any scopes we encounter when visiting the inner expressions
     // of the AssignOp. Once we finish visiting the inner expressions, we pop
     // off the inner Vec, and process the Scopes it contains.
     // This allows us to handle nested AssignOps - while a terrible idea,
@@ -963,9 +963,9 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     let prev_pessimistic = visitor.pessimistic_yield;
 
     // Ordinarily, we can rely on the visit order of HIR intravisit
-    // to correspond to the actual exectuion order of statements.
+    // to correspond to the actual execution order of statements.
     // However, there's a weird corner case with compund assignment
-    // operators (e.g. 'a += b'). The evaluation order depends on whether
+    // operators (e.g. `a += b`). The evaluation order depends on whether
     // or not the operator is overloaded (e.g. whether or not a trait
     // like AddAssign is implemented).
 
@@ -996,10 +996,10 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     // To determine the actual execution order, we need to perform
     // trait resolution. Unfortunately, we need to be able to compute
     // yield_in_scope before type checking is even done, as it gets
-    // used by AST borrowcheck
+    // used by AST borrowcheck.
     //
     // Fortunately, we don't need to know the actual execution order.
-    // It sufficies to know the 'worst case' order with respect to yields.
+    // It suffices to know the 'worst case' order with respect to yields.
     // Specifically, we need to know the highest 'expr_and_pat_count'
     // that we could assign to the yield expression. To do this,
     // we pick the greater of the two values from the left-hand
@@ -1029,7 +1029,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
             // If the actual execution order turns out to be right-to-left,
             // then we're fine. However, if the actual execution order is left-to-right,
-            // then we'll assign too low of a count to any 'yield' expressions
+            // then we'll assign too low a count to any `yield` expressions
             // we encounter in 'right_expression' - they should really occur after all of the
             // expressions in 'left_expression'.
             visitor.visit_expr(&right_expression);
@@ -1474,7 +1474,7 @@ fn region_scope_tree<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ScopeTree 
             },
             terminating_scopes: Default::default(),
             pessimistic_yield: false,
-            fixup_scopes: vec![]
+            fixup_scopes: vec![],
         };
 
         let body = tcx.hir().body(body_id);
