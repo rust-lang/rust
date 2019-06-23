@@ -1,9 +1,7 @@
+// check-pass
 // aux-build:import_crate_var.rs
 
-// compile-pass
-// skip-codegen
 #[macro_use] extern crate import_crate_var;
-
 
 fn main() {
     m!();

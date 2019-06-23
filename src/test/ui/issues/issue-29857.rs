@@ -1,5 +1,4 @@
-// compile-pass
-// skip-codegen
+// check-pass
 
 use std::marker::PhantomData;
 
@@ -16,6 +15,5 @@ pub trait Bar {
 }
 
 impl<T: 'static, W: Bar<Output = T>> Foo<*mut T> for W {}
-
 
 fn main() {}

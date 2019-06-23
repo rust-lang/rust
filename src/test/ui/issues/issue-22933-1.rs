@@ -1,6 +1,5 @@
-// compile-pass
-// skip-codegen
-#![allow(warnings)]
+// check-pass
+
 struct CNFParser {
     token: char,
 }
@@ -14,12 +13,11 @@ impl CNFParser {
         self.consume_while(&(CNFParser::is_whitespace))
     }
 
-    fn consume_while(&mut self, p: &Fn(char) -> bool) {
+    fn consume_while(&mut self, p: &dyn Fn(char) -> bool) {
         while p(self.token) {
             return
         }
     }
 }
-
 
 fn main() {}

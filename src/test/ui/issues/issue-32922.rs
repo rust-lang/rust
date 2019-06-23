@@ -1,6 +1,4 @@
-// compile-pass
-// skip-codegen
-#![allow(warnings)]
+// check-pass
 
 macro_rules! foo { () => {
     let x = 1;
@@ -21,7 +19,6 @@ macro_rules! baz {
         $i = $i + 1;
     }
 }
-
 
 fn main() {
     foo! {};
