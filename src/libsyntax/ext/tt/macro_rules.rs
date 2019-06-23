@@ -380,13 +380,17 @@ pub fn compile(
     let expander: Box<_> =
         Box::new(MacroRulesMacroExpander { name: def.ident, lhses, rhses, valid });
 
-    let default_transparency = if attr::contains_name(&def.attrs, sym::rustc_transparent_macro) {
-        Transparency::Transparent
-    } else if body.legacy {
-        Transparency::SemiTransparent
-    } else {
-        Transparency::Opaque
-    };
+    let value_str = attr::first_attr_value_str_by_name(&def.attrs, sym::rustc_macro_transparency);
+    let default_transparency = value_str.and_then(|s| Some(match &*s.as_str() {
+        "transparent" => Transparency::Transparent,
+        "semitransparent" => Transparency::SemiTransparent,
+        "opaque" => Transparency::Opaque,
+        _ => {
+            let msg = format!("unknown macro transparency: `{}`", s);
+            sess.span_diagnostic.span_err(def.span, &msg);
+            return None;
+        }
+    })).unwrap_or(if body.legacy { Transparency::SemiTransparent } else { Transparency::Opaque });
 
     let allow_internal_unstable =
         attr::find_by_name(&def.attrs, sym::allow_internal_unstable).map(|attr| {

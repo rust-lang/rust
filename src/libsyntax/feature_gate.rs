@@ -1313,7 +1313,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                     "the `#[rustc_test_marker]` attribute \
                                     is used internally to track tests",
                                     cfg_fn!(rustc_attrs))),
-    (sym::rustc_transparent_macro, Whitelisted, template!(Word), Gated(Stability::Unstable,
+    (sym::rustc_macro_transparency, Whitelisted, template!(NameValueStr:
+                                                           "transparent|semitransparent|opaque"),
+                                                Gated(Stability::Unstable,
                                                 sym::rustc_attrs,
                                                 "used internally for testing macro hygiene",
                                                     cfg_fn!(rustc_attrs))),
