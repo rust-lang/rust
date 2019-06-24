@@ -106,7 +106,7 @@ pub fn find(build: &mut Build) {
         let cxx_configured = if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
             true
-        } else if build.hosts.contains(&target) {
+        } else if build.hosts.contains(&target) || build.build == target {
             set_compiler(&mut cfg, Language::CPlusPlus, target, config, build);
             true
         } else {
