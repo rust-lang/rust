@@ -17,7 +17,7 @@ use crate::hir::{GenericParam, GenericParamKind, GenericArg};
 
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::io::{self, Write, Read};
+use std::io::{self, Read};
 use std::vec;
 
 pub enum AnnNode<'a> {
@@ -112,7 +112,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        krate: &hir::Crate,
                        filename: FileName,
                        input: &mut dyn Read,
-                       out: Box<dyn Write + 'a>,
+                       out: &'a mut Vec<u8>,
                        ann: &'a dyn PpAnn)
                        -> io::Result<()> {
     let mut s = State::new_from_input(cm, sess, filename, input, out, ann);
@@ -130,7 +130,7 @@ impl<'a> State<'a> {
                           sess: &ParseSess,
                           filename: FileName,
                           input: &mut dyn Read,
-                          out: Box<dyn Write + 'a>,
+                          out: &'a mut Vec<u8>,
                           ann: &'a dyn PpAnn)
                           -> State<'a> {
         let comments = comments::gather_comments(sess, filename, input);
@@ -138,7 +138,7 @@ impl<'a> State<'a> {
     }
 
     pub fn new(cm: &'a SourceMap,
-               out: Box<dyn Write + 'a>,
+               out: &'a mut Vec<u8>,
                ann: &'a dyn PpAnn,
                comments: Option<Vec<comments::Comment>>)
                -> State<'a> {
@@ -159,7 +159,7 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
     let mut wr = Vec::new();
     {
         let mut printer = State {
-            s: pp::mk_printer(Box::new(&mut wr), default_columns),
+            s: pp::mk_printer(&mut wr, default_columns),
             cm: None,
             comments: None,
             cur_cmnt: 0,

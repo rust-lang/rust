@@ -21,7 +21,7 @@ use syntax_pos::{self, BytePos};
 use syntax_pos::{DUMMY_SP, FileName};
 
 use std::borrow::Cow;
-use std::io::{self, Write, Read};
+use std::io::{self, Read};
 use std::vec;
 
 pub enum AnnNode<'a> {
@@ -54,7 +54,7 @@ pub struct State<'a> {
     is_expanded: bool
 }
 
-fn rust_printer<'a>(writer: Box<dyn Write+'a>, ann: &'a dyn PpAnn) -> State<'a> {
+fn rust_printer<'a>(writer: &'a mut Vec<u8>, ann: &'a dyn PpAnn) -> State<'a> {
     State {
         s: pp::mk_printer(writer, DEFAULT_COLUMNS),
         cm: None,
@@ -77,7 +77,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        krate: &ast::Crate,
                        filename: FileName,
                        input: &mut dyn Read,
-                       out: Box<dyn Write+'a>,
+                       out: &mut Vec<u8>,
                        ann: &'a dyn PpAnn,
                        is_expanded: bool) -> io::Result<()> {
     let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
@@ -111,7 +111,7 @@ impl<'a> State<'a> {
                           sess: &ParseSess,
                           filename: FileName,
                           input: &mut dyn Read,
-                          out: Box<dyn Write+'a>,
+                          out: &'a mut Vec<u8>,
                           ann: &'a dyn PpAnn,
                           is_expanded: bool) -> State<'a> {
         let comments = comments::gather_comments(sess, filename, input);
@@ -119,7 +119,7 @@ impl<'a> State<'a> {
     }
 
     pub fn new(cm: &'a SourceMap,
-               out: Box<dyn Write+'a>,
+               out: &'a mut Vec<u8>,
                ann: &'a dyn PpAnn,
                comments: Option<Vec<comments::Comment>>,
                is_expanded: bool) -> State<'a> {
@@ -141,7 +141,7 @@ pub fn to_string<F>(f: F) -> String where
     let mut wr = Vec::new();
     {
         let ann = NoAnn;
-        let mut printer = rust_printer(Box::new(&mut wr), &ann);
+        let mut printer = rust_printer(&mut wr, &ann);
         f(&mut printer).unwrap();
         printer.s.eof().unwrap();
     }

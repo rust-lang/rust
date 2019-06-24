@@ -136,7 +136,7 @@
 
 use std::collections::VecDeque;
 use std::fmt;
-use std::io;
+use std::io::{self, Write};
 use std::borrow::Cow;
 use log::debug;
 
@@ -236,7 +236,7 @@ crate struct PrintStackElem {
 
 const SIZE_INFINITY: isize = 0xffff;
 
-pub fn mk_printer<'a>(out: Box<dyn io::Write+'a>, linewidth: usize) -> Printer<'a> {
+pub fn mk_printer(out: &mut Vec<u8>, linewidth: usize) -> Printer<'_> {
     // Yes 55, it makes the ring buffers big enough to never fall behind.
     let n: usize = 55 * linewidth;
     debug!("mk_printer {}", linewidth);
@@ -259,7 +259,7 @@ pub fn mk_printer<'a>(out: Box<dyn io::Write+'a>, linewidth: usize) -> Printer<'
 }
 
 pub struct Printer<'a> {
-    out: Box<dyn io::Write+'a>,
+    out: &'a mut Vec<u8>,
     buf_max_len: usize,
     /// Width of lines we're constrained to
     margin: isize,
