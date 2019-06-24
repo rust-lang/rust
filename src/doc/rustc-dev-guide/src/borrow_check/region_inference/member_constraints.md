@@ -69,7 +69,7 @@ interesting to the point we are illustrating here).
 
 The `'a: '0` and `'b: '1` constraints arise from subtyping. When we
 construct the `(a, b)` value, it will be assigned type `(&'0 u32, &'1
-u32)` -- the region variables reflect that the lifetime of this
+u32)` -- the region variables reflect that the lifetimes of these
 references could be made smaller. For this value to be created from
 `a` and `b`, however, we do require that:
 
