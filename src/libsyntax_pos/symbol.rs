@@ -173,6 +173,7 @@ symbols! {
         cfg_target_thread_local,
         cfg_target_vendor,
         char,
+        clippy,
         clone,
         Clone,
         clone_closures,
