@@ -35,7 +35,7 @@ As a simple example, if we have a liveness constraint `R live at E`,
 then we can apply `Values(R) = Values(R) union {E}` to make the
 constraint be satisfied. Similarly, if we have an outlives constraints
 `R1: R2`, we can apply `Values(R1) = Values(R1) union Values(R2)`.
-(Member constraints are more complex and we discuss them below.)
+(Member constraints are more complex and we discuss them [in this section][m_c].)
 
 In practice, however, we are a bit more clever. Instead of applying
 the constraints in a loop, we can analyze the constraints and figure
