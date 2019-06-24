@@ -1,6 +1,6 @@
 use std::mem;
 use smallvec::SmallVec;
-use syntax::ast::CRATE_NODE_ID;
+use rustc::hir::CRATE_HIR_ID;
 use crate::ty::context::TyCtxt;
 use crate::ty::{DefId, DefIdTree};
 
@@ -33,7 +33,7 @@ impl<'tcx> DefIdForest {
     /// crate.
     #[inline]
     pub fn full(tcx: TyCtxt<'tcx>) -> DefIdForest {
-        let crate_id = tcx.hir().local_def_id(CRATE_NODE_ID);
+        let crate_id = tcx.hir().local_def_id_from_hir_id(CRATE_HIR_ID);
         DefIdForest::from_id(crate_id)
     }
 
