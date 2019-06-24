@@ -9,10 +9,8 @@ use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::InferCtxt;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
-use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
-use rustc::ty::subst::UnpackedKind;
+use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::mir::interpret::ConstValue;
 use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
 use std::mem;
@@ -440,141 +438,20 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             debug_assert!(!instantiated_ty.has_escaping_bound_vars());
 
-            let generics = self.tcx().generics_of(def_id);
+            // Prevent:
+            // * `fn foo<T>() -> Foo<T>`
+            // * `fn foo<T: Bound + Other>() -> Foo<T>`
+            // from being defining.
 
-            let definition_ty = if generics.parent.is_some() {
-                // `impl Trait`
-                self.fcx.infer_opaque_definition_from_instantiation(
-                    def_id,
-                    opaque_defn,
-                    instantiated_ty,
-                )
-            } else {
-                // Prevent:
-                // * `fn foo<T>() -> Foo<T>`
-                // * `fn foo<T: Bound + Other>() -> Foo<T>`
-                // from being defining.
-
-                // Also replace all generic params with the ones from the existential type
-                // definition so that
-                // ```rust
-                // existential type Foo<T>: 'static;
-                // fn foo<U>() -> Foo<U> { .. }
-                // ```
-                // figures out the concrete type with `U`, but the stored type is with `T`.
-                instantiated_ty.fold_with(&mut BottomUpFolder {
-                    tcx: self.tcx().global_tcx(),
-                    ty_op: |ty| {
-                        trace!("checking type {:?}", ty);
-                        // Find a type parameter.
-                        if let ty::Param(..) = ty.sty {
-                            // Look it up in the substitution list.
-                            assert_eq!(opaque_defn.substs.len(), generics.params.len());
-                            for (subst, param) in opaque_defn.substs.iter().zip(&generics.params) {
-                                if let UnpackedKind::Type(subst) = subst.unpack() {
-                                    if subst == ty {
-                                        // Found it in the substitution list; replace with the
-                                        // parameter from the existential type.
-                                        return self.tcx()
-                                            .global_tcx()
-                                            .mk_ty_param(param.index, param.name);
-                                    }
-                                }
-                            }
-                            self.tcx()
-                                .sess
-                                .struct_span_err(
-                                    span,
-                                    &format!(
-                                        "type parameter `{}` is part of concrete type but not used \
-                                         in parameter list for existential type",
-                                        ty,
-                                    ),
-                                )
-                                .emit();
-                            return self.tcx().types.err;
-                        }
-                        ty
-                    },
-                    lt_op: |region| {
-                        match region {
-                            // Skip static and bound regions: they don't require substitution.
-                            ty::ReStatic | ty::ReLateBound(..) => region,
-                            _ => {
-                                trace!("checking {:?}", region);
-                                for (subst, p) in opaque_defn.substs.iter().zip(&generics.params) {
-                                    if let UnpackedKind::Lifetime(subst) = subst.unpack() {
-                                        if subst == region {
-                                            // Found it in the substitution list; replace with the
-                                            // parameter from the existential type.
-                                            let reg = ty::EarlyBoundRegion {
-                                                def_id: p.def_id,
-                                                index: p.index,
-                                                name: p.name,
-                                            };
-                                            trace!("replace {:?} with {:?}", region, reg);
-                                            return self.tcx()
-                                                .global_tcx()
-                                                .mk_region(ty::ReEarlyBound(reg));
-                                        }
-                                    }
-                                }
-                                trace!("opaque_defn: {:#?}", opaque_defn);
-                                trace!("generics: {:#?}", generics);
-                                self.tcx()
-                                    .sess
-                                    .struct_span_err(
-                                        span,
-                                        "non-defining existential type use in defining scope",
-                                    )
-                                    .span_label(
-                                        span,
-                                        format!(
-                                            "lifetime `{}` is part of concrete type but not used \
-                                             in parameter list of existential type",
-                                            region,
-                                        ),
-                                    )
-                                    .emit();
-                                self.tcx().global_tcx().mk_region(ty::ReStatic)
-                            }
-                        }
-                    },
-                    ct_op: |ct| {
-                        trace!("checking const {:?}", ct);
-                        // Find a const parameter
-                        if let ConstValue::Param(..) = ct.val {
-                            // look it up in the substitution list
-                            assert_eq!(opaque_defn.substs.len(), generics.params.len());
-                            for (subst, param) in opaque_defn.substs.iter()
-                                                                    .zip(&generics.params) {
-                                if let UnpackedKind::Const(subst) = subst.unpack() {
-                                    if subst == ct {
-                                        // found it in the substitution list, replace with the
-                                        // parameter from the existential type
-                                        return self.tcx()
-                                            .global_tcx()
-                                            .mk_const_param(param.index, param.name, ct.ty);
-                                    }
-                                }
-                            }
-                            self.tcx()
-                                .sess
-                                .struct_span_err(
-                                    span,
-                                    &format!(
-                                        "const parameter `{}` is part of concrete type but not \
-                                            used in parameter list for existential type",
-                                        ct,
-                                    ),
-                                )
-                                .emit();
-                            return self.tcx().consts.err;
-                        }
-                        ct
-                    }
-                })
-            };
+            // Also replace all generic params with the ones from the existential type
+            // definition so that
+            // ```rust
+            // existential type Foo<T>: 'static;
+            // fn foo<U>() -> Foo<U> { .. }
+            // ```
+            // figures out the concrete type with `U`, but the stored type is with `T`.
+            let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
+                def_id, opaque_defn, instantiated_ty, span);
 
             if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.sty {
                 if def_id == defin_ty_def_id {
