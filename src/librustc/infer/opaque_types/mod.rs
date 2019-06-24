@@ -333,7 +333,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         debug!("constrain_opaque_type: concrete_ty={:?}", concrete_ty);
 
-        let abstract_type_generics = tcx.generics_of(def_id);
+        let opaque_type_generics = tcx.generics_of(def_id);
 
         let span = tcx.def_span(def_id);
 
@@ -365,7 +365,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // `['a]` for the first impl trait and `'b` for the
         // second.
         let mut least_region = None;
-        for param in &abstract_type_generics.params {
+        for param in &opaque_type_generics.params {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
                 _ => continue,
@@ -396,7 +396,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // regions that appear in the impl trait.
                         return self.generate_member_constraint(
                             concrete_ty,
-                            abstract_type_generics,
+                            opaque_type_generics,
                             opaque_defn,
                             def_id,
                             lr,
@@ -427,7 +427,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn generate_member_constraint(
         &self,
         concrete_ty: Ty<'tcx>,
-        abstract_type_generics: &ty::Generics,
+        opaque_type_generics: &ty::Generics,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
         opaque_type_def_id: DefId,
         conflict1: ty::Region<'tcx>,
@@ -447,7 +447,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // type can be equal to any of the region parameters of the
         // opaque type definition.
         let choice_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
-            abstract_type_generics
+            opaque_type_generics
                 .params
                 .iter()
                 .filter(|param| match param.kind {
