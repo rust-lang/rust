@@ -380,7 +380,7 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Box<T> {
 
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Rc<T> {
     type Lifted = Rc<T::Lifted>;
-    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&**self).map(Rc::new)
     }
 }
