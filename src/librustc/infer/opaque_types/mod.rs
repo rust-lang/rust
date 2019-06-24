@@ -488,14 +488,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let span = self.tcx.def_span(opaque_type_def_id);
 
-        // Otherwise, we allow for async-await but not otherwise.
+        // Without a feature-gate, we only generate member-constraints for async-await.
         let context_name = match opaque_defn.origin {
+            // No feature-gate required for `async fn`.
+            hir::ExistTyOrigin::AsyncFn => return false,
+
+            // Otherwise, generate the label we'll use in the error message.
             hir::ExistTyOrigin::ExistentialType => "existential type",
             hir::ExistTyOrigin::ReturnImplTrait => "impl Trait",
-            hir::ExistTyOrigin::AsyncFn => {
-                // we permit
-                return false;
-            }
         };
         let msg = format!("ambiguous lifetime bound in `{}`", context_name);
         let mut err = self.tcx.sess.struct_span_err(span, &msg);
@@ -624,7 +624,7 @@ pub fn unexpected_hidden_region_diagnostic(
         );
     } else {
         // Ugh. This is a painful case: the hidden region is not one
-        // that we can easily summarize or explain. This can happens
+        // that we can easily summarize or explain. This can happen
         // in a case like
         // `src/test/ui/multiple-lifetimes/ordinary-bounds-unsuited.rs`:
         //
