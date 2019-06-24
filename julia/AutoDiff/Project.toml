@@ -5,6 +5,8 @@ version = "0.1.0"
 
 [deps]
 AutoGrad = "6710c13c-97f1-543f-91c5-74e8f7d95b35"
+IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
+InstantiateFromURL = "43edad99-fa64-5e4f-9937-1c09a410b73f"
 LLVM = "929cbde3-209d-540e-8aea-75f648917ca0"
 MCAnalyzer = "a81df072-f4bb-11e8-03d3-cfaeda626d18"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
