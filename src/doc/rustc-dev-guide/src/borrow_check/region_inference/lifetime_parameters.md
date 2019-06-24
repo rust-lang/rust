@@ -103,7 +103,7 @@ rise to an outlives constraint `'a: 'b`. Combined with our default liveness
 constraints we get:
 
 ```
-'a live at {B, end('a)} // B represents the "bunction body"
+'a live at {B, end('a)} // B represents the "function body"
 'b live at {B, end('b)}
 'a: 'b
 ```
