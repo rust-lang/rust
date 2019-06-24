@@ -316,11 +316,6 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
     }
 }
 
-pub trait BitSetOperator {
-    /// Combine one bitset into another.
-    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool;
-}
-
 #[inline]
 fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
     where Op: Fn(Word, Word) -> Word

@@ -95,7 +95,7 @@ fn find_dead_unwinds<'tcx>(
         };
 
         let mut init_data = InitializationData {
-            live: flow_inits.sets().on_entry_set_for(bb.index()).to_owned(),
+            live: flow_inits.sets().entry_set_for(bb.index()).to_owned(),
             dead: BitSet::new_empty(env.move_data.move_paths.len()),
         };
         debug!("find_dead_unwinds @ {:?}: {:?}; init_data={:?}",
@@ -304,9 +304,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn initialization_data_at(&self, loc: Location) -> InitializationData {
         let mut data = InitializationData {
-            live: self.flow_inits.sets().on_entry_set_for(loc.block.index())
+            live: self.flow_inits.sets().entry_set_for(loc.block.index())
                 .to_owned(),
-            dead: self.flow_uninits.sets().on_entry_set_for(loc.block.index())
+            dead: self.flow_uninits.sets().entry_set_for(loc.block.index())
                 .to_owned(),
         };
         for stmt in 0..loc.statement_index {
