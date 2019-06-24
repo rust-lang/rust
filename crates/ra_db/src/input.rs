@@ -31,7 +31,21 @@ pub struct SourceRootId(pub u32);
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct SourceRoot {
+    /// Sysroot or crates.io library.
+    ///
+    /// Libraries are considered mostly immutable, this assumption is used to
+    /// optimize salsa's query structure
+    pub is_library: bool,
     pub files: FxHashMap<RelativePathBuf, FileId>,
+}
+
+impl SourceRoot {
+    pub fn new() -> SourceRoot {
+        Default::default()
+    }
+    pub fn new_library() -> SourceRoot {
+        SourceRoot { is_library: true, ..SourceRoot::new() }
+    }
 }
 
 /// `CrateGraph` is a bit of information which turns a set of text files into a
