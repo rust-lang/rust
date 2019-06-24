@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { strict } from 'assert';
 import { Server } from './server';
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
@@ -9,7 +10,8 @@ export type CargoWatchTraceOptions = 'off' | 'error' | 'verbose';
 
 export interface CargoWatchOptions {
     enableOnStartup: CargoWatchStartupOptions;
-    checkArguments: string;
+    arguments: string;
+    command: string;
     trace: CargoWatchTraceOptions;
 }
 
@@ -23,7 +25,8 @@ export class Config {
     public cargoWatchOptions: CargoWatchOptions = {
         enableOnStartup: 'ask',
         trace: 'off',
-        checkArguments: ''
+        arguments: '',
+        command: ''
     };
 
     private prevEnhancedTyping: null | boolean = null;
@@ -104,12 +107,20 @@ export class Config {
             );
         }
 
-        if (config.has('cargo-watch.check-arguments')) {
-            this.cargoWatchOptions.checkArguments = config.get<string>(
-                'cargo-watch.check-arguments',
+        if (config.has('cargo-watch.arguments')) {
+            this.cargoWatchOptions.arguments = config.get<string>(
+                'cargo-watch.arguments',
                 ''
             );
         }
+
+        if (config.has('cargo-watch.command')) {
+            this.cargoWatchOptions.command = config.get<string>(
+                'cargo-watch.command',
+                ''
+            );
+        }
+
         if (config.has('lruCapacity')) {
             this.lruCapacity = config.get('lruCapacity') as number;
         }

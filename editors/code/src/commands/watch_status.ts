@@ -7,13 +7,15 @@ export class StatusDisplay implements vscode.Disposable {
 
     private i = 0;
     private statusBarItem: vscode.StatusBarItem;
+    private command: string;
     private timer?: NodeJS.Timeout;
 
-    constructor() {
+    constructor(command: string) {
         this.statusBarItem = vscode.window.createStatusBarItem(
             vscode.StatusBarAlignment.Left,
             10
         );
+        this.command = command;
         this.statusBarItem.hide();
     }
 
@@ -24,11 +26,13 @@ export class StatusDisplay implements vscode.Disposable {
             this.timer ||
             setInterval(() => {
                 if (this.packageName) {
-                    this.statusBarItem!.text = `cargo check [${
+                    this.statusBarItem!.text = `cargo ${this.command} [${
                         this.packageName
                     }] ${this.frame()}`;
                 } else {
-                    this.statusBarItem!.text = `cargo check ${this.frame()}`;
+                    this.statusBarItem!.text = `cargo ${
+                        this.command
+                    } ${this.frame()}`;
                 }
             }, 300);
 
