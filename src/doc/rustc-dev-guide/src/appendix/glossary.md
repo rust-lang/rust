@@ -50,6 +50,7 @@ newtype                 |  a "newtype" is a wrapper around some other type (e.g.
 NLL                     | [non-lexical lifetimes](../borrow_check/region_inference.html), an extension to Rust's borrowing system to make it be based on the control-flow graph.
 node-id or NodeId       |  an index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`.
 obligation              |  something that must be proven by the trait system ([see more](../traits/resolution.html))
+point                   |  used in the NLL analysis to refer to some particular location in the MIR; typically used to refer to a node in the control-flow graph.
 projection              |  a general term for a "relative path", e.g. `x.f` is a "field projection", and `T::Item` is an ["associated type projection"](../traits/goals-and-clauses.html#trait-ref)
 promoted constants      |  constants extracted from a function and lifted to static scope; see [this section](../mir/index.html#promoted) for more details.
 provider                |  the function that executes a query ([see more](../query.html))

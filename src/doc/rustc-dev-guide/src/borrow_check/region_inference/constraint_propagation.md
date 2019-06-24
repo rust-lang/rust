@@ -51,9 +51,11 @@ in the section on outlives constraints.
 ## Liveness constraints
 
 A **liveness constraint** arises when some variable whose type
-includes a region R is live at some point P. This simply means that
+includes a region R is live at some [point] P. This simply means that
 the value of R must include the point P. Liveness constraints are
 computed by the MIR type checker.
+
+[point]: ../../appendix/glossary.html
 
 A liveness constraint `R live at E` is satisfied if `E` is a member of
 `Values(R)`. So to "apply" such a constraint to `Values`, we just have
