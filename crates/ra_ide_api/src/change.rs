@@ -163,7 +163,8 @@ impl RootDatabase {
         if !change.new_roots.is_empty() {
             let mut local_roots = Vec::clone(&self.local_roots());
             for (root_id, is_local) in change.new_roots {
-                self.set_source_root(root_id, Default::default());
+                let root = if is_local { SourceRoot::new() } else { SourceRoot::new_library() };
+                self.set_source_root(root_id, Arc::new(root));
                 if is_local {
                     local_roots.push(root_id);
                 }
