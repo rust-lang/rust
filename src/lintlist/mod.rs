@@ -554,6 +554,13 @@ pub const ALL_LINTS: [Lint; 306] = [
         module: "methods",
     },
     Lint {
+        name: "flat_map",
+        group: "pedantic",
+        desc: "call to `flat_map` where `flatten` is sufficient",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "float_arithmetic",
         group: "restriction",
         desc: "any floating-point arithmetic statement",
