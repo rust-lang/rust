@@ -21,7 +21,7 @@ use syntax_pos::{self, BytePos};
 use syntax_pos::{DUMMY_SP, FileName};
 
 use std::borrow::Cow;
-use std::io::{self, Write, Read};
+use std::io::{self, Read};
 use std::vec;
 
 pub enum AnnNode<'a> {
@@ -54,9 +54,9 @@ pub struct State<'a> {
     is_expanded: bool
 }
 
-fn rust_printer<'a>(writer: Box<dyn Write+'a>, ann: &'a dyn PpAnn) -> State<'a> {
+fn rust_printer<'a>(writer: &'a mut String, ann: &'a dyn PpAnn) -> State<'a> {
     State {
-        s: pp::mk_printer(writer, DEFAULT_COLUMNS),
+        s: pp::mk_printer(writer),
         cm: None,
         comments: None,
         cur_cmnt: 0,
@@ -68,8 +68,6 @@ fn rust_printer<'a>(writer: Box<dyn Write+'a>, ann: &'a dyn PpAnn) -> State<'a> 
 
 crate const INDENT_UNIT: usize = 4;
 
-crate const DEFAULT_COLUMNS: usize = 78;
-
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(cm: &'a SourceMap,
@@ -77,7 +75,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        krate: &ast::Crate,
                        filename: FileName,
                        input: &mut dyn Read,
-                       out: Box<dyn Write+'a>,
+                       out: &mut String,
                        ann: &'a dyn PpAnn,
                        is_expanded: bool) -> io::Result<()> {
     let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
@@ -111,7 +109,7 @@ impl<'a> State<'a> {
                           sess: &ParseSess,
                           filename: FileName,
                           input: &mut dyn Read,
-                          out: Box<dyn Write+'a>,
+                          out: &'a mut String,
                           ann: &'a dyn PpAnn,
                           is_expanded: bool) -> State<'a> {
         let comments = comments::gather_comments(sess, filename, input);
@@ -119,12 +117,12 @@ impl<'a> State<'a> {
     }
 
     pub fn new(cm: &'a SourceMap,
-               out: Box<dyn Write+'a>,
+               out: &'a mut String,
                ann: &'a dyn PpAnn,
                comments: Option<Vec<comments::Comment>>,
                is_expanded: bool) -> State<'a> {
         State {
-            s: pp::mk_printer(out, DEFAULT_COLUMNS),
+            s: pp::mk_printer(out),
             cm: Some(cm),
             comments,
             cur_cmnt: 0,
@@ -138,14 +136,14 @@ impl<'a> State<'a> {
 pub fn to_string<F>(f: F) -> String where
     F: FnOnce(&mut State<'_>) -> io::Result<()>,
 {
-    let mut wr = Vec::new();
+    let mut wr = String::new();
     {
         let ann = NoAnn;
-        let mut printer = rust_printer(Box::new(&mut wr), &ann);
+        let mut printer = rust_printer(&mut wr, &ann);
         f(&mut printer).unwrap();
         printer.s.eof().unwrap();
     }
-    String::from_utf8(wr).unwrap()
+    wr
 }
 
 fn binop_to_string(op: BinOpToken) -> &'static str {

@@ -728,11 +728,11 @@ pub fn print_after_parsing(sess: &Session,
     let (src, src_name) = get_source(input, sess);
 
     let mut rdr = &*src;
-    let mut out = Vec::new();
+    let mut out = String::new();
 
     if let PpmSource(s) = ppm {
         // Silently ignores an identified node.
-        let out: &mut dyn Write = &mut out;
+        let out = &mut out;
         s.call_with_pp_support(sess, None, move |annotation| {
             debug!("pretty printing source code {:?}", s);
             let sess = annotation.sess();
@@ -741,7 +741,7 @@ pub fn print_after_parsing(sess: &Session,
                                 krate,
                                 src_name,
                                 &mut rdr,
-                                box out,
+                                out,
                                 annotation.pp_ann(),
                                 false)
         }).unwrap()
@@ -749,7 +749,7 @@ pub fn print_after_parsing(sess: &Session,
         unreachable!();
     };
 
-    write_output(out, ofile);
+    write_output(out.into_bytes(), ofile);
 }
 
 pub fn print_after_hir_lowering<'tcx>(
@@ -773,12 +773,12 @@ pub fn print_after_hir_lowering<'tcx>(
     let (src, src_name) = get_source(input, tcx.sess);
 
     let mut rdr = &src[..];
-    let mut out = Vec::new();
+    let mut out = String::new();
 
     match (ppm, opt_uii) {
             (PpmSource(s), _) => {
                 // Silently ignores an identified node.
-                let out: &mut dyn Write = &mut out;
+                let out = &mut out;
                 s.call_with_pp_support(tcx.sess, Some(tcx), move |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
@@ -787,14 +787,14 @@ pub fn print_after_hir_lowering<'tcx>(
                                         krate,
                                         src_name,
                                         &mut rdr,
-                                        box out,
+                                        out,
                                         annotation.pp_ann(),
                                         true)
                 })
             }
 
             (PpmHir(s), None) => {
-                let out: &mut dyn Write = &mut out;
+                let out = &mut out;
                 s.call_with_pp_support_hir(tcx, move |annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
@@ -803,21 +803,21 @@ pub fn print_after_hir_lowering<'tcx>(
                                             krate,
                                             src_name,
                                             &mut rdr,
-                                            box out,
+                                            out,
                                             annotation.pp_ann())
                 })
             }
 
             (PpmHirTree(s), None) => {
-                let out: &mut dyn Write = &mut out;
+                let out = &mut out;
                 s.call_with_pp_support_hir(tcx, move |_annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
-                    write!(out, "{:#?}", krate)
-                })
+                    *out = format!("{:#?}", krate);
+                });
             }
 
             (PpmHir(s), Some(uii)) => {
-                let out: &mut dyn Write = &mut out;
+                let out = &mut out;
                 s.call_with_pp_support_hir(tcx, move |annotation, _| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
@@ -826,7 +826,7 @@ pub fn print_after_hir_lowering<'tcx>(
                                                                          &sess.parse_sess,
                                                                          src_name,
                                                                          &mut rdr,
-                                                                         box out,
+                                                                         out,
                                                                          annotation.pp_ann());
                     for node_id in uii.all_matching_node_ids(hir_map) {
                         let hir_id = tcx.hir().node_to_hir_id(node_id);
@@ -843,13 +843,13 @@ pub fn print_after_hir_lowering<'tcx>(
             }
 
             (PpmHirTree(s), Some(uii)) => {
-                let out: &mut dyn Write = &mut out;
+                let out = &mut out;
                 s.call_with_pp_support_hir(tcx, move |_annotation, _krate| {
                     debug!("pretty printing source code {:?}", s);
                     for node_id in uii.all_matching_node_ids(tcx.hir()) {
                         let hir_id = tcx.hir().node_to_hir_id(node_id);
                         let node = tcx.hir().get(hir_id);
-                        write!(out, "{:#?}", node)?;
+                        out.push_str(&format!("{:#?}", node));
                     }
                     Ok(())
                 })
@@ -859,7 +859,7 @@ pub fn print_after_hir_lowering<'tcx>(
         }
         .unwrap();
 
-    write_output(out, ofile);
+    write_output(out.into_bytes(), ofile);
 }
 
 // In an ideal world, this would be a public function called by the driver after

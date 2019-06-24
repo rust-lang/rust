@@ -17,7 +17,7 @@ use crate::hir::{GenericParam, GenericParamKind, GenericArg};
 
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::io::{self, Write, Read};
+use std::io::{self, Read};
 use std::vec;
 
 pub enum AnnNode<'a> {
@@ -101,10 +101,6 @@ impl<'a> PrintState<'a> for State<'a> {
 #[allow(non_upper_case_globals)]
 pub const indent_unit: usize = 4;
 
-#[allow(non_upper_case_globals)]
-pub const default_columns: usize = 78;
-
-
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(cm: &'a SourceMap,
@@ -112,7 +108,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        krate: &hir::Crate,
                        filename: FileName,
                        input: &mut dyn Read,
-                       out: Box<dyn Write + 'a>,
+                       out: &'a mut String,
                        ann: &'a dyn PpAnn)
                        -> io::Result<()> {
     let mut s = State::new_from_input(cm, sess, filename, input, out, ann);
@@ -130,7 +126,7 @@ impl<'a> State<'a> {
                           sess: &ParseSess,
                           filename: FileName,
                           input: &mut dyn Read,
-                          out: Box<dyn Write + 'a>,
+                          out: &'a mut String,
                           ann: &'a dyn PpAnn)
                           -> State<'a> {
         let comments = comments::gather_comments(sess, filename, input);
@@ -138,12 +134,12 @@ impl<'a> State<'a> {
     }
 
     pub fn new(cm: &'a SourceMap,
-               out: Box<dyn Write + 'a>,
+               out: &'a mut String,
                ann: &'a dyn PpAnn,
                comments: Option<Vec<comments::Comment>>)
                -> State<'a> {
         State {
-            s: pp::mk_printer(out, default_columns),
+            s: pp::mk_printer(out),
             cm: Some(cm),
             comments,
             cur_cmnt: 0,
@@ -156,10 +152,10 @@ impl<'a> State<'a> {
 pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
     where F: FnOnce(&mut State<'_>) -> io::Result<()>
 {
-    let mut wr = Vec::new();
+    let mut wr = String::new();
     {
         let mut printer = State {
-            s: pp::mk_printer(Box::new(&mut wr), default_columns),
+            s: pp::mk_printer(&mut wr),
             cm: None,
             comments: None,
             cur_cmnt: 0,
@@ -169,7 +165,7 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
         f(&mut printer).unwrap();
         printer.s.eof().unwrap();
     }
-    String::from_utf8(wr).unwrap()
+    wr
 }
 
 pub fn visibility_qualified<S: Into<Cow<'static, str>>>(vis: &hir::Visibility, w: S) -> String {

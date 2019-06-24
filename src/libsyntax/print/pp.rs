@@ -236,7 +236,8 @@ crate struct PrintStackElem {
 
 const SIZE_INFINITY: isize = 0xffff;
 
-pub fn mk_printer<'a>(out: Box<dyn io::Write+'a>, linewidth: usize) -> Printer<'a> {
+pub fn mk_printer(out: &mut String) -> Printer<'_> {
+    let linewidth = 78;
     // Yes 55, it makes the ring buffers big enough to never fall behind.
     let n: usize = 55 * linewidth;
     debug!("mk_printer {}", linewidth);
@@ -259,7 +260,7 @@ pub fn mk_printer<'a>(out: Box<dyn io::Write+'a>, linewidth: usize) -> Printer<'
 }
 
 pub struct Printer<'a> {
-    out: Box<dyn io::Write+'a>,
+    out: &'a mut String,
     buf_max_len: usize,
     /// Width of lines we're constrained to
     margin: isize,
@@ -299,8 +300,6 @@ impl Default for BufEntry {
         BufEntry { token: Token::Eof, size: 0 }
     }
 }
-
-const SPACES: [u8; 128] = [b' '; 128];
 
 impl<'a> Printer<'a> {
     pub fn last_token(&mut self) -> Token {
@@ -497,10 +496,10 @@ impl<'a> Printer<'a> {
 
     crate fn print_newline(&mut self, amount: isize) -> io::Result<()> {
         debug!("NEWLINE {}", amount);
-        let ret = writeln!(self.out);
+        self.out.push('\n');
         self.pending_indentation = 0;
         self.indent(amount);
-        ret
+        Ok(())
     }
 
     crate fn indent(&mut self, amount: isize) {
@@ -587,20 +586,14 @@ impl<'a> Printer<'a> {
         //
         //   write!(self.out, "{: >n$}", "", n = self.pending_indentation as usize)?;
         //
-        // But that is significantly slower than using `SPACES`. This code is
-        // sufficiently hot, and indents can get sufficiently large, that the
-        // difference is significant on some workloads.
-        let spaces_len = SPACES.len() as isize;
-        while self.pending_indentation >= spaces_len {
-            self.out.write_all(&SPACES)?;
-            self.pending_indentation -= spaces_len;
-        }
-        if self.pending_indentation > 0 {
-            self.out.write_all(&SPACES[0..self.pending_indentation as usize])?;
-            self.pending_indentation = 0;
-        }
+        // But that is significantly slower. This code is sufficiently hot, and indents can get
+        // sufficiently large, that the difference is significant on some workloads.
+        self.out.reserve(self.pending_indentation as usize);
+        self.out.extend(std::iter::repeat(' ').take(self.pending_indentation as usize));
+        self.pending_indentation = 0;
+        self.out.push_str(&s);
 
-        write!(self.out, "{}", s)
+        Ok(())
     }
 
     crate fn print(&mut self, token: Token, l: isize) -> io::Result<()> {
