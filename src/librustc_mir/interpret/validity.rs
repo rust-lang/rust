@@ -3,11 +3,11 @@ use std::ops::RangeInclusive;
 
 use syntax_pos::symbol::{sym, Symbol};
 use rustc::hir;
-use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
+use rustc::ty::layout::{self, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, GlobalAlloc, InterpResult, InterpError, CheckInAllocMsg,
+    GlobalAlloc, InterpResult, InterpError,
 };
 
 use std::hash::Hash;
@@ -365,8 +365,16 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     let tail = self.ecx.tcx.struct_tail(layout.ty);
                     match tail.sty {
                         ty::Dynamic(..) => {
-                            let vtable = try_validation!(meta.unwrap().to_ptr(),
-                                "non-pointer vtable in fat pointer", self.path);
+                            let vtable = meta.unwrap();
+                            try_validation!(
+                                self.ecx.memory.check_ptr_access(
+                                    vtable,
+                                    3*self.ecx.tcx.data_layout.pointer_size, // drop, size, align
+                                    self.ecx.tcx.data_layout.pointer_align.abi,
+                                ),
+                                "dangling or unaligned vtable pointer or too small vtable",
+                                self.path
+                            );
                             try_validation!(self.ecx.read_drop_type_from_vtable(vtable),
                                 "invalid drop fn in vtable", self.path);
                             try_validation!(self.ecx.read_size_and_align_from_vtable(vtable),
@@ -384,16 +392,19 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                             bug!("Unexpected unsized type tail: {:?}", tail),
                     }
                 }
-                // Make sure this is non-NULL and aligned
+                // Make sure this is dereferencable and all.
                 let (size, align) = self.ecx.size_and_align_of(meta, layout)?
                     // for the purpose of validity, consider foreign types to have
                     // alignment and size determined by the layout (size will be 0,
                     // alignment should take attributes into account).
                     .unwrap_or_else(|| (layout.size, layout.align.abi));
-                match self.ecx.memory.check_align(ptr, align) {
-                    Ok(_) => {},
+                let ptr: Option<_> = match self.ecx.memory.check_ptr_access(ptr, size, align) {
+                    Ok(ptr) => ptr,
                     Err(err) => {
-                        info!("{:?} is not aligned to {:?}", ptr, align);
+                        info!(
+                            "{:?} did not pass access check for size {:?}, align {:?}",
+                            ptr, size, align
+                        );
                         match err.kind {
                             InterpError::InvalidNullPointerUsage =>
                                 return validation_failure!("NULL reference", self.path),
@@ -401,23 +412,23 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 return validation_failure!(format!("unaligned reference \
                                     (required {} byte alignment but found {})",
                                     required.bytes(), has.bytes()), self.path),
+                            InterpError::ReadBytesAsPointer =>
+                                return validation_failure!(
+                                    "integer pointer in non-ZST reference",
+                                    self.path
+                                ),
                             _ =>
                                 return validation_failure!(
-                                    "dangling (out-of-bounds) reference (might be NULL at \
-                                        run-time)",
+                                    "dangling (not entirely in bounds) reference",
                                     self.path
                                 ),
                         }
                     }
-                }
+                };
                 // Recursive checking
                 if let Some(ref mut ref_tracking) = self.ref_tracking_for_consts {
                     let place = self.ecx.ref_to_mplace(value)?;
-                    // FIXME(RalfJ): check ZST for inbound pointers
-                    if size != Size::ZERO {
-                        // Non-ZST also have to be dereferencable
-                        let ptr = try_validation!(place.ptr.to_ptr(),
-                            "integer pointer in non-ZST reference", self.path);
+                    if let Some(ptr) = ptr { // not a ZST
                         // Skip validation entirely for some external statics
                         let alloc_kind = self.ecx.tcx.alloc_map.lock().get(ptr.alloc_id);
                         if let Some(GlobalAlloc::Static(did)) = alloc_kind {
@@ -429,18 +440,10 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 return Ok(());
                             }
                         }
-                        // Maintain the invariant that the place we are checking is
-                        // already verified to be in-bounds.
-                        try_validation!(
-                            self.ecx.memory
-                                .get(ptr.alloc_id)?
-                                .check_bounds(self.ecx, ptr, size, CheckInAllocMsg::InboundsTest),
-                            "dangling (not entirely in bounds) reference", self.path);
                     }
                     // Check if we have encountered this pointer+layout combination
-                    // before.  Proceed recursively even for integer pointers, no
-                    // reason to skip them! They are (recursively) valid for some ZST,
-                    // but not for others (e.g., `!` is a ZST).
+                    // before.  Proceed recursively even for ZST, no
+                    // reason to skip them! E.g., `!` is a ZST and we want to validate it.
                     let path = &self.path;
                     ref_tracking.track(place, || {
                         // We need to clone the path anyway, make sure it gets created
@@ -499,14 +502,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         let bits = match value.to_bits_or_ptr(op.layout.size, self.ecx) {
             Err(ptr) => {
                 if lo == 1 && hi == max_hi {
-                    // only NULL is not allowed.
-                    // We can call `check_align` to check non-NULL-ness, but have to also look
-                    // for function pointers.
-                    let non_null =
-                        self.ecx.memory.check_align(
-                            Scalar::Ptr(ptr), Align::from_bytes(1).unwrap()
-                        ).is_ok();
-                    if !non_null {
+                    // Only NULL is the niche.  So make sure the ptr is NOT NULL.
+                    if self.ecx.memory.ptr_may_be_null(ptr) {
                         // These conditions are just here to improve the diagnostics so we can
                         // differentiate between null pointers and dangling pointers
                         if self.ref_tracking_for_consts.is_some() &&

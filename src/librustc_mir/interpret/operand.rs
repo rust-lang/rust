@@ -9,9 +9,9 @@ use rustc::ty::layout::{
 };
 
 use rustc::mir::interpret::{
-    GlobalId, AllocId, CheckInAllocMsg,
+    GlobalId, AllocId,
     ConstValue, Pointer, Scalar,
-    InterpResult, InterpError, InboundsCheck,
+    InterpResult, InterpError,
     sign_extend, truncate,
 };
 use super::{
@@ -226,19 +226,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
         }
         let (ptr, ptr_align) = mplace.to_scalar_ptr_align();
 
-        if mplace.layout.is_zst() {
-            // Not all ZSTs have a layout we would handle below, so just short-circuit them
-            // all here.
-            self.memory.check_align(ptr, ptr_align)?;
-            return Ok(Some(ImmTy {
+        let ptr = match self.memory.check_ptr_access(ptr, mplace.layout.size, ptr_align)? {
+            Some(ptr) => ptr,
+            None => return Ok(Some(ImmTy { // zero-sized type
                 imm: Immediate::Scalar(Scalar::zst().into()),
                 layout: mplace.layout,
-            }));
-        }
+            })),
+        };
 
-        // check for integer pointers before alignment to report better errors
-        let ptr = self.force_ptr(ptr)?;
-        self.memory.check_align(ptr.into(), ptr_align)?;
         match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
                 let scalar = self.memory
@@ -250,17 +245,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 }))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
+                // We checked `ptr_align` above, so all fields will have the alignment they need.
+                // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
+                // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
                 let (a, b) = (&a.value, &b.value);
                 let (a_size, b_size) = (a.size(self), b.size(self));
                 let a_ptr = ptr;
                 let b_offset = a_size.align_to(b.align(self).abi);
-                assert!(b_offset.bytes() > 0); // we later use the offset to test which field to use
+                assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
                 let b_ptr = ptr.offset(b_offset, self)?;
                 let a_val = self.memory
                     .get(ptr.alloc_id)?
                     .read_scalar(self, a_ptr, a_size)?;
-                let b_align = ptr_align.restrict_for_offset(b_offset);
-                self.memory.check_align(b_ptr.into(), b_align)?;
                 let b_val = self.memory
                     .get(ptr.alloc_id)?
                     .read_scalar(self, b_ptr, b_size)?;
@@ -639,8 +635,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     Err(ptr) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
-                            self.memory.check_bounds_ptr(ptr, InboundsCheck::MaybeDead,
-                                                         CheckInAllocMsg::NullPointerTest).is_ok();
+                            !self.memory.ptr_may_be_null(ptr);
                         if !ptr_valid {
                             return err!(InvalidDiscriminant(raw_discr.erase_tag().into()));
                         }

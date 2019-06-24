@@ -19,8 +19,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
     InterpResult, Scalar, InterpError, GlobalAlloc, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg, InboundsCheck,
-    InterpError::ValidationFailure,
+    Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -42,6 +41,17 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
             MemoryKind::Machine(k) => k.may_leak()
         }
     }
+}
+
+/// Used by `get_size_and_align` to indicate whether the allocation needs to be live.
+#[derive(Debug, Copy, Clone)]
+pub enum AllocCheck {
+    /// Allocation must be live and not a function pointer.
+    Dereferencable,
+    /// Allocations needs to be live, but may be a function pointer.
+    Live,
+    /// Allocation may be dead.
+    MaybeDead,
 }
 
 // `Memory` has to depend on the `Machine` because some of its operations
@@ -248,63 +258,93 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// Checks that the pointer is aligned AND non-NULL. This supports ZSTs in two ways:
-    /// You can pass a scalar, and a `Pointer` does not have to actually still be allocated.
-    pub fn check_align(
+    /// Check if the given scalar is allowed to do a memory access of given `size`
+    /// and `align`. On success, returns `None` for zero-sized accesses (where
+    /// nothing else is left to do) and a `Pointer` to use for the actual access otherwise.
+    /// Crucially, if the input is a `Pointer`, we will test it for liveness
+    /// *even of* the size is 0.
+    ///
+    /// Everyone accessing memory based on a `Scalar` should use this method to get the
+    /// `Pointer` they need. And even if you already have a `Pointer`, call this method
+    /// to make sure it is sufficiently aligned and not dangling.  Not doing that may
+    /// cause ICEs.
+    pub fn check_ptr_access(
         &self,
-        ptr: Scalar<M::PointerTag>,
-        required_align: Align
-    ) -> InterpResult<'tcx> {
-        // Check non-NULL/Undef, extract offset
-        let (offset, alloc_align) = match ptr.to_bits_or_ptr(self.pointer_size(), self) {
-            Err(ptr) => {
-                // check this is not NULL -- which we can ensure only if this is in-bounds
-                // of some (potentially dead) allocation.
-                let align = self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead,
-                                                  CheckInAllocMsg::NullPointerTest)?;
-                (ptr.offset.bytes(), align)
+        sptr: Scalar<M::PointerTag>,
+        size: Size,
+        align: Align,
+    ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
+        fn check_offset_align(offset: u64, align: Align) -> InterpResult<'static> {
+            if offset % align.bytes() == 0 {
+                Ok(())
+            } else {
+                // The biggest power of two through which `offset` is divisible.
+                let offset_pow2 = 1 << offset.trailing_zeros();
+                err!(AlignmentCheckFailed {
+                    has: Align::from_bytes(offset_pow2).unwrap(),
+                    required: align,
+                })
             }
-            Ok(data) => {
-                // check this is not NULL
-                if data == 0 {
+        }
+
+        // Normalize to a `Pointer` if we definitely need one.
+        let normalized = if size.bytes() == 0 {
+            // Can be an integer, just take what we got.  We do NOT `force_bits` here;
+            // if this is already a `Pointer` we want to do the bounds checks!
+            sptr
+        } else {
+            // A "real" access, we must get a pointer.
+            Scalar::Ptr(self.force_ptr(sptr)?)
+        };
+        Ok(match normalized.to_bits_or_ptr(self.pointer_size(), self) {
+            Ok(bits) => {
+                let bits = bits as u64; // it's ptr-sized
+                assert!(size.bytes() == 0);
+                // Must be non-NULL and aligned.
+                if bits == 0 {
                     return err!(InvalidNullPointerUsage);
                 }
-                // the "base address" is 0 and hence always aligned
-                (data as u64, required_align)
+                check_offset_align(bits, align)?;
+                None
             }
-        };
-        // Check alignment
-        if alloc_align.bytes() < required_align.bytes() {
-            return err!(AlignmentCheckFailed {
-                has: alloc_align,
-                required: required_align,
-            });
-        }
-        if offset % required_align.bytes() == 0 {
-            Ok(())
-        } else {
-            let has = offset % required_align.bytes();
-            err!(AlignmentCheckFailed {
-                has: Align::from_bytes(has).unwrap(),
-                required: required_align,
-            })
-        }
+            Err(ptr) => {
+                let (allocation_size, alloc_align) =
+                    self.get_size_and_align(ptr.alloc_id, AllocCheck::Dereferencable)?;
+                // Test bounds. This also ensures non-NULL.
+                // It is sufficient to check this for the end pointer. The addition
+                // checks for overflow.
+                let end_ptr = ptr.offset(size, self)?;
+                end_ptr.check_in_alloc(allocation_size, CheckInAllocMsg::MemoryAccessTest)?;
+                // Test align. Check this last; if both bounds and alignment are violated
+                // we want the error to be about the bounds.
+                if alloc_align.bytes() < align.bytes() {
+                    // The allocation itself is not aligned enough.
+                    // FIXME: Alignment check is too strict, depending on the base address that
+                    // got picked we might be aligned even if this check fails.
+                    // We instead have to fall back to converting to an integer and checking
+                    // the "real" alignment.
+                    return err!(AlignmentCheckFailed {
+                        has: alloc_align,
+                        required: align,
+                    });
+                }
+                check_offset_align(ptr.offset.bytes(), align)?;
+
+                // We can still be zero-sized in this branch, in which case we have to
+                // return `None`.
+                if size.bytes() == 0 { None } else { Some(ptr) }
+            }
+        })
     }
 
-    /// Checks if the pointer is "in-bounds". Notice that a pointer pointing at the end
-    /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
-    /// in-bounds!  This follows C's/LLVM's rules.
-    /// If you want to check bounds before doing a memory access, better first obtain
-    /// an `Allocation` and call `check_bounds`.
-    pub fn check_bounds_ptr(
+    /// Test if the pointer might be NULL.
+    pub fn ptr_may_be_null(
         &self,
         ptr: Pointer<M::PointerTag>,
-        liveness: InboundsCheck,
-        msg: CheckInAllocMsg,
-    ) -> InterpResult<'tcx, Align> {
-        let (allocation_size, align) = self.get_size_and_align(ptr.alloc_id, liveness)?;
-        ptr.check_in_alloc(allocation_size, msg)?;
-        Ok(align)
+    ) -> bool {
+        let (size, _align) = self.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)
+            .expect("alloc info with MaybeDead cannot fail");
+        ptr.check_in_alloc(size, CheckInAllocMsg::NullPointerTest).is_err()
     }
 }
 
@@ -443,13 +483,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
-    /// Obtain the size and alignment of an allocation, even if that allocation has been deallocated
+    /// Obtain the size and alignment of an allocation, even if that allocation has
+    /// been deallocated.
     ///
-    /// If `liveness` is `InboundsCheck::MaybeDead`, this function always returns `Ok`
+    /// If `liveness` is `AllocCheck::MaybeDead`, this function always returns `Ok`.
     pub fn get_size_and_align(
         &self,
         id: AllocId,
-        liveness: InboundsCheck,
+        liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
         if let Ok(alloc) = self.get(id) {
             return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
@@ -459,7 +500,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let alloc = self.tcx.alloc_map.lock().get(id);
         // Could also be a fn ptr or extern static
         match alloc {
-            Some(GlobalAlloc::Function(..)) => Ok((Size::ZERO, Align::from_bytes(1).unwrap())),
+            Some(GlobalAlloc::Function(..)) => {
+                if let AllocCheck::Dereferencable = liveness {
+                    // The caller requested no function pointers.
+                    err!(DerefFunctionPointer)
+                } else {
+                    Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
+                }
+            }
             // `self.get` would also work, but can cause cycles if a static refers to itself
             Some(GlobalAlloc::Static(did)) => {
                 // The only way `get` couldn't have worked here is if this is an extern static
@@ -471,17 +519,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
             _ => {
                 if let Ok(alloc) = self.get(id) {
-                    return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
+                    Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align))
                 }
-                match liveness {
-                    InboundsCheck::MaybeDead => {
-                        // Must be a deallocated pointer
-                        self.dead_alloc_map.get(&id).cloned().ok_or_else(||
-                            ValidationFailure("allocation missing in dead_alloc_map".to_string())
-                                .into()
-                        )
-                    },
-                    InboundsCheck::Live => err!(DanglingPointerDeref),
+                else if let AllocCheck::MaybeDead = liveness {
+                    // Deallocated pointers are allowed, we should be able to find
+                    // them in the map.
+                    Ok(*self.dead_alloc_map.get(&id)
+                        .expect("deallocated pointers should all be recorded in `dead_alloc_map`"))
+                } else {
+                    err!(DanglingPointerDeref)
                 }
             },
         }
@@ -629,24 +675,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 }
 
-/// Byte Accessors
+/// Reading and writing.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
+    /// Performs appropriate bounds checks.
     pub fn read_bytes(
         &self,
         ptr: Scalar<M::PointerTag>,
         size: Size,
     ) -> InterpResult<'tcx, &[u8]> {
-        if size.bytes() == 0 {
-            Ok(&[])
-        } else {
-            let ptr = self.force_ptr(ptr)?;
-            self.get(ptr.alloc_id)?.get_bytes(self, ptr, size)
-        }
+        let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(1).unwrap())? {
+            Some(ptr) => ptr,
+            None => return Ok(&[]), // zero-sized access
+        };
+        self.get(ptr.alloc_id)?.get_bytes(self, ptr, size)
     }
-}
 
-/// Reading and writing.
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
+    /// Performs appropriate bounds checks.
     pub fn copy(
         &mut self,
         src: Scalar<M::PointerTag>,
@@ -659,6 +703,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         self.copy_repeatedly(src, src_align, dest, dest_align, size, 1, nonoverlapping)
     }
 
+    /// Performs appropriate bounds checks.
     pub fn copy_repeatedly(
         &mut self,
         src: Scalar<M::PointerTag>,
@@ -669,15 +714,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         length: u64,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
-        self.check_align(src, src_align)?;
-        self.check_align(dest, dest_align)?;
-        if size.bytes() == 0 {
-            // Nothing to do for ZST, other than checking alignment and
-            // non-NULLness which already happened.
-            return Ok(());
-        }
-        let src = self.force_ptr(src)?;
-        let dest = self.force_ptr(dest)?;
+        // We need to check *both* before early-aborting due to the size being 0.
+        let (src, dest) = match (self.check_ptr_access(src, size, src_align)?,
+                self.check_ptr_access(dest, size * length, dest_align)?)
+        {
+            (Some(src), Some(dest)) => (src, dest),
+            // One of the two sizes is 0.
+            _ => return Ok(()),
+        };
 
         // first copy the relocations to a temporary buffer, because
         // `get_bytes_mut` will clear the relocations, which is correct,

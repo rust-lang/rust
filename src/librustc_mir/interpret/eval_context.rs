@@ -442,7 +442,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                 Ok(Some((size.align_to(align), align)))
             }
             ty::Dynamic(..) => {
-                let vtable = metadata.expect("dyn trait fat ptr must have vtable").to_ptr()?;
+                let vtable = metadata.expect("dyn trait fat ptr must have vtable");
                 // the second entry in the vtable is the dynamic size of the object.
                 Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
             }

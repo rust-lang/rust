@@ -425,12 +425,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     }
                 };
                 // Find and consult vtable
-                let vtable = receiver_place.vtable()?;
-                self.memory.check_align(vtable.into(), self.tcx.data_layout.pointer_align.abi)?;
-                let fn_ptr = self.memory.get(vtable.alloc_id)?.read_ptr_sized(
-                    self,
-                    vtable.offset(ptr_size * (idx as u64 + 3), self)?,
-                )?.to_ptr()?;
+                let vtable = receiver_place.vtable();
+                let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
+                let vtable_slot = self.memory.check_ptr_access(
+                    vtable_slot,
+                    ptr_size,
+                    self.tcx.data_layout.pointer_align.abi,
+                )?.expect("cannot be a ZST");
+                let fn_ptr = self.memory.get(vtable_slot.alloc_id)?
+                    .read_ptr_sized(self, vtable_slot)?.to_ptr()?;
                 let instance = self.memory.get_fn(fn_ptr)?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
