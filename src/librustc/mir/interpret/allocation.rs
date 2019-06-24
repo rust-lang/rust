@@ -147,7 +147,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// even when new allocations are pushed to the `HashMap`. `copy_repeatedly` relies
     /// on that.
     ///
-    /// It is the callers responsibility to check bounds and alignment beforehand.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     fn get_bytes_internal(
         &self,
         cx: &impl HasDataLayout,
@@ -174,7 +174,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Check that these bytes are initialized and not pointer bytes, and then return them
     /// as a slice.
     ///
-    /// It is the callers responsibility to check bounds and alignment beforehand.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     #[inline]
     pub fn get_bytes(
         &self,
@@ -189,7 +189,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// It is the caller's responsibility to handle undefined and pointer bytes.
     /// However, this still checks that there are no relocations on the *edges*.
     ///
-    /// It is the callers responsibility to check bounds and alignment beforehand.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     #[inline]
     pub fn get_bytes_with_undef_and_ptr(
         &self,
@@ -204,7 +204,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Just calling this already marks everything as defined and removes relocations,
     /// so be sure to actually put data there!
     ///
-    /// It is the callers responsibility to check bounds and alignment beforehand.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn get_bytes_mut(
         &mut self,
         cx: &impl HasDataLayout,
@@ -271,7 +271,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     /// Writes `src` to the memory starting at `ptr.offset`.
     ///
-    /// It is the callers responsibility to check bounds and alignment beforehand.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn write_bytes(
         &mut self,
         cx: &impl HasDataLayout,
@@ -286,7 +286,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     /// Sets `count` bytes starting at `ptr.offset` with `val`. Basically `memset`.
     ///
-    /// It is the callers responsibility to check bounds and alignment beforehand.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn write_repeat(
         &mut self,
         cx: &impl HasDataLayout,
@@ -309,7 +309,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// * in oder to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
     ///   being valid for ZSTs
     ///
-    /// It is the callers responsibility to check bounds and alignment beforehand.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn read_scalar(
         &self,
         cx: &impl HasDataLayout,
@@ -347,7 +347,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     /// Read a pointer-sized scalar.
     ///
-    /// It is the callers responsibility to check bounds and alignment beforehand.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn read_ptr_sized(
         &self,
         cx: &impl HasDataLayout,
@@ -364,7 +364,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// * in oder to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
     ///   being valid for ZSTs
     ///
-    /// It is the callers responsibility to check bounds and alignment beforehand.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn write_scalar(
         &mut self,
         cx: &impl HasDataLayout,
@@ -406,7 +406,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     /// Write a pointer-sized scalar.
     ///
-    /// It is the callers responsibility to check bounds and alignment beforehand.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn write_ptr_sized(
         &mut self,
         cx: &impl HasDataLayout,
