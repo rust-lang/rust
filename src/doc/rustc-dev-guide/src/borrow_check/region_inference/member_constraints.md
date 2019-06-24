@@ -3,7 +3,7 @@
 A member constraint `'m member of ['c_1..'c_N]` expresses that the
 region `'m` must be *equal* to some **choice regions** `'c_i` (for
 some `i`). These constraints cannot be expressed by users, but they
-arise from `impl Trait` due to its lifetime capture rules. Consinder a
+arise from `impl Trait` due to its lifetime capture rules. Consider a
 function such as the following:
 
 ```rust
