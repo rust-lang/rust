@@ -95,7 +95,7 @@ The guidelines for reviewers are as follows:
 
 ### high-five
 
-Once you have r+ rights, you can also be added to the high-five
+Once you have r+ rights, you can also be added to the [high-five][hi5]
 rotation. high-five is the bot that assigns incoming PRs to
 reviewers. If you are added, you will be randomly selected to review
 PRs. If you find you are assigned a PR that you don't feel comfortable
