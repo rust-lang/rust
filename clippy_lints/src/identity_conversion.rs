@@ -50,8 +50,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                 };
                 if let ExprKind::Call(_, ref args) = e.node {
                     self.try_desugar_arm.push(args[0].hir_id);
-                } else {
-                    return;
                 }
             },
 
