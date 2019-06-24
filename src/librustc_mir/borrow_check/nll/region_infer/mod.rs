@@ -682,7 +682,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // for all UB.
         if choice_regions.len() > 1 {
             let universal_region_relations = self.universal_region_relations.clone();
-            for ub in self.upper_bounds(scc) {
+            let rev_constraint_graph = self.rev_constraint_graph();
+            for ub in self.upper_bounds(scc, &rev_constraint_graph) {
                 debug!("apply_member_constraint: ub={:?}", ub);
                 choice_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
             }
@@ -749,22 +750,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Compute and return the reverse SCC-based constraint graph (lazilly).
     fn upper_bounds(
-        &mut self,
+        &'a mut self,
         scc0: ConstraintSccIndex,
-    ) -> Vec<RegionVid> {
-        // I wanted to return an `impl Iterator` here, but it's
-        // annoying because the `rev_constraint_graph` is in a local
-        // variable. We'd need a "once-cell" or some such thing to let
-        // us borrow it for the right amount of time. -- nikomatsakis
-        let rev_constraint_graph = self.rev_constraint_graph();
+        rev_constraint_graph: &'a VecGraph<ConstraintSccIndex>,
+    ) -> impl Iterator<Item = RegionVid> + 'a {
         let scc_values = &self.scc_values;
         let mut duplicates = FxHashSet::default();
         rev_constraint_graph
             .depth_first_search(scc0)
             .skip(1)
-            .flat_map(|scc1| scc_values.universal_regions_outlived_by(scc1))
-            .filter(|&r| duplicates.insert(r))
-            .collect()
+            .flat_map(move |scc1| scc_values.universal_regions_outlived_by(scc1))
+            .filter(move |&r| duplicates.insert(r))
     }
 
     /// Compute and return the reverse SCC-based constraint graph (lazilly).
