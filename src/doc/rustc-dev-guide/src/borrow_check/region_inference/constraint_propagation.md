@@ -201,7 +201,7 @@ Values(S1) =
 ```
 
 In the code, this work starts in the [`propagate_constraints`]
-function, which iterates over all the SCCs. For each SCC S1, we
+function, which iterates over all the SCCs. For each SCC `S1`, we
 compute its value by first computing the value of its
 successors. Since SCCs form a DAG, we don't have to be conecrned about
 cycles, though we do need to keep a set around to track whether we
