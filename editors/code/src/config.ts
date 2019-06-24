@@ -10,8 +10,8 @@ export type CargoWatchTraceOptions = 'off' | 'error' | 'verbose';
 
 export interface CargoWatchOptions {
     enableOnStartup: CargoWatchStartupOptions;
-    checkArguments: string;
-    checkCommand: string;
+    arguments: string;
+    command: string;
     trace: CargoWatchTraceOptions;
 }
 
