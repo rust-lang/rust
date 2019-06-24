@@ -75,7 +75,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// The "R0 member of [R1..Rn]" constraints, indexed by SCC.
     member_constraints: Rc<MemberConstraintSet<'tcx, ConstraintSccIndex>>,
 
-    /// Records the pick-constraints that we applied to each scc.
+    /// Records the member constraints that we applied to each scc.
     /// This is useful for error reporting. Once constraint
     /// propagation is done, this vector is sorted according to
     /// `member_region_scc`.
@@ -447,7 +447,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Once region solving has completed, this function will return
-    /// the pick-constraints that were applied to the value of a given
+    /// the member constraints that were applied to the value of a given
     /// region `r`. See `AppliedMemberConstraint`.
     fn applied_member_constraints(&self, r: impl ToRegionVid) -> &[AppliedMemberConstraint] {
         let scc = self.constraint_sccs.scc(r.to_region_vid());
@@ -598,7 +598,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        // Now take member constraints into account
+        // Now take member constraints into account. 
         let member_constraints = self.member_constraints.clone();
         for m_c_i in member_constraints.indices(scc_a) {
             self.apply_member_constraint(
@@ -615,7 +615,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
     }
 
-    /// Invoked for each `member R0 of [R1..Rn]` constraint.
+    /// Invoked for each `R0 member of [R1..Rn]` constraint.
     ///
     /// `scc` is the SCC containing R0, and `choice_regions` are the
     /// `R1..Rn` regions -- they are always known to be universal
@@ -659,16 +659,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         assert!(self.scc_universes[scc] == ty::UniverseIndex::ROOT);
         debug_assert!(
             self.scc_values.placeholders_contained_in(scc).next().is_none(),
-            "scc {:?} in a pick-constraint has placeholder value: {:?}",
+            "scc {:?} in a member constraint has placeholder value: {:?}",
             scc,
             self.scc_values.region_value_str(scc),
         );
 
         // The existing value for `scc` is a lower-bound. This will
-        // consist of some set {P} + {LB} of points {P} and
-        // lower-bound free regions {LB}. As each choice region O is a
-        // free region, it will outlive the points. But we can only
-        // consider the option O if O: LB.
+        // consist of some set `{P} + {LB}` of points `{P}` and
+        // lower-bound free regions `{LB}`. As each choice region `O`
+        // is a free region, it will outlive the points. But we can
+        // only consider the option `O` if `O: LB`.
         choice_regions.retain(|&o_r| {
             self.scc_values
                 .universal_regions_outlived_by(scc)
@@ -677,8 +677,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("apply_member_constraint: after lb, choice_regions={:?}", choice_regions);
 
         // Now find all the *upper bounds* -- that is, each UB is a
-        // free region that must outlive the member region R0 (`UB:
-        // R0`). Therefore, we need only keep an option O if `UB: O`
+        // free region that must outlive the member region `R0` (`UB:
+        // R0`). Therefore, we need only keep an option `O` if `UB: O`
         // for all UB.
         if choice_regions.len() > 1 {
             let universal_region_relations = self.universal_region_relations.clone();
@@ -755,7 +755,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // I wanted to return an `impl Iterator` here, but it's
         // annoying because the `rev_constraint_graph` is in a local
         // variable. We'd need a "once-cell" or some such thing to let
-        // us borrow it for the right amount of time.
+        // us borrow it for the right amount of time. -- nikomatsakis
         let rev_constraint_graph = self.rev_constraint_graph();
         let scc_values = &self.scc_values;
         let mut duplicates = FxHashSet::default();

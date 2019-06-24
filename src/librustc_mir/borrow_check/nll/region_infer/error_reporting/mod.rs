@@ -221,7 +221,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .outgoing_edges(r, &self.constraints, fr_static);
 
 
-            // But pick-constraints can also give rise to `'r: 'x`
+            // But member constraints can also give rise to `'r: 'x`
             // edges that were not part of the graph initially, so
             // watch out for those.
             let outgoing_edges_from_picks = self.applied_member_constraints(r)

@@ -8,18 +8,18 @@ use std::ops::Index;
 use syntax_pos::Span;
 
 /// Compactly stores a set of `R0 member of [R1...Rn]` constraints,
-/// indexed by the region R0.
+/// indexed by the region `R0`.
 crate struct MemberConstraintSet<'tcx, R>
 where
     R: Copy + Hash + Eq,
 {
-    /// Stores the first "member" constraint for a given R0. This is an
+    /// Stores the first "member" constraint for a given `R0`. This is an
     /// index into the `constraints` vector below.
     first_constraints: FxHashMap<R, NllMemberConstraintIndex>,
 
     /// Stores the data about each `R0 member of [R1..Rn]` constraint.
     /// These are organized into a linked list, so each constraint
-    /// contains the index of the next constraint with the same R0.
+    /// contains the index of the next constraint with the same `R0`.
     constraints: IndexVec<NllMemberConstraintIndex, NllMemberConstraint<'tcx>>,
 
     /// Stores the `R1..Rn` regions for *all* sets. For any given
@@ -38,10 +38,10 @@ crate struct NllMemberConstraint<'tcx> {
     /// The span where the hidden type was instantiated.
     crate definition_span: Span,
 
-    /// The hidden type in which R0 appears. (Used in error reporting.)
+    /// The hidden type in which `R0` appears. (Used in error reporting.)
     crate hidden_ty: Ty<'tcx>,
 
-    /// The region R0.
+    /// The region `R0`.
     crate member_region_vid: ty::RegionVid,
 
     /// Index of `R1` in `choice_regions` vector from `MemberConstraintSet`.
@@ -68,6 +68,15 @@ impl Default for MemberConstraintSet<'tcx, ty::RegionVid> {
 }
 
 impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
+    /// Pushes a member constraint into the set.
+    ///
+    /// The input member constraint `m_c` is in the form produced by
+    /// the the `rustc::infer` code.
+    ///
+    /// The `to_region_vid` callback fn is used to convert the regions
+    /// within into `RegionVid` format -- it typically consults the
+    /// `UniversalRegions` data structure that is known to the caller
+    /// (but which this code is unaware of).
     crate fn push_constraint(
         &mut self,
         m_c: &MemberConstraint<'tcx>,
@@ -93,14 +102,14 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
     }
 }
 
-impl<'tcx, R1> MemberConstraintSet<'tcx, R1>
+impl<R1> MemberConstraintSet<'tcx, R1>
 where
     R1: Copy + Hash + Eq,
 {
     /// Remap the "member region" key using `map_fn`, producing a new
-    /// pick-constraint set.  This is used in the NLL code to map from
+    /// member constraint set.  This is used in the NLL code to map from
     /// the original `RegionVid` to an scc index. In some cases, we
-    /// may have multiple R1 values mapping to the same R2 key -- that
+    /// may have multiple `R1` values mapping to the same `R2` key -- that
     /// is ok, the two sets will be merged.
     crate fn into_mapped<R2>(
         self,
@@ -112,12 +121,12 @@ where
         // We can re-use most of the original data, just tweaking the
         // linked list links a bit.
         //
-        // For example if we had two keys Ra and Rb that both now wind
-        // up mapped to the same key S, we would append the linked
-        // list for Ra onto the end of the linked list for Rb (or vice
-        // versa) -- this basically just requires rewriting the final
-        // link from one list to point at the othe other (see
-        // `append_list`).
+        // For example if we had two keys `Ra` and `Rb` that both now
+        // wind up mapped to the same key `S`, we would append the
+        // linked list for `Ra` onto the end of the linked list for
+        // `Rb` (or vice versa) -- this basically just requires
+        // rewriting the final link from one list to point at the othe
+        // other (see `append_list`).
 
         let MemberConstraintSet { first_constraints, mut constraints, choice_regions } = self;
 
@@ -140,7 +149,7 @@ where
     }
 }
 
-impl<'tcx, R> MemberConstraintSet<'tcx, R>
+impl<R> MemberConstraintSet<'tcx, R>
 where
     R: Copy + Hash + Eq,
 {
@@ -169,7 +178,7 @@ where
     }
 
     /// Returns the "choice regions" for a given member
-    /// constraint. This is the R1..Rn from a constraint like:
+    /// constraint. This is the `R1..Rn` from a constraint like:
     ///
     /// ```
     /// R0 member of [R1..Rn]

@@ -27,7 +27,7 @@ impl<N: Idx> VecGraph<N> {
 
         let num_edges = edge_pairs.len();
 
-        // Store the *target* of each edge into `edge_targets`
+        // Store the *target* of each edge into `edge_targets`.
         let edge_targets: Vec<N> = edge_pairs.iter().map(|&(_, target)| target).collect();
 
         // Create the *edge starts* array. We are iterating over over
