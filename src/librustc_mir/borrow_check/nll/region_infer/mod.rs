@@ -598,7 +598,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        // Now take member constraints into account. 
+        // Now take member constraints into account.
         let member_constraints = self.member_constraints.clone();
         for m_c_i in member_constraints.indices(scc_a) {
             self.apply_member_constraint(
@@ -1560,7 +1560,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let choice_regions = member_constraints.choice_regions(m_c_i);
             debug!("check_member_constraint: choice_regions={:?}", choice_regions);
 
-            // did the pick-region wind up equal to any of the option regions?
+            // Did the member region wind up equal to any of the option regions?
             if let Some(o) = choice_regions.iter().find(|&&o_r| {
                 self.eval_equal(o_r, m_c.member_region_vid)
             }) {
@@ -1568,7 +1568,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 continue;
             }
 
-            // if not, report an error
+            // If not, report an error.
             let region_scope_tree = &infcx.tcx.region_scope_tree(mir_def_id);
             let member_region = infcx.tcx.mk_region(ty::ReVar(member_region_vid));
             opaque_types::unexpected_hidden_region_diagnostic(

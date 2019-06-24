@@ -10,7 +10,7 @@ trait Trait<'a, 'b> { }
 impl<T> Trait<'_, '_> for T { }
 
 // Here we wind up selecting `'a` and `'b` in the hidden type because
-// those are the types that appear inth e original values.
+// those are the types that appear in the original values.
 
 existential type Foo<'a, 'b>: Trait<'a, 'b>;
 

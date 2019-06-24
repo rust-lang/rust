@@ -9,7 +9,7 @@ trait Trait<'a, 'b> { }
 impl<T> Trait<'_, '_> for T { }
 
 // Here we wind up selecting `'a` and `'b` in the hidden type because
-// those are the types that appear inth e original values.
+// those are the types that appear in the original values.
 
 fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
     // In this simple case, you have a hidden type `(&'0 u8, &'1 u8)` and constraints like

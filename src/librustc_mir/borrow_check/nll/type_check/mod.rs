@@ -2519,9 +2519,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let closure_constraints = QueryRegionConstraints {
                 outlives: closure_region_requirements.apply_requirements(tcx, def_id, substs),
 
-                // Presently, closures never propagate pick
+                // Presently, closures never propagate member
                 // constraints to their parents -- they are enforced
-                // locally.  This is largely a non-issue as pick
+                // locally.  This is largely a non-issue as member
                 // constraints only come from `-> impl Trait` and
                 // friends which don't appear (thus far...) in
                 // closures.

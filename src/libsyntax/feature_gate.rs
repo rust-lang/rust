@@ -570,7 +570,7 @@ declare_features! (
     // Allows explicit discriminants on non-unit enum variants.
     (active, arbitrary_enum_discriminant, "1.37.0", Some(60553), None),
 
-    // Allows impl trait with multiple unrelated lifetimes
+    // Allows `impl Trait` with multiple unrelated lifetimes.
     (active, member_constraints, "1.37.0", Some(61977), None),
 
     // -------------------------------------------------------------------------
