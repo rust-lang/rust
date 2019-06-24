@@ -153,19 +153,19 @@ impl Constraint<'_> {
 /// ```
 #[derive(Debug, Clone, HashStable)]
 pub struct MemberConstraint<'tcx> {
-    /// the def-id of the opaque type causing this constraint: used for error reporting
+    /// The `DefId` of the opaque type causing this constraint: used for error reporting.
     pub opaque_type_def_id: DefId,
 
-    /// the span where the hidden type was instantiated
+    /// The span where the hidden type was instantiated.
     pub definition_span: Span,
 
-    /// the hidden type in which `member_region` appears: used for error reporting
+    /// The hidden type in which `member_region` appears: used for error reporting.
     pub hidden_ty: Ty<'tcx>,
 
-    /// the region R0
+    /// The region `R0`.
     pub member_region: Region<'tcx>,
 
-    /// the options O1..On
+    /// The options `O1..On`.
     pub choice_regions: Lrc<Vec<Region<'tcx>>>,
 }
 
