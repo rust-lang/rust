@@ -172,7 +172,7 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn is_eof(&self) -> bool {
+    crate fn is_eof(&self) -> bool {
         match *self {
             Token::Eof => true,
             _ => false,
@@ -223,13 +223,13 @@ fn buf_str(buf: &[BufEntry], left: usize, right: usize, lim: usize) -> String {
 }
 
 #[derive(Copy, Clone)]
-pub enum PrintStackBreak {
+crate enum PrintStackBreak {
     Fits,
     Broken(Breaks),
 }
 
 #[derive(Copy, Clone)]
-pub struct PrintStackElem {
+crate struct PrintStackElem {
     offset: isize,
     pbreak: PrintStackBreak
 }
@@ -386,7 +386,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    pub fn check_stream(&mut self) -> io::Result<()> {
+    crate fn check_stream(&mut self) -> io::Result<()> {
         debug!("check_stream Vec<{}, {}> with left_total={}, right_total={}",
                self.left, self.right, self.left_total, self.right_total);
         if self.right_total - self.left_total > self.space {
@@ -405,24 +405,24 @@ impl<'a> Printer<'a> {
         Ok(())
     }
 
-    pub fn scan_push(&mut self, x: usize) {
+    crate fn scan_push(&mut self, x: usize) {
         debug!("scan_push {}", x);
         self.scan_stack.push_front(x);
     }
 
-    pub fn scan_pop(&mut self) -> usize {
+    crate fn scan_pop(&mut self) -> usize {
         self.scan_stack.pop_front().unwrap()
     }
 
-    pub fn scan_top(&mut self) -> usize {
+    crate fn scan_top(&mut self) -> usize {
         *self.scan_stack.front().unwrap()
     }
 
-    pub fn scan_pop_bottom(&mut self) -> usize {
+    crate fn scan_pop_bottom(&mut self) -> usize {
         self.scan_stack.pop_back().unwrap()
     }
 
-    pub fn advance_right(&mut self) {
+    crate fn advance_right(&mut self) {
         self.right += 1;
         self.right %= self.buf_max_len;
         // Extend the buf if necessary.
@@ -432,7 +432,7 @@ impl<'a> Printer<'a> {
         assert_ne!(self.right, self.left);
     }
 
-    pub fn advance_left(&mut self) -> io::Result<()> {
+    crate fn advance_left(&mut self) -> io::Result<()> {
         debug!("advance_left Vec<{},{}>, sizeof({})={}", self.left, self.right,
                self.left, self.buf[self.left].size);
 
@@ -467,7 +467,7 @@ impl<'a> Printer<'a> {
         Ok(())
     }
 
-    pub fn check_stack(&mut self, k: isize) {
+    crate fn check_stack(&mut self, k: isize) {
         if !self.scan_stack.is_empty() {
             let x = self.scan_top();
             match self.buf[x].token {
@@ -495,7 +495,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    pub fn print_newline(&mut self, amount: isize) -> io::Result<()> {
+    crate fn print_newline(&mut self, amount: isize) -> io::Result<()> {
         debug!("NEWLINE {}", amount);
         let ret = writeln!(self.out);
         self.pending_indentation = 0;
@@ -503,12 +503,12 @@ impl<'a> Printer<'a> {
         ret
     }
 
-    pub fn indent(&mut self, amount: isize) {
+    crate fn indent(&mut self, amount: isize) {
         debug!("INDENT {}", amount);
         self.pending_indentation += amount;
     }
 
-    pub fn get_top(&mut self) -> PrintStackElem {
+    crate fn get_top(&mut self) -> PrintStackElem {
         match self.print_stack.last() {
             Some(el) => *el,
             None => PrintStackElem {
@@ -518,7 +518,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    pub fn print_begin(&mut self, b: BeginToken, l: isize) -> io::Result<()> {
+    crate fn print_begin(&mut self, b: BeginToken, l: isize) -> io::Result<()> {
         if l > self.space {
             let col = self.margin - self.space + b.offset;
             debug!("print Begin -> push broken block at col {}", col);
@@ -536,7 +536,7 @@ impl<'a> Printer<'a> {
         Ok(())
     }
 
-    pub fn print_end(&mut self) -> io::Result<()> {
+    crate fn print_end(&mut self) -> io::Result<()> {
         debug!("print End -> pop End");
         let print_stack = &mut self.print_stack;
         assert!(!print_stack.is_empty());
@@ -544,7 +544,7 @@ impl<'a> Printer<'a> {
         Ok(())
     }
 
-    pub fn print_break(&mut self, b: BreakToken, l: isize) -> io::Result<()> {
+    crate fn print_break(&mut self, b: BreakToken, l: isize) -> io::Result<()> {
         let top = self.get_top();
         match top.pbreak {
             PrintStackBreak::Fits => {
@@ -578,7 +578,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    pub fn print_string(&mut self, s: Cow<'static, str>, len: isize) -> io::Result<()> {
+    crate fn print_string(&mut self, s: Cow<'static, str>, len: isize) -> io::Result<()> {
         debug!("print String({})", s);
         // assert!(len <= space);
         self.space -= len;
@@ -603,7 +603,7 @@ impl<'a> Printer<'a> {
         write!(self.out, "{}", s)
     }
 
-    pub fn print(&mut self, token: Token, l: isize) -> io::Result<()> {
+    crate fn print(&mut self, token: Token, l: isize) -> io::Result<()> {
         debug!("print {} {} (remaining line space={})", token, l,
                self.space);
         debug!("{}", buf_str(&self.buf,
@@ -625,7 +625,7 @@ impl<'a> Printer<'a> {
     // Convenience functions to talk to the printer.
 
     /// "raw box"
-    pub fn rbox(&mut self, indent: usize, b: Breaks) -> io::Result<()> {
+    crate fn rbox(&mut self, indent: usize, b: Breaks) -> io::Result<()> {
         self.pretty_print_begin(BeginToken {
             offset: indent as isize,
             breaks: b
@@ -633,7 +633,7 @@ impl<'a> Printer<'a> {
     }
 
     /// Inconsistent breaking box
-    pub fn ibox(&mut self, indent: usize) -> io::Result<()> {
+    crate fn ibox(&mut self, indent: usize) -> io::Result<()> {
         self.rbox(indent, Breaks::Inconsistent)
     }
 
@@ -649,7 +649,7 @@ impl<'a> Printer<'a> {
         })
     }
 
-    pub fn end(&mut self) -> io::Result<()> {
+    crate fn end(&mut self) -> io::Result<()> {
         self.pretty_print_end()
     }
 
@@ -667,7 +667,7 @@ impl<'a> Printer<'a> {
         self.break_offset(n, 0)
     }
 
-    pub fn zerobreak(&mut self) -> io::Result<()> {
+    crate fn zerobreak(&mut self) -> io::Result<()> {
         self.spaces(0)
     }
 
@@ -683,7 +683,7 @@ impl<'a> Printer<'a> {
         Token::Break(BreakToken {offset: off, blank_space: SIZE_INFINITY})
     }
 
-    pub fn hardbreak_tok() -> Token {
+    crate fn hardbreak_tok() -> Token {
         Self::hardbreak_tok_offset(0)
     }
 }
