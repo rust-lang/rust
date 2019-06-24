@@ -37,7 +37,7 @@ the type of `foo`   the type `bar` expects
 We handle this sort of subtyping by taking the variables that are
 bound in the supertype and replacing them with
 [universally quantified](../appendix/background.html#quantified)
-representatives, written like `!1`. We call these regions "placeholder
+representatives, denoted like `!1` here. We call these regions "placeholder
 regions" – they represent, basically, "some unknown region".
 
 Once we've done that replacement, we have the following relation:
