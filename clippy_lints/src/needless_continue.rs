@@ -210,9 +210,8 @@ where
     F: FnMut(&ast::Block, Option<&ast::Label>),
 {
     if let ast::ExprKind::While(_, loop_block, label)
-        | ast::ExprKind::ForLoop(_, _, loop_block, label)
-        | ast::ExprKind::Loop(loop_block, label)
-        = &expr.node
+    | ast::ExprKind::ForLoop(_, _, loop_block, label)
+    | ast::ExprKind::Loop(loop_block, label) = &expr.node
     {
         func(loop_block, label.as_ref());
     }
