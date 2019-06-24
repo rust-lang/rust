@@ -1,5 +1,5 @@
 error: literal out of range for `i8`
-  --> $DIR/lint-type-overflow2.rs:8:20
+  --> $DIR/lint-type-overflow2.rs:7:20
    |
 LL |     let x2: i8 = --128;
    |                    ^^^
@@ -11,25 +11,25 @@ LL | #![deny(overflowing_literals)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: literal out of range for `f32`
-  --> $DIR/lint-type-overflow2.rs:10:14
+  --> $DIR/lint-type-overflow2.rs:9:14
    |
 LL |     let x = -3.40282357e+38_f32;
    |              ^^^^^^^^^^^^^^^^^^
 
 error: literal out of range for `f32`
-  --> $DIR/lint-type-overflow2.rs:11:14
+  --> $DIR/lint-type-overflow2.rs:10:14
    |
 LL |     let x =  3.40282357e+38_f32;
    |              ^^^^^^^^^^^^^^^^^^
 
 error: literal out of range for `f64`
-  --> $DIR/lint-type-overflow2.rs:12:14
+  --> $DIR/lint-type-overflow2.rs:11:14
    |
 LL |     let x = -1.7976931348623159e+308_f64;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: literal out of range for `f64`
-  --> $DIR/lint-type-overflow2.rs:13:14
+  --> $DIR/lint-type-overflow2.rs:12:14
    |
 LL |     let x =  1.7976931348623159e+308_f64;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
