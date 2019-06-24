@@ -178,7 +178,7 @@ easily just by taking the union:
 
 ```
 for each region R:
-  let S by the SCC that contains R
+  let S be the SCC that contains R
   Values(S) = Values(S) union Liveness(R)
 ```
 
