@@ -22,7 +22,6 @@ use syntax_pos::{DUMMY_SP, FileName};
 
 use std::borrow::Cow;
 use std::io::Read;
-use std::vec;
 
 pub enum AnnNode<'a> {
     Ident(&'a ast::Ident),
