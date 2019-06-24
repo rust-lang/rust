@@ -69,11 +69,13 @@ fn search_meta_section<'a>(of: &'a ObjectFile,
             let mut name_buf = None;
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
             let name = name_buf.map_or(
-                "".to_string(),
+                String::new(), // We got a NULL ptr, ignore `name_len`.
                 |buf| String::from_utf8(
                     slice::from_raw_parts(buf.as_ptr() as *const u8,
                                           name_len as usize)
-                    .to_vec()).unwrap());
+                    .to_vec()
+                ).unwrap()
+            );
             debug!("get_metadata_section: name {}", name);
             if read_metadata_section_name(target) == name {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
