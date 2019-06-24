@@ -147,13 +147,13 @@ for
             // Handle trait object vtables
             if let Ok(meta) = value.to_meta() {
                 if let ty::Dynamic(..) = self.ecx.tcx.struct_tail(referenced_ty).sty {
-                        if let Ok(vtable) = meta.unwrap().to_ptr() {
-                            // explitly choose `Immutable` here, since vtables are immutable, even
-                            // if the reference of the fat pointer is mutable
-                            self.intern_shallow(vtable, Mutability::Immutable)?;
-                        }
+                    if let Ok(vtable) = meta.unwrap().to_ptr() {
+                        // explitly choose `Immutable` here, since vtables are immutable, even
+                        // if the reference of the fat pointer is mutable
+                        self.intern_shallow(vtable, Mutability::Immutable)?;
                     }
                 }
+            }
             let mplace = self.ecx.ref_to_mplace(value)?;
             // Check if we have encountered this pointer+layout combination before.
             // Only recurse for allocation-backed pointers.
@@ -174,8 +174,14 @@ for
                     (InternMode::Static, hir::Mutability::MutMutable) => {},
                     // we statically prevent `&mut T` via `const_qualif` and double check this here
                     (InternMode::ConstBase, hir::Mutability::MutMutable) |
-                    (InternMode::Const, hir::Mutability::MutMutable) =>
-                        bug!("const qualif failed to prevent mutable references"),
+                    (InternMode::Const, hir::Mutability::MutMutable) => {
+                        match referenced_ty.sty {
+                            ty::Array(_, n) if n.unwrap_usize(self.ecx.tcx.tcx) == 0 => {}
+                            ty::Slice(_)
+                                if value.to_meta().unwrap().unwrap().to_usize(self.ecx)? == 0 => {}
+                            _ => bug!("const qualif failed to prevent mutable references"),
+                        }
+                    },
                 }
                 // Compute the mutability with which we'll start visiting the allocation. This is
                 // what gets changed when we encounter an `UnsafeCell`
