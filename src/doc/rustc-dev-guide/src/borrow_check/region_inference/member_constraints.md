@@ -124,7 +124,7 @@ bounds considering everything but member constraints).
 
 Let `LB` be the current value of `'0`. We know then that `'0: LB` must
 hold, whatever the final value of `'0` is. Therefore, we can rule out
-any choice where `'choice` where `'choice: LB` does not hold.
+any choice `'choice` where `'choice: LB` does not hold.
 
 Unfortunately, in our example, this is not very helpful. The lower
 bound for `'0` will just be the liveness set `{L}`, and we know that
