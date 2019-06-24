@@ -16,6 +16,7 @@ use crate::{
 
 pub type PtrId = NonZeroU64;
 pub type CallId = NonZeroU64;
+pub type AllocExtra = Stacks;
 
 /// Tracking pointer provenance
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
@@ -86,7 +87,7 @@ pub struct Stacks {
     // Even reading memory can have effects on the stack, so we need a `RefCell` here.
     stacks: RefCell<RangeMap<Stack>>,
     // Pointer to global state
-    global: MemoryState,
+    global: MemoryExtra,
 }
 
 /// Extra global state, available to the memory access hooks.
@@ -104,7 +105,7 @@ pub struct GlobalState {
     active_calls: HashSet<CallId>,
 }
 /// Memory extra state gives us interior mutable access to the global state.
-pub type MemoryState = Rc<RefCell<GlobalState>>;
+pub type MemoryExtra = Rc<RefCell<GlobalState>>;
 
 /// Indicates which kind of access is being performed.
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
@@ -286,7 +287,7 @@ impl<'tcx> Stack {
 
     /// Test if a memory `access` using pointer tagged `tag` is granted.
     /// If yes, return the index of the item that granted it.
-    pub(crate) fn access(
+    fn access(
         &mut self,
         access: AccessKind,
         tag: Tag,
@@ -336,7 +337,7 @@ impl<'tcx> Stack {
 
     /// Deallocate a location: Like a write access, but also there must be no
     /// active protectors at all because we will remove all items.
-    pub(crate) fn dealloc(
+    fn dealloc(
         &mut self,
         tag: Tag,
         global: &GlobalState,
@@ -423,7 +424,7 @@ impl<'tcx> Stacks {
         size: Size,
         perm: Permission,
         tag: Tag,
-        extra: MemoryState,
+        extra: MemoryExtra,
     ) -> Self {
         let item = Item { perm, tag, protector: None };
         let stack = Stack {
@@ -437,7 +438,7 @@ impl<'tcx> Stacks {
     }
 
     /// Call `f` on every stack in the range.
-    pub(crate) fn for_each(
+    fn for_each(
         &self,
         ptr: Pointer<Tag>,
         size: Size,
@@ -457,7 +458,7 @@ impl Stacks {
     pub fn new_allocation(
         id: AllocId,
         size: Size,
-        extra: MemoryState, 
+        extra: MemoryExtra, 
         kind: MemoryKind<MiriMemoryKind>,
     ) -> (Self, Tag) {
         let (tag, perm) = match kind {
@@ -475,6 +476,44 @@ impl Stacks {
         };
         let stack = Stacks::new(size, perm, tag, extra);
         (stack, tag)
+    }
+
+    #[inline(always)]
+    pub fn memory_read<'tcx>(
+        &self,
+        ptr: Pointer<Tag>,
+        size: Size,
+    ) -> InterpResult<'tcx> {
+        trace!("read access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
+        self.for_each(ptr, size, |stack, global| {
+            stack.access(AccessKind::Read, ptr.tag, global)?;
+            Ok(())
+        })
+    }
+
+    #[inline(always)]
+    pub fn memory_written<'tcx>(
+        &mut self,
+        ptr: Pointer<Tag>,
+        size: Size,
+    ) -> InterpResult<'tcx> {
+        trace!("write access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
+        self.for_each(ptr, size, |stack, global| {
+            stack.access(AccessKind::Write, ptr.tag, global)?;
+            Ok(())
+        })
+    }
+
+    #[inline(always)]
+    pub fn memory_deallocated<'tcx>(
+        &mut self,
+        ptr: Pointer<Tag>,
+        size: Size,
+    ) -> InterpResult<'tcx> {
+        trace!("deallocation with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
+        self.for_each(ptr, size, |stack, global| {
+            stack.dealloc(ptr.tag, global)
+        })
     }
 }
 
@@ -514,14 +553,14 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // We are only ever `SharedReadOnly` inside the frozen bits.
                     let perm = if frozen { Permission::SharedReadOnly } else { Permission::SharedReadWrite };
                     let item = Item { perm, tag: new_tag, protector };
-                    alloc.extra.stacks.for_each(cur_ptr, size, |stack, global| {
+                    alloc.extra.stacked_borrows.for_each(cur_ptr, size, |stack, global| {
                         stack.grant(cur_ptr.tag, item, global)
                     })
                 });
             }
         };
         let item = Item { perm, tag: new_tag, protector };
-        alloc.extra.stacks.for_each(ptr, size, |stack, global| {
+        alloc.extra.stacked_borrows.for_each(ptr, size, |stack, global| {
             stack.grant(ptr.tag, item, global)
         })
     }
@@ -548,7 +587,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Compute new borrow.
         let new_tag = match kind {
             RefKind::Raw { .. } => Tag::Untagged,
-            _ => Tag::Tagged(this.memory().extra.stacked.borrow_mut().new_ptr()),
+            _ => Tag::Tagged(this.memory().extra.stacked_borrows.borrow_mut().new_ptr()),
         };
 
         // Reborrow.
@@ -582,7 +621,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 ty::RawPtr(tym) if kind == RetagKind::Raw =>
                     Some((RefKind::Raw { mutable: tym.mutbl == MutMutable }, false)),
                 // Boxes do not get a protector: protectors reflect that references outlive the call
-            // they were passed in to; that's just not the case for boxes.
+                // they were passed in to; that's just not the case for boxes.
                 ty::Adt(..) if ty.is_box() => Some((RefKind::Unique { two_phase: false }, false)),
                 _ => None,
             }

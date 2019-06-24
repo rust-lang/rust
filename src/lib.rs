@@ -25,7 +25,6 @@ mod memory;
 
 use std::collections::HashMap;
 use std::borrow::Cow;
-use std::cell::Cell;
 use std::rc::Rc;
 
 use rand::rngs::StdRng;
@@ -387,7 +386,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
 
     type FrameExtra = stacked_borrows::CallId;
-    type MemoryExtra = memory::MemoryState;
+    type MemoryExtra = memory::MemoryExtra;
     type AllocExtra = memory::AllocExtra;
     type PointerTag = Tag;
 
@@ -513,17 +512,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let (extra, base_tag) = Stacks::new_allocation(
+        let (stacks, base_tag) = Stacks::new_allocation(
             id,
             Size::from_bytes(alloc.bytes.len() as u64),
-            Rc::clone(&memory.extra.stacked),
+            Rc::clone(&memory.extra.stacked_borrows),
             kind,
         );
         if kind != MiriMemoryKind::Static.into() {
             assert!(alloc.relocations.is_empty(), "Only statics can come initialized with inner pointers");
             // Now we can rely on the inner pointers being static, too.
         }
-        let mut memory_extra = memory.extra.stacked.borrow_mut();
+        let mut memory_extra = memory.extra.stacked_borrows.borrow_mut();
         let alloc: Allocation<Tag, Self::AllocExtra> = Allocation {
             bytes: alloc.bytes,
             relocations: Relocations::from_presorted(
@@ -537,8 +536,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             align: alloc.align,
             mutability: alloc.mutability,
             extra: AllocExtra {
-                stacks: extra,
-                base_addr: Cell::new(None),
+                stacked_borrows: stacks,
+                intptrcast: Default::default(),
             },
         };
         (Cow::Owned(alloc), base_tag)
@@ -549,7 +548,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         id: AllocId,
         memory: &Memory<'mir, 'tcx, Self>,
     ) -> Self::PointerTag {
-        memory.extra.stacked.borrow_mut().static_base_ptr(id)
+        memory.extra.stacked_borrows.borrow_mut().static_base_ptr(id)
     }
 
     #[inline(always)]
@@ -574,7 +573,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     fn stack_push(
         ecx: &mut InterpretCx<'mir, 'tcx, Self>,
     ) -> InterpResult<'tcx, stacked_borrows::CallId> {
-        Ok(ecx.memory().extra.stacked.borrow_mut().new_call())
+        Ok(ecx.memory().extra.stacked_borrows.borrow_mut().new_call())
     }
 
     #[inline(always)]
@@ -582,7 +581,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut InterpretCx<'mir, 'tcx, Self>,
         extra: stacked_borrows::CallId,
     ) -> InterpResult<'tcx> {
-        Ok(ecx.memory().extra.stacked.borrow_mut().end_call(extra))
+        Ok(ecx.memory().extra.stacked_borrows.borrow_mut().end_call(extra))
     }
 
     fn int_to_ptr(
@@ -590,33 +589,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         memory: &Memory<'mir, 'tcx, Self>,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         if int == 0 {
-            return err!(InvalidNullPointerUsage);
-        }
-        
-        if memory.extra.rng.is_none() {
-            return err!(ReadBytesAsPointer);
-        }
-
-        let extra = memory.extra.intptrcast.borrow();
-        
-        match extra.int_to_ptr_map.binary_search_by_key(&int, |(int, _)| *int) {
-            Ok(pos) => {
-                let (_, alloc_id) = extra.int_to_ptr_map[pos];
-                Ok(Pointer::new_with_tag(alloc_id, Size::from_bytes(0), Tag::Untagged))
-            }
-            Err(pos) => {
-                if pos > 0 {
-                    let (glb, alloc_id) = extra.int_to_ptr_map[pos - 1];
-                    let offset = int - glb;
-                    if offset <= memory.get(alloc_id)?.bytes.len() as u64 {
-                        Ok(Pointer::new_with_tag(alloc_id, Size::from_bytes(offset), Tag::Untagged))
-                    } else {
-                        return err!(DanglingPointerDeref);
-                    }
-                } else {
-                    return err!(DanglingPointerDeref);
-                }
-            }
+            err!(InvalidNullPointerUsage)
+        } else if memory.extra.rng.is_none() {
+            err!(ReadBytesAsPointer)
+        } else {
+           intptrcast::GlobalState::int_to_ptr(int, memory)
         }
     }
  
@@ -625,31 +602,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         memory: &Memory<'mir, 'tcx, Self>,
     ) -> InterpResult<'tcx, u64> {
         if memory.extra.rng.is_none() {
-            return err!(ReadPointerAsBytes);
+            err!(ReadPointerAsBytes)
+        } else {
+            intptrcast::GlobalState::ptr_to_int(ptr, memory)
         }
-
-        let mut extra = memory.extra.intptrcast.borrow_mut();
-
-        let alloc = memory.get(ptr.alloc_id)?;
-
-        let base_addr = match alloc.extra.base_addr.get() { 
-            Some(base_addr) => base_addr,
-            None => {
-                let base_addr = extra.next_base_addr;
-                extra.next_base_addr += alloc.bytes.len() as u64;
-
-                alloc.extra.base_addr.set(Some(base_addr));
-
-                let elem = (base_addr, ptr.alloc_id);
-
-                // Given that `next_base_addr` increases in each allocation, pushing the
-                // corresponding tuple keeps `int_to_ptr_map` sorted
-                extra.int_to_ptr_map.push(elem); 
-
-                base_addr
-            }
-        };
-
-        Ok(base_addr + ptr.offset.bytes())
     }
 }

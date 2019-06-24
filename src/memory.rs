@@ -1,25 +1,24 @@
-use std::cell::Cell;
 use rand::rngs::StdRng;
 
 use rustc_mir::interpret::{Pointer, Allocation, AllocationExtra, InterpResult};
 use rustc_target::abi::Size;
 
 use crate::{stacked_borrows, intptrcast};
-use crate::stacked_borrows::{Tag, AccessKind};
+use crate::stacked_borrows::Tag;
 
 #[derive(Default, Clone, Debug)]
-pub struct MemoryState {
-    pub stacked: stacked_borrows::MemoryState,
-    pub intptrcast: intptrcast::MemoryState,
-    /// The random number generator to use if Miri
-    /// is running in non-deterministic mode
+pub struct MemoryExtra {
+    pub stacked_borrows: stacked_borrows::MemoryExtra,
+    pub intptrcast: intptrcast::MemoryExtra,
+    /// The random number generator to use if Miri is running in non-deterministic mode and to
+    /// enable intptrcast
     pub(crate) rng: Option<StdRng>
 }
 
-#[derive(Debug, Clone,)]
+#[derive(Debug, Clone)]
 pub struct AllocExtra {
-    pub stacks: stacked_borrows::Stacks,
-    pub base_addr: Cell<Option<u64>>,
+    pub stacked_borrows: stacked_borrows::AllocExtra,
+    pub intptrcast: intptrcast::AllocExtra,
 }
 
 impl AllocationExtra<Tag> for AllocExtra {
@@ -29,11 +28,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        trace!("read access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        alloc.extra.stacks.for_each(ptr, size, |stack, global| {
-            stack.access(AccessKind::Read, ptr.tag, global)?;
-            Ok(())
-        })
+        alloc.extra.stacked_borrows.memory_read(ptr, size)
     }
 
     #[inline(always)]
@@ -42,11 +37,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        trace!("write access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        alloc.extra.stacks.for_each(ptr, size, |stack, global| {
-            stack.access(AccessKind::Write, ptr.tag, global)?;
-            Ok(())
-        })
+        alloc.extra.stacked_borrows.memory_written(ptr, size)
     }
 
     #[inline(always)]
@@ -55,9 +46,6 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        trace!("deallocation with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        alloc.extra.stacks.for_each(ptr, size, |stack, global| {
-            stack.dealloc(ptr.tag, global)
-        })
+        alloc.extra.stacked_borrows.memory_deallocated(ptr, size)
     }
 }
