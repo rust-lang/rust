@@ -552,7 +552,6 @@ where
         .into_iter()
         .flatten()
         .map(|(&var_hir_id, &upvar_id)| {
-            let var_node_id = tcx_hir.hir_to_node_id(var_hir_id);
             let capture = hir_tables.upvar_capture(upvar_id);
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,
@@ -563,7 +562,7 @@ where
                 by_ref,
             };
             let mut mutability = Mutability::Not;
-            if let Some(Node::Binding(pat)) = tcx_hir.find(var_node_id) {
+            if let Some(Node::Binding(pat)) = tcx_hir.find_by_hir_id(var_hir_id) {
                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
                     debuginfo.debug_name = ident.name;
                     if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {

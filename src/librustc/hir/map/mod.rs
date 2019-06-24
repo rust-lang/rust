@@ -595,12 +595,6 @@ impl<'hir> Map<'hir> {
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
-    pub fn find(&self, id: NodeId) -> Option<Node<'hir>> {
-        let hir_id = self.node_to_hir_id(id);
-        self.find_by_hir_id(hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn find_by_hir_id(&self, hir_id: HirId) -> Option<Node<'hir>> {
         let result = self.find_entry(hir_id).and_then(|entry| {
             if let Node::Crate = entry.node {
