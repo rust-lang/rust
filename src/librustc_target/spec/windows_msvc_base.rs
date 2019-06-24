@@ -19,6 +19,7 @@ pub fn opts() -> TargetOptions {
         target_family: Some("windows".to_string()),
         is_like_windows: true,
         is_like_msvc: true,
+        link_env: vec![("VSLANG".to_string(), "1033".to_string())],
         pre_link_args: args,
         crt_static_allows_dylibs: true,
         crt_static_respected: true,
