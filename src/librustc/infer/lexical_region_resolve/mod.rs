@@ -628,28 +628,29 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             match *value {
                 VarValue::Value(_) => { /* Inference successful */ }
                 VarValue::ErrorValue => {
-                    /* Inference impossible: this value contains
-                    inconsistent constraints.
-
-                    I think that in this case we should report an
-                    error now -- unlike the case above, we can't
-                    wait to see whether the user needs the result
-                    of this variable. The reason is that the mere
-                    existence of this variable implies that the
-                    region graph is inconsistent, whether or not it
-                    is used.
-
-                    For example, we may have created a region
-                    variable that is the GLB of two other regions
-                    which do not have a GLB. Even if that variable
-                    is not used, it implies that those two regions
-                    *should* have a GLB.
-
-                    At least I think this is true. It may be that
-                    the mere existence of a conflict in a region variable
-                    that is not used is not a problem, so if this rule
-                    starts to create problems we'll have to revisit
-                    this portion of the code and think hard about it. =) */
+                    // Inference impossible: this value contains
+                    // inconsistent constraints.
+                    //
+                    // I think that in this case we should report an
+                    // error now -- unlike the case above, we can't
+                    // wait to see whether the user needs the result
+                    // of this variable. The reason is that the mere
+                    // existence of this variable implies that the
+                    // region graph is inconsistent, whether or not it
+                    // is used.
+                    //
+                    // For example, we may have created a region
+                    // variable that is the GLB of two other regions
+                    // which do not have a GLB. Even if that variable
+                    // is not used, it implies that those two regions
+                    // *should* have a GLB.
+                    //
+                    // At least I think this is true. It may be that
+                    // the mere existence of a conflict in a region
+                    // variable that is not used is not a problem, so
+                    // if this rule starts to create problems we'll
+                    // have to revisit this portion of the code and
+                    // think hard about it. =) -- nikomatsakis
                     self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
                 }
             }
