@@ -615,23 +615,16 @@ impl<'hir> Map<'hir> {
         result
     }
 
-    /// Similar to `get_parent`; returns the parent node-ID, or just `hir_id` if there
-    /// is no parent. Note that the parent may be `CRATE_NODE_ID`, which is not itself
+    /// Similar to `get_parent`; returns the parent HIR Id, or just `hir_id` if there
+    /// is no parent. Note that the parent may be `CRATE_HIR_ID`, which is not itself
     /// present in the map, so passing the return value of `get_parent_node` to
     /// `get` may in fact panic.
-    /// This function returns the immediate parent in the AST, whereas `get_parent`
+    /// This function returns the immediate parent in the HIR, whereas `get_parent`
     /// returns the enclosing item. Note that this might not be the actual parent
-    /// node in the AST -- some kinds of nodes are not in the map and these will
+    /// node in the HIR -- some kinds of nodes are not in the map and these will
     /// never appear as the parent node. Thus, you can always walk the parent nodes
-    /// from a node to the root of the AST (unless you get back the same ID here,
+    /// from a node to the root of the HIR (unless you get back the same ID here,
     /// which can happen if the ID is not in the map itself or is just weird).
-    pub fn get_parent_node(&self, id: NodeId) -> NodeId {
-        let hir_id = self.node_to_hir_id(id);
-        let parent_hir_id = self.get_parent_node_by_hir_id(hir_id);
-        self.hir_to_node_id(parent_hir_id)
-    }
-
-    // FIXME(@ljedrz): replace the `NodeId` variant.
     pub fn get_parent_node_by_hir_id(&self, hir_id: HirId) -> HirId {
         if self.dep_graph.is_fully_enabled() {
             let hir_id_owner = hir_id.owner;
@@ -646,12 +639,12 @@ impl<'hir> Map<'hir> {
 
     /// Check if the node is an argument. An argument is a local variable whose
     /// immediate parent is an item or a closure.
-    pub fn is_argument(&self, id: NodeId) -> bool {
-        match self.find(id) {
+    pub fn is_argument(&self, id: HirId) -> bool {
+        match self.find_by_hir_id(id) {
             Some(Node::Binding(_)) => (),
             _ => return false,
         }
-        match self.find(self.get_parent_node(id)) {
+        match self.find_by_hir_id(self.get_parent_node_by_hir_id(id)) {
             Some(Node::Item(_)) |
             Some(Node::TraitItem(_)) |
             Some(Node::ImplItem(_)) => true,
