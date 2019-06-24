@@ -1,0 +1,58 @@
+SOURCE_FILE@[0; 62)
+  TRAIT_DEF@[0; 61)
+    TRAIT_KW@[0; 5) "trait"
+    WHITESPACE@[5; 6) " "
+    NAME@[6; 7)
+      IDENT@[6; 7) "T"
+    WHITESPACE@[7; 8) " "
+    ITEM_LIST@[8; 61)
+      L_CURLY@[8; 9) "{"
+      WHITESPACE@[9; 14) "\n    "
+      MACRO_CALL@[14; 21)
+        PATH@[14; 21)
+          PATH_SEGMENT@[14; 21)
+            NAME_REF@[14; 21)
+              IDENT@[14; 21) "default"
+      WHITESPACE@[21; 22) " "
+      TYPE_ALIAS_DEF@[22; 35)
+        TYPE_KW@[22; 26) "type"
+        WHITESPACE@[26; 27) " "
+        NAME@[27; 28)
+          IDENT@[27; 28) "T"
+        WHITESPACE@[28; 29) " "
+        EQ@[29; 30) "="
+        WHITESPACE@[30; 31) " "
+        PATH_TYPE@[31; 34)
+          PATH@[31; 34)
+            PATH_SEGMENT@[31; 34)
+              NAME_REF@[31; 34)
+                IDENT@[31; 34) "Bar"
+        SEMI@[34; 35) ";"
+      WHITESPACE@[35; 40) "\n    "
+      MACRO_CALL@[40; 47)
+        PATH@[40; 47)
+          PATH_SEGMENT@[40; 47)
+            NAME_REF@[40; 47)
+              IDENT@[40; 47) "default"
+      WHITESPACE@[47; 48) " "
+      FN_DEF@[48; 59)
+        FN_KW@[48; 50) "fn"
+        WHITESPACE@[50; 51) " "
+        NAME@[51; 54)
+          IDENT@[51; 54) "foo"
+        PARAM_LIST@[54; 56)
+          L_PAREN@[54; 55) "("
+          R_PAREN@[55; 56) ")"
+        WHITESPACE@[56; 57) " "
+        BLOCK@[57; 59)
+          L_CURLY@[57; 58) "{"
+          R_CURLY@[58; 59) "}"
+      WHITESPACE@[59; 60) "\n"
+      R_CURLY@[60; 61) "}"
+  WHITESPACE@[61; 62) "\n"
+error 21: expected EXCL
+error 21: expected `{`, `[`, `(`
+error 21: expected SEMI
+error 47: expected EXCL
+error 47: expected `{`, `[`, `(`
+error 47: expected SEMI
