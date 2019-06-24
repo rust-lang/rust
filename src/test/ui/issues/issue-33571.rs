@@ -1,5 +1,5 @@
 #[derive(Clone,
-         Sync, //~ ERROR this unsafe trait should be implemented explicitly
+         Sync, //~ ERROR cannot find derive macro `Sync` in this scope
          Copy)]
 enum Foo {}
 
