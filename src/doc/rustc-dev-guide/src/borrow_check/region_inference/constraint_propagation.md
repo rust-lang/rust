@@ -210,7 +210,7 @@ we have computed `S2`'s value, we can union those elements into the
 value for `S1`. (Although we have to be careful in this process to
 properly handle [higher-ranked
 placeholders](./placeholders_and_universes.html). Note that the value
-for S1 already contains the liveness constraints, since they were
+for `S1` already contains the liveness constraints, since they were
 added in [`RegionInferenceContext::new`].
 
 Once that process is done, we now have the "minimal value" for `S1`,
