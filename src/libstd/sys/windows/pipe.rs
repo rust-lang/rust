@@ -155,7 +155,6 @@ fn random_number() -> usize {
 
         let mut buf = [0u8; 8];
         getrandom::getrandom(&mut buf).expect("OS RNG failure");
-        // SAFETY: `buf` should be aligned, so it's safe to transmute it to `u64`
         let n = u64::from_ne_bytes(buf) as usize;
         N.store(n, SeqCst);
     }
