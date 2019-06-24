@@ -517,13 +517,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val_byte = this.read_scalar(args[1])?.to_u8()?;
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let count = this.read_scalar(args[2])?.to_usize(this)?;
-                this.memory().check_align(ptr, ty_layout.align.abi)?;
                 let byte_count = ty_layout.size * count;
-                if byte_count.bytes() != 0 {
-                    let ptr = ptr.to_ptr()?;
-                    this.memory_mut()
-                        .get_mut(ptr.alloc_id)?
-                        .write_repeat(tcx, ptr, val_byte, byte_count)?;
+                match this.memory().check_ptr_access(ptr, byte_count, ty_layout.align.abi)? {
+                    Some(ptr) => {
+                        this.memory_mut()
+                            .get_mut(ptr.alloc_id)?
+                            .write_repeat(tcx, ptr, val_byte, byte_count)?;
+                    }
+                    None => {
+                        // Size is 0, nothing to do.
+                    }
                 }
             }
 

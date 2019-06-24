@@ -4,6 +4,11 @@ use rustc::mir;
 use crate::*;
 
 pub trait EvalContextExt<'tcx> {
+    fn pointer_inbounds(
+        &self,
+        ptr: Pointer<Tag>
+    ) -> InterpResult<'tcx>;
+
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
@@ -34,6 +39,13 @@ pub trait EvalContextExt<'tcx> {
 }
 
 impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
+    /// Test if the pointer is in-bounds of a live allocation.
+    #[inline]
+    fn pointer_inbounds(&self, ptr: Pointer<Tag>) -> InterpResult<'tcx> {
+        let (size, _align) = self.memory().get_size_and_align(ptr.alloc_id, AllocCheck::Live)?;
+        ptr.check_in_alloc(size, CheckInAllocMsg::InboundsTest)
+    }
+
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
@@ -114,8 +126,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 let left = left.to_ptr().expect("we checked is_ptr");
                 let right = right.to_bits(self.memory().pointer_size()).expect("we checked is_bits");
                 let (_alloc_size, alloc_align) = self.memory()
-                    .get_size_and_align(left.alloc_id, InboundsCheck::MaybeDead)
-                    .expect("determining size+align of dead ptr cannot fail");
+                    .get_size_and_align(left.alloc_id, AllocCheck::MaybeDead)
+                    .expect("alloc info with MaybeDead cannot fail");
                 let min_ptr_val = u128::from(alloc_align.bytes()) + u128::from(left.offset.bytes());
                 let result = match bin_op {
                     Gt => min_ptr_val > right,
@@ -170,6 +182,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 if left.alloc_id == right.alloc_id {
                     left.offset == right.offset
                 } else {
+                    // Make sure both pointers are in-bounds.
                     // This accepts one-past-the end. Thus, there is still technically
                     // some non-determinism that we do not fully rule out when two
                     // allocations sit right next to each other. The C/C++ standards are
@@ -179,10 +192,12 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     // Dead allocations in miri cannot overlap with live allocations, but
                     // on read hardware this can easily happen. Thus for comparisons we require
                     // both pointers to be live.
-                    self.memory().check_bounds_ptr(left, InboundsCheck::Live, CheckInAllocMsg::InboundsTest)?;
-                    self.memory().check_bounds_ptr(right, InboundsCheck::Live, CheckInAllocMsg::InboundsTest)?;
-                    // Two in-bounds pointers, we can compare across allocations.
-                    left == right
+                    if self.pointer_inbounds(left).is_ok() && self.pointer_inbounds(right).is_ok() {
+                        // Two in-bounds pointers in different allocations are different.
+                        false
+                    } else {
+                        return err!(InvalidPointerMath);
+                    }
                 }
             }
             // Comparing ptr and integer.
@@ -202,16 +217,16 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 // alignment 32 or higher, hence the limit of 32.
                 // FIXME: Once we support intptrcast, we could try to fix these holes.
                 if bits < 32 {
-                    // Test if the ptr is in-bounds. Then it cannot be NULL.
-                    // Even dangling pointers cannot be NULL.
-                    if self.memory().check_bounds_ptr(ptr, InboundsCheck::MaybeDead, CheckInAllocMsg::NullPointerTest).is_ok() {
+                    // Test if the pointer can be different from NULL or not.
+                    // We assume that pointers that are not NULL are also not "small".
+                    if !self.memory().ptr_may_be_null(ptr) {
                         return Ok(false);
                     }
                 }
 
                 let (alloc_size, alloc_align) = self.memory()
-                    .get_size_and_align(ptr.alloc_id, InboundsCheck::MaybeDead)
-                    .expect("determining size+align of dead ptr cannot fail");
+                    .get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)
+                    .expect("alloc info with MaybeDead cannot fail");
 
                 // Case II: Alignment gives it away
                 if ptr.offset.bytes() % alloc_align.bytes() == 0 {
@@ -359,9 +374,9 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         if let Scalar::Ptr(ptr) = ptr {
             // Both old and new pointer must be in-bounds of a *live* allocation.
             // (Of the same allocation, but that part is trivial with our representation.)
-            self.memory().check_bounds_ptr(ptr, InboundsCheck::Live, CheckInAllocMsg::InboundsTest)?;
+            self.pointer_inbounds(ptr)?;
             let ptr = ptr.signed_offset(offset, self)?;
-            self.memory().check_bounds_ptr(ptr, InboundsCheck::Live, CheckInAllocMsg::InboundsTest)?;
+            self.pointer_inbounds(ptr)?;
             Ok(Scalar::Ptr(ptr))
         } else {
             // An integer pointer. They can only be offset by 0, and we pretend there

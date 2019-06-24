@@ -654,7 +654,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Hook pthread calls that go to the thread-local storage memory subsystem.
             "pthread_key_create" => {
-                let key_ptr = this.read_scalar(args[0])?.to_ptr()?;
+                let key_ptr = this.read_scalar(args[0])?.not_undef()?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
                 let dtor = match this.read_scalar(args[1])?.not_undef()? {
@@ -681,7 +681,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     return err!(OutOfTls);
                 }
 
-                this.memory().check_align(key_ptr.into(), key_layout.align.abi)?;
+                let key_ptr = this.memory().check_ptr_access(key_ptr, key_layout.size, key_layout.align.abi)?
+                    .expect("cannot be a ZST");
                 this.memory_mut().get_mut(key_ptr.alloc_id)?.write_scalar(
                     tcx,
                     key_ptr,
