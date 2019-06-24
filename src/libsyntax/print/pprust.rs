@@ -846,13 +846,6 @@ impl<'a> State<'a> {
         self.bclose_(span, INDENT_UNIT)
     }
 
-    crate fn in_cbox(&self) -> bool {
-        match self.boxes.last() {
-            Some(&last_box) => last_box == pp::Breaks::Consistent,
-            None => false
-        }
-    }
-
     crate fn break_offset_if_not_bol(&mut self, n: usize,
                                    off: isize) -> io::Result<()> {
         if !self.is_bol() {
@@ -1663,16 +1656,6 @@ impl<'a> State<'a> {
         self.print_block_with_attrs(blk, &[])
     }
 
-    crate fn print_block_unclosed(&mut self, blk: &ast::Block) -> io::Result<()> {
-        self.print_block_unclosed_indent(blk, INDENT_UNIT)
-    }
-
-    crate fn print_block_unclosed_with_attrs(&mut self, blk: &ast::Block,
-                                            attrs: &[ast::Attribute])
-                                           -> io::Result<()> {
-        self.print_block_maybe_unclosed(blk, INDENT_UNIT, attrs, false)
-    }
-
     crate fn print_block_unclosed_indent(&mut self, blk: &ast::Block,
                                        indented: usize) -> io::Result<()> {
         self.print_block_maybe_unclosed(blk, indented, &[], false)
@@ -2355,14 +2338,6 @@ impl<'a> State<'a> {
     crate fn print_name(&mut self, name: ast::Name) -> io::Result<()> {
         self.s.word(name.as_str().to_string())?;
         self.ann.post(self, AnnNode::Name(&name))
-    }
-
-    crate fn print_for_decl(&mut self, loc: &ast::Local,
-                          coll: &ast::Expr) -> io::Result<()> {
-        self.print_local_decl(loc)?;
-        self.s.space()?;
-        self.word_space("in")?;
-        self.print_expr(coll)
     }
 
     fn print_path(&mut self,
@@ -3070,30 +3045,6 @@ impl<'a> State<'a> {
             self.print_comment(cmnt)?;
         }
         Ok(())
-    }
-
-    crate fn print_opt_abi_and_extern_if_nondefault(&mut self,
-                                                  opt_abi: Option<Abi>)
-        -> io::Result<()> {
-        match opt_abi {
-            Some(Abi::Rust) => Ok(()),
-            Some(abi) => {
-                self.word_nbsp("extern")?;
-                self.word_nbsp(abi.to_string())
-            }
-            None => Ok(())
-        }
-    }
-
-    crate fn print_extern_opt_abi(&mut self,
-                                opt_abi: Option<Abi>) -> io::Result<()> {
-        match opt_abi {
-            Some(abi) => {
-                self.word_nbsp("extern")?;
-                self.word_nbsp(abi.to_string())
-            }
-            None => Ok(())
-        }
     }
 
     crate fn print_fn_header_info(&mut self,

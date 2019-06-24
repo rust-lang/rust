@@ -682,8 +682,4 @@ impl<'a> Printer<'a> {
     pub fn hardbreak_tok_offset(off: isize) -> Token {
         Token::Break(BreakToken {offset: off, blank_space: SIZE_INFINITY})
     }
-
-    crate fn hardbreak_tok() -> Token {
-        Self::hardbreak_tok_offset(0)
-    }
 }
