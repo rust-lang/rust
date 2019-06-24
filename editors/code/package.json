@@ -203,8 +203,13 @@
                 },
                 "rust-analyzer.cargo-watch.check-arguments": {
                     "type": "string",
-                    "description": "`cargo-watch` check arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo watch -x \"check --features=\"shumway,pdf\"\"` )",
+                    "description": "`cargo-watch` arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo watch -x \"check --features=\"shumway,pdf\"\"` )",
                     "default": ""
+                },
+                "rust-analyzer.cargo-watch.check-command": {
+                    "type": "string",
+                    "description": "`cargo-watch` command. (e.g: `clippy` will run as `cargo watch -x clippy` )",
+                    "default": "check"                    
                 },
                 "rust-analyzer.trace.server": {
                     "type": "string",

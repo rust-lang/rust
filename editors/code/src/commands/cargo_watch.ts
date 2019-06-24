@@ -43,7 +43,7 @@ export class CargoWatchProvider implements vscode.Disposable {
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection(
             'rustc'
         );
-        this.statusDisplay = new StatusDisplay();
+        this.statusDisplay = new StatusDisplay(Server.config.cargoWatchOptions.checkCommand);
         this.outputChannel = vscode.window.createOutputChannel(
             'Cargo Watch Trace'
         );
@@ -57,7 +57,9 @@ export class CargoWatchProvider implements vscode.Disposable {
             return;
         }
 
-        let args = 'check --all-targets --message-format json';
+        let command = Server.config.cargoWatchOptions.checkCommand;
+
+        let args = command + ' --all-targets --message-format json';
         if (Server.config.cargoWatchOptions.checkArguments.length > 0) {
             // Excape the double quote string:
             args += ' ' + Server.config.cargoWatchOptions.checkArguments;
