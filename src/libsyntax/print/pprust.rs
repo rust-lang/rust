@@ -53,18 +53,6 @@ pub struct State<'a> {
     is_expanded: bool
 }
 
-fn rust_printer<'a>(writer: &'a mut String, ann: &'a dyn PpAnn) -> State<'a> {
-    State {
-        s: pp::mk_printer(writer),
-        cm: None,
-        comments: None,
-        cur_cmnt: 0,
-        boxes: Vec::new(),
-        ann,
-        is_expanded: false
-    }
-}
-
 crate const INDENT_UNIT: usize = 4;
 
 /// Requires you to pass an input filename and reader so that
@@ -137,8 +125,15 @@ pub fn to_string<F>(f: F) -> String where
 {
     let mut wr = String::new();
     {
-        let ann = NoAnn;
-        let mut printer = rust_printer(&mut wr, &ann);
+        let mut printer = State {
+            s: pp::mk_printer(&mut wr),
+            cm: None,
+            comments: None,
+            cur_cmnt: 0,
+            boxes: Vec::new(),
+            ann: &NoAnn,
+            is_expanded: false
+        };
         f(&mut printer);
         printer.s.eof();
     }
