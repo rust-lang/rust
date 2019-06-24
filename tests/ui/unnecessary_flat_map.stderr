@@ -1,0 +1,10 @@
+error: called `flat_map(|x| x)` on an `Iterator`. This can be simplified by calling `flatten().`
+  --> $DIR/unnecessary_flat_map.rs:5:5
+   |
+LL |     iterator.flat_map(|x| x);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::flat-map` implied by `-D warnings`
+
+error: aborting due to previous error
+
