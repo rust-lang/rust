@@ -211,7 +211,6 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
         props: &props,
         testpaths,
         revision: revision,
-        is_aux: false,
     };
     create_dir_all(&cx.output_base_dir()).unwrap();
 
@@ -230,7 +229,6 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
                 props: &revision_props,
                 testpaths,
                 revision: Some(revision),
-                is_aux: false,
             };
             rev_cx.run_revision();
         }
@@ -262,7 +260,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         env::var_os("PYTHONPATH").hash(&mut hash);
     }
 
-    if let Ui | RunPass = config.mode {
+    if let Ui | RunPass | Incremental = config.mode {
         config.force_pass_mode.hash(&mut hash);
     }
 
@@ -274,7 +272,6 @@ struct TestCx<'test> {
     props: &'test TestProps,
     testpaths: &'test TestPaths,
     revision: Option<&'test str>,
-    is_aux: bool,
 }
 
 struct DebuggerCommands {
@@ -316,18 +313,13 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn effective_pass_mode(&self) -> Option<PassMode> {
-        if !self.props.ignore_pass {
-            if let (mode @ Some(_), Some(_)) = (self.config.force_pass_mode, self.props.pass_mode) {
-                return mode;
-            }
-        }
-        self.props.pass_mode
+    fn pass_mode(&self) -> Option<PassMode> {
+        self.props.pass_mode(self.config)
     }
 
     fn should_run_successfully(&self) -> bool {
         match self.config.mode {
-            RunPass | Ui => self.effective_pass_mode() == Some(PassMode::Run),
+            RunPass | Ui => self.pass_mode() == Some(PassMode::Run),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
@@ -337,7 +329,7 @@ impl<'test> TestCx<'test> {
             CompileFail => false,
             RunPass => true,
             JsDocTest => true,
-            Ui => self.props.pass_mode.is_some(),
+            Ui => self.pass_mode().is_some(),
             Incremental => {
                 let revision = self.revision
                     .expect("incremental tests require a list of revisions");
@@ -345,7 +337,7 @@ impl<'test> TestCx<'test> {
                     true
                 } else if revision.starts_with("cfail") {
                     // FIXME: would be nice if incremental revs could start with "cpass"
-                    self.props.pass_mode.is_some()
+                    self.pass_mode().is_some()
                 } else {
                     panic!("revision name must begin with rpass, rfail, or cfail");
                 }
@@ -1356,7 +1348,7 @@ impl<'test> TestCx<'test> {
     fn check_error_patterns(&self, output_to_check: &str, proc_res: &ProcRes) {
         debug!("check_error_patterns");
         if self.props.error_patterns.is_empty() {
-            if self.props.pass_mode.is_some() {
+            if self.pass_mode().is_some() {
                 return;
             } else {
                 self.fatal(&format!(
@@ -1578,7 +1570,6 @@ impl<'test> TestCx<'test> {
                     props: &aux_props,
                     testpaths: &aux_testpaths,
                     revision: self.revision,
-                    is_aux: true,
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
@@ -1748,7 +1739,6 @@ impl<'test> TestCx<'test> {
                 props: &aux_props,
                 testpaths: &aux_testpaths,
                 revision: self.revision,
-                is_aux: true,
             };
             // Create the directory for the stdout/stderr files.
             create_dir_all(aux_cx.output_base_dir()).unwrap();
@@ -1989,8 +1979,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let pass_mode = if self.is_aux { self.props.pass_mode } else { self.effective_pass_mode() };
-        if let Some(PassMode::Check) = pass_mode {
+        if let Some(PassMode::Check) = self.pass_mode() {
             rustc.args(&["--emit", "metadata"]);
         }
 
@@ -2728,7 +2717,6 @@ impl<'test> TestCx<'test> {
             props: &revision_props,
             testpaths: self.testpaths,
             revision: self.revision,
-            is_aux: false,
         };
 
         if self.config.verbose {

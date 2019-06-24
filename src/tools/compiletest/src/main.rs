@@ -328,7 +328,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         filter_exact: matches.opt_present("exact"),
         force_pass_mode: matches.opt_str("pass").map(|mode|
             mode.parse::<PassMode>()
-                .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given.", mode))
+                .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
         ),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),

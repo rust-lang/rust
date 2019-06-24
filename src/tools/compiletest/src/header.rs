@@ -350,9 +350,9 @@ pub struct TestProps {
     // arguments. (In particular, it propagates to the aux-builds.)
     pub incremental_dir: Option<PathBuf>,
     // How far should the test proceed while still passing.
-    pub pass_mode: Option<PassMode>,
+    pass_mode: Option<PassMode>,
     // Ignore `--pass` overrides from the command line for this test.
-    pub ignore_pass: bool,
+    ignore_pass: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
     // Do not pass `-Z ui-testing` to UI tests
@@ -607,6 +607,15 @@ impl TestProps {
             (Some(_), Some(_)) => panic!("multiple `*-pass` headers in a single test"),
             (_, None) => {}
         }
+    }
+
+    pub fn pass_mode(&self, config: &Config) -> Option<PassMode> {
+        if !self.ignore_pass {
+            if let (mode @ Some(_), Some(_)) = (config.force_pass_mode, self.pass_mode) {
+                return mode;
+            }
+        }
+        self.pass_mode
     }
 }
 

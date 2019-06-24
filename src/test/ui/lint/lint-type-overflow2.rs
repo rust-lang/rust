@@ -2,7 +2,6 @@
 
 #![deny(overflowing_literals)]
 #![deny(const_err)]
-#![allow(unused_variables)]
 
 fn main() {
     let x2: i8 = --128; //~ ERROR literal out of range for `i8`
