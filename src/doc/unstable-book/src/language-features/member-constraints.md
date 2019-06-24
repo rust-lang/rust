@@ -14,7 +14,7 @@ A simple example is:
 ```rust
 #![feature(member_constraints)]
 
-trait Trait { }
+trait Trait<'a, 'b> { }
 impl<T> Trait<'_, '_> for T {}
 
 fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Trait<'a, 'b> {
