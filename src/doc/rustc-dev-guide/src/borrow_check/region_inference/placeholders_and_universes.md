@@ -66,7 +66,7 @@ outlives `'static`. Now, this *might* be true – after all, `'!1`
 could be `'static` – but we don't *know* that it's true. So this
 should yield up an error (eventually).
 
-## What is a universe
+## What is a universe?
 
 In the previous section, we introduced the idea of a placeholder
 region, and we denoted it `!1`. We call this number `1` the **universe
