@@ -11,7 +11,7 @@ fn make(a: &'a u32, b: &'b u32) -> impl Trait<'a, 'b> { .. }
 ```
 
 Here, the true return type (often called the "hidden type") is only
-permitted to capture the lifeimes `'a` or `'b`. You can kind of see
+permitted to capture the lifetimes `'a` or `'b`. You can kind of see
 this more clearly by desugaring that `impl Trait` return type into its
 more explicit form:
 
