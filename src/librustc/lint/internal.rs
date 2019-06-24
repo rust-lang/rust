@@ -11,8 +11,8 @@ use syntax::ast::{Ident, Item, ItemKind};
 use syntax::symbol::{sym, Symbol};
 use syntax_pos::ExpnInfo;
 
-declare_lint! {
-    pub DEFAULT_HASH_TYPES,
+declare_tool_lint! {
+    pub rustc::DEFAULT_HASH_TYPES,
     Allow,
     "forbid HashMap and HashSet and suggest the FxHash* variants"
 }
@@ -23,7 +23,7 @@ pub struct DefaultHashTypes {
 
 impl DefaultHashTypes {
     // we are allowed to use `HashMap` and `HashSet` as identifiers for implementing the lint itself
-    #[allow(default_hash_types)]
+    #[cfg_attr(not(bootstrap), allow(rustc::default_hash_types))]
     pub fn new() -> Self {
         let mut map = FxHashMap::default();
         map.insert(sym::HashMap, sym::FxHashMap);
@@ -51,20 +51,20 @@ impl EarlyLintPass for DefaultHashTypes {
     }
 }
 
-declare_lint! {
-    pub USAGE_OF_TY_TYKIND,
+declare_tool_lint! {
+    pub rustc::USAGE_OF_TY_TYKIND,
     Allow,
     "usage of `ty::TyKind` outside of the `ty::sty` module"
 }
 
-declare_lint! {
-    pub TY_PASS_BY_REFERENCE,
+declare_tool_lint! {
+    pub rustc::TY_PASS_BY_REFERENCE,
     Allow,
     "passing `Ty` or `TyCtxt` by reference"
 }
 
-declare_lint! {
-    pub USAGE_OF_QUALIFIED_TY,
+declare_tool_lint! {
+    pub rustc::USAGE_OF_QUALIFIED_TY,
     Allow,
     "using `ty::{Ty,TyCtxt}` instead of importing it"
 }
@@ -215,8 +215,8 @@ fn gen_args(segment: &PathSegment) -> String {
     String::new()
 }
 
-declare_lint! {
-    pub LINT_PASS_IMPL_WITHOUT_MACRO,
+declare_tool_lint! {
+    pub rustc::LINT_PASS_IMPL_WITHOUT_MACRO,
     Allow,
     "`impl LintPass` without the `declare_lint_pass!` or `impl_lint_pass!` macros"
 }

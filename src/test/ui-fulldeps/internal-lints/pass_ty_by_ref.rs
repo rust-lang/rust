@@ -1,7 +1,7 @@
 // compile-flags: -Z unstable-options
 
 #![feature(rustc_private)]
-#![deny(ty_pass_by_reference)]
+#![deny(rustc::ty_pass_by_reference)]
 #![allow(unused)]
 
 extern crate rustc;

@@ -7,8 +7,8 @@ LL |     let _map: HashMap<String, String> = HashMap::default();
 note: lint level defined here
   --> $DIR/default_hash_types.rs:10:8
    |
-LL | #[deny(default_hash_types)]
-   |        ^^^^^^^^^^^^^^^^^^
+LL | #[deny(rustc::default_hash_types)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: a `use rustc_data_structures::fx::FxHashMap` may be necessary
 
 error: Prefer FxHashMap over HashMap, it has better performance

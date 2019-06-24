@@ -1,6 +1,6 @@
 // ignore-tidy-filelength
 
-#![allow(usage_of_ty_tykind)]
+#![cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
 
 pub use self::Variance::*;
 pub use self::AssocItemContainer::*;

@@ -27,7 +27,7 @@
 #![cfg_attr(test, feature(test))]
 
 #![deny(rust_2018_idioms)]
-#![allow(default_hash_types)]
+#![cfg_attr(not(bootstrap), allow(rustc::default_hash_types))]
 
 #[macro_use]
 extern crate log;

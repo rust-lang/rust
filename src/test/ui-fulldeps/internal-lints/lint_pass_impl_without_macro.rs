@@ -1,7 +1,7 @@
 // compile-flags: -Z unstable-options
 
 #![feature(rustc_private)]
-#![deny(lint_pass_impl_without_macro)]
+#![deny(rustc::lint_pass_impl_without_macro)]
 
 extern crate rustc;
 
