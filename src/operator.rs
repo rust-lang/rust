@@ -44,7 +44,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
 
-        if self.memory().extra.seed.is_some() && bin_op != Offset {
+        if self.memory().extra.rng.is_some() && bin_op != Offset {
             let l_bits = self.force_bits(left.imm.to_scalar()?, left.layout.size)?;
             let r_bits = self.force_bits(right.imm.to_scalar()?, right.layout.size)?;
             

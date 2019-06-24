@@ -1,4 +1,5 @@
-use std::cell::RefCell;
+use std::cell::Cell;
+use rand::rngs::StdRng;
 
 use rustc_mir::interpret::{Pointer, Allocation, AllocationExtra, InterpResult};
 use rustc_target::abi::Size;
@@ -10,13 +11,15 @@ use crate::stacked_borrows::{Tag, AccessKind};
 pub struct MemoryState {
     pub stacked: stacked_borrows::MemoryState,
     pub intptrcast: intptrcast::MemoryState,
-    pub seed: Option<u64>,
+    /// The random number generator to use if Miri
+    /// is running in non-deterministic mode
+    pub(crate) rng: Option<StdRng>
 }
 
 #[derive(Debug, Clone,)]
 pub struct AllocExtra {
     pub stacks: stacked_borrows::Stacks,
-    pub base_addr: RefCell<Option<u64>>,
+    pub base_addr: Cell<Option<u64>>,
 }
 
 impl AllocationExtra<Tag> for AllocExtra {

@@ -25,7 +25,7 @@ mod memory;
 
 use std::collections::HashMap;
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::Cell;
 use std::rc::Rc;
 
 use rand::rngs::StdRng;
@@ -83,9 +83,11 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let mut ecx = InterpretCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
-        Evaluator::new(config.validate, config.seed),
+        Evaluator::new(config.validate),
     );
 
+    ecx.memory_mut().extra.rng = config.seed.map(StdRng::seed_from_u64);
+    
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;
 
@@ -209,9 +211,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             cur_ptr = cur_ptr.offset(char_size, tcx)?;
         }
     }
-
-    ecx.memory_mut().extra.seed = config.seed.clone();
-    
+ 
     assert!(args.next().is_none(), "start lang item has more arguments than expected");
 
     Ok(ecx)
@@ -347,14 +347,10 @@ pub struct Evaluator<'tcx> {
 
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
-
-    /// The random number generator to use if Miri
-    /// is running in non-deterministic mode
-    pub(crate) rng: Option<StdRng>
 }
 
 impl<'tcx> Evaluator<'tcx> {
-    fn new(validate: bool, seed: Option<u64>) -> Self {
+    fn new(validate: bool) -> Self {
         Evaluator {
             env_vars: HashMap::default(),
             argc: None,
@@ -363,7 +359,6 @@ impl<'tcx> Evaluator<'tcx> {
             last_error: 0,
             tls: TlsData::default(),
             validate,
-            rng: seed.map(|s| StdRng::seed_from_u64(s))
         }
     }
 }
@@ -543,7 +538,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             mutability: alloc.mutability,
             extra: AllocExtra {
                 stacks: extra,
-                base_addr: RefCell::new(None),
+                base_addr: Cell::new(None),
             },
         };
         (Cow::Owned(alloc), base_tag)
@@ -598,20 +593,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             return err!(InvalidNullPointerUsage);
         }
         
-        if memory.extra.seed.is_none() {
+        if memory.extra.rng.is_none() {
             return err!(ReadBytesAsPointer);
         }
 
         let extra = memory.extra.intptrcast.borrow();
         
-        match extra.vec.binary_search_by_key(&int, |(int, _)| *int) {
+        match extra.int_to_ptr_map.binary_search_by_key(&int, |(int, _)| *int) {
             Ok(pos) => {
-                let (_, alloc_id) = extra.vec[pos];
+                let (_, alloc_id) = extra.int_to_ptr_map[pos];
                 Ok(Pointer::new_with_tag(alloc_id, Size::from_bytes(0), Tag::Untagged))
             }
             Err(pos) => {
                 if pos > 0 {
-                    let (glb, alloc_id) = extra.vec[pos - 1];
+                    let (glb, alloc_id) = extra.int_to_ptr_map[pos - 1];
                     let offset = int - glb;
                     if offset <= memory.get(alloc_id)?.bytes.len() as u64 {
                         Ok(Pointer::new_with_tag(alloc_id, Size::from_bytes(offset), Tag::Untagged))
@@ -629,7 +624,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ptr: Pointer<Self::PointerTag>,
         memory: &Memory<'mir, 'tcx, Self>,
     ) -> InterpResult<'tcx, u64> {
-        if memory.extra.seed.is_none() {
+        if memory.extra.rng.is_none() {
             return err!(ReadPointerAsBytes);
         }
 
@@ -637,28 +632,24 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
         let alloc = memory.get(ptr.alloc_id)?;
 
-        let mut base_addr = alloc.extra.base_addr.borrow_mut();
-        
-        let addr = match *base_addr { 
-            Some(addr) => addr,
+        let base_addr = match alloc.extra.base_addr.get() { 
+            Some(base_addr) => base_addr,
             None => {
-                let addr = extra.addr;
-                extra.addr += alloc.bytes.len() as u64;
+                let base_addr = extra.next_base_addr;
+                extra.next_base_addr += alloc.bytes.len() as u64;
 
-                *base_addr = Some(addr);
+                alloc.extra.base_addr.set(Some(base_addr));
 
-                let elem = (addr, ptr.alloc_id);
+                let elem = (base_addr, ptr.alloc_id);
 
-                if let Err(pos) = extra.vec.binary_search(&elem) {
-                    extra.vec.insert(pos, elem);
-                } else {
-                    return err!(Unreachable);
-                }
+                // Given that `next_base_addr` increases in each allocation, pushing the
+                // corresponding tuple keeps `int_to_ptr_map` sorted
+                extra.int_to_ptr_map.push(elem); 
 
-                addr
+                base_addr
             }
         };
 
-        Ok(addr + ptr.offset.bytes())
+        Ok(base_addr + ptr.offset.bytes())
     }
 }
