@@ -8,13 +8,39 @@ use ra_syntax::ast::{self, AstNode};
 
 use crate::{AssistCtx, Assist, AssistId};
 
+fn is_trivial_arm(arm: &ast::MatchArm) -> bool {
+    for (i, p) in arm.pats().enumerate() {
+        if i > 0 {
+            return false;
+        }
+
+        match p.kind() {
+            ast::PatKind::PlaceholderPat(_) => {}
+            _ => {
+                return false;
+            }
+        };
+    }
+    return true;
+}
+
 pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_expr = ctx.node_at_offset::<ast::MatchExpr>()?;
 
     // We already have some match arms, so we don't provide any assists.
+    // Unless if there is only one trivial match arm possibly created
+    // by match postfix complete. Trivial match arm is the catch all arm.
     match match_expr.match_arm_list() {
-        Some(arm_list) if arm_list.arms().count() > 0 => {
-            return None;
+        Some(arm_list) => {
+            for (i, a) in arm_list.arms().enumerate() {
+                if i > 0 {
+                    return None;
+                }
+
+                if !is_trivial_arm(a) {
+                    return None;
+                }
+            }
         }
         _ => {}
     }
@@ -226,6 +252,32 @@ mod tests {
             }
             "#,
             "match E::X {}",
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_trivial_arm() {
+        check_assist(
+            fill_match_arms,
+            r#"
+            enum E { X, Y }
+
+            fn main() {
+                match E::X {
+                    <|>_ => {},
+                }
+            }
+            "#,
+            r#"
+            enum E { X, Y }
+
+            fn main() {
+                match <|>E::X {
+                    E::X => (),
+                    E::Y => (),
+                }
+            }
+            "#,
         );
     }
 }
