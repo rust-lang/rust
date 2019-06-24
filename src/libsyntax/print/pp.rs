@@ -136,7 +136,7 @@
 
 use std::collections::VecDeque;
 use std::fmt;
-use std::io::{self, Write};
+use std::io;
 use std::borrow::Cow;
 use log::debug;
 
@@ -497,10 +497,10 @@ impl<'a> Printer<'a> {
 
     crate fn print_newline(&mut self, amount: isize) -> io::Result<()> {
         debug!("NEWLINE {}", amount);
-        let ret = write!(self.out, "\n");
+        self.out.push(b'\n');
         self.pending_indentation = 0;
         self.indent(amount);
-        ret
+        Ok(())
     }
 
     crate fn indent(&mut self, amount: isize) {
@@ -592,15 +592,17 @@ impl<'a> Printer<'a> {
         // difference is significant on some workloads.
         let spaces_len = SPACES.len() as isize;
         while self.pending_indentation >= spaces_len {
-            self.out.write_all(&SPACES)?;
+            self.out.extend_from_slice(&SPACES);
             self.pending_indentation -= spaces_len;
         }
         if self.pending_indentation > 0 {
-            self.out.write_all(&SPACES[0..self.pending_indentation as usize])?;
+            self.out.extend_from_slice(&SPACES[0..self.pending_indentation as usize]);
             self.pending_indentation = 0;
         }
 
-        write!(self.out, "{}", s)
+        self.out.extend_from_slice(s.as_bytes());
+
+        Ok(())
     }
 
     crate fn print(&mut self, token: Token, l: isize) -> io::Result<()> {
