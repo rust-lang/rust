@@ -4,6 +4,7 @@
 //! and the corresponding code mostly in librustc_typeck/check/method/probe.rs.
 use std::sync::Arc;
 
+use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -113,19 +114,30 @@ impl CrateImplBlocks {
     }
 }
 
-fn def_crate(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<Crate> {
+fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayVec<[Crate; 2]>> {
+    macro_rules! lang_item_crate {
+        ($db:expr, $cur_crate:expr, $($name:expr),+ $(,)?) => {{
+            let mut v = ArrayVec::<[Crate; 2]>::new();
+            $(
+                v.push($db.lang_item($cur_crate, $name.into())?.krate($db)?);
+            )+
+            Some(v)
+        }};
+    }
+
     match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
-            TypeCtor::Adt(def_id) => def_id.krate(db),
-            TypeCtor::Bool => db.lang_item(cur_crate, "bool".into())?.krate(db),
-            TypeCtor::Char => db.lang_item(cur_crate, "char".into())?.krate(db),
+            TypeCtor::Adt(def_id) => Some(std::iter::once(def_id.krate(db)?).collect()),
+            TypeCtor::Bool => lang_item_crate![db, cur_crate, "bool"],
+            TypeCtor::Char => lang_item_crate![db, cur_crate, "char"],
             TypeCtor::Float(UncertainFloatTy::Known(f)) => {
-                db.lang_item(cur_crate, f.ty_to_string().into())?.krate(db)
+                lang_item_crate![db, cur_crate, f.ty_to_string()]
             }
             TypeCtor::Int(UncertainIntTy::Known(i)) => {
-                db.lang_item(cur_crate, i.ty_to_string().into())?.krate(db)
+                lang_item_crate![db, cur_crate, i.ty_to_string()]
             }
-            TypeCtor::Str => db.lang_item(cur_crate, "str".into())?.krate(db),
+            TypeCtor::Str => lang_item_crate![db, cur_crate, "str"],
+            TypeCtor::Slice => lang_item_crate![db, cur_crate, "slice_alloc", "slice"],
             _ => None,
         },
         _ => None,
@@ -218,19 +230,17 @@ fn iterate_inherent_methods<T>(
     krate: Crate,
     mut callback: impl FnMut(&Ty, Function) -> Option<T>,
 ) -> Option<T> {
-    let krate = match def_crate(db, krate, &ty.value) {
-        Some(krate) => krate,
-        None => return None,
-    };
-    let impls = db.impls_in_crate(krate);
+    for krate in def_crates(db, krate, &ty.value)? {
+        let impls = db.impls_in_crate(krate);
 
-    for impl_block in impls.lookup_impl_blocks(&ty.value) {
-        for item in impl_block.items(db) {
-            if let ImplItem::Method(f) = item {
-                let data = f.data(db);
-                if name.map_or(true, |name| data.name() == name) && data.has_self_param() {
-                    if let Some(result) = callback(&ty.value, f) {
-                        return Some(result);
+        for impl_block in impls.lookup_impl_blocks(&ty.value) {
+            for item in impl_block.items(db) {
+                if let ImplItem::Method(f) = item {
+                    let data = f.data(db);
+                    if name.map_or(true, |name| data.name() == name) && data.has_self_param() {
+                        if let Some(result) = callback(&ty.value, f) {
+                            return Some(result);
+                        }
                     }
                 }
             }
@@ -248,13 +258,14 @@ impl Ty {
         krate: Crate,
         mut callback: impl FnMut(ImplItem) -> Option<T>,
     ) -> Option<T> {
-        let krate = def_crate(db, krate, &self)?;
-        let impls = db.impls_in_crate(krate);
+        for krate in def_crates(db, krate, &self)? {
+            let impls = db.impls_in_crate(krate);
 
-        for impl_block in impls.lookup_impl_blocks(&self) {
-            for item in impl_block.items(db) {
-                if let Some(result) = callback(item) {
-                    return Some(result);
+            for impl_block in impls.lookup_impl_blocks(&self) {
+                for item in impl_block.items(db) {
+                    if let Some(result) = callback(item) {
+                        return Some(result);
+                    }
                 }
             }
         }
