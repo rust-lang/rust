@@ -218,10 +218,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     /// Enforce a constraint like
     ///
     /// ```
-    /// pick 'r from ['o...]
+    /// 'r member of ['c...]
     /// ```
     ///
-    /// We look for all option regions from the list `'o...` that:
+    /// We look for all choice regions from the list `'c...` that:
     ///
     /// (a) are greater than the current value of `'r` (which is a lower bound)
     ///
@@ -230,8 +230,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     /// (b) are compatible with the upper bounds of `'r` that we can
     /// find by traversing the graph.
     ///
-    /// From that list, we look for a *minimal* option `'o_min`. If we
-    /// find one, then we can enforce that `'r: 'o_min`.
+    /// From that list, we look for a *minimal* option `'c_min`. If we
+    /// find one, then we can enforce that `'r: 'c_min`.
     fn enforce_member_constraint(
         &self,
         graph: &RegionGraph<'tcx>,
@@ -241,7 +241,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         debug!("enforce_member_constraint(member_constraint={:#?})", member_constraint);
 
         // The constraint is some inference variable (`vid`) which
-        // must be equal to one of the options
+        // must be equal to one of the options.
         let member_vid = match member_constraint.member_region {
             ty::ReVar(vid) => *vid,
             _ => return false,
@@ -254,7 +254,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             VarValue::Value(r) => r,
         };
 
-        // find all the "upper bounds" -- that is, each region `b` such that
+        // Find all the "upper bounds" -- that is, each region `b` such that
         // `r0 <= b` must hold.
         let (member_upper_bounds, _) = self.collect_concrete_regions(
             graph,
@@ -263,7 +263,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             None,
         );
 
-        // get an iterator over the *available choice* -- that is,
+        // Get an iterator over the *available choice* -- that is,
         // each choice region `c` where `lb <= c` and `c <= ub` for all the
         // upper bounds `ub`.
         debug!("enforce_member_constraint: upper_bounds={:#?}", member_upper_bounds);
@@ -274,9 +274,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     .all(|upper_bound| self.sub_concrete_regions(option, upper_bound.region))
         });
 
-        // if there >1 option, we only make a choice if there is a
-        // single *least* choice -- i.e., some available region that
-        // is `<=` all the others.
+        // If there is more than one option, we only make a choice if
+        // there is a single *least* choice -- i.e., some available
+        // region that is `<=` all the others.
         let mut least_choice: ty::Region<'tcx> = match options.next() {
             Some(&r) => r,
             None => return false,
@@ -554,6 +554,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
         }
 
+        // Check that all member constraints are satisfied.
         for member_constraint in &self.data.member_constraints {
             let member_region = var_data.normalize(self.tcx(), member_constraint.member_region);
             let choice_regions = member_constraint
