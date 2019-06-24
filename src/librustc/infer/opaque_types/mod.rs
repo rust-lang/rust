@@ -41,7 +41,7 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// ```
     /// existential type Foo;
     /// fn bar() -> Foo {
-    ///             ^^^ this is the span we are looking for!
+    ///             ^^^ This is the span we are looking for!
     /// ```
     ///
     /// In cases where the fn returns `(impl Trait, impl Trait)` or
@@ -234,13 +234,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///
     /// # The Solution
     ///
-    /// We generally prefer to make us our `<=` constraints, since
-    /// they integrate best into the region solve. To do that, we find
-    /// the "minimum" of all the arguments that appear in the substs:
-    /// that is, some region which is less than all the others. In the
-    /// case of `Foo1<'a>`, that would be `'a` (it's the only choice,
-    /// after all). Then we apply that as a least bound to the
-    /// variables (e.g., `'a <= '0`).
+    /// We generally prefer to make `<=` constraints, since they
+    /// integrate best into the region solver. To do that, we find the
+    /// "minimum" of all the arguments that appear in the substs: that
+    /// is, some region which is less than all the others. In the case
+    /// of `Foo1<'a>`, that would be `'a` (it's the only choice, after
+    /// all). Then we apply that as a least bound to the variables
+    /// (e.g., `'a <= '0`).
     ///
     /// In some cases, there is no minimum. Consider this example:
     ///
@@ -316,7 +316,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    /// See `constrain_opaque_types` for docs
+    /// See `constrain_opaque_types` for documentation.
     pub fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
         &self,
         def_id: DefId,
@@ -417,7 +417,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// As a fallback, we sometimes generate an "in constraint". For
-    /// case like `impl Foo<'a, 'b>`, where `'a` and `'b` cannot be
+    /// a case like `impl Foo<'a, 'b>`, where `'a` and `'b` cannot be
     /// related, we would generate a constraint `'r in ['a, 'b,
     /// 'static]` for each region `'r` that appears in the hidden type
     /// (i.e., it must be equal to `'a`, `'b`, or `'static`).
