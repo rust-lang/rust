@@ -622,7 +622,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 match seg.res {
                     Some(res) if res != Res::Err => res,
                     _ => {
-                        let parent_node = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+                        let parent_node = self.tcx.hir().get_parent_node(hir_id);
                         self.get_path_res(self.tcx.hir().hir_to_node_id(parent_node))
                     },
                 }

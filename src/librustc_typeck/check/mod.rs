@@ -4259,7 +4259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If our calling expression is indeed the function itself, we're good!
         // If not, generate an error that this can only be called directly.
         if let Node::Expr(expr) = self.tcx.hir().get(
-            self.tcx.hir().get_parent_node_by_hir_id(hir_id))
+            self.tcx.hir().get_parent_node(hir_id))
         {
             if let ExprKind::Call(ref callee, ..) = expr.node {
                 if callee.hir_id == hir_id {
@@ -4334,7 +4334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut contained_in_place = false;
 
         while let hir::Node::Expr(parent_expr) =
-            self.tcx.hir().get(self.tcx.hir().get_parent_node_by_hir_id(expr_id))
+            self.tcx.hir().get(self.tcx.hir().get_parent_node(expr_id))
         {
             match &parent_expr.node {
                 hir::ExprKind::Assign(lhs, ..) | hir::ExprKind::AssignOp(_, lhs, ..) => {

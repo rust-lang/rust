@@ -347,7 +347,7 @@ impl<'hir> Map<'hir> {
                 if variant_data.ctor_hir_id().is_none() {
                     return None;
                 }
-                let ctor_of = match self.find_by_hir_id(self.get_parent_node_by_hir_id(hir_id)) {
+                let ctor_of = match self.find_by_hir_id(self.get_parent_node(hir_id)) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,
                     _ => unreachable!(),
@@ -424,7 +424,7 @@ impl<'hir> Map<'hir> {
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(&self, BodyId { hir_id }: BodyId) -> HirId {
-        let parent = self.get_parent_node_by_hir_id(hir_id);
+        let parent = self.get_parent_node(hir_id);
         assert!(self.lookup(parent).map_or(false, |e| e.is_body_owner(hir_id)));
         parent
     }
@@ -485,7 +485,7 @@ impl<'hir> Map<'hir> {
         match self.get(id) {
             Node::Item(&Item { node: ItemKind::Trait(..), .. }) |
             Node::Item(&Item { node: ItemKind::TraitAlias(..), .. }) => id,
-            Node::GenericParam(_) => self.get_parent_node_by_hir_id(id),
+            Node::GenericParam(_) => self.get_parent_node(id),
             _ => bug!("ty_param_owner: {} not a type parameter", self.node_to_string(id))
         }
     }
@@ -625,7 +625,7 @@ impl<'hir> Map<'hir> {
     /// never appear as the parent node. Thus, you can always walk the parent nodes
     /// from a node to the root of the HIR (unless you get back the same ID here,
     /// which can happen if the ID is not in the map itself or is just weird).
-    pub fn get_parent_node_by_hir_id(&self, hir_id: HirId) -> HirId {
+    pub fn get_parent_node(&self, hir_id: HirId) -> HirId {
         if self.dep_graph.is_fully_enabled() {
             let hir_id_owner = hir_id.owner;
             let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
@@ -644,7 +644,7 @@ impl<'hir> Map<'hir> {
             Some(Node::Binding(_)) => (),
             _ => return false,
         }
-        match self.find_by_hir_id(self.get_parent_node_by_hir_id(id)) {
+        match self.find_by_hir_id(self.get_parent_node(id)) {
             Some(Node::Item(_)) |
             Some(Node::TraitItem(_)) |
             Some(Node::ImplItem(_)) => true,
@@ -680,7 +680,7 @@ impl<'hir> Map<'hir> {
     {
         let mut id = start_id;
         loop {
-            let parent_id = self.get_parent_node_by_hir_id(id);
+            let parent_id = self.get_parent_node(id);
             if parent_id == CRATE_HIR_ID {
                 return Ok(CRATE_HIR_ID);
             }
@@ -1022,7 +1022,7 @@ impl<'hir> Map<'hir> {
             Some(Node::Arm(arm)) => arm.span,
             Some(Node::Block(block)) => block.span,
             Some(Node::Ctor(..)) => match self.find_by_hir_id(
-                self.get_parent_node_by_hir_id(hir_id))
+                self.get_parent_node(hir_id))
             {
                 Some(Node::Item(item)) => item.span,
                 Some(Node::Variant(variant)) => variant.span,

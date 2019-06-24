@@ -247,7 +247,7 @@ fn def_id_visibility<'tcx>(
                     }
                 }
                 Node::Ctor(vdata) => {
-                    let parent_hir_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
+                    let parent_hir_id = tcx.hir().get_parent_node(hir_id);
                     match tcx.hir().get(parent_hir_id) {
                         Node::Variant(..) => {
                             let parent_did = tcx.hir().local_def_id_from_hir_id(parent_hir_id);
@@ -784,7 +784,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             if module_id == hir::CRATE_HIR_ID {
                 break
             }
-            module_id = self.tcx.hir().get_parent_node_by_hir_id(module_id);
+            module_id = self.tcx.hir().get_parent_node(module_id);
         }
     }
 }
@@ -1674,7 +1674,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
                     has_old_errors = true;
                     break;
                 }
-                let parent = self.tcx.hir().get_parent_node_by_hir_id(id);
+                let parent = self.tcx.hir().get_parent_node(id);
                 if parent == id {
                     break;
                 }

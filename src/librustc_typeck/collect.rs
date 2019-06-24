@@ -1298,7 +1298,7 @@ pub fn checked_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fail: bool) -> Op
         }
 
         Node::AnonConst(_) => {
-            let parent_node = tcx.hir().get(tcx.hir().get_parent_node_by_hir_id(hir_id));
+            let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
             match parent_node {
                 Node::Ty(&hir::Ty {
                     node: hir::TyKind::Array(_, ref constant),

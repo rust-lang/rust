@@ -631,7 +631,7 @@ fn print_flowgraph<'tcx, W: Write>(
                 if let Some(n) = hir::map::blocks::FnLikeNode::from_node(node) {
                     break n.body();
                 }
-                let parent = tcx.hir().get_parent_node_by_hir_id(hir_id);
+                let parent = tcx.hir().get_parent_node(hir_id);
                 assert_ne!(hir_id, parent);
                 hir_id = parent;
             }

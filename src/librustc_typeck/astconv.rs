@@ -2000,7 +2000,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.prohibit_generics(&path.segments);
 
                 let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-                let item_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
+                let item_id = tcx.hir().get_parent_node(hir_id);
                 let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
@@ -2190,7 +2190,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // Find the name and index of the const parameter by indexing the generics of the
             // parent item and construct a `ParamConst`.
             let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-            let item_id = tcx.hir().get_parent_node_by_hir_id(hir_id);
+            let item_id = tcx.hir().get_parent_node(hir_id);
             let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
             let generics = tcx.generics_of(item_def_id);
             let index = generics.param_def_id_to_index[&tcx.hir().local_def_id_from_hir_id(hir_id)];

@@ -938,7 +938,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'tcx>,
     ) {
         if let &ObligationCauseCode::VariableType(hir_id) = code {
-            let parent_node = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+            let parent_node = self.tcx.hir().get_parent_node(hir_id);
             if let Some(Node::Local(ref local)) = self.tcx.hir().find_by_hir_id(parent_node) {
                 if let Some(ref expr) = local.init {
                     if let hir::ExprKind::Index(_, _) = expr.node {
@@ -1013,7 +1013,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     ) {
         let hir = self.tcx.hir();
-        let parent_node = hir.get_parent_node_by_hir_id(obligation.cause.body_id);
+        let parent_node = hir.get_parent_node(obligation.cause.body_id);
         let node = hir.find_by_hir_id(parent_node);
         if let Some(hir::Node::Item(hir::Item {
             node: hir::ItemKind::Fn(decl, _, _, body_id),

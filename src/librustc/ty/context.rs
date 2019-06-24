@@ -2880,7 +2880,7 @@ impl<'tcx> TyCtxt<'tcx> {
             if lint::maybe_lint_level_root(self, id) {
                 return id;
             }
-            let next = self.hir().get_parent_node_by_hir_id(id);
+            let next = self.hir().get_parent_node(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }
@@ -2898,7 +2898,7 @@ impl<'tcx> TyCtxt<'tcx> {
             if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
                 return pair
             }
-            let next = self.hir().get_parent_node_by_hir_id(id);
+            let next = self.hir().get_parent_node(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }

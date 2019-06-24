@@ -570,7 +570,7 @@ fn is_enclosed(
     used_unsafe: &FxHashSet<hir::HirId>,
     id: hir::HirId,
 ) -> Option<(String, hir::HirId)> {
-    let parent_id = tcx.hir().get_parent_node_by_hir_id(id);
+    let parent_id = tcx.hir().get_parent_node(id);
     if parent_id != id {
         if used_unsafe.contains(&parent_id) {
             Some(("block".to_string(), parent_id))

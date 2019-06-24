@@ -269,7 +269,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         let filename = tcx.sess.source_map().span_to_filename(span);
 
                                         let parent_node = self.tcx.hir().get(
-                                            self.tcx.hir().get_parent_node_by_hir_id(hir_id),
+                                            self.tcx.hir().get_parent_node(hir_id),
                                         );
                                         let msg = format!(
                                             "you must specify a type for this binding, like `{}`",
@@ -390,7 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             } else {
                                 let call_expr = self.tcx.hir().expect_expr(
-                                    self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id),
+                                    self.tcx.hir().get_parent_node(expr.hir_id),
                                 );
 
                                 if let Some(span) = call_expr.span.trim_start(item_name.span) {

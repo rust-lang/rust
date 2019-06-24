@@ -1189,7 +1189,7 @@ impl BorrowckCtxt<'_, 'tcx> {
     }
 
     fn local_ty(&self, hir_id: hir::HirId) -> (Option<&hir::Ty>, bool) {
-        let parent = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+        let parent = self.tcx.hir().get_parent_node(hir_id);
         let parent_node = self.tcx.hir().get(parent);
 
         // The parent node is like a fn
@@ -1287,7 +1287,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                     },
                 )) = ty.map(|t| &t.node)
                 {
-                    let borrow_expr_id = self.tcx.hir().get_parent_node_by_hir_id(borrowed_hir_id);
+                    let borrow_expr_id = self.tcx.hir().get_parent_node(borrowed_hir_id);
                     db.span_suggestion(
                         self.tcx.hir().span(borrow_expr_id),
                         "consider removing the `&mut`, as it is an \
