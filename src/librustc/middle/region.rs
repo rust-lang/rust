@@ -376,15 +376,7 @@ struct RegionResolutionVisitor<'tcx> {
     // up their indices.
     pessimistic_yield: bool,
     // Stores scopes when pessimistic_yield is true.
-    // Each time we encounter an ExprKind::AssignOp, we push
-    // a new Vec into the outermost Vec. This inner Vec is used
-    // to store any scopes we encounter when visiting the inner expressions
-    // of the AssignOp. Once we finish visiting the inner expressions, we pop
-    // off the inner Vec, and process the Scopes it contains.
-    // This allows us to handle nested AssignOps - while a terrible idea,
-    // they are valid Rust, so we need to handle them.
-    fixup_scopes: Vec<Vec<Scope>>,
-
+    fixup_scopes: Vec<Scope>,
     // Generated scope tree:
     scope_tree: ScopeTree,
 
@@ -1020,11 +1012,11 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
         },
-        hir::ExprKind::AssignOp(_, ref left_expression, ref right_expression) => {
+        hir::ExprKind::AssignOp(_, ref left_expr, ref right_expr) => {
             debug!("resolve_expr - enabling pessimistic_yield, was previously {}",
                    prev_pessimistic);
 
-            visitor.fixup_scopes.push(vec![]);
+            let start_point = visitor.fixup_scopes.len();
             visitor.pessimistic_yield = true;
 
             // If the actual execution order turns out to be right-to-left,
@@ -1032,16 +1024,15 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             // then we'll assign too low a count to any `yield` expressions
             // we encounter in 'right_expression' - they should really occur after all of the
             // expressions in 'left_expression'.
-            visitor.visit_expr(&right_expression);
-
+            visitor.visit_expr(&right_expr);
             visitor.pessimistic_yield = prev_pessimistic;
 
-            let target_scopes = visitor.fixup_scopes.pop().unwrap();
             debug!("resolve_expr - restoring pessimistic_yield to {}", prev_pessimistic);
-
-
-            visitor.visit_expr(&left_expression);
+            visitor.visit_expr(&left_expr);
             debug!("resolve_expr - fixing up counts to {}", visitor.expr_and_pat_count);
+
+            // Remove and process any scopes pushed by the visitor
+            let target_scopes = visitor.fixup_scopes.drain(start_point..);
 
             for scope in target_scopes {
                 let mut yield_data = visitor.scope_tree.yield_in_scope.get_mut(&scope).unwrap();
@@ -1083,7 +1074,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             visitor.scope_tree.yield_in_scope.insert(scope, data);
             if visitor.pessimistic_yield {
                 debug!("resolve_expr in pessimistic_yield - marking scope {:?} for fixup", scope);
-                visitor.fixup_scopes.last_mut().unwrap().push(scope);
+                visitor.fixup_scopes.push(scope);
             }
 
             // Keep traversing up while we can.
