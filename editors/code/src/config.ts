@@ -25,8 +25,8 @@ export class Config {
     public cargoWatchOptions: CargoWatchOptions = {
         enableOnStartup: 'ask',
         trace: 'off',
-        checkArguments: '',
-        checkCommand: ''
+        arguments: '',
+        command: ''
     };
 
     private prevEnhancedTyping: null | boolean = null;
@@ -107,16 +107,16 @@ export class Config {
             );
         }
 
-        if (config.has('cargo-watch.check-arguments')) {
-            this.cargoWatchOptions.checkArguments = config.get<string>(
-                'cargo-watch.check-arguments',
+        if (config.has('cargo-watch.arguments')) {
+            this.cargoWatchOptions.arguments = config.get<string>(
+                'cargo-watch.arguments',
                 ''
             );
         }
 
-        if (config.has('cargo-watch.check-command')) {
-            this.cargoWatchOptions.checkCommand = config.get<string>(
-                'cargo-watch.check-command',
+        if (config.has('cargo-watch.command')) {
+            this.cargoWatchOptions.command = config.get<string>(
+                'cargo-watch.command',
                 ''
             );
         }

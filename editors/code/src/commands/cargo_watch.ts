@@ -43,7 +43,9 @@ export class CargoWatchProvider implements vscode.Disposable {
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection(
             'rustc'
         );
-        this.statusDisplay = new StatusDisplay(Server.config.cargoWatchOptions.checkCommand);
+        this.statusDisplay = new StatusDisplay(
+            Server.config.cargoWatchOptions.command
+        );
         this.outputChannel = vscode.window.createOutputChannel(
             'Cargo Watch Trace'
         );
@@ -57,10 +59,12 @@ export class CargoWatchProvider implements vscode.Disposable {
             return;
         }
 
-        let args = Server.config.cargoWatchOptions.checkCommand + ' --all-targets --message-format json';
-        if (Server.config.cargoWatchOptions.checkArguments.length > 0) {
+        let args =
+            Server.config.cargoWatchOptions.command +
+            ' --all-targets --message-format json';
+        if (Server.config.cargoWatchOptions.command.length > 0) {
             // Excape the double quote string:
-            args += ' ' + Server.config.cargoWatchOptions.checkArguments;
+            args += ' ' + Server.config.cargoWatchOptions.arguments;
         }
         // Windows handles arguments differently than the unix-likes, so we need to wrap the args in double quotes
         if (process.platform === 'win32') {
