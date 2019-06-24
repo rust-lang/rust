@@ -30,7 +30,7 @@ the [`UniversalRegionRelations`] struct would track that `'a: 'b` is
 known to hold (which could be tested with the [`outlives`] function.
 
 [`UniversalRegions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/universal_regions/struct.UniversalRegions.html
-[`UniversalRegionsRelations`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/type_check/free_region_relations/struct.UniversalRegionRelations.html
+[`UniversalRegionRelations`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/type_check/free_region_relations/struct.UniversalRegionRelations.html
 [`outlives`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/type_check/free_region_relations/struct.UniversalRegionRelations.html#method.outlives
 
 ## Everything is a region variable
