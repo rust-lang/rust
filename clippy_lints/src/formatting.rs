@@ -2,8 +2,7 @@ use crate::utils::{differing_macro_contexts, in_macro_or_desugar, snippet_opt, s
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
-use syntax::ast;
-use syntax::ptr::P;
+use syntax::ast::*;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`
@@ -86,11 +85,11 @@ declare_lint_pass!(Formatting => [
 ]);
 
 impl EarlyLintPass for Formatting {
-    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
+    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &Block) {
         for w in block.stmts.windows(2) {
             match (&w[0].node, &w[1].node) {
-                (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Expr(ref second))
-                | (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Semi(ref second)) => {
+                (&StmtKind::Expr(ref first), &StmtKind::Expr(ref second))
+                | (&StmtKind::Expr(ref first), &StmtKind::Semi(ref second)) => {
                     check_missing_else(cx, first, second);
                 },
                 _ => (),
@@ -98,7 +97,7 @@ impl EarlyLintPass for Formatting {
         }
     }
 
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         check_assign(cx, expr);
         check_else(cx, expr);
         check_array(cx, expr);
@@ -106,13 +105,13 @@ impl EarlyLintPass for Formatting {
 }
 
 /// Implementation of the `SUSPICIOUS_ASSIGNMENT_FORMATTING` lint.
-fn check_assign(cx: &EarlyContext<'_>, expr: &ast::Expr) {
-    if let ast::ExprKind::Assign(ref lhs, ref rhs) = expr.node {
+fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
+    if let ExprKind::Assign(ref lhs, ref rhs) = expr.node {
         if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro_or_desugar(lhs.span) {
             let eq_span = lhs.span.between(rhs.span);
-            if let ast::ExprKind::Unary(op, ref sub_rhs) = rhs.node {
+            if let ExprKind::Unary(op, ref sub_rhs) = rhs.node {
                 if let Some(eq_snippet) = snippet_opt(cx, eq_span) {
-                    let op = ast::UnOp::to_string(op);
+                    let op = UnOp::to_string(op);
                     let eqop_span = lhs.span.between(sub_rhs.span);
                     if eq_snippet.ends_with('=') {
                         span_note_and_lint(
@@ -135,10 +134,10 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &ast::Expr) {
 }
 
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for weird `else`.
-fn check_else(cx: &EarlyContext<'_>, expr: &ast::Expr) {
+fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
     if_chain! {
-        if let Some((then, &Some(ref else_))) = unsugar_if(expr);
-        if is_block(else_) || unsugar_if(else_).is_some();
+        if let ExprKind::If(_, then, Some(else_)) = &expr.node;
+        if is_block(else_) || is_if(else_);
         if !differing_macro_contexts(then.span, else_.span);
         if !in_macro_or_desugar(then.span) && !in_external_macro(cx.sess, expr.span);
 
@@ -154,7 +153,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &ast::Expr) {
         if let Some(else_snippet) = snippet_opt(cx, else_span);
         if let Some(else_pos) = else_snippet.find("else");
         if else_snippet[else_pos..].contains('\n');
-        let else_desc = if unsugar_if(else_).is_some() { "if" } else { "{..}" };
+        let else_desc = if is_if(else_) { "if" } else { "{..}" };
 
         then {
             span_note_and_lint(
@@ -173,16 +172,16 @@ fn check_else(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     }
 }
 
-fn has_unary_equivalent(bin_op: ast::BinOpKind) -> bool {
+fn has_unary_equivalent(bin_op: BinOpKind) -> bool {
     // &, *, -
-    bin_op == ast::BinOpKind::And || bin_op == ast::BinOpKind::Mul || bin_op == ast::BinOpKind::Sub
+    bin_op == BinOpKind::And || bin_op == BinOpKind::Mul || bin_op == BinOpKind::Sub
 }
 
 /// Implementation of the `POSSIBLE_MISSING_COMMA` lint for array
-fn check_array(cx: &EarlyContext<'_>, expr: &ast::Expr) {
-    if let ast::ExprKind::Array(ref array) = expr.node {
+fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
+    if let ExprKind::Array(ref array) = expr.node {
         for element in array {
-            if let ast::ExprKind::Binary(ref op, ref lhs, _) = element.node {
+            if let ExprKind::Binary(ref op, ref lhs, _) = element.node {
                 if has_unary_equivalent(op.node) && !differing_macro_contexts(lhs.span, op.span) {
                     let space_span = lhs.span.between(op.span);
                     if let Some(space_snippet) = snippet_opt(cx, space_span) {
@@ -204,18 +203,18 @@ fn check_array(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     }
 }
 
-fn check_missing_else(cx: &EarlyContext<'_>, first: &ast::Expr, second: &ast::Expr) {
+fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
     if !differing_macro_contexts(first.span, second.span)
         && !in_macro_or_desugar(first.span)
-        && unsugar_if(first).is_some()
-        && (is_block(second) || unsugar_if(second).is_some())
+        && is_if(first)
+        && (is_block(second) || is_if(second))
     {
         // where the else would be
         let else_span = first.span.between(second.span);
 
         if let Some(else_snippet) = snippet_opt(cx, else_span) {
             if !else_snippet.contains('\n') {
-                let (looks_like, next_thing) = if unsugar_if(second).is_some() {
+                let (looks_like, next_thing) = if is_if(second) {
                     ("an `else if`", "the second `if`")
                 } else {
                     ("an `else {..}`", "the next block")
@@ -237,18 +236,19 @@ fn check_missing_else(cx: &EarlyContext<'_>, first: &ast::Expr, second: &ast::Ex
     }
 }
 
-fn is_block(expr: &ast::Expr) -> bool {
-    if let ast::ExprKind::Block(..) = expr.node {
+fn is_block(expr: &Expr) -> bool {
+    if let ExprKind::Block(..) = expr.node {
         true
     } else {
         false
     }
 }
 
-/// Match `if` or `if let` expressions and return the `then` and `else` block.
-fn unsugar_if(expr: &ast::Expr) -> Option<(&P<ast::Block>, &Option<P<ast::Expr>>)> {
-    match expr.node {
-        ast::ExprKind::If(_, ref then, ref else_) => Some((then, else_)),
-        _ => None,
+/// Check if the expression is an `if` or `if let`
+fn is_if(expr: &Expr) -> bool {
+    if let ExprKind::If(..) = expr.node {
+        true
+    } else {
+        false
     }
 }
