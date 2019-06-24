@@ -59,7 +59,7 @@ A liveness constraint `R live at E` is satisfied if `E` is a member of
 `Values(R)`. So to "apply" such a constraint to `Values`, we just have
 to compute `Values(R) = Values(R) union {E}`.
 
-The liveness values are computed in the type-check and passes to the
+The liveness values are computed in the type-check and passed to the
 region inference upon creation in the `liveness_constraints` argument.
 These are not represented as individual constraints like `R live at E`
 though; instead, we store a (sparse) bitset per region variable (of
