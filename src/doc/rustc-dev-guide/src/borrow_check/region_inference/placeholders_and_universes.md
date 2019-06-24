@@ -145,7 +145,7 @@ notion of universes, we can use it to extend our type-checker and
 things to prevent illegal names from leaking out. The idea is that we
 give each inference (existential) variable – whether it be a type or
 a lifetime – a universe. That variable's value can then only
-reference names visible from that universe. So for example is a
+reference names visible from that universe. So for example if a
 lifetime variable is created in U0, then it cannot be assigned a value
 of `!1` or `!2`, because those names are not visible from the universe
 U0.
