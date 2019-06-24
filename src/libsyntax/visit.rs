@@ -826,10 +826,8 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
 
 pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
     walk_list!(visitor, visit_pat, &arm.pats);
-    if let Some(ref g) = &arm.guard {
-        match g {
-            Guard::If(ref e) => visitor.visit_expr(e),
-        }
+    if let Some(ref e) = &arm.guard {
+        visitor.visit_expr(e);
     }
     visitor.visit_expr(&arm.body);
     walk_list!(visitor, visit_attribute, &arm.attrs);

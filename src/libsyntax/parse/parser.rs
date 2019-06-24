@@ -3,7 +3,7 @@
 use crate::ast::{AngleBracketedArgs, ParenthesizedArgs, AttrStyle, BareFnTy};
 use crate::ast::{GenericBound, TraitBoundModifier};
 use crate::ast::Unsafety;
-use crate::ast::{Mod, AnonConst, Arg, Arm, Guard, Attribute, BindingMode, TraitItemKind};
+use crate::ast::{Mod, AnonConst, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use crate::ast::Block;
 use crate::ast::{BlockCheckMode, CaptureBy, Movability};
 use crate::ast::{Constness, Crate};
@@ -3396,7 +3396,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let pats = self.parse_pats()?;
         let guard = if self.eat_keyword(kw::If) {
-            Some(Guard::If(self.parse_expr()?))
+            Some(self.parse_expr()?)
         } else {
             None
         };

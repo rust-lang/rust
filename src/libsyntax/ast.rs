@@ -893,14 +893,9 @@ pub struct Local {
 pub struct Arm {
     pub attrs: Vec<Attribute>,
     pub pats: Vec<P<Pat>>,
-    pub guard: Option<Guard>,
+    pub guard: Option<P<Expr>>,
     pub body: P<Expr>,
     pub span: Span,
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum Guard {
-    If(P<Expr>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

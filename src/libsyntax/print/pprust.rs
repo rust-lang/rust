@@ -2653,14 +2653,10 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&arm.attrs)?;
         self.print_pats(&arm.pats)?;
         self.s.space()?;
-        if let Some(ref g) = arm.guard {
-            match g {
-                ast::Guard::If(ref e) => {
-                    self.word_space("if")?;
-                    self.print_expr(e)?;
-                    self.s.space()?;
-                }
-            }
+        if let Some(ref e) = arm.guard {
+            self.word_space("if")?;
+            self.print_expr(e)?;
+            self.s.space()?;
         }
         self.word_space("=>")?;
 

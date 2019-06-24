@@ -1609,9 +1609,8 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
 
     fn visit_arm(&mut self, arm: &'l ast::Arm) {
         self.process_var_decl_multi(&arm.pats);
-        match arm.guard {
-            Some(ast::Guard::If(ref expr)) => self.visit_expr(expr),
-            _ => {}
+        if let Some(expr) = &arm.guard {
+            self.visit_expr(expr);
         }
         self.visit_expr(&arm.body);
     }
