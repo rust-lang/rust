@@ -64,7 +64,7 @@ As noted previously, the value that we infer for each region is a set
 `{E}`. The elements of this set can be points in the control-flow
 graph, but they can also be an element `end('a)` corresponding to each
 universal lifetime `'a`. If the value for some region `R0` includes
-`end('a`), then this implies that R0 must extend until the end of `'a`
+`end('a`), then this implies that `R0` must extend until the end of `'a`
 in the caller.
 
 ## The "value" of a universal region
