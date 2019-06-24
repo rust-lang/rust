@@ -135,6 +135,7 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 
     /// Intern a type
+    #[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
     #[inline(never)]
     fn intern_ty(
         local: &CtxtInterners<'tcx>,
@@ -2195,6 +2196,7 @@ impl<'tcx> Hash for Interned<'tcx, TyS<'tcx>> {
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
 impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a TyKind<'tcx> {
         &self.0.sty
@@ -2429,6 +2431,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_fn_ptr(converted_sig)
     }
 
+    #[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
     #[inline]
     pub fn mk_ty(&self, st: TyKind<'tcx>) -> Ty<'tcx> {
         CtxtInterners::intern_ty(&self.interners, &self.global_interners, st)

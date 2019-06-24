@@ -18,6 +18,7 @@ impl FlagComputation {
         }
     }
 
+    #[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
     pub fn for_sty(st: &ty::TyKind<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
         result.add_sty(st);
@@ -61,6 +62,7 @@ impl FlagComputation {
         } // otherwise, this binder captures nothing
     }
 
+    #[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
     fn add_sty(&mut self, st: &ty::TyKind<'_>) {
         match st {
             &ty::Bool |

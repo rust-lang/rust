@@ -1,5 +1,7 @@
 //! This module contains `TyKind` and its major components.
 
+#![cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
+
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::canonical::Canonical;
