@@ -204,6 +204,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         graph: &RegionGraph<'tcx>,
         var_values: &mut LexicalRegionResolutions<'tcx>,
     ) -> bool {
+        // Note: we don't use the `any` combinator because we don't
+        // want to stop at the first constraint that makes a change.
         let mut any_changed = false;
         for member_constraint in &self.data.member_constraints {
             if self.enforce_member_constraint(graph, member_constraint, var_values) {
