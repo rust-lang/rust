@@ -171,6 +171,7 @@ pub struct InferCtxt<'a, 'tcx> {
     /// Track how many errors were reported when this infcx is created.
     /// If the number of errors increases, that's also a sign (line
     /// `tained_by_errors`) to avoid reporting certain kinds of errors.
+    // FIXME(matthewjasper) Merge into `tainted_by_errors_flag`
     err_count_on_creation: usize,
 
     /// This flag is true while there is an active snapshot.

@@ -346,7 +346,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         // current architecture.
         let resolver = abort_on_err(compiler.expansion(), sess).peek().1.clone();
 
-        if sess.err_count() > 0 {
+        if sess.has_errors() {
             sess.fatal("Compilation failed, aborting rustdoc");
         }
 

@@ -320,8 +320,13 @@ impl Session {
         self.diagnostic().abort_if_errors();
     }
     pub fn compile_status(&self) -> Result<(), ErrorReported> {
-        compile_result_from_err_count(self.err_count())
+        if self.has_errors() {
+            Err(ErrorReported)
+        } else {
+            Ok(())
+        }
     }
+    // FIXME(matthewjasper) Remove this method, it should never be needed.
     pub fn track_errors<F, T>(&self, f: F) -> Result<T, ErrorReported>
     where
         F: FnOnce() -> T,
@@ -1388,11 +1393,3 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
 }
 
 pub type CompileResult = Result<(), ErrorReported>;
-
-pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
-    if err_count == 0 {
-        Ok(())
-    } else {
-        Err(ErrorReported)
-    }
-}
