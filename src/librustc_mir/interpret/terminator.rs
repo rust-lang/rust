@@ -355,7 +355,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                     let mut locals_iter = body.args_iter();
                     while let Some(local) = locals_iter.next() {
                         let dest = self.eval_place(
-                            &mir::Place::Base(mir::PlaceBase::Local(local))
+                            &mir::Place::from(local)
                         )?;
                         if Some(local) == body.spread_arg {
                             // Must be a tuple

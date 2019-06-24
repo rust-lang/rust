@@ -2096,6 +2096,18 @@ impl<'tcx> Place<'tcx> {
     }
 }
 
+impl From<Local> for Place<'_> {
+    fn from(local: Local) -> Self {
+        Place::Base(local.into())
+    }
+}
+
+impl From<Local> for PlaceBase<'_> {
+    fn from(local: Local) -> Self {
+        PlaceBase::Local(local)
+    }
+}
+
 /// A linked list of projections running up the stack; begins with the
 /// innermost projection and extends to the outermost (e.g., `a.b.c`
 /// would have the place `b` with a "next" pointer to `b.c`).

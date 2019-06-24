@@ -531,7 +531,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 kind: StatementKind::StorageLive(local_id),
             },
         );
-        let place = Place::Base(PlaceBase::Local(local_id));
+        let place = Place::from(local_id);
         let var_ty = self.local_decls[local_id].ty;
         let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
         self.schedule_drop(span, region_scope, &place, var_ty, DropKind::Storage);
@@ -545,7 +545,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.schedule_drop(
             span,
             region_scope,
-            &Place::Base(PlaceBase::Local(local_id)),
+            &Place::from(local_id),
             var_ty,
             DropKind::Value,
         );
@@ -1478,7 +1478,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(
                     block,
                     scrutinee_source_info,
-                    &Place::Base(PlaceBase::Local(temp)),
+                    &Place::from(temp),
                     borrow,
                 );
             }
@@ -1502,7 +1502,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info: guard_end,
                     kind: StatementKind::FakeRead(
                         FakeReadCause::ForMatchGuard,
-                        Place::Base(PlaceBase::Local(temp)),
+                        Place::from(temp),
                     ),
                 });
             }
@@ -1575,7 +1575,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // place they refer to can't be modified by the guard.
             for binding in by_value_bindings.clone() {
                 let local_id = self.var_local_id(binding.var_id, RefWithinGuard);
-                    let place = Place::Base(PlaceBase::Local(local_id));
+                    let place = Place::from(local_id);
                 self.cfg.push(
                     block,
                     Statement {

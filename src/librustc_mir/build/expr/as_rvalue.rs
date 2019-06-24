@@ -127,7 +127,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.schedule_drop_storage_and_value(
                         expr_span,
                         scope,
-                        &Place::Base(PlaceBase::Local(result)),
+                        &Place::from(result),
                         value.ty,
                     );
                 }
@@ -135,16 +135,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg
-                    .push_assign(block, source_info, &Place::Base(PlaceBase::Local(result)), box_);
+                    .push_assign(block, source_info, &Place::from(result), box_);
 
                 // initialize the box contents:
                 unpack!(
                     block = this.into(
-                        &Place::Base(PlaceBase::Local(result)).deref(),
+                        &Place::from(result).deref(),
                         block, value
                     )
                 );
-                block.and(Rvalue::Use(Operand::Move(Place::Base(PlaceBase::Local(result)))))
+                block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
@@ -548,7 +548,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         this.cfg.push_assign(
             block,
             source_info,
-            &Place::Base(PlaceBase::Local(temp)),
+            &Place::from(temp),
             Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place),
         );
 
@@ -559,12 +559,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             this.schedule_drop_storage_and_value(
                 upvar_span,
                 temp_lifetime,
-                &Place::Base(PlaceBase::Local(temp)),
+                &Place::from(temp),
                 upvar_ty,
             );
         }
 
-        block.and(Operand::Move(Place::Base(PlaceBase::Local(temp))))
+        block.and(Operand::Move(Place::from(temp)))
     }
 
     // Helper to get a `-1` value of the appropriate type

@@ -153,7 +153,7 @@ fn write_graph_label<'tcx, W: Write>(
         }
         write!(w,
                "{:?}: {}",
-               Place::Base(PlaceBase::Local(arg)),
+               Place::from(arg),
                escape(&body.local_decls[arg].ty)
         )?;
     }
@@ -171,10 +171,10 @@ fn write_graph_label<'tcx, W: Write>(
 
         if let Some(name) = decl.name {
             write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-                   Place::Base(PlaceBase::Local(local)), escape(&decl.ty), name)?;
+                   Place::from(local), escape(&decl.ty), name)?;
         } else {
             write!(w, r#"{:?}: {};<br align="left"/>"#,
-                   Place::Base(PlaceBase::Local(local)), escape(&decl.ty))?;
+                   Place::from(local), escape(&decl.ty))?;
         }
     }
 

@@ -809,7 +809,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for (index, arg_info) in arguments.iter().enumerate() {
             // Function arguments always get the first Local indices after the return place
             let local = Local::new(index + 1);
-            let place = Place::Base(PlaceBase::Local(local));
+            let place = Place::from(local);
             let &ArgInfo(ty, opt_ty_info, pattern, ref self_binding) = arg_info;
 
             // Make sure we drop (parts of) the argument even when not matched on.

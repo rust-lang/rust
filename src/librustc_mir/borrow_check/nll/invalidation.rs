@@ -11,7 +11,7 @@ use crate::borrow_check::path_utils::*;
 use crate::dataflow::indexes::BorrowIndex;
 use rustc::ty::TyCtxt;
 use rustc::mir::visit::Visitor;
-use rustc::mir::{BasicBlock, Location, Body, Place, PlaceBase, Rvalue};
+use rustc::mir::{BasicBlock, Location, Body, Place, Rvalue};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::TerminatorKind;
 use rustc::mir::{Operand, BorrowKind};
@@ -124,7 +124,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     location,
-                    &Place::Base(PlaceBase::Local(local)),
+                    &Place::from(local),
                     (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                 );
