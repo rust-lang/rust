@@ -241,12 +241,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir_id,
                     node: hir::ExprKind::Closure(_, decl, ..),
                     ..
-                })) = self.tcx.hir().find_by_hir_id(parent) {
+                })) = self.tcx.hir().find(parent) {
                     let parent = self.tcx.hir().get_parent_node(*hir_id);
                     if let (Some(Node::Expr(hir::Expr {
                         node: hir::ExprKind::MethodCall(path, span, expr),
                         ..
-                    })), 1) = (self.tcx.hir().find_by_hir_id(parent), decl.inputs.len()) {
+                    })), 1) = (self.tcx.hir().find(parent), decl.inputs.len()) {
                         let self_ty = self.tables.borrow().node_type(expr[0].hir_id);
                         let self_ty = format!("{:?}", self_ty);
                         let name = path.ident.as_str();
@@ -277,7 +277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let cm = self.sess().source_map();
         let parent_id = self.tcx.hir().get_parent_node(hir_id);
-        if let Some(parent) = self.tcx.hir().find_by_hir_id(parent_id) {
+        if let Some(parent) = self.tcx.hir().find(parent_id) {
             // Account for fields
             if let Node::Expr(hir::Expr {
                 node: hir::ExprKind::Struct(_, fields, ..), ..
@@ -421,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(hir::Node::Expr(hir::Expr {
                             node: hir::ExprKind::Assign(left_expr, _),
                             ..
-                        })) = self.tcx.hir().find_by_hir_id(
+                        })) = self.tcx.hir().find(
                             self.tcx.hir().get_parent_node(expr.hir_id),
                         ) {
                             if mutability == hir::Mutability::MutMutable {
@@ -551,7 +551,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(hir::Node::Expr(hir::Expr {
             node: hir::ExprKind::Struct(_, fields, _),
             ..
-        })) = self.tcx.hir().find_by_hir_id(self.tcx.hir().get_parent_node(expr.hir_id)) {
+        })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id)) {
             // `expr` is a literal field for a struct, only suggest if appropriate
             for field in fields {
                 if field.expr.hir_id == expr.hir_id && field.is_shorthand {

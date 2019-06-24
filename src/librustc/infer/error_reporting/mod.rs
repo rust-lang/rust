@@ -86,7 +86,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     )
                 };
                 let span = scope.span(self, region_scope_tree);
-                let tag = match self.hir().find_by_hir_id(scope.hir_id(region_scope_tree)) {
+                let tag = match self.hir().find(scope.hir_id(region_scope_tree)) {
                     Some(Node::Block(_)) => "block",
                     Some(Node::Expr(expr)) => match expr.node {
                         hir::ExprKind::Call(..) => "call",
@@ -182,7 +182,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let scope = region.free_region_binding_scope(self);
         let node = self.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
-        let tag = match self.hir().find_by_hir_id(node) {
+        let tag = match self.hir().find(node) {
             Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
             Some(Node::Item(it)) => Self::item_scope_tag(&it),
             Some(Node::TraitItem(it)) => Self::trait_item_scope_tag(&it),

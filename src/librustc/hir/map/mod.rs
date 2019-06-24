@@ -292,7 +292,7 @@ impl<'hir> Map<'hir> {
     }
 
     fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
-        let node = if let Some(node) = self.find_by_hir_id(hir_id) {
+        let node = if let Some(node) = self.find(hir_id) {
             node
         } else {
             return None
@@ -347,7 +347,7 @@ impl<'hir> Map<'hir> {
                 if variant_data.ctor_hir_id().is_none() {
                     return None;
                 }
-                let ctor_of = match self.find_by_hir_id(self.get_parent_node(hir_id)) {
+                let ctor_of = match self.find(self.get_parent_node(hir_id)) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,
                     _ => unreachable!(),
@@ -563,7 +563,7 @@ impl<'hir> Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
     pub fn get(&self, id: HirId) -> Node<'hir> {
         // read recorded by `find`
-        self.find_by_hir_id(id).unwrap_or_else(||
+        self.find(id).unwrap_or_else(||
             bug!("couldn't find hir id {} in the HIR map", id))
     }
 
@@ -595,7 +595,7 @@ impl<'hir> Map<'hir> {
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
-    pub fn find_by_hir_id(&self, hir_id: HirId) -> Option<Node<'hir>> {
+    pub fn find(&self, hir_id: HirId) -> Option<Node<'hir>> {
         let result = self.find_entry(hir_id).and_then(|entry| {
             if let Node::Crate = entry.node {
                 None
@@ -634,11 +634,11 @@ impl<'hir> Map<'hir> {
     /// Check if the node is an argument. An argument is a local variable whose
     /// immediate parent is an item or a closure.
     pub fn is_argument(&self, id: HirId) -> bool {
-        match self.find_by_hir_id(id) {
+        match self.find(id) {
             Some(Node::Binding(_)) => (),
             _ => return false,
         }
-        match self.find_by_hir_id(self.get_parent_node(id)) {
+        match self.find(self.get_parent_node(id)) {
             Some(Node::Item(_)) |
             Some(Node::TraitItem(_)) |
             Some(Node::ImplItem(_)) => true,
@@ -859,28 +859,28 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn expect_item(&self, id: HirId) -> &'hir Item {
-        match self.find_by_hir_id(id) { // read recorded by `find`
+        match self.find(id) { // read recorded by `find`
             Some(Node::Item(item)) => item,
             _ => bug!("expected item, found {}", self.node_to_string(id))
         }
     }
 
     pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem {
-        match self.find_by_hir_id(id) {
+        match self.find(id) {
             Some(Node::ImplItem(item)) => item,
             _ => bug!("expected impl item, found {}", self.node_to_string(id))
         }
     }
 
     pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem {
-        match self.find_by_hir_id(id) {
+        match self.find(id) {
             Some(Node::TraitItem(item)) => item,
             _ => bug!("expected trait item, found {}", self.node_to_string(id))
         }
     }
 
     pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData {
-        match self.find_by_hir_id(id) {
+        match self.find(id) {
             Some(Node::Item(i)) => {
                 match i.node {
                     ItemKind::Struct(ref struct_def, _) |
@@ -895,21 +895,21 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn expect_variant(&self, id: HirId) -> &'hir Variant {
-        match self.find_by_hir_id(id) {
+        match self.find(id) {
             Some(Node::Variant(variant)) => variant,
             _ => bug!("expected variant, found {}", self.node_to_string(id)),
         }
     }
 
     pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem {
-        match self.find_by_hir_id(id) {
+        match self.find(id) {
             Some(Node::ForeignItem(item)) => item,
             _ => bug!("expected foreign item, found {}", self.node_to_string(id))
         }
     }
 
     pub fn expect_expr(&self, id: HirId) -> &'hir Expr {
-        match self.find_by_hir_id(id) { // read recorded by find
+        match self.find(id) { // read recorded by find
             Some(Node::Expr(expr)) => expr,
             _ => bug!("expected expr, found {}", self.node_to_string(id))
         }
@@ -1015,7 +1015,7 @@ impl<'hir> Map<'hir> {
             Some(Node::Pat(pat)) => pat.span,
             Some(Node::Arm(arm)) => arm.span,
             Some(Node::Block(block)) => block.span,
-            Some(Node::Ctor(..)) => match self.find_by_hir_id(
+            Some(Node::Ctor(..)) => match self.find(
                 self.get_parent_node(hir_id))
             {
                 Some(Node::Item(item)) => item.span,
@@ -1087,7 +1087,7 @@ impl<'a> NodesMatchingSuffix<'a> {
         // chain, then returns `None`.
         fn find_first_mod_parent<'a>(map: &'a Map<'_>, mut id: HirId) -> Option<(HirId, Name)> {
             loop {
-                if let Node::Item(item) = map.find_by_hir_id(id)? {
+                if let Node::Item(item) = map.find(id)? {
                     if item_is_mod(&item) {
                         return Some((id, item.ident.name))
                     }
@@ -1260,7 +1260,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
         })
     };
 
-    match map.find_by_hir_id(id) {
+    match map.find(id) {
         Some(Node::Item(item)) => {
             let item_str = match item.node {
                 ItemKind::ExternCrate(..) => "extern crate",

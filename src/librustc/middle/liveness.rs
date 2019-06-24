@@ -369,7 +369,7 @@ fn visit_fn<'tcx>(
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
         let parent = ir.tcx.hir().get_parent_item(id);
-        if let Some(Node::Item(i)) = ir.tcx.hir().find_by_hir_id(parent) {
+        if let Some(Node::Item(i)) = ir.tcx.hir().find(parent) {
             if i.attrs.iter().any(|a| a.check_name(sym::automatically_derived)) {
                 return;
             }

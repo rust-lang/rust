@@ -577,7 +577,7 @@ fn is_enclosed(
         } else if let Some(Node::Item(&hir::Item {
             node: hir::ItemKind::Fn(_, header, _, _),
             ..
-        })) = tcx.hir().find_by_hir_id(parent_id) {
+        })) = tcx.hir().find(parent_id) {
             match header.unsafety {
                 hir::Unsafety::Unsafe => Some(("fn".to_string(), parent_id)),
                 hir::Unsafety::Normal => None,

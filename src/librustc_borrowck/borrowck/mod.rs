@@ -1022,7 +1022,7 @@ impl BorrowckCtxt<'_, 'tcx> {
 
                 if let ty::ReScope(scope) = *super_scope {
                     let hir_id = scope.hir_id(&self.region_scope_tree);
-                    match self.tcx.hir().find_by_hir_id(hir_id) {
+                    match self.tcx.hir().find(hir_id) {
                         Some(Node::Stmt(_)) => {
                             if *sub_scope != ty::ReStatic {
                                 db.note("consider using a `let` binding to increase its lifetime");

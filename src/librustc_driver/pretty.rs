@@ -908,7 +908,7 @@ fn print_with_analysis<'tcx>(
                 nodeid.expect("`pretty flowgraph=..` needs NodeId (int) or unique path \
                                 suffix (b::c::d)");
             let hir_id = tcx.hir().node_to_hir_id(nodeid);
-            let node = tcx.hir().find_by_hir_id(hir_id).unwrap_or_else(|| {
+            let node = tcx.hir().find(hir_id).unwrap_or_else(|| {
                 tcx.sess.fatal(&format!("--pretty flowgraph couldn't find id: {}", nodeid))
             });
 

@@ -562,7 +562,7 @@ where
                 by_ref,
             };
             let mut mutability = Mutability::Not;
-            if let Some(Node::Binding(pat)) = tcx_hir.find_by_hir_id(var_hir_id) {
+            if let Some(Node::Binding(pat)) = tcx_hir.find(var_hir_id) {
                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
                     debuginfo.debug_name = ident.name;
                     if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {

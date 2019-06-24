@@ -95,7 +95,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'tcx>) {
             // below it'll cause a panic because `def_id` is actually bogus at this
             // point in time otherwise.
             if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
-                if tcx.hir().find_by_hir_id(id).is_none() {
+                if tcx.hir().find(id).is_none() {
                     return false;
                 }
             }

@@ -412,7 +412,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                             let mut attrs = vec![];
                             let hir_id = self.tcx.hir().node_to_hir_id(id);
                             if let Some(Node::ImplItem(item)) =
-                                self.tcx.hir().find_by_hir_id(hir_id)
+                                self.tcx.hir().find(hir_id)
                             {
                                 docs = self.docs_for_attrs(&item.attrs);
                                 attrs = item.attrs.to_vec();
@@ -456,7 +456,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                         let mut attrs = vec![];
                         let hir_id = self.tcx.hir().node_to_hir_id(id);
 
-                        if let Some(Node::TraitItem(item)) = self.tcx.hir().find_by_hir_id(hir_id) {
+                        if let Some(Node::TraitItem(item)) = self.tcx.hir().find(hir_id) {
                             docs = self.docs_for_attrs(&item.attrs);
                             attrs = item.attrs.to_vec();
                         }
@@ -526,7 +526,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         match expr.node {
             ast::ExprKind::Field(ref sub_ex, ident) => {
                 let sub_ex_hir_id = self.tcx.hir().node_to_hir_id(sub_ex.id);
-                let hir_node = match self.tcx.hir().find_by_hir_id(sub_ex_hir_id) {
+                let hir_node = match self.tcx.hir().find(sub_ex_hir_id) {
                     Some(Node::Expr(expr)) => expr,
                     _ => {
                         debug!(

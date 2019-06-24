@@ -1233,7 +1233,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         if let Some(hir_id) = self.tcx.hir().as_local_hir_id(did) {
             // .. and it corresponds to a private type in the AST (this returns
             // `None` for type parameters).
-            match self.tcx.hir().find_by_hir_id(hir_id) {
+            match self.tcx.hir().find(hir_id) {
                 Some(Node::Item(ref item)) => !item.vis.node.is_pub(),
                 Some(_) | None => false,
             }

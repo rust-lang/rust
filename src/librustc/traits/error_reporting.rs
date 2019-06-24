@@ -939,7 +939,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) {
         if let &ObligationCauseCode::VariableType(hir_id) = code {
             let parent_node = self.tcx.hir().get_parent_node(hir_id);
-            if let Some(Node::Local(ref local)) = self.tcx.hir().find_by_hir_id(parent_node) {
+            if let Some(Node::Local(ref local)) = self.tcx.hir().find(parent_node) {
                 if let Some(ref expr) = local.init {
                     if let hir::ExprKind::Index(_, _) = expr.node {
                         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
@@ -1014,7 +1014,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) {
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
-        let node = hir.find_by_hir_id(parent_node);
+        let node = hir.find(parent_node);
         if let Some(hir::Node::Item(hir::Item {
             node: hir::ItemKind::Fn(decl, _, _, body_id),
             ..

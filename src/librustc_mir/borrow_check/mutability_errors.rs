@@ -304,7 +304,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
 
                 let upvar_hir_id = self.upvars[upvar_index.index()].var_hir_id;
-                if let Some(Node::Binding(pat)) = self.infcx.tcx.hir().find_by_hir_id(upvar_hir_id)
+                if let Some(Node::Binding(pat)) = self.infcx.tcx.hir().find(upvar_hir_id)
                 {
                     if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated,
@@ -633,7 +633,7 @@ fn annotate_struct_field(
             let field = def.all_fields().nth(field.index())?;
             // Use the HIR types to construct the diagnostic message.
             let hir_id = tcx.hir().as_local_hir_id(field.did)?;
-            let node = tcx.hir().find_by_hir_id(hir_id)?;
+            let node = tcx.hir().find(hir_id)?;
             // Now we're dealing with the actual struct that we're going to suggest a change to,
             // we can expect a field that is an immutable reference to a type.
             if let hir::Node::Field(field) = node {

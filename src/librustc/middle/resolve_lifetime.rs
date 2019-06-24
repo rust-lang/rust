@@ -1489,7 +1489,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
         if let Node::Lifetime(hir_lifetime) = self.tcx.hir().get(lifetime.hir_id) {
-            if let Some(parent) = self.tcx.hir().find_by_hir_id(
+            if let Some(parent) = self.tcx.hir().find(
                 self.tcx.hir().get_parent_item(hir_lifetime.hir_id))
             {
                 match parent {
