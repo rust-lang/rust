@@ -271,9 +271,9 @@ The region inference engine will create a region element domain like this:
 
 ```text
 { CFG; end('static); placeholder(1) }
-    ---  ------------  ------- from the universe `!1`
-    |    'static is always in scope
-    all points in the CFG; not especially relevant here
+  ---  ------------  ------- from the universe `!1`
+  |    'static is always in scope
+  all points in the CFG; not especially relevant here
 ```
 
 It will always create two universal variables, one representing
