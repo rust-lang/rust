@@ -3,7 +3,6 @@ use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
-use syntax::ptr::P;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`
@@ -137,8 +136,8 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for weird `else`.
 fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
     if_chain! {
-        if let Some((then, &Some(ref else_))) = unsugar_if(expr);
-        if is_block(else_) || unsugar_if(else_).is_some();
+        if let ExprKind::If(_, then, Some(else_)) = &expr.node;
+        if is_block(else_) || is_if(else_);
         if !differing_macro_contexts(then.span, else_.span);
         if !in_macro_or_desugar(then.span) && !in_external_macro(cx.sess, expr.span);
 
@@ -154,7 +153,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         if let Some(else_snippet) = snippet_opt(cx, else_span);
         if let Some(else_pos) = else_snippet.find("else");
         if else_snippet[else_pos..].contains('\n');
-        let else_desc = if unsugar_if(else_).is_some() { "if" } else { "{..}" };
+        let else_desc = if is_if(else_) { "if" } else { "{..}" };
 
         then {
             span_note_and_lint(
@@ -207,15 +206,15 @@ fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
 fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
     if !differing_macro_contexts(first.span, second.span)
         && !in_macro_or_desugar(first.span)
-        && unsugar_if(first).is_some()
-        && (is_block(second) || unsugar_if(second).is_some())
+        && is_if(first)
+        && (is_block(second) || is_if(second))
     {
         // where the else would be
         let else_span = first.span.between(second.span);
 
         if let Some(else_snippet) = snippet_opt(cx, else_span) {
             if !else_snippet.contains('\n') {
-                let (looks_like, next_thing) = if unsugar_if(second).is_some() {
+                let (looks_like, next_thing) = if is_if(second) {
                     ("an `else if`", "the second `if`")
                 } else {
                     ("an `else {..}`", "the next block")
@@ -245,10 +244,11 @@ fn is_block(expr: &Expr) -> bool {
     }
 }
 
-/// Match `if` or `if let` expressions and return the `then` and `else` block.
-fn unsugar_if(expr: &Expr) -> Option<(&P<Block>, &Option<P<Expr>>)> {
-    match expr.node {
-        ExprKind::If(_, ref then, ref else_) => Some((then, else_)),
-        _ => None,
+/// Check if the expression is an `if` or `if let`
+fn is_if(expr: &Expr) -> bool {
+    if let ExprKind::If(..) = expr.node {
+        true
+    } else {
+        false
     }
 }
