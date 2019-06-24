@@ -51,6 +51,8 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         )
         .add_to(acc);
         postfix_snippet(ctx, "dbg", "dbg!(expr)", &format!("dbg!({})", receiver_text)).add_to(acc);
+        postfix_snippet(ctx, "box", "Box::new(expr)", &format!("Box::new({})", receiver_text))
+            .add_to(acc);
     }
 }
 
