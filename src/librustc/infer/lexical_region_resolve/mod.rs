@@ -22,7 +22,6 @@ use rustc_data_structures::graph::implementation::{
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use std::fmt;
-use std::u32;
 use syntax_pos::Span;
 
 mod graphviz;
@@ -623,7 +622,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec = vec![u32::MAX; self.num_vars()];
+        let mut dup_vec = IndexVec::from_elem_n(None, self.num_vars());
 
         for (node_vid, value) in var_data.values.iter_enumerated() {
             match *value {
@@ -702,7 +701,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     fn collect_error_for_expanding_node(
         &self,
         graph: &RegionGraph<'tcx>,
-        dup_vec: &mut [u32],
+        dup_vec: &mut IndexVec<RegionVid, Option<RegionVid>>,
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
@@ -781,7 +780,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         graph: &RegionGraph<'tcx>,
         orig_node_idx: RegionVid,
         dir: Direction,
-        mut dup_vec: Option<&mut [u32]>,
+        mut dup_vec: Option<&mut IndexVec<RegionVid, Option<RegionVid>>>,
     ) -> (Vec<RegionAndOrigin<'tcx>>, bool) {
         struct WalkState<'tcx> {
             set: FxHashSet<RegionVid>,
@@ -806,9 +805,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
             // check whether we've visited this node on some previous walk
             if let Some(dup_vec) = &mut dup_vec {
-                if dup_vec[node_idx.index() as usize] == u32::MAX {
-                    dup_vec[node_idx.index() as usize] = orig_node_idx.index() as u32;
-                } else if dup_vec[node_idx.index() as usize] != orig_node_idx.index() as u32 {
+                if dup_vec[node_idx].is_none() {
+                    dup_vec[node_idx] = Some(orig_node_idx);
+                } else if dup_vec[node_idx] != Some(orig_node_idx) {
                     state.dup_found = true;
                 }
 
