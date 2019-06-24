@@ -101,6 +101,6 @@ pub use self::on_disk_cache::OnDiskCache;
 rustc_query_append! { [define_queries!][ <'tcx>
     Other {
         /// Runs analysis passes on the crate.
-        [] fn analysis: Analysis(CrateNum) -> Result<(), ErrorReported>,
+        [eval_always] fn analysis: Analysis(CrateNum) -> Result<(), ErrorReported>,
     },
 ]}
