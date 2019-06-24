@@ -248,9 +248,7 @@ fn is_block(expr: &ast::Expr) -> bool {
 /// Match `if` or `if let` expressions and return the `then` and `else` block.
 fn unsugar_if(expr: &ast::Expr) -> Option<(&P<ast::Block>, &Option<P<ast::Expr>>)> {
     match expr.node {
-        ast::ExprKind::If(_, ref then, ref else_) | ast::ExprKind::IfLet(_, _, ref then, ref else_) => {
-            Some((then, else_))
-        },
+        ast::ExprKind::If(_, ref then, ref else_) => Some((then, else_)),
         _ => None,
     }
 }

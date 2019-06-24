@@ -200,4 +200,25 @@ fn main() {
             println!("Hello world!");
         }
     }
+
+    // Test behavior wrt. `let_chains`.
+    // None of the cases below should be collapsed.
+    fn truth() -> bool { true }
+
+    // Prefix:
+    if let 0 = 1 {
+        if truth() {}
+    }
+
+    // Suffix:
+    if truth() {
+        if let 0 = 1 {}
+    }
+
+    // Midfix:
+    if truth() {
+        if let 0 = 1 {
+            if truth() {}
+        }
+    }
 }

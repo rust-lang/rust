@@ -37,7 +37,7 @@ pub fn is_potentially_mutated<'a, 'tcx>(variable: &'tcx Path, expr: &'tcx Expr, 
     if let Res::Local(id) = variable.res {
         mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&id))
     } else {
-        return true;
+        true
     }
 }
 

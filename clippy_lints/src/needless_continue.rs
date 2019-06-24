@@ -209,12 +209,11 @@ fn with_loop_block<F>(expr: &ast::Expr, mut func: F)
 where
     F: FnMut(&ast::Block, Option<&ast::Label>),
 {
-    match expr.node {
-        ast::ExprKind::While(_, ref loop_block, ref label)
-        | ast::ExprKind::WhileLet(_, _, ref loop_block, ref label)
-        | ast::ExprKind::ForLoop(_, _, ref loop_block, ref label)
-        | ast::ExprKind::Loop(ref loop_block, ref label) => func(loop_block, label.as_ref()),
-        _ => {},
+    if let ast::ExprKind::While(_, loop_block, label)
+    | ast::ExprKind::ForLoop(_, _, loop_block, label)
+    | ast::ExprKind::Loop(loop_block, label) = &expr.node
+    {
+        func(loop_block, label.as_ref());
     }
 }
 

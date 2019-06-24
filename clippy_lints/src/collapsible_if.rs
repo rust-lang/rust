@@ -84,18 +84,14 @@ impl EarlyLintPass for CollapsibleIf {
 }
 
 fn check_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
-    match expr.node {
-        ast::ExprKind::If(ref check, ref then, ref else_) => {
-            if let Some(ref else_) = *else_ {
-                check_collapsible_maybe_if_let(cx, else_);
-            } else {
-                check_collapsible_no_if_let(cx, expr, check, then);
-            }
-        },
-        ast::ExprKind::IfLet(_, _, _, Some(ref else_)) => {
+    if let ast::ExprKind::If(check, then, else_) = &expr.node {
+        if let Some(else_) = else_ {
             check_collapsible_maybe_if_let(cx, else_);
-        },
-        _ => (),
+        } else if let ast::ExprKind::Let(..) = check.node {
+            // Prevent triggering on `if let a = b { if c { .. } }`.
+        } else {
+            check_collapsible_no_if_let(cx, expr, check, then);
+        }
     }
 }
 
@@ -113,22 +109,18 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, else_: &ast::Expr) {
         if !block_starts_with_comment(cx, block);
         if let Some(else_) = expr_block(block);
         if !in_macro_or_desugar(else_.span);
+        if let ast::ExprKind::If(..) = else_.node;
         then {
-            match else_.node {
-                ast::ExprKind::If(..) | ast::ExprKind::IfLet(..) => {
-                    let mut applicability = Applicability::MachineApplicable;
-                    span_lint_and_sugg(
-                        cx,
-                        COLLAPSIBLE_IF,
-                        block.span,
-                        "this `else { if .. }` block can be collapsed",
-                        "try",
-                        snippet_block_with_applicability(cx, else_.span, "..", &mut applicability).into_owned(),
-                        applicability,
-                    );
-                }
-                _ => (),
-            }
+            let mut applicability = Applicability::MachineApplicable;
+            span_lint_and_sugg(
+                cx,
+                COLLAPSIBLE_IF,
+                block.span,
+                "this `else { if .. }` block can be collapsed",
+                "try",
+                snippet_block_with_applicability(cx, else_.span, "..", &mut applicability).into_owned(),
+                applicability,
+            );
         }
     }
 }
@@ -139,6 +131,11 @@ fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &
         if let Some(inner) = expr_block(then);
         if let ast::ExprKind::If(ref check_inner, ref content, None) = inner.node;
         then {
+            if let ast::ExprKind::Let(..) = check_inner.node {
+                // Prevent triggering on `if c { if let a = b { .. } }`.
+                return;
+            }
+
             if expr.span.ctxt() != inner.span.ctxt() {
                 return;
             }
