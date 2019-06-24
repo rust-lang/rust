@@ -238,7 +238,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ) -> bool {
         debug!("enforce_member_constraint(member_constraint={:#?})", member_constraint);
 
-        // the constraint is some inference variable (`vid`) which
+        // The constraint is some inference variable (`vid`) which
         // must be equal to one of the options
         let member_vid = match member_constraint.member_region {
             ty::ReVar(vid) => *vid,
