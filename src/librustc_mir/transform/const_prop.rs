@@ -1,6 +1,8 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
+use std::cell::Cell;
+
 use rustc::hir::def::DefKind;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
@@ -21,7 +23,8 @@ use rustc::ty::layout::{
 };
 
 use crate::interpret::{
-    self, InterpretCx, ScalarMaybeUndef, Immediate, OpTy, ImmTy, MemoryKind,
+    self, InterpretCx, ScalarMaybeUndef, Immediate, OpTy,
+    ImmTy, MemoryKind, StackPopCleanup, LocalValue, LocalState,
 };
 use crate::const_eval::{
     CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_eval_cx,
@@ -56,21 +59,54 @@ impl MirPass for ConstProp {
 
         trace!("ConstProp starting for {:?}", source.def_id());
 
+        // Steal some data we need from `body`.
+        let source_scope_local_data = std::mem::replace(
+            &mut body.source_scope_local_data,
+            ClearCrossCrate::Clear
+        );
+        let promoted = std::mem::replace(
+            &mut body.promoted,
+            IndexVec::new()
+        );
+
+        let dummy_body =
+            &Body::new(
+                body.basic_blocks().clone(),
+                Default::default(),
+                ClearCrossCrate::Clear,
+                Default::default(),
+                None,
+                body.local_decls.clone(),
+                Default::default(),
+                body.arg_count,
+                Default::default(),
+                tcx.def_span(source.def_id()),
+                Default::default(),
+            );
+
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
         // constants, instead of just checking for const-folding succeeding.
         // That would require an uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
-        let mut optimization_finder = ConstPropagator::new(body, tcx, source);
+        let mut optimization_finder = ConstPropagator::new(
+            body,
+            dummy_body,
+            source_scope_local_data,
+            promoted,
+            tcx,
+            source
+        );
         optimization_finder.visit_body(body);
 
         // put back the data we stole from `mir`
+        let (source_scope_local_data, promoted) = optimization_finder.release_stolen_data();
         std::mem::replace(
             &mut body.source_scope_local_data,
-            optimization_finder.source_scope_local_data
+            source_scope_local_data
         );
         std::mem::replace(
             &mut body.promoted,
-            optimization_finder.promoted
+            promoted
         );
 
         trace!("ConstProp done for {:?}", source.def_id());
@@ -84,7 +120,6 @@ struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpretCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
-    places: IndexVec<Local, Option<Const<'tcx>>>,
     can_const_prop: IndexVec<Local, bool>,
     param_env: ParamEnv<'tcx>,
     source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
@@ -117,21 +152,28 @@ impl<'mir, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
 
 impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(
-        body: &mut Body<'tcx>,
+        body: &Body<'tcx>,
+        dummy_body: &'mir Body<'tcx>,
+        source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
+        promoted: IndexVec<Promoted, Body<'tcx>>,
         tcx: TyCtxt<'tcx>,
         source: MirSource<'tcx>,
     ) -> ConstPropagator<'mir, 'tcx> {
-        let param_env = tcx.param_env(source.def_id());
-        let ecx = mk_eval_cx(tcx, tcx.def_span(source.def_id()), param_env);
+        let def_id = source.def_id();
+        let param_env = tcx.param_env(def_id);
+        let span = tcx.def_span(def_id);
+        let mut ecx = mk_eval_cx(tcx, span, param_env);
         let can_const_prop = CanConstProp::check(body);
-        let source_scope_local_data = std::mem::replace(
-            &mut body.source_scope_local_data,
-            ClearCrossCrate::Clear
-        );
-        let promoted = std::mem::replace(
-            &mut body.promoted,
-            IndexVec::new()
-        );
+
+        ecx.push_stack_frame(
+            Instance::new(def_id, &InternalSubsts::identity_for_item(tcx, def_id)),
+            span,
+            dummy_body,
+            None,
+            StackPopCleanup::None {
+                cleanup: false,
+            },
+        ).expect("failed to push initial stack frame");
 
         ConstPropagator {
             ecx,
@@ -139,12 +181,56 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             source,
             param_env,
             can_const_prop,
-            places: IndexVec::from_elem(None, &body.local_decls),
             source_scope_local_data,
             //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
             local_decls: body.local_decls.clone(),
             promoted,
         }
+    }
+
+    fn release_stolen_data(
+        self,
+    ) -> (
+        ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
+        IndexVec<Promoted, Body<'tcx>>,
+    ) {
+        (self.source_scope_local_data, self.promoted)
+    }
+
+    fn get_const(&self, local: Local) -> Option<Const<'tcx>> {
+        let l = &self.ecx.frame().locals[local];
+
+        // If the local is `Unitialized` or `Dead` then we haven't propagated a value into it.
+        //
+        // `InterpretCx::access_local()` mostly takes care of this for us however, for ZSTs,
+        // it will synthesize a value for us. In doing so, that will cause the
+        // `get_const(l).is_empty()` assert right before we call `set_const()` in `visit_statement`
+        // to fail.
+        if let LocalValue::Uninitialized | LocalValue::Dead = l.value {
+            return None;
+        }
+
+        self.ecx.access_local(self.ecx.frame(), local, None).ok()
+    }
+
+    fn set_const(&mut self, local: Local, c: Const<'tcx>) {
+        let frame = self.ecx.frame_mut();
+
+        if let Some(layout) = frame.locals[local].layout.get() {
+            debug_assert_eq!(c.layout, layout);
+        }
+
+        frame.locals[local] = LocalState {
+            value: LocalValue::Live(*c),
+            layout: Cell::new(Some(c.layout)),
+        };
+    }
+
+    fn remove_const(&mut self, local: Local) {
+        self.ecx.frame_mut().locals[local] = LocalState {
+            value: LocalValue::Uninitialized,
+            layout: Cell::new(None),
+        };
     }
 
     fn use_ecx<F, T>(
@@ -296,7 +382,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         trace!("eval_place(place={:?})", place);
         place.iterate(|place_base, place_projection| {
             let mut eval = match place_base {
-                PlaceBase::Local(loc) => self.places[*loc].clone()?,
+                PlaceBase::Local(loc) => self.get_const(*loc).clone()?,
                 PlaceBase::Static(box Static {kind: StaticKind::Promoted(promoted), ..}) => {
                     let generics = self.tcx.generics_of(self.source.def_id());
                     if generics.requires_monomorphization(self.tcx) {
@@ -699,8 +785,8 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
                             trace!("storing {:?} to {:?}", value, local);
-                            assert!(self.places[local].is_none());
-                            self.places[local] = Some(value);
+                            assert!(self.get_const(local).is_none());
+                            self.set_const(local, value);
 
                             if self.should_const_prop() {
                                 self.replace_with_const(
@@ -740,7 +826,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                                     place = &proj.base;
                                 }
                                 if let Place::Base(PlaceBase::Local(local)) = *place {
-                                    self.places[local] = None;
+                                    self.remove_const(local);
                                 }
                             },
                             Operand::Constant(_) => {}
