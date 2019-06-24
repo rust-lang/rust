@@ -213,7 +213,7 @@ placeholders](./placeholders_and_universes.html). Note that the value
 for S1 already contains the liveness constraints, since they were
 added in [`RegionInferenceContext::new`].
 
-Once that process is done, we now have the "minimal value" for S1,
+Once that process is done, we now have the "minimal value" for `S1`,
 taking into account all of the liveness and outlives
 constraints. However, in order to complete the process, we must also
 consider [member constraints][m_c], which are described in [a later
