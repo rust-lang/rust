@@ -205,7 +205,7 @@ function, which iterates over all the SCCs. For each SCC `S1`, we
 compute its value by first computing the value of its
 successors. Since SCCs form a DAG, we don't have to be conecrned about
 cycles, though we do need to keep a set around to track whether we
-have already processed a given SCC or not. For each successor S2, once
+have already processed a given SCC or not. For each successor `S2`, once
 we have computed S2's value, we can union those elements into the
 value for S1. (Although we have to be careful in this process to
 properly handle [higher-ranked
