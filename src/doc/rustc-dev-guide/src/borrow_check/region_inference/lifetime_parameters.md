@@ -15,7 +15,7 @@ fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
 
 This example is intended not to compile, because we are returning `x`,
 which has type `&'a u32`, but our signature promises that we will
-return a `&'b u32` value. But how are lifetimes like `'a` and `'b
+return a `&'b u32` value. But how are lifetimes like `'a` and `'b`
 integrated into region inference, and how this error wind up being
 detected?
 
