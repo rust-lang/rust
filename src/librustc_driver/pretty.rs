@@ -253,10 +253,9 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
     fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn;
 
     /// Computes an user-readable representation of a path, if possible.
-    fn node_path(&self, id: ast::NodeId) -> Option<String> {
+    fn node_path(&self, id: hir::HirId) -> Option<String> {
         self.hir_map().and_then(|map| {
-            let hir_id = map.node_to_hir_id(id);
-            map.def_path_from_hir_id(hir_id)
+            map.def_path_from_hir_id(id)
         }).map(|path| {
             path.data
                 .into_iter()
@@ -471,8 +470,8 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
         self
     }
 
-    fn node_path(&self, id: ast::NodeId) -> Option<String> {
-        Some(self.tcx.def_path_str(self.tcx.hir().local_def_id(id)))
+    fn node_path(&self, id: hir::HirId) -> Option<String> {
+        Some(self.tcx.def_path_str(self.tcx.hir().local_def_id_from_hir_id(id)))
     }
 }
 
@@ -834,7 +833,7 @@ pub fn print_after_hir_lowering<'tcx>(
                         let node = hir_map.get(hir_id);
                         pp_state.print_node(node)?;
                         pp_state.s.space()?;
-                        let path = annotation.node_path(node_id)
+                        let path = annotation.node_path(hir_id)
                             .expect("-Z unpretty missing node paths");
                         pp_state.synth_comment(path)?;
                         pp_state.s.hardbreak()?;
