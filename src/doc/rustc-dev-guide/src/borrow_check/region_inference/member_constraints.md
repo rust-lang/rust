@@ -135,7 +135,7 @@ with different variance, lower bound constraints may be relevant.)
 ### Upper bounds
 
 The *upper bounds* are those lifetimes that *must outlive* `'0` --
-i.e., that `'0` must be *smaller* then. In our example, this would be
+i.e., that `'0` must be *smaller* than. In our example, this would be
 `'a`, because we have the constraint that `'a: '0`. In more complex
 examples, the chain may be more indirect.
 
