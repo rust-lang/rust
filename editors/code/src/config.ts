@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import { Server } from './server';
 import { strict } from 'assert';
+import { Server } from './server';
 
 const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
 
@@ -116,7 +116,7 @@ export class Config {
 
         if (config.has('cargo-watch.check-command')) {
             this.cargoWatchOptions.checkCommand = config.get<string>(
-                'cargo-watch.check-command', 
+                'cargo-watch.check-command',
                 ''
             );
         }
