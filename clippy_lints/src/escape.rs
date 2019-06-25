@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
     ) {
         // If the method is an impl for a trait, don't warn.
         let parent_id = cx.tcx.hir().get_parent_item(hir_id);
-        let parent_node = cx.tcx.hir().find_by_hir_id(parent_id);
+        let parent_node = cx.tcx.hir().find(parent_id);
 
         if let Some(Node::Item(item)) = parent_node {
             if let ItemKind::Impl(_, _, _, _, Some(..), _, _) = item.node {
@@ -113,9 +113,9 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: &cmt_<'tcx>, _: ConsumeMode) {
         let map = &self.cx.tcx.hir();
-        if map.is_argument(map.hir_to_node_id(consume_pat.hir_id)) {
+        if map.is_argument(consume_pat.hir_id) {
             // Skip closure arguments
-            if let Some(Node::Expr(..)) = map.find_by_hir_id(map.get_parent_node_by_hir_id(consume_pat.hir_id)) {
+            if let Some(Node::Expr(..)) = map.find(map.get_parent_node(consume_pat.hir_id)) {
                 return;
             }
             if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
@@ -124,7 +124,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             return;
         }
         if let Categorization::Rvalue(..) = cmt.cat {
-            if let Some(Node::Stmt(st)) = map.find_by_hir_id(map.get_parent_node_by_hir_id(cmt.hir_id)) {
+            if let Some(Node::Stmt(st)) = map.find(map.get_parent_node(cmt.hir_id)) {
                 if let StmtKind::Local(ref loc) = st.node {
                     if let Some(ref ex) = loc.init {
                         if let ExprKind::Box(..) = ex.node {

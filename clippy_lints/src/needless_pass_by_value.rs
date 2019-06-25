@@ -88,11 +88,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         }
 
         // Exclude non-inherent impls
-        if let Some(Node::Item(item)) = cx
-            .tcx
-            .hir()
-            .find_by_hir_id(cx.tcx.hir().get_parent_node_by_hir_id(hir_id))
-        {
+        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
             if matches!(item.node, ItemKind::Impl(_, _, _, _, Some(_), _, _) |
                 ItemKind::Trait(..))
             {
@@ -357,14 +353,14 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
         if let mc::Categorization::Local(vid) = cmt.cat {
             let mut id = matched_pat.hir_id;
             loop {
-                let parent = self.cx.tcx.hir().get_parent_node_by_hir_id(id);
+                let parent = self.cx.tcx.hir().get_parent_node(id);
                 if id == parent {
                     // no parent
                     return;
                 }
                 id = parent;
 
-                if let Some(node) = self.cx.tcx.hir().find_by_hir_id(id) {
+                if let Some(node) = self.cx.tcx.hir().find(id) {
                     match node {
                         Node::Expr(e) => {
                             // `match` and `if let`

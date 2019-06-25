@@ -1423,7 +1423,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
             if cx.tables.expr_ty(arg) == ty {
                 snip = Some(("try removing the `clone` call", format!("{}", snippet)));
             } else {
-                let parent = cx.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
+                let parent = cx.tcx.hir().get_parent_node(expr.hir_id);
                 match cx.tcx.hir().get(parent) {
                     hir::Node::Expr(parent) => match parent.node {
                         // &*x is a nop, &x.clone() is not
