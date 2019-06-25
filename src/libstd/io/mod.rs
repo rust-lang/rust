@@ -509,10 +509,10 @@ pub trait Read {
     /// contents of `buf` being true. It is recommended that *implementations*
     /// only write data to `buf` instead of reading its contents.
     ///
-    /// Correspondingly, however, *users* of this trait may not assume any guarantees
+    /// Correspondingly, however, *callers* of this method may not assume any guarantees
     /// about how the implementation uses `buf`. The trait is safe to implement,
-    /// so it is perfectly possible that the implementation might inspect that data.
-    /// As a caller, it is your responsibility to make sure that `buf` is initialized
+    //  so it is possible that the code that's supposed to write to the buffer might also read
+    //  from it. It is your responsibility to make sure that `buf` is initialized
     /// before calling `read`. Calling `read` with an uninitialized `buf` (of the kind one
     /// obtains via [`MaybeUninit<T>`]) is not safe, and can lead to undefined behavior.
     ///
