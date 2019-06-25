@@ -1,6 +1,6 @@
 use core::f32;
 
-/// Floor (f64)
+/// Floor (f32)
 ///
 /// Finds the nearest integer less than or equal to `x`.
 #[inline]
