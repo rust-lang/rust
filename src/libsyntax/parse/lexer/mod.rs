@@ -1,4 +1,3 @@
-use crate::ast;
 use crate::parse::ParseSess;
 use crate::parse::token::{self, Token, TokenKind};
 use crate::symbol::{sym, Symbol};
@@ -328,14 +327,14 @@ impl<'a> StringReader<'a> {
         self.str_from_to(start, self.pos)
     }
 
-    /// Creates a Name from a given offset to the current offset.
-    fn name_from(&self, start: BytePos) -> ast::Name {
+    /// Creates a Symbol from a given offset to the current offset.
+    fn symbol_from(&self, start: BytePos) -> Symbol {
         debug!("taking an ident from {:?} to {:?}", start, self.pos);
         Symbol::intern(self.str_from(start))
     }
 
-    /// As name_from, with an explicit endpoint.
-    fn name_from_to(&self, start: BytePos, end: BytePos) -> ast::Name {
+    /// As symbol_from, with an explicit endpoint.
+    fn symbol_from_to(&self, start: BytePos, end: BytePos) -> Symbol {
         debug!("taking an ident from {:?} to {:?}", start, end);
         Symbol::intern(self.str_from_to(start, end))
     }
@@ -440,7 +439,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Eats <XID_start><XID_continue>*, if possible.
-    fn scan_optional_raw_name(&mut self) -> Option<ast::Name> {
+    fn scan_optional_raw_name(&mut self) -> Option<Symbol> {
         if !ident_start(self.ch) {
             return None;
         }
@@ -508,7 +507,7 @@ impl<'a> StringReader<'a> {
                     }
 
                     let kind = if doc_comment {
-                        token::DocComment(self.name_from(start_bpos))
+                        token::DocComment(self.symbol_from(start_bpos))
                     } else {
                         token::Comment
                     };
@@ -537,7 +536,7 @@ impl<'a> StringReader<'a> {
                         self.bump();
                     }
                     return Some(Token::new(
-                        token::Shebang(self.name_from(start)),
+                        token::Shebang(self.symbol_from(start)),
                         self.mk_sp(start, self.pos),
                     ));
                 }
@@ -719,17 +718,17 @@ impl<'a> StringReader<'a> {
             let pos = self.pos;
             self.check_float_base(start_bpos, pos, base);
 
-            (token::Float, self.name_from(start_bpos))
+            (token::Float, self.symbol_from(start_bpos))
         } else {
             // it might be a float if it has an exponent
             if self.ch_is('e') || self.ch_is('E') {
                 self.scan_float_exponent();
                 let pos = self.pos;
                 self.check_float_base(start_bpos, pos, base);
-                return (token::Float, self.name_from(start_bpos));
+                return (token::Float, self.symbol_from(start_bpos));
             }
             // but we certainly have an integer!
-            (token::Integer, self.name_from(start_bpos))
+            (token::Integer, self.symbol_from(start_bpos))
         }
     }
 
@@ -831,7 +830,7 @@ impl<'a> StringReader<'a> {
                 }
 
                 // FIXME: perform NFKC normalization here. (Issue #2253)
-                let name = self.name_from(start);
+                let name = self.symbol_from(start);
                 if is_raw_ident {
                     let span = self.mk_sp(raw_start, self.pos);
                     if !name.can_be_raw() {
@@ -1006,7 +1005,7 @@ impl<'a> StringReader<'a> {
                     // lifetimes shouldn't end with a single quote
                     // if we find one, then this is an invalid character literal
                     if self.ch_is('\'') {
-                        let symbol = self.name_from(start);
+                        let symbol = self.symbol_from(start);
                         self.bump();
                         self.validate_char_escape(start_with_quote);
                         return Ok(TokenKind::lit(token::Char, symbol, None));
@@ -1024,7 +1023,7 @@ impl<'a> StringReader<'a> {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
-                    return Ok(token::Lifetime(self.name_from(start_with_quote)));
+                    return Ok(token::Lifetime(self.symbol_from(start_with_quote)));
                 }
                 let msg = "unterminated character literal";
                 let symbol = self.scan_single_quoted_string(start_with_quote, msg);
@@ -1052,7 +1051,7 @@ impl<'a> StringReader<'a> {
                     },
                     Some('r') => {
                         let (start, end, hash_count) = self.scan_raw_string();
-                        let symbol = self.name_from_to(start, end);
+                        let symbol = self.symbol_from_to(start, end);
                         self.validate_raw_byte_str_escape(start, end);
 
                         (token::ByteStrRaw(hash_count), symbol)
@@ -1073,7 +1072,7 @@ impl<'a> StringReader<'a> {
             }
             'r' => {
                 let (start, end, hash_count) = self.scan_raw_string();
-                let symbol = self.name_from_to(start, end);
+                let symbol = self.symbol_from_to(start, end);
                 self.validate_raw_str_escape(start, end);
                 let suffix = self.scan_optional_raw_name();
 
@@ -1174,7 +1173,7 @@ impl<'a> StringReader<'a> {
 
     fn scan_single_quoted_string(&mut self,
                                  start_with_quote: BytePos,
-                                 unterminated_msg: &str) -> ast::Name {
+                                 unterminated_msg: &str) -> Symbol {
         // assumes that first `'` is consumed
         let start = self.pos;
         // lex `'''` as a single char, for recovery
@@ -1206,12 +1205,12 @@ impl<'a> StringReader<'a> {
             }
         }
 
-        let id = self.name_from(start);
+        let id = self.symbol_from(start);
         self.bump();
         id
     }
 
-    fn scan_double_quoted_string(&mut self, unterminated_msg: &str) -> ast::Name {
+    fn scan_double_quoted_string(&mut self, unterminated_msg: &str) -> Symbol {
         debug_assert!(self.ch_is('\"'));
         let start_with_quote = self.pos;
         self.bump();
@@ -1226,7 +1225,7 @@ impl<'a> StringReader<'a> {
             }
             self.bump();
         }
-        let id = self.name_from(start);
+        let id = self.symbol_from(start);
         self.bump();
         id
     }
