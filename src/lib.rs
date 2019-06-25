@@ -85,6 +85,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         Evaluator::new(config.validate),
     );
 
+    // FIXME: InterpretCx::new should take an initial MemoryExtra
     ecx.memory_mut().extra.rng = config.seed.map(StdRng::seed_from_u64);
     
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);

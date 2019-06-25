@@ -36,25 +36,25 @@ impl Default for GlobalState {
 
 impl<'mir, 'tcx> GlobalState {
     pub fn int_to_ptr(
-        base_addr: u64,
+        int: u64,
         memory: &Memory<'mir, 'tcx, Evaluator<'tcx>>,
     ) -> InterpResult<'tcx, Pointer<Tag>> {
         let global_state = memory.extra.intptrcast.borrow();
         
-        match global_state.int_to_ptr_map.binary_search_by_key(&base_addr, |(addr, _)| *addr) {
+        match global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr) {
             Ok(pos) => {
                 let (_, alloc_id) = global_state.int_to_ptr_map[pos];
-                // `base_addr` is the starting address for an allocation, the offset should be
+                // `int` is equal to the starting address for an allocation, the offset should be
                 // zero. The pointer is untagged because it was created from a cast
                 Ok(Pointer::new_with_tag(alloc_id, Size::from_bytes(0), Tag::Untagged))
             },
             Err(0) => err!(DanglingPointerDeref), 
             Err(pos) => {
-                // This is the gargest of the adresses smaller than `base_addr`,
+                // This is the largest of the adresses smaller than `int`,
                 // i.e. the greatest lower bound (glb)
                 let (glb, alloc_id) = global_state.int_to_ptr_map[pos - 1];
-                // This never overflows because `base_addr >= glb`
-                let offset = base_addr - glb;
+                // This never overflows because `int >= glb`
+                let offset = int - glb;
                 // If the offset exceeds the size of the allocation, this access is illegal
                 if offset <= memory.get(alloc_id)?.bytes.len() as u64 {
                     // This pointer is untagged because it was created from a cast
@@ -77,21 +77,24 @@ impl<'mir, 'tcx> GlobalState {
         let base_addr = match alloc.extra.intptrcast.base_addr.get() { 
             Some(base_addr) => base_addr,
             None => {
-                let base_addr = global_state.next_base_addr;
-                global_state.next_base_addr += alloc.bytes.len() as u64;
-
+                // This allocation does not have a base address yet, pick one.
+                let base_addr = Self::align_addr(global_state.next_base_addr, alloc.align.bytes());
+                global_state.next_base_addr = base_addr + alloc.bytes.len() as u64;
                 alloc.extra.intptrcast.base_addr.set(Some(base_addr));
-
-                let elem = (base_addr, ptr.alloc_id);
-
                 // Given that `next_base_addr` increases in each allocation, pushing the
                 // corresponding tuple keeps `int_to_ptr_map` sorted
-                global_state.int_to_ptr_map.push(elem); 
+                global_state.int_to_ptr_map.push((base_addr, ptr.alloc_id)); 
 
                 base_addr
             }
         };
 
         Ok(base_addr + ptr.offset.bytes())
+    }
+
+    /// Shifts `addr` to make it aligned with `align` by rounding `addr` to the smallest multiple
+    /// of `align` that is strictly larger to `addr`
+    fn align_addr(addr: u64, align: u64) -> u64 {
+        addr + align - addr % align
     }
 }
