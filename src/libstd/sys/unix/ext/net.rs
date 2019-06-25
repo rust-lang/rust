@@ -894,7 +894,7 @@ impl UnixListener {
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn incoming(&self) -> Incoming<'_> {
+    pub fn incoming<'a>(&'a self) -> Incoming<'a> {
         Incoming { listener: self }
     }
 }
