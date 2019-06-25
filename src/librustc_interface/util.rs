@@ -642,13 +642,13 @@ pub fn build_output_filenames(
                 );
                 None
             } else {
+                if !sess.opts.cg.extra_filename.is_empty() {
+                    sess.warn("ignoring -C extra-filename flag due to -o flag");
+                }
                 Some(out_file.clone())
             };
             if *odir != None {
                 sess.warn("ignoring --out-dir flag due to -o flag");
-            }
-            if !sess.opts.cg.extra_filename.is_empty() {
-                sess.warn("ignoring -C extra-filename flag due to -o flag");
             }
 
             OutputFilenames {
