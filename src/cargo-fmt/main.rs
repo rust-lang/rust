@@ -96,7 +96,8 @@ fn execute() -> i32 {
 fn print_usage_to_stderr(reason: &str) {
     eprintln!("{}", reason);
     let app = Opts::clap();
-    app.write_help(&mut io::stderr())
+    app.after_help("")
+        .write_help(&mut io::stderr())
         .expect("failed to write to stderr");
 }
 
