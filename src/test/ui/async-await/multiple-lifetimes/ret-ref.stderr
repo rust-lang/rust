@@ -1,0 +1,37 @@
+error[E0506]: cannot assign to `a` because it is borrowed
+  --> $DIR/ret-ref.rs:18:5
+   |
+LL |     let future = multiple_named_lifetimes(&a, &b);
+   |                                           -- borrow of `a` occurs here
+LL |     a += 1;
+   |     ^^^^^^ assignment to borrowed `a` occurs here
+LL |     b += 1;
+LL |     let p = future.await;
+   |             ------ borrow later used here
+
+error[E0506]: cannot assign to `b` because it is borrowed
+  --> $DIR/ret-ref.rs:19:5
+   |
+LL |     let future = multiple_named_lifetimes(&a, &b);
+   |                                               -- borrow of `b` occurs here
+LL |     a += 1;
+LL |     b += 1;
+   |     ^^^^^^ assignment to borrowed `b` occurs here
+LL |     let p = future.await;
+   |             ------ borrow later used here
+
+error[E0506]: cannot assign to `a` because it is borrowed
+  --> $DIR/ret-ref.rs:30:5
+   |
+LL |     let future = multiple_named_lifetimes(&a, &b);
+   |                                           -- borrow of `a` occurs here
+LL |     let p = future.await;
+LL |     a += 1;
+   |     ^^^^^^ assignment to borrowed `a` occurs here
+LL |     b += 1;
+LL |     drop(p);
+   |          - borrow later used here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0506`.
