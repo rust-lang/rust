@@ -673,7 +673,7 @@ impl UnixListener {
     /// }
     /// ```
     #[stable(feature = "unix_socket_redox", since = "1.29.0")]
-    pub fn incoming(&self) -> Incoming {
+    pub fn incoming<'a>(&'a self) -> Incoming<'a> {
         Incoming { listener: self }
     }
 }
