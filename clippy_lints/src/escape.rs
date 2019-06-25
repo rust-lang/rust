@@ -113,7 +113,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: &cmt_<'tcx>, _: ConsumeMode) {
         let map = &self.cx.tcx.hir();
-        if map.is_argument(map.hir_to_node_id(consume_pat.hir_id)) {
+        if map.is_argument(consume_pat.hir_id) {
             // Skip closure arguments
             if let Some(Node::Expr(..)) = map.find(map.get_parent_node(consume_pat.hir_id)) {
                 return;
