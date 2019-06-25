@@ -388,12 +388,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpretCx<'mir, 'tcx, M> {
                             ));
                         }
                     } else {
-                        let callee_layout =
-                            self.layout_of_local(self.frame(), mir::RETURN_PLACE, None)?;
-                        if !callee_layout.abi.is_uninhabited() {
-                            return err!(FunctionRetMismatch(
-                                self.tcx.types.never, callee_layout.ty
-                            ));
+                        let local = mir::RETURN_PLACE;
+                        let ty = self.frame().body.local_decls[local].ty;
+                        if !self.tcx.is_ty_uninhabited_from_any_module(ty) {
+                            return err!(FunctionRetMismatch(self.tcx.types.never, ty));
                         }
                     }
                     Ok(())
