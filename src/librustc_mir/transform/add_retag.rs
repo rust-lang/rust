@@ -96,7 +96,7 @@ impl MirPass for AddRetag {
             };
             // Gather all arguments, skip return value.
             let places = local_decls.iter_enumerated().skip(1).take(arg_count)
-                    .map(|(local, _)| Place::Base(PlaceBase::Local(local)))
+                    .map(|(local, _)| Place::from(local))
                     .filter(needs_retag)
                     .collect::<Vec<_>>();
             // Emit their retags.

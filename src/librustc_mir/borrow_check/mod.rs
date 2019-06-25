@@ -620,7 +620,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     location,
-                    (&Place::Base(PlaceBase::Local(local)), span),
+                    (&Place::from(local), span),
                     (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                     flow_state,

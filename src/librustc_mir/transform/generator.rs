@@ -200,7 +200,7 @@ impl TransformVisitor<'tcx> {
 
     // Create a Place referencing a generator struct field
     fn make_field(&self, variant_index: VariantIdx, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
-        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let self_place = Place::from(self_arg());
         let base = self_place.downcast_unnamed(variant_index);
         let field = Projection {
             base: base,
@@ -211,7 +211,7 @@ impl TransformVisitor<'tcx> {
 
     // Create a statement which changes the discriminant
     fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
-        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let self_place = Place::from(self_arg());
         Statement {
             source_info,
             kind: StatementKind::SetDiscriminant { place: self_place, variant_index: state_disc },
@@ -222,9 +222,9 @@ impl TransformVisitor<'tcx> {
     fn get_discr(&self, body: &mut Body<'tcx>) -> (Statement<'tcx>, Place<'tcx>) {
         let temp_decl = LocalDecl::new_internal(self.tcx.types.isize, body.span);
         let local_decls_len = body.local_decls.push(temp_decl);
-        let temp = Place::Base(PlaceBase::Local(local_decls_len));
+        let temp = Place::from(local_decls_len);
 
-        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let self_place = Place::from(self_arg());
         let assign = Statement {
             source_info: source_info(body),
             kind: StatementKind::Assign(temp.clone(), box Rvalue::Discriminant(self_place)),
@@ -271,7 +271,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
         let ret_val = match data.terminator().kind {
             TerminatorKind::Return => Some((VariantIdx::new(1),
                 None,
-                Operand::Move(Place::Base(PlaceBase::Local(self.new_ret_local))),
+                Operand::Move(Place::from(self.new_ret_local)),
                 None)),
             TerminatorKind::Yield { ref value, resume, drop } => Some((VariantIdx::new(0),
                 Some(resume),
@@ -840,7 +840,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut 
         elaborate_drop(
             &mut elaborator,
             source_info,
-            &Place::Base(PlaceBase::Local(gen)),
+            &Place::from(gen),
             (),
             target,
             unwind,
@@ -913,7 +913,7 @@ fn create_generator_drop_shim<'tcx>(
         // Alias tracking must know we changed the type
         body.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
             source_info,
-            kind: StatementKind::Retag(RetagKind::Raw, Place::Base(PlaceBase::Local(self_arg()))),
+            kind: StatementKind::Retag(RetagKind::Raw, Place::from(self_arg())),
         })
     }
 
@@ -1031,7 +1031,7 @@ fn insert_clean_drop<'tcx>(body: &mut Body<'tcx>) -> BasicBlock {
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     let drop_clean = BasicBlock::new(body.basic_blocks().len());
     let term = TerminatorKind::Drop {
-        location: Place::Base(PlaceBase::Local(self_arg())),
+        location: Place::from(self_arg()),
         target: return_block,
         unwind: None,
     };
