@@ -777,7 +777,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                                 .local_def_id_from_hir_id(opaque_parent_hir_id)
                         };
                         let (in_definition_scope, origin) =
-                            match tcx.hir().find_by_hir_id(opaque_hir_id)
+                            match tcx.hir().find(opaque_hir_id)
                         {
                             Some(Node::Item(item)) => match item.node {
                                 // Anonymous `impl Trait`

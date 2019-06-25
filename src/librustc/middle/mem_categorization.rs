@@ -1526,7 +1526,7 @@ impl<'tcx> cmt_<'tcx> {
                 "non-place".into()
             }
             Categorization::Local(vid) => {
-                if tcx.hir().is_argument(tcx.hir().hir_to_node_id(vid)) {
+                if tcx.hir().is_argument(vid) {
                     "argument"
                 } else {
                     "local variable"

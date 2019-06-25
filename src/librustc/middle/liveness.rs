@@ -110,7 +110,7 @@ use std::{fmt, u32};
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
-use syntax::ast::{self, NodeId};
+use syntax::ast;
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
@@ -369,7 +369,7 @@ fn visit_fn<'tcx>(
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
         let parent = ir.tcx.hir().get_parent_item(id);
-        if let Some(Node::Item(i)) = ir.tcx.hir().find_by_hir_id(parent) {
+        if let Some(Node::Item(i)) = ir.tcx.hir().find(parent) {
             if i.attrs.iter().any(|a| a.check_name(sym::automatically_derived)) {
                 return;
             }
@@ -1327,12 +1327,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn access_var(&mut self, hir_id: HirId, nid: NodeId, succ: LiveNode, acc: u32, span: Span)
+    fn access_var(&mut self, hir_id: HirId, var_hid: HirId, succ: LiveNode, acc: u32, span: Span)
                   -> LiveNode {
         let ln = self.live_node(hir_id, span);
         if acc != 0 {
             self.init_from_succ(ln, succ);
-            let var_hid = self.ir.tcx.hir().node_to_hir_id(nid);
             let var = self.variable(var_hid, span);
             self.acc(ln, var, acc);
         }
@@ -1345,8 +1344,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             Res::Local(hid) => {
                 let upvars = self.ir.tcx.upvars(self.ir.body_owner);
                 if !upvars.map_or(false, |upvars| upvars.contains_key(&hid)) {
-                    let nid = self.ir.tcx.hir().hir_to_node_id(hid);
-                    self.access_var(hir_id, nid, succ, acc, path.span)
+                    self.access_var(hir_id, hid, succ, acc, path.span)
                 } else {
                     succ
                 }

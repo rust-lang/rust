@@ -1589,7 +1589,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let hir_id = self.hir()
             .as_local_hir_id(suitable_region_binding_scope)
             .unwrap();
-        let is_impl_item = match self.hir().find_by_hir_id(hir_id) {
+        let is_impl_item = match self.hir().find(hir_id) {
             Some(Node::Item(..)) | Some(Node::TraitItem(..)) => false,
             Some(Node::ImplItem(..)) => {
                 self.is_bound_region_in_impl_item(suitable_region_binding_scope)
@@ -2880,7 +2880,7 @@ impl<'tcx> TyCtxt<'tcx> {
             if lint::maybe_lint_level_root(self, id) {
                 return id;
             }
-            let next = self.hir().get_parent_node_by_hir_id(id);
+            let next = self.hir().get_parent_node(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }
@@ -2898,7 +2898,7 @@ impl<'tcx> TyCtxt<'tcx> {
             if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
                 return pair
             }
-            let next = self.hir().get_parent_node_by_hir_id(id);
+            let next = self.hir().get_parent_node(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }

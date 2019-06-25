@@ -662,7 +662,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         if let Some(Region::LateBound(_, def_id, _)) = def {
                             if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
                                 // Ensure that the parent of the def is an item, not HRTB
-                                let parent_id = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+                                let parent_id = self.tcx.hir().get_parent_node(hir_id);
                                 let parent_impl_id = hir::ImplItemId { hir_id: parent_id };
                                 let parent_trait_id = hir::TraitItemId { hir_id: parent_id };
                                 let krate = self.tcx.hir().forest.krate();
@@ -1489,7 +1489,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
         if let Node::Lifetime(hir_lifetime) = self.tcx.hir().get(lifetime.hir_id) {
-            if let Some(parent) = self.tcx.hir().find_by_hir_id(
+            if let Some(parent) = self.tcx.hir().find(
                 self.tcx.hir().get_parent_item(hir_lifetime.hir_id))
             {
                 match parent {
@@ -2051,7 +2051,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // and whether there's a `self` argument (treated specially).
         let mut assoc_item_kind = None;
         let mut impl_self = None;
-        let parent = self.tcx.hir().get_parent_node_by_hir_id(output.hir_id);
+        let parent = self.tcx.hir().get_parent_node(output.hir_id);
         let body = match self.tcx.hir().get(parent) {
             // `fn` definitions and methods.
             Node::Item(&hir::Item {

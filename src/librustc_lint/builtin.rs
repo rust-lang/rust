@@ -405,7 +405,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
                 if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(real_trait) {
-                    match cx.tcx.hir().find_by_hir_id(hir_id) {
+                    match cx.tcx.hir().find(hir_id) {
                         Some(Node::Item(item)) => {
                             if let hir::VisibilityKind::Inherited = item.vis.node {
                                 for impl_item_ref in impl_item_refs {
