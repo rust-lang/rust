@@ -4,6 +4,10 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { Server } from '../server';
 import { terminate } from '../utils/processes';
+import {
+    mapRustDiagnosticToVsCode,
+    RustDiagnostic
+} from '../utils/rust_diagnostics';
 import { LineBuffer } from './line_buffer';
 import { StatusDisplay } from './watch_status';
 
@@ -33,10 +37,17 @@ export function registerCargoWatchProvider(
     return provider;
 }
 
-export class CargoWatchProvider implements vscode.Disposable {
+export class CargoWatchProvider
+    implements vscode.Disposable, vscode.CodeActionProvider {
     private readonly diagnosticCollection: vscode.DiagnosticCollection;
     private readonly statusDisplay: StatusDisplay;
     private readonly outputChannel: vscode.OutputChannel;
+
+    private codeActions: {
+        [fileUri: string]: vscode.CodeAction[];
+    };
+    private readonly codeActionDispose: vscode.Disposable;
+
     private cargoProcess?: child_process.ChildProcess;
 
     constructor() {
@@ -48,6 +59,16 @@ export class CargoWatchProvider implements vscode.Disposable {
         );
         this.outputChannel = vscode.window.createOutputChannel(
             'Cargo Watch Trace'
+        );
+
+        // Register code actions for rustc's suggested fixes
+        this.codeActions = {};
+        this.codeActionDispose = vscode.languages.registerCodeActionsProvider(
+            [{ scheme: 'file', language: 'rust' }],
+            this,
+            {
+                providedCodeActionKinds: [vscode.CodeActionKind.QuickFix]
+            }
         );
     }
 
@@ -127,6 +148,14 @@ export class CargoWatchProvider implements vscode.Disposable {
         this.diagnosticCollection.dispose();
         this.outputChannel.dispose();
         this.statusDisplay.dispose();
+        this.codeActionDispose.dispose();
+    }
+
+    public provideCodeActions(
+        document: vscode.TextDocument
+    ): vscode.ProviderResult<Array<vscode.Command | vscode.CodeAction>> {
+        const documentActions = this.codeActions[document.uri.toString()];
+        return documentActions || [];
     }
 
     private logInfo(line: string) {
@@ -147,6 +176,7 @@ export class CargoWatchProvider implements vscode.Disposable {
     private parseLine(line: string) {
         if (line.startsWith('[Running')) {
             this.diagnosticCollection.clear();
+            this.codeActions = {};
             this.statusDisplay.show();
         }
 
@@ -154,34 +184,65 @@ export class CargoWatchProvider implements vscode.Disposable {
             this.statusDisplay.hide();
         }
 
-        function getLevel(s: string): vscode.DiagnosticSeverity {
-            if (s === 'error') {
-                return vscode.DiagnosticSeverity.Error;
-            }
-            if (s.startsWith('warn')) {
-                return vscode.DiagnosticSeverity.Warning;
-            }
-            return vscode.DiagnosticSeverity.Information;
+        function areDiagnosticsEqual(
+            left: vscode.Diagnostic,
+            right: vscode.Diagnostic
+        ): boolean {
+            return (
+                left.source === right.source &&
+                left.severity === right.severity &&
+                left.range.isEqual(right.range) &&
+                left.message === right.message
+            );
         }
 
-        // Reference:
-        // https://github.com/rust-lang/rust/blob/master/src/libsyntax/json.rs
-        interface RustDiagnosticSpan {
-            line_start: number;
-            line_end: number;
-            column_start: number;
-            column_end: number;
-            is_primary: boolean;
-            file_name: string;
-        }
+        function areCodeActionsEqual(
+            left: vscode.CodeAction,
+            right: vscode.CodeAction
+        ): boolean {
+            if (
+                left.kind !== right.kind ||
+                left.title !== right.title ||
+                !left.edit ||
+                !right.edit
+            ) {
+                return false;
+            }
 
-        interface RustDiagnostic {
-            spans: RustDiagnosticSpan[];
-            rendered: string;
-            level: string;
-            code?: {
-                code: string;
-            };
+            const leftEditEntries = left.edit.entries();
+            const rightEditEntries = right.edit.entries();
+
+            if (leftEditEntries.length !== rightEditEntries.length) {
+                return false;
+            }
+
+            for (let i = 0; i < leftEditEntries.length; i++) {
+                const [leftUri, leftEdits] = leftEditEntries[i];
+                const [rightUri, rightEdits] = rightEditEntries[i];
+
+                if (leftUri.toString() !== rightUri.toString()) {
+                    return false;
+                }
+
+                if (leftEdits.length !== rightEdits.length) {
+                    return false;
+                }
+
+                for (let j = 0; j < leftEdits.length; j++) {
+                    const leftEdit = leftEdits[j];
+                    const rightEdit = rightEdits[j];
+
+                    if (!leftEdit.range.isEqual(rightEdit.range)) {
+                        return false;
+                    }
+
+                    if (leftEdit.newText !== rightEdit.newText) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         interface CargoArtifact {
@@ -215,41 +276,58 @@ export class CargoWatchProvider implements vscode.Disposable {
         } else if (data.reason === 'compiler-message') {
             const msg = data.message as RustDiagnostic;
 
-            const spans = msg.spans.filter(o => o.is_primary);
+            const mapResult = mapRustDiagnosticToVsCode(msg);
+            if (!mapResult) {
+                return;
+            }
 
-            // We only handle primary span right now.
-            if (spans.length > 0) {
-                const o = spans[0];
+            const { location, diagnostic, codeActions } = mapResult;
+            const fileUri = location.uri;
 
-                const rendered = msg.rendered;
-                const level = getLevel(msg.level);
-                const range = new vscode.Range(
-                    new vscode.Position(o.line_start - 1, o.column_start - 1),
-                    new vscode.Position(o.line_end - 1, o.column_end - 1)
+            const diagnostics: vscode.Diagnostic[] = [
+                ...(this.diagnosticCollection!.get(fileUri) || [])
+            ];
+
+            // If we're building multiple targets it's possible we've already seen this diagnostic
+            const isDuplicate = diagnostics.some(d =>
+                areDiagnosticsEqual(d, diagnostic)
+            );
+
+            if (isDuplicate) {
+                return;
+            }
+
+            diagnostics.push(diagnostic);
+            this.diagnosticCollection!.set(fileUri, diagnostics);
+
+            if (codeActions.length) {
+                const fileUriString = fileUri.toString();
+                const existingActions = this.codeActions[fileUriString] || [];
+
+                for (const newAction of codeActions) {
+                    const existingAction = existingActions.find(existing =>
+                        areCodeActionsEqual(existing, newAction)
+                    );
+
+                    if (existingAction) {
+                        if (!existingAction.diagnostics) {
+                            existingAction.diagnostics = [];
+                        }
+                        // This action also applies to this diagnostic
+                        existingAction.diagnostics.push(diagnostic);
+                    } else {
+                        newAction.diagnostics = [diagnostic];
+                        existingActions.push(newAction);
+                    }
+                }
+
+                // Have VsCode query us for the code actions
+                this.codeActions[fileUriString] = existingActions;
+                vscode.commands.executeCommand(
+                    'vscode.executeCodeActionProvider',
+                    fileUri,
+                    diagnostic.range
                 );
-
-                const fileName = path.join(
-                    vscode.workspace.rootPath!,
-                    o.file_name
-                );
-                const diagnostic = new vscode.Diagnostic(
-                    range,
-                    rendered,
-                    level
-                );
-
-                diagnostic.source = 'rustc';
-                diagnostic.code = msg.code ? msg.code.code : undefined;
-                diagnostic.relatedInformation = [];
-
-                const fileUrl = vscode.Uri.file(fileName!);
-
-                const diagnostics: vscode.Diagnostic[] = [
-                    ...(this.diagnosticCollection!.get(fileUrl) || [])
-                ];
-                diagnostics.push(diagnostic);
-
-                this.diagnosticCollection!.set(fileUrl, diagnostics);
             }
         }
     }
