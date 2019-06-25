@@ -253,12 +253,25 @@ fn get_targets_root_only(targets: &mut BTreeSet<Target>) -> Result<(), io::Error
     let workspace_root_path = PathBuf::from(&metadata.workspace_root).canonicalize()?;
     let in_workspace_root = workspace_root_path == current_dir;
 
-    for package in metadata.packages {
-        if in_workspace_root || PathBuf::from(&package.manifest_path) == current_dir_manifest {
-            for target in package.targets {
-                targets.insert(Target::from_target(&target));
-            }
-        }
+    let package_targets = match metadata.packages.len() {
+        1 => metadata.packages.into_iter().next().unwrap().targets,
+        _ => metadata
+            .packages
+            .into_iter()
+            .filter(|p| {
+                in_workspace_root
+                    || PathBuf::from(&p.manifest_path)
+                        .canonicalize()
+                        .unwrap_or_default()
+                        == current_dir_manifest
+            })
+            .map(|p| p.targets)
+            .flatten()
+            .collect(),
+    };
+
+    for target in package_targets {
+        targets.insert(Target::from_target(&target));
     }
 
     Ok(())
