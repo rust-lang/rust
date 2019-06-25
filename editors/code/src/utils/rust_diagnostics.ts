@@ -95,8 +95,14 @@ function isUnusedOrUnnecessary(rd: RustDiagnostic): boolean {
         return false;
     }
 
-    const { code } = rd.code;
-    return code.startsWith('unused_') || code === 'dead_code';
+    return [
+        'dead_code',
+        'unknown_lints',
+        'unused_attributes',
+        'unused_imports',
+        'unused_macros',
+        'unused_variables'
+    ].includes(rd.code.code);
 }
 
 /**
