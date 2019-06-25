@@ -107,7 +107,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 };
 
                 if loop_id != hir::DUMMY_HIR_ID {
-                    if let Node::Block(_) = self.hir_map.find_by_hir_id(loop_id).unwrap() {
+                    if let Node::Block(_) = self.hir_map.find(loop_id).unwrap() {
                         return
                     }
                 }
@@ -155,7 +155,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
                 match destination.target_id {
                     Ok(loop_id) => {
-                        if let Node::Block(block) = self.hir_map.find_by_hir_id(loop_id).unwrap() {
+                        if let Node::Block(block) = self.hir_map.find(loop_id).unwrap() {
                             struct_span_err!(self.sess, e.span, E0696,
                                             "`continue` pointing to a labeled block")
                                 .span_label(e.span,

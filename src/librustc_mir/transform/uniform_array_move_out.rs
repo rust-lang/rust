@@ -97,7 +97,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                     let temp = self.patch.new_temp(item_ty, self.body.source_info(location).span);
                     self.patch.add_statement(location, StatementKind::StorageLive(temp));
                     self.patch.add_assign(location,
-                                          Place::Base(PlaceBase::Local(temp)),
+                                          Place::from(temp),
                                           Rvalue::Use(
                                               Operand::Move(
                                                   Place::Projection(box Projection{
@@ -115,7 +115,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                     Rvalue::Aggregate(
                         box AggregateKind::Array(item_ty),
                         temps.iter().map(
-                            |x| Operand::Move(Place::Base(PlaceBase::Local(*x)))
+                            |x| Operand::Move(Place::from(*x))
                         ).collect()
                     )
                 );

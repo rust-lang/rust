@@ -288,7 +288,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                self.kill_borrows_on_place(trans, &Place::Base(PlaceBase::Local(local)));
+                self.kill_borrows_on_place(trans, &Place::from(local));
             }
 
             mir::StatementKind::InlineAsm(ref asm) => {

@@ -632,7 +632,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 )
             }
             ProjectionElem::Index(i) => {
-                let index_ty = Place::Base(PlaceBase::Local(i)).ty(self.body, tcx).ty;
+                let index_ty = Place::from(i).ty(self.body, tcx).ty;
                 if index_ty != tcx.types.usize {
                     PlaceTy::from_ty(
                         span_mirbug_and_err!(self, i, "index by non-usize {:?}", i),

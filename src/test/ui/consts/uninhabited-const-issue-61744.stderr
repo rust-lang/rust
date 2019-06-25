@@ -1,0 +1,24 @@
+error: any use of this value will cause an error
+  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+   |
+LL |     fake_type()
+   |     ^^^^^^^^^^^
+   |     |
+   |     tried to call a function with return type T passing return place of type !
+   |     inside call to `hint_unreachable` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside call to `fake_type::<i32>` at $DIR/uninhabited-const-issue-61744.rs:12:36
+...
+LL |     const CONSTANT: i32 = unsafe { fake_type() };
+   |     ---------------------------------------------
+   |
+   = note: #[deny(const_err)] on by default
+
+error[E0080]: erroneous constant used
+  --> $DIR/uninhabited-const-issue-61744.rs:18:10
+   |
+LL |     dbg!(i32::CONSTANT);
+   |          ^^^^^^^^^^^^^ referenced constant has errors
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

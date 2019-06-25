@@ -565,7 +565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // else an error would have been flagged by the
                 // `loops` pass for using break with an expression
                 // where you are not supposed to.
-                assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
+                assert!(expr_opt.is_none() || self.tcx.sess.has_errors());
             }
 
             ctxt.may_break = true;
@@ -577,10 +577,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // this can only happen if the `break` was not
             // inside a loop at all, which is caught by the
             // loop-checking pass.
-            if self.tcx.sess.err_count() == 0 {
-                self.tcx.sess.delay_span_bug(expr.span,
-                    "break was outside loop, but no error was emitted");
-            }
+            self.tcx.sess.delay_span_bug(expr.span,
+                "break was outside loop, but no error was emitted");
 
             // We still need to assign a type to the inner expression to
             // prevent the ICE in #43162.

@@ -1022,7 +1022,7 @@ impl BorrowckCtxt<'_, 'tcx> {
 
                 if let ty::ReScope(scope) = *super_scope {
                     let hir_id = scope.hir_id(&self.region_scope_tree);
-                    match self.tcx.hir().find_by_hir_id(hir_id) {
+                    match self.tcx.hir().find(hir_id) {
                         Some(Node::Stmt(_)) => {
                             if *sub_scope != ty::ReStatic {
                                 db.note("consider using a `let` binding to increase its lifetime");
@@ -1189,7 +1189,7 @@ impl BorrowckCtxt<'_, 'tcx> {
     }
 
     fn local_ty(&self, hir_id: hir::HirId) -> (Option<&hir::Ty>, bool) {
-        let parent = self.tcx.hir().get_parent_node_by_hir_id(hir_id);
+        let parent = self.tcx.hir().get_parent_node(hir_id);
         let parent_node = self.tcx.hir().get(parent);
 
         // The parent node is like a fn
@@ -1287,7 +1287,7 @@ impl BorrowckCtxt<'_, 'tcx> {
                     },
                 )) = ty.map(|t| &t.node)
                 {
-                    let borrow_expr_id = self.tcx.hir().get_parent_node_by_hir_id(borrowed_hir_id);
+                    let borrow_expr_id = self.tcx.hir().get_parent_node(borrowed_hir_id);
                     db.span_suggestion(
                         self.tcx.hir().span(borrow_expr_id),
                         "consider removing the `&mut`, as it is an \

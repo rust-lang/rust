@@ -546,7 +546,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         if let PatKind::Binding(..) = inner.node {
-            let parent_id = tcx.hir().get_parent_node_by_hir_id(pat.hir_id);
+            let parent_id = tcx.hir().get_parent_node(pat.hir_id);
             let parent = tcx.hir().get(parent_id);
             debug!("inner {:?} pat {:?} parent {:?}", inner, pat, parent);
             match parent {
@@ -808,16 +808,16 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         use hir::Node::{Block, Item, Local};
 
         let hir = self.tcx.hir();
-        let arm_id = hir.get_parent_node_by_hir_id(hir_id);
-        let match_id = hir.get_parent_node_by_hir_id(arm_id);
-        let containing_id = hir.get_parent_node_by_hir_id(match_id);
+        let arm_id = hir.get_parent_node(hir_id);
+        let match_id = hir.get_parent_node(arm_id);
+        let containing_id = hir.get_parent_node(match_id);
 
         let node = hir.get(containing_id);
         if let Block(block) = node {
             // check that the body's parent is an fn
             let parent = hir.get(
-                hir.get_parent_node_by_hir_id(
-                    hir.get_parent_node_by_hir_id(block.hir_id),
+                hir.get_parent_node(
+                    hir.get_parent_node(block.hir_id),
                 ),
             );
             if let (Some(expr), Item(hir::Item {

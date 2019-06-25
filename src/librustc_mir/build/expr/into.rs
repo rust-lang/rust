@@ -258,7 +258,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         is_user_variable: None,
                         is_block_tail: None,
                     });
-                    let ptr_temp = Place::Base(PlaceBase::Local(ptr_temp));
+                    let ptr_temp = Place::from(ptr_temp);
                     let block = unpack!(this.into(&ptr_temp, block, ptr));
                     this.into(&ptr_temp.deref(), block, val)
                 } else {

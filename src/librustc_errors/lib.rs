@@ -307,7 +307,12 @@ pub use diagnostic_builder::DiagnosticBuilder;
 pub struct Handler {
     pub flags: HandlerFlags,
 
+    /// The number of errors that have been emitted, including duplicates.
+    ///
+    /// This is not necessarily the count that's reported to the user once
+    /// compilation ends.
     err_count: AtomicUsize,
+    deduplicated_err_count: AtomicUsize,
     emitter: Lock<Box<dyn Emitter + sync::Send>>,
     continue_after_error: AtomicBool,
     delayed_span_bugs: Lock<Vec<Diagnostic>>,
@@ -352,7 +357,7 @@ pub struct HandlerFlags {
 
 impl Drop for Handler {
     fn drop(&mut self) {
-        if self.err_count() == 0 {
+        if !self.has_errors() {
             let mut bugs = self.delayed_span_bugs.borrow_mut();
             let has_bugs = !bugs.is_empty();
             for bug in bugs.drain(..) {
@@ -407,6 +412,7 @@ impl Handler {
         Handler {
             flags,
             err_count: AtomicUsize::new(0),
+            deduplicated_err_count: AtomicUsize::new(0),
             emitter: Lock::new(e),
             continue_after_error: AtomicBool::new(true),
             delayed_span_bugs: Lock::new(Vec::new()),
@@ -428,6 +434,7 @@ impl Handler {
     pub fn reset_err_count(&self) {
         // actually frees the underlying memory (which `clear` would not do)
         *self.emitted_diagnostics.borrow_mut() = Default::default();
+        self.deduplicated_err_count.store(0, SeqCst);
         self.err_count.store(0, SeqCst);
     }
 
@@ -660,10 +667,10 @@ impl Handler {
     }
 
     pub fn print_error_count(&self, registry: &Registry) {
-        let s = match self.err_count() {
+        let s = match self.deduplicated_err_count.load(SeqCst) {
             0 => return,
             1 => "aborting due to previous error".to_string(),
-            _ => format!("aborting due to {} previous errors", self.err_count())
+            count => format!("aborting due to {} previous errors", count)
         };
         if self.treat_err_as_bug() {
             return;
@@ -705,10 +712,9 @@ impl Handler {
     }
 
     pub fn abort_if_errors(&self) {
-        if self.err_count() == 0 {
-            return;
+        if self.has_errors() {
+            FatalError.raise();
         }
-        FatalError.raise();
     }
     pub fn emit(&self, msp: &MultiSpan, msg: &str, lvl: Level) {
         if lvl == Warning && !self.flags.can_emit_warnings {
@@ -770,8 +776,11 @@ impl Handler {
         if self.emitted_diagnostics.borrow_mut().insert(diagnostic_hash) {
             self.emitter.borrow_mut().emit_diagnostic(db);
             if db.is_error() {
-                self.bump_err_count();
+                self.deduplicated_err_count.fetch_add(1, SeqCst);
             }
+        }
+        if db.is_error() {
+            self.bump_err_count();
         }
     }
 

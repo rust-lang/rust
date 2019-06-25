@@ -959,7 +959,7 @@ fn analysis<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Result<()> {
     // lot of annoying errors in the compile-fail tests (basically,
     // lint warnings and so on -- kindck used to do this abort, but
     // kindck is gone now). -nmatsakis
-    if sess.err_count() > 0 {
+    if sess.has_errors() {
         return Err(ErrorReported);
     }
 

@@ -27,7 +27,7 @@ use syntax_pos;
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
 fn should_explore<'tcx>(tcx: TyCtxt<'tcx>, hir_id: hir::HirId) -> bool {
-    match tcx.hir().find_by_hir_id(hir_id) {
+    match tcx.hir().find(hir_id) {
         Some(Node::Item(..)) |
         Some(Node::ImplItem(..)) |
         Some(Node::ForeignItem(..)) |
@@ -145,7 +145,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             // tuple struct constructor function
             let id = self.struct_constructors.get(&id).cloned().unwrap_or(id);
 
-            if let Some(node) = self.tcx.hir().find_by_hir_id(id) {
+            if let Some(node) = self.tcx.hir().find(id) {
                 self.live_symbols.insert(id);
                 self.visit_node(node);
             }

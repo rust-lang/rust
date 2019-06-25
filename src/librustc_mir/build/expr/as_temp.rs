@@ -64,7 +64,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             this.local_decls.push(local_decl)
         };
-        let temp_place = &Place::Base(PlaceBase::Local(temp));
+        let temp_place = &Place::from(temp);
 
         if !expr_ty.is_never() {
             this.cfg.push(

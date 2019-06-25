@@ -235,7 +235,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     }
                     let temp = this.local_decls.push(local_decl);
-                    let place = Place::Base(PlaceBase::Local(temp));
+                    let place = Place::from(temp);
                     debug!("created temp {:?} for expr {:?} in block_context: {:?}",
                            temp, expr, this.block_context);
                     place

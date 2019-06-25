@@ -182,7 +182,7 @@ fn check_main_fn_ty<'tcx>(tcx: TyCtxt<'tcx>, main_def_id: DefId) {
     let main_t = tcx.type_of(main_def_id);
     match main_t.sty {
         ty::FnDef(..) => {
-            if let Some(Node::Item(it)) = tcx.hir().find_by_hir_id(main_id) {
+            if let Some(Node::Item(it)) = tcx.hir().find(main_id) {
                 if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
                     let mut error = false;
                     if !generics.params.is_empty() {
@@ -247,7 +247,7 @@ fn check_start_fn_ty<'tcx>(tcx: TyCtxt<'tcx>, start_def_id: DefId) {
     let start_t = tcx.type_of(start_def_id);
     match start_t.sty {
         ty::FnDef(..) => {
-            if let Some(Node::Item(it)) = tcx.hir().find_by_hir_id(start_id) {
+            if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
                 if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
                     let mut error = false;
                     if !generics.params.is_empty() {
@@ -320,6 +320,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) -> Result<(), ErrorReported> {
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
+    // FIXME(matthewjasper) We shouldn't need to do this.
     tcx.sess.track_errors(|| {
         time(tcx.sess, "type collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
@@ -352,7 +353,9 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) -> Result<(), ErrorReported> {
         })?;
     }
 
-    time(tcx.sess, "wf checking", || check::check_wf_new(tcx))?;
+    tcx.sess.track_errors(|| {
+        time(tcx.sess, "wf checking", || check::check_wf_new(tcx));
+    })?;
 
     time(tcx.sess, "item-types checking", || {
         for &module in tcx.hir().krate().modules.keys() {

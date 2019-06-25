@@ -53,7 +53,7 @@ fn method_might_be_inlined<'tcx>(
         return true
     }
     if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_src) {
-        match tcx.hir().find_by_hir_id(impl_hir_id) {
+        match tcx.hir().find(impl_hir_id) {
             Some(Node::Item(item)) =>
                 item_might_be_inlined(tcx, &item, codegen_fn_attrs),
             Some(..) | None =>
@@ -147,7 +147,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             None => { return false; }
         };
 
-        match self.tcx.hir().find_by_hir_id(hir_id) {
+        match self.tcx.hir().find(hir_id) {
             Some(Node::Item(item)) => {
                 match item.node {
                     hir::ItemKind::Fn(..) =>
@@ -205,7 +205,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 continue
             }
 
-            if let Some(ref item) = self.tcx.hir().find_by_hir_id(search_item) {
+            if let Some(ref item) = self.tcx.hir().find(search_item) {
                 self.propagate_node(item, search_item);
             }
         }

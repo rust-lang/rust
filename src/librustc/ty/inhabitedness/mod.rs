@@ -97,7 +97,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ty_inhabitedness_forest(ty).contains(self, module)
     }
 
-    pub fn is_ty_uninhabited_from_all_modules(self, ty: Ty<'tcx>) -> bool {
+    pub fn is_ty_uninhabited_from_any_module(self, ty: Ty<'tcx>) -> bool {
         !self.ty_inhabitedness_forest(ty).is_empty()
     }
 
