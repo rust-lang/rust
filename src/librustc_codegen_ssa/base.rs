@@ -25,7 +25,7 @@ use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::ty::query::Providers;
 use rustc::middle::cstore::{self, LinkagePreference};
-use rustc::util::common::{time, print_time_passes_entry};
+use rustc::util::common::{time, print_time_passes_entry, set_time_depth, time_depth};
 use rustc::session::config::{self, EntryFnType, Lto};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
@@ -639,9 +639,12 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
+    let time_depth = time_depth();
+    set_time_depth(time_depth + 1);
     print_time_passes_entry(tcx.sess.time_passes(),
                             "codegen to LLVM IR",
                             total_codegen_time);
+    set_time_depth(time_depth);
 
     ::rustc_incremental::assert_module_sources::assert_module_sources(tcx);
 
