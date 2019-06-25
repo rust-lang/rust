@@ -155,7 +155,7 @@ fn random_number() -> usize {
 
         let mut buf = [0u8; mem::size_of::<usize>()];
         getrandom::getrandom(&mut buf).expect("OS RNG failure");
-        let n = u64::from_ne_bytes(buf) as usize;
+        let n = usize::from_ne_bytes(buf);
         N.store(n, SeqCst);
     }
 }
