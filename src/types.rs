@@ -328,8 +328,9 @@ where
         Shape::legacy(budget, offset)
     };
 
+    let is_inputs_empty = inputs.len() == 0;
     let list_lo = context.snippet_provider.span_after(span, "(");
-    let (list_str, tactic) = if inputs.len() == 0 {
+    let (list_str, tactic) = if is_inputs_empty {
         let tactic = get_tactics(&[], &output, shape);
         let list_hi = context.snippet_provider.span_before(span, ")");
         let comment = context
@@ -377,7 +378,10 @@ where
         (write_list(&item_vec, &fmt)?, tactic)
     };
 
-    let args = if tactic == DefinitiveListTactic::Horizontal || !context.use_block_indent() {
+    let args = if tactic == DefinitiveListTactic::Horizontal
+        || !context.use_block_indent()
+        || is_inputs_empty
+    {
         format!("({})", list_str)
     } else {
         format!(
