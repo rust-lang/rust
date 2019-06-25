@@ -2449,8 +2449,8 @@ impl RandomState {
             let mut buf = [0u8; 16];
             // we consciously ignore potential errors here
             let _ = getrandom::getrandom(&mut buf);
-            // SAFETY: it's safe to transmute random 16 bytes to two `u64`s
-            let buf: [u64; 2] = unsafe { core::mem::transmute(buf) };
+            // SAFETY: it's safe to transmute_copy random 16 bytes to two `u64`s
+            let buf: [u64; 2] = unsafe { core::mem::transmute_copy(&buf) };
             Cell::new(buf)
         });
 
