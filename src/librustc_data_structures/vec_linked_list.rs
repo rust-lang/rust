@@ -8,7 +8,7 @@ where
     Ls: Links,
 {
     VecLinkedListIterator {
-        links: links,
+        links,
         current: first,
     }
 }

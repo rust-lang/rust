@@ -461,7 +461,7 @@ impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
     pub fn new(writer: &'a mut dyn fmt::Write) -> Encoder<'a> {
-        Encoder { writer: writer, is_emitting_map_key: false, }
+        Encoder { writer, is_emitting_map_key: false, }
     }
 }
 

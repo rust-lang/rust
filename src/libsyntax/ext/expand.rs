@@ -231,7 +231,7 @@ pub struct MacroExpander<'a, 'b> {
 
 impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
-        MacroExpander { cx: cx, monotonic: monotonic }
+        MacroExpander { cx, monotonic }
     }
 
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
@@ -377,7 +377,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             _ => item.clone(),
                         };
                         invocations.push(Invocation {
-                            kind: InvocationKind::Derive { path: path.clone(), item: item },
+                            kind: InvocationKind::Derive { path: path.clone(), item },
                             fragment_kind: invoc.fragment_kind,
                             expansion_data: ExpansionData {
                                 mark,
@@ -944,7 +944,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 
     fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: AstFragmentKind) -> AstFragment {
-        self.collect(kind, InvocationKind::Bang { mac: mac, ident: None, span: span })
+        self.collect(kind, InvocationKind::Bang { mac, ident: None, span })
     }
 
     fn collect_attr(&mut self,

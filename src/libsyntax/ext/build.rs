@@ -815,7 +815,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
 
     fn pat(&self, span: Span, pat: PatKind) -> P<ast::Pat> {
-        P(ast::Pat { id: ast::DUMMY_NODE_ID, node: pat, span: span })
+        P(ast::Pat { id: ast::DUMMY_NODE_ID, node: pat, span })
     }
     fn pat_wild(&self, span: Span) -> P<ast::Pat> {
         self.pat(span, PatKind::Wild)

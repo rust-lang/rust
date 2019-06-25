@@ -319,7 +319,7 @@ fn parse_tree(
         tokenstream::TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
             span,
             Lrc::new(Delimited {
-                delim: delim,
+                delim,
                 tts: parse(
                     tts.into(),
                     expect_matchers,
