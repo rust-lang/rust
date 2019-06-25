@@ -1935,6 +1935,25 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
         }
     }
 
+    if tcx.adt_def(def_id).repr.int.is_none() && tcx.features().arbitrary_enum_discriminant {
+        let is_unit =
+            |var: &hir::Variant| match var.node.data {
+                hir::VariantData::Unit(..) => true,
+                _ => false
+            };
+
+        let has_disr = |var: &hir::Variant| var.node.disr_expr.is_some();
+        let has_non_units = vs.iter().any(|var| !is_unit(var));
+        let disr_units = vs.iter().any(|var| is_unit(&var) && has_disr(&var));
+        let disr_non_unit = vs.iter().any(|var| !is_unit(&var) && has_disr(&var));
+
+        if disr_non_unit || (disr_units && has_non_units) {
+            let mut err = struct_span_err!(tcx.sess, sp, E0732,
+                                           "`#[repr(inttype)]` must be specified");
+            err.emit();
+        }
+    }
+
     let mut disr_vals: Vec<Discr<'tcx>> = Vec::with_capacity(vs.len());
     for ((_, discr), v) in def.discriminants(tcx).zip(vs) {
         // Check for duplicate discriminant values

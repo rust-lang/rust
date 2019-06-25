@@ -25,13 +25,14 @@ use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
 use crate::parse::{token, ParseSess};
+use crate::parse::parser::Parser;
 use crate::symbol::{Symbol, sym};
 use crate::tokenstream::TokenTree;
 
 use errors::{Applicability, DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::abi::Abi;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::debug;
 use lazy_static::lazy_static;
 
@@ -568,6 +569,9 @@ declare_features! (
 
     // #[repr(transparent)] on unions.
     (active, transparent_unions, "1.37.0", Some(60405), None),
+
+    // Allows explicit discriminants on non-unit enum variants.
+    (active, arbitrary_enum_discriminant, "1.37.0", Some(60553), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
@@ -1709,20 +1713,20 @@ pub fn emit_feature_err(
     feature_err(sess, feature, span, issue, explain).emit();
 }
 
-pub fn feature_err<'a>(
+pub fn feature_err<'a, S: Into<MultiSpan>>(
     sess: &'a ParseSess,
     feature: Symbol,
-    span: Span,
+    span: S,
     issue: GateIssue,
     explain: &str,
 ) -> DiagnosticBuilder<'a> {
     leveled_feature_err(sess, feature, span, issue, explain, GateStrength::Hard)
 }
 
-fn leveled_feature_err<'a>(
+fn leveled_feature_err<'a, S: Into<MultiSpan>>(
     sess: &'a ParseSess,
     feature: Symbol,
-    span: Span,
+    span: S,
     issue: GateIssue,
     explain: &str,
     level: GateStrength,
@@ -2034,6 +2038,29 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                                "SIMD types are experimental and possibly buggy");
                         }
                     }
+                }
+            }
+
+            ast::ItemKind::Enum(ast::EnumDef{ref variants, ..}, ..) => {
+                for variant in variants {
+                    match (&variant.node.data, &variant.node.disr_expr) {
+                        (ast::VariantData::Unit(..), _) => {},
+                        (_, Some(disr_expr)) =>
+                            gate_feature_post!(
+                                &self,
+                                arbitrary_enum_discriminant,
+                                disr_expr.value.span,
+                                "discriminants on non-unit variants are experimental"),
+                        _ => {},
+                    }
+                }
+
+                let has_feature = self.context.features.arbitrary_enum_discriminant;
+                if !has_feature && !i.span.allows_unstable(sym::arbitrary_enum_discriminant) {
+                    Parser::maybe_report_invalid_custom_discriminants(
+                        self.context.parse_sess,
+                        &variants,
+                    );
                 }
             }
 
