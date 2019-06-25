@@ -527,6 +527,8 @@ pub struct FnCtxt<'a, 'tcx> {
     /// checking this function. On exit, if we find that *more* errors
     /// have been reported, we will skip regionck and other work that
     /// expects the types within the function to be consistent.
+    // FIXME(matthewjasper) This should not exist, and it's not correct
+    // if type checking is run in parallel.
     err_count_on_creation: usize,
 
     ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
@@ -696,11 +698,9 @@ impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
     fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) { }
 }
 
-pub fn check_wf_new<'tcx>(tcx: TyCtxt<'tcx>) -> Result<(), ErrorReported> {
-    tcx.sess.track_errors(|| {
-        let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
-        tcx.hir().krate().par_visit_all_item_likes(&mut visit);
-    })
+pub fn check_wf_new<'tcx>(tcx: TyCtxt<'tcx>) {
+    let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
+    tcx.hir().krate().par_visit_all_item_likes(&mut visit);
 }
 
 fn check_mod_item_types<'tcx>(tcx: TyCtxt<'tcx>, module_def_id: DefId) {
@@ -2128,8 +2128,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self.tcx.sess
     }
 
-    pub fn err_count_since_creation(&self) -> usize {
-        self.tcx.sess.err_count() - self.err_count_on_creation
+    pub fn errors_reported_since_creation(&self) -> bool {
+        self.tcx.sess.err_count() > self.err_count_on_creation
     }
 
     /// Produces warning on the given node, if the current point in the
@@ -4375,7 +4375,7 @@ pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, t
         } else if let ty::Error = leaf_ty.sty {
             // If there is already another error, do not emit
             // an error for not using a type Parameter.
-            assert!(tcx.sess.err_count() > 0);
+            assert!(tcx.sess.has_errors());
             return;
         }
     }

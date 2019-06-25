@@ -320,6 +320,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) -> Result<(), ErrorReported> {
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
+    // FIXME(matthewjasper) We shouldn't need to do this.
     tcx.sess.track_errors(|| {
         time(tcx.sess, "type collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
@@ -352,7 +353,9 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) -> Result<(), ErrorReported> {
         })?;
     }
 
-    time(tcx.sess, "wf checking", || check::check_wf_new(tcx))?;
+    tcx.sess.track_errors(|| {
+        time(tcx.sess, "wf checking", || check::check_wf_new(tcx));
+    })?;
 
     time(tcx.sess, "item-types checking", || {
         for &module in tcx.hir().krate().modules.keys() {

@@ -123,7 +123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // standalone expr (e.g., the `E` in a type like `[u32; E]`).
         rcx.outlives_environment.save_implied_bounds(id);
 
-        if self.err_count_since_creation() == 0 {
+        if !self.errors_reported_since_creation() {
             // regionck assumes typeck succeeded
             rcx.visit_body(body);
             rcx.visit_region_obligations(id);
@@ -173,7 +173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.param_env,
         );
 
-        if self.err_count_since_creation() == 0 {
+        if !self.errors_reported_since_creation() {
             // regionck assumes typeck succeeded
             rcx.visit_fn_body(fn_id, body, self.tcx.hir().span(fn_id));
         }
