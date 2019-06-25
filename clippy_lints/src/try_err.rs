@@ -80,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
                     "returning an `Err(_)` with the `?` operator",
                     "try this",
                     suggestion,
-                    Applicability::MaybeIncorrect
+                    Applicability::MachineApplicable
                 );
             }
         }

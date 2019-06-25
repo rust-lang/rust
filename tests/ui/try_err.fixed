@@ -7,7 +7,7 @@
 pub fn basic_test() -> Result<i32, i32> {
     let err: i32 = 1;
     if true { // To avoid warnings during rustfix
-        Err(err)?;
+        return Err(err);
     }
     Ok(0)
 }
@@ -16,7 +16,7 @@ pub fn basic_test() -> Result<i32, i32> {
 pub fn into_test() -> Result<i32, i32> {
     let err: u8 = 1;
     if true { // To avoid warnings during rustfix
-        Err(err)?;
+        return Err(err.into());
     }
     Ok(0)
 }
@@ -35,7 +35,7 @@ pub fn closure_matches_test() -> Result<i32, i32> {
         .map(|i| {
             let err: i8 = 1;
             if true { // To avoid warnings during rustfix
-                Err(err)?;
+                return Err(err);
             }
             Ok(i)
         })
@@ -52,7 +52,7 @@ pub fn closure_into_test() -> Result<i32, i32> {
         .map(|i| {
             let err: i8 = 1;
             if true { // To avoid warnings during rustfix
-                Err(err)?;
+                return Err(err.into());
             }
             Ok(i)
         })
