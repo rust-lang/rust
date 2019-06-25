@@ -111,8 +111,6 @@ derive_traits! {
 
     "Default" => default::expand_deriving_default,
 
-    "Send" => bounds::expand_deriving_unsafe_bound,
-    "Sync" => bounds::expand_deriving_unsafe_bound,
     "Copy" => bounds::expand_deriving_copy,
 
     // deprecated
