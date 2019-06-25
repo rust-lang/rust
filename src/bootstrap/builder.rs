@@ -372,7 +372,6 @@ impl<'a> Builder<'a> {
                 test::Tidy,
                 test::Ui,
                 test::RunPass,
-                test::CompileFail,
                 test::RunFail,
                 test::RunPassValgrind,
                 test::MirOpt,

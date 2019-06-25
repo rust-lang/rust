@@ -10,7 +10,6 @@ use crate::util::PathBufExt;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
-    CompileFail,
     RunFail,
     /// This now behaves like a `ui` test that has an implict `// run-pass`.
     RunPass,
@@ -50,7 +49,6 @@ impl FromStr for Mode {
     type Err = ();
     fn from_str(s: &str) -> Result<Mode, ()> {
         match s {
-            "compile-fail" => Ok(CompileFail),
             "run-fail" => Ok(RunFail),
             "run-pass" => Ok(RunPass),
             "run-pass-valgrind" => Ok(RunPassValgrind),
@@ -76,7 +74,6 @@ impl FromStr for Mode {
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match *self {
-            CompileFail => "compile-fail",
             RunFail => "run-fail",
             RunPass => "run-pass",
             RunPassValgrind => "run-pass-valgrind",
@@ -172,7 +169,7 @@ pub struct Config {
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
-    /// The test mode, compile-fail, run-fail, run-pass
+    /// The test mode, run-fail, run-pass
     pub mode: Mode,
 
     /// Run ignored tests

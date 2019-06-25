@@ -216,7 +216,6 @@ build/
     # Output for all compiletest-based test suites
     test/
       run-pass/
-      compile-fail/
       debuginfo/
       ...
 

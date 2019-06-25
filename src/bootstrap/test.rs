@@ -828,12 +828,6 @@ default_test_with_compare_mode!(RunPass {
     compare_mode: "nll"
 });
 
-default_test!(CompileFail {
-    path: "src/test/compile-fail",
-    mode: "compile-fail",
-    suite: "compile-fail"
-});
-
 default_test!(RunFail {
     path: "src/test/run-fail",
     mode: "run-fail",

@@ -5,7 +5,7 @@ use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, Rustdoc};
 use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb};
-use crate::common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
+use crate::common::{Pretty, RunFail, RunPass, RunPassValgrind};
 use crate::common::{Config, TestPaths};
 use crate::common::{Incremental, MirOpt, RunMake, Ui, JsDocTest, Assembly};
 use diff;
@@ -286,7 +286,6 @@ impl<'test> TestCx<'test> {
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
         match self.config.mode {
-            CompileFail => self.run_cfail_test(),
             RunFail => self.run_rfail_test(),
             RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
@@ -319,7 +318,6 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self) -> bool {
         match self.config.mode {
-            CompileFail => false,
             RunPass => true,
             JsDocTest => true,
             Ui => self.props.pass_mode.is_some(),
@@ -1535,12 +1533,11 @@ impl<'test> TestCx<'test> {
         rustc.arg("-L").arg(&self.aux_output_dir_name());
 
         match self.config.mode {
-            CompileFail | Ui => {
-                // compile-fail and ui tests tend to have tons of unused code as
-                // it's just testing various pieces of the compile, but we don't
-                // want to actually assert warnings about all this code. Instead
-                // let's just ignore unused code warnings by defaults and tests
-                // can turn it back on if needed.
+            Ui => {
+                // ui tests tend to have tons of unused code as it's just testing
+                // various pieces of the compile, but we don't want to actually assert
+                // warnings about all this code. Instead let's just ignore unused
+                // code warnings by defaults and tests can turn it back on if needed.
                 if !self.config.src_base.ends_with("rustdoc-ui") {
                     rustc.args(&["-A", "unused"]);
                 }
@@ -1922,7 +1919,7 @@ impl<'test> TestCx<'test> {
         }
 
         match self.config.mode {
-            CompileFail | Incremental => {
+            Incremental => {
                 // If we are extracting and matching errors in the new
                 // fashion, then you want JSON mode. Old-skool error
                 // patterns still match the raw compiler output.
