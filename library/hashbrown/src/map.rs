@@ -1262,7 +1262,7 @@ pub struct RawEntryBuilderMut<'a, K, V, S> {
 /// [`HashMap`]: struct.HashMap.html
 /// [`Entry`]: enum.Entry.html
 /// [`raw_entry`]: struct.HashMap.html#method.raw_entry
-pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
+pub enum RawEntryMut<'a, K, V, S> {
     /// An occupied entry.
     Occupied(RawOccupiedEntryMut<'a, K, V>),
     /// A vacant entry.
@@ -1696,7 +1696,7 @@ impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
-pub enum Entry<'a, K: 'a, V: 'a, S: 'a> {
+pub enum Entry<'a, K, V, S> {
     /// An occupied entry.
     Occupied(OccupiedEntry<'a, K, V, S>),
 

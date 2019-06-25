@@ -59,7 +59,7 @@ where
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.rustc_entry
-pub enum RustcEntry<'a, K: 'a, V: 'a> {
+pub enum RustcEntry<'a, K, V> {
     /// An occupied entry.
     Occupied(RustcOccupiedEntry<'a, K, V>),
 
