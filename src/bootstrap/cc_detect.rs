@@ -95,29 +95,39 @@ pub fn find(build: &mut Build) {
         };
 
         build.cc.insert(target, compiler);
+        let cflags = build.cflags(target, GitRepo::Rustc);
+
+        // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
+        // We'll need one anyways if the target triple is also a host triple
+        let mut cfg = cc::Build::new();
+        cfg.cargo_metadata(false).opt_level(2).warnings(false).debug(false).cpp(true)
+            .target(&target).host(&build.build);
+
+        let cxx_configured = if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
+            cfg.compiler(cxx);
+            true
+        } else if build.hosts.contains(&target) || build.build == target {
+            set_compiler(&mut cfg, Language::CPlusPlus, target, config, build);
+            true
+        } else {
+            false
+        };
+
+        if cxx_configured {
+            let compiler = cfg.get_compiler();
+            build.cxx.insert(target, compiler);
+        }
+
         build.verbose(&format!("CC_{} = {:?}", &target, build.cc(target)));
-        build.verbose(&format!("CFLAGS_{} = {:?}", &target, build.cflags(target, GitRepo::Rustc)));
+        build.verbose(&format!("CFLAGS_{} = {:?}", &target, cflags));
+        if let Ok(cxx) = build.cxx(target) {
+            build.verbose(&format!("CXX_{} = {:?}", &target, cxx));
+            build.verbose(&format!("CXXFLAGS_{} = {:?}", &target, cflags));
+        }
         if let Some(ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", &target, ar));
             build.ar.insert(target, ar);
         }
-    }
-
-    // For all host triples we need to find a C++ compiler as well
-    let hosts = build.hosts.iter().cloned().chain(iter::once(build.build)).collect::<HashSet<_>>();
-    for host in hosts.into_iter() {
-        let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false).opt_level(2).warnings(false).debug(false).cpp(true)
-           .target(&host).host(&build.build);
-        let config = build.config.target_config.get(&host);
-        if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
-            cfg.compiler(cxx);
-        } else {
-            set_compiler(&mut cfg, Language::CPlusPlus, host, config, build);
-        }
-        let compiler = cfg.get_compiler();
-        build.verbose(&format!("CXX_{} = {:?}", host, compiler.path()));
-        build.cxx.insert(host, compiler);
     }
 }
 
