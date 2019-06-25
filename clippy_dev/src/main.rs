@@ -4,6 +4,8 @@ extern crate regex;
 
 use clap::{App, Arg, SubCommand};
 use clippy_dev::*;
+
+mod fmt;
 mod stderr_length_check;
 
 #[derive(PartialEq)]
@@ -14,6 +16,21 @@ enum UpdateMode {
 
 fn main() {
     let matches = App::new("Clippy developer tooling")
+        .subcommand(
+            SubCommand::with_name("fmt")
+                .about("Run rustfmt on all projects and tests")
+                .arg(
+                    Arg::with_name("check")
+                        .long("check")
+                        .help("Use the rustfmt --check option"),
+                )
+                .arg(
+                    Arg::with_name("verbose")
+                        .short("v")
+                        .long("verbose")
+                        .help("Echo commands run"),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("update_lints")
                 .about("Updates lint registration and information from the source code")
@@ -46,14 +63,21 @@ fn main() {
     if matches.is_present("limit-stderr-length") {
         stderr_length_check::check();
     }
-    if let Some(matches) = matches.subcommand_matches("update_lints") {
-        if matches.is_present("print-only") {
-            print_lints();
-        } else if matches.is_present("check") {
-            update_lints(&UpdateMode::Check);
-        } else {
-            update_lints(&UpdateMode::Change);
-        }
+
+    match matches.subcommand() {
+        ("fmt", Some(matches)) => {
+            fmt::run(matches.is_present("check"), matches.is_present("verbose"));
+        },
+        ("update_lints", Some(matches)) => {
+            if matches.is_present("print-only") {
+                print_lints();
+            } else if matches.is_present("check") {
+                update_lints(&UpdateMode::Check);
+            } else {
+                update_lints(&UpdateMode::Change);
+            }
+        },
+        _ => unreachable!(),
     }
 }
 
