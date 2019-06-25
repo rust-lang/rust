@@ -5,5 +5,5 @@ fn main() {
     let y = &*b as *const i32; // different allocation
     // We cannot compare these even though both allocations are live -- they *could* be
     // equal (with the right base addresses).
-    assert!(x != y); //~ ERROR outside bounds
+    assert!(x != y); //~ ERROR invalid arithmetic on pointers
 }

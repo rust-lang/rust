@@ -10,8 +10,7 @@ use rustc::mir::RetagKind;
 
 use crate::{
     InterpResult, InterpError, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
-    MemoryKind, MiriMemoryKind, RangeMap, AllocId, CheckInAllocMsg, Pointer, Immediate, ImmTy, 
-    PlaceTy, MPlaceTy,
+    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
 pub type PtrId = NonZeroU64;
@@ -531,13 +530,14 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let protector = if protect { Some(this.frame().extra) } else { None };
-        let ptr = place.ptr.to_ptr()?;
+        let ptr = this.memory().check_ptr_access(place.ptr, size, place.align)
+            .expect("validity checks should have excluded dangling/unaligned pointer")
+            .expect("we shouldn't get here for ZST");
         trace!("reborrow: {} reference {:?} derived from {:?} (pointee {}): {:?}, size {}",
             kind, new_tag, ptr.tag, place.layout.ty, ptr.erase_tag(), size.bytes());
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
         let alloc = this.memory().get(ptr.alloc_id)?;
-        alloc.check_bounds(this, ptr, size, CheckInAllocMsg::InboundsTest)?;
         // Update the stacks.
         // Make sure that raw pointers and mutable shared references are reborrowed "weak":
         // There could be existing unique pointers reborrowed from them that should remain valid!

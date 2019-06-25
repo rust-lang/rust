@@ -21,13 +21,4 @@ fn main() {
     // Reading and writing is ok.
     unsafe { *x = zst_val; }
     unsafe { let _y = *x; }
-
-    // We should even be able to use "true" pointers for ZST when the allocation has been
-    // removed already. The box is for a non-ZST to make sure there actually is an allocation.
-    let mut x_box = Box::new(((), 1u8));
-    let x = &mut x_box.0 as *mut _ as *mut [u8; 0];
-    drop(x_box);
-    // Reading and writing is ok.
-    unsafe { *x = zst_val; }
-    unsafe { let _y = *x; }
 }

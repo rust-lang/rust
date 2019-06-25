@@ -6,5 +6,5 @@ fn main() {
     let y = &*b as *const i32; // different allocation
     // We cannot compare these even though both are inbounds -- they *could* be
     // equal if memory was reused.
-    assert!(x != y); //~ ERROR dangling pointer
+    assert!(x != y); //~ ERROR invalid arithmetic on pointers
 }
