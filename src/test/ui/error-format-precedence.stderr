@@ -1,0 +1,55 @@
+{"message":"mismatched types","code":{"code":"E0308","explanation":"
+This error occurs when the compiler was unable to infer the concrete type of a
+variable. It can occur for several cases, the most common of which is a
+mismatch in the expected type that the compiler inferred for a variable's
+initializing expression, and the actual type explicitly assigned to the
+variable.
+
+For example:
+
+```compile_fail,E0308
+let x: i32 = \"I am not a number!\";
+//     ~~~   ~~~~~~~~~~~~~~~~~~~~
+//      |             |
+//      |    initializing expression;
+//      |    compiler infers type `&str`
+//      |
+//    type `i32` assigned to variable `x`
+```
+"},"level":"error","spans":[{"file_name":"$DIR/error-format-precedence.rs","byte_start":99,"byte_end":119,"line_start":6,"line_end":6,"column_start":9,"column_end":29,"is_primary":true,"text":[{"text":"    foo(\"Bonjour\".to_owned());","highlight_start":9,"highlight_end":29}],"label":"expected u32, found struct `std::string::String`","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[{"message":"expected type `u32`
+   found type `std::string::String`","code":null,"level":"note","spans":[],"children":[],"rendered":null}],"rendered":"error[E0308]: mismatched types
+  --> $DIR/error-format-precedence.rs:6:9
+   |
+LL |     foo(\"Bonjour\".to_owned());
+   |         ^^^^^^^^^^^^^^^^^^^^ expected u32, found struct `std::string::String`
+   |
+   = note: expected type `u32`
+              found type `std::string::String`
+
+"}
+{"message":"no method named `salut` found for type `u32` in the current scope","code":{"code":"E0599","explanation":"
+This error occurs when a method is used on a type which doesn't implement it:
+
+Erroneous code example:
+
+```compile_fail,E0599
+struct Mouth;
+
+let x = Mouth;
+x.chocolate(); // error: no method named `chocolate` found for type `Mouth`
+               //        in the current scope
+```
+"},"level":"error","spans":[{"file_name":"$DIR/error-format-precedence.rs","byte_start":146,"byte_end":151,"line_start":8,"line_end":8,"column_start":7,"column_end":12,"is_primary":true,"text":[{"text":"    x.salut();","highlight_start":7,"highlight_end":12}],"label":null,"suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[],"rendered":"error[E0599]: no method named `salut` found for type `u32` in the current scope
+  --> $DIR/error-format-precedence.rs:8:7
+   |
+LL |     x.salut();
+   |       ^^^^^
+
+"}
+{"message":"aborting due to 2 previous errors","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to 2 previous errors
+
+"}
+{"message":"Some errors have detailed explanations: E0308, E0599.","code":null,"level":"","spans":[],"children":[],"rendered":"Some errors have detailed explanations: E0308, E0599.
+"}
+{"message":"For more information about an error, try `rustc --explain E0308`.","code":null,"level":"","spans":[],"children":[],"rendered":"For more information about an error, try `rustc --explain E0308`.
+"}
