@@ -1,0 +1,18 @@
+error[E0191]: the value of the associated types `Value` (from the trait `Hierarchy`), `ChildKey` (from the trait `Hierarchy`), `Children` (from the trait `Hierarchy`) must be specified
+  --> $DIR/issue-23595-1.rs:8:54
+   |
+LL |     type Value;
+   |     ----------- `Value` defined here
+LL |     type ChildKey;
+   |     -------------- `ChildKey` defined here
+LL |     type Children = dyn Index<Self::ChildKey, Output=dyn Hierarchy>;
+   |     -------------------------------------------------^^^^^^^^^^^^^--
+   |     |                                                |
+   |     |                                                associated type `Value` must be specified
+   |     |                                                associated type `ChildKey` must be specified
+   |     |                                                associated type `Children` must be specified
+   |     `Children` defined here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0191`.

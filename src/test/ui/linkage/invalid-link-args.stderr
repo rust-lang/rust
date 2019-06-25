@@ -1,0 +1,9 @@
+error: linking with `ld` failed: exit code: 1
+   |
+   = note: "ld" "-L" "$BUILD_DIR/x86_64-unknown-linux-gnu/stage1/lib/rustlib/x86_64-unknown-linux-gnu/lib" "$TEST_BUILD_DIR/linkage/invalid-link-args/invalid-link-args.invalid_link_args.7rcbfp3g-cgu.0.rcgu.o" "$TEST_BUILD_DIR/linkage/invalid-link-args/invalid-link-args.invalid_link_args.7rcbfp3g-cgu.1.rcgu.o" "-o" "$TEST_BUILD_DIR/linkage/invalid-link-args/invalid-link-args" "--gc-sections" "-pie" "-zrelro" "-znow" "-O1" "-L" "$BUILD_DIR/x86_64-unknown-linux-gnu/native/rust-test-helpers" "-L" "$TEST_BUILD_DIR/linkage/invalid-link-args/auxiliary" "-L" "$BUILD_DIR/x86_64-unknown-linux-gnu/stage1/lib/rustlib/x86_64-unknown-linux-gnu/lib" "--start-group" "-L" "$BUILD_DIR/x86_64-unknown-linux-gnu/stage1/lib/rustlib/x86_64-unknown-linux-gnu/lib" "-lstd-df58114e777eef4d" "--end-group" "-Bstatic" "$BUILD_DIR/x86_64-unknown-linux-gnu/stage1/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcompiler_builtins-34e2d1be8ef7ab6e.rlib" "-Bdynamic" "-ldl" "-lrt" "-lpthread" "-lgcc_s" "-lc" "-lm" "-lrt" "-lpthread" "-lutil" "-lutil" "-Wl,-rpath,$ORIGIN/../../../../stage1/lib/rustlib/x86_64-unknown-linux-gnu/lib" "-Wl,-rpath,$LIB_DIR/rustlib/x86_64-unknown-linux-gnu/lib" "-Wl,--enable-new-dtags" "aFdEfSeVEEE"
+   = note: ld: unrecognised option '-Wl,-rpath,$ORIGIN/../../../../stage1/lib/rustlib/x86_64-unknown-linux-gnu/lib'
+           ld: use the --help option for usage information
+           
+
+error: aborting due to previous error
+

@@ -1,0 +1,18 @@
+error[E0277]: the trait bound `{float}: Foo` is not satisfied
+  --> $DIR/type_wf.rs:17:13
+   |
+LL |     let s = S {
+   |             ^ the trait `Foo` is not implemented for `{float}`
+   |
+   = help: the following implementations were found:
+             <i32 as Foo>
+             <std::option::Option<T> as Foo>
+note: required by `S`
+  --> $DIR/type_wf.rs:5:1
+   |
+LL | struct S<T: Foo> {
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

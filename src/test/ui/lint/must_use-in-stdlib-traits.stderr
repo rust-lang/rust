@@ -1,0 +1,47 @@
+error: unused implementer of `std::iter::Iterator` that must be used
+  --> $DIR/must_use-in-stdlib-traits.rs:42:4
+   |
+LL |    iterator();
+   |    ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/must_use-in-stdlib-traits.rs:1:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+   = note: iterators are lazy and do nothing unless consumed
+
+error: unused implementer of `std::future::Future` that must be used
+  --> $DIR/must_use-in-stdlib-traits.rs:43:4
+   |
+LL |    future();
+   |    ^^^^^^^^^
+   |
+   = note: futures do nothing unless you `.await` or poll them
+
+error: unused implementer of `std::ops::FnOnce` that must be used
+  --> $DIR/must_use-in-stdlib-traits.rs:44:4
+   |
+LL |    square_fn_once();
+   |    ^^^^^^^^^^^^^^^^^
+   |
+   = note: closures are lazy and do nothing unless called
+
+error: unused implementer of `std::ops::FnMut` that must be used
+  --> $DIR/must_use-in-stdlib-traits.rs:45:4
+   |
+LL |    square_fn_mut();
+   |    ^^^^^^^^^^^^^^^^
+   |
+   = note: closures are lazy and do nothing unless called
+
+error: unused implementer of `std::ops::Fn` that must be used
+  --> $DIR/must_use-in-stdlib-traits.rs:46:4
+   |
+LL |    square_fn();
+   |    ^^^^^^^^^^^^
+   |
+   = note: closures are lazy and do nothing unless called
+
+error: aborting due to 5 previous errors
+

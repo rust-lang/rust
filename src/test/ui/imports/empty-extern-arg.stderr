@@ -1,0 +1,7 @@
+error: extern location for std does not exist: 
+
+error[E0463]: can't find crate for `std`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0463`.

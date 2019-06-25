@@ -1,0 +1,11 @@
+error: <inline asm>:1:2: error: invalid instruction mnemonic 'nowayisthisavalidinstruction'
+        nowayisthisavalidinstruction
+        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  --> $DIR/asm-src-loc.rs:7:9
+   |
+LL |         asm!("nowayisthisavalidinstruction");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
