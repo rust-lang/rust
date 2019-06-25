@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use itertools::Itertools;
 
 use hir::{
     AdtDef, FieldSource, HasSource,
@@ -9,19 +10,14 @@ use ra_syntax::ast::{self, AstNode};
 use crate::{AssistCtx, Assist, AssistId};
 
 fn is_trivial_arm(arm: &ast::MatchArm) -> bool {
-    for (i, p) in arm.pats().enumerate() {
-        if i > 0 {
-            return false;
-        }
-
-        match p.kind() {
-            ast::PatKind::PlaceholderPat(_) => {}
-            _ => {
-                return false;
-            }
-        };
+    fn single_pattern(arm: &ast::MatchArm) -> Option<ast::PatKind> {
+        let (pat,) = arm.pats().collect_tuple()?;
+        Some(pat.kind())
     }
-    return true;
+    match single_pattern(arm) {
+        Some(ast::PatKind::PlaceholderPat(..)) => true,
+        _ => false,
+    }
 }
 
 pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
@@ -32,12 +28,19 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     // by match postfix complete. Trivial match arm is the catch all arm.
     match match_expr.match_arm_list() {
         Some(arm_list) => {
-            for (i, a) in arm_list.arms().enumerate() {
-                if i > 0 {
-                    return None;
-                }
+            let mut arm_iter = arm_list.arms();
+            let first = arm_iter.next();
 
-                if !is_trivial_arm(a) {
+            match first {
+                // If there arm list is empty or there is only one trivial arm, then proceed.
+                Some(arm) if is_trivial_arm(arm) => {
+                    if arm_iter.next() != None {
+                        return None;
+                    }
+                }
+                None => {}
+
+                _ => {
                     return None;
                 }
             }
