@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use itertools::Itertools;
 
 use hir::{
     AdtDef, FieldSource, HasSource,
@@ -8,13 +9,41 @@ use ra_syntax::ast::{self, AstNode};
 
 use crate::{AssistCtx, Assist, AssistId};
 
+fn is_trivial_arm(arm: &ast::MatchArm) -> bool {
+    fn single_pattern(arm: &ast::MatchArm) -> Option<ast::PatKind> {
+        let (pat,) = arm.pats().collect_tuple()?;
+        Some(pat.kind())
+    }
+    match single_pattern(arm) {
+        Some(ast::PatKind::PlaceholderPat(..)) => true,
+        _ => false,
+    }
+}
+
 pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_expr = ctx.node_at_offset::<ast::MatchExpr>()?;
 
     // We already have some match arms, so we don't provide any assists.
+    // Unless if there is only one trivial match arm possibly created
+    // by match postfix complete. Trivial match arm is the catch all arm.
     match match_expr.match_arm_list() {
-        Some(arm_list) if arm_list.arms().count() > 0 => {
-            return None;
+        Some(arm_list) => {
+            let mut arm_iter = arm_list.arms();
+            let first = arm_iter.next();
+
+            match first {
+                // If there arm list is empty or there is only one trivial arm, then proceed.
+                Some(arm) if is_trivial_arm(arm) => {
+                    if arm_iter.next() != None {
+                        return None;
+                    }
+                }
+                None => {}
+
+                _ => {
+                    return None;
+                }
+            }
         }
         _ => {}
     }
@@ -226,6 +255,32 @@ mod tests {
             }
             "#,
             "match E::X {}",
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_trivial_arm() {
+        check_assist(
+            fill_match_arms,
+            r#"
+            enum E { X, Y }
+
+            fn main() {
+                match E::X {
+                    <|>_ => {},
+                }
+            }
+            "#,
+            r#"
+            enum E { X, Y }
+
+            fn main() {
+                match <|>E::X {
+                    E::X => (),
+                    E::Y => (),
+                }
+            }
+            "#,
         );
     }
 }
