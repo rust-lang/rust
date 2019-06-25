@@ -115,6 +115,8 @@ impl CrateImplBlocks {
 }
 
 fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayVec<[Crate; 2]>> {
+    // Types like slice can have inherent impls in several crates, (core and alloc).
+    // The correspoinding impls are marked with lang items, so we can use them to find the required crates.
     macro_rules! lang_item_crate {
         ($db:expr, $cur_crate:expr, $($name:expr),+ $(,)?) => {{
             let mut v = ArrayVec::<[Crate; 2]>::new();
@@ -128,16 +130,16 @@ fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayV
     match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
             TypeCtor::Adt(def_id) => Some(std::iter::once(def_id.krate(db)?).collect()),
-            TypeCtor::Bool => lang_item_crate![db, cur_crate, "bool"],
-            TypeCtor::Char => lang_item_crate![db, cur_crate, "char"],
+            TypeCtor::Bool => lang_item_crate!(db, cur_crate, "bool"),
+            TypeCtor::Char => lang_item_crate!(db, cur_crate, "char"),
             TypeCtor::Float(UncertainFloatTy::Known(f)) => {
-                lang_item_crate![db, cur_crate, f.ty_to_string()]
+                lang_item_crate!(db, cur_crate, f.ty_to_string())
             }
             TypeCtor::Int(UncertainIntTy::Known(i)) => {
-                lang_item_crate![db, cur_crate, i.ty_to_string()]
+                lang_item_crate!(db, cur_crate, i.ty_to_string())
             }
-            TypeCtor::Str => lang_item_crate![db, cur_crate, "str"],
-            TypeCtor::Slice => lang_item_crate![db, cur_crate, "slice_alloc", "slice"],
+            TypeCtor::Str => lang_item_crate!(db, cur_crate, "str"),
+            TypeCtor::Slice => lang_item_crate!(db, cur_crate, "slice_alloc", "slice"),
             _ => None,
         },
         _ => None,
