@@ -212,7 +212,7 @@ export class CargoWatchProvider
             const leftEditEntries = left.edit.entries();
             const rightEditEntries = right.edit.entries();
 
-            if (leftEditEntries.length !== leftEditEntries.length) {
+            if (leftEditEntries.length !== rightEditEntries.length) {
                 return false;
             }
 
