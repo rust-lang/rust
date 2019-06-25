@@ -69,7 +69,7 @@ fn search_meta_section<'a>(of: &'a ObjectFile,
             let mut name_buf = None;
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
             let name = name_buf.map_or(
-                String::new(), // we got a NULL ptr, ignore `name_len`
+                String::new(), // We got a NULL ptr, ignore `name_len`.
                 |buf| String::from_utf8(
                     slice::from_raw_parts(buf.as_ptr() as *const u8,
                                           name_len as usize)

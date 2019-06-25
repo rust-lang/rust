@@ -1336,7 +1336,7 @@ extern "rust-intrinsic" {
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
-    return !ptr.is_null() && ptr as usize % mem::align_of::<T>() == 0;
+    !ptr.is_null() && ptr as usize % mem::align_of::<T>() == 0
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
