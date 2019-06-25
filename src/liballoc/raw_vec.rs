@@ -209,12 +209,6 @@ impl<T, A: Alloc> RawVec<T, A> {
         }
     }
 
-    // For backwards compatibility
-    #[inline(always)]
-    pub fn cap(&self) -> usize {
-        self.capacity()
-    }
-
     /// Returns a shared reference to the allocator backing this RawVec.
     pub fn alloc(&self) -> &A {
         &self.a
